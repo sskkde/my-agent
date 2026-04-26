@@ -1,0 +1,36 @@
+{
+  "name": "agent-platform",
+  "version": "0.1.0",
+  "description": "Multi-agent platform for task orchestration and execution",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "vitest run tests/e2e",
+    "typecheck": "tsc --noEmit",
+    "start:dev": "tsx src/index.ts",
+    "db:migrate": "tsx src/cli/migrate.ts",
+    "db:health": "tsx src/cli/db-health.ts",
+    "db:backup": "tsx src/cli/db-backup.ts"
+  },
+  "keywords": [
+    "agent",
+    "multi-agent",
+    "orchestration",
+    "task-management"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.1.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0"
+  }
+}
