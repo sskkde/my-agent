@@ -1004,6 +1004,63 @@ export const metricsTableMigration: Migration = {
   `
 };
 
+// ============================================================================
+// STORE 21: Audit Store (version 27)
+// ============================================================================
+export const auditRecordsTableMigration: Migration = {
+  version: 27,
+  name: 'create_audit_records_table',
+  up: `
+    CREATE TABLE audit_records (
+      audit_id TEXT PRIMARY KEY,
+      audit_type TEXT NOT NULL CHECK(audit_type IN ('user_input', 'assistant_output', 'tool_call', 'external_write', 'permission_decision', 'approval_request', 'approval_response', 'workflow_change', 'workflow_run', 'subagent_run', 'connector_access', 'memory_write', 'memory_delete', 'summary_write', 'dispatch')),
+      timestamp TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      session_id TEXT,
+      source_module TEXT NOT NULL CHECK(source_module IN ('gateway', 'dispatcher', 'kernel', 'tool', 'workflow', 'subagent', 'trigger', 'connector', 'permission', 'memory', 'system')),
+      source_action TEXT NOT NULL,
+      action_summary TEXT NOT NULL,
+      target_type TEXT,
+      target_ref TEXT,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'completed', 'failed', 'blocked')),
+      payload TEXT NOT NULL,
+      input_hash TEXT,
+      correlation_id TEXT,
+      causation_id TEXT,
+      approval_id TEXT,
+      tool_call_id TEXT,
+      permission_decision_id TEXT,
+      risk_level TEXT NOT NULL CHECK(risk_level IN ('low', 'medium', 'high', 'critical')),
+      sensitivity TEXT NOT NULL CHECK(sensitivity IN ('low', 'medium', 'high', 'restricted'))
+    );
+    CREATE INDEX idx_audit_records_user_timestamp ON audit_records(user_id, timestamp DESC);
+    CREATE INDEX idx_audit_records_session_timestamp ON audit_records(session_id, timestamp DESC);
+    CREATE INDEX idx_audit_records_type_timestamp ON audit_records(audit_type, timestamp DESC);
+    CREATE INDEX idx_audit_records_module_timestamp ON audit_records(source_module, timestamp DESC);
+    CREATE INDEX idx_audit_records_correlation ON audit_records(correlation_id);
+    CREATE INDEX idx_audit_records_approval ON audit_records(approval_id) WHERE approval_id IS NOT NULL;
+    CREATE INDEX idx_audit_records_tool_call ON audit_records(tool_call_id) WHERE tool_call_id IS NOT NULL;
+    CREATE INDEX idx_audit_records_permission ON audit_records(permission_decision_id) WHERE permission_decision_id IS NOT NULL;
+    CREATE INDEX idx_audit_records_status ON audit_records(status);
+    CREATE INDEX idx_audit_records_risk_level ON audit_records(risk_level);
+    CREATE INDEX idx_audit_records_sensitivity ON audit_records(sensitivity)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_audit_records_user_timestamp;
+    DROP INDEX IF EXISTS idx_audit_records_session_timestamp;
+    DROP INDEX IF EXISTS idx_audit_records_type_timestamp;
+    DROP INDEX IF EXISTS idx_audit_records_module_timestamp;
+    DROP INDEX IF EXISTS idx_audit_records_correlation;
+    DROP INDEX IF EXISTS idx_audit_records_approval;
+    DROP INDEX IF EXISTS idx_audit_records_tool_call;
+    DROP INDEX IF EXISTS idx_audit_records_permission;
+    DROP INDEX IF EXISTS idx_audit_records_status;
+    DROP INDEX IF EXISTS idx_audit_records_risk_level;
+    DROP INDEX IF EXISTS idx_audit_records_sensitivity;
+    DROP TABLE IF EXISTS audit_records
+  `
+};
+
 /**
  * Complete list of all migrations for the agent platform.
  * Apply these in order to initialize all stores.
@@ -1054,6 +1111,7 @@ export const allStoreMigrations: Migration[] = [
   traceContextsTableMigration,             // v24
   traceSpansTableMigration,                // v25
   metricsTableMigration,                   // v26
+  auditRecordsTableMigration,              // v27
 ];
 
 /**
