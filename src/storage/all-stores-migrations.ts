@@ -832,6 +832,71 @@ export const connectorEventsTableMigration: Migration = {
 };
 
 // ============================================================================
+// STORE 18: Workflow Draft Store (version 22)
+// ============================================================================
+export const workflowDraftsTableMigration: Migration = {
+  version: 22,
+  name: 'create_workflow_drafts_table',
+  up: `
+    CREATE TABLE workflow_drafts (
+      draft_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      steps TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('draft', 'validating', 'invalid')),
+      validation_issues TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_workflow_drafts_owner ON workflow_drafts(owner_user_id);
+    CREATE INDEX idx_workflow_drafts_status ON workflow_drafts(status);
+    CREATE INDEX idx_workflow_drafts_updated ON workflow_drafts(updated_at DESC)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_workflow_drafts_updated;
+    DROP INDEX IF EXISTS idx_workflow_drafts_status;
+    DROP INDEX IF EXISTS idx_workflow_drafts_owner;
+    DROP TABLE IF EXISTS workflow_drafts
+  `
+};
+
+// ============================================================================
+// STORE 19: Workflow Definition Store (version 23)
+// ============================================================================
+export const workflowDefinitionsTableMigration: Migration = {
+  version: 23,
+  name: 'create_workflow_definitions_table',
+  up: `
+    CREATE TABLE workflow_definitions (
+      workflow_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      version INTEGER NOT NULL,
+      steps TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('published', 'deprecated')),
+      published_from_draft_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_workflow_defs_owner ON workflow_definitions(owner_user_id);
+    CREATE INDEX idx_workflow_defs_status ON workflow_definitions(status);
+    CREATE INDEX idx_workflow_defs_name_version ON workflow_definitions(name, version);
+    CREATE INDEX idx_workflow_defs_draft ON workflow_definitions(published_from_draft_id);
+    CREATE INDEX idx_workflow_defs_updated ON workflow_definitions(updated_at DESC)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_workflow_defs_updated;
+    DROP INDEX IF EXISTS idx_workflow_defs_draft;
+    DROP INDEX IF EXISTS idx_workflow_defs_name_version;
+    DROP INDEX IF EXISTS idx_workflow_defs_status;
+    DROP INDEX IF EXISTS idx_workflow_defs_owner;
+    DROP TABLE IF EXISTS workflow_definitions
+  `
+};
+
+// ============================================================================
 // ALL MIGRATIONS ARRAY
 // ============================================================================
 
@@ -845,37 +910,41 @@ export const allStoreMigrations: Migration[] = [
   runtimeActionsTableMigration,            // v2
   transcriptsTableMigration,               // v3
   summariesTableMigration,                 // v4
-  
+
   // Plan-related stores
   plansTableMigration,                     // v5
   planPatchesTableMigration,               // v6
   plannerRunsTableMigration,               // v7
-  
+
   // Runtime stores
   kernelRunsTableMigration,                // v8
   toolExecutionsTableMigration,            // v9
   backgroundRunsTableMigration,            // v10
-  
+
   // Workflow stores
   workflowRunsTableMigration,              // v11
   workflowStepRunsTableMigration,          // v12
-  
+
   // Approval & Permission stores
   approvalRequestsTableMigration,          // v13
   permissionGrantsTableMigration,          // v14
-  
+
   // Trigger & Wait stores
   triggerRegistrationsTableMigration,      // v15
   waitConditionsTableMigration,            // v16
-  
+
   // Artifact & Result stores
   artifactsTableMigration,                 // v17
   toolResultsTableMigration,               // v18
-  
+
   // Connector stores
   connectorDefinitionsTableMigration,      // v19
   connectorInstancesTableMigration,        // v20
   connectorEventsTableMigration,           // v21
+
+  // Workflow Draft & Definition stores
+  workflowDraftsTableMigration,            // v22
+  workflowDefinitionsTableMigration,       // v23
 ];
 
 /**

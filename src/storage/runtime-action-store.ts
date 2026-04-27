@@ -58,6 +58,7 @@ export interface RuntimeActionQuery {
   userId?: string;
   sessionId?: string;
   status?: RuntimeActionState;
+  workflowRunId?: string;
 }
 
 export interface RuntimeActionStore {
@@ -235,6 +236,11 @@ class RuntimeActionStoreImpl implements RuntimeActionStore {
     if (filters.status !== undefined) {
       conditions.push('status = ?');
       params.push(filters.status);
+    }
+
+    if (filters.workflowRunId !== undefined) {
+      conditions.push('workflow_run_id = ?');
+      params.push(filters.workflowRunId);
     }
 
     let sql = 'SELECT * FROM runtime_actions';
