@@ -119,6 +119,11 @@ export interface ProviderConfig {
   timeoutMs: number;
   retries: number;
   capabilities: ProviderCapabilities;
+  apiKey?: string;
+  baseUrl?: string;
+  enableLogging?: boolean;
+  siteUrl?: string;
+  appName?: string;
 }
 
 /**

@@ -43,11 +43,17 @@ export type {
 
 export { createProviderRegistry } from './provider';
 
-// Adapter
 export type { LLMAdapterConfig, LLMAdapter } from './adapter';
-
 export {
   DEFAULT_ADAPTER_CONFIG,
   createLLMAdapter,
   createTimeoutError,
 } from './adapter';
+
+export {
+  BaseProvider,
+  OpenAIAdapter,
+  OpenRouterAdapter,
+  OllamaAdapter,
+  MultiProviderLLMAdapter,
+} from './providers';

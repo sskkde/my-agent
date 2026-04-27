@@ -83,4 +83,5 @@ export interface RuntimeError {
   userVisible?: UserVisibleError;
   technical?: TechnicalErrorDetails;
   createdAt: string;
+  attempts?: Array<{ providerId: string; error: RuntimeError }>;
 }

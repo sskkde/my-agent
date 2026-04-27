@@ -14,6 +14,13 @@ export const SUMMARY_ID_PREFIX = 'sum_';
 export const MEMORY_ID_PREFIX = 'mem_';
 export const AUDIT_ID_PREFIX = 'audit_';
 export const SPAN_ID_PREFIX = 'span_';
+export const GRANT_ID_PREFIX = 'grant_';
+
+export function generateId(prefix: string): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 9);
+  return `${prefix}_${timestamp}_${random}`;
+}
 
 export function isValidSessionId(id: string): boolean {
   return typeof id === 'string' && id.startsWith(SESSION_ID_PREFIX) && id.length > SESSION_ID_PREFIX.length;
