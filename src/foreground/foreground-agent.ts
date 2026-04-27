@@ -13,6 +13,7 @@ import type {
   ResolvedActiveWork,
 } from './types.js';
 import type { RuntimeAction, TargetRuntime } from '../dispatcher/types.js';
+import type { ToolCategory } from '../tools/types.js';
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): ForegroundDecision;
@@ -386,7 +387,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   }
 
   private isAllowedToolCategory(category: string, policy: DirectDelegationPolicy): boolean {
-    return policy.allowedToolCategories.includes(category as any);
+    return policy.allowedToolCategories?.includes(category as ToolCategory) ?? false;
   }
 
   private analyzeTask(message: string): TaskAnalysis {

@@ -493,7 +493,10 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
 
     const toStart = sortedRuns.slice(0, availableSlots);
     for (const run of toStart) {
-      this.startBackgroundRun(run.backgroundRunId).catch(() => {});
+      this.startBackgroundRun(run.backgroundRunId).catch(() => {
+        // Fire-and-forget: errors during background run startup are handled
+        // internally by startBackgroundRun via event emission
+      });
     }
   }
 

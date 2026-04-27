@@ -184,10 +184,16 @@ class RetryExecutorImpl implements RetryExecutor {
         if (cancelToken && this.config.cancelOperation) {
           this.config.cancelOperation(cancelToken).catch(() => undefined);
         }
-        const timeoutError = new Error('Operation timed out') as RuntimeError & Error;
-        (timeoutError as any).category = 'timeout';
-        (timeoutError as any).recoverability = 'retryable_later';
-        reject(timeoutError);
+        const timeoutError: RuntimeError = {
+          errorId: `timeout-${Date.now()}`,
+          category: 'timeout',
+          code: 'OPERATION_TIMEOUT',
+          message: 'Operation timed out',
+          recoverability: 'retryable_later',
+          source: { module: 'retry_executor' },
+          createdAt: new Date().toISOString(),
+        };
+        reject(timeoutError as unknown as Error);
       }, timeoutMs);
 
       operation
