@@ -16,6 +16,7 @@ export interface PlannerRunRecord {
 
 export interface PlannerRunStore {
   create(run: PlannerRunRecord): PlannerRunRecord;
+  getById(plannerRunId: string): PlannerRunRecord | null;
   findActive(userId: string, statusFilter?: PlannerState): PlannerRunRecord[];
   findActiveBySession(sessionId: string, statusFilter?: PlannerState): PlannerRunRecord[];
   updateStatus(plannerRunId: string, status: PlannerState, checkpoint?: unknown): void;
@@ -60,6 +61,28 @@ class PlannerRunStoreImpl implements PlannerRunStore {
     this.addPlannerRunToPlan(run.planId, run.plannerRunId);
 
     return run;
+  }
+
+  getById(plannerRunId: string): PlannerRunRecord | null {
+    const sql = `SELECT * FROM planner_runs WHERE planner_run_id = ?`;
+    const rows = this.connection.query<{
+      planner_run_id: string;
+      plan_id: string;
+      user_id: string;
+      session_id: string | null;
+      status: string;
+      checkpoint: string | null;
+      background_run_id: string | null;
+      workflow_run_id: string | null;
+      created_at: string;
+      updated_at: string;
+    }>(sql, [plannerRunId]);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return this.rowToRun(rows[0]);
   }
 
   findActive(userId: string, statusFilter?: PlannerState): PlannerRunRecord[] {

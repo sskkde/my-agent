@@ -56,6 +56,7 @@ export interface EventQuery {
   sourceModule?: string;
   correlationId?: string;
   causationId?: string;
+  plannerRunId?: string;
   limit?: number;
   offset?: number;
 }
@@ -211,6 +212,11 @@ class EventStoreImpl implements EventStore {
     if (filters.causationId !== undefined) {
       conditions.push('causation_id = ?');
       params.push(filters.causationId);
+    }
+
+    if (filters.plannerRunId !== undefined) {
+      conditions.push('planner_run_id = ?');
+      params.push(filters.plannerRunId);
     }
 
     let sql = 'SELECT * FROM events';

@@ -50,10 +50,18 @@ export interface RuntimeAction {
   updatedAt: string;
 }
 
+export interface RuntimeActionQuery {
+  plannerRunId?: string;
+  planId?: string;
+  userId?: string;
+  status?: RuntimeActionState;
+}
+
 export interface RuntimeActionStore {
   save(action: RuntimeAction): void;
   findById(actionId: string): RuntimeAction | null;
   findByIdempotencyKey(idempotencyKey: string): RuntimeAction | null;
+  query(filters: RuntimeActionQuery): RuntimeAction[];
   updateStatus(
     actionId: string,
     status: RuntimeActionState,
@@ -192,6 +200,40 @@ class RuntimeActionStoreImpl implements RuntimeActionStore {
     }
 
     return rowToRuntimeAction(rows[0] as RuntimeActionRow);
+  }
+
+  query(filters: { plannerRunId?: string; planId?: string; userId?: string; status?: RuntimeActionState }): RuntimeAction[] {
+    const conditions: string[] = [];
+    const params: (string | null)[] = [];
+
+    if (filters.plannerRunId !== undefined) {
+      conditions.push('planner_run_id = ?');
+      params.push(filters.plannerRunId);
+    }
+
+    if (filters.planId !== undefined) {
+      conditions.push('plan_id = ?');
+      params.push(filters.planId);
+    }
+
+    if (filters.userId !== undefined) {
+      conditions.push('user_id = ?');
+      params.push(filters.userId);
+    }
+
+    if (filters.status !== undefined) {
+      conditions.push('status = ?');
+      params.push(filters.status);
+    }
+
+    let sql = 'SELECT * FROM runtime_actions';
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+    sql += ' ORDER BY created_at DESC';
+
+    const rows = this.connection.query<RuntimeActionRow>(sql, params);
+    return rows.map(row => rowToRuntimeAction(row));
   }
 
   updateStatus(

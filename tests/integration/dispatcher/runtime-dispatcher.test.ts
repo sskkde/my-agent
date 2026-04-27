@@ -31,7 +31,8 @@ function createMockRuntimeActionStore(): RuntimeActionStore {
         if (result !== undefined) action.result = result;
         actions.set(actionId, action);
       }
-    }
+    },
+    query: () => [],
   };
 }
 
