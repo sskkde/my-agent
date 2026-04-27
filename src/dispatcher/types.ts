@@ -29,7 +29,10 @@ export type RuntimeActionType =
   | 'resume_planner_run'
   | 'cancel_planner_run'
   | 'archive_planner_run'
-  | 'query_active_work';
+  | 'query_active_work'
+  | 'pause_planner_run'
+  | 'pause_background_run'
+  | 'resume_background_run';
 
 export type TargetRuntime =
   | 'agent_kernel'
@@ -221,6 +224,7 @@ export interface DispatchEvent {
   causationId?: string;
   idempotencyKey?: string;
   timestamp: string;
+  createdAt: string;
   payload?: Record<string, unknown>;
   sensitivity: SensitivityLevel;
   retentionClass: RetentionClass;

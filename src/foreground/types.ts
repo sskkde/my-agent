@@ -236,6 +236,7 @@ export const DEFAULT_INTENT_PATTERNS: IntentPatterns = {
   ],
   statusKeywords: [
     'status', 'progress', 'how is', 'what is the status',
+    'active work', 'my tasks', 'going', 'show me',
     '状态', '进度', '进展', '情况'
   ],
   approveKeywords: [
@@ -306,4 +307,73 @@ export interface ActiveWorkResolution {
   canCancel: boolean;
   /** Current status of the work */
   status?: string;
+}
+
+export type InterruptActionType =
+  | 'cancel'
+  | 'modify'
+  | 'pause'
+  | 'resume'
+  | 'query';
+
+export interface StatusQueryResult {
+  success: boolean;
+  activePlannerRuns: Array<{
+    runId: string;
+    status: string;
+    objective?: string;
+    progress?: number;
+  }>;
+  activeBackgroundRuns: Array<{
+    runId: string;
+    status: string;
+    objective?: string;
+  }>;
+  pendingApprovals: Array<{
+    approvalId: string;
+    actionSummary: string;
+    requestedAt: string;
+  }>;
+  totalActive: number;
+  queriedAt: string;
+  error?: string;
+}
+
+export interface InterruptRequest {
+  actionType: InterruptActionType;
+  targetWorkType: 'planner_run' | 'runtime_action' | 'subagent_run' | 'workflow_run' | null;
+  targetWorkId?: string;
+  newObjective?: string;
+  reason: string;
+  userId: string;
+  sessionId: string;
+}
+
+export interface InterruptResult {
+  success: boolean;
+  actionTaken: string;
+  targetWorkId?: string;
+  error?: string;
+  needsClarification?: boolean;
+  clarificationPrompt?: string;
+  activeWorkOptions?: Array<{
+    workId: string;
+    workType: string;
+    description: string;
+  }>;
+}
+
+export interface InterruptActionFactory {
+  createCancelAction(request: InterruptRequest): RuntimeAction;
+  createModifyAction(request: InterruptRequest): RuntimeAction;
+  createPauseAction(request: InterruptRequest): RuntimeAction;
+  createResumeAction(request: InterruptRequest): RuntimeAction;
+  createStatusQueryAction(userId: string, sessionId: string): RuntimeAction;
+}
+
+export interface ResolvedActiveWork {
+  isAmbiguous: boolean;
+  activeWorkCount: number;
+  targetWork?: ActiveWorkResolution;
+  allActiveWork?: ActiveWorkResolution[];
 }
