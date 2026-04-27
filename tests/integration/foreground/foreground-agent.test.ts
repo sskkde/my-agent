@@ -1,21 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createForegroundAgent, mergeDelegationPolicies } from '../../../src/foreground/foreground-agent.js';
 import { DEFAULT_ASSISTANT_PERSONA, DEFAULT_DIRECT_DELEGATION_POLICY } from '../../../src/foreground/types.js';
-import type { ForegroundMessageInput, ForegroundSessionState, ForegroundDecision } from '../../../src/foreground/types.js';
-import type { PermissionContext } from '../../../src/permissions/types.js';
+import type { ForegroundMessageInput, ForegroundSessionState } from '../../../src/foreground/types.js';
 
 describe('Foreground Conversation Agent', () => {
   let agent: ReturnType<typeof createForegroundAgent>;
   let baseState: ForegroundSessionState;
-
-  function createTestPermissionContext(): PermissionContext {
-    return {
-      userId: 'user_001',
-      sessionId: 'sess_001',
-      mode: 'ask_on_write',
-      grants: [],
-    };
-  }
 
   function createBaseState(options?: { activePlannerRunIds?: string[]; activeBackgroundRunIds?: string[] }): ForegroundSessionState {
     return {
