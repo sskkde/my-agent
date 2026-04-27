@@ -900,6 +900,110 @@ export const workflowDefinitionsTableMigration: Migration = {
 // ALL MIGRATIONS ARRAY
 // ============================================================================
 
+// ============================================================================
+// STORE 20: Observability - Trace Contexts (version 24)
+// ============================================================================
+export const traceContextsTableMigration: Migration = {
+  version: 24,
+  name: 'create_trace_contexts_table',
+  up: `
+    CREATE TABLE trace_contexts (
+      trace_id TEXT PRIMARY KEY,
+      root_span_id TEXT NOT NULL,
+      correlation_id TEXT,
+      user_id TEXT,
+      session_id TEXT,
+      started_at TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('active', 'completed', 'failed', 'cancelled'))
+    );
+    CREATE INDEX idx_trace_contexts_correlation ON trace_contexts(correlation_id);
+    CREATE INDEX idx_trace_contexts_user ON trace_contexts(user_id);
+    CREATE INDEX idx_trace_contexts_session ON trace_contexts(session_id);
+    CREATE INDEX idx_trace_contexts_status ON trace_contexts(status);
+    CREATE INDEX idx_trace_contexts_started ON trace_contexts(started_at DESC)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_trace_contexts_started;
+    DROP INDEX IF EXISTS idx_trace_contexts_status;
+    DROP INDEX IF EXISTS idx_trace_contexts_session;
+    DROP INDEX IF EXISTS idx_trace_contexts_user;
+    DROP INDEX IF EXISTS idx_trace_contexts_correlation;
+    DROP TABLE IF EXISTS trace_contexts
+  `
+};
+
+export const traceSpansTableMigration: Migration = {
+  version: 25,
+  name: 'create_trace_spans_table',
+  up: `
+    CREATE TABLE trace_spans (
+      span_id TEXT PRIMARY KEY,
+      trace_id TEXT NOT NULL,
+      parent_span_id TEXT,
+      span_type TEXT NOT NULL CHECK(span_type IN ('dispatch', 'tool_execution', 'kernel_run', 'planner_run', 'workflow_run', 'background_run', 'trigger', 'connector_call', 'permission_check')),
+      module TEXT NOT NULL CHECK(module IN ('gateway', 'dispatcher', 'kernel', 'tool', 'workflow', 'subagent', 'trigger', 'connector', 'permission', 'memory')),
+      operation TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('started', 'completed', 'failed', 'cancelled')),
+      start_time TEXT NOT NULL,
+      end_time TEXT,
+      duration_ms INTEGER,
+      error TEXT,
+      metadata TEXT
+    );
+    CREATE INDEX idx_trace_spans_trace ON trace_spans(trace_id);
+    CREATE INDEX idx_trace_spans_parent ON trace_spans(parent_span_id);
+    CREATE INDEX idx_trace_spans_module ON trace_spans(module);
+    CREATE INDEX idx_trace_spans_type ON trace_spans(span_type);
+    CREATE INDEX idx_trace_spans_status ON trace_spans(status);
+    CREATE INDEX idx_trace_spans_start_time ON trace_spans(start_time DESC)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_trace_spans_start_time;
+    DROP INDEX IF EXISTS idx_trace_spans_status;
+    DROP INDEX IF EXISTS idx_trace_spans_type;
+    DROP INDEX IF EXISTS idx_trace_spans_module;
+    DROP INDEX IF EXISTS idx_trace_spans_parent;
+    DROP INDEX IF EXISTS idx_trace_spans_trace;
+    DROP TABLE IF EXISTS trace_spans
+  `
+};
+
+export const metricsTableMigration: Migration = {
+  version: 26,
+  name: 'create_metrics_table',
+  up: `
+    CREATE TABLE metrics (
+      metric_id TEXT PRIMARY KEY,
+      trace_id TEXT,
+      span_id TEXT,
+      module TEXT NOT NULL CHECK(module IN ('gateway', 'dispatcher', 'kernel', 'tool', 'workflow', 'subagent', 'trigger', 'connector', 'permission', 'memory')),
+      metric_type TEXT NOT NULL CHECK(metric_type IN ('counter', 'gauge', 'histogram', 'timer')),
+      name TEXT NOT NULL,
+      value REAL NOT NULL,
+      unit TEXT,
+      timestamp TEXT NOT NULL,
+      labels TEXT
+    );
+    CREATE INDEX idx_metrics_trace ON metrics(trace_id);
+    CREATE INDEX idx_metrics_span ON metrics(span_id);
+    CREATE INDEX idx_metrics_module ON metrics(module);
+    CREATE INDEX idx_metrics_type ON metrics(metric_type);
+    CREATE INDEX idx_metrics_name ON metrics(name);
+    CREATE INDEX idx_metrics_timestamp ON metrics(timestamp DESC);
+    CREATE INDEX idx_metrics_module_name ON metrics(module, name, timestamp DESC)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_metrics_module_name;
+    DROP INDEX IF EXISTS idx_metrics_timestamp;
+    DROP INDEX IF EXISTS idx_metrics_name;
+    DROP INDEX IF EXISTS idx_metrics_type;
+    DROP INDEX IF EXISTS idx_metrics_module;
+    DROP INDEX IF EXISTS idx_metrics_span;
+    DROP INDEX IF EXISTS idx_metrics_trace;
+    DROP TABLE IF EXISTS metrics
+  `
+};
+
 /**
  * Complete list of all migrations for the agent platform.
  * Apply these in order to initialize all stores.
@@ -945,6 +1049,11 @@ export const allStoreMigrations: Migration[] = [
   // Workflow Draft & Definition stores
   workflowDraftsTableMigration,            // v22
   workflowDefinitionsTableMigration,       // v23
+
+  // Observability stores
+  traceContextsTableMigration,             // v24
+  traceSpansTableMigration,                // v25
+  metricsTableMigration,                   // v26
 ];
 
 /**
