@@ -106,6 +106,7 @@ describe('All Stores Recovery Integration Test', () => {
     // RuntimeAction Store
     runtimeActionStore.save({
       actionId: testData.actionId,
+      actionType: 'execute_tool',
       source: { sourceModule: 'system' },
       targetRuntime: 'kernel',
       targetAction: 'execute',

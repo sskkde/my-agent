@@ -100,6 +100,7 @@ export const runtimeActionsTableMigration: Migration = {
   up: `
     CREATE TABLE runtime_actions (
       action_id TEXT PRIMARY KEY,
+      action_type TEXT NOT NULL,
       idempotency_key TEXT UNIQUE,
       source_module TEXT NOT NULL,
       source_action TEXT,

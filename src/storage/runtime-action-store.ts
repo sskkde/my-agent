@@ -29,10 +29,12 @@ export interface TargetRef {
   backgroundRunId?: string;
   subagentRunId?: string;
   toolCallId?: string;
+  approvalId?: string;
 }
 
 export interface RuntimeAction {
   actionId: string;
+  actionType: string;
   idempotencyKey?: string;
   source: Source;
   targetRuntime: string;
@@ -54,6 +56,7 @@ export interface RuntimeActionQuery {
   plannerRunId?: string;
   planId?: string;
   userId?: string;
+  sessionId?: string;
   status?: RuntimeActionState;
 }
 
@@ -72,6 +75,7 @@ export interface RuntimeActionStore {
 
 interface RuntimeActionRow {
   action_id: string;
+  action_type: string;
   idempotency_key: string | null;
   source_module: string;
   source_action: string | null;
@@ -110,6 +114,7 @@ function rowToRuntimeAction(row: RuntimeActionRow): RuntimeAction {
 
   return {
     actionId: row.action_id,
+    actionType: row.action_type,
     idempotencyKey: row.idempotency_key ?? undefined,
     source: {
       sourceModule: row.source_module,
@@ -141,17 +146,18 @@ class RuntimeActionStoreImpl implements RuntimeActionStore {
   save(action: RuntimeAction): void {
     const sql = `
       INSERT INTO runtime_actions (
-        action_id, idempotency_key, source_module, source_action,
+        action_id, action_type, idempotency_key, source_module, source_action,
         target_runtime, target_action, payload,
         correlation_id, causation_id, session_id, user_id,
         planner_run_id, plan_id, run_id, workflow_run_id, workflow_step_run_id,
         background_run_id, subagent_run_id, tool_call_id,
         status, status_message, result, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       action.actionId,
+      action.actionType,
       action.idempotencyKey ?? null,
       action.source.sourceModule,
       action.source.sourceAction ?? null,
@@ -202,7 +208,7 @@ class RuntimeActionStoreImpl implements RuntimeActionStore {
     return rowToRuntimeAction(rows[0] as RuntimeActionRow);
   }
 
-  query(filters: { plannerRunId?: string; planId?: string; userId?: string; status?: RuntimeActionState }): RuntimeAction[] {
+  query(filters: RuntimeActionQuery): RuntimeAction[] {
     const conditions: string[] = [];
     const params: (string | null)[] = [];
 
@@ -219,6 +225,11 @@ class RuntimeActionStoreImpl implements RuntimeActionStore {
     if (filters.userId !== undefined) {
       conditions.push('user_id = ?');
       params.push(filters.userId);
+    }
+
+    if (filters.sessionId !== undefined) {
+      conditions.push('session_id = ?');
+      params.push(filters.sessionId);
     }
 
     if (filters.status !== undefined) {

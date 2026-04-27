@@ -1,6 +1,7 @@
 import type { PlanStore, ExecutionPlanRecord, PlanPatch, PlanStep } from '../storage/plan-store.js';
 import type { PlannerRunStore, PlannerRunRecord } from '../storage/planner-run-store.js';
 import type { RuntimeActionStore, RuntimeAction } from '../storage/runtime-action-store.js';
+import type { RuntimeActionType } from '../dispatcher/types.js';
 import type { EventStore, EventRecord, SourceModule } from '../storage/event-store.js';
 import { PLANNER_STATES, EXECUTION_PLAN_STATES, RUNTIME_ACTION_STATES } from '../shared/states.js';
 import { generateId, ACTION_ID_PREFIX } from '../shared/ids.js';
@@ -508,6 +509,7 @@ class PlannerRuntimeImpl implements PlannerRuntime {
 
     const action: RuntimeAction = {
       actionId,
+      actionType: params.targetAction as RuntimeActionType,
       source: {
         sourceModule: 'planner',
         sourceAction: 'create_action',

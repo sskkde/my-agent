@@ -76,6 +76,7 @@ const runtimeActionsMigration = {
   up: `
     CREATE TABLE runtime_actions (
       action_id TEXT PRIMARY KEY,
+      action_type TEXT NOT NULL,
       idempotency_key TEXT UNIQUE,
       source_module TEXT NOT NULL,
       source_action TEXT,
@@ -490,6 +491,7 @@ describe('RuntimeAction Store', () => {
     it('should save a new runtime action', () => {
       const action: RuntimeAction = {
         actionId: 'act-001',
+        actionType: 'execute_tool',
         idempotencyKey: 'idem-001',
         source: { sourceModule: 'dispatcher', sourceAction: 'dispatch' },
         targetRuntime: 'kernel',
@@ -517,6 +519,7 @@ describe('RuntimeAction Store', () => {
     it('should store all action fields correctly', () => {
       const action: RuntimeAction = {
         actionId: 'act-001',
+        actionType: 'execute_tool',
         idempotencyKey: 'idem-001',
         source: { sourceModule: 'dispatcher', sourceAction: 'dispatch' },
         targetRuntime: 'kernel',
@@ -604,6 +607,7 @@ describe('RuntimeAction Store', () => {
     beforeEach(() => {
       const action: RuntimeAction = {
         actionId: 'act-001',
+        actionType: 'execute_tool',
         idempotencyKey: 'idem-001',
         source: { sourceModule: 'dispatcher', sourceAction: 'dispatch' },
         targetRuntime: 'kernel',
@@ -641,6 +645,7 @@ describe('RuntimeAction Store', () => {
     beforeEach(() => {
       const action: RuntimeAction = {
         actionId: 'act-001',
+        actionType: 'execute_tool',
         idempotencyKey: 'idem-001',
         source: { sourceModule: 'dispatcher', sourceAction: 'dispatch' },
         targetRuntime: 'kernel',
@@ -708,6 +713,7 @@ describe('RuntimeAction Store', () => {
     beforeEach(() => {
       const action: RuntimeAction = {
         actionId: 'act-001',
+        actionType: 'execute_tool',
         idempotencyKey: 'idem-001',
         source: { sourceModule: 'dispatcher', sourceAction: 'dispatch' },
         targetRuntime: 'kernel',

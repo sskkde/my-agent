@@ -80,6 +80,7 @@ function createDispatchEvent(
     causationId: action.causationId,
     idempotencyKey: action.idempotencyKey,
     timestamp: now,
+    createdAt: now,
     payload: result
       ? { status: result.status, error: result.error }
       : undefined,
