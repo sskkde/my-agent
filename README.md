@@ -39,6 +39,75 @@ Start the development server:
 npm run start:dev
 ```
 
+## Frontend UI
+
+The platform includes a React-based web UI for interacting with agents.
+
+### Installation
+
+```bash
+# Install root dependencies
+npm install
+
+# Install frontend dependencies
+cd web && npm install
+```
+
+### Running the Application
+
+Start both the API server and frontend dev server:
+
+```bash
+# Start the API server (runs on port 3000)
+npm run start:api
+
+# In another terminal, start the frontend (runs on port 5173)
+cd web && npm run dev
+```
+
+Or use the convenience scripts from the root:
+
+```bash
+# Start API server
+npm run start:api
+
+# Start frontend dev server
+npm run dev:web
+```
+
+### Expected Ports
+
+- **API Server**: http://localhost:3000
+- **Frontend (Vite)**: http://localhost:5173
+
+### Building
+
+```bash
+# Build frontend for production
+cd web && npm run build
+
+# Or use the convenience script
+npm run build:web
+```
+
+### Testing
+
+```bash
+# Run API tests
+npm run test:api
+
+# Run frontend tests
+cd web && npm test
+
+# Or use the convenience script
+npm run test:web
+```
+
+### MVP Notes
+
+- The MVP is local-only with no authentication
+- Server-Sent Events (SSE) are used for real-time task updates
+
 ## Testing
 
 Run the test suite to ensure everything works correctly:
@@ -147,8 +216,13 @@ The agent platform is built around a modular architecture with clear separation 
 | `npm run test:unit` | Run unit tests only |
 | `npm run test:integration` | Run integration tests |
 | `npm run test:e2e` | Run end-to-end tests |
+| `npm run test:api` | Run API integration tests |
 | `npm run typecheck` | TypeScript type checking |
 | `npm run start:dev` | Start development server |
+| `npm run start:api` | Start API server |
+| `npm run dev:web` | Start frontend dev server |
+| `npm run build:web` | Build frontend for production |
+| `npm run test:web` | Run frontend tests |
 | `npm run db:migrate` | Run database migrations |
 | `npm run db:health` | Check database health |
 | `npm run db:backup` | Backup database |
