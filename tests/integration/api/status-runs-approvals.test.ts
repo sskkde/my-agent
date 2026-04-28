@@ -1,0 +1,136 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createApiServer } from '../../../src/api/server.js';
+import { createApiContext, isApiContextError } from '../../../src/api/context.js';
+import type { FastifyInstance } from 'fastify';
+
+describe('Status, Approvals, and Runs API', () => {
+  let server: FastifyInstance;
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    const context = createApiContext({ dbPath: ':memory:' });
+    if (isApiContextError(context)) {
+      throw new Error('Failed to create API context: ' + context.message);
+    }
+    server = await createApiServer(context);
+    await server.listen({ port: 0 });
+    const address = server.server.address();
+    baseUrl = `http://localhost:${(address as any).port}`;
+  }, 30000);
+
+  afterAll(async () => {
+    await server.close();
+  }, 30000);
+
+  describe('GET /api/health', () => {
+    it('should return health status with module information', async () => {
+      const response = await fetch(`${baseUrl}/api/health`);
+      expect(response.status).toBe(200);
+
+      const body = await response.json() as { status: string; modules: Record<string, { status: string; message?: string }>; timestamp: string };
+      expect(body.status).toBeDefined();
+      expect(body.modules).toBeDefined();
+      expect(body.timestamp).toBeDefined();
+      expect(body.modules.approvals).toBeDefined();
+      expect(body.modules.runs).toBeDefined();
+      expect(body.modules.planner).toBeDefined();
+      expect(body.modules.kernel).toBeDefined();
+    });
+  });
+
+  describe('GET /api/approvals', () => {
+    it('should return empty approvals list when no approvals exist', async () => {
+      const response = await fetch(`${baseUrl}/api/approvals`);
+      expect(response.status).toBe(200);
+
+      const body = await response.json() as { approvals: unknown[]; total: number };
+      expect(body.approvals).toEqual([]);
+      expect(body.total).toBe(0);
+    });
+  });
+
+  describe('PATCH /api/approvals/:approvalId', () => {
+    it('should return 404 for non-existent approval', async () => {
+      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision: 'approved' }),
+      });
+      expect(response.status).toBe(404);
+
+      const body = await response.json() as { error: { code: string; message: string } };
+      expect(body.error.code).toBe('NOT_FOUND');
+    });
+
+    it('should return 400 for invalid decision', async () => {
+      const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision: 'invalid' }),
+      });
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 400 for missing decision field', async () => {
+      const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'some reason' }),
+      });
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/runs', () => {
+    it('should return empty runs list initially', async () => {
+      const response = await fetch(`${baseUrl}/api/runs`);
+      expect(response.status).toBe(200);
+
+      const body = await response.json() as { runs: unknown[]; total: number };
+      expect(body.runs).toEqual([]);
+      expect(body.total).toBe(0);
+    });
+  });
+
+  describe('GET /api/runs/stream', () => {
+    it('should return event stream with text/event-stream content type', async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      try {
+        const response = await fetch(`${baseUrl}/api/runs/stream`, {
+          signal: controller.signal,
+        });
+        expect(response.status).toBe(200);
+        expect(response.headers.get('content-type')).toContain('text/event-stream');
+      } catch {
+      } finally {
+        clearTimeout(timeout);
+        controller.abort();
+      }
+    });
+
+    it('should send initial snapshot event', async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      try {
+        const response = await fetch(`${baseUrl}/api/runs/stream`, {
+          signal: controller.signal,
+        });
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No reader');
+
+        const decoder = new TextDecoder();
+        const { value } = await reader.read();
+        const text = decoder.decode(value);
+
+        expect(text).toContain('snapshot');
+        reader.cancel();
+      } catch {
+      } finally {
+        clearTimeout(timeout);
+      }
+    });
+  }, 30000);
+});
