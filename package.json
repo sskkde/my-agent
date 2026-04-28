@@ -9,8 +9,13 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
+    "test:api": "vitest run tests/integration/api",
     "typecheck": "tsc --noEmit",
     "start:dev": "tsx src/index.ts",
+    "start:api": "tsx src/api/server.ts",
+    "dev:web": "npm --prefix web run dev",
+    "build:web": "npm --prefix web run build",
+    "test:web": "npm --prefix web test",
     "db:migrate": "tsx src/cli/migrate.ts",
     "db:health": "tsx src/cli/db-health.ts",
     "db:backup": "tsx src/cli/db-backup.ts"
@@ -25,12 +30,14 @@
   "license": "MIT",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^20.10.0",
+    "@types/node": "^20.19.39",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",
     "vitest": "^1.1.0"
   },
   "dependencies": {
-    "better-sqlite3": "^12.9.0"
+    "@fastify/cors": "^11.2.0",
+    "better-sqlite3": "^12.9.0",
+    "fastify": "^5.8.5"
   }
 }
