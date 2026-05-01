@@ -1,20 +1,16 @@
 import React from 'react';
+import { NAV_GROUPS, TabId } from '../navigation/navigation-config';
+import { ICONS } from '../navigation/icons';
 
-export type TabId = 'dashboard' | 'session-console' | 'agent-monitor' | 'status';
+export type { TabId };
 
 interface TabNavProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+  isExpanded?: boolean;
 }
 
-const tabs: { id: TabId; label: string }[] = [
-  { id: 'dashboard', label: '概览' },
-  { id: 'session-console', label: '会话' },
-  { id: 'agent-monitor', label: '监控' },
-  { id: 'status', label: '状态' },
-];
-
-const TabNav: React.FC<TabNavProps> = ({ activeTab, onTabChange }) => {
+const TabNav: React.FC<TabNavProps> = ({ activeTab, onTabChange, isExpanded = true }) => {
   const handleKeyDown = (e: React.KeyboardEvent, tabId: TabId) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -24,18 +20,35 @@ const TabNav: React.FC<TabNavProps> = ({ activeTab, onTabChange }) => {
 
   return (
     <nav role="tablist" aria-label="主导航">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          role="tab"
-          data-testid={`tab-${tab.id}`}
-          aria-selected={activeTab === tab.id}
-          onClick={() => onTabChange(tab.id)}
-          onKeyDown={(e) => handleKeyDown(e, tab.id)}
-          className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-        >
-          {tab.label}
-        </button>
+      {NAV_GROUPS.map((group) => (
+        <section key={group.id} data-testid={group.testId}>
+          {isExpanded && (
+            <div className="nav-section__label">{group.label}</div>
+          )}
+          {group.items.map((item) => {
+            const IconComponent = ICONS[item.iconKey];
+            return (
+              <button
+                key={item.id}
+                role="tab"
+                data-testid={item.testId}
+                aria-selected={activeTab === item.id}
+                onClick={() => onTabChange(item.id)}
+                onKeyDown={(e) => handleKeyDown(e, item.id)}
+                className={`tab-button ${activeTab === item.id ? 'active' : ''}`}
+              >
+                {IconComponent && (
+                  <IconComponent className="nav-item__icon" aria-hidden="true" />
+                )}
+                <span
+                  className={`nav-item__text ${!isExpanded ? 'nav-item__text--hidden' : ''}`}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </section>
       ))}
     </nav>
   );

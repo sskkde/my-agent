@@ -50,4 +50,39 @@ describe('TabNav', () => {
     fireEvent.keyDown(tab, { key: ' ', code: 'Space' });
     expect(mockOnChange).toHaveBeenCalledWith('session-console');
   });
+
+  it('has nav-group-chat data-testid for Chat group section', () => {
+    render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} isExpanded={true} />);
+    expect(screen.getByTestId('nav-group-chat')).toBeInTheDocument();
+  });
+
+  it('has nav-group-control data-testid for Control group section', () => {
+    render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} isExpanded={true} />);
+    expect(screen.getByTestId('nav-group-control')).toBeInTheDocument();
+  });
+
+  it('has nav-group-agent data-testid for Agent group section', () => {
+    render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} isExpanded={true} />);
+    expect(screen.getByTestId('nav-group-agent')).toBeInTheDocument();
+  });
+
+  it('renders group section labels in expanded mode', () => {
+    render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} isExpanded={true} />);
+    expect(screen.getByText('Chat')).toBeInTheDocument();
+    expect(screen.getByText('Control')).toBeInTheDocument();
+    expect(screen.getByText('Agent')).toBeInTheDocument();
+  });
+
+  it('renders tab nav items with SVG icons', () => {
+    render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} />);
+    const dashboardTab = screen.getByTestId('tab-dashboard');
+    const sessionTab = screen.getByTestId('tab-session-console');
+    const monitorTab = screen.getByTestId('tab-agent-monitor');
+    const statusTab = screen.getByTestId('tab-status');
+
+    expect(dashboardTab.querySelector('svg')).toBeInTheDocument();
+    expect(sessionTab.querySelector('svg')).toBeInTheDocument();
+    expect(monitorTab.querySelector('svg')).toBeInTheDocument();
+    expect(statusTab.querySelector('svg')).toBeInTheDocument();
+  });
 });

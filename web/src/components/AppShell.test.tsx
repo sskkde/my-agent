@@ -11,6 +11,7 @@ const renderWithRouter = (ui: React.ReactElement) => {
 
 describe('AppShell', () => {
   const mockOnTabChange = vi.fn();
+  const mockOnToggleNavCollapsed = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,13 +66,72 @@ describe('AppShell', () => {
 
   it('has sidebar with proper layout classes', () => {
     renderWithRouter(<AppShell activeTab="dashboard" onTabChange={mockOnTabChange}><div>Content</div></AppShell>);
-    const sidebar = document.querySelector('.sidebar');
-    expect(sidebar).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
   });
 
   it('has content panel that fills remaining space', () => {
     renderWithRouter(<AppShell activeTab="dashboard" onTabChange={mockOnTabChange}><div>Content</div></AppShell>);
-    const contentPanel = document.querySelector('.content-panel');
-    expect(contentPanel).toBeInTheDocument();
+    expect(screen.getByTestId('content-panel')).toBeInTheDocument();
+  });
+
+  it('has data-testid="app-shell" on root element', () => {
+    renderWithRouter(<AppShell activeTab="dashboard" onTabChange={mockOnTabChange}><div>Content</div></AppShell>);
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+  });
+
+  it('has data-testid="sidebar" on sidebar element', () => {
+    renderWithRouter(<AppShell activeTab="dashboard" onTabChange={mockOnTabChange}><div>Content</div></AppShell>);
+    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
+  });
+
+  it('has data-testid="topbar" showing breadcrumb', () => {
+    renderWithRouter(<AppShell activeTab="dashboard" onTabChange={mockOnTabChange}><div>Content</div></AppShell>);
+    expect(screen.getByTestId('topbar')).toBeInTheDocument();
+  });
+
+  it('has sidebar collapse toggle with aria-expanded="true" initially', () => {
+    renderWithRouter(
+      <AppShell
+        activeTab="dashboard"
+        onTabChange={mockOnTabChange}
+        onToggleNavCollapsed={mockOnToggleNavCollapsed}
+        isNavCollapsed={false}
+      >
+        <div>Content</div>
+      </AppShell>
+    );
+    const toggle = screen.getByTestId('sidebar-collapse-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('has mobile nav toggle with aria-expanded="false" initially', () => {
+    renderWithRouter(
+      <AppShell
+        activeTab="dashboard"
+        onTabChange={mockOnTabChange}
+        isNavCollapsed={false}
+      >
+        <div>Content</div>
+      </AppShell>
+    );
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('calls onToggleNavCollapsed when sidebar collapse toggle is clicked', () => {
+    renderWithRouter(
+      <AppShell
+        activeTab="dashboard"
+        onTabChange={mockOnTabChange}
+        onToggleNavCollapsed={mockOnToggleNavCollapsed}
+        isNavCollapsed={false}
+      >
+        <div>Content</div>
+      </AppShell>
+    );
+    fireEvent.click(screen.getByTestId('sidebar-collapse-toggle'));
+    expect(mockOnToggleNavCollapsed).toHaveBeenCalledTimes(1);
   });
 });
