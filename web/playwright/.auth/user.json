@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "agent-platform-session",
+      "value": "09ed2bd553bcaa80abf9eeb9d38b6dec47d56139c230ab12e17326e299962cf6",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1777651663.346835,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}
