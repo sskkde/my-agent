@@ -38,7 +38,7 @@ export interface SessionResponse {
 
 export interface VisibleMessage {
   messageId: string;
-  role: 'assistant' | 'system_status';
+  role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error';
   content: string;
 }
 
@@ -135,4 +135,253 @@ export interface ApprovalDecisionResponse {
   success: boolean;
   approvalId: string;
   status: 'approved' | 'rejected';
+}
+
+// =============================================================================
+// Console Timeline Types - Canonical API Contracts
+// =============================================================================
+
+/** SAFETY: thinking_summary contains ONLY summarized/public-safe content. Raw chain-of-thought MUST NOT be included. */
+export type ConsoleTimelineEventType =
+  | 'user_message'
+  | 'assistant_message'
+  | 'thinking_summary'
+  | 'tool_call'
+  | 'tool_result'
+  | 'approval_request'
+  | 'approval_decision'
+  | 'artifact_created'
+  | 'run_started'
+  | 'run_progress'
+  | 'run_completed'
+  | 'run_failed'
+  | 'run_cancelled'
+  | 'system_status'
+  | 'error';
+
+export interface ConsoleTimelineEvent {
+  eventId: string;
+  eventType: ConsoleTimelineEventType;
+  sessionId: string;
+  timestamp: string;
+  content?: string;
+  metadata?: Record<string, unknown>;
+  actor?: string;
+}
+
+export interface ConsoleSessionInfo {
+  sessionId: string;
+  userId: string;
+  title: string;
+  status: 'active' | 'archived' | 'closed';
+  messageCount: number;
+  lastActivityAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginationParams {
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface UsageSummary {
+  sessionId: string;
+  messageCount: number;
+  turnCount: number;
+  toolCallCount: number;
+  approvalCount: number;
+  artifactCount: number;
+  runCount: number;
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  estimatedTotalTokens: number;
+  estimatedCostCents: number | null;
+  updatedAt: string;
+}
+
+export interface LogEntry {
+  eventId: string;
+  eventType: string;
+  sourceModule: string;
+  sessionId?: string;
+  severity: 'info' | 'warn' | 'error';
+  summary: string;
+  createdAt: string;
+  payloadPreview?: string;
+}
+
+export interface InstanceSummary {
+  type: 'local';
+  status: 'healthy' | 'degraded';
+  uptime?: number;
+  apiPort: number;
+  storeStatus: string;
+}
+
+export interface ChannelSummary {
+  connectorId: string;
+  type: string;
+  status: string;
+  configured: boolean;
+}
+
+export interface SkillSummary {
+  skillId: string;
+  name: string;
+  type: string;
+  enabled: boolean;
+}
+
+export interface SettingsConfig {
+  localOnly: boolean;
+  providers: Record<string, { configured: boolean }>;
+  retentionDays: number;
+}
+
+// =============================================================================
+// API Response Types for Console Panels
+// =============================================================================
+
+export interface SessionsResponse {
+  sessions: ConsoleSessionInfo[];
+  total: number;
+}
+
+export interface UsageResponse {
+  usages: UsageSummary[];
+  total: number;
+}
+
+export interface SessionUsageResponse {
+  usage: UsageSummary;
+}
+
+export interface LogsResponse {
+  logs: LogEntry[];
+  total: number;
+}
+
+export interface DebugReplayResponse {
+  sessionId: string;
+  eventCount: number;
+  transcriptCount: number;
+  runRefs: string[];
+  approvalRefs: string[];
+  lastEventId: string | null;
+}
+
+export interface InstancesResponse {
+  instances: InstanceSummary[];
+}
+
+export interface ChannelsResponse {
+  channels: ChannelSummary[];
+}
+
+export interface SkillsResponse {
+  skills: SkillSummary[];
+}
+
+export interface SettingsResponse {
+  settings: SettingsConfig;
+}
+
+// =============================================================================
+// Auth Types - Task 15
+// =============================================================================
+
+export interface SetupStatusResponse {
+  needsSetup: boolean;
+}
+
+export interface UserMetadata {
+  userId: string;
+  username: string;
+  createdAt: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  password: string;
+}
+
+export interface AuthSuccessResponse {
+  user: UserMetadata;
+}
+
+// =============================================================================
+// Provider Types - Task 18
+// =============================================================================
+
+export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'custom';
+
+export interface ProviderSummary {
+  providerId: string;
+  providerType: ProviderType;
+  displayName: string;
+  enabled: boolean;
+  configured: boolean;
+  apiKeyLast4: string | null;
+  baseUrl: string | null;
+  selectedModel: string | null;
+  source: string;
+  lastTestStatus: string | null;
+  lastTestedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProviderRequest {
+  providerType: ProviderType;
+  displayName?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  selectedModel?: string;
+}
+
+export interface UpdateProviderRequest {
+  displayName?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  selectedModel?: string;
+  enabled?: boolean;
+}
+
+export interface TestProviderResponse {
+  success: boolean;
+  latencyMs: number;
+  modelCount?: number;
+  error?: string;
+}
+
+// =============================================================================
+// Tool Catalog Types - Task 2
+// =============================================================================
+
+export type ToolCategory = 'read' | 'write' | 'delete' | 'execute' | 'search' | 'admin' | 'connector' | 'internal';
+export type ToolSensitivity = 'low' | 'medium' | 'high' | 'restricted';
+
+export interface ToolSummary {
+  name: string;
+  description: string;
+  category: ToolCategory;
+  sensitivity: ToolSensitivity;
+}
+
+export interface ToolsResponse {
+  tools: ToolSummary[];
+  total: number;
 }
