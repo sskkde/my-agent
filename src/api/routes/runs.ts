@@ -18,7 +18,8 @@ export function registerRunRoutes(server: FastifyInstance, context: ApiContext):
           updatedAt: run.updatedAt,
         });
       }
-    } catch {
+    } catch (err) {
+      console.warn('Failed to fetch planner runs:', err);
     }
 
     try {
@@ -34,7 +35,8 @@ export function registerRunRoutes(server: FastifyInstance, context: ApiContext):
           updatedAt: run.updatedAt,
         });
       }
-    } catch {
+    } catch (err) {
+      console.warn('Failed to fetch background runs:', err);
     }
 
     try {
@@ -50,7 +52,8 @@ export function registerRunRoutes(server: FastifyInstance, context: ApiContext):
           updatedAt: run.updatedAt,
         });
       }
-    } catch {
+    } catch (err) {
+      console.warn('Failed to fetch kernel runs:', err);
     }
 
     return {

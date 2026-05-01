@@ -125,6 +125,7 @@ describe('Flow 5: Background Task E2E Flows', () => {
       query: (filters: EventQuery) => harness.stores.eventStore.query(filters),
       findByCorrelationId: (correlationId: string) => harness.stores.eventStore.findByCorrelationId(correlationId),
       findByCausationId: (causationId: string) => harness.stores.eventStore.findByCausationId(causationId),
+      updateUserIdForSession: () => 0,
     };
 
     const backgroundRuntime = createBackgroundRuntime({

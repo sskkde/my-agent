@@ -11,7 +11,12 @@ import { createToolExecutionStore, type ToolExecutionStore } from '../storage/to
 import { createPlannerRunStore, type PlannerRunStore } from '../storage/planner-run-store.js';
 import { createBackgroundRunStore, type BackgroundRunStore } from '../storage/background-run-store.js';
 import { createKernelRunStore, type KernelRunStore } from '../storage/kernel-run-store.js';
+import { createSessionStore, type SessionStore } from '../storage/session-store.js';
+import { createUserStore, type UserStore } from '../storage/user-store.js';
+import { createAuthTokenStore, type AuthTokenStore } from '../storage/auth-token-store.js';
 import { createGateway, type Gateway } from '../gateway/gateway.js';
+import { createConsoleTimelineService, type ConsoleTimelineService } from './console-timeline.js';
+import { createProviderConfigStore, type ProviderConfigStore } from '../storage/provider-config-store.js';
 import type { Stores } from '../gateway/types.js';
 
 export interface ApiContext {
@@ -27,8 +32,13 @@ export interface ApiContext {
     plannerRunStore: PlannerRunStore;
     backgroundRunStore: BackgroundRunStore;
     kernelRunStore: KernelRunStore;
+    sessionStore: SessionStore;
+    userStore: UserStore;
+    authTokenStore: AuthTokenStore;
   };
+  providerConfigStore: ProviderConfigStore;
   connection: ConnectionManager;
+  consoleTimelineService: ConsoleTimelineService;
 }
 
 export interface ApiContextOptions {
@@ -91,6 +101,10 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let plannerRunStore: PlannerRunStore;
   let backgroundRunStore: BackgroundRunStore;
   let kernelRunStore: KernelRunStore;
+  let sessionStore: SessionStore;
+  let userStore: UserStore;
+  let authTokenStore: AuthTokenStore;
+  let providerConfigStore: ProviderConfigStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -103,6 +117,10 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     plannerRunStore = existingStores?.plannerRunStore ?? createPlannerRunStore(connection);
     backgroundRunStore = existingStores?.backgroundRunStore ?? createBackgroundRunStore(connection);
     kernelRunStore = existingStores?.kernelRunStore ?? createKernelRunStore(connection);
+    sessionStore = existingStores?.sessionStore ?? createSessionStore(connection);
+    userStore = (existingStores as Record<string, unknown>)?.userStore as UserStore ?? createUserStore(connection);
+    authTokenStore = (existingStores as Record<string, unknown>)?.authTokenStore as AuthTokenStore ?? createAuthTokenStore(connection);
+    providerConfigStore = (existingStores as Record<string, unknown>)?.providerConfigStore as ProviderConfigStore ?? createProviderConfigStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -129,6 +147,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 
   const gateway = createGateway({ stores });
 
+  const consoleTimelineService = createConsoleTimelineService({
+    transcriptStore,
+    eventStore,
+  });
+
   return {
     gateway,
     stores: {
@@ -142,8 +165,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       plannerRunStore,
       backgroundRunStore,
       kernelRunStore,
+      sessionStore,
+      userStore,
+      authTokenStore,
     },
+    providerConfigStore,
     connection,
+    consoleTimelineService,
   };
 }
 

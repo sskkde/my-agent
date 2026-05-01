@@ -41,7 +41,8 @@ function createMockEventStore(): EventStore {
     append: () => {},
     query: () => [],
     findByCorrelationId: () => [],
-    findByCausationId: () => []
+    findByCausationId: () => [],
+    updateUserIdForSession: () => 0,
   };
 }
 

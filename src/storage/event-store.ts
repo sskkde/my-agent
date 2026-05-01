@@ -66,6 +66,7 @@ export interface EventStore {
   query(filters: EventQuery): EventRecord[];
   findByCorrelationId(correlationId: string): EventRecord[];
   findByCausationId(causationId: string): EventRecord[];
+  updateUserIdForSession(sessionId: string, newUserId: string): number;
 }
 
 interface EventRow {
@@ -249,6 +250,23 @@ class EventStoreImpl implements EventStore {
     const sql = 'SELECT * FROM events WHERE causation_id = ? ORDER BY created_at ASC';
     const rows = this.connection.query<EventRow>(sql, [causationId]);
     return rows.map(rowToEventRecord);
+  }
+
+  updateUserIdForSession(sessionId: string, newUserId: string): number {
+    const sql = `
+      UPDATE events
+      SET user_id = ?
+      WHERE session_id = ?
+    `;
+
+    try {
+      this.connection.exec(sql, [newUserId, sessionId]);
+      const countSql = 'SELECT COUNT(*) as count FROM events WHERE session_id = ? AND user_id = ?';
+      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId]);
+      return rows[0]?.count ?? 0;
+    } catch {
+      return 0;
+    }
   }
 }
 

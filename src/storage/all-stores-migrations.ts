@@ -1061,6 +1061,196 @@ export const auditRecordsTableMigration: Migration = {
   `
 };
 
+// ============================================================================
+// STORE 22: Sessions Store (version 28)
+// ============================================================================
+export const sessionsTableMigration: Migration = {
+  version: 28,
+  name: 'create_sessions_table',
+  up: `
+    CREATE TABLE sessions (
+      session_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('active', 'archived', 'closed')),
+      message_count INTEGER NOT NULL DEFAULT 0,
+      last_activity_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      metadata TEXT
+    );
+    CREATE INDEX idx_sessions_user_activity ON sessions(user_id, last_activity_at);
+    CREATE INDEX idx_sessions_status ON sessions(status)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_sessions_user_activity;
+    DROP INDEX IF EXISTS idx_sessions_status;
+    DROP TABLE IF EXISTS sessions
+  `
+};
+
+// ============================================================================
+// STORE 23: Users Store (version 29)
+// ============================================================================
+export const usersTableMigration: Migration = {
+  version: 29,
+  name: 'create_users_table',
+  up: `
+    CREATE TABLE users (
+      user_id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `,
+  down: `
+    DROP TABLE IF EXISTS users
+  `
+};
+
+// ============================================================================
+// STORE 24: Auth Tokens Store (version 30)
+// ============================================================================
+export const authTokensTableMigration: Migration = {
+  version: 30,
+  name: 'create_auth_tokens_table',
+  up: `
+    CREATE TABLE auth_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT
+    );
+    CREATE INDEX idx_auth_tokens_user ON auth_tokens(user_id);
+    CREATE INDEX idx_auth_tokens_expires ON auth_tokens(expires_at)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_auth_tokens_expires;
+    DROP INDEX IF EXISTS idx_auth_tokens_user;
+    DROP TABLE IF EXISTS auth_tokens
+  `
+};
+
+// ============================================================================
+// STORE 25: Provider Configs Store (version 31)
+// ============================================================================
+export const providerConfigsTableMigration: Migration = {
+  version: 31,
+  name: 'create_provider_configs_table',
+  up: `
+    CREATE TABLE provider_configs (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','custom')),
+      display_name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP TABLE IF EXISTS provider_configs
+  `
+};
+
+// ============================================================================
+// STORE 26: Sessions Model Selection (version 32)
+// ============================================================================
+export const sessionsModelSelectionMigration: Migration = {
+  version: 32,
+  name: 'add_session_model_selection',
+  up: `
+    ALTER TABLE sessions ADD COLUMN selected_model TEXT;
+    ALTER TABLE sessions ADD COLUMN selected_provider_id TEXT
+  `,
+  down: `
+    -- SQLite doesn't support dropping columns, would need table recreation
+    -- This is a no-op for rollback
+  `
+};
+
+// ============================================================================
+// STORE 27: Custom Provider Type (version 33)
+// ============================================================================
+export const customProviderTypeMigration: Migration = {
+  version: 33,
+  name: 'add_custom_provider_type',
+  up: `
+    CREATE TABLE provider_configs_new (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','custom')),
+      display_name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    INSERT INTO provider_configs_new (
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, created_at, updated_at
+    ) SELECT
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, created_at, updated_at
+    FROM provider_configs;
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP TABLE provider_configs;
+    ALTER TABLE provider_configs_new RENAME TO provider_configs;
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)
+  `,
+  down: `
+    CREATE TABLE provider_configs_old (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama')),
+      display_name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    INSERT INTO provider_configs_old (
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, created_at, updated_at
+    ) SELECT
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, created_at, updated_at
+    FROM provider_configs
+    WHERE provider_type IN ('openai','openrouter','ollama');
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP TABLE provider_configs;
+    ALTER TABLE provider_configs_old RENAME TO provider_configs;
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)
+  `
+};
+
 /**
  * Complete list of all migrations for the agent platform.
  * Apply these in order to initialize all stores.
@@ -1112,6 +1302,22 @@ export const allStoreMigrations: Migration[] = [
   traceSpansTableMigration,                // v25
   metricsTableMigration,                   // v26
   auditRecordsTableMigration,              // v27
+
+  // Console sessions store
+  sessionsTableMigration,                  // v28
+
+  // Auth stores
+  usersTableMigration,                     // v29
+  authTokensTableMigration,                // v30
+
+  // Provider config store
+  providerConfigsTableMigration,           // v31
+
+  // Session model selection
+  sessionsModelSelectionMigration,         // v32
+
+  // Custom provider type
+  customProviderTypeMigration,             // v33
 ];
 
 /**

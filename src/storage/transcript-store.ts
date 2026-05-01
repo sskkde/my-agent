@@ -4,7 +4,7 @@ export type Visibility = 'public' | 'internal' | 'confidential';
 
 export interface VisibleMessage {
   messageId: string;
-  role: 'assistant' | 'system_status';
+  role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error';
   content: string;
 }
 
@@ -59,6 +59,7 @@ export interface TranscriptStore {
   search(query: string, options?: SearchOptions): TurnTranscript[];
   findByArtifactRef(artifactRef: string): TurnTranscript[];
   findByPlannerRunId(plannerRunId: string): TurnTranscript[];
+  updateUserIdForSession(sessionId: string, newUserId: string): number;
 }
 
 interface TranscriptRow {
@@ -224,6 +225,23 @@ class TranscriptStoreImpl implements TranscriptStore {
 
     const rows = this.connection.query<TranscriptRow>(sql, [plannerRunId]);
     return rows.map(row => this.rowToTranscript(row));
+  }
+
+  updateUserIdForSession(sessionId: string, newUserId: string): number {
+    const sql = `
+      UPDATE transcripts
+      SET userId = ?
+      WHERE sessionId = ?
+    `;
+
+    try {
+      this.connection.exec(sql, [newUserId, sessionId]);
+      const countSql = 'SELECT COUNT(*) as count FROM transcripts WHERE sessionId = ? AND userId = ?';
+      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId]);
+      return rows[0]?.count ?? 0;
+    } catch {
+      return 0;
+    }
   }
 
   private rowToTranscript(row: TranscriptRow): TurnTranscript {

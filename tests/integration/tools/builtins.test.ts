@@ -151,6 +151,10 @@ class MockTranscriptStore implements TranscriptStore {
   findByPlannerRunId(): TurnTranscript[] {
     return [];
   }
+
+  updateUserIdForSession(): number {
+    return 0;
+  }
 }
 
 class MockPlanStore implements PlanStore {

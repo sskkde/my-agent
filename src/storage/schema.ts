@@ -117,7 +117,102 @@ export const runtimeActionsTableMigration: Migration = {
   `
 };
 
+export const sessionsTableMigration: Migration = {
+  version: 3,
+  name: 'create_sessions_table',
+  up: `
+    CREATE TABLE sessions (
+      session_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('active', 'archived', 'closed')),
+      message_count INTEGER NOT NULL DEFAULT 0,
+      last_activity_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      metadata TEXT
+    );
+    CREATE INDEX idx_sessions_user_activity ON sessions(user_id, last_activity_at);
+    CREATE INDEX idx_sessions_status ON sessions(status)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_sessions_user_activity;
+    DROP INDEX IF EXISTS idx_sessions_status;
+    DROP TABLE IF EXISTS sessions
+  `
+};
+
+export const usersTableMigration: Migration = {
+  version: 4,
+  name: 'create_users_table',
+  up: `
+    CREATE TABLE users (
+      user_id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `,
+  down: `
+    DROP TABLE IF EXISTS users
+  `
+};
+
+export const authTokensTableMigration: Migration = {
+  version: 5,
+  name: 'create_auth_tokens_table',
+  up: `
+    CREATE TABLE auth_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT
+    );
+    CREATE INDEX idx_auth_tokens_user ON auth_tokens(user_id);
+    CREATE INDEX idx_auth_tokens_expires ON auth_tokens(expires_at)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_auth_tokens_expires;
+    DROP INDEX IF EXISTS idx_auth_tokens_user;
+    DROP TABLE IF EXISTS auth_tokens
+  `
+};
+
+export const providerConfigsTableMigration: Migration = {
+  version: 6,
+  name: 'create_provider_configs_table',
+  up: `
+    CREATE TABLE provider_configs (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','custom')),
+      display_name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP TABLE IF EXISTS provider_configs
+  `
+};
+
 export const allMigrations: Migration[] = [
   eventsTableMigration,
-  runtimeActionsTableMigration
+  runtimeActionsTableMigration,
+  sessionsTableMigration,
+  usersTableMigration,
+  authTokensTableMigration,
+  providerConfigsTableMigration
 ];

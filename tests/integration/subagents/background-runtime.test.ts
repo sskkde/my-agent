@@ -167,6 +167,7 @@ function createMockEventStore(): MockEventStore {
     query: vi.fn(() => []),
     findByCorrelationId: vi.fn(() => []),
     findByCausationId: vi.fn(() => []),
+    updateUserIdForSession: vi.fn(() => 0),
     reset: vi.fn(() => events.length = 0),
   } as MockEventStore;
 }
