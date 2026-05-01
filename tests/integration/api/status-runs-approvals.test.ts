@@ -1,25 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createApiServer } from '../../../src/api/server.js';
-import { createApiContext, isApiContextError } from '../../../src/api/context.js';
-import type { FastifyInstance } from 'fastify';
+import { createAuthenticatedTestContext, closeAuthenticatedTestContext, type AuthenticatedTestContext } from '../../helpers/auth.js';
 
 describe('Status, Approvals, and Runs API', () => {
-  let server: FastifyInstance;
+  let ctx: AuthenticatedTestContext;
   let baseUrl: string;
+  let authCookie: string;
 
   beforeAll(async () => {
-    const context = createApiContext({ dbPath: ':memory:' });
-    if (isApiContextError(context)) {
-      throw new Error('Failed to create API context: ' + context.message);
-    }
-    server = await createApiServer(context);
-    await server.listen({ port: 0 });
-    const address = server.server.address();
-    baseUrl = `http://localhost:${(address as any).port}`;
+    ctx = await createAuthenticatedTestContext();
+    baseUrl = ctx.baseUrl;
+    authCookie = ctx.authCookie;
   }, 30000);
 
   afterAll(async () => {
-    await server.close();
+    await closeAuthenticatedTestContext(ctx);
   }, 30000);
 
   describe('GET /api/health', () => {
@@ -40,7 +34,9 @@ describe('Status, Approvals, and Runs API', () => {
 
   describe('GET /api/approvals', () => {
     it('should return empty approvals list when no approvals exist', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals`);
+      const response = await fetch(`${baseUrl}/api/approvals`, {
+        headers: { 'Cookie': authCookie },
+      });
       expect(response.status).toBe(200);
 
       const body = await response.json() as { approvals: unknown[]; total: number };
@@ -53,7 +49,7 @@ describe('Status, Approvals, and Runs API', () => {
     it('should return 404 for non-existent approval', async () => {
       const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'approved' }),
       });
       expect(response.status).toBe(404);
@@ -65,7 +61,7 @@ describe('Status, Approvals, and Runs API', () => {
     it('should return 400 for invalid decision', async () => {
       const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'invalid' }),
       });
       expect(response.status).toBe(400);
@@ -74,7 +70,7 @@ describe('Status, Approvals, and Runs API', () => {
     it('should return 400 for missing decision field', async () => {
       const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ reason: 'some reason' }),
       });
       expect(response.status).toBe(400);
@@ -83,7 +79,9 @@ describe('Status, Approvals, and Runs API', () => {
 
   describe('GET /api/runs', () => {
     it('should return empty runs list initially', async () => {
-      const response = await fetch(`${baseUrl}/api/runs`);
+      const response = await fetch(`${baseUrl}/api/runs`, {
+        headers: { 'Cookie': authCookie },
+      });
       expect(response.status).toBe(200);
 
       const body = await response.json() as { runs: unknown[]; total: number };
@@ -100,6 +98,7 @@ describe('Status, Approvals, and Runs API', () => {
       try {
         const response = await fetch(`${baseUrl}/api/runs/stream`, {
           signal: controller.signal,
+          headers: { 'Cookie': authCookie },
         });
         expect(response.status).toBe(200);
         expect(response.headers.get('content-type')).toContain('text/event-stream');
@@ -117,6 +116,7 @@ describe('Status, Approvals, and Runs API', () => {
       try {
         const response = await fetch(`${baseUrl}/api/runs/stream`, {
           signal: controller.signal,
+          headers: { 'Cookie': authCookie },
         });
         const reader = response.body?.getReader();
         if (!reader) throw new Error('No reader');

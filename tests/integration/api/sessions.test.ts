@@ -7,6 +7,7 @@ describe('Sessions API', () => {
   let server: FastifyInstance;
   let baseUrl: string;
   let apiContext: ApiContext;
+  let authCookie: string;
 
   beforeAll(async () => {
     const ctx = createApiContext({ dbPath: ':memory:' });
@@ -18,6 +19,15 @@ describe('Sessions API', () => {
     await server.listen();
     const address = server.server.address();
     baseUrl = `http://localhost:${(address as any).port}`;
+
+    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'testuser', password: 'password123' }),
+    });
+
+    expect(setupResponse.status).toBe(201);
+    authCookie = setupResponse.headers.get('set-cookie')!;
   });
 
   afterAll(async () => {
@@ -31,26 +41,40 @@ describe('Sessions API', () => {
     it('should create a new session', async () => {
       const response = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
 
       expect(response.status).toBe(201);
       const body = await response.json() as { data: { session: { sessionId: string; userId: string } } };
       expect(body.data.session.sessionId).toBeDefined();
-      expect(body.data.session.userId).toBe('local-user');
+      expect(body.data.session.userId).toBeDefined();
     });
 
-    it('should create session with custom userId', async () => {
+    it('should create session under authenticated user', async () => {
       const response = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'test-user' })
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({})
       });
 
       expect(response.status).toBe(201);
       const body = await response.json() as { data: { session: { sessionId: string; userId: string } } };
-      expect(body.data.session.userId).toBe('test-user');
+      const meResponse = await fetch(`${baseUrl}/api/auth/me`, {
+        headers: { 'Cookie': authCookie },
+      });
+      const meBody = await meResponse.json() as { data: { user: { userId: string } } };
+      expect(body.data.session.userId).toBe(meBody.data.user.userId);
+    });
+
+    it('should require authentication', async () => {
+      const response = await fetch(`${baseUrl}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+
+      expect(response.status).toBe(401);
     });
   });
 
@@ -58,12 +82,14 @@ describe('Sessions API', () => {
     it('should return session info for existing session', async () => {
       const createResponse = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}`);
+      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}`, {
+        headers: { 'Cookie': authCookie },
+      });
       expect(response.status).toBe(200);
       const body = await response.json() as { data: { session: { sessionId: string; userId: string; messageCount: number } } };
       expect(body.data.session.sessionId).toBe(sessionId);
@@ -71,8 +97,15 @@ describe('Sessions API', () => {
     });
 
     it('should return 404 for non-existent session', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions/non-existent-id`);
+      const response = await fetch(`${baseUrl}/api/sessions/non-existent-id`, {
+        headers: { 'Cookie': authCookie },
+      });
       expect(response.status).toBe(404);
+    });
+
+    it('should require authentication', async () => {
+      const response = await fetch(`${baseUrl}/api/sessions/test-session`);
+      expect(response.status).toBe(401);
     });
   });
 
@@ -80,12 +113,14 @@ describe('Sessions API', () => {
     it('should return empty transcripts for new session', async () => {
       const createResponse = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/transcripts`);
+      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/transcripts`, {
+        headers: { 'Cookie': authCookie },
+      });
       expect(response.status).toBe(200);
       const body = await response.json() as { data: { transcripts: unknown[]; total: number } };
       expect(body.data.transcripts).toEqual([]);
@@ -93,8 +128,15 @@ describe('Sessions API', () => {
     });
 
     it('should return 404 for non-existent session transcripts', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions/non-existent-id/transcripts`);
+      const response = await fetch(`${baseUrl}/api/sessions/non-existent-id/transcripts`, {
+        headers: { 'Cookie': authCookie },
+      });
       expect(response.status).toBe(404);
+    });
+
+    it('should require authentication', async () => {
+      const response = await fetch(`${baseUrl}/api/sessions/test-session/transcripts`);
+      expect(response.status).toBe(401);
     });
   });
 
@@ -102,14 +144,14 @@ describe('Sessions API', () => {
     it('should accept valid message', async () => {
       const createResponse = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Hello, world!' })
       });
 
@@ -121,14 +163,14 @@ describe('Sessions API', () => {
     it('should reject blank message with 400', async () => {
       const createResponse = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: '' })
       });
 
@@ -140,14 +182,14 @@ describe('Sessions API', () => {
     it('should reject whitespace-only message with 400', async () => {
       const createResponse = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: '   ' })
       });
 
@@ -159,14 +201,14 @@ describe('Sessions API', () => {
     it('should reject missing text field with 400', async () => {
       const createResponse = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
 
@@ -178,18 +220,46 @@ describe('Sessions API', () => {
     it('should reject malformed body with 400', async () => {
       const createResponse = await fetch(`${baseUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: 'not valid json'
       });
 
       expect(response.status).toBe(400);
+    });
+
+    it('should require authentication', async () => {
+      const response = await fetch(`${baseUrl}/api/sessions/test-session/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'Hello' })
+      });
+
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('GET /api/sessions', () => {
+    it('should list sessions for authenticated user', async () => {
+      const response = await fetch(`${baseUrl}/api/sessions`, {
+        headers: { 'Cookie': authCookie },
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as { data: { items: unknown[]; total: number } };
+      expect(Array.isArray(body.data.items)).toBe(true);
+      expect(typeof body.data.total).toBe('number');
+    });
+
+    it('should require authentication', async () => {
+      const response = await fetch(`${baseUrl}/api/sessions`);
+      expect(response.status).toBe(401);
     });
   });
 });
