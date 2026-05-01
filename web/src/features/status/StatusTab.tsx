@@ -9,6 +9,7 @@ interface StatusTabProps {
 
 const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [healthError, setHealthError] = useState(false);
   const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null);
   const [approvalsError, setApprovalsError] = useState(false);
 
@@ -17,8 +18,8 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
       try {
         const healthData = await client.getHealth();
         setHealth(healthData);
-      } catch (error) {
-        console.error('Failed to fetch health:', error);
+      } catch {
+        setHealthError(true);
       }
     };
     fetchData();
@@ -29,8 +30,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
       try {
         const approvalsData = await client.getApprovals();
         setApprovals(approvalsData);
-      } catch (error) {
-        console.error('Failed to fetch approvals:', error);
+      } catch {
         setApprovalsError(true);
       }
     };
@@ -51,7 +51,9 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
 
       <section data-testid="status-health-summary" className="status-health">
         <h4>系统健康状态</h4>
-        {health ? (
+        {healthError ? (
+          <p className="empty-state">无法加载健康状态</p>
+        ) : health ? (
           <div className="health-info">
             <div className={`health-status ${health.status}`}>
               <span className="status-label">总体状态:</span>

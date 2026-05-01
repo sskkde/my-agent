@@ -37,6 +37,7 @@ function updateRunFromEvent(runs: RunInfo[], event: SseRunEvent): RunInfo[] {
 
 const AgentMonitorTab: React.FC = () => {
   const [runs, setRuns] = useState<RunInfo[]>([]);
+  const [runsError, setRunsError] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [retryKey, setRetryKey] = useState(0);
 
@@ -55,7 +56,9 @@ const AgentMonitorTab: React.FC = () => {
       .then((response: RunsResponse) => {
         if (mounted) setRuns(response.runs);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (mounted) setRunsError(true);
+      });
 
     const unsubscribe = subscribeRuns(handleEvent, handleError);
     setConnectionStatus('connected');
@@ -110,6 +113,11 @@ const AgentMonitorTab: React.FC = () => {
           )}
         </div>
       </div>
+      {runsError && (
+        <div className="empty-message" style={{ margin: '16px 24px 0' }}>
+          无法加载运行历史
+        </div>
+      )}
       <div data-testid="runs-list" className="runs-container">
         <section className="run-group">
           <h3>运行中</h3>
