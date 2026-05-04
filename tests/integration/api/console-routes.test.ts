@@ -54,17 +54,30 @@ describe('Console Routes API', () => {
   });
 
   describe('GET /api/channels', () => {
-    it('should return empty channels array', async () => {
+    it('should return registered channels including webui', async () => {
       const response = await fetch(`${baseUrl}/api/channels`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { data: { channels: unknown[] } };
+      const body = await response.json() as { data: { channels: Array<{ connectorId: string; type: string; status: string; configured: boolean }> } };
       expect(body.data).toBeDefined();
       expect(body.data.channels).toBeDefined();
       expect(Array.isArray(body.data.channels)).toBe(true);
-      expect(body.data.channels).toEqual([]);
+
+      const webuiChannel = body.data.channels.find(c => c.connectorId === 'webui');
+      expect(webuiChannel).toBeDefined();
+      expect(webuiChannel?.type).toBe('webui');
+      expect(webuiChannel?.status).toBe('active');
+      expect(webuiChannel?.configured).toBe(true);
+
+      const fakeChannels = body.data.channels.filter(c =>
+        c.connectorId.includes('slack') ||
+        c.connectorId.includes('discord') ||
+        c.connectorId.includes('telegram') ||
+        c.type === 'external'
+      );
+      expect(fakeChannels.length).toBe(0);
     });
   });
 

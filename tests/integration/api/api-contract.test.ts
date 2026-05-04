@@ -130,6 +130,9 @@ describe('API Contract', () => {
       const response: SendMessageResponse = {
         accepted: true,
         turnId: 'turn-123',
+        status: 'accepted',
+        correlationId: 'corr-123',
+        envelopeId: 'env-123',
       };
       expect(response.accepted).toBe(true);
       expect(response.turnId).toBe('turn-123');

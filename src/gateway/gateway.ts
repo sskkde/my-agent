@@ -107,7 +107,7 @@ export function createGateway(options: GatewayOptions): Gateway {
         userId,
         sessionId,
         envelope.envelopeId,
-        { envelopeType: 'human_message', textLength: text.length }
+        { envelopeType: 'human_message', textLength: text.length, sourceChannel: channel }
       );
 
       return envelope;

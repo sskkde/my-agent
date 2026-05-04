@@ -127,6 +127,20 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           },
           actor: 'system',
         });
+      } else if (msg.role === 'error') {
+        events.push({
+          eventId: `turn-${turn.turnId}-error-${index}`,
+          eventType: 'error',
+          sessionId: turn.sessionId,
+          timestamp: turn.createdAt,
+          content: msg.content,
+          metadata: {
+            ...baseMetadata,
+            messageId: msg.messageId,
+            messageIndex: index,
+          },
+          actor: 'system',
+        });
       }
     });
   }

@@ -90,7 +90,9 @@ export interface SendMessageResponse {
   accepted: boolean;
   turnId?: string;
   message?: string;
-  status?: string;
+  status: string;
+  correlationId: string;
+  envelopeId: string;
 }
 
 export interface RunInfo {
