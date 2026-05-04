@@ -243,6 +243,53 @@ describe('Sessions API', () => {
 
       expect(response.status).toBe(401);
     });
+
+    it('should return correlationId and envelopeId in response', async () => {
+      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({})
+      });
+      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+
+      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({ text: 'Hello, world!' })
+      });
+
+      expect(response.status).toBe(202);
+      const body = await response.json() as { data: { accepted: boolean; status: string; correlationId: string; envelopeId: string } };
+      expect(body.data.accepted).toBe(true);
+      expect(body.data.status).toBe('accepted');
+      expect(body.data.correlationId).toBeDefined();
+      expect(body.data.correlationId.length).toBeGreaterThan(0);
+      expect(body.data.envelopeId).toBeDefined();
+      expect(body.data.envelopeId.length).toBeGreaterThan(0);
+      expect(body.data.correlationId).toBe(body.data.envelopeId);
+    });
+
+    it('should start async processing and not block on completion', async () => {
+      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({})
+      });
+      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+
+      const startTime = Date.now();
+      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({ text: 'Test async processing' })
+      });
+      const endTime = Date.now();
+
+      expect(response.status).toBe(202);
+      const body = await response.json() as { data: { accepted: boolean; correlationId: string } };
+      expect(body.data.accepted).toBe(true);
+      expect(endTime - startTime).toBeLessThan(1000);
+    });
   });
 
   describe('GET /api/sessions', () => {

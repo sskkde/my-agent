@@ -470,6 +470,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
           selectedModel,
           enabled: true,
         });
+        context.refreshProvidersForUser(userId);
 
         const summary = sanitizeProviderForResponse(provider);
         return reply.code(201).send({ data: summary });
@@ -545,6 +546,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
           const error = ApiErrorFactory.notFound('Provider not found after update');
           return reply.code(404).send(error);
         }
+        context.refreshProvidersForUser(userId);
 
         const summary = sanitizeProviderForResponse(provider);
         return reply.code(200).send({ data: summary });
@@ -591,6 +593,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
           const error = ApiErrorFactory.internalError('Failed to delete provider');
           return reply.code(500).send(error);
         }
+        context.refreshProvidersForUser(userId);
 
         return reply.code(204).send();
       } catch (error) {

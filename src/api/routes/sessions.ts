@@ -18,6 +18,8 @@ import type { SessionStore, Session } from '../../storage/session-store.js';
 import type { ProviderConfigStore } from '../../storage/provider-config-store.js';
 import type { ConsoleTimelineService, TimelineOptions } from '../console-timeline.js';
 import { createConsoleTimelineService } from '../console-timeline.js';
+import type { TimelineBroadcaster, TimelineConnection } from '../timeline-broadcaster.js';
+import { convertInboundEnvelopeToProcessorInput } from '../../processing/message-processor.js';
 
 interface CreateSessionBody {
   userId?: string;
@@ -266,12 +268,84 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply.code(400).send(error);
       }
 
-      if ('gateway' in context) {
-        const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user';
-        context.gateway.receiveUserMessage(userId, sessionId, text);
+      if (!('gateway' in context)) {
+        const error = ApiErrorFactory.internalError('Gateway not available');
+        return reply.code(500).send(error);
       }
 
-      const response: SendMessageResponse = { accepted: true, status: 'accepted' };
+      const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user';
+
+      const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, 'webui');
+      const processorInput = convertInboundEnvelopeToProcessorInput(envelope);
+
+      // Process message asynchronously and route outbound via Gateway
+      context.messageProcessor.process(processorInput).then((output) => {
+        // Format outbound envelope using Gateway-owned correlation state
+        const messageType = output.success ? 'text' : 'error';
+        const outboundEnvelope = context.gateway.formatOutbound(
+          messageType,
+          {
+            text: output.success ? output.result?.text : undefined,
+            error: output.success ? undefined : output.error,
+          },
+          {
+            userId,
+            sessionId,
+            channel: envelope.sourceChannel, // Route back through original channel (webui)
+          },
+          envelope.envelopeId // Use envelopeId as correlationId for tracing
+        );
+
+        // Deliver via channel registry - this publishes to timeline/SSE for webui
+        context.channelRegistry.deliver(envelope.sourceChannel, outboundEnvelope);
+      }).catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown processing error';
+
+        // Create error outbound envelope
+        const errorEnvelope = context.gateway.formatOutbound(
+          'error',
+          {
+            error: {
+              code: 'PROCESSING_ERROR',
+              message: errorMessage,
+            },
+          },
+          {
+            userId,
+            sessionId,
+            channel: envelope.sourceChannel,
+          },
+          envelope.envelopeId
+        );
+
+        // Deliver error via channel registry
+        context.channelRegistry.deliver(envelope.sourceChannel, errorEnvelope);
+
+        // Also record error in event store for audit
+        context.stores.eventStore.append({
+          eventId: `error-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          eventType: 'gateway_error',
+          sourceModule: 'gateway',
+          userId,
+          sessionId,
+          correlationId: envelope.envelopeId,
+          payload: {
+            error: errorMessage,
+            phase: 'async_processing',
+            envelopeId: envelope.envelopeId,
+          },
+          sensitivity: 'low',
+          retentionClass: 'short',
+          createdAt: new Date().toISOString(),
+        });
+      });
+
+      const response: SendMessageResponse = {
+        accepted: true,
+        status: 'accepted',
+        correlationId: envelope.envelopeId,
+        envelopeId: envelope.envelopeId,
+      };
       return reply.code(202).send({ data: response });
     }
   );
@@ -401,6 +475,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
     async (request: FastifyRequest<{ Params: { sessionId: string }; Querystring: { after?: string } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
       const { after } = request.query;
+      const lastEventId = request.headers['last-event-id'] as string | undefined;
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
@@ -414,6 +489,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         'Connection': 'keep-alive',
       });
 
+      const timelineBroadcaster: TimelineBroadcaster | undefined = context.timelineBroadcaster;
+      let connection: TimelineConnection | undefined;
+
       const timelineService = createConsoleTimelineService({
         transcriptStore: context.stores.transcriptStore,
         eventStore: context.stores.eventStore,
@@ -422,8 +500,11 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const result = timelineService.getTimeline(sessionId);
       let events = result.events;
 
-      if (after) {
-        const afterIndex = events.findIndex(e => e.eventId === after);
+      // Compute effective replay cursor: Last-Event-ID takes precedence over ?after=
+      const effectiveAfter = lastEventId ?? after;
+
+      if (effectiveAfter) {
+        const afterIndex = events.findIndex(e => e.eventId === effectiveAfter);
         if (afterIndex !== -1) {
           events = events.slice(afterIndex + 1);
         }
@@ -448,8 +529,32 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         }
       }, 5000);
 
+      if (timelineBroadcaster) {
+        const writeFn = (data: string): boolean => {
+          try {
+            reply.raw.write(data);
+            return true;
+          } catch {
+            return false;
+          }
+        };
+
+        const closeFn = () => {
+          clearInterval(heartbeatInterval);
+        };
+
+        // Subscribe for live events only - catch-up already handled in snapshot
+        connection = timelineBroadcaster.subscribe(sessionId, {
+          write: writeFn,
+          closeFn,
+        });
+      }
+
       request.raw.on('close', () => {
         clearInterval(heartbeatInterval);
+        if (connection) {
+          connection.close();
+        }
       });
     }
   );
