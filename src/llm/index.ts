@@ -57,3 +57,17 @@ export {
   OllamaAdapter,
   MultiProviderLLMAdapter,
 } from './providers';
+
+// Agent Provider Resolver
+export type {
+  SessionSelection,
+  AgentConfigProviderSettings,
+  ResolveProviderOptions,
+  ProviderCandidate,
+  FallbackMetadata,
+  ProviderResolutionResult,
+  NoProviderAvailableResult,
+  ProviderResolutionResultUnion,
+} from './agent-provider-resolver';
+
+export { resolveProviderAndModel } from './agent-provider-resolver';
