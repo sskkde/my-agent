@@ -1251,6 +1251,45 @@ export const customProviderTypeMigration: Migration = {
   `
 };
 
+// ============================================================================
+// STORE 28: Agent Config Store (version 34)
+// ============================================================================
+export const agentConfigsTableMigration: Migration = {
+  version: 34,
+  name: 'create_agent_configs_table',
+  up: `
+    CREATE TABLE agent_configs (
+      agent_config_id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL,
+      scope TEXT NOT NULL CHECK(scope IN ('global', 'user')),
+      user_id TEXT NOT NULL DEFAULT '',
+      display_name TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      system_prompt TEXT NOT NULL,
+      routing_prompt TEXT,
+      provider_id TEXT,
+      model TEXT,
+      allowed_tool_ids TEXT NOT NULL DEFAULT '[]',
+      allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
+      routing_timeout_ms INTEGER NOT NULL DEFAULT 10000,
+      repair_attempts INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX idx_agent_configs_global ON agent_configs(agent_id, scope) WHERE scope = 'global';
+    CREATE UNIQUE INDEX idx_agent_configs_user ON agent_configs(agent_id, scope, user_id) WHERE scope = 'user';
+    CREATE INDEX idx_agent_configs_agent_id ON agent_configs(agent_id);
+    CREATE INDEX idx_agent_configs_user_id ON agent_configs(user_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_agent_configs_user;
+    DROP INDEX IF EXISTS idx_agent_configs_global;
+    DROP INDEX IF EXISTS idx_agent_configs_agent_id;
+    DROP INDEX IF EXISTS idx_agent_configs_user_id;
+    DROP TABLE IF EXISTS agent_configs
+  `
+};
+
 /**
  * Complete list of all migrations for the agent platform.
  * Apply these in order to initialize all stores.
@@ -1318,6 +1357,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Custom provider type
   customProviderTypeMigration,             // v33
+
+  // Agent Config store
+  agentConfigsTableMigration,              // v34
 ];
 
 /**
