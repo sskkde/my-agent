@@ -190,6 +190,10 @@ export interface ForegroundSessionState {
   currentPersona: AssistantPersonaProfile;
   /** Effective delegation policy (system + persona merged) */
   effectivePolicy: DirectDelegationPolicy;
+  /** Resolved LLM provider ID from provider resolution */
+  resolvedProvider?: string;
+  /** Resolved LLM model from provider resolution */
+  resolvedModel?: string;
   /** Conversation history for context */
   conversationHistory?: Array<{
     turnId: string;

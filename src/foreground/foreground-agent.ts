@@ -11,12 +11,70 @@ import type {
   IntentPatterns,
   ActiveWorkResolution,
   ResolvedActiveWork,
+  TaskComplexity,
 } from './types.js';
 import type { RuntimeAction, TargetRuntime } from '../dispatcher/types.js';
-import type { ToolCategory } from '../tools/types.js';
+
+import type { LLMAdapter } from '../llm/adapter.js';
+import type { LLMRequest, LLMResult } from '../llm/types.js';
+import type { AgentConfig } from '../storage/agent-config-store.js';
 
 export interface ForegroundAgent {
-  processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): ForegroundDecision;
+  processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
+}
+
+/**
+ * Known tool IDs from the catalog - used for server-side validation
+ * TOOL IDs must be kept in sync with src/api/tool-catalog.ts
+ */
+const KNOWN_TOOL_IDS: string[] = [
+  'artifact.create',
+  'artifact.update',
+  'ask_user',
+  'status.query',
+  'memory.retrieve',
+  'transcript.search',
+  'plan.patch',
+  'docs.search',
+];
+
+/**
+ * LLM Router output structure
+ * NOTE: runtimeAction from LLM is REJECTED - server creates all runtime actions
+ */
+interface LLMRouterOutput {
+  route: ForegroundDecisionRoute;
+  reason: string;
+  userVisibleResponse?: string;
+  estimatedSteps?: number;
+  complexity?: TaskComplexity;
+  suggestedTools?: string[];
+}
+
+/**
+ * Router error codes
+ */
+type RouterErrorCode =
+  | 'MALFORMED_JSON'
+  | 'INVALID_ROUTE'
+  | 'MISSING_REQUIRED_FIELD'
+  | 'EMPTY_REASON'
+  | 'INVALID_RUNTIME_ACTION'
+  | 'INVALID_COMPLEXITY'
+  | 'INVALID_FIELD_TYPE'
+  | 'LLM_REQUEST_FAILED';
+
+/**
+ * Router result type
+ */
+interface RouterResult {
+  success: boolean;
+  output?: LLMRouterOutput;
+  error?: {
+    code: RouterErrorCode;
+    message: string;
+    retryable: boolean;
+  };
 }
 
 function generateActionId(): string {
@@ -24,16 +82,19 @@ function generateActionId(): string {
 }
 
 class ForegroundAgentImpl implements ForegroundAgent {
-  private patterns: IntentPatterns;
+  private llmAdapter?: LLMAdapter;
+  private agentConfig?: AgentConfig;
 
-  constructor(patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS) {
-    this.patterns = patterns;
+  constructor(_patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS, llmAdapter?: LLMAdapter, agentConfig?: AgentConfig) {
+    this.llmAdapter = llmAdapter;
+    this.agentConfig = agentConfig;
   }
 
-  processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): ForegroundDecision {
+  async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
     const message = input.message.trim();
-    const { effectivePolicy, activeWorkRefs } = state;
+    const { activeWorkRefs: _activeWorkRefs } = state;
 
+    // Bypass 1: Approval metadata - route directly without LLM
     if (input.metadata?.isApprovalResponse) {
       return this.createDecision('approval_handler', {
         reason: 'Processing approval response',
@@ -41,101 +102,37 @@ class ForegroundAgentImpl implements ForegroundAgent {
       });
     }
 
-    if (this.isCancelOrModify(message)) {
-      if (!this.hasActiveWork(activeWorkRefs, state.hydratedSession.sessionContext)) {
-        return this.createDecision('answer_directly', {
-          reason: 'Cancel/modify requested but no active work found',
-          userVisibleResponse: 'There is no active work to cancel or modify.',
-        });
-      }
-
-      const resolvedWork = this.resolveActiveWork(activeWorkRefs, state.hydratedSession.sessionContext);
-      const interruptType = this.detectInterruptType(message);
-
-      if (resolvedWork.isAmbiguous) {
-        return this.createDecision('cancel_or_modify_task', {
-          reason: 'Cancel/modify request with ambiguous target',
-          userVisibleResponse: this.generateAmbiguousTargetResponse(resolvedWork),
-        });
-      }
-
-      const targetWork = resolvedWork.targetWork;
-      if (!targetWork || !targetWork.workId) {
-        return this.createDecision('answer_directly', {
-          reason: 'Cancel/modify requested but no active work found',
-          userVisibleResponse: 'There is no active work to cancel or modify.',
-        });
-      }
-
-      const runtimeAction = this.createInterruptRuntimeAction(
-        interruptType,
-        targetWork,
-        input.userId,
-        input.sessionId,
-        message
-      );
-
-      return this.createDecision('cancel_or_modify_task', {
-        reason: `${interruptType} request for active work: ${targetWork.workId}`,
-        userVisibleResponse: `Processing your ${interruptType} request...`,
-        targetRef: {
-          plannerRunId: targetWork.workType === 'planner_run' ? targetWork.workId : undefined,
-          runtimeActionId: targetWork.workType === 'runtime_action' ? targetWork.workId : undefined,
-        },
-        runtimeAction,
-      });
-    }
-
-    if (this.isStatusQuery(message)) {
-      const runtimeAction = this.createStatusQueryRuntimeAction(input.userId, input.sessionId);
-      return this.createDecision('status_query', {
-        reason: 'User requested status update',
-        userVisibleResponse: 'Checking active work status...',
-        targetRef: {},
-        runtimeAction,
-      });
-    }
-
-    const analysis = this.analyzeTask(message);
-
-    if (this.shouldAnswerDirectly(message, analysis)) {
+    // Bypass 2: No LLM provider available - return processing error
+    if (!this.llmAdapter) {
       return this.createDecision('answer_directly', {
-        reason: 'Simple question detected',
-        userVisibleResponse: this.generateDirectResponse(message),
+        reason: 'No LLM provider available for routing',
+        userVisibleResponse: 'Unable to process message: no AI provider configured.',
       });
     }
 
-    if (this.shouldSpawnPlanner(analysis, effectivePolicy)) {
-      return this.createDecision('spawn_planner', {
-        reason: `Complex task detected (${analysis.estimatedSteps} steps)`,
-        userVisibleResponse: 'This looks like a multi-step task. Spawning planner...',
-        requiresPlanner: true,
-        estimatedSteps: analysis.estimatedSteps,
-        complexity: analysis.complexity,
+    const prompt = this.buildRoutingPrompt(message, state);
+    const llmResult = await this.callLLMRouter(prompt, state);
+
+    if (!llmResult.success) {
+      // Retry with repair prompt if attempts remain
+      const maxRepairAttempts = this.agentConfig?.repairAttempts ?? 1;
+      if (maxRepairAttempts > 0 && llmResult.error?.retryable) {
+        const repairPrompt = this.buildRepairPrompt(prompt, llmResult.error?.message || 'Unknown error');
+        const retryResult = await this.callLLMRouter(repairPrompt, state);
+
+        if (retryResult.success) {
+          return this.mapRouterOutputToDecision(retryResult.output!, input, state);
+        }
+      }
+
+      // Both attempts failed - return graceful processing error
+      return this.createDecision('answer_directly', {
+        reason: 'LLM routing temporarily unavailable',
+        userVisibleResponse: 'Routing temporarily unavailable. Please try again in a moment.',
       });
     }
 
-    if (analysis.isSimpleRead && this.isAllowedToolCategory('read', effectivePolicy)) {
-      return this.createDecision('dispatch_tool', {
-        reason: 'Simple read task detected',
-        userVisibleResponse: 'Processing your request...',
-        suggestedTools: analysis.toolName ? [analysis.toolName] : undefined,
-      });
-    }
-
-    const plannerRunIds = state.hydratedSession.sessionContext.activePlannerRunIds;
-    if (plannerRunIds.length > 0) {
-      return this.createDecision('resume_existing_planner', {
-        reason: 'Resuming existing planner run',
-        userVisibleResponse: 'Resuming your previous task...',
-        targetRef: { plannerRunId: plannerRunIds[0] },
-      });
-    }
-
-    return this.createDecision('answer_directly', {
-      reason: 'Default fallback - no action needed',
-      userVisibleResponse: this.generateDirectResponse(message),
-    });
+    return this.mapRouterOutputToDecision(llmResult.output!, input, state);
   }
 
   private createDecision(
@@ -162,6 +159,453 @@ class ForegroundAgentImpl implements ForegroundAgent {
       complexity: options.complexity,
       suggestedTools: options.suggestedTools,
     };
+  }
+
+  /**
+   * Build the routing prompt for the LLM
+   */
+  private buildRoutingPrompt(message: string, state: ForegroundSessionState): string {
+    const { effectivePolicy, currentPersona, hydratedSession } = state;
+    const sessionContext = hydratedSession.sessionContext;
+
+    const activeWorkSummary = this.buildActiveWorkSummary(state);
+    const policySummary = `Steps threshold: ${effectivePolicy.estimatedStepsGte}, Max complexity: ${effectivePolicy.maxComplexity}, Allowed tools: ${effectivePolicy.allowedToolCategories.join(', ') || 'none'}`;
+    const personaPrompt = currentPersona.directDelegationPolicy ? `Persona: ${currentPersona.name}` : '';
+
+    return `You are a message router for an AI assistant. Analyze the user message and decide how to handle it.
+
+AVAILABLE ROUTES:
+- answer_directly: Simple questions, greetings, or anything that needs a direct response
+- dispatch_tool: Simple read/search operations that can use a tool directly
+- spawn_planner: Multi-step complex tasks requiring planning
+- resume_existing_planner: Continue an existing planner session
+- cancel_or_modify_task: Cancel, pause, resume, or modify active work
+- status_query: Check status of active tasks
+- dispatch_subagent: Tasks suitable for background execution
+- approval_handler: Handle approval responses
+
+SESSION STATE:
+- Active planner runs: ${sessionContext.activePlannerRunIds.length}
+- Active background runs: ${sessionContext.activeBackgroundRunIds.length}
+${activeWorkSummary}
+
+POLICY: ${policySummary}
+${personaPrompt}
+
+USER MESSAGE: "${message}"
+
+Respond with valid JSON only:
+{
+  "route": "<one of the available routes>",
+  "reason": "<brief explanation of routing decision>",
+  "userVisibleResponse": "<optional immediate response to show user>",
+  "estimatedSteps": <optional number>,
+  "complexity": "<optional: low|medium|high|critical>",
+  "suggestedTools": ["<optional tool names>"]
+}`;
+  }
+
+  /**
+   * Build a summary of active work for the prompt
+   */
+  private buildActiveWorkSummary(state: ForegroundSessionState): string {
+    const parts: string[] = [];
+    const { activeWorkRefs, hydratedSession } = state;
+    const { activePlannerRunIds, activeBackgroundRunIds } = hydratedSession.sessionContext;
+
+    if (activePlannerRunIds.length > 0) {
+      parts.push(`- Planner runs: ${activePlannerRunIds.join(', ')}`);
+    }
+    if (activeBackgroundRunIds.length > 0) {
+      parts.push(`- Background runs: ${activeBackgroundRunIds.join(', ')}`);
+    }
+    if (activeWorkRefs.pendingApprovals.length > 0) {
+      parts.push(`- Pending approvals: ${activeWorkRefs.pendingApprovals.length}`);
+    }
+    if (activeWorkRefs.activeRuns.length > 0) {
+      parts.push(`- Active runs: ${activeWorkRefs.activeRuns.join(', ')}`);
+    }
+
+    return parts.length > 0 ? `- ${parts.join('\n- ')}` : '- No active work';
+  }
+
+  /**
+   * Build repair prompt when initial routing fails
+   */
+  private buildRepairPrompt(originalPrompt: string, errorMessage: string): string {
+    return `${originalPrompt}
+
+IMPORTANT: Your previous response was invalid. Error: ${errorMessage}
+Please respond with valid JSON matching the exact schema shown above.`;
+  }
+
+  /**
+   * Call the LLM router with 10s timeout and parse the response
+   */
+  private async callLLMRouter(prompt: string, state?: ForegroundSessionState): Promise<RouterResult> {
+    if (!this.llmAdapter) {
+      return {
+        success: false,
+        error: {
+          code: 'MALFORMED_JSON',
+          message: 'No LLM adapter available',
+          retryable: false,
+        },
+      };
+    }
+
+    const resolvedModel = state?.resolvedModel ?? this.agentConfig?.model ?? 'gpt-4o-mini';
+    const systemPrompt = this.agentConfig?.systemPrompt ?? 'You are a message routing assistant. Respond only with valid JSON.';
+    const routingPrompt = this.agentConfig?.routingPrompt;
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+    ];
+
+    if (routingPrompt) {
+      messages.push({ role: 'system', content: routingPrompt });
+    }
+
+    messages.push({ role: 'user', content: prompt });
+
+    const request: LLMRequest = {
+      model: resolvedModel,
+      messages,
+      temperature: 0.1,
+      maxTokens: 500,
+      responseFormat: { type: 'json_object' },
+    };
+
+    const ROUTER_TIMEOUT_MS = 10000;
+
+    try {
+      const result: LLMResult = await this.callLLMWithTimeout(request, ROUTER_TIMEOUT_MS);
+
+      if (!result.success) {
+        return {
+          success: false,
+          error: {
+            code: 'LLM_REQUEST_FAILED',
+            message: `LLM request failed: ${result.error?.message || 'Unknown error'}`,
+            retryable: false,
+          },
+        };
+      }
+
+      return this.parseRouterOutput(result.response.content);
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: 'MALFORMED_JSON',
+          message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          retryable: false,
+        },
+      };
+    }
+  }
+
+  private async callLLMWithTimeout(request: LLMRequest, timeoutMs: number): Promise<LLMResult> {
+    if (!this.llmAdapter) {
+      return this.createTimeoutErrorResult('No LLM adapter available');
+    }
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`LLM router timeout after ${timeoutMs}ms`)), timeoutMs);
+    });
+
+    return Promise.race([this.llmAdapter.complete(request), timeoutPromise]).catch((error) =>
+      this.createTimeoutErrorResult(error instanceof Error ? error.message : 'Unknown timeout error')
+    );
+  }
+
+  private createTimeoutErrorResult(message: string): LLMResult {
+    const now = new Date().toISOString();
+    return {
+      success: false,
+      error: {
+        errorId: `timeout-${Date.now()}`,
+        category: 'timeout',
+        code: 'ROUTER_TIMEOUT',
+        message,
+        recoverability: 'retryable_later',
+        source: { module: 'foreground_agent' },
+        createdAt: now,
+      },
+      providerId: 'unknown',
+    };
+  }
+
+  /**
+   * Parse and validate router output
+   */
+  private parseRouterOutput(rawOutput: string): RouterResult {
+    const validRoutes: ForegroundDecisionRoute[] = [
+      'answer_directly',
+      'dispatch_tool',
+      'dispatch_subagent',
+      'spawn_planner',
+      'resume_existing_planner',
+      'approval_handler',
+      'cancel_or_modify_task',
+      'status_query',
+    ];
+
+    const validComplexities: TaskComplexity[] = ['low', 'medium', 'high', 'critical'];
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawOutput);
+    } catch {
+      return {
+        success: false,
+        error: {
+          code: 'MALFORMED_JSON',
+          message: 'Response is not valid JSON',
+          retryable: true,
+        },
+      };
+    }
+
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return {
+        success: false,
+        error: {
+          code: 'MALFORMED_JSON',
+          message: 'Response must be a JSON object, not an array or primitive',
+          retryable: true,
+        },
+      };
+    }
+
+    const obj = parsed as Record<string, unknown>;
+
+    // Validate required fields
+    if (!('route' in obj)) {
+      return {
+        success: false,
+        error: {
+          code: 'MISSING_REQUIRED_FIELD',
+          message: 'Missing required field: route',
+          retryable: true,
+        },
+      };
+    }
+
+    if (!('reason' in obj)) {
+      return {
+        success: false,
+        error: {
+          code: 'MISSING_REQUIRED_FIELD',
+          message: 'Missing required field: reason',
+          retryable: true,
+        },
+      };
+    }
+
+    // Validate route type and value
+    if (typeof obj.route !== 'string') {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_FIELD_TYPE',
+          message: 'Field "route" must be a string',
+          retryable: true,
+        },
+      };
+    }
+
+    if (!validRoutes.includes(obj.route as ForegroundDecisionRoute)) {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_ROUTE',
+          message: `Invalid route value: ${obj.route}. Must be one of: ${validRoutes.join(', ')}`,
+          retryable: true,
+        },
+      };
+    }
+
+    // Validate reason type and value
+    if (typeof obj.reason !== 'string') {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_FIELD_TYPE',
+          message: 'Field "reason" must be a string',
+          retryable: true,
+        },
+      };
+    }
+
+    if (obj.reason.trim().length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 'EMPTY_REASON',
+          message: 'Field "reason" must be a non-empty string',
+          retryable: true,
+        },
+      };
+    }
+
+    // Validate optional fields
+    if (obj.userVisibleResponse !== undefined && typeof obj.userVisibleResponse !== 'string') {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_FIELD_TYPE',
+          message: 'Field "userVisibleResponse" must be a string',
+          retryable: true,
+        },
+      };
+    }
+
+    if (obj.estimatedSteps !== undefined && typeof obj.estimatedSteps !== 'number') {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_FIELD_TYPE',
+          message: 'Field "estimatedSteps" must be a number',
+          retryable: true,
+        },
+      };
+    }
+
+    if (obj.complexity !== undefined) {
+      if (typeof obj.complexity !== 'string' || !validComplexities.includes(obj.complexity as TaskComplexity)) {
+        return {
+          success: false,
+          error: {
+            code: 'INVALID_COMPLEXITY',
+            message: `Field "complexity" must be one of: ${validComplexities.join(', ')}`,
+            retryable: true,
+          },
+        };
+      }
+    }
+
+    if (obj.suggestedTools !== undefined && !Array.isArray(obj.suggestedTools)) {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_FIELD_TYPE',
+          message: 'Field "suggestedTools" must be an array',
+          retryable: true,
+        },
+      };
+    }
+
+    // SECURITY: Reject LLM-provided runtimeAction - server creates all runtime actions
+    // If LLM hallucinated a runtimeAction, we silently ignore it
+    void obj.runtimeAction; // Explicitly mark as intentionally unused
+
+    // Filter suggestedTools to only known tools (intersection with catalog)
+    const rawSuggestedTools = obj.suggestedTools as string[] | undefined;
+    const filteredSuggestedTools = rawSuggestedTools
+      ? this.filterAllowedTools(rawSuggestedTools)
+      : undefined;
+
+    return {
+      success: true,
+      output: {
+        route: obj.route as ForegroundDecisionRoute,
+        reason: obj.reason,
+        userVisibleResponse: obj.userVisibleResponse as string | undefined,
+        estimatedSteps: obj.estimatedSteps as number | undefined,
+        complexity: obj.complexity as TaskComplexity | undefined,
+        suggestedTools: filteredSuggestedTools,
+      },
+    };
+  }
+
+  /**
+   * Filter suggested tools against known tool catalog.
+   * SECURITY: Only allow tools that exist in the known catalog.
+   */
+  private filterAllowedTools(suggestedTools: string[]): string[] {
+    return suggestedTools.filter(toolId => KNOWN_TOOL_IDS.includes(toolId));
+  }
+
+  /**
+   * Map router output to a ForegroundDecision
+   */
+  private mapRouterOutputToDecision(
+    output: LLMRouterOutput,
+    input: ForegroundMessageInput,
+    state: ForegroundSessionState
+  ): ForegroundDecision {
+    const { route, reason, userVisibleResponse, estimatedSteps, complexity, suggestedTools } = output;
+
+    // Handle special routes that need runtime actions
+    if (route === 'cancel_or_modify_task') {
+      const resolvedWork = this.resolveActiveWork(state.activeWorkRefs, state.hydratedSession.sessionContext);
+      const interruptType = this.detectInterruptType(input.message);
+
+      if (resolvedWork.isAmbiguous) {
+        return this.createDecision('cancel_or_modify_task', {
+          reason: 'Cancel/modify requested but multiple active tasks found',
+          userVisibleResponse: 'You have multiple active tasks. Which one would you like to cancel?',
+          requiresPlanner: false,
+        });
+      }
+
+      if (!resolvedWork.targetWork?.workId) {
+        return this.createDecision('answer_directly', {
+          reason: 'Cancel/modify requested but no active work found',
+          userVisibleResponse: 'There is no active work to cancel or modify.',
+        });
+      }
+
+      const targetWork = resolvedWork.targetWork;
+      const runtimeAction = this.createInterruptRuntimeAction(
+        interruptType,
+        targetWork,
+        input.userId,
+        input.sessionId,
+        input.message
+      );
+
+      return this.createDecision('cancel_or_modify_task', {
+        reason: `${reason} (${interruptType} request)`,
+        userVisibleResponse: userVisibleResponse || `Processing your ${interruptType} request...`,
+        targetRef: {
+          plannerRunId: targetWork.workType === 'planner_run' ? targetWork.workId : undefined,
+          runtimeActionId: targetWork.workType === 'runtime_action' ? targetWork.workId : undefined,
+        },
+        runtimeAction,
+      });
+    }
+
+    if (route === 'status_query') {
+      const runtimeAction = this.createStatusQueryRuntimeAction(input.userId, input.sessionId);
+      return this.createDecision('status_query', {
+        reason,
+        userVisibleResponse: userVisibleResponse || 'Checking active work status...',
+        targetRef: {},
+        runtimeAction,
+      });
+    }
+
+    // For routes that need active work resolution (resume_existing_planner)
+    if (route === 'resume_existing_planner') {
+      const plannerRunIds = state.hydratedSession.sessionContext.activePlannerRunIds;
+      return this.createDecision('resume_existing_planner', {
+        reason,
+        userVisibleResponse: userVisibleResponse || 'Resuming your previous task...',
+        targetRef: plannerRunIds.length > 0 ? { plannerRunId: plannerRunIds[0] } : {},
+      });
+    }
+
+    // Default mapping for other routes
+    return this.createDecision(route, {
+      reason,
+      userVisibleResponse,
+      requiresPlanner: route === 'spawn_planner',
+      estimatedSteps,
+      complexity,
+      suggestedTools,
+    });
   }
 
   private createInterruptRuntimeAction(
@@ -290,36 +734,6 @@ class ForegroundAgentImpl implements ForegroundAgent {
     return 'cancel';
   }
 
-  private generateAmbiguousTargetResponse(resolvedWork: ResolvedActiveWork): string {
-    const count = resolvedWork.activeWorkCount;
-    return `You have ${count} active tasks. Please specify which one you want to cancel (multiple active tasks detected). Say something like "cancel the [task name]" or "cancel task [number]".`;
-  }
-
-  private isCancelOrModify(message: string): boolean {
-    const lower = message.toLowerCase();
-    return this.patterns.cancelKeywords.some(k => lower.includes(k.toLowerCase())) ||
-           lower.includes('pause') ||
-           lower.includes('resume') ||
-           lower.includes('modify') ||
-           lower.includes('change') ||
-           lower.includes('update') ||
-           lower.includes('adjust');
-  }
-
-  private isStatusQuery(message: string): boolean {
-    const lower = message.toLowerCase();
-    return this.patterns.statusKeywords.some(k => lower.includes(k.toLowerCase()));
-  }
-
-  private hasActiveWork(activeWorkRefs: ForegroundSessionState['activeWorkRefs'], sessionContext: ForegroundSessionState['hydratedSession']['sessionContext']): boolean {
-    return (
-      sessionContext.activePlannerRunIds.length > 0 ||
-      sessionContext.activeBackgroundRunIds.length > 0 ||
-      activeWorkRefs.activeRuns.length > 0 ||
-      activeWorkRefs.pendingApprovals.length > 0
-    );
-  }
-
   private resolveActiveWork(activeWorkRefs: ForegroundSessionState['activeWorkRefs'], sessionContext: ForegroundSessionState['hydratedSession']['sessionContext']): ResolvedActiveWork {
     const allActiveWork: ActiveWorkResolution[] = [];
 
@@ -371,80 +785,16 @@ class ForegroundAgentImpl implements ForegroundAgent {
       allActiveWork,
     };
   }
-
-  private shouldAnswerDirectly(message: string, analysis: TaskAnalysis): boolean {
-    if (analysis.isQuestion && !analysis.hasMultipleActions && analysis.estimatedSteps <= 1) {
-      return true;
-    }
-    if (message.length < 50 && (message.includes('?') || message.includes('？') || message.includes('吗'))) {
-      return true;
-    }
-    return false;
-  }
-
-  private shouldSpawnPlanner(analysis: TaskAnalysis, policy: DirectDelegationPolicy): boolean {
-    return analysis.estimatedSteps >= policy.estimatedStepsGte || analysis.complexity === 'high';
-  }
-
-  private isAllowedToolCategory(category: string, policy: DirectDelegationPolicy): boolean {
-    return policy.allowedToolCategories?.includes(category as ToolCategory) ?? false;
-  }
-
-  private analyzeTask(message: string): TaskAnalysis {
-    const lower = message.toLowerCase();
-    let estimatedSteps = 1;
-    let complexity: TaskAnalysis['complexity'] = 'low';
-    let isQuestion = false;
-    let hasMultipleActions = false;
-    let isSimpleRead = false;
-
-    if (this.patterns.questionIndicators.some(q => lower.includes(q.toLowerCase()))) {
-      isQuestion = true;
-    }
-    if (message.includes('?') || message.includes('？')) {
-      isQuestion = true;
-    }
-
-    const actionCount = this.patterns.actionVerbs.filter(v => lower.includes(v.toLowerCase())).length;
-    if (actionCount > 1 || this.patterns.multiStepIndicators.some(m => lower.includes(m.toLowerCase()))) {
-      hasMultipleActions = true;
-      estimatedSteps = Math.max(estimatedSteps, actionCount, 2);
-    }
-
-    if (this.patterns.complexTaskIndicators.some(c => lower.includes(c.toLowerCase()))) {
-      estimatedSteps = Math.max(estimatedSteps, 3);
-      complexity = 'medium';
-    }
-
-    if (message.length > 100) {
-      estimatedSteps = Math.max(estimatedSteps, 2);
-      complexity = complexity === 'low' ? 'medium' : complexity;
-    }
-    if (message.length > 200) {
-      estimatedSteps = Math.max(estimatedSteps, 3);
-      complexity = 'high';
-    }
-
-    if (!hasMultipleActions && (lower.includes('search') || lower.includes('find') || lower.includes('get') || lower.includes('查找') || lower.includes('搜索')) && actionCount <= 1) {
-      isSimpleRead = true;
-    }
-
-    return {
-      estimatedSteps,
-      complexity,
-      isQuestion,
-      hasMultipleActions,
-      isSimpleRead,
-    };
-  }
-
-  private generateDirectResponse(message: string): string {
-    return `I understand: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`;
-  }
 }
 
-export function createForegroundAgent(patterns?: IntentPatterns): ForegroundAgent {
-  return new ForegroundAgentImpl(patterns);
+export interface CreateForegroundAgentOptions {
+  patterns?: IntentPatterns;
+  llmAdapter?: LLMAdapter;
+  agentConfig?: AgentConfig;
+}
+
+export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
+  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig);
 }
 
 export function mergeDelegationPolicies(

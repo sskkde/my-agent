@@ -1,11 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createForegroundAgent, mergeDelegationPolicies } from '../../../src/foreground/foreground-agent.js';
 import { DEFAULT_ASSISTANT_PERSONA, DEFAULT_DIRECT_DELEGATION_POLICY } from '../../../src/foreground/types.js';
 import type { ForegroundMessageInput, ForegroundSessionState } from '../../../src/foreground/types.js';
+import type { LLMAdapter } from '../../../src/llm/adapter.js';
+import type { LLMRequest, LLMResult, LLMResponse } from '../../../src/llm/types.js';
 
 describe('Foreground Conversation Agent', () => {
   let agent: ReturnType<typeof createForegroundAgent>;
   let baseState: ForegroundSessionState;
+  let mockLLMAdapter: LLMAdapter;
 
   function createBaseState(options?: { activePlannerRunIds?: string[]; activeBackgroundRunIds?: string[] }): ForegroundSessionState {
     return {
@@ -45,75 +48,176 @@ describe('Foreground Conversation Agent', () => {
     };
   }
 
+  function createMockLLMAdapter(responseContent: string): LLMAdapter {
+    return {
+      config: {
+        providers: [],
+        defaultTimeoutMs: 10000,
+        enableCircuitBreaker: false,
+      },
+      providers: [],
+      complete: vi.fn(async (_request: LLMRequest): Promise<LLMResult> => {
+        const response: LLMResponse = {
+          id: 'test-response-id',
+          model: 'gpt-4o-mini',
+          content: responseContent,
+          role: 'assistant',
+          finishReason: 'stop',
+          createdAt: new Date().toISOString(),
+        };
+        return {
+          success: true,
+          response,
+          providerId: 'mock-provider',
+        };
+      }),
+      addProvider: vi.fn(),
+      removeProvider: vi.fn(),
+      getProvider: vi.fn(),
+      getHealthyProviders: vi.fn(() => []),
+      updateProviderPriority: vi.fn(),
+    };
+  }
+
   beforeEach(() => {
-    agent = createForegroundAgent();
     baseState = createBaseState();
   });
 
   describe('answer_directly route', () => {
-    it('should route simple QA to answer_directly', () => {
+    it('should route simple QA to answer_directly', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple question about PlannerRun',
+        userVisibleResponse: 'PlannerRun is a task execution unit.',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const input = createInput('解释一下 PlannerRun 是什么？');
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('answer_directly');
       expect(decision.requiresPlanner).toBe(false);
       expect(decision.userVisibleResponse).toBeDefined();
     });
 
-    it('should route short question to answer_directly', () => {
-      const input = createInput('你好');
-      const decision = agent.processMessage(input, baseState);
+    it('should route short question to answer_directly using LLM adapter', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple greeting',
+        userVisibleResponse: '你好！很高兴见到你。',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
 
+      const input = createInput('你好');
+      const decision = await agent.processMessage(input, baseState);
+
+      // Assert fake LLM adapter is called
+      expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(1);
+      expect(mockLLMAdapter.complete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-4o-mini',
+          responseFormat: { type: 'json_object' },
+        })
+      );
+
+      // Assert returned text from LLM is used
       expect(decision.route).toBe('answer_directly');
+      expect(decision.userVisibleResponse).toBe('你好！很高兴见到你。');
     });
 
-    it('should route question with question particle to answer_directly', () => {
+    it('should route question with question particle to answer_directly', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Question about weather',
+        userVisibleResponse: '今天天气不错！',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const input = createInput('今天天气好吗');
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('answer_directly');
     });
   });
 
   describe('spawn_planner route', () => {
-    it('should route complex trip task to spawn_planner', () => {
+    it('should route complex trip task to spawn_planner', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'spawn_planner',
+        reason: 'Complex multi-step trip planning task',
+        userVisibleResponse: 'I will create a plan for your trip to Shanghai.',
+        estimatedSteps: 5,
+        complexity: 'high',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const input = createInput('帮我规划下周去上海出差，包括日程、酒店、会议资料');
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('spawn_planner');
       expect(decision.requiresPlanner).toBe(true);
     });
 
-    it('should route multi-step task to spawn_planner', () => {
+    it('should route multi-step task to spawn_planner', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'spawn_planner',
+        reason: 'Multi-step task requiring multiple actions',
+        userVisibleResponse: 'Planning your multi-step task...',
+        estimatedSteps: 3,
+        complexity: 'medium',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const input = createInput('请帮我搜索资料、写报告和发送邮件');
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('spawn_planner');
     });
 
-    it('should respect estimatedStepsGte policy', () => {
+    it('should respect estimatedStepsGte policy', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'spawn_planner',
+        reason: 'Multi-step task',
+        estimatedSteps: 2,
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const state = {
         ...baseState,
         effectivePolicy: mergeDelegationPolicies(DEFAULT_DIRECT_DELEGATION_POLICY, { estimatedStepsGte: 2 }),
       };
       const input = createInput('帮我搜索资料然后写报告');
-      const decision = agent.processMessage(input, state);
+      const decision = await agent.processMessage(input, state);
 
       expect(decision.route).toBe('spawn_planner');
     });
   });
 
   describe('dispatch_tool route', () => {
-    it('should route simple read task to dispatch_tool', () => {
+    it('should route simple read task to dispatch_tool', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'Simple search operation',
+        suggestedTools: ['memory.retrieve', 'transcript.search'],
+        estimatedSteps: 1,
+        complexity: 'low',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const input = createInput('搜索一下最近的会议记录');
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('dispatch_tool');
+      expect(decision.suggestedTools).toContain('memory.retrieve');
+      expect(decision.suggestedTools).toContain('transcript.search');
     });
   });
 
   describe('approval_handler route', () => {
-    it('should route approval response to approval_handler', () => {
+    it('should route approval response to approval_handler without LLM', async () => {
+      // No LLM adapter needed - should bypass
+      agent = createForegroundAgent();
+
       const input = createInput('同意', {
         isApprovalResponse: true,
         approvalResponse: {
@@ -121,52 +225,88 @@ describe('Foreground Conversation Agent', () => {
           approved: true,
         },
       });
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('approval_handler');
+      expect(decision.userVisibleResponse).toBe('Processing your approval response...');
     });
   });
 
   describe('cancel_or_modify_task route', () => {
-    it('should route cancel request with active work to cancel_or_modify_task', () => {
+    it('should route cancel request with active work to cancel_or_modify_task', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'cancel_or_modify_task',
+        reason: 'User requested cancellation',
+        userVisibleResponse: 'Cancelling the active task...',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const state = createBaseState({ activePlannerRunIds: ['pl_run_001'] });
       const input = createInput('取消刚才的任务');
-      const decision = agent.processMessage(input, state);
+      const decision = await agent.processMessage(input, state);
 
       expect(decision.route).toBe('cancel_or_modify_task');
       expect(decision.targetRef?.plannerRunId).toBe('pl_run_001');
     });
 
-    it('should route stop request with active background work', () => {
+    it('should route stop request with active background work', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'cancel_or_modify_task',
+        reason: 'User requested to stop background work',
+        userVisibleResponse: 'Stopping the background task...',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const state = createBaseState({ activeBackgroundRunIds: ['bg_run_001'] });
       const input = createInput('停止后台任务');
-      const decision = agent.processMessage(input, state);
+      const decision = await agent.processMessage(input, state);
 
       expect(decision.route).toBe('cancel_or_modify_task');
     });
   });
 
   describe('status_query route', () => {
-    it('should route status query to status_query', () => {
+    it('should route status query to status_query', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'status_query',
+        reason: 'User asking about task progress',
+        userVisibleResponse: 'Checking status...',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const input = createInput('任务进度怎么样了');
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('status_query');
     });
 
-    it('should route progress question to status_query', () => {
+    it('should route progress question to status_query', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'status_query',
+        reason: 'User asking about current status',
+        userVisibleResponse: 'Let me check...',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const input = createInput('现在是什么状态');
-      const decision = agent.processMessage(input, baseState);
+      const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('status_query');
     });
   });
 
   describe('resume_existing_planner route', () => {
-    it('should resume existing planner when message is ambiguous', () => {
+    it('should resume existing planner when message is ambiguous', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'resume_existing_planner',
+        reason: 'User wants to continue existing session',
+        userVisibleResponse: 'Resuming your session...',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
       const state = createBaseState({ activePlannerRunIds: ['pl_run_001'] });
       const input = createInput('继续');
-      const decision = agent.processMessage(input, state);
+      const decision = await agent.processMessage(input, state);
 
       expect(decision.route).toBe('resume_existing_planner');
       expect(decision.targetRef?.plannerRunId).toBe('pl_run_001');
@@ -186,19 +326,143 @@ describe('Foreground Conversation Agent', () => {
     });
   });
 
-  describe('userVisibleResponse', () => {
-    it('should generate response for answer_directly', () => {
-      const input = createInput('你好');
-      const decision = agent.processMessage(input, baseState);
+  describe('no-provider bypass', () => {
+    it('should return error when no LLM provider is configured', async () => {
+      agent = createForegroundAgent();
 
-      expect(decision.userVisibleResponse).toContain('你好');
+      const input = createInput('Hello');
+      const decision = await agent.processMessage(input, baseState);
+
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.userVisibleResponse).toContain('no AI provider');
+    });
+  });
+
+  describe('retry logic', () => {
+    it('should retry once with repair prompt on parse failure', async () => {
+      let callCount = 0;
+      mockLLMAdapter = {
+        config: {
+          providers: [],
+          defaultTimeoutMs: 10000,
+          enableCircuitBreaker: false,
+        },
+        providers: [],
+        complete: vi.fn(async (): Promise<LLMResult> => {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              success: true,
+              response: {
+                id: 'test-response-1',
+                model: 'gpt-4o-mini',
+                content: 'invalid json',
+                role: 'assistant',
+                finishReason: 'stop',
+                createdAt: new Date().toISOString(),
+              },
+              providerId: 'mock-provider',
+            };
+          }
+          return {
+            success: true,
+            response: {
+              id: 'test-response-2',
+              model: 'gpt-4o-mini',
+              content: JSON.stringify({
+                route: 'answer_directly',
+                reason: 'Fixed response',
+                userVisibleResponse: 'Hello!',
+              }),
+              role: 'assistant',
+              finishReason: 'stop',
+              createdAt: new Date().toISOString(),
+            },
+            providerId: 'mock-provider',
+          };
+        }),
+        addProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        getProvider: vi.fn(),
+        getHealthyProviders: vi.fn(() => []),
+        updateProviderPriority: vi.fn(),
+      };
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('Hello');
+      const decision = await agent.processMessage(input, baseState);
+
+      expect(callCount).toBe(2);
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.userVisibleResponse).toBe('Hello!');
     });
 
-    it('should generate response for spawn_planner', () => {
-      const input = createInput('帮我规划下周去上海出差，包括日程、酒店、会议资料');
-      const decision = agent.processMessage(input, baseState);
+    it('should not retry when the LLM request itself times out', async () => {
+      mockLLMAdapter = {
+        config: {
+          providers: [],
+          defaultTimeoutMs: 10000,
+          enableCircuitBreaker: false,
+        },
+        providers: [],
+        complete: vi.fn(async (): Promise<LLMResult> => ({
+          success: false,
+          error: {
+            errorId: 'timeout-test-error',
+            category: 'timeout',
+            code: 'ROUTER_TIMEOUT',
+            message: 'LLM router timeout after 10000ms',
+            recoverability: 'retryable_later',
+            source: { module: 'foreground_agent' },
+            createdAt: new Date().toISOString(),
+          },
+          providerId: 'mock-provider',
+        })),
+        addProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        getProvider: vi.fn(),
+        getHealthyProviders: vi.fn(() => []),
+        updateProviderPriority: vi.fn(),
+      };
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
 
-      expect(decision.userVisibleResponse).toContain('multi-step');
+      const input = createInput('你现在使用的是什么模型？');
+      const decision = await agent.processMessage(input, baseState);
+
+      expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(1);
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.reason).toBe('LLM routing temporarily unavailable');
+      expect(decision.userVisibleResponse).toBe('Routing temporarily unavailable. Please try again in a moment.');
+    });
+  });
+
+  describe('userVisibleResponse', () => {
+    it('should use LLM response for answer_directly', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple greeting',
+        userVisibleResponse: 'Custom greeting from LLM',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('你好');
+      const decision = await agent.processMessage(input, baseState);
+
+      expect(decision.userVisibleResponse).toBe('Custom greeting from LLM');
+    });
+
+    it('should use LLM response for spawn_planner', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'spawn_planner',
+        reason: 'Complex trip planning',
+        userVisibleResponse: 'Planning your Shanghai trip with LLM',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('帮我规划下周去上海出差，包括日程、酒店、会议资料');
+      const decision = await agent.processMessage(input, baseState);
+
+      expect(decision.userVisibleResponse).toBe('Planning your Shanghai trip with LLM');
     });
   });
 });

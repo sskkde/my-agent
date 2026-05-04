@@ -15,7 +15,6 @@ import { createMetricStore } from '../../src/observability/metric-store.js';
 import { createTimelineBuilder } from '../../src/observability/timeline.js';
 import { createTracingCollector, createTracingHooks } from '../../src/observability/tracing.js';
 import { createAuditRecorder } from '../../src/observability/audit-recorder.js';
-import { createForegroundAgent } from '../../src/foreground/foreground-agent.js';
 import type { ToolDefinition } from '../../src/tools/types.js';
 import type { PermissionContext } from '../../src/permissions/types.js';
 import type { SubagentTaskSpec, SubagentResult } from '../../src/subagents/types.js';
@@ -1019,8 +1018,8 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
       const userId = 'user_flow10_001';
       const sessionId = 'sess_flow10_001';
 
-      // Create foreground agent
-      const foregroundAgent = createForegroundAgent();
+      // Use harness foreground agent (has mock LLM adapter)
+      const foregroundAgent = harness.foregroundAgent;
 
       // Start trace
       const traceContext = tracingCollector.startTrace({
@@ -1073,7 +1072,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
       };
 
       // Process status query
-      const decision = foregroundAgent.processMessage(input, state);
+      const decision = await foregroundAgent.processMessage(input, state);
 
       // Record status query audit
       auditRecorder.recordUserInput({
@@ -1089,7 +1088,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
 
       // Assert flow completion
       expect(decision.route).toBe('status_query');
-      expect(decision.reason).toContain('status');
+      expect(decision.reason?.toLowerCase()).toContain('status');
       expect(decision.runtimeAction).toBeDefined();
       expect(decision.runtimeAction?.actionType).toBe('query_active_work');
 
@@ -1102,7 +1101,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
     });
 
     it('should detect various status query patterns', async () => {
-      const foregroundAgent = createForegroundAgent();
+      const foregroundAgent = harness.foregroundAgent;
       const statusQueries = [
         'status?',
         'what is my progress',
@@ -1149,7 +1148,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
           },
         };
 
-        const decision = foregroundAgent.processMessage(input, state);
+        const decision = await foregroundAgent.processMessage(input, state);
         expect(decision.route).toBe('status_query');
       }
     });
@@ -1228,7 +1227,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
       const pendingApprovals = harness.stores.approvalStore.findPendingBySession(sessionId);
 
       // Phase 3: Query status after "restart"
-      const foregroundAgent = createForegroundAgent();
+      const foregroundAgent = harness.foregroundAgent;
 
       const input: ForegroundMessageInput = {
         message: 'status',
@@ -1272,7 +1271,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
         },
       };
 
-      const decision = foregroundAgent.processMessage(input, state);
+      const decision = await foregroundAgent.processMessage(input, state);
 
       // Assert recovery state is correct
       expect(run1?.status).toBe('running');

@@ -13,6 +13,8 @@ import { createToolExecutor } from '../../src/tools/tool-executor.js';
 import { createPermissionEngine } from '../../src/permissions/permission-engine.js';
 import { createGateway } from '../../src/gateway/gateway.js';
 import { createForegroundAgent } from '../../src/foreground/foreground-agent.js';
+import type { LLMAdapter } from '../../src/llm/adapter.js';
+import type { LLMRequest, LLMResult, LLMResponse } from '../../src/llm/types.js';
 import { createRuntimeDispatcher } from '../../src/dispatcher/runtime-dispatcher.js';
 import type { AdapterRegistry, RuntimeAdapter, TargetRuntime, RuntimeAction } from '../../src/dispatcher/types.js';
 import type { PermissionContext, PermissionMode } from '../../src/permissions/types.js';
@@ -227,7 +229,55 @@ export function createE2EHarness(): E2EHarness {
     },
   });
 
-  const foregroundAgent = createForegroundAgent();
+  const mockLLMAdapter: LLMAdapter = {
+    config: {
+      providers: [],
+      defaultTimeoutMs: 10000,
+      enableCircuitBreaker: false,
+    },
+    providers: [],
+    complete: async (request: LLMRequest): Promise<LLMResult> => {
+      const prompt = request.messages?.[request.messages.length - 1]?.content || '';
+      let route = 'answer_directly';
+      let reason = 'Default test response';
+      let userVisibleResponse = 'I understand your message.';
+
+      // Extract user message from prompt
+      const userMessageMatch = prompt.match(/USER MESSAGE: "([^"]+)"/);
+      const userMessage = userMessageMatch ? userMessageMatch[1].toLowerCase() : '';
+
+      if (userMessage.includes('cancel') || userMessage.includes('stop')) {
+        route = 'cancel_or_modify_task';
+        reason = 'Cancel request detected';
+        userVisibleResponse = 'Processing your cancel request...';
+      } else if (userMessage.includes('status') || userMessage.includes('query') || userMessage.includes('progress') || userMessage.includes('how is')) {
+        route = 'status_query';
+        reason = 'Status query detected';
+        userVisibleResponse = 'Checking active work status...';
+      }
+
+      const response: LLMResponse = {
+        id: 'test-response-id',
+        model: 'gpt-4o-mini',
+        content: JSON.stringify({ route, reason, userVisibleResponse }),
+        role: 'assistant',
+        finishReason: 'stop',
+        createdAt: new Date().toISOString(),
+      };
+      return {
+        success: true,
+        response,
+        providerId: 'mock-provider',
+      };
+    },
+    addProvider: () => {},
+    removeProvider: () => {},
+    getProvider: () => undefined,
+    getHealthyProviders: () => [],
+    updateProviderPriority: () => {},
+  };
+
+  const foregroundAgent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
 
   const outboundEnvelopes: OutboundEnvelope[] = [];
 
@@ -316,7 +366,7 @@ export function createE2EHarness(): E2EHarness {
         },
       };
 
-      const decision = foregroundAgent.processMessage(input, state);
+      const decision = await foregroundAgent.processMessage(input, state);
 
       const toolExecutions: Array<{ toolCallId: string; toolName: string; status: string }> = [];
 

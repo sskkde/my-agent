@@ -499,7 +499,7 @@ describe('Flow 5: Background Task E2E Flows', () => {
       const result = await harness.sendMessage(userId, sessionId, statusMessage);
 
       expect(result.foregroundDecision.route).toBe('status_query');
-      expect(result.foregroundDecision.reason).toContain('status');
+      expect(result.foregroundDecision.reason?.toLowerCase()).toContain('status');
 
       const run = backgroundRuntime.getBackgroundRun(bgRunId);
       expect(run).toBeDefined();
