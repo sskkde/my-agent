@@ -12,6 +12,38 @@ import type { CommandContext, AuthContext } from '../../commands/types';
 
 type StreamStatus = 'connecting' | 'connected' | 'disconnected';
 
+const LOCAL_USER_MESSAGE_PREFIX = 'local-user-message';
+
+const createLocalUserMessageEvent = (
+  sessionId: string,
+  content: string,
+  baselineServerMessageCount: number
+): ConsoleTimelineEvent => ({
+  eventId: `${LOCAL_USER_MESSAGE_PREFIX}-${sessionId}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  eventType: 'user_message',
+  sessionId,
+  timestamp: new Date().toISOString(),
+  content,
+  metadata: {
+    localOnly: true,
+    status: 'pending',
+    baselineServerMessageCount,
+  },
+  actor: 'user',
+});
+
+const countServerUserMessagesByContent = (
+  events: ConsoleTimelineEvent[],
+  content: string
+): number => events.filter((event) => (
+  event.eventType === 'user_message' && event.content === content
+)).length;
+
+const getBaselineServerMessageCount = (event: ConsoleTimelineEvent): number => {
+  const value = event.metadata?.baselineServerMessageCount;
+  return typeof value === 'number' ? value : 0;
+};
+
 interface SessionConsoleTabProps {
   setActiveTab?: (tabId: TabId) => void;
   auth?: AuthContext;
@@ -38,6 +70,9 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
   const [sendError, setSendError] = useState<string | null>(null);
 
   const [localCommandEvents, setLocalCommandEvents] = useState<Map<string, ConsoleTimelineEvent[]>>(
+    new Map()
+  );
+  const [localMessageEvents, setLocalMessageEvents] = useState<Map<string, ConsoleTimelineEvent[]>>(
     new Map()
   );
 
@@ -241,6 +276,34 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     });
   }, []);
 
+  const addLocalMessageEvent = useCallback((sessionId: string, content: string): ConsoleTimelineEvent => {
+    const baselineServerMessageCount = countServerUserMessagesByContent(events, content);
+    const event = createLocalUserMessageEvent(sessionId, content, baselineServerMessageCount);
+    setLocalMessageEvents((prev) => {
+      const newMap = new Map(prev);
+      const existingEvents = newMap.get(sessionId) || [];
+      newMap.set(sessionId, [...existingEvents, event]);
+      return newMap;
+    });
+    return event;
+  }, [events]);
+
+  const removeLocalMessageEvent = useCallback((sessionId: string, eventId: string) => {
+    setLocalMessageEvents((prev) => {
+      const existingEvents = prev.get(sessionId);
+      if (!existingEvents) return prev;
+
+      const remainingEvents = existingEvents.filter((event) => event.eventId !== eventId);
+      const newMap = new Map(prev);
+      if (remainingEvents.length > 0) {
+        newMap.set(sessionId, remainingEvents);
+      } else {
+        newMap.delete(sessionId);
+      }
+      return newMap;
+    });
+  }, []);
+
   const handleSend = async () => {
     if (!selectedSessionId || !draft.trim() || sending) return;
 
@@ -250,6 +313,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
       const escapedText = trimmedDraft.slice(2);
       setSending(true);
       setSendError(null);
+      const localEvent = addLocalMessageEvent(selectedSessionId, escapedText);
 
       try {
         await api.sendMessage(selectedSessionId, escapedText);
@@ -258,6 +322,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
         const timelineResponse = await api.getSessionTimeline(selectedSessionId);
         setEvents(timelineResponse.events);
       } catch (err) {
+        removeLocalMessageEvent(selectedSessionId, localEvent.eventId);
         setSendError(err instanceof Error ? err.message : 'Failed to send message');
       } finally {
         setSending(false);
@@ -291,6 +356,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
 
     setSending(true);
     setSendError(null);
+    const localEvent = addLocalMessageEvent(selectedSessionId, trimmedDraft);
 
     try {
       await api.sendMessage(selectedSessionId, trimmedDraft);
@@ -299,6 +365,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
       const timelineResponse = await api.getSessionTimeline(selectedSessionId);
       setEvents(timelineResponse.events);
     } catch (err) {
+      removeLocalMessageEvent(selectedSessionId, localEvent.eventId);
       setSendError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSending(false);
@@ -336,17 +403,51 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     const sessionLocalEvents = selectedSessionId
       ? localCommandEvents.get(selectedSessionId) || []
       : [];
+    const sessionLocalMessageEvents = selectedSessionId
+      ? localMessageEvents.get(selectedSessionId) || []
+      : [];
 
-    const allEvents = [...events, ...sessionLocalEvents];
+    const serverUserMessageCounts = new Map<string, number>();
+    events.forEach((event) => {
+      if (event.eventType !== 'user_message' || !event.content) return;
+      serverUserMessageCounts.set(event.content, (serverUserMessageCounts.get(event.content) || 0) + 1);
+    });
 
-    allEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const nextServerMessageOrdinals = new Map<string, number>();
+    const orderedLocalMessageEvents = [...sessionLocalMessageEvents].sort((a, b) => (
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    ));
+
+    const pendingMessageEvents = orderedLocalMessageEvents.filter((event) => {
+      if (!event.content) return true;
+
+      const baselineServerMessageCount = getBaselineServerMessageCount(event);
+      const serverEventCount = serverUserMessageCounts.get(event.content) || 0;
+      const nextServerMessageOrdinal = nextServerMessageOrdinals.get(event.content) || 1;
+      const matchingServerMessageOrdinal = Math.max(
+        nextServerMessageOrdinal,
+        baselineServerMessageCount + 1
+      );
+
+      if (matchingServerMessageOrdinal > serverEventCount) return true;
+
+      nextServerMessageOrdinals.set(event.content, matchingServerMessageOrdinal + 1);
+      return false;
+    });
+
+    const allEvents = [...events, ...pendingMessageEvents, ...sessionLocalEvents];
+    const dedupedEvents = allEvents.filter((event, index) => (
+      allEvents.findIndex((candidate) => candidate.eventId === event.eventId) === index
+    ));
+
+    dedupedEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     if (!preferences.reasoningVisible) {
-      return allEvents.filter((event) => event.eventType !== 'thinking_summary');
+      return dedupedEvents.filter((event) => event.eventType !== 'thinking_summary');
     }
 
-    return allEvents;
-  }, [events, localCommandEvents, selectedSessionId, preferences.reasoningVisible]);
+    return dedupedEvents;
+  }, [events, localCommandEvents, localMessageEvents, selectedSessionId, preferences.reasoningVisible]);
 
   const renderStreamStatus = () => {
     const statusText = streamStatus === 'connected'
