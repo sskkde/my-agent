@@ -93,6 +93,19 @@ describe('Gateway Integration Tests', () => {
       expect(gatewayEvents[0].sessionId).toBe('session-456');
       expect(gatewayEvents[0].correlationId).toBe(envelope.envelopeId);
     });
+
+    it('should record sourceChannel in gateway.inbound_received event payload', () => {
+      const envelope = gateway.receiveUserMessage('user-123', 'session-456', 'Hello via WebUI!', 'webui');
+
+      const gatewayEvents = capturedEvents.filter(e => e.eventType === 'gateway_inbound_received');
+      expect(gatewayEvents).toHaveLength(1);
+      expect(gatewayEvents[0].payload).toMatchObject({
+        envelopeType: 'human_message',
+        textLength: 'Hello via WebUI!'.length,
+        sourceChannel: 'webui',
+      });
+      expect(envelope.sourceChannel).toBe('webui');
+    });
   });
 
   describe('normalizeInbound', () => {
