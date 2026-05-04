@@ -9,6 +9,7 @@ export type TabId =
   | 'channels'
   | 'instances'
   | 'skills'
+  | 'agents'
   | 'settings';
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings';
@@ -117,6 +118,13 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'Agent skills',
         testId: 'tab-skills',
         iconKey: 'zap',
+      },
+      {
+        id: 'agents',
+        label: '代理配置',
+        description: 'Agent configuration',
+        testId: 'tab-agents',
+        iconKey: 'settings',
       },
     ],
   },

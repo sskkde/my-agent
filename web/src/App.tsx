@@ -10,6 +10,7 @@ import LogsDebugTab from './features/logs/LogsDebugTab';
 import ChannelsTab from './features/channels/ChannelsTab';
 import InstancesTab from './features/instances/InstancesTab';
 import SkillsTab from './features/skills/SkillsTab';
+import AgentsTab from './features/agents/AgentsTab';
 import SettingsTab from './features/settings/SettingsTab';
 import LoginPage from './features/auth/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -60,6 +61,8 @@ function AppContent() {
         return <InstancesTab />;
       case 'skills':
         return <SkillsTab />;
+      case 'agents':
+        return <AgentsTab />;
       case 'settings':
         return <SettingsTab />;
     }

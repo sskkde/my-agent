@@ -30,6 +30,12 @@ import type {
   ProviderSummary,
   CreateProviderRequest,
   UpdateProviderRequest,
+  AgentConfig,
+  AgentGlobalConfig,
+  AgentUserOverride,
+  UpdateAgentGlobalConfigRequest,
+  UpdateAgentUserOverrideRequest,
+  ResetAgentConfigOverrideResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -53,6 +59,10 @@ async function parseResponse<T>(response: Response): Promise<T> {
       code: 'UNKNOWN_ERROR',
       message: `HTTP ${response.status}: ${response.statusText}`,
     });
+  }
+  // Handle 204 No Content - return empty object
+  if (response.status === 204) {
+    return {} as T;
   }
   return response.json();
 }
@@ -397,6 +407,48 @@ export async function testProvider(providerId: string): Promise<TestProviderResp
 export async function getTools(): Promise<ToolsResponse> {
   const response = await fetch(`${API_BASE}/tools`, { credentials: 'include' });
   const result = await parseResponse<{ data: ToolsResponse }>(response);
+  return result.data;
+}
+
+// =============================================================================
+// AgentConfig API - Task 3 (Wave 1)
+// =============================================================================
+
+export async function getAgentConfig(agentId: string): Promise<AgentConfig> {
+  const response = await fetch(`${API_BASE}/agents/${agentId}/config`, {
+    credentials: 'include',
+  });
+  const result = await parseResponse<{ data: AgentConfig }>(response);
+  return result.data;
+}
+
+export async function updateAgentConfig(
+  agentId: string,
+  scope: 'global' | 'override',
+  request: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest
+): Promise<AgentGlobalConfig | AgentUserOverride> {
+  const response = await fetch(`${API_BASE}/agents/${agentId}/config/${scope}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  const result = await parseResponse<{ data: AgentGlobalConfig | AgentUserOverride }>(response);
+  return result.data;
+}
+
+export async function resetAgentConfigOverride(
+  agentId: string
+): Promise<ResetAgentConfigOverrideResponse> {
+  const response = await fetch(`${API_BASE}/agents/${agentId}/config/override`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  // DELETE returns 204 No Content on success
+  if (response.status === 204) {
+    return { success: true };
+  }
+  const result = await parseResponse<{ data: ResetAgentConfigOverrideResponse }>(response);
   return result.data;
 }
 

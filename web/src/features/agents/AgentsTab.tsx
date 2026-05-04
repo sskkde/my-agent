@@ -1,0 +1,572 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  getAgentConfig,
+  updateAgentConfig,
+  resetAgentConfigOverride,
+  getProviders,
+  getTools,
+  getSkills,
+  ApiClientError,
+} from '../../api/client';
+import type {
+  AgentConfig,
+  ProviderSummary,
+  ToolSummary,
+  SkillSummary,
+  UpdateAgentGlobalConfigRequest,
+  UpdateAgentUserOverrideRequest,
+} from '../../api/types';
+
+interface FormData {
+  providerId: string;
+  model: string;
+  systemPrompt: string;
+  routingPrompt: string;
+  allowedToolIds: string[];
+  allowedSkillIds: string[];
+  routingTimeoutMs: number;
+}
+
+const initialFormData: FormData = {
+  providerId: '',
+  model: '',
+  systemPrompt: '',
+  routingPrompt: '',
+  allowedToolIds: [],
+  allowedSkillIds: [],
+  routingTimeoutMs: 300000,
+};
+
+const AGENT_ID = 'foreground.default';
+const MIN_TIMEOUT = 1; // seconds
+const MAX_TIMEOUT = 60; // seconds (matching backend max of 60000ms)
+
+const AgentsTab: React.FC = () => {
+  const [config, setConfig] = useState<AgentConfig | null>(null);
+  const [providers, setProviders] = useState<ProviderSummary[]>([]);
+  const [tools, setTools] = useState<ToolSummary[]>([]);
+  const [skills, setSkills] = useState<SkillSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [activeScope, setActiveScope] = useState<'global' | 'override'>('global');
+  const [hasOverride, setHasOverride] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [configData, providersData, toolsData, skillsData] = await Promise.all([
+        getAgentConfig(AGENT_ID),
+        getProviders(),
+        getTools(),
+        getSkills(),
+      ]);
+
+      setConfig(configData);
+      setProviders(providersData);
+      setTools(toolsData.tools);
+      setSkills(skillsData.skills);
+      setHasOverride(configData.userOverride !== null);
+
+      const effective = configData.effective;
+      setFormData({
+        providerId: effective.providerId,
+        model: effective.model,
+        systemPrompt: effective.systemPrompt ?? '',
+        routingPrompt: effective.routingPrompt ?? '',
+        allowedToolIds: effective.allowedToolIds,
+        allowedSkillIds: effective.allowedSkillIds,
+        routingTimeoutMs: effective.routingTimeoutMs,
+      });
+    } catch (err) {
+      const message = err instanceof ApiClientError ? err.message : '加载配置失败';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleInputChange = (field: keyof FormData, value: string | number | string[]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleToolToggle = (toolId: string) => {
+    setFormData((prev) => {
+      const current = prev.allowedToolIds;
+      const updated = current.includes(toolId)
+        ? current.filter((id) => id !== toolId)
+        : [...current, toolId];
+      return { ...prev, allowedToolIds: updated };
+    });
+  };
+
+  const handleSkillToggle = (skillId: string) => {
+    setFormData((prev) => {
+      const current = prev.allowedSkillIds;
+      const updated = current.includes(skillId)
+        ? current.filter((id) => id !== skillId)
+        : [...current, skillId];
+      return { ...prev, allowedSkillIds: updated };
+    });
+  };
+
+  const handleSelectAllTools = () => {
+    setFormData((prev) => ({
+      ...prev,
+      allowedToolIds: tools.map((t) => t.name),
+    }));
+  };
+
+  const handleDeselectAllTools = () => {
+    setFormData((prev) => ({ ...prev, allowedToolIds: [] }));
+  };
+
+  const handleSelectAllSkills = () => {
+    setFormData((prev) => ({
+      ...prev,
+      allowedSkillIds: skills.map((s) => s.skillId),
+    }));
+  };
+
+  const handleDeselectAllSkills = () => {
+    setFormData((prev) => ({ ...prev, allowedSkillIds: [] }));
+  };
+
+  const validateForm = (): boolean => {
+    if (!formData.providerId) {
+      setSaveError('请选择服务提供商');
+      return false;
+    }
+    if (!formData.model.trim()) {
+      setSaveError('请输入模型ID');
+      return false;
+    }
+    if (formData.routingTimeoutMs < MIN_TIMEOUT * 1000 || formData.routingTimeoutMs > MAX_TIMEOUT * 1000) {
+      setSaveError(`超时时间必须在 ${MIN_TIMEOUT}-${MAX_TIMEOUT} 秒之间`);
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      const updateRequest: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest = {
+        providerId: formData.providerId,
+        model: formData.model,
+        systemPrompt: formData.systemPrompt,
+        routingPrompt: formData.routingPrompt,
+        allowedToolIds: formData.allowedToolIds,
+        allowedSkillIds: formData.allowedSkillIds,
+        routingTimeoutMs: formData.routingTimeoutMs,
+        repairAttempts: config?.effective.repairAttempts ?? 1,
+      };
+
+      await updateAgentConfig(AGENT_ID, activeScope, updateRequest);
+      await fetchData();
+    } catch (err) {
+      const message = err instanceof ApiClientError ? err.message : '保存配置失败';
+      setSaveError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!hasOverride) {
+      if (config) {
+        const global = config.global;
+        setFormData({
+          providerId: global.providerId,
+          model: global.model,
+          systemPrompt: global.systemPrompt ?? '',
+          routingPrompt: global.routingPrompt ?? '',
+          allowedToolIds: global.allowedToolIds,
+          allowedSkillIds: global.allowedSkillIds,
+          routingTimeoutMs: global.routingTimeoutMs,
+        });
+      }
+      return;
+    }
+
+    if (!confirm('确定要重置用户覆盖配置吗？这将恢复到全局默认设置。')) {
+      return;
+    }
+
+    setResetting(true);
+    setSaveError(null);
+
+    try {
+      await resetAgentConfigOverride(AGENT_ID);
+      await fetchData();
+    } catch (err) {
+      const message = err instanceof ApiClientError ? err.message : '重置配置失败';
+      setSaveError(message);
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleScopeChange = (scope: 'global' | 'override') => {
+    setActiveScope(scope);
+    setSaveError(null);
+
+    if (config) {
+      if (scope === 'global') {
+        const global = config.global;
+        setFormData({
+          providerId: global.providerId,
+          model: global.model,
+          systemPrompt: global.systemPrompt ?? '',
+          routingPrompt: global.routingPrompt ?? '',
+          allowedToolIds: global.allowedToolIds,
+          allowedSkillIds: global.allowedSkillIds,
+          routingTimeoutMs: global.routingTimeoutMs,
+        });
+      } else if (config.userOverride) {
+        const override = config.userOverride;
+        setFormData({
+          providerId: override.providerId,
+          model: override.model,
+          systemPrompt: override.systemPrompt ?? '',
+          routingPrompt: override.routingPrompt ?? '',
+          allowedToolIds: override.allowedToolIds,
+          allowedSkillIds: override.allowedSkillIds,
+          routingTimeoutMs: override.routingTimeoutMs,
+        });
+      }
+    }
+  };
+
+  const getProviderDisplayName = (providerId: string): string => {
+    const provider = providers.find((p) => p.providerId === providerId);
+    return provider?.displayName || providerId;
+  };
+
+  if (loading) {
+    return (
+      <div data-testid="agents-panel" className="agents-panel">
+        <div className="content-header">
+          <h2>代理配置</h2>
+        </div>
+        <div className="content-body">
+          <div className="agents-loading" data-testid="agents-loading">
+            加载中...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div data-testid="agents-panel" className="agents-panel">
+        <div className="content-header">
+          <h2>代理配置</h2>
+        </div>
+        <div className="content-body">
+          <div className="agents-error" data-testid="agents-error">
+            <p>{error}</p>
+            <button
+              className="retry-button"
+              onClick={fetchData}
+              data-testid="agents-retry-btn"
+            >
+              重试
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="agents-panel" className="agents-panel">
+      <div className="content-header">
+        <h2>代理配置</h2>
+      </div>
+
+      <div className="content-body">
+        <div className="agents-section">
+          <h3>配置范围</h3>
+          <div className="scope-selector" data-testid="scope-selector">
+            <button
+              className={`scope-btn ${activeScope === 'global' ? 'active' : ''}`}
+              onClick={() => handleScopeChange('global')}
+              data-testid="scope-global-btn"
+            >
+              全局默认
+            </button>
+            <button
+              className={`scope-btn ${activeScope === 'override' ? 'active' : ''}`}
+              onClick={() => handleScopeChange('override')}
+              data-testid="scope-override-btn"
+            >
+              用户覆盖
+              {hasOverride && <span className="override-badge">已设置</span>}
+            </button>
+          </div>
+          <p className="scope-hint">
+            {activeScope === 'global'
+              ? '修改全局默认配置，影响所有用户。'
+              : '设置用户特定的覆盖配置，仅影响当前用户。'}
+          </p>
+        </div>
+
+        <div className="agents-section">
+          <h3>模型配置</h3>
+
+          <div className="form-group">
+            <label htmlFor="providerId">服务提供商 *</label>
+            <select
+              id="providerId"
+              value={formData.providerId}
+              onChange={(e) => handleInputChange('providerId', e.target.value)}
+              className="input-field"
+              data-testid="provider-select"
+            >
+              <option value="">选择提供商...</option>
+              {providers.map((provider) => (
+                <option key={provider.providerId} value={provider.providerId}>
+                  {provider.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="model">模型 *</label>
+            <input
+              id="model"
+              type="text"
+              value={formData.model}
+              onChange={(e) => handleInputChange('model', e.target.value)}
+              placeholder="例如: gpt-4, claude-3-opus, llama2"
+              className="input-field"
+              data-testid="model-input"
+            />
+          </div>
+        </div>
+
+        <div className="agents-section">
+          <h3>提示词配置</h3>
+
+          <div className="form-group">
+            <label htmlFor="systemPrompt">系统提示词</label>
+            <textarea
+              id="systemPrompt"
+              value={formData.systemPrompt}
+              onChange={(e) => handleInputChange('systemPrompt', e.target.value)}
+              placeholder="输入系统提示词..."
+              className="input-field textarea-field"
+              rows={4}
+              data-testid="system-prompt-textarea"
+            />
+            <span className="form-hint">定义代理的基本行为和角色。</span>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="routingPrompt">路由提示词</label>
+            <textarea
+              id="routingPrompt"
+              value={formData.routingPrompt}
+              onChange={(e) => handleInputChange('routingPrompt', e.target.value)}
+              placeholder="输入路由提示词..."
+              className="input-field textarea-field"
+              rows={4}
+              data-testid="routing-prompt-textarea"
+            />
+            <span className="form-hint">定义任务路由和决策逻辑。</span>
+          </div>
+        </div>
+
+        <div className="agents-section">
+          <h3>允许的工具</h3>
+          <div className="multi-select-actions">
+            <button
+              className="action-link"
+              onClick={handleSelectAllTools}
+              data-testid="select-all-tools-btn"
+            >
+              全选
+            </button>
+            <button
+              className="action-link"
+              onClick={handleDeselectAllTools}
+              data-testid="deselect-all-tools-btn"
+            >
+              取消全选
+            </button>
+          </div>
+          <div className="multi-select-grid" data-testid="tools-multi-select">
+            {tools.map((tool) => (
+              <label key={tool.name} className="multi-select-item">
+                <input
+                  type="checkbox"
+                  checked={formData.allowedToolIds.includes(tool.name)}
+                  onChange={() => handleToolToggle(tool.name)}
+                  data-testid={`tool-checkbox-${tool.name}`}
+                />
+                <span className="multi-select-label">
+                  <span className="multi-select-name">{tool.name}</span>
+                  <span className="multi-select-desc">{tool.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {tools.length === 0 && (
+            <p className="empty-hint">暂无可用的工具</p>
+          )}
+        </div>
+
+        <div className="agents-section">
+          <h3>允许的技能</h3>
+          <div className="multi-select-actions">
+            <button
+              className="action-link"
+              onClick={handleSelectAllSkills}
+              data-testid="select-all-skills-btn"
+            >
+              全选
+            </button>
+            <button
+              className="action-link"
+              onClick={handleDeselectAllSkills}
+              data-testid="deselect-all-skills-btn"
+            >
+              取消全选
+            </button>
+          </div>
+          <div className="multi-select-grid" data-testid="skills-multi-select">
+            {skills.map((skill) => (
+              <label key={skill.skillId} className="multi-select-item">
+                <input
+                  type="checkbox"
+                  checked={formData.allowedSkillIds.includes(skill.skillId)}
+                  onChange={() => handleSkillToggle(skill.skillId)}
+                  data-testid={`skill-checkbox-${skill.skillId}`}
+                />
+                <span className="multi-select-label">
+                  <span className="multi-select-name">{skill.name}</span>
+                  <span className={`type-badge ${skill.type.toLowerCase()}`}>
+                    {skill.type}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {skills.length === 0 && (
+            <p className="empty-hint">暂无可用的技能</p>
+          )}
+        </div>
+
+        <div className="agents-section">
+          <h3>超时配置</h3>
+          <div className="form-group">
+            <label htmlFor="routingTimeoutMs">
+              路由超时时间 (秒) * 
+              <span className="timeout-range">{MIN_TIMEOUT}-{MAX_TIMEOUT}</span>
+            </label>
+            <input
+              id="routingTimeoutMs"
+              type="number"
+              min={MIN_TIMEOUT}
+              max={MAX_TIMEOUT}
+              value={Math.round(formData.routingTimeoutMs / 1000)}
+              onChange={(e) => handleInputChange('routingTimeoutMs', (parseInt(e.target.value, 10) || MIN_TIMEOUT) * 1000)}
+              className="input-field timeout-input"
+              data-testid="timeout-input"
+            />
+            <span className="form-hint">
+              路由请求的超时时间，范围 {MIN_TIMEOUT}-{MAX_TIMEOUT} 秒。
+            </span>
+          </div>
+        </div>
+
+        {saveError && (
+          <div className="agents-save-error" data-testid="agents-save-error">
+            {saveError}
+          </div>
+        )}
+
+        <div className="agents-actions">
+          <button
+            className="secondary-button"
+            onClick={handleReset}
+            disabled={saving || resetting}
+            data-testid="agents-reset-btn"
+          >
+            {resetting ? '重置中...' : '重置'}
+          </button>
+          <button
+            className="primary-button"
+            onClick={handleSave}
+            disabled={saving || resetting}
+            data-testid="agents-save-btn"
+          >
+            {saving ? '保存中...' : '保存配置'}
+          </button>
+        </div>
+
+        {config && (
+          <div className="agents-section agents-section--info">
+            <h3>当前生效配置</h3>
+            <div className="effective-config">
+              <div className="effective-item">
+                <span className="effective-label">提供商:</span>
+                <span className="effective-value" data-testid="effective-provider">
+                  {getProviderDisplayName(config.effective.providerId)}
+                </span>
+              </div>
+              <div className="effective-item">
+                <span className="effective-label">模型:</span>
+                <span className="effective-value" data-testid="effective-model">
+                  {config.effective.model}
+                </span>
+              </div>
+              <div className="effective-item">
+                <span className="effective-label">路由超时:</span>
+                <span className="effective-value" data-testid="effective-timeout">
+                  {Math.round(config.effective.routingTimeoutMs / 1000)} 秒
+                </span>
+              </div>
+              <div className="effective-item">
+                <span className="effective-label">允许工具:</span>
+                <span className="effective-value" data-testid="effective-tools">
+                  {config.effective.allowedToolIds.length} 个
+                </span>
+              </div>
+              <div className="effective-item">
+                <span className="effective-label">允许技能:</span>
+                <span className="effective-value" data-testid="effective-skills">
+                  {config.effective.allowedSkillIds.length} 个
+                </span>
+              </div>
+              <div className="effective-item">
+                <span className="effective-label">用户覆盖:</span>
+                <span className={`effective-value ${hasOverride ? 'has-override' : ''}`} data-testid="effective-override">
+                  {hasOverride ? '已启用' : '未设置'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AgentsTab;

@@ -83,6 +83,9 @@ export interface SendMessageResponse {
   accepted: boolean;
   turnId?: string;
   message?: string;
+  status: string;
+  correlationId: string;
+  envelopeId: string;
 }
 
 export interface RunInfo {
@@ -384,4 +387,74 @@ export interface ToolSummary {
 export interface ToolsResponse {
   tools: ToolSummary[];
   total: number;
+}
+
+// =============================================================================
+// AgentConfig Types - Task 3 (Wave 1)
+// =============================================================================
+
+export interface AgentGlobalConfig {
+  providerId: string;
+  model: string;
+  systemPrompt: string;
+  routingPrompt: string;
+  allowedToolIds: string[];
+  allowedSkillIds: string[];
+  routingTimeoutMs: number;
+  repairAttempts: number;
+}
+
+export interface AgentUserOverride {
+  providerId: string;
+  model: string;
+  systemPrompt: string;
+  routingPrompt: string;
+  allowedToolIds: string[];
+  allowedSkillIds: string[];
+  routingTimeoutMs: number;
+  repairAttempts: number;
+}
+
+export interface AgentEffectiveConfig {
+  providerId: string;
+  model: string;
+  systemPrompt: string;
+  routingPrompt: string;
+  allowedToolIds: string[];
+  allowedSkillIds: string[];
+  routingTimeoutMs: number;
+  repairAttempts: number;
+}
+
+export interface AgentConfig {
+  agentId: string;
+  global: AgentGlobalConfig;
+  userOverride: AgentUserOverride | null;
+  effective: AgentEffectiveConfig;
+}
+
+export interface UpdateAgentGlobalConfigRequest {
+  providerId?: string;
+  model?: string;
+  systemPrompt?: string;
+  routingPrompt?: string;
+  allowedToolIds?: string[];
+  allowedSkillIds?: string[];
+  routingTimeoutMs?: number;
+  repairAttempts?: number;
+}
+
+export interface UpdateAgentUserOverrideRequest {
+  providerId?: string;
+  model?: string;
+  systemPrompt?: string;
+  routingPrompt?: string;
+  allowedToolIds?: string[];
+  allowedSkillIds?: string[];
+  routingTimeoutMs?: number;
+  repairAttempts?: number;
+}
+
+export interface ResetAgentConfigOverrideResponse {
+  success: boolean;
 }
