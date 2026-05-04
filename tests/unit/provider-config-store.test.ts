@@ -78,6 +78,31 @@ describe('provider-config-store', () => {
       expect(result.apiKeyLast4).toBeNull();
     });
 
+    it('should not treat blank Ollama base URL as configured', () => {
+      const result = store.create({
+        providerId: 'prov-blank-ollama',
+        userId: 'user-001',
+        providerType: 'ollama',
+        displayName: 'Blank Ollama',
+        baseUrl: '   ',
+      });
+
+      expect(result.configured).toBe(false);
+    });
+
+    it('should treat Ollama base URL as configured without API key', () => {
+      const result = store.create({
+        providerId: 'prov-local-ollama',
+        userId: 'user-001',
+        providerType: 'ollama',
+        displayName: 'Local Ollama',
+        baseUrl: 'http://localhost:11434',
+      });
+
+      expect(result.configured).toBe(true);
+      expect(result.apiKeyLast4).toBeNull();
+    });
+
     it('should create with all optional fields', () => {
       const result = store.create({
         providerId: 'prov-001',

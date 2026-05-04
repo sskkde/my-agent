@@ -78,6 +78,14 @@ interface ProviderConfigRow {
   updated_at: string;
 }
 
+function isConfiguredProvider(providerType: ProviderType, encryptedApiKey: string | null, baseUrl: string | null): boolean {
+  if (providerType === 'ollama') {
+    return typeof baseUrl === 'string' && baseUrl.trim().length > 0;
+  }
+
+  return encryptedApiKey !== null;
+}
+
 class ProviderConfigStoreImpl implements ProviderConfigStore {
   private connection: ConnectionManager;
 
@@ -136,7 +144,7 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       lastTestedAt: null,
       createdAt: now,
       updatedAt: now,
-      configured: encryptedApiKey !== null,
+      configured: isConfiguredProvider(input.providerType, encryptedApiKey, input.baseUrl ?? null),
       apiKeyLast4
     };
   }
@@ -288,7 +296,7 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       lastTestedAt: row.last_tested_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      configured: row.encrypted_api_key !== null,
+      configured: isConfiguredProvider(row.provider_type, row.encrypted_api_key, row.base_url),
       apiKeyLast4: row.api_key_last4
     };
   }
