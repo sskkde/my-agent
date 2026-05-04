@@ -227,6 +227,188 @@ The agent platform is built around a modular architecture with clear separation 
 | `npm run db:health` | Check database health |
 | `npm run db:backup` | Backup database |
 
+## Control and Agent Configuration
+
+The platform supports fine-grained control over LLM behavior through agent configuration with scope-based overrides.
+
+### Agent Configuration Scope
+
+Agent configuration follows a hierarchical scope model:
+
+- **Global Scope**: Default configuration applied to all users
+- **User Scope**: Per-user overrides that take precedence over global settings
+
+### Configuration Precedence
+
+When resolving agent configuration, the following precedence is applied (highest to lowest):
+
+1. **Session Override**: Temporary runtime overrides (future feature)
+2. **Agent Config**: Per-agent settings (e.g., `foreground.default`)
+3. **User Provider Defaults**: User-configured LLM provider preferences
+4. **Environment Providers**: System-level provider configuration from environment variables
+
+### Model/Provider Precedence
+
+For LLM provider and model selection:
+
+```
+session_override > agent_config > user_provider_defaults > env_providers
+```
+
+### Configuration Fallback Behavior
+
+When a provider/model fails:
+
+1. **Best-effort fallback**: Automatically try alternative providers
+2. **Observable events**: Log and emit events for fallback attempts
+3. **User notification**: Inform user when fallback occurs
+
+### LLM Bypass Policy
+
+The platform implements minimal LLM bypass for specific scenarios:
+
+1. **Approval Metadata**: Routes approval responses directly without LLM processing
+2. **No-Provider Scenarios**: Returns immediate error when no LLM provider is configured
+
+```typescript
+// Bypass 1: Approval responses
+if (input.metadata?.isApprovalResponse) {
+  return { route: 'approval_handler', ... };
+}
+
+// Bypass 2: No provider available
+if (!this.llmAdapter) {
+  return { route: 'answer_directly', userVisibleResponse: 'No AI provider configured.' };
+}
+```
+
+### V1 API Endpoints
+
+#### Agent Configuration API
+
+```bash
+# Get agent configuration (returns global, userOverride, and effective config)
+GET /api/v1/agents/:agentId/config
+
+# Update global default configuration (admin scope)
+PATCH /api/v1/agents/:agentId/config
+Content-Type: application/json
+{
+  "providerId": "openrouter",
+  "model": "anthropic/claude-3-opus",
+  "systemPrompt": "You are a helpful assistant...",
+  "routingPrompt": "Route tasks based on complexity...",
+  "allowedToolIds": ["search", "read_file"],
+  "allowedSkillIds": ["code-review"],
+  "routingTimeoutMs": 10000,
+  "repairAttempts": 2
+}
+
+# Get current user's override configuration
+GET /api/v1/agents/:agentId/config/override
+
+# Update user override configuration
+PATCH /api/v1/agents/:agentId/config/override
+Content-Type: application/json
+{
+  "providerId": "ollama",
+  "model": "llama2",
+  "systemPrompt": "Personal system prompt...",
+  "routingPrompt": "Personal routing prompt...",
+  "allowedToolIds": ["search"],
+  "allowedSkillIds": [],
+  "routingTimeoutMs": 15000,
+  "repairAttempts": 3
+}
+
+# Reset user override to global defaults
+DELETE /api/v1/agents/:agentId/config/override
+```
+
+#### Provider Configuration API
+
+```bash
+# List all configured providers
+GET /api/v1/providers
+
+# Get a specific provider configuration
+GET /api/v1/providers/:providerId
+
+# Create a new provider configuration
+POST /api/v1/providers
+Content-Type: application/json
+{
+  "providerType": "openrouter",
+  "displayName": "OpenRouter",
+  "apiKey": "sk-or-...",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "selectedModel": "anthropic/claude-3-opus"
+}
+
+# Update a provider configuration
+PATCH /api/v1/providers/:providerId
+Content-Type: application/json
+{
+  "displayName": "Updated Name",
+  "enabled": true
+}
+
+# Delete a provider configuration
+DELETE /api/v1/providers/:providerId
+
+# Test a provider configuration
+POST /api/v1/providers/:providerId/test
+```
+
+#### Session Management API
+
+```bash
+# Create a new session
+POST /api/v1/sessions
+Content-Type: application/json
+{
+  "userId": "user-123"
+}
+
+# Get session details
+GET /api/v1/sessions/:sessionId
+
+# Send a message to a session
+POST /api/v1/sessions/:sessionId/messages
+Content-Type: application/json
+{
+  "text": "Hello, how are you?"
+}
+
+# Get session transcript
+GET /api/v1/sessions/:sessionId/transcript
+```
+
+#### Tool Catalog API
+
+```bash
+# List all available tools
+GET /api/v1/tools
+
+# Get a specific tool definition
+GET /api/v1/tools/:toolId
+```
+
+### Configuration Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `displayName` | string | Human-readable agent name |
+| `enabled` | boolean | Whether the agent is active |
+| `systemPrompt` | string | Base system prompt for the agent |
+| `routingPrompt` | string | Custom routing instructions |
+| `providerId` | string | Preferred LLM provider |
+| `model` | string | Specific model to use |
+| `allowedToolIds` | string[] | Permitted tool IDs |
+| `allowedSkillIds` | string[] | Permitted skill IDs |
+| `routingTimeoutMs` | number | LLM routing timeout |
+| `repairAttempts` | number | JSON repair retry count |
+
 ## License
 
 MIT
