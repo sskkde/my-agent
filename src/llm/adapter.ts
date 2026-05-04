@@ -10,6 +10,7 @@ import type {
   ProviderConfig,
   AllProvidersFailedError,
 } from './types';
+import type { ExactContextUsage } from '../api/types';
 import type { CircuitBreakerConfig } from './circuit-breaker';
 import type { RuntimeError, ErrorSource } from '../shared/errors';
 import type { RetryPolicy } from '../shared/retry';
@@ -63,6 +64,12 @@ export interface LLMAdapter {
    * Tries providers in priority order until one succeeds
    */
   complete(request: LLMRequest): Promise<LLMResult>;
+
+  /**
+   * Stream a completion request with automatic failover
+   * Falls back to complete() if provider doesn't support streaming
+   */
+  stream(request: LLMRequest): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }>;
 
   /**
    * Add a provider to the adapter
@@ -196,6 +203,29 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
     };
   };
 
+  async function* stream(request: LLMRequest): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }> {
+    const healthyProviders = getHealthyProviders();
+
+    if (healthyProviders.length === 0) {
+      return;
+    }
+
+    for (const provider of healthyProviders) {
+      if (provider.stream) {
+        try {
+          for await (const chunk of provider.stream(request)) {
+            yield { delta: chunk, providerId: provider.id, model: request.model };
+          }
+          return;
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    return;
+  }
+
   const addProvider = (provider: LLMProvider): void => {
     providers.push(provider);
     // Keep sorted by priority
@@ -229,6 +259,7 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
       return [...providers];
     },
     complete,
+    stream,
     addProvider,
     removeProvider,
     getProvider,

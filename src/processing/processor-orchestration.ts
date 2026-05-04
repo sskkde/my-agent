@@ -25,6 +25,8 @@ import type { EventStore } from '../storage/event-store.js';
 import type { ProviderConfigStore } from '../storage/provider-config-store.js';
 import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-store.js';
 import type { SessionStore } from '../storage/session-store.js';
+import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js';
+import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js';
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js';
 
 /**
@@ -117,6 +119,11 @@ export interface ProcessorOrchestrationDeps {
   sessionStore?: SessionStore;
   /** Runs processing with request-scoped LLM providers for the current user */
   runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>;
+  /** Observer for emitting processing status events (channel-neutral) */
+  processingObserver?: {
+    emitStatus(payload: ProcessingStatusPayload): void;
+    emitToken?(payload: TokenStreamPayload): void;
+  };
 }
 
 /**
@@ -133,6 +140,36 @@ export interface CreateOrchestrationProcessorOptions {
   sessionProviderSelection?: {
     selectedProviderId?: string;
     selectedModel?: string;
+  };
+}
+
+function emitStatus(
+  deps: ProcessorOrchestrationDeps,
+  payload: ProcessingStatusPayload
+): void {
+  deps.processingObserver?.emitStatus(payload);
+}
+
+function buildStatusPayload(
+  sessionId: string,
+  attemptId: string,
+  stage: ProcessingStage,
+  providerId?: string,
+  model?: string,
+  activeTools: ProcessingToolStatus[] = [],
+  error?: string
+): ProcessingStatusPayload {
+  return {
+    sessionId,
+    attemptId,
+    stage,
+    stageLabel: ProcessingStageLabel[stage],
+    providerId,
+    model,
+    contextUsage: null, // Exact usage not available at this layer
+    activeTools,
+    timestamp: new Date().toISOString(),
+    error,
   };
 }
 
@@ -167,6 +204,7 @@ export function createOrchestrationProcessor(
     );
 
     const resolvedProviderId = providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined;
+    const resolvedModel = providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined;
 
     const execute = async (): Promise<MessageProcessorOutput> => {
       let output: MessageProcessorOutput;
@@ -175,12 +213,30 @@ export function createOrchestrationProcessor(
         const hasNoProvider = providerResolution?.type === 'no-provider' || deps.llmAdapter.providers.length === 0;
 
         if (hasNoProvider) {
+          emitStatus(deps, buildStatusPayload(
+            input.sessionId,
+            input.correlationId,
+            'failed',
+            undefined,
+            undefined,
+            [],
+            'No LLM providers configured'
+          ));
+          
           output = createErrorOutput(
             input.correlationId,
             'PROCESSING_ERROR',
             'No LLM providers configured. Message received but cannot be processed.'
           );
         } else {
+          emitStatus(deps, buildStatusPayload(
+            input.sessionId,
+            input.correlationId,
+            'receiving',
+            resolvedProviderId,
+            resolvedModel
+          ));
+
           const hydratedSession = deps.gateway.assembleHydratedState(
             input.userId,
             input.sessionId,
@@ -192,23 +248,48 @@ export function createOrchestrationProcessor(
           const agentConfig = deps.agentConfigStore?.getByUser(input.userId);
 
           const resolvedProvider = providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined;
-          const resolvedModel = providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined;
+          const resolvedModelInner = providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined;
 
           const foregroundState = buildForegroundSessionState(
             hydratedSession,
             defaultPersonaId,
             defaultPersonaName,
             resolvedProvider,
-            resolvedModel,
+            resolvedModelInner,
             agentConfig ?? undefined
           );
 
+          emitStatus(deps, buildStatusPayload(
+            input.sessionId,
+            input.correlationId,
+            'routing',
+            resolvedProviderId,
+            resolvedModel
+          ));
+
+          emitStatus(deps, buildStatusPayload(
+            input.sessionId,
+            input.correlationId,
+            'model_call',
+            resolvedProviderId,
+            resolvedModel
+          ));
+
           const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
 
-          // Step 5: Handle the decision route and produce output
-          output = await handleDecisionRoute(input.correlationId, decision, deps, input);
+          output = await handleDecisionRoute(input.correlationId, decision, deps, input, resolvedProviderId, resolvedModel);
         }
       } catch (error) {
+        emitStatus(deps, buildStatusPayload(
+          input.sessionId,
+          input.correlationId,
+          'failed',
+          resolvedProviderId,
+          resolvedModel,
+          [],
+          error instanceof Error ? error.message : 'Unknown processing error'
+        ));
+        
         output = createErrorOutput(
           input.correlationId,
           'PROCESSING_ERROR',
@@ -216,8 +297,24 @@ export function createOrchestrationProcessor(
         );
       }
 
-      // Step 6: Persist transcript (always execute, even on error)
+      emitStatus(deps, buildStatusPayload(
+        input.sessionId,
+        input.correlationId,
+        'persisting',
+        resolvedProviderId,
+        resolvedModel
+      ));
+
       persistTurnTranscript(input, output, deps.transcriptStore);
+
+      emitStatus(deps, buildStatusPayload(
+        input.sessionId,
+        input.correlationId,
+        'completed',
+        resolvedProviderId,
+        resolvedModel,
+        []
+      ));
 
       return output;
     };
@@ -279,7 +376,9 @@ async function handleDecisionRoute(
   correlationId: string,
   decision: import('../foreground/types.js').ForegroundDecision,
   deps: ProcessorOrchestrationDeps,
-  input: MessageProcessorInput
+  input: MessageProcessorInput,
+  resolvedProviderId?: string,
+  resolvedModel?: string
 ): Promise<MessageProcessorOutput> {
   // Load AgentConfig for allowlist enforcement
   const agentConfig = deps.agentConfigStore?.getByUser(input.userId) ?? null;
@@ -312,7 +411,7 @@ async function handleDecisionRoute(
       return handleStatusQueryRoute(correlationId, decision, deps);
 
     case 'dispatch_tool':
-      return handleDispatchToolRoute(correlationId, decision, deps, input, filteredTools);
+      return handleDispatchToolRoute(correlationId, decision, deps, input, filteredTools, resolvedProviderId, resolvedModel);
 
     case 'spawn_planner':
       return handleSpawnPlannerRoute(correlationId, decision, deps, input);
@@ -367,7 +466,9 @@ async function handleDispatchToolRoute(
   decision: import('../foreground/types.js').ForegroundDecision,
   deps: ProcessorOrchestrationDeps,
   input: MessageProcessorInput,
-  filteredTools: string[] | undefined
+  filteredTools: string[] | undefined,
+  resolvedProviderId?: string,
+  resolvedModel?: string
 ): Promise<MessageProcessorOutput> {
   // SECURITY: Reject dispatch if no tools remain after filtering
   if (!filteredTools || filteredTools.length === 0) {
@@ -378,6 +479,20 @@ async function handleDispatchToolRoute(
       { route: decision.route, originalSuggestions: decision.suggestedTools }
     );
   }
+
+  const activeTools: ProcessingToolStatus[] = filteredTools.map(toolId => ({
+    toolId,
+    status: 'running' as const,
+  }));
+  
+  emitStatus(deps, buildStatusPayload(
+    input.sessionId,
+    input.correlationId,
+    'tool_call',
+    resolvedProviderId,
+    resolvedModel,
+    activeTools
+  ));
 
   if (decision.runtimeAction) {
     try {

@@ -160,7 +160,9 @@ export type ConsoleTimelineEventType =
   | 'run_failed'
   | 'run_cancelled'
   | 'system_status'
-  | 'error';
+  | 'error'
+  | 'processing_status'
+  | 'token_stream';
 
 export interface ConsoleTimelineEvent {
   eventId: string;
@@ -170,6 +172,75 @@ export interface ConsoleTimelineEvent {
   content?: string;
   metadata?: Record<string, unknown>;
   actor?: string;
+}
+
+// =============================================================================
+// Live Streaming and Processing Status Types
+// =============================================================================
+
+export type StreamStatus = 'connecting' | 'connected' | 'disconnected';
+
+export type ProcessingStage =
+  | 'idle'
+  | 'receiving'
+  | 'routing'
+  | 'model_call'
+  | 'tool_call'
+  | 'streaming'
+  | 'persisting'
+  | 'completed'
+  | 'failed';
+
+export const ProcessingStageLabel: Record<ProcessingStage, string> = {
+  idle: '空闲',
+  receiving: '接收',
+  routing: '路由',
+  model_call: '模型调用',
+  tool_call: '工具调用',
+  streaming: '流式输出',
+  persisting: '持久化',
+  completed: '完成',
+  failed: '失败',
+};
+
+export interface ProcessingToolStatus {
+  toolId: string;
+  status: 'running' | 'completed' | 'failed';
+  label?: string;
+}
+
+/** Exact token counts only. No estimated or approximate fields. */
+export interface ExactContextUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  maxContextTokens?: number;
+}
+
+export interface ProcessingStatusPayload {
+  sessionId: string;
+  attemptId: string;
+  messageId?: string;
+  stage: ProcessingStage;
+  stageLabel: string;
+  providerId?: string;
+  model?: string;
+  contextUsage?: ExactContextUsage | null;
+  activeTools: ProcessingToolStatus[];
+  timestamp: string;
+  error?: string;
+}
+
+/** SAFETY: delta contains assistant-visible text only. Raw chain-of-thought MUST NOT be included. */
+export interface TokenStreamPayload {
+  sessionId: string;
+  attemptId: string;
+  messageId?: string;
+  sequence: number;
+  delta: string;
+  accumulated?: string;
+  isFinal?: boolean;
+  timestamp: string;
 }
 
 export interface ConsoleSessionInfo {

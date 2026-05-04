@@ -45,6 +45,9 @@ class FakeLLMAdapter implements LLMAdapter {
     };
   }
 
+  async *stream(): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: import('../../../src/api/types.js').ExactContextUsage }> {
+  }
+
   addProvider(provider: LLMProvider): void {
     this.providers.push(provider);
   }

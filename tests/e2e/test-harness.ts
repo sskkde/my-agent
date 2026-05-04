@@ -270,6 +270,7 @@ export function createE2EHarness(): E2EHarness {
         providerId: 'mock-provider',
       };
     },
+    stream: async function* () {},
     addProvider: () => {},
     removeProvider: () => {},
     getProvider: () => undefined,

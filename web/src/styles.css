@@ -1721,6 +1721,40 @@ body {
   background-color: #1d4ed8;
 }
 
+/* Processing Status Indicator */
+.processing-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: var(--bg-secondary, #f8f9fa);
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  flex-wrap: wrap;
+}
+
+.processing-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-primary, #374151);
+}
+
+/* Streaming Draft */
+.timeline-event-card--streaming-draft {
+  opacity: 0.8;
+  border-left: 3px solid var(--accent, #3b82f6);
+}
+
+.timeline-event-card--streaming-draft .timeline-event-label {
+  color: var(--accent, #3b82f6);
+  font-style: italic;
+}
+
 /* Timeline Container */
 .session-timeline-container {
   flex: 1;
@@ -1906,6 +1940,17 @@ body {
   .session-item {
     padding: 16px 12px;
     min-height: 44px;
+  }
+
+  /* Processing status adjustments for mobile */
+  .processing-status-indicator {
+    padding: 6px 12px;
+    gap: 6px;
+  }
+
+  .processing-status-chip {
+    font-size: 11px;
+    padding: 2px 6px;
   }
 }
 

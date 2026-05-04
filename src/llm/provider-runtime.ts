@@ -227,6 +227,21 @@ export function createProviderScopedLLMAdapter(
     return scopedAdapter.complete(request);
   };
 
+  const stream: LLMAdapter['stream'] = async function* (request) {
+    const scopedAdapter = createLLMAdapter({
+      providers: [],
+      defaultTimeoutMs: DEFAULT_TIMEOUT_MS,
+      enableCircuitBreaker: true,
+      enableLogging: false,
+    });
+
+    for (const provider of currentProviders()) {
+      scopedAdapter.addProvider(provider);
+    }
+
+    yield* scopedAdapter.stream(request);
+  };
+
   return {
     get config() {
       return {
@@ -240,6 +255,7 @@ export function createProviderScopedLLMAdapter(
       return currentProviders();
     },
     complete,
+    stream,
     addProvider() {
       throw new Error('Cannot add providers directly to a request-scoped adapter');
     },

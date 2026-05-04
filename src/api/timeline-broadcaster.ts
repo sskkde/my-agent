@@ -1,84 +1,44 @@
-import type { ConsoleTimelineEvent } from './types.js';
+import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from './types.js';
 import type { ConsoleTimelineService } from './console-timeline.js';
 
-/**
- * Represents a connected SSE client for timeline events.
- */
+export type SseEnvelope =
+  | { type: 'snapshot'; events: ConsoleTimelineEvent[]; timestamp: string }
+  | { type: 'heartbeat'; timestamp: string }
+  | { type: 'timeline_event'; event: ConsoleTimelineEvent; timestamp: string }
+  | { type: 'processing_status'; status: ProcessingStatusPayload }
+  | { type: 'token_stream'; token: TokenStreamPayload };
+
 export interface TimelineConnection {
-  /** Unique identifier for this connection */
   connectionId: string;
-  /** The session this connection is subscribed to */
   sessionId: string;
-  /** Write an event to this connection */
   write(event: TimelineSseEvent): void;
-  /** Close this connection */
   close(): void;
-  /** Whether the connection is still active */
   isActive(): boolean;
 }
 
-/**
- * SSE event format for timeline events.
- */
 export interface TimelineSseEvent {
-  /** Event type for SSE id field */
   id?: string;
-  /** Event name for SSE event field */
   event?: string;
-  /** Event data payload */
   data: unknown;
 }
 
-/**
- * Options for subscribing to timeline events.
- */
 export interface SubscribeOptions {
-  /** Send events after this event ID (exclusive) for catch-up */
   afterEventId?: string;
-  /** Last-Event-ID header value from client (takes precedence over after) */
   lastEventId?: string;
-  /** Write function for SSE output (required for catch-up and broadcast) */
   write?: WriteFn;
-  /** Close function for connection cleanup */
   closeFn?: () => void;
 }
 
-/**
- * Minimal timeline broadcaster for session-scoped SSE.
- * No token streaming, no presence tracking, no multi-topic pub/sub, no durable queue.
- */
 export interface TimelineBroadcaster {
-  /**
-   * Subscribe to timeline events for a session.
-   * Returns a connection object that can be used to write events.
-   */
   subscribe(sessionId: string, options?: SubscribeOptions): TimelineConnection;
-
-  /**
-   * Broadcast an event to all active connections for a session.
-   */
   broadcast(sessionId: string, event: ConsoleTimelineEvent): void;
-
-  /**
-   * Get the count of active connections for a session.
-   */
+  broadcastProcessingStatus(sessionId: string, status: ProcessingStatusPayload): void;
+  broadcastTokenStream(sessionId: string, token: TokenStreamPayload): void;
   getConnectionCount(sessionId: string): number;
-
-  /**
-   * Close all connections for a session.
-   */
   closeSession(sessionId: string): void;
-
-  /**
-   * Bind write and close functions to a connection.
-   * This is called by the route handler after creating the connection.
-   */
   bindConnection(connectionId: string, write: WriteFn, closeFn: () => void): void;
 }
 
-/**
- * Factory function type for creating write functions.
- */
 export type WriteFn = (data: string) => boolean;
 
 interface ConnectionState {
@@ -89,9 +49,6 @@ interface ConnectionState {
   active: boolean;
 }
 
-/**
- * Creates a minimal timeline broadcaster.
- */
 export interface CreateBroadcasterOptions {
   timelineService: ConsoleTimelineService;
 }
@@ -181,20 +138,15 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
     const connection = this.connections.get(connectionId);
     if (!connection || !connection.active) return;
 
-    // Get all timeline events for this session
     const result = this.timelineService.getTimeline(sessionId);
     const events = result.events;
 
-    // Find the index of the after event
     const afterIndex = events.findIndex(e => e.eventId === afterEventId);
     if (afterIndex === -1) {
-      // If after event not found, send all events (client may have stale ID)
-      // This is a safe fallback - client will dedupe by eventId
       for (const event of events) {
         this.sendEventToConnection(connection, event);
       }
     } else {
-      // Send events after the afterEventId (exclusive)
       const eventsToSend = events.slice(afterIndex + 1);
       for (const event of eventsToSend) {
         this.sendEventToConnection(connection, event);
@@ -205,7 +157,12 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
   private sendEventToConnection(connection: ConnectionState, event: ConsoleTimelineEvent): void {
     if (!connection.active) return;
 
-    const sseData = `id: ${event.eventId}\nevent: timeline_event\ndata: ${JSON.stringify(event)}\n\n`;
+    const envelope: SseEnvelope = {
+      type: 'timeline_event',
+      event,
+      timestamp: new Date().toISOString(),
+    };
+    const sseData = `id: ${event.eventId}\nevent: timeline_event\ndata: ${JSON.stringify(envelope)}\n\n`;
     const success = connection.write(sseData);
     if (!success) {
       connection.active = false;
@@ -216,7 +173,12 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
     const connectionIds = this.sessionConnections.get(sessionId);
     if (!connectionIds || connectionIds.size === 0) return;
 
-    const sseData = `id: ${event.eventId}\nevent: timeline_event\ndata: ${JSON.stringify(event)}\n\n`;
+    const envelope: SseEnvelope = {
+      type: 'timeline_event',
+      event,
+      timestamp: new Date().toISOString(),
+    };
+    const sseData = `id: ${event.eventId}\nevent: timeline_event\ndata: ${JSON.stringify(envelope)}\n\n`;
 
     for (const connectionId of connectionIds) {
       const connection = this.connections.get(connectionId);
@@ -229,11 +191,46 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
     }
   }
 
+  broadcastProcessingStatus(sessionId: string, status: ProcessingStatusPayload): void {
+    const connectionIds = this.sessionConnections.get(sessionId);
+    if (!connectionIds || connectionIds.size === 0) return;
+
+    const envelope: SseEnvelope = {
+      type: 'processing_status',
+      status,
+    };
+    const sseData = `data: ${JSON.stringify(envelope)}\n\n`;
+
+    for (const connectionId of connectionIds) {
+      const connection = this.connections.get(connectionId);
+      if (connection && connection.active) {
+        connection.write(sseData);
+      }
+    }
+  }
+
+  broadcastTokenStream(sessionId: string, token: TokenStreamPayload): void {
+    const connectionIds = this.sessionConnections.get(sessionId);
+    if (!connectionIds || connectionIds.size === 0) return;
+
+    const envelope: SseEnvelope = {
+      type: 'token_stream',
+      token,
+    };
+    const sseData = `data: ${JSON.stringify(envelope)}\n\n`;
+
+    for (const connectionId of connectionIds) {
+      const connection = this.connections.get(connectionId);
+      if (connection && connection.active) {
+        connection.write(sseData);
+      }
+    }
+  }
+
   getConnectionCount(sessionId: string): number {
     const connectionIds = this.sessionConnections.get(sessionId);
     if (!connectionIds) return 0;
 
-    // Count only active connections
     let count = 0;
     for (const connectionId of connectionIds) {
       const connection = this.connections.get(connectionId);
@@ -260,10 +257,6 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
     this.sessionConnections.delete(sessionId);
   }
 
-  /**
-   * Internal method to bind a write function to a connection.
-   * This is called by the route handler after creating the connection.
-   */
   bindConnection(connectionId: string, write: WriteFn, closeFn: () => void): void {
     const connection = this.connections.get(connectionId);
     if (connection) {
@@ -272,9 +265,6 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
     }
   }
 
-  /**
-   * Clean up closed connections (can be called periodically).
-   */
   cleanup(): void {
     for (const [connectionId, connection] of this.connections) {
       if (!connection.active) {
@@ -291,13 +281,9 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
   }
 }
 
-/**
- * Factory function to create a TimelineBroadcaster.
- */
 export function createTimelineBroadcaster(options: CreateBroadcasterOptions): TimelineBroadcaster {
   return new TimelineBroadcasterImpl(options);
 }
 
-// Re-export types for convenience
 export type { ConnectionState };
 export { TimelineBroadcasterImpl };

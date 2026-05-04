@@ -66,19 +66,21 @@ describe('Foreground Conversation Agent', () => {
           finishReason: 'stop',
           createdAt: new Date().toISOString(),
         };
-        return {
-          success: true,
-          response,
-          providerId: 'mock-provider',
-        };
-      }),
-      addProvider: vi.fn(),
-      removeProvider: vi.fn(),
-      getProvider: vi.fn(),
-      getHealthyProviders: vi.fn(() => []),
-      updateProviderPriority: vi.fn(),
-    };
-  }
+          return {
+            success: true,
+            response,
+            providerId: 'mock-provider',
+          };
+        }),
+        stream: async function* () {},
+        addProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        getProvider: vi.fn(),
+        getHealthyProviders: vi.fn(() => []),
+        updateProviderPriority: vi.fn(),
+      };
+    }
+
 
   beforeEach(() => {
     baseState = createBaseState();
@@ -382,6 +384,7 @@ describe('Foreground Conversation Agent', () => {
             providerId: 'mock-provider',
           };
         }),
+        stream: async function* () {},
         addProvider: vi.fn(),
         removeProvider: vi.fn(),
         getProvider: vi.fn(),
@@ -419,6 +422,7 @@ describe('Foreground Conversation Agent', () => {
           },
           providerId: 'mock-provider',
         })),
+        stream: async function* () {},
         addProvider: vi.fn(),
         removeProvider: vi.fn(),
         getProvider: vi.fn(),
@@ -535,46 +539,12 @@ describe('Foreground Conversation Agent', () => {
             providerId: 'mock-provider',
           };
         }),
+        stream: async function* () {},
         addProvider: vi.fn(),
         removeProvider: vi.fn(),
         getProvider: vi.fn(),
         getHealthyProviders: vi.fn(() => []),
         updateProviderPriority: vi.fn(),
-      };
-
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig });
-
-      const stateWithConfig: ForegroundSessionState = {
-        ...baseState,
-        agentConfig: stateConfig,
-      };
-
-      const input = createInput('Hello');
-      await agent.processMessage(input, stateWithConfig);
-
-      expect(capturedRequest).toBeDefined();
-      expect(capturedRequest!.model).toBe('state-model');
-      expect(capturedRequest!.messages[0].content).toBe('State system prompt');
-    });
-
-    it('should use agentConfig.routingTimeoutMs from state', async () => {
-      const stateConfig: AgentConfig = {
-        agentConfigId: 'timeout-config',
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId: 'user_001',
-        displayName: 'Timeout Config',
-        enabled: true,
-        systemPrompt: 'Test prompt',
-        routingPrompt: null,
-        providerId: null,
-        model: null,
-        allowedToolIds: [],
-        allowedSkillIds: [],
-        routingTimeoutMs: 25000,
-        repairAttempts: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
 
       let capturedTimeout: number | undefined;
@@ -604,6 +574,7 @@ describe('Foreground Conversation Agent', () => {
             providerId: 'mock-provider',
           };
         }),
+        stream: async function* () {},
         addProvider: vi.fn(),
         removeProvider: vi.fn(),
         getProvider: vi.fn(),

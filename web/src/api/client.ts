@@ -36,6 +36,8 @@ import type {
   UpdateAgentGlobalConfigRequest,
   UpdateAgentUserOverrideRequest,
   ResetAgentConfigOverrideResponse,
+  ProcessingStatusPayload,
+  TokenStreamPayload,
 } from './types';
 
 const API_BASE = '/api';
@@ -280,18 +282,47 @@ export async function getSettings(): Promise<SettingsResponse> {
 
 export type SessionTimelineEventCallback = (event: ConsoleTimelineEvent) => void;
 export type SessionTimelineErrorCallback = (error: Error) => void;
+export type SessionTimelineStatusCallback = (status: ProcessingStatusPayload) => void;
+export type SessionTimelineTokenCallback = (token: TokenStreamPayload) => void;
+
+type SseEnvelope =
+  | { type: 'snapshot'; events: ConsoleTimelineEvent[]; timestamp: string }
+  | { type: 'heartbeat'; timestamp: string }
+  | { type: 'timeline_event'; event: ConsoleTimelineEvent; timestamp: string }
+  | { type: 'processing_status'; status: ProcessingStatusPayload }
+  | { type: 'token_stream'; token: TokenStreamPayload };
 
 export function subscribeSessionTimeline(
   sessionId: string,
   onEvent: SessionTimelineEventCallback,
-  onError?: SessionTimelineErrorCallback
+  onError?: SessionTimelineErrorCallback,
+  onStatus?: SessionTimelineStatusCallback,
+  onToken?: SessionTimelineTokenCallback
 ): () => void {
   const eventSource = new EventSource(`${API_BASE}/sessions/${sessionId}/timeline/stream`, { withCredentials: true });
 
   eventSource.onmessage = (event) => {
     try {
-      const data = JSON.parse(event.data) as ConsoleTimelineEvent;
-      onEvent(data);
+      const envelope = JSON.parse(event.data) as SseEnvelope;
+
+      switch (envelope.type) {
+        case 'snapshot':
+          for (const e of envelope.events) {
+            onEvent(e);
+          }
+          break;
+        case 'timeline_event':
+          onEvent(envelope.event);
+          break;
+        case 'processing_status':
+          onStatus?.(envelope.status);
+          break;
+        case 'token_stream':
+          onToken?.(envelope.token);
+          break;
+        case 'heartbeat':
+          break;
+      }
     } catch (err) {
       onError?.(new Error('Failed to parse SSE event'));
     }

@@ -21,6 +21,8 @@ const eventTypeLabels: Record<ConsoleTimelineEventType, string> = {
   run_cancelled: 'Run Cancelled',
   system_status: 'Status',
   error: 'Error',
+  processing_status: 'Processing',
+  token_stream: 'Token Stream',
 };
 
 const formatTimestamp = (timestamp: string): string => {

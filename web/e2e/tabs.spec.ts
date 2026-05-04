@@ -270,4 +270,19 @@ test.describe('All Console Tabs Navigation', () => {
     const agentGroup = page.getByTestId('nav-group-agent');
     await expect(agentGroup).toContainText('Agent');
   });
+
+  test('session console shows processing status indicator with default values', async ({ page }) => {
+    await page.getByTestId('tab-session-console').click();
+    await expect(page.getByTestId('session-new-button')).toBeVisible();
+
+    await page.getByTestId('session-new-button').click();
+
+    const indicator = page.getByTestId('processing-status-indicator');
+    await expect(indicator).toBeVisible({ timeout: 5000 });
+
+    await expect(indicator).toContainText('模型：未知');
+    await expect(indicator).toContainText('阶段：空闲');
+    await expect(indicator).toContainText('上下文：未知');
+    await expect(indicator).toContainText('工具：无');
+  });
 });

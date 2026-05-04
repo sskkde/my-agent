@@ -27,6 +27,7 @@ function createMockLLMAdapter(responseContent: string): LLMAdapter {
         providerId: 'mock-provider',
       };
     }),
+    stream: async function* () {},
     addProvider: vi.fn(),
     removeProvider: vi.fn(),
     getProvider: vi.fn(),

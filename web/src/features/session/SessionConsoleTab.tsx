@@ -9,6 +9,8 @@ import { parseInput, isCommand } from '../../commands/parser';
 import { createCommandEvent } from '../../commands/formatters';
 import { loadPreferences } from '../../commands/preferences';
 import type { CommandContext, AuthContext } from '../../commands/types';
+import { ProcessingStatus } from './ProcessingStatus';
+import type { ProcessingStatusPayload } from '../../api/types';
 
 type StreamStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -75,6 +77,8 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
   const [localMessageEvents, setLocalMessageEvents] = useState<Map<string, ConsoleTimelineEvent[]>>(
     new Map()
   );
+  const [streamingDrafts, setStreamingDrafts] = useState<Map<string, { content: string; sequence: number }>>(new Map());
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatusPayload | null>(null);
 
   // Mobile drawer state
   const [isSessionsDrawerOpen, setIsSessionsDrawerOpen] = useState(false);
@@ -152,11 +156,42 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
               }
               return [...prev, event];
             });
+
+            // If this is a final assistant message, remove any streaming draft for this attempt
+            if (event.eventType === 'assistant_message' && event.metadata?.attemptId) {
+              const attemptId = event.metadata.attemptId as string;
+              setStreamingDrafts((prev) => {
+                const next = new Map(prev);
+                next.delete(attemptId);
+                return next;
+              });
+            }
           },
           () => {
             if (mounted) {
               setStreamStatus('disconnected');
             }
+          },
+          (status) => {
+            if (mounted) {
+              setProcessingStatus(status);
+            }
+          },
+          (token) => {
+            if (!mounted) return;
+            setStreamingDrafts((prev) => {
+              const next = new Map(prev);
+              const existing = next.get(token.attemptId);
+
+              // Only update if this is a newer sequence number
+              if (!existing || token.sequence > existing.sequence) {
+                next.set(token.attemptId, {
+                  content: (existing?.content || '') + token.delta,
+                  sequence: token.sequence,
+                });
+              }
+              return next;
+            });
           }
         );
         setStreamStatus('connected');
@@ -597,6 +632,22 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
                 loading={timelineLoading}
                 error={timelineError || undefined}
               />
+              {/* Streaming Drafts */}
+              {Array.from(streamingDrafts.entries()).map(([attemptId, draft]) => (
+                <div
+                  key={`draft-${attemptId}`}
+                  className="timeline-event-card timeline-event-card--streaming-draft"
+                  data-testid="streaming-assistant-draft"
+                  data-attempt-id={attemptId}
+                >
+                  <div className="timeline-event-header">
+                    <span className="timeline-event-label">Assistant (streaming)</span>
+                  </div>
+                  <div className="timeline-event-body">
+                    <div className="timeline-event-content">{draft.content}</div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Error Display */}
@@ -605,6 +656,13 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
                 {sendError}
               </div>
             )}
+
+            {/* Processing Status Indicator */}
+            <ProcessingStatus
+              streamStatus={streamStatus}
+              processingStatus={processingStatus}
+              onRetry={handleRetryStream}
+            />
 
             {/* Input Dock */}
             <div className="session-input-dock">
