@@ -8,6 +8,7 @@ import type { ToolCategory } from '../tools/types.js';
 import type { TargetRuntime, RuntimeAction } from '../dispatcher/types.js';
 import type { Stores } from '../gateway/types.js';
 import type { HydratedSessionState, ActiveWorkRefs } from '../gateway/types.js';
+import type { AgentConfig } from '../storage/agent-config-store.js';
 
 /**
  * Decision routes for foreground conversation agent
@@ -190,6 +191,8 @@ export interface ForegroundSessionState {
   currentPersona: AssistantPersonaProfile;
   /** Effective delegation policy (system + persona merged) */
   effectivePolicy: DirectDelegationPolicy;
+  /** Effective agent configuration (merged global + user override) */
+  agentConfig?: AgentConfig;
   /** Resolved LLM provider ID from provider resolution */
   resolvedProvider?: string;
   /** Resolved LLM model from provider resolution */

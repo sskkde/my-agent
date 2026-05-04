@@ -61,7 +61,7 @@ export interface ApiContext {
   providerConfigStore: ProviderConfigStore;
   agentConfigStore: AgentConfigStore;
   refreshProvidersForUser: (userId: string) => void;
-  runWithProvidersForUser: <T>(userId: string, fn: () => Promise<T>) => Promise<T>;
+  runWithProvidersForUser: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>;
   connection: ConnectionManager;
   consoleTimelineService: ConsoleTimelineService;
   timelineBroadcaster: TimelineBroadcaster;
@@ -270,9 +270,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     // Request-scoped adapters read provider configs on each processing scope.
     // This hook remains for provider CRUD routes and injected adapters.
   };
-  const runWithProvidersForUser = async <T>(userId: string, fn: () => Promise<T>): Promise<T> => {
+  const runWithProvidersForUser = async <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string): Promise<T> => {
     if (!injectedLlmAdapter && isProviderScopedLLMAdapter(llmAdapter)) {
-      return llmAdapter.runWithUserProviders(userId, fn);
+      return llmAdapter.runWithUserProviders(userId, fn, preferredProviderId);
     }
 
     return fn();

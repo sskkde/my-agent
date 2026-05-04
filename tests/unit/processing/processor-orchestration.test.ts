@@ -19,6 +19,8 @@ import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js';
 import type { AgentKernel } from '../../../src/kernel/agent-kernel.js';
 import type { LLMAdapter } from '../../../src/llm/adapter.js';
 import type { TranscriptStore, TurnTranscript } from '../../../src/storage/transcript-store.js';
+import type { AgentConfig, AgentConfigStore } from '../../../src/storage/agent-config-store.js';
+import type { ProviderConfigStore } from '../../../src/storage/provider-config-store.js';
 
 describe('ProcessorOrchestration', () => {
   // Mock dependencies
@@ -1246,6 +1248,101 @@ describe('ProcessorOrchestration', () => {
   });
 
   describe('provider resolver integration', () => {
+    it('should pass resolved provider and effective agent config into scoped routing', async () => {
+      const agentConfig: AgentConfig = {
+        agentConfigId: 'agent-config-1',
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-123',
+        displayName: 'User Config',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        routingPrompt: null,
+        providerId: 'selected-provider',
+        model: 'selected-model',
+        allowedToolIds: [],
+        allowedSkillIds: [],
+        routingTimeoutMs: 25000,
+        repairAttempts: 0,
+        createdAt: '2024-01-15T10:00:00.000Z',
+        updatedAt: '2024-01-15T10:00:00.000Z',
+      };
+
+      const mockProviderConfigStore = {
+        listByUser: vi.fn().mockReturnValue([
+          {
+            providerId: 'selected-provider',
+            userId: 'user-123',
+            providerType: 'openrouter',
+            displayName: 'Selected Provider',
+            enabled: true,
+            configured: true,
+            selectedModel: 'provider-model',
+          },
+        ]),
+        getByIdWithSecret: vi.fn().mockReturnValue(null),
+        getById: vi.fn().mockReturnValue(null),
+        create: vi.fn(),
+        update: vi.fn(),
+        remove: vi.fn(),
+        updateTestStatus: vi.fn(),
+      } as unknown as ProviderConfigStore;
+
+      const mockAgentConfigStore = {
+        getGlobalDefault: vi.fn().mockReturnValue(null),
+        getByUser: vi.fn().mockReturnValue(agentConfig),
+        listByUser: vi.fn().mockReturnValue([agentConfig]),
+        upsert: vi.fn(),
+        remove: vi.fn(),
+      } as unknown as AgentConfigStore;
+
+      const providerScopes: Array<{ userId: string; preferredProviderId?: string }> = [];
+      const runWithProvidersForUser: ProcessorOrchestrationDeps['runWithProvidersForUser'] = async <T>(
+        userId: string,
+        fn: () => Promise<T>,
+        preferredProviderId?: string
+      ): Promise<T> => {
+        providerScopes.push({ userId, preferredProviderId });
+        return fn();
+      };
+
+      const mockDecision: ForegroundDecision = {
+        route: 'answer_directly',
+        requiresPlanner: false,
+        reason: 'Simple question',
+        userVisibleResponse: 'I understand.',
+      };
+
+      vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue(mockDecision);
+
+      const processor = createOrchestrationProcessor({
+        deps: {
+          ...deps,
+          providerConfigStore: mockProviderConfigStore,
+          agentConfigStore: mockAgentConfigStore,
+          runWithProvidersForUser,
+        },
+      });
+
+      await processor({
+        correlationId: 'corr-config-001',
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Hello',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      });
+
+      expect(providerScopes).toEqual([
+        { userId: 'user-123', preferredProviderId: 'selected-provider' },
+      ]);
+
+      const foregroundState = vi.mocked(mockForegroundAgent.processMessage).mock.calls[0][1];
+      expect(foregroundState.agentConfig).toBe(agentConfig);
+      expect(foregroundState.resolvedProvider).toBe('selected-provider');
+      expect(foregroundState.resolvedModel).toBe('selected-model');
+    });
+
     it('should log fallback event when provider resolution triggers fallback', async () => {
       const correlationId = 'corr-fallback-001';
       const mockAppendEvent = vi.fn();

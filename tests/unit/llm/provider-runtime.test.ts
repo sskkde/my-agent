@@ -112,4 +112,70 @@ describe('provider-runtime', () => {
       expect(adapter.providers).toHaveLength(0);
     });
   });
+
+  it('prioritizes user database providers over environment providers', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.OPENAI_API_KEY = 'sk-env-key';
+
+    providerConfigStore.create({
+      providerId: 'user-openai',
+      userId: 'user-1',
+      providerType: 'openai',
+      displayName: 'User OpenAI',
+      apiKey: 'sk-user-key',
+    });
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+    await adapter.runWithUserProviders('user-1', async () => {
+      const providers = adapter.providers;
+      expect(providers.length).toBeGreaterThan(0);
+      
+      const userProvider = providers.find(p => p.id === 'user-openai');
+      const envProvider = providers.find(p => p.id === 'openai');
+      
+      expect(userProvider).toBeDefined();
+      expect(envProvider).toBeDefined();
+      expect(userProvider!.config.priority).toBeLessThan(envProvider!.config.priority);
+    });
+
+    delete process.env.OPENAI_API_KEY;
+  });
+
+  it('gives highest priority to preferred provider', async () => {
+    providerConfigStore.create({
+      providerId: 'provider-1',
+      userId: 'user-1',
+      providerType: 'openai',
+      displayName: 'Provider 1',
+      apiKey: 'sk-1',
+    });
+
+    providerConfigStore.create({
+      providerId: 'provider-2',
+      userId: 'user-1',
+      providerType: 'openrouter',
+      displayName: 'Provider 2',
+      apiKey: 'sk-2',
+    });
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    let preferredProviderId = '';
+
+    await adapter.runWithUserProviders('user-1', async () => {
+      const providers = adapter.getHealthyProviders();
+      expect(providers.length).toBe(2);
+      expect(providers.map((provider) => provider.id).sort()).toEqual(['provider-1', 'provider-2']);
+      expect(providers[0].config.priority).toBe(10);
+      expect(providers[1].config.priority).toBe(20);
+      preferredProviderId = providers[1].id;
+    });
+
+    await adapter.runWithUserProviders('user-1', async () => {
+      const providers = adapter.getHealthyProviders();
+      expect(providers[0].id).toBe(preferredProviderId);
+      expect(providers[0].config.priority).toBe(1);
+      expect(providers[1].config.priority).toBe(10);
+    }, preferredProviderId);
+  });
 });

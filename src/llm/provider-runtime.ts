@@ -29,7 +29,7 @@ interface RefreshLLMProvidersOptions {
 }
 
 export interface ProviderScopedLLMAdapter extends LLMAdapter {
-  runWithUserProviders<T>(userId: string, fn: () => Promise<T>): Promise<T>;
+  runWithUserProviders<T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string): Promise<T>;
 }
 
 interface CreateProviderScopedLLMAdapterOptions {
@@ -153,13 +153,14 @@ function replaceProviders(adapter: LLMAdapter, providers: LLMProvider[]): void {
 
 function buildLLMProvidersForUser(
   providerConfigStore: ProviderConfigStore,
-  userId?: string
+  userId?: string,
+  preferredProviderId?: string
 ): LLMProvider[] {
-  const providers = createEnvProviders();
+  const providers: LLMProvider[] = [];
 
   if (userId) {
     const storedProviders = providerConfigStore.listByUser(userId);
-    let priority = 100;
+    let priority = 10;
 
     for (const storedProvider of storedProviders) {
       const providerWithSecret = providerConfigStore.getByIdWithSecret(storedProvider.providerId);
@@ -167,13 +168,32 @@ function buildLLMProvidersForUser(
         continue;
       }
 
-      const provider = createDatabaseProvider(providerWithSecret, priority);
+      const isPreferred = storedProvider.providerId === preferredProviderId;
+      const effectivePriority = isPreferred ? 1 : priority;
+      
+      const provider = createDatabaseProvider(providerWithSecret, effectivePriority);
       if (provider) {
         providers.push(provider);
-        priority += 10;
+        if (!isPreferred) {
+          priority += 10;
+        }
       }
     }
   }
+
+  const envProviders = createEnvProviders();
+  for (const envProvider of envProviders) {
+    if (providers.some((provider) => provider.id === envProvider.id)) {
+      continue;
+    }
+
+    const envPriority = 100 + (envProvider.config.priority ?? 0);
+    const effectivePriority = envProvider.id === preferredProviderId ? 1 : envPriority;
+    envProvider.updateConfig({ ...envProvider.config, priority: effectivePriority });
+    providers.push(envProvider);
+  }
+
+  providers.sort((a, b) => a.config.priority - b.config.priority);
 
   return providers;
 }
@@ -237,8 +257,8 @@ export function createProviderScopedLLMAdapter(
     updateProviderPriority() {
       throw new Error('Cannot update provider priority directly on a request-scoped adapter');
     },
-    runWithUserProviders<T>(userId: string, fn: () => Promise<T>): Promise<T> {
-      const providers = buildLLMProvidersForUser(options.providerConfigStore, userId);
+    runWithUserProviders<T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string): Promise<T> {
+      const providers = buildLLMProvidersForUser(options.providerConfigStore, userId, preferredProviderId);
       return providerScope.run(providers, fn);
     },
   };

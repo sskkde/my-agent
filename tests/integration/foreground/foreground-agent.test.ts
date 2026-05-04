@@ -4,6 +4,7 @@ import { DEFAULT_ASSISTANT_PERSONA, DEFAULT_DIRECT_DELEGATION_POLICY } from '../
 import type { ForegroundMessageInput, ForegroundSessionState } from '../../../src/foreground/types.js';
 import type { LLMAdapter } from '../../../src/llm/adapter.js';
 import type { LLMRequest, LLMResult, LLMResponse } from '../../../src/llm/types.js';
+import type { AgentConfig } from '../../../src/storage/agent-config-store.js';
 
 describe('Foreground Conversation Agent', () => {
   let agent: ReturnType<typeof createForegroundAgent>;
@@ -463,6 +464,216 @@ describe('Foreground Conversation Agent', () => {
       const decision = await agent.processMessage(input, baseState);
 
       expect(decision.userVisibleResponse).toBe('Planning your Shanghai trip with LLM');
+    });
+  });
+
+  describe('agentConfig from state', () => {
+    it('should use agentConfig from state over constructor config', async () => {
+      const constructorConfig: AgentConfig = {
+        agentConfigId: 'constructor-config',
+        agentId: 'foreground.default',
+        scope: 'global',
+        userId: null,
+        displayName: 'Constructor Config',
+        enabled: true,
+        systemPrompt: 'Constructor system prompt',
+        routingPrompt: 'Constructor routing prompt',
+        providerId: null,
+        model: 'constructor-model',
+        allowedToolIds: [],
+        allowedSkillIds: [],
+        routingTimeoutMs: 5000,
+        repairAttempts: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const stateConfig: AgentConfig = {
+        agentConfigId: 'state-config',
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user_001',
+        displayName: 'State Config',
+        enabled: true,
+        systemPrompt: 'State system prompt',
+        routingPrompt: 'State routing prompt',
+        providerId: null,
+        model: 'state-model',
+        allowedToolIds: [],
+        allowedSkillIds: [],
+        routingTimeoutMs: 15000,
+        repairAttempts: 2,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let capturedRequest: LLMRequest | undefined;
+      mockLLMAdapter = {
+        config: {
+          providers: [],
+          defaultTimeoutMs: 10000,
+          enableCircuitBreaker: false,
+        },
+        providers: [],
+        complete: vi.fn(async (request: LLMRequest): Promise<LLMResult> => {
+          capturedRequest = request;
+          const response: LLMResponse = {
+            id: 'test-response-id',
+            model: request.model,
+            content: JSON.stringify({
+              route: 'answer_directly',
+              reason: 'Test',
+              userVisibleResponse: 'Response',
+            }),
+            role: 'assistant',
+            finishReason: 'stop',
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            success: true,
+            response,
+            providerId: 'mock-provider',
+          };
+        }),
+        addProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        getProvider: vi.fn(),
+        getHealthyProviders: vi.fn(() => []),
+        updateProviderPriority: vi.fn(),
+      };
+
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig });
+
+      const stateWithConfig: ForegroundSessionState = {
+        ...baseState,
+        agentConfig: stateConfig,
+      };
+
+      const input = createInput('Hello');
+      await agent.processMessage(input, stateWithConfig);
+
+      expect(capturedRequest).toBeDefined();
+      expect(capturedRequest!.model).toBe('state-model');
+      expect(capturedRequest!.messages[0].content).toBe('State system prompt');
+    });
+
+    it('should use agentConfig.routingTimeoutMs from state', async () => {
+      const stateConfig: AgentConfig = {
+        agentConfigId: 'timeout-config',
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user_001',
+        displayName: 'Timeout Config',
+        enabled: true,
+        systemPrompt: 'Test prompt',
+        routingPrompt: null,
+        providerId: null,
+        model: null,
+        allowedToolIds: [],
+        allowedSkillIds: [],
+        routingTimeoutMs: 25000,
+        repairAttempts: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      let capturedTimeout: number | undefined;
+      mockLLMAdapter = {
+        config: {
+          providers: [],
+          defaultTimeoutMs: 10000,
+          enableCircuitBreaker: false,
+        },
+        providers: [],
+        complete: vi.fn(async (request: LLMRequest): Promise<LLMResult> => {
+          const response: LLMResponse = {
+            id: 'test-response-id',
+            model: request.model,
+            content: JSON.stringify({
+              route: 'answer_directly',
+              reason: 'Test',
+              userVisibleResponse: 'Response',
+            }),
+            role: 'assistant',
+            finishReason: 'stop',
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            success: true,
+            response,
+            providerId: 'mock-provider',
+          };
+        }),
+        addProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        getProvider: vi.fn(),
+        getHealthyProviders: vi.fn(() => []),
+        updateProviderPriority: vi.fn(),
+      };
+
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const originalSetTimeout = global.setTimeout;
+      const mockSetTimeout = vi.fn((fn: () => void, ms: number) => {
+        capturedTimeout = ms;
+        return originalSetTimeout(fn, ms);
+      });
+      global.setTimeout = mockSetTimeout as unknown as typeof setTimeout;
+
+      try {
+        const stateWithConfig: ForegroundSessionState = {
+          ...baseState,
+          agentConfig: stateConfig,
+        };
+
+        const input = createInput('Hello');
+        await agent.processMessage(input, stateWithConfig);
+
+        expect(capturedTimeout).toBe(25000);
+      } finally {
+        global.setTimeout = originalSetTimeout;
+      }
+    });
+
+    it('should use agentConfig.repairAttempts from state', async () => {
+      const constructorConfig: AgentConfig = {
+        agentConfigId: 'constructor-config',
+        agentId: 'foreground.default',
+        scope: 'global',
+        userId: null,
+        displayName: 'Constructor Config',
+        enabled: true,
+        systemPrompt: 'Constructor prompt',
+        routingPrompt: null,
+        providerId: null,
+        model: null,
+        allowedToolIds: [],
+        allowedSkillIds: [],
+        routingTimeoutMs: 10000,
+        repairAttempts: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const stateConfig: AgentConfig = {
+        ...constructorConfig,
+        agentConfigId: 'state-config',
+        scope: 'user',
+        userId: 'user_001',
+        displayName: 'State Config',
+        repairAttempts: 0,
+      };
+
+      mockLLMAdapter = createMockLLMAdapter('invalid json');
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig });
+
+      const decision = await agent.processMessage(createInput('Hello'), {
+        ...baseState,
+        agentConfig: stateConfig,
+      });
+
+      expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(1);
+      expect(decision.reason).toBe('LLM routing temporarily unavailable');
     });
   });
 });

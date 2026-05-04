@@ -116,7 +116,7 @@ export interface ProcessorOrchestrationDeps {
   /** Session store for session-specific provider/model selection */
   sessionStore?: SessionStore;
   /** Runs processing with request-scoped LLM providers for the current user */
-  runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>) => Promise<T>;
+  runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>;
 }
 
 /**
@@ -149,27 +149,29 @@ export function createOrchestrationProcessor(
   const { deps, defaultPersonaId = 'default', defaultPersonaName = 'Assistant', sessionProviderSelection: optionSessionProviderSelection } = options;
 
   return async (input: MessageProcessorInput): Promise<MessageProcessorOutput> => {
+    const sessionProviderSelection = deps.sessionStore
+      ? (() => {
+          const session = deps.sessionStore.getById(input.sessionId);
+          return session
+            ? { selectedProviderId: session.selectedProviderId, selectedModel: session.selectedModel }
+            : {};
+        })()
+      : optionSessionProviderSelection ?? {};
+
+    const providerResolution = resolveProviderWithFallback(
+      deps.providerConfigStore,
+      deps.eventStore,
+      deps.agentConfigStore,
+      input,
+      sessionProviderSelection
+    );
+
+    const resolvedProviderId = providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined;
+
     const execute = async (): Promise<MessageProcessorOutput> => {
       let output: MessageProcessorOutput;
 
       try {
-        const sessionProviderSelection = deps.sessionStore
-          ? (() => {
-              const session = deps.sessionStore.getById(input.sessionId);
-              return session
-                ? { selectedProviderId: session.selectedProviderId, selectedModel: session.selectedModel }
-                : {};
-            })()
-          : optionSessionProviderSelection ?? {};
-
-      const providerResolution = resolveProviderWithFallback(
-        deps.providerConfigStore,
-        deps.eventStore,
-        deps.agentConfigStore,
-        input,
-        sessionProviderSelection
-      );
-
         const hasNoProvider = providerResolution?.type === 'no-provider' || deps.llmAdapter.providers.length === 0;
 
         if (hasNoProvider) {
@@ -187,6 +189,8 @@ export function createOrchestrationProcessor(
 
           const foregroundInput = buildForegroundMessageInput(input);
 
+          const agentConfig = deps.agentConfigStore?.getByUser(input.userId);
+
           const resolvedProvider = providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined;
           const resolvedModel = providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined;
 
@@ -195,7 +199,8 @@ export function createOrchestrationProcessor(
             defaultPersonaId,
             defaultPersonaName,
             resolvedProvider,
-            resolvedModel
+            resolvedModel,
+            agentConfig ?? undefined
           );
 
           const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
@@ -218,7 +223,7 @@ export function createOrchestrationProcessor(
     };
 
     if (deps.runWithProvidersForUser) {
-      return deps.runWithProvidersForUser(input.userId, execute);
+      return deps.runWithProvidersForUser(input.userId, execute, resolvedProviderId);
     }
 
     return execute();
@@ -244,7 +249,8 @@ function buildForegroundSessionState(
   personaId: string,
   personaName: string,
   resolvedProvider?: string,
-  resolvedModel?: string
+  resolvedModel?: string,
+  agentConfig?: AgentConfig
 ): ForegroundSessionState {
   return {
     hydratedSession,
@@ -263,6 +269,7 @@ function buildForegroundSessionState(
       maxComplexity: 'medium',
       allowedToolCategories: ['read', 'search', 'internal'],
     },
+    agentConfig,
     resolvedProvider,
     resolvedModel,
   };

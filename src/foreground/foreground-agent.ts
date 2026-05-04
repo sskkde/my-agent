@@ -93,6 +93,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
     const message = input.message.trim();
     const { activeWorkRefs: _activeWorkRefs } = state;
+    const effectiveConfig = this.getEffectiveConfig(state);
 
     // Bypass 1: Approval metadata - route directly without LLM
     if (input.metadata?.isApprovalResponse) {
@@ -115,7 +116,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
     if (!llmResult.success) {
       // Retry with repair prompt if attempts remain
-      const maxRepairAttempts = this.agentConfig?.repairAttempts ?? 1;
+      const maxRepairAttempts = effectiveConfig?.repairAttempts ?? 1;
       if (maxRepairAttempts > 0 && llmResult.error?.retryable) {
         const repairPrompt = this.buildRepairPrompt(prompt, llmResult.error?.message || 'Unknown error');
         const retryResult = await this.callLLMRouter(repairPrompt, state);
@@ -159,6 +160,10 @@ class ForegroundAgentImpl implements ForegroundAgent {
       complexity: options.complexity,
       suggestedTools: options.suggestedTools,
     };
+  }
+
+  private getEffectiveConfig(state?: ForegroundSessionState): AgentConfig | undefined {
+    return state?.agentConfig ?? this.agentConfig;
   }
 
   /**
@@ -239,9 +244,6 @@ IMPORTANT: Your previous response was invalid. Error: ${errorMessage}
 Please respond with valid JSON matching the exact schema shown above.`;
   }
 
-  /**
-   * Call the LLM router with 10s timeout and parse the response
-   */
   private async callLLMRouter(prompt: string, state?: ForegroundSessionState): Promise<RouterResult> {
     if (!this.llmAdapter) {
       return {
@@ -254,9 +256,11 @@ Please respond with valid JSON matching the exact schema shown above.`;
       };
     }
 
-    const resolvedModel = state?.resolvedModel ?? this.agentConfig?.model ?? 'gpt-4o-mini';
-    const systemPrompt = this.agentConfig?.systemPrompt ?? 'You are a message routing assistant. Respond only with valid JSON.';
-    const routingPrompt = this.agentConfig?.routingPrompt;
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const resolvedModel = state?.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini';
+    const systemPrompt = effectiveConfig?.systemPrompt ?? 'You are a message routing assistant. Respond only with valid JSON.';
+    const routingPrompt = effectiveConfig?.routingPrompt;
+    const routingTimeoutMs = effectiveConfig?.routingTimeoutMs ?? 10000;
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },
@@ -276,10 +280,8 @@ Please respond with valid JSON matching the exact schema shown above.`;
       responseFormat: { type: 'json_object' },
     };
 
-    const ROUTER_TIMEOUT_MS = 10000;
-
     try {
-      const result: LLMResult = await this.callLLMWithTimeout(request, ROUTER_TIMEOUT_MS);
+      const result: LLMResult = await this.callLLMWithTimeout(request, routingTimeoutMs);
 
       if (!result.success) {
         return {
