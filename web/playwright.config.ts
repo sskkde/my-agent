@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const webPort = 3102;
+const apiPort = 3103;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +11,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3002',
+    baseURL: `http://localhost:${webPort}`,
     trace: 'on-first-retry',
   },
   projects: [
@@ -31,12 +34,21 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/user.json',
       },
+      dependencies: ['setup'],
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3002',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  webServer: [
+    {
+      command: 'npm --prefix .. run reset:e2e-db && npm --prefix .. run start:api:e2e',
+      url: `http://localhost:${apiPort}/api/health`,
+      reuseExistingServer: false,
+      timeout: 120000,
+    },
+    {
+      command: `VITE_PORT=${webPort} VITE_API_TARGET=http://localhost:${apiPort} npm run dev`,
+      url: `http://localhost:${webPort}`,
+      reuseExistingServer: false,
+      timeout: 120000,
+    },
+  ],
 });

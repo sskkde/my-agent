@@ -47,6 +47,9 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
+# Playwright generated auth state
+web/playwright/.auth/*.json
+
 # Agent local state
 .sisyphus/
 agent/.sisyphus/
