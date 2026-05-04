@@ -512,6 +512,7 @@ describe('Foreground Conversation Agent', () => {
       };
 
       let capturedRequest: LLMRequest | undefined;
+      let capturedTimeout: number | undefined;
       mockLLMAdapter = {
         config: {
           providers: [],
@@ -547,42 +548,7 @@ describe('Foreground Conversation Agent', () => {
         updateProviderPriority: vi.fn(),
       };
 
-      let capturedTimeout: number | undefined;
-      mockLLMAdapter = {
-        config: {
-          providers: [],
-          defaultTimeoutMs: 10000,
-          enableCircuitBreaker: false,
-        },
-        providers: [],
-        complete: vi.fn(async (request: LLMRequest): Promise<LLMResult> => {
-          const response: LLMResponse = {
-            id: 'test-response-id',
-            model: request.model,
-            content: JSON.stringify({
-              route: 'answer_directly',
-              reason: 'Test',
-              userVisibleResponse: 'Response',
-            }),
-            role: 'assistant',
-            finishReason: 'stop',
-            createdAt: new Date().toISOString(),
-          };
-          return {
-            success: true,
-            response,
-            providerId: 'mock-provider',
-          };
-        }),
-        stream: async function* () {},
-        addProvider: vi.fn(),
-        removeProvider: vi.fn(),
-        getProvider: vi.fn(),
-        getHealthyProviders: vi.fn(() => []),
-        updateProviderPriority: vi.fn(),
-      };
-
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig });
 
       const originalSetTimeout = global.setTimeout;
       const mockSetTimeout = vi.fn((fn: () => void, ms: number) => {
@@ -600,7 +566,10 @@ describe('Foreground Conversation Agent', () => {
         const input = createInput('Hello');
         await agent.processMessage(input, stateWithConfig);
 
-        expect(capturedTimeout).toBe(25000);
+        expect(capturedRequest).toBeDefined();
+        expect(capturedRequest!.model).toBe('state-model');
+        expect(capturedRequest!.messages[0].content).toBe('State system prompt');
+        expect(capturedTimeout).toBe(15000);
       } finally {
         global.setTimeout = originalSetTimeout;
       }

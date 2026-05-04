@@ -210,7 +210,9 @@ export function createOrchestrationProcessor(
       let output: MessageProcessorOutput;
 
       try {
-        const hasNoProvider = providerResolution?.type === 'no-provider' || deps.llmAdapter.providers.length === 0;
+        // Check inside execute() so the provider-scoped adapter's providers getter
+        // runs within the AsyncLocalStorage scope set by runWithProvidersForUser.
+        const hasNoProvider = providerResolution?.type === 'no-provider' || (!providerResolution && deps.llmAdapter.providers.length === 0);
 
         if (hasNoProvider) {
           emitStatus(deps, buildStatusPayload(
