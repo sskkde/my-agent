@@ -19,37 +19,11 @@ import type { LLMAdapter } from '../llm/adapter.js';
 import type { LLMRequest, LLMResult } from '../llm/types.js';
 import type { AgentConfig } from '../storage/agent-config-store.js';
 import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../storage/agent-config-store.js';
+import { buildRoutingMessages, computeEffectiveAllowedToolIds } from '../agents/prompt-builder.js';
+import { getToolCatalog } from '../api/tool-catalog.js';
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
-}
-
-/**
- * Known tool IDs from the catalog - used for server-side validation
- * TOOL IDs must be kept in sync with src/api/tool-catalog.ts
- */
-const KNOWN_TOOL_IDS: string[] = [
-  'artifact.create',
-  'artifact.update',
-  'ask_user',
-  'status.query',
-  'memory.retrieve',
-  'transcript.search',
-  'plan.patch',
-  'docs.search',
-];
-
-/**
- * Compute the effective allowed tool IDs for the routing prompt.
- * If agentConfig.allowedToolIds is non-empty, intersect with known tools.
- * If empty/undefined, treat all known tools as allowed.
- */
-function computeEffectiveAllowedToolIds(agentConfig?: AgentConfig): string[] {
-  const allowed = agentConfig?.allowedToolIds;
-  if (allowed && allowed.length > 0) {
-    return KNOWN_TOOL_IDS.filter((id) => allowed.includes(id));
-  }
-  return [...KNOWN_TOOL_IDS];
 }
 
 const TOOL_ALIASES: Record<string, string[]> = {
@@ -136,20 +110,26 @@ class ForegroundAgentImpl implements ForegroundAgent {
       });
     }
 
-    const prompt = this.buildRoutingPrompt(message, state);
-    const llmResult = await this.callLLMRouter(prompt, state);
+    const toolCatalog = getToolCatalog().map(t => t.name);
+    const messages = buildRoutingMessages({
+      message,
+      sessionState: state,
+      agentConfig: effectiveConfig,
+      toolCatalog,
+    });
+    const llmResult = await this.callLLMRouter(messages, state, toolCatalog);
 
     if (!llmResult.success) {
       // Retry with repair prompt if attempts remain
       const maxRepairAttempts = effectiveConfig?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS;
       if (maxRepairAttempts > 0 && llmResult.error?.retryable) {
-        const retryPrompt = llmResult.error.code === 'LLM_REQUEST_FAILED'
-          ? prompt
-          : this.buildRepairPrompt(prompt, llmResult.error?.message || 'Unknown error');
-        const retryResult = await this.callLLMRouter(retryPrompt, state);
+        const retryMessages = llmResult.error.code === 'LLM_REQUEST_FAILED'
+          ? messages
+          : this.buildRepairMessages(messages, llmResult.error?.message || 'Unknown error');
+        const retryResult = await this.callLLMRouter(retryMessages, state, toolCatalog);
 
         if (retryResult.success) {
-          return this.mapRouterOutputToDecision(retryResult.output!, input, state);
+          return this.mapRouterOutputToDecision(retryResult.output!, input, state, toolCatalog);
         }
       }
 
@@ -160,7 +140,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       });
     }
 
-    return this.mapRouterOutputToDecision(llmResult.output!, input, state);
+    return this.mapRouterOutputToDecision(llmResult.output!, input, state, toolCatalog);
   }
 
   private createDecision(
@@ -193,99 +173,37 @@ class ForegroundAgentImpl implements ForegroundAgent {
     return state?.agentConfig ?? this.agentConfig;
   }
 
-  /**
-   * Build the routing prompt for the LLM
-   */
-  private buildRoutingPrompt(message: string, state: ForegroundSessionState): string {
-    const { effectivePolicy, currentPersona, hydratedSession } = state;
-    const sessionContext = hydratedSession.sessionContext;
-    const effectiveConfig = this.getEffectiveConfig(state);
-
-    const activeWorkSummary = this.buildActiveWorkSummary(state);
-    const policySummary = `Steps threshold: ${effectivePolicy.estimatedStepsGte}, Max complexity: ${effectivePolicy.maxComplexity}, Allowed tools: ${effectivePolicy.allowedToolCategories.join(', ') || 'none'}`;
-    const personaPrompt = currentPersona.directDelegationPolicy ? `Persona: ${currentPersona.name}` : '';
-
-    const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig);
-    const effectiveToolSummary = effectiveToolIds.join(', ');
-
-    return `You are a message router for an AI assistant. Analyze the user message and decide how to handle it.
-
-AVAILABLE ROUTES:
-- answer_directly: Simple questions, greetings, or anything that needs a direct response
-- dispatch_tool: Simple read/search operations that can use a tool directly
-- spawn_planner: Multi-step complex tasks requiring planning
-- resume_existing_planner: Continue an existing planner session
-- cancel_or_modify_task: Cancel, pause, resume, or modify active work
-- status_query: Check status of active tasks
-- dispatch_subagent: Tasks suitable for background execution
-- approval_handler: Handle approval responses
-
-SESSION STATE:
-- Active planner runs: ${sessionContext.activePlannerRunIds.length}
-- Active background runs: ${sessionContext.activeBackgroundRunIds.length}
-${activeWorkSummary}
-
-POLICY: ${policySummary}
-${personaPrompt}
-
-AVAILABLE TOOL IDS (use ONLY these exact IDs in suggestedTools):
-- ${effectiveToolSummary}
-
-When using dispatch_tool, suggestedTools must use only the exact tool IDs listed above. Do NOT suggest tools that are not listed.
-
-IMPORTANT TOOL GUIDANCE:
-- None of the available tools provide live web search, real-time weather data, or current internet lookups.
-- For questions about current weather, live news, real-time web data, or anything requiring internet access, use answer_directly and explain the limitation or ask for clarification.
-- Do NOT use docs.search, transcript.search, or memory.retrieve for real-time web/weather queries — these search internal documents, transcripts, and memory, not the live internet.
-
-USER MESSAGE: "${message}"
-
-Respond with valid JSON only:
-{
-  "route": "<one of the available routes>",
-  "reason": "<brief explanation of routing decision>",
-  "userVisibleResponse": "<optional immediate response to show user>",
-  "estimatedSteps": <optional number>,
-  "complexity": "<optional: low|medium|high|critical>",
-  "suggestedTools": ["<optional tool names>"]
-}`;
-  }
-
-  /**
-   * Build a summary of active work for the prompt
-   */
-  private buildActiveWorkSummary(state: ForegroundSessionState): string {
-    const parts: string[] = [];
-    const { activeWorkRefs, hydratedSession } = state;
-    const { activePlannerRunIds, activeBackgroundRunIds } = hydratedSession.sessionContext;
-
-    if (activePlannerRunIds.length > 0) {
-      parts.push(`- Planner runs: ${activePlannerRunIds.join(', ')}`);
+  private buildRepairMessages(
+    originalMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    errorMessage: string
+  ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
+    let lastUserIndex = -1;
+    for (let i = originalMessages.length - 1; i >= 0; i--) {
+      if (originalMessages[i].role === 'user') {
+        lastUserIndex = i;
+        break;
+      }
     }
-    if (activeBackgroundRunIds.length > 0) {
-      parts.push(`- Background runs: ${activeBackgroundRunIds.join(', ')}`);
+    if (lastUserIndex === -1) {
+      return originalMessages;
     }
-    if (activeWorkRefs.pendingApprovals.length > 0) {
-      parts.push(`- Pending approvals: ${activeWorkRefs.pendingApprovals.length}`);
-    }
-    if (activeWorkRefs.activeRuns.length > 0) {
-      parts.push(`- Active runs: ${activeWorkRefs.activeRuns.join(', ')}`);
-    }
-
-    return parts.length > 0 ? `- ${parts.join('\n- ')}` : '- No active work';
-  }
-
-  /**
-   * Build repair prompt when initial routing fails
-   */
-  private buildRepairPrompt(originalPrompt: string, errorMessage: string): string {
-    return `${originalPrompt}
+    const lastUserMessage = originalMessages[lastUserIndex];
+    const repairedUserContent = `${lastUserMessage.content}
 
 IMPORTANT: Your previous response was invalid. Error: ${errorMessage}
 Please respond with valid JSON matching the exact schema shown above.`;
+    return originalMessages.map((m, i) =>
+      i === lastUserIndex
+        ? { ...m, content: repairedUserContent }
+        : m
+    );
   }
 
-  private async callLLMRouter(prompt: string, state?: ForegroundSessionState): Promise<RouterResult> {
+  private async callLLMRouter(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    state?: ForegroundSessionState,
+    _toolCatalog?: string[]
+  ): Promise<RouterResult> {
     if (!this.llmAdapter) {
       return {
         success: false,
@@ -299,19 +217,7 @@ Please respond with valid JSON matching the exact schema shown above.`;
 
     const effectiveConfig = this.getEffectiveConfig(state);
     const resolvedModel = state?.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini';
-    const systemPrompt = effectiveConfig?.systemPrompt ?? 'You are a message routing assistant. Respond only with valid JSON.';
-    const routingPrompt = effectiveConfig?.routingPrompt;
     const routingTimeoutMs = effectiveConfig?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS;
-
-    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: systemPrompt },
-    ];
-
-    if (routingPrompt) {
-      messages.push({ role: 'system', content: routingPrompt });
-    }
-
-    messages.push({ role: 'user', content: prompt });
 
     const healthyProviders = this.llmAdapter.getHealthyProviders();
     const supportsJsonMode =
@@ -573,8 +479,9 @@ Please respond with valid JSON matching the exact schema shown above.`;
    * SECURITY: Only allow tools that exist in the known catalog.
    */
   private filterAllowedTools(suggestedTools: string[]): string[] {
+    const knownToolIds = getToolCatalog().map(t => t.name);
     const normalizedTools = suggestedTools.flatMap((toolId) => (
-      KNOWN_TOOL_IDS.includes(toolId) ? [toolId] : TOOL_ALIASES[toolId] ?? []
+      knownToolIds.includes(toolId) ? [toolId] : TOOL_ALIASES[toolId] ?? []
     ));
     return [...new Set(normalizedTools)];
   }
@@ -585,14 +492,15 @@ Please respond with valid JSON matching the exact schema shown above.`;
   private mapRouterOutputToDecision(
     output: LLMRouterOutput,
     input: ForegroundMessageInput,
-    state: ForegroundSessionState
+    state: ForegroundSessionState,
+    toolCatalog: string[]
   ): ForegroundDecision {
     const { route, reason, userVisibleResponse, estimatedSteps, complexity, suggestedTools } = output;
 
     // Deterministic safety: if dispatch_tool has no allowed suggested tools, convert to answer_directly
     if (route === 'dispatch_tool') {
       const effectiveConfig = this.getEffectiveConfig(state);
-      const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig);
+      const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
       const hasAllowedTools = suggestedTools && suggestedTools.length > 0 &&
         suggestedTools.some((t) => effectiveToolIds.includes(t));
       if (!hasAllowedTools) {

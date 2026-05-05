@@ -87,12 +87,12 @@ interface UpdateGlobalConfigRequest {
 interface UpdateOverrideConfigRequest {
   displayName?: string;
   enabled?: boolean;
-  systemPrompt?: string;
-  routingPrompt?: string;
-  providerId?: string;
-  model?: string;
-  allowedToolIds?: string[];
-  allowedSkillIds?: string[];
+  systemPrompt?: string | null;
+  routingPrompt?: string | null;
+  providerId?: string | null;
+  model?: string | null;
+  allowedToolIds?: string[] | null;
+  allowedSkillIds?: string[] | null;
   routingTimeoutMs?: number;
   repairAttempts?: number;
 }
@@ -144,10 +144,10 @@ function validateConfigInput(
     }
   }
 
-  // Validate systemPrompt if provided
-  if (input.systemPrompt !== undefined) {
+  // Validate systemPrompt if provided (null is valid for reset-to-inherit)
+  if (input.systemPrompt !== undefined && input.systemPrompt !== null) {
     if (typeof input.systemPrompt !== 'string') {
-      return { valid: false, error: { code: 'INVALID_SYSTEM_PROMPT', message: 'System prompt must be a string' } };
+      return { valid: false, error: { code: 'INVALID_SYSTEM_PROMPT', message: 'System prompt must be a string or null' } };
     }
     if (input.systemPrompt.length > MAX_PROMPT_LENGTH) {
       return { valid: false, error: { code: 'SYSTEM_PROMPT_TOO_LONG', message: `System prompt must be ${MAX_PROMPT_LENGTH} characters or less` } };
@@ -185,10 +185,10 @@ function validateConfigInput(
     }
   }
 
-  // Validate allowedToolIds if provided
-  if (input.allowedToolIds !== undefined) {
+  // Validate allowedToolIds if provided (null is valid for reset-to-inherit)
+  if (input.allowedToolIds !== undefined && input.allowedToolIds !== null) {
     if (!Array.isArray(input.allowedToolIds)) {
-      return { valid: false, error: { code: 'INVALID_TOOL_IDS', message: 'Tool IDs must be an array' } };
+      return { valid: false, error: { code: 'INVALID_TOOL_IDS', message: 'Tool IDs must be an array or null' } };
     }
     const validToolIds = getValidToolIds();
     const invalidTools = input.allowedToolIds.filter(id => !validToolIds.includes(id));
@@ -197,10 +197,10 @@ function validateConfigInput(
     }
   }
 
-  // Validate allowedSkillIds if provided
-  if (input.allowedSkillIds !== undefined) {
+  // Validate allowedSkillIds if provided (null is valid for reset-to-inherit)
+  if (input.allowedSkillIds !== undefined && input.allowedSkillIds !== null) {
     if (!Array.isArray(input.allowedSkillIds)) {
-      return { valid: false, error: { code: 'INVALID_SKILL_IDS', message: 'Skill IDs must be an array' } };
+      return { valid: false, error: { code: 'INVALID_SKILL_IDS', message: 'Skill IDs must be an array or null' } };
     }
     const validSkillIds = getValidSkillIds();
     const invalidSkills = input.allowedSkillIds.filter(id => !validSkillIds.includes(id));
@@ -391,18 +391,34 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         const global = agentConfigStore.getGlobalDefault();
         const existingOverride = agentConfigStore.listByUser(userId).find(c => c.agentId === agentId);
 
+        // For user overrides:
+        // - undefined in request = keep existing value (or inherit from global if no existing)
+        // - null in request = reset to inherit (pass null to upsert)
+        // - value in request = use that value
         const config = agentConfigStore.upsert({
           agentId,
           scope: 'user',
           userId,
           displayName: displayName ?? existingOverride?.displayName ?? global?.displayName ?? 'Default Agent',
           enabled: enabled ?? existingOverride?.enabled ?? global?.enabled ?? true,
-          systemPrompt: systemPrompt ?? existingOverride?.systemPrompt ?? global?.systemPrompt ?? '',
-          routingPrompt: routingPrompt !== undefined ? routingPrompt : existingOverride?.routingPrompt ?? undefined,
-          providerId: providerId !== undefined ? providerId : existingOverride?.providerId ?? undefined,
-          model: model !== undefined ? model : existingOverride?.model ?? undefined,
-          allowedToolIds: allowedToolIds ?? existingOverride?.allowedToolIds ?? global?.allowedToolIds ?? [],
-          allowedSkillIds: allowedSkillIds ?? existingOverride?.allowedSkillIds ?? global?.allowedSkillIds ?? [],
+          systemPrompt: systemPrompt !== undefined 
+            ? systemPrompt 
+            : existingOverride?.systemPrompt ?? null,
+          routingPrompt: routingPrompt !== undefined 
+            ? routingPrompt 
+            : existingOverride?.routingPrompt ?? null,
+          providerId: providerId !== undefined 
+            ? providerId 
+            : existingOverride?.providerId ?? null,
+          model: model !== undefined 
+            ? model 
+            : existingOverride?.model ?? null,
+          allowedToolIds: allowedToolIds !== undefined 
+            ? allowedToolIds 
+            : existingOverride?.allowedToolIds ?? null,
+          allowedSkillIds: allowedSkillIds !== undefined 
+            ? allowedSkillIds 
+            : existingOverride?.allowedSkillIds ?? null,
           routingTimeoutMs: routingTimeoutMs ?? existingOverride?.routingTimeoutMs,
           repairAttempts: repairAttempts ?? existingOverride?.repairAttempts,
         });

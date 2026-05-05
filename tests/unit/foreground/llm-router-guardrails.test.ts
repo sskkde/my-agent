@@ -87,9 +87,9 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedTools = ['docs.search', 'plan.patch', 'memory.retrieve', 'unknown.tool'];
 
-      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
-        ? agentConfig.allowedToolIds
-        : KNOWN_TOOL_IDS;
+      const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
+        ? KNOWN_TOOL_IDS
+        : agentConfig.allowedToolIds;
 
       const filtered = suggestedTools.filter(
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
@@ -107,9 +107,9 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedTools = ['plan.patch', 'artifact.create'];
 
-      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
-        ? agentConfig.allowedToolIds
-        : KNOWN_TOOL_IDS;
+      const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
+        ? KNOWN_TOOL_IDS
+        : agentConfig.allowedToolIds;
 
       const filtered = suggestedTools.filter(
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
@@ -118,16 +118,16 @@ describe('LLM Router Guardrails', () => {
       expect(filtered).toEqual([]);
     });
 
-    it('should allow all known tools when AgentConfig has no restrictions', () => {
+    it('should allow all known tools when AgentConfig has null allowedToolIds (inherit)', () => {
       const agentConfig = createMockAgentConfig({
-        allowedToolIds: [],
+        allowedToolIds: null,
       });
 
       const suggestedTools = ['docs.search', 'memory.retrieve', 'transcript.search'];
 
-      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
-        ? agentConfig.allowedToolIds
-        : KNOWN_TOOL_IDS;
+      const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
+        ? KNOWN_TOOL_IDS
+        : agentConfig.allowedToolIds;
 
       const filtered = suggestedTools.filter(
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
@@ -169,9 +169,9 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedSkills = ['docs.search', 'plan.patch', 'memory.retrieve'];
 
-      const allowedSkillIds = agentConfig.allowedSkillIds && agentConfig.allowedSkillIds.length > 0
-        ? agentConfig.allowedSkillIds
-        : KNOWN_SKILL_IDS;
+      const allowedSkillIds = agentConfig.allowedSkillIds === null || agentConfig.allowedSkillIds === undefined
+        ? KNOWN_SKILL_IDS
+        : agentConfig.allowedSkillIds;
 
       const filtered = suggestedSkills.filter(
         skillId => allowedSkillIds.includes(skillId) && KNOWN_SKILL_IDS.includes(skillId)
@@ -393,14 +393,14 @@ describe('LLM Router Guardrails', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should handle null AgentConfig gracefully', () => {
+    it('should handle null AgentConfig gracefully (all known tools)', () => {
       const agentConfig: AgentConfig | null = null;
       const suggestedTools = ['docs.search', 'plan.patch'];
 
       const cfg = agentConfig as AgentConfig | null;
-      const allowedToolIds: string[] = cfg && cfg.allowedToolIds && cfg.allowedToolIds.length > 0
-        ? cfg.allowedToolIds
-        : KNOWN_TOOL_IDS;
+      const allowedToolIds: string[] = cfg?.allowedToolIds === null || cfg?.allowedToolIds === undefined
+        ? KNOWN_TOOL_IDS
+        : cfg.allowedToolIds;
 
       const filtered = suggestedTools.filter(
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
@@ -409,22 +409,40 @@ describe('LLM Router Guardrails', () => {
       expect(filtered).toEqual(['docs.search', 'plan.patch']);
     });
 
-    it('should handle AgentConfig with empty allowedToolIds', () => {
+    it('should handle AgentConfig with null allowedToolIds (inherit = all known)', () => {
       const agentConfig = createMockAgentConfig({
-        allowedToolIds: [],
+        allowedToolIds: null,
       });
 
       const suggestedTools = ['docs.search', 'plan.patch'];
 
-      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
-        ? agentConfig.allowedToolIds
-        : KNOWN_TOOL_IDS;
+      const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
+        ? KNOWN_TOOL_IDS
+        : agentConfig.allowedToolIds;
 
       const filtered = suggestedTools.filter(
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
       );
 
       expect(filtered).toEqual(['docs.search', 'plan.patch']);
+    });
+
+    it('should handle AgentConfig with empty allowedToolIds (none allowed)', () => {
+      const agentConfig = createMockAgentConfig({
+        allowedToolIds: [],
+      });
+
+      const suggestedTools = ['docs.search', 'plan.patch'];
+
+      const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
+        ? KNOWN_TOOL_IDS
+        : agentConfig.allowedToolIds;
+
+      const filtered = suggestedTools.filter(
+        toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
+      );
+
+      expect(filtered).toEqual([]);
     });
 
     it('should handle duplicate tool suggestions', () => {

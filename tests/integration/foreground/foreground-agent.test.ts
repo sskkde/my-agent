@@ -698,7 +698,13 @@ describe('Foreground Conversation Agent', () => {
 
         expect(capturedRequest).toBeDefined();
         expect(capturedRequest!.model).toBe('state-model');
-        expect(capturedRequest!.messages[0].content).toBe('State system prompt');
+        // First system message is now the registry base prompt, not agentConfig.systemPrompt
+        expect(capturedRequest!.messages[0].content).toContain('foreground routing agent');
+        // State config routingPrompt appears as overlay (after registry base + overlay)
+        const routingOverlayMsg = capturedRequest!.messages.find(
+          (m) => m.role === 'system' && m.content === 'State routing prompt'
+        );
+        expect(routingOverlayMsg).toBeDefined();
         expect(capturedTimeout).toBe(15000);
       } finally {
         global.setTimeout = originalSetTimeout;
@@ -856,7 +862,48 @@ describe('Foreground Conversation Agent', () => {
   });
 
   describe('effective allowed tool IDs in routing prompt', () => {
-    it('should list all known tools when agentConfig.allowedToolIds is empty', async () => {
+    it('should list all known tools when agentConfig.allowedToolIds is null (inherit)', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple question',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const stateWithNullAllowed: ForegroundSessionState = {
+        ...baseState,
+        agentConfig: {
+          agentConfigId: 'cfg-1',
+          agentId: 'foreground.default',
+          scope: 'global',
+          userId: null,
+          displayName: 'Test',
+          enabled: true,
+          systemPrompt: 'sys',
+          routingPrompt: null,
+          providerId: null,
+          model: null,
+          allowedToolIds: null,
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+          promptType: null,
+          promptVersion: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      await agent.processMessage(createInput('Hello'), stateWithNullAllowed);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const prompt = request?.messages.find((m) => m.role === 'user')?.content;
+
+      expect(prompt).toContain('docs.search');
+      expect(prompt).toContain('transcript.search');
+      expect(prompt).toContain('memory.retrieve');
+    });
+
+    it('should render "none" when agentConfig.allowedToolIds is empty array', async () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'answer_directly',
         reason: 'Simple question',
@@ -866,7 +913,7 @@ describe('Foreground Conversation Agent', () => {
       const stateWithEmptyAllowed: ForegroundSessionState = {
         ...baseState,
         agentConfig: {
-          agentConfigId: 'cfg-1',
+          agentConfigId: 'cfg-1b',
           agentId: 'foreground.default',
           scope: 'global',
           userId: null,
@@ -892,9 +939,10 @@ describe('Foreground Conversation Agent', () => {
       const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
       const prompt = request?.messages.find((m) => m.role === 'user')?.content;
 
-      expect(prompt).toContain('docs.search');
-      expect(prompt).toContain('transcript.search');
-      expect(prompt).toContain('memory.retrieve');
+      const toolIdsSection = prompt?.split('AVAILABLE TOOL IDS')[1]?.split('When using dispatch_tool')[0] ?? '';
+      expect(toolIdsSection).toContain('none');
+      expect(toolIdsSection).not.toContain('docs.search');
+      expect(toolIdsSection).not.toContain('transcript.search');
     });
 
     it('should only list allowed tools when agentConfig.allowedToolIds restricts tools', async () => {
@@ -958,6 +1006,40 @@ describe('Foreground Conversation Agent', () => {
       expect(prompt).toContain('real-time weather');
       expect(prompt).toContain('answer_directly');
       expect(prompt).toContain('Do NOT use docs.search, transcript.search, or memory.retrieve for real-time web/weather queries');
+    });
+
+    it('should use registry base prompt as first system message', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple question',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      await agent.processMessage(createInput('Hello'), baseState);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const firstSystemMsg = request?.messages.find((m) => m.role === 'system');
+
+      expect(firstSystemMsg).toBeDefined();
+      expect(firstSystemMsg!.content).toContain('foreground routing agent');
+      expect(firstSystemMsg!.content).toContain('classify');
+    });
+
+    it('should source tool IDs from getToolCatalog, not hardcoded list', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple question',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      await agent.processMessage(createInput('Hello'), baseState);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const prompt = request?.messages.find((m) => m.role === 'user')?.content;
+
+      expect(prompt).toContain('artifact.create');
+      expect(prompt).toContain('plan.patch');
+      expect(prompt).toContain('docs.search');
     });
   });
 
