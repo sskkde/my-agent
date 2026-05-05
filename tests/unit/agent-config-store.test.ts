@@ -13,14 +13,16 @@ const CREATE_TABLE_SQL = `
     user_id_key TEXT NOT NULL DEFAULT '',
     display_name TEXT NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1,
-    system_prompt TEXT NOT NULL,
+    system_prompt TEXT,
     routing_prompt TEXT,
     provider_id TEXT,
     model TEXT,
-    allowed_tool_ids TEXT NOT NULL DEFAULT '[]',
-    allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
-    routing_timeout_ms INTEGER NOT NULL DEFAULT 10000,
+    allowed_tool_ids TEXT,
+    allowed_skill_ids TEXT,
+    routing_timeout_ms INTEGER NOT NULL DEFAULT 60000,
     repair_attempts INTEGER NOT NULL DEFAULT 1,
+    prompt_type TEXT,
+    prompt_version TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )
@@ -70,7 +72,7 @@ describe('agent-config-store', () => {
       expect(result?.displayName).toBe('Global Foreground Agent');
       expect(result?.enabled).toBe(true);
       expect(result?.systemPrompt).toBe('You are the global foreground agent');
-      expect(result?.routingTimeoutMs).toBe(10000);
+      expect(result?.routingTimeoutMs).toBe(60000);
       expect(result?.repairAttempts).toBe(1);
     });
   });
@@ -238,6 +240,74 @@ describe('agent-config-store', () => {
       expect(result?.providerId).toBe('prov-global');
       expect(result?.allowedToolIds).toEqual(['tool1']);
       expect(result?.allowedSkillIds).toEqual(['skill1']);
+      expect(result?.routingTimeoutMs).toBe(10000);
+      expect(result?.repairAttempts).toBe(1);
+    });
+
+    it('should preserve explicit user timeout and repair overrides that equal defaults', () => {
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        routingTimeoutMs: 30000,
+        repairAttempts: 0,
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+        routingTimeoutMs: 60000,
+        repairAttempts: 1,
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.routingTimeoutMs).toBe(60000);
+      expect(result?.repairAttempts).toBe(1);
+    });
+
+    it('should keep omitted user timeout and repair inherited after global changes', () => {
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        routingTimeoutMs: 30000,
+        repairAttempts: 0,
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+      });
+
+      expect(store.getByUser('user-001')?.routingTimeoutMs).toBe(30000);
+      expect(store.getByUser('user-001')?.repairAttempts).toBe(0);
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        routingTimeoutMs: 50000,
+        repairAttempts: 1,
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result?.routingTimeoutMs).toBe(50000);
+      expect(result?.repairAttempts).toBe(1);
     });
 
     it('should return global default when no user override exists', () => {
@@ -316,11 +386,430 @@ describe('agent-config-store', () => {
         systemPrompt: 'Minimal prompt',
       });
 
-      expect(result.routingTimeoutMs).toBe(10000);
+      expect(result.routingTimeoutMs).toBe(60000);
       expect(result.repairAttempts).toBe(1);
       expect(result.allowedToolIds).toEqual([]);
       expect(result.allowedSkillIds).toEqual([]);
       expect(result.enabled).toBe(true);
+    });
+  });
+
+  describe('allowedToolIds three-state semantics', () => {
+    const ALL_TOOLS = [
+      'artifact.create',
+      'artifact.update',
+      'ask_user',
+      'status.query',
+      'memory.retrieve',
+      'transcript.search',
+      'plan.patch',
+      'docs.search',
+    ];
+
+    it('should inherit allowedToolIds from global when user override has null', () => {
+      // Create global with specific tools
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        allowedToolIds: ['tool1', 'tool2'],
+      });
+
+      // Create user override with null (inherit)
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+        allowedToolIds: null, // null = inherit from global
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.allowedToolIds).toEqual(['tool1', 'tool2']); // inherited from global
+    });
+
+    it('should allow no tools when user override has explicit empty array', () => {
+      // Create global with tools
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        allowedToolIds: ['tool1', 'tool2'],
+      });
+
+      // Create user override with explicit empty array (no tools)
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+        allowedToolIds: [], // [] = no tools allowed
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.allowedToolIds).toEqual([]); // explicit empty, not inherited
+    });
+
+    it('should allow all known tools when user override has full list', () => {
+      // Create global with limited tools
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        allowedToolIds: ['tool1'],
+      });
+
+      // Create user override with all tools
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+        allowedToolIds: ALL_TOOLS, // full list = all tools allowed
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.allowedToolIds).toEqual(ALL_TOOLS);
+    });
+
+    it('should update inherited tools when global changes', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        allowedToolIds: ['tool1'],
+      });
+
+      // Create user override with null (inherit)
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+        allowedToolIds: null,
+      });
+
+      expect(store.getByUser('user-001')?.allowedToolIds).toEqual(['tool1']);
+
+      // Update global tools
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        allowedToolIds: ['tool2', 'tool3'],
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result?.allowedToolIds).toEqual(['tool2', 'tool3']); // inherited updated
+    });
+
+    it('should NOT update explicit user tools when global changes', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        allowedToolIds: ['tool1'],
+      });
+
+      // Create user override with explicit tools
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+        allowedToolIds: ['tool2'],
+      });
+
+      // Update global tools
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt',
+        allowedToolIds: ['tool3'],
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result?.allowedToolIds).toEqual(['tool2']); // unchanged, explicit
+    });
+  });
+
+  describe('prompt inheritance', () => {
+    it('should inherit systemPrompt from global when user override has null', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global system prompt',
+      });
+
+      // Create user override with null systemPrompt (inherit)
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: null, // null = inherit from global
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.systemPrompt).toBe('Global system prompt'); // inherited
+    });
+
+    it('should use explicit systemPrompt when user override provides one', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global system prompt',
+      });
+
+      // Create user override with explicit systemPrompt
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt', // explicit
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.systemPrompt).toBe('User system prompt'); // explicit, not inherited
+    });
+
+    it('should update inherited systemPrompt when global changes', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt v1',
+      });
+
+      // Create user override with null (inherit)
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: null,
+      });
+
+      expect(store.getByUser('user-001')?.systemPrompt).toBe('Global prompt v1');
+
+      // Update global systemPrompt
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt v2',
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result?.systemPrompt).toBe('Global prompt v2'); // inherited updated
+    });
+
+    it('should NOT update explicit user systemPrompt when global changes', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt v1',
+      });
+
+      // Create user override with explicit systemPrompt
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User prompt',
+      });
+
+      // Update global systemPrompt
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'Global prompt v2',
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result?.systemPrompt).toBe('User prompt'); // unchanged, explicit
+    });
+
+    it('should inherit routingPrompt from global when user override has null', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        routingPrompt: 'Global routing prompt',
+      });
+
+      // Create user override with null routingPrompt (inherit)
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        routingPrompt: null, // null = inherit from global
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.routingPrompt).toBe('Global routing prompt'); // inherited
+    });
+
+    it('should use explicit routingPrompt when user override provides one', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        routingPrompt: 'Global routing prompt',
+      });
+
+      // Create user override with explicit routingPrompt
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        routingPrompt: 'User routing prompt', // explicit
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.routingPrompt).toBe('User routing prompt'); // explicit, not inherited
+    });
+  });
+
+  describe('promptType and promptVersion', () => {
+    it('should store promptType and promptVersion in config', () => {
+      const result = store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        promptType: 'foreground.router',
+        promptVersion: 'v1',
+      });
+
+      expect(result.promptType).toBe('foreground.router');
+      expect(result.promptVersion).toBe('v1');
+    });
+
+    it('should inherit promptType from global when user override has null', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        promptType: 'foreground.router',
+        promptVersion: 'v1',
+      });
+
+      // Create user override with null promptType (inherit)
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        promptType: null,
+        promptVersion: null,
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.promptType).toBe('foreground.router'); // inherited
+      expect(result?.promptVersion).toBe('v1'); // inherited
+    });
+
+    it('should use explicit promptType when user override provides one', () => {
+      // Create global
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        promptType: 'foreground.router',
+        promptVersion: 'v1',
+      });
+
+      // Create user override with explicit promptType
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        promptType: 'custom.router',
+        promptVersion: 'v2',
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.promptType).toBe('custom.router'); // explicit
+      expect(result?.promptVersion).toBe('v2'); // explicit
     });
   });
 });

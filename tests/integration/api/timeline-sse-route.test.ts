@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createApiServer } from '../../../src/api/server.js';
 import { createApiContext, isApiContextError, type ApiContext } from '../../../src/api/context.js';
 import type { FastifyInstance } from 'fastify';
-import type { ConsoleTimelineEvent } from '../../../src/api/types.js';
+import type { ConsoleTimelineEvent, ProcessingStatusPayload } from '../../../src/api/types.js';
+import type { AddressInfo } from 'node:net';
 
 describe('Timeline SSE Route Integration', () => {
   let server: FastifyInstance;
@@ -18,8 +19,8 @@ describe('Timeline SSE Route Integration', () => {
     context = ctx;
     server = await createApiServer(context);
     await server.listen();
-    const address = server.server.address();
-    baseUrl = `http://localhost:${(address as any).port}`;
+    const address = server.server.address() as AddressInfo | null;
+    baseUrl = `http://localhost:${address?.port ?? 0}`;
 
     const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
       method: 'POST',
@@ -33,9 +34,7 @@ describe('Timeline SSE Route Integration', () => {
 
   afterAll(async () => {
     await server.close();
-    if (context && 'connection' in context) {
-      (context as any).connection.close();
-    }
+    context.connection.close();
   });
 
   describe('SSE endpoint', () => {
@@ -430,6 +429,145 @@ describe('Timeline SSE Route Integration', () => {
 
         expect(chunks).toContain('"type":"snapshot"');
         expect(chunks).not.toContain('turn-turn-005-input');
+
+        reader.releaseLock();
+      } finally {
+        clearTimeout(timeout);
+        controller.abort();
+      }
+    });
+
+    it('should deliver processing_status via broadcaster to SSE subscribers', async () => {
+      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({})
+      });
+      expect(createResponse.status).toBe(201);
+      const body = await createResponse.json() as { data: { session: { sessionId: string } } };
+      const sessionId = body.data.session.sessionId;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        const response = await fetch(
+          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          { headers: { 'Cookie': authCookie }, signal: controller.signal }
+        );
+
+        expect(response.status).toBe(200);
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let chunks = '';
+        let receivedStatus = false;
+
+        const readPromise = (async () => {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks += decoder.decode(value, { stream: true });
+            if (chunks.includes('"type":"processing_status"')) {
+              receivedStatus = true;
+              break;
+            }
+          }
+        })();
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const statusPayload: ProcessingStatusPayload = {
+          sessionId,
+          attemptId: 'test-attempt-001',
+          stage: 'model_call',
+          stageLabel: '模型调用',
+          providerId: 'openrouter',
+          model: 'anthropic/claude-3-opus',
+          activeTools: [],
+          timestamp: new Date().toISOString(),
+        };
+
+        context.timelineBroadcaster.broadcastProcessingStatus(sessionId, statusPayload);
+
+        await Promise.race([
+          readPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+        ]);
+
+        expect(receivedStatus).toBe(true);
+        expect(chunks).toContain('"type":"processing_status"');
+        expect(chunks).toContain('"providerId":"openrouter"');
+        expect(chunks).toContain('"model":"anthropic/claude-3-opus"');
+        expect(chunks).toContain('"stage":"model_call"');
+
+        reader.releaseLock();
+      } finally {
+        clearTimeout(timeout);
+        controller.abort();
+      }
+    });
+
+    it('should not deliver processing_status for a different session', async () => {
+      const createResponse1 = await fetch(`${baseUrl}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({})
+      });
+      expect(createResponse1.status).toBe(201);
+      const body1 = await createResponse1.json() as { data: { session: { sessionId: string } } };
+      const sessionIdA = body1.data.session.sessionId;
+
+      const createResponse2 = await fetch(`${baseUrl}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
+        body: JSON.stringify({})
+      });
+      expect(createResponse2.status).toBe(201);
+      const body2 = await createResponse2.json() as { data: { session: { sessionId: string } } };
+      const sessionIdB = body2.data.session.sessionId;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      try {
+        const response = await fetch(
+          `${baseUrl}/api/sessions/${sessionIdA}/timeline/stream`,
+          { headers: { 'Cookie': authCookie }, signal: controller.signal }
+        );
+
+        expect(response.status).toBe(200);
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let chunks = '';
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const wrongSessionStatus: ProcessingStatusPayload = {
+          sessionId: sessionIdB,
+          attemptId: 'wrong-attempt',
+          stage: 'model_call',
+          stageLabel: '模型调用',
+          providerId: 'openrouter',
+          model: 'test-model',
+          activeTools: [],
+          timestamp: new Date().toISOString(),
+        };
+
+        context.timelineBroadcaster.broadcastProcessingStatus(sessionIdB, wrongSessionStatus);
+
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks += decoder.decode(value, { stream: true });
+          break;
+        }
+
+        expect(chunks).not.toContain('wrong-attempt');
+        expect(chunks).not.toContain('"type":"processing_status"');
 
         reader.releaseLock();
       } finally {

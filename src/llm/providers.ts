@@ -314,7 +314,9 @@ export class OpenAIAdapter extends BaseProvider {
 
   constructor(config: ExtendedProviderConfig) {
     super(config);
-    this.baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+    // Normalize base URL by trimming trailing slashes to avoid /v1//chat/completions
+    const rawBaseUrl = config.baseUrl || 'https://api.openai.com/v1';
+    this.baseUrl = rawBaseUrl.replace(/\/+$/, '');
     this.apiKey = config.apiKey || process.env.OPENAI_API_KEY || '';
   }
 
@@ -403,7 +405,9 @@ export class OpenRouterAdapter extends BaseProvider {
 
   constructor(config: ExtendedProviderConfig) {
     super(config);
-    this.baseUrl = config.baseUrl || 'https://openrouter.ai/api/v1';
+    // Normalize base URL by trimming trailing slashes to avoid /v1//chat/completions
+    const rawBaseUrl = config.baseUrl || 'https://openrouter.ai/api/v1';
+    this.baseUrl = rawBaseUrl.replace(/\/+$/, '');
     this.apiKey = config.apiKey || process.env.OPENROUTER_API_KEY || '';
     this.siteUrl = config.siteUrl;
     this.appName = config.appName;

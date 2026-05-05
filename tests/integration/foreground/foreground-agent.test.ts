@@ -49,7 +49,8 @@ describe('Foreground Conversation Agent', () => {
     };
   }
 
-  function createMockLLMAdapter(responseContent: string): LLMAdapter {
+  function createMockLLMAdapter(responseContent: string, options?: { supportsJsonMode?: boolean }): LLMAdapter {
+    const supportsJsonMode = options?.supportsJsonMode ?? true;
     return {
       config: {
         providers: [],
@@ -76,7 +77,33 @@ describe('Foreground Conversation Agent', () => {
         addProvider: vi.fn(),
         removeProvider: vi.fn(),
         getProvider: vi.fn(),
-        getHealthyProviders: vi.fn(() => []),
+        getHealthyProviders: vi.fn(() => [{
+          id: 'mock-provider',
+          config: {
+            id: 'mock-provider',
+            name: 'Mock Provider',
+            enabled: true,
+            priority: 1,
+            timeoutMs: 10000,
+            retries: 2,
+            capabilities: {
+              supportsStreaming: false,
+              supportsFunctionCalling: true,
+              supportsJsonMode,
+              supportsVision: false,
+              maxTokens: 4096,
+              supportedModels: [],
+            },
+          },
+          circuitBreaker: { state: 'CLOSED', canExecute: () => true, recordSuccess: () => {}, recordFailure: () => {} } as unknown as LLMAdapter['providers'][0]['circuitBreaker'],
+          health: 'healthy',
+          stats: { totalRequests: 0, successfulRequests: 0, failedRequests: 0, timeoutRequests: 0, averageLatencyMs: 0, healthStatus: 'healthy' },
+          isHealthy: () => true,
+          getStats: () => ({ totalRequests: 0, successfulRequests: 0, failedRequests: 0, timeoutRequests: 0, averageLatencyMs: 0, healthStatus: 'healthy' }),
+          updateConfig: () => {},
+          resetStats: () => {},
+          complete: async () => ({ success: true, response: { id: '', model: '', content: '', role: 'assistant', finishReason: 'stop', createdAt: '' }, providerId: 'mock-provider' }),
+        }]),
         updateProviderPriority: vi.fn(),
       };
     }
@@ -197,6 +224,28 @@ describe('Foreground Conversation Agent', () => {
   });
 
   describe('dispatch_tool route', () => {
+    it('includes exact tool IDs in the routing prompt', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'Simple search operation',
+        suggestedTools: ['docs.search'],
+        estimatedSteps: 1,
+        complexity: 'low',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('搜索一下文档');
+      await agent.processMessage(input, baseState);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const prompt = request?.messages.find((message) => message.role === 'user')?.content;
+
+      expect(prompt).toContain('AVAILABLE TOOL IDS');
+      expect(prompt).toContain('docs.search');
+      expect(prompt).toContain('transcript.search');
+      expect(prompt).toContain('suggestedTools must use only the exact tool IDs');
+    });
+
     it('should route simple read task to dispatch_tool', async () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
@@ -213,6 +262,23 @@ describe('Foreground Conversation Agent', () => {
       expect(decision.route).toBe('dispatch_tool');
       expect(decision.suggestedTools).toContain('memory.retrieve');
       expect(decision.suggestedTools).toContain('transcript.search');
+    });
+
+    it('normalizes generic search tool suggestions to known tool IDs', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'Simple search operation with generic tool naming',
+        suggestedTools: ['search'],
+        estimatedSteps: 1,
+        complexity: 'low',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('搜索一下最近的会议记录');
+      const decision = await agent.processMessage(input, baseState);
+
+      expect(decision.route).toBe('dispatch_tool');
+      expect(decision.suggestedTools).toEqual(['docs.search']);
     });
   });
 
@@ -401,7 +467,7 @@ describe('Foreground Conversation Agent', () => {
       expect(decision.userVisibleResponse).toBe('Hello!');
     });
 
-    it('should not retry when the LLM request itself times out', async () => {
+    it('should retry once when the LLM request itself times out', async () => {
       mockLLMAdapter = {
         config: {
           providers: [],
@@ -434,10 +500,70 @@ describe('Foreground Conversation Agent', () => {
       const input = createInput('你现在使用的是什么模型？');
       const decision = await agent.processMessage(input, baseState);
 
-      expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(1);
+      expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(2);
       expect(decision.route).toBe('answer_directly');
       expect(decision.reason).toBe('LLM routing temporarily unavailable');
-      expect(decision.userVisibleResponse).toBe('Routing temporarily unavailable. Please try again in a moment.');
+      expect(decision.userVisibleResponse).toBe('The AI provider did not respond in time. Please try again in a moment.');
+    });
+
+    it('should return router output when retry after timeout succeeds', async () => {
+      let callCount = 0;
+      mockLLMAdapter = {
+        config: {
+          providers: [],
+          defaultTimeoutMs: 10000,
+          enableCircuitBreaker: false,
+        },
+        providers: [],
+        complete: vi.fn(async (): Promise<LLMResult> => {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              success: false,
+              error: {
+                errorId: 'timeout-test-error',
+                category: 'timeout',
+                code: 'ROUTER_TIMEOUT',
+                message: 'LLM router timeout after 10000ms',
+                recoverability: 'retryable_later',
+                source: { module: 'foreground_agent' },
+                createdAt: new Date().toISOString(),
+              },
+              providerId: 'mock-provider',
+            };
+          }
+          return {
+            success: true,
+            response: {
+              id: 'test-response-2',
+              model: 'gpt-4o-mini',
+              content: JSON.stringify({
+                route: 'answer_directly',
+                reason: 'Recovered after retry',
+                userVisibleResponse: 'OK',
+              }),
+              role: 'assistant',
+              finishReason: 'stop',
+              createdAt: new Date().toISOString(),
+            },
+            providerId: 'mock-provider',
+          };
+        }),
+        stream: async function* () {},
+        addProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        getProvider: vi.fn(),
+        getHealthyProviders: vi.fn(() => []),
+        updateProviderPriority: vi.fn(),
+      };
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('Reply exactly with OK.');
+      const decision = await agent.processMessage(input, baseState);
+
+      expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(2);
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.userVisibleResponse).toBe('OK');
     });
   });
 
@@ -488,6 +614,8 @@ describe('Foreground Conversation Agent', () => {
         allowedSkillIds: [],
         routingTimeoutMs: 5000,
         repairAttempts: 1,
+        promptType: null,
+        promptVersion: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -507,6 +635,8 @@ describe('Foreground Conversation Agent', () => {
         allowedSkillIds: [],
         routingTimeoutMs: 15000,
         repairAttempts: 2,
+        promptType: null,
+        promptVersion: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -591,6 +721,8 @@ describe('Foreground Conversation Agent', () => {
         allowedSkillIds: [],
         routingTimeoutMs: 10000,
         repairAttempts: 1,
+        promptType: null,
+        promptVersion: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -614,6 +746,362 @@ describe('Foreground Conversation Agent', () => {
 
       expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(1);
       expect(decision.reason).toBe('LLM routing temporarily unavailable');
+    });
+  });
+
+  describe('responseFormat conditional on provider capabilities', () => {
+    it('should include responseFormat when provider supports JSON mode', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple greeting',
+        userVisibleResponse: 'Hello!',
+      }), { supportsJsonMode: true });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('你好');
+      await agent.processMessage(input, baseState);
+
+      expect(mockLLMAdapter.complete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          responseFormat: { type: 'json_object' },
+        })
+      );
+    });
+
+    it('should omit responseFormat when provider does not support JSON mode', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple greeting',
+        userVisibleResponse: 'Hello!',
+      }), { supportsJsonMode: false });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('你好');
+      await agent.processMessage(input, baseState);
+
+      const callArgs = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      expect(callArgs?.responseFormat).toBeUndefined();
+    });
+
+    it('should omit responseFormat when first healthy provider lacks JSON mode even if fallback supports it', async () => {
+      const makeProvider = (id: string, supportsJsonMode: boolean) => ({
+        id,
+        config: {
+          id,
+          name: `${id} Provider`,
+          enabled: true,
+          priority: supportsJsonMode ? 2 : 1,
+          timeoutMs: 10000,
+          retries: 2,
+          capabilities: {
+            supportsStreaming: false,
+            supportsFunctionCalling: true,
+            supportsJsonMode,
+            supportsVision: false,
+            maxTokens: 4096,
+            supportedModels: [],
+          },
+        },
+        circuitBreaker: { state: 'CLOSED', canExecute: () => true, recordSuccess: () => {}, recordFailure: () => {} } as unknown as LLMAdapter['providers'][0]['circuitBreaker'],
+        health: 'healthy' as const,
+        stats: { totalRequests: 0, successfulRequests: 0, failedRequests: 0, timeoutRequests: 0, averageLatencyMs: 0, healthStatus: 'healthy' as const },
+        isHealthy: () => true,
+        getStats: () => ({ totalRequests: 0, successfulRequests: 0, failedRequests: 0, timeoutRequests: 0, averageLatencyMs: 0, healthStatus: 'healthy' as const }),
+        updateConfig: () => {},
+        resetStats: () => {},
+        complete: async () => ({ success: true as const, response: { id: '', model: '', content: '', role: 'assistant' as const, finishReason: 'stop' as const, createdAt: '' }, providerId: id }),
+      });
+
+      const customProvider = makeProvider('custom-siliconflow', false);
+      const fallbackProvider = makeProvider('openrouter-fallback', true);
+
+      mockLLMAdapter = {
+        config: {
+          providers: [],
+          defaultTimeoutMs: 10000,
+          enableCircuitBreaker: false,
+        },
+        providers: [],
+        complete: vi.fn(async (_request: LLMRequest): Promise<LLMResult> => ({
+          success: true,
+          response: {
+            id: 'test-response-id',
+            model: 'gpt-4o-mini',
+            content: JSON.stringify({
+              route: 'answer_directly',
+              reason: 'Simple greeting',
+              userVisibleResponse: 'Hello!',
+            }),
+            role: 'assistant',
+            finishReason: 'stop',
+            createdAt: new Date().toISOString(),
+          },
+          providerId: 'openrouter-fallback',
+        })),
+        stream: async function* () {},
+        addProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        getProvider: vi.fn(),
+        getHealthyProviders: vi.fn(() => [customProvider, fallbackProvider]),
+        updateProviderPriority: vi.fn(),
+      };
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const input = createInput('你好');
+      await agent.processMessage(input, baseState);
+
+      const callArgs = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      expect(callArgs?.responseFormat).toBeUndefined();
+    });
+  });
+
+  describe('effective allowed tool IDs in routing prompt', () => {
+    it('should list all known tools when agentConfig.allowedToolIds is empty', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple question',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const stateWithEmptyAllowed: ForegroundSessionState = {
+        ...baseState,
+        agentConfig: {
+          agentConfigId: 'cfg-1',
+          agentId: 'foreground.default',
+          scope: 'global',
+          userId: null,
+          displayName: 'Test',
+          enabled: true,
+          systemPrompt: 'sys',
+          routingPrompt: null,
+          providerId: null,
+          model: null,
+          allowedToolIds: [],
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+          promptType: null,
+          promptVersion: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      await agent.processMessage(createInput('Hello'), stateWithEmptyAllowed);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const prompt = request?.messages.find((m) => m.role === 'user')?.content;
+
+      expect(prompt).toContain('docs.search');
+      expect(prompt).toContain('transcript.search');
+      expect(prompt).toContain('memory.retrieve');
+    });
+
+    it('should only list allowed tools when agentConfig.allowedToolIds restricts tools', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Simple question',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const stateWithRestricted: ForegroundSessionState = {
+        ...baseState,
+        agentConfig: {
+          agentConfigId: 'cfg-2',
+          agentId: 'foreground.default',
+          scope: 'global',
+          userId: null,
+          displayName: 'Test',
+          enabled: true,
+          systemPrompt: 'sys',
+          routingPrompt: null,
+          providerId: null,
+          model: null,
+          allowedToolIds: ['ask_user', 'status.query'],
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+          promptType: null,
+          promptVersion: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      await agent.processMessage(createInput('Hello'), stateWithRestricted);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const prompt = request?.messages.find((m) => m.role === 'user')?.content;
+
+      expect(prompt).toContain('ask_user');
+      expect(prompt).toContain('status.query');
+
+      const toolIdsSection = prompt?.split('AVAILABLE TOOL IDS')[1]?.split('When using dispatch_tool')[0] ?? '';
+      expect(toolIdsSection).not.toContain('docs.search');
+      expect(toolIdsSection).not.toContain('transcript.search');
+      expect(toolIdsSection).not.toContain('memory.retrieve');
+    });
+
+    it('should include weather/real-time guidance in the prompt', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Weather question',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      await agent.processMessage(createInput('当前北京天气如何？'), baseState);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const prompt = request?.messages.find((m) => m.role === 'user')?.content;
+
+      expect(prompt).toContain('live web search');
+      expect(prompt).toContain('real-time weather');
+      expect(prompt).toContain('answer_directly');
+      expect(prompt).toContain('Do NOT use docs.search, transcript.search, or memory.retrieve for real-time web/weather queries');
+    });
+  });
+
+  describe('deterministic safety for disallowed dispatch_tool', () => {
+    it('should convert dispatch_tool with disallowed suggested tools to answer_directly', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'Weather lookup',
+        suggestedTools: ['docs.search'],
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const stateWithRestricted: ForegroundSessionState = {
+        ...baseState,
+        agentConfig: {
+          agentConfigId: 'cfg-3',
+          agentId: 'foreground.default',
+          scope: 'global',
+          userId: null,
+          displayName: 'Test',
+          enabled: true,
+          systemPrompt: 'sys',
+          routingPrompt: null,
+          providerId: null,
+          model: null,
+          allowedToolIds: ['ask_user', 'status.query'],
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+          promptType: null,
+          promptVersion: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      const decision = await agent.processMessage(createInput('当前北京天气如何？'), stateWithRestricted);
+
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.suggestedTools).toBeUndefined();
+      expect(decision.reason).toContain('no allowed tools suggested');
+    });
+
+    it('should convert dispatch_tool with empty suggested tools to answer_directly', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'No tools suggested',
+        suggestedTools: [],
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const decision = await agent.processMessage(createInput('当前北京天气如何？'), baseState);
+
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.suggestedTools).toBeUndefined();
+    });
+
+    it('should convert dispatch_tool with undefined suggested tools to answer_directly', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'No tools suggested',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const decision = await agent.processMessage(createInput('当前北京天气如何？'), baseState);
+
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.suggestedTools).toBeUndefined();
+    });
+
+    it('should keep dispatch_tool when suggested tools are all allowed', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'Search docs',
+        suggestedTools: ['docs.search'],
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const stateWithDocsAllowed: ForegroundSessionState = {
+        ...baseState,
+        agentConfig: {
+          agentConfigId: 'cfg-4',
+          agentId: 'foreground.default',
+          scope: 'global',
+          userId: null,
+          displayName: 'Test',
+          enabled: true,
+          systemPrompt: 'sys',
+          routingPrompt: null,
+          providerId: null,
+          model: null,
+          allowedToolIds: ['docs.search', 'ask_user'],
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+          promptType: null,
+          promptVersion: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      const decision = await agent.processMessage(createInput('搜索文档'), stateWithDocsAllowed);
+
+      expect(decision.route).toBe('dispatch_tool');
+      expect(decision.suggestedTools).toContain('docs.search');
+    });
+
+    it('should convert dispatch_tool with only disallowed tools in mixed list to answer_directly', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'Mixed tools',
+        suggestedTools: ['docs.search', 'transcript.search'],
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const stateWithRestricted: ForegroundSessionState = {
+        ...baseState,
+        agentConfig: {
+          agentConfigId: 'cfg-5',
+          agentId: 'foreground.default',
+          scope: 'global',
+          userId: null,
+          displayName: 'Test',
+          enabled: true,
+          systemPrompt: 'sys',
+          routingPrompt: null,
+          providerId: null,
+          model: null,
+          allowedToolIds: ['ask_user'],
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+          promptType: null,
+          promptVersion: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      const decision = await agent.processMessage(createInput('搜索'), stateWithRestricted);
+
+      expect(decision.route).toBe('answer_directly');
+      expect(decision.suggestedTools).toBeUndefined();
     });
   });
 });

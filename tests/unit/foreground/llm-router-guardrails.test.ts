@@ -47,6 +47,8 @@ describe('LLM Router Guardrails', () => {
     allowedSkillIds: [],
     routingTimeoutMs: 10000,
     repairAttempts: 1,
+    promptType: null,
+    promptVersion: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -85,7 +87,7 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedTools = ['docs.search', 'plan.patch', 'memory.retrieve', 'unknown.tool'];
 
-      const allowedToolIds = agentConfig.allowedToolIds.length > 0
+      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
         ? agentConfig.allowedToolIds
         : KNOWN_TOOL_IDS;
 
@@ -105,7 +107,7 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedTools = ['plan.patch', 'artifact.create'];
 
-      const allowedToolIds = agentConfig.allowedToolIds.length > 0
+      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
         ? agentConfig.allowedToolIds
         : KNOWN_TOOL_IDS;
 
@@ -123,7 +125,7 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedTools = ['docs.search', 'memory.retrieve', 'transcript.search'];
 
-      const allowedToolIds = agentConfig.allowedToolIds.length > 0
+      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
         ? agentConfig.allowedToolIds
         : KNOWN_TOOL_IDS;
 
@@ -167,7 +169,7 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedSkills = ['docs.search', 'plan.patch', 'memory.retrieve'];
 
-      const allowedSkillIds = agentConfig.allowedSkillIds.length > 0
+      const allowedSkillIds = agentConfig.allowedSkillIds && agentConfig.allowedSkillIds.length > 0
         ? agentConfig.allowedSkillIds
         : KNOWN_SKILL_IDS;
 
@@ -355,7 +357,7 @@ describe('LLM Router Guardrails', () => {
         'artifact.create',
       ];
 
-      const allowedToolIds = agentConfig.allowedToolIds;
+      const allowedToolIds = agentConfig.allowedToolIds ?? [];
 
       const filtered = suggestedTools.filter(
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
@@ -375,7 +377,7 @@ describe('LLM Router Guardrails', () => {
       const suggestedTools = ['plan.patch', 'artifact.create'];
 
       const filtered = suggestedTools.filter(
-        toolId => agentConfig.allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
+        toolId => (agentConfig.allowedToolIds ?? []).includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
       );
 
       expect(filtered).toEqual([]);
@@ -396,7 +398,7 @@ describe('LLM Router Guardrails', () => {
       const suggestedTools = ['docs.search', 'plan.patch'];
 
       const cfg = agentConfig as AgentConfig | null;
-      const allowedToolIds: string[] = cfg && cfg.allowedToolIds.length > 0
+      const allowedToolIds: string[] = cfg && cfg.allowedToolIds && cfg.allowedToolIds.length > 0
         ? cfg.allowedToolIds
         : KNOWN_TOOL_IDS;
 
@@ -414,7 +416,7 @@ describe('LLM Router Guardrails', () => {
 
       const suggestedTools = ['docs.search', 'plan.patch'];
 
-      const allowedToolIds = agentConfig.allowedToolIds.length > 0
+      const allowedToolIds = agentConfig.allowedToolIds && agentConfig.allowedToolIds.length > 0
         ? agentConfig.allowedToolIds
         : KNOWN_TOOL_IDS;
 

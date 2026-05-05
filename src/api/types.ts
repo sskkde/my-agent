@@ -57,6 +57,7 @@ export interface TranscriptTurn {
     inboundEventId?: string;
     userMessageSummary?: string;
     contentRefs?: string[];
+    inboundTimestamp?: string;
   };
   output: {
     visibleMessages: VisibleMessage[];

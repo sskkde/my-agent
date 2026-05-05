@@ -18,7 +18,7 @@ import { createGateway, type Gateway } from '../gateway/gateway.js';
 import { createChannelRegistry, createWebUIChannelHandler, type ChannelRegistry } from '../gateway/channel-registry.js';
 import { createConsoleTimelineService, type ConsoleTimelineService } from './console-timeline.js';
 import { createProviderConfigStore, type ProviderConfigStore } from '../storage/provider-config-store.js';
-import { createAgentConfigStore, type AgentConfigStore } from '../storage/agent-config-store.js';
+import { createAgentConfigStore, DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS, type AgentConfigStore } from '../storage/agent-config-store.js';
 import { createTimelineBroadcaster, type TimelineBroadcaster } from './timeline-broadcaster.js';
 import type { MessageProcessor } from '../processing/types.js';
 import { createMessageProcessor as createMessageProcessorImpl } from '../processing/message-processor.js';
@@ -115,12 +115,16 @@ function isProviderScopedLLMAdapter(adapter: LLMAdapter): adapter is ProviderSco
   return 'runWithUserProviders' in adapter;
 }
 
+export const MESSAGE_PROCESSOR_TIMEOUT_HEADROOM_MS = 10000;
+export const DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS =
+  DEFAULT_ROUTING_TIMEOUT_MS * (1 + DEFAULT_REPAIR_ATTEMPTS) + MESSAGE_PROCESSOR_TIMEOUT_HEADROOM_MS;
+
 function createOrchestrationMessageProcessor(
   deps: ProcessorOrchestrationDeps
 ): MessageProcessor {
   const orchestrationFn = createOrchestrationProcessor({ deps });
   return createMessageProcessorImpl({
-    timeoutMs: 30000,
+    timeoutMs: DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS,
     processorFn: orchestrationFn,
   });
 }
@@ -341,6 +345,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     timeoutMs: 30000,
   });
 
+  // Create processing observer that broadcasts status to SSE subscribers
+  const processingObserver = {
+    emitStatus: (status: import('./types.js').ProcessingStatusPayload) => {
+      timelineBroadcaster.broadcastProcessingStatus(status.sessionId, status);
+    },
+  };
+
   const messageProcessor = injectedMessageProcessor ?? createOrchestrationMessageProcessor({
     gateway,
     stores,
@@ -355,6 +366,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     agentConfigStore,
     sessionStore,
     runWithProvidersForUser,
+    processingObserver,
   });
 
   return {

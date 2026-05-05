@@ -18,6 +18,7 @@ import type { RuntimeAction, TargetRuntime } from '../dispatcher/types.js';
 import type { LLMAdapter } from '../llm/adapter.js';
 import type { LLMRequest, LLMResult } from '../llm/types.js';
 import type { AgentConfig } from '../storage/agent-config-store.js';
+import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../storage/agent-config-store.js';
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
@@ -37,6 +38,30 @@ const KNOWN_TOOL_IDS: string[] = [
   'plan.patch',
   'docs.search',
 ];
+
+/**
+ * Compute the effective allowed tool IDs for the routing prompt.
+ * If agentConfig.allowedToolIds is non-empty, intersect with known tools.
+ * If empty/undefined, treat all known tools as allowed.
+ */
+function computeEffectiveAllowedToolIds(agentConfig?: AgentConfig): string[] {
+  const allowed = agentConfig?.allowedToolIds;
+  if (allowed && allowed.length > 0) {
+    return KNOWN_TOOL_IDS.filter((id) => allowed.includes(id));
+  }
+  return [...KNOWN_TOOL_IDS];
+}
+
+const TOOL_ALIASES: Record<string, string[]> = {
+  search: ['docs.search'],
+  'web.search': ['docs.search'],
+  'docs': ['docs.search'],
+  'documentation.search': ['docs.search'],
+  'transcript': ['transcript.search'],
+  'memory.search': ['memory.retrieve'],
+  'memory': ['memory.retrieve'],
+  status: ['status.query'],
+};
 
 /**
  * LLM Router output structure
@@ -116,10 +141,12 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
     if (!llmResult.success) {
       // Retry with repair prompt if attempts remain
-      const maxRepairAttempts = effectiveConfig?.repairAttempts ?? 1;
+      const maxRepairAttempts = effectiveConfig?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS;
       if (maxRepairAttempts > 0 && llmResult.error?.retryable) {
-        const repairPrompt = this.buildRepairPrompt(prompt, llmResult.error?.message || 'Unknown error');
-        const retryResult = await this.callLLMRouter(repairPrompt, state);
+        const retryPrompt = llmResult.error.code === 'LLM_REQUEST_FAILED'
+          ? prompt
+          : this.buildRepairPrompt(prompt, llmResult.error?.message || 'Unknown error');
+        const retryResult = await this.callLLMRouter(retryPrompt, state);
 
         if (retryResult.success) {
           return this.mapRouterOutputToDecision(retryResult.output!, input, state);
@@ -129,7 +156,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       // Both attempts failed - return graceful processing error
       return this.createDecision('answer_directly', {
         reason: 'LLM routing temporarily unavailable',
-        userVisibleResponse: 'Routing temporarily unavailable. Please try again in a moment.',
+        userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
       });
     }
 
@@ -172,10 +199,14 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private buildRoutingPrompt(message: string, state: ForegroundSessionState): string {
     const { effectivePolicy, currentPersona, hydratedSession } = state;
     const sessionContext = hydratedSession.sessionContext;
+    const effectiveConfig = this.getEffectiveConfig(state);
 
     const activeWorkSummary = this.buildActiveWorkSummary(state);
     const policySummary = `Steps threshold: ${effectivePolicy.estimatedStepsGte}, Max complexity: ${effectivePolicy.maxComplexity}, Allowed tools: ${effectivePolicy.allowedToolCategories.join(', ') || 'none'}`;
     const personaPrompt = currentPersona.directDelegationPolicy ? `Persona: ${currentPersona.name}` : '';
+
+    const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig);
+    const effectiveToolSummary = effectiveToolIds.join(', ');
 
     return `You are a message router for an AI assistant. Analyze the user message and decide how to handle it.
 
@@ -196,6 +227,16 @@ ${activeWorkSummary}
 
 POLICY: ${policySummary}
 ${personaPrompt}
+
+AVAILABLE TOOL IDS (use ONLY these exact IDs in suggestedTools):
+- ${effectiveToolSummary}
+
+When using dispatch_tool, suggestedTools must use only the exact tool IDs listed above. Do NOT suggest tools that are not listed.
+
+IMPORTANT TOOL GUIDANCE:
+- None of the available tools provide live web search, real-time weather data, or current internet lookups.
+- For questions about current weather, live news, real-time web data, or anything requiring internet access, use answer_directly and explain the limitation or ask for clarification.
+- Do NOT use docs.search, transcript.search, or memory.retrieve for real-time web/weather queries — these search internal documents, transcripts, and memory, not the live internet.
 
 USER MESSAGE: "${message}"
 
@@ -260,7 +301,7 @@ Please respond with valid JSON matching the exact schema shown above.`;
     const resolvedModel = state?.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini';
     const systemPrompt = effectiveConfig?.systemPrompt ?? 'You are a message routing assistant. Respond only with valid JSON.';
     const routingPrompt = effectiveConfig?.routingPrompt;
-    const routingTimeoutMs = effectiveConfig?.routingTimeoutMs ?? 10000;
+    const routingTimeoutMs = effectiveConfig?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS;
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },
@@ -272,24 +313,30 @@ Please respond with valid JSON matching the exact schema shown above.`;
 
     messages.push({ role: 'user', content: prompt });
 
+    const healthyProviders = this.llmAdapter.getHealthyProviders();
+    const supportsJsonMode =
+      healthyProviders.length > 0 &&
+      healthyProviders.every((provider) => provider.config.capabilities.supportsJsonMode);
+
     const request: LLMRequest = {
       model: resolvedModel,
       messages,
       temperature: 0.1,
       maxTokens: 500,
-      responseFormat: { type: 'json_object' },
+      ...(supportsJsonMode ? { responseFormat: { type: 'json_object' } } : {}),
     };
 
     try {
       const result: LLMResult = await this.callLLMWithTimeout(request, routingTimeoutMs);
 
       if (!result.success) {
+        const isRetryableProviderError = result.error?.recoverability === 'retryable_later' || result.error?.category === 'timeout';
         return {
           success: false,
           error: {
             code: 'LLM_REQUEST_FAILED',
             message: `LLM request failed: ${result.error?.message || 'Unknown error'}`,
-            retryable: false,
+            retryable: isRetryableProviderError,
           },
         };
       }
@@ -526,7 +573,10 @@ Please respond with valid JSON matching the exact schema shown above.`;
    * SECURITY: Only allow tools that exist in the known catalog.
    */
   private filterAllowedTools(suggestedTools: string[]): string[] {
-    return suggestedTools.filter(toolId => KNOWN_TOOL_IDS.includes(toolId));
+    const normalizedTools = suggestedTools.flatMap((toolId) => (
+      KNOWN_TOOL_IDS.includes(toolId) ? [toolId] : TOOL_ALIASES[toolId] ?? []
+    ));
+    return [...new Set(normalizedTools)];
   }
 
   /**
@@ -538,6 +588,20 @@ Please respond with valid JSON matching the exact schema shown above.`;
     state: ForegroundSessionState
   ): ForegroundDecision {
     const { route, reason, userVisibleResponse, estimatedSteps, complexity, suggestedTools } = output;
+
+    // Deterministic safety: if dispatch_tool has no allowed suggested tools, convert to answer_directly
+    if (route === 'dispatch_tool') {
+      const effectiveConfig = this.getEffectiveConfig(state);
+      const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig);
+      const hasAllowedTools = suggestedTools && suggestedTools.length > 0 &&
+        suggestedTools.some((t) => effectiveToolIds.includes(t));
+      if (!hasAllowedTools) {
+        return this.createDecision('answer_directly', {
+          reason: `Dispatch tool requested but no allowed tools suggested (suggested: ${suggestedTools?.join(', ') ?? 'none'}); falling back to direct answer`,
+          userVisibleResponse: userVisibleResponse || 'I don\'t have the right tools available to handle this request directly. Let me answer based on what I know.',
+        });
+      }
+    }
 
     // Handle special routes that need runtime actions
     if (route === 'cancel_or_modify_task') {

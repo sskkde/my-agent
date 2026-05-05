@@ -1264,6 +1264,8 @@ describe('ProcessorOrchestration', () => {
         allowedSkillIds: [],
         routingTimeoutMs: 25000,
         repairAttempts: 0,
+        promptType: null,
+        promptVersion: null,
         createdAt: '2024-01-15T10:00:00.000Z',
         updatedAt: '2024-01-15T10:00:00.000Z',
       };

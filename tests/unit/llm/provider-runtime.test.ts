@@ -178,4 +178,67 @@ describe('provider-runtime', () => {
       expect(providers[1].config.priority).toBe(10);
     }, preferredProviderId);
   });
+
+  it('assigns supportsJsonMode true for openai and openrouter providers', async () => {
+    providerConfigStore.create({
+      providerId: 'openai-provider',
+      userId: 'user-1',
+      providerType: 'openai',
+      displayName: 'User OpenAI',
+      apiKey: 'sk-user-1',
+    });
+
+    providerConfigStore.create({
+      providerId: 'openrouter-provider',
+      userId: 'user-1',
+      providerType: 'openrouter',
+      displayName: 'User OpenRouter',
+      apiKey: 'sk-user-2',
+    });
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+    await adapter.runWithUserProviders('user-1', async () => {
+      const providers = adapter.providers;
+      expect(providers.length).toBe(2);
+
+      const openaiProvider = providers.find(p => p.id === 'openai-provider');
+      const openrouterProvider = providers.find(p => p.id === 'openrouter-provider');
+
+      expect(openaiProvider?.config.capabilities.supportsJsonMode).toBe(true);
+      expect(openrouterProvider?.config.capabilities.supportsJsonMode).toBe(true);
+    });
+  });
+
+  it('assigns supportsJsonMode false for custom and ollama providers', async () => {
+    providerConfigStore.create({
+      providerId: 'custom-provider',
+      userId: 'user-1',
+      providerType: 'custom',
+      displayName: 'Custom Provider',
+      apiKey: 'sk-custom',
+      baseUrl: 'https://api.siliconflow.cn/v1',
+    });
+
+    providerConfigStore.create({
+      providerId: 'ollama-provider',
+      userId: 'user-1',
+      providerType: 'ollama',
+      displayName: 'Ollama',
+      baseUrl: 'http://localhost:11434',
+    });
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+    await adapter.runWithUserProviders('user-1', async () => {
+      const providers = adapter.providers;
+      expect(providers.length).toBe(2);
+
+      const customProvider = providers.find(p => p.id === 'custom-provider');
+      const ollamaProvider = providers.find(p => p.id === 'ollama-provider');
+
+      expect(customProvider?.config.capabilities.supportsJsonMode).toBe(false);
+      expect(ollamaProvider?.config.capabilities.supportsJsonMode).toBe(false);
+    });
+  });
 });

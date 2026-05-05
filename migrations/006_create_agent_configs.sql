@@ -18,7 +18,7 @@ CREATE TABLE agent_configs (
   model TEXT,
   allowed_tool_ids TEXT NOT NULL DEFAULT '[]',
   allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
-  routing_timeout_ms INTEGER NOT NULL DEFAULT 10000,
+  routing_timeout_ms INTEGER NOT NULL DEFAULT 60000,
   repair_attempts INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -55,7 +55,7 @@ INSERT INTO agent_configs (
   NULL,
   '[]',
   '[]',
-  10000,
+  60000,
   1,
   datetime('now'),
   datetime('now')

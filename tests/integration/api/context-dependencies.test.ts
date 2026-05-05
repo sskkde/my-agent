@@ -8,8 +8,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   createApiContext,
+  DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS,
   isApiContextError,
 } from '../../../src/api/context.js';
+import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../../../src/storage/agent-config-store.js';
 import type { MessageProcessor, MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js';
 import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js';
 import type { RuntimeDispatcher } from '../../../src/dispatcher/types.js';
@@ -608,6 +610,12 @@ describe('ApiContext Dependencies - Task 4', () => {
       expect(output.error?.code).toBe('TIMEOUT');
 
       result.connection.close();
+    });
+
+    it('should budget default processor timeout for routing repair attempts', () => {
+      expect(DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS).toBe(
+        DEFAULT_ROUTING_TIMEOUT_MS * (1 + DEFAULT_REPAIR_ATTEMPTS) + 10000
+      );
     });
   });
 

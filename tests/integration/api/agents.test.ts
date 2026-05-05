@@ -162,6 +162,32 @@ describe('Agent Config API Integration', () => {
       });
     });
 
+    it('should resolve inherited timeout and repair fields to defaults when no global exists', async () => {
+      context.agentConfigStore.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId,
+        displayName: 'User Override',
+        systemPrompt: 'User system prompt',
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/agents/foreground.default/config',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.data.global).toBeNull();
+      expect(body.data.userOverride.routingTimeoutMs).toBeUndefined();
+      expect(body.data.userOverride.repairAttempts).toBeUndefined();
+      expect(body.data.effective.routingTimeoutMs).toBe(60000);
+      expect(body.data.effective.repairAttempts).toBe(1);
+    });
+
     it('should return 400 for invalid agent ID', async () => {
       const response = await server.inject({
         method: 'GET',
@@ -212,6 +238,36 @@ describe('Agent Config API Integration', () => {
         systemPrompt: 'New system prompt',
         enabled: true,
       });
+    });
+
+    it('should reject global config updates from non-owner users', async () => {
+      const otherUserId = randomUUID();
+      context.stores.userStore.create({
+        userId: otherUserId,
+        username: 'nonowner',
+        passwordHash: await hashPassword('password'),
+      });
+      const otherToken = generateSessionToken();
+      context.stores.authTokenStore.create({
+        tokenHash: hashToken(otherToken),
+        userId: otherUserId,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/api/agents/foreground.default/config/global',
+        headers: {
+          cookie: `agent-platform-session=${otherToken}`,
+        },
+        payload: {
+          displayName: 'Unauthorized Global Config',
+        },
+      });
+
+      expect(response.statusCode).toBe(403);
+      const body = JSON.parse(response.body);
+      expect(body.error.code).toBe('FORBIDDEN');
     });
 
     it('should update existing global config', async () => {
@@ -479,6 +535,79 @@ describe('Agent Config API Integration', () => {
         displayName: 'My Override',
         systemPrompt: 'My custom prompt',
       });
+    });
+
+    it('should keep omitted timeout and repair fields inherited from global config', async () => {
+      context.agentConfigStore.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Default',
+        systemPrompt: 'Global prompt',
+        routingTimeoutMs: 30000,
+        repairAttempts: 0,
+      });
+
+      const createResponse = await server.inject({
+        method: 'PATCH',
+        url: '/api/agents/foreground.default/config/override',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          displayName: 'My Override',
+          systemPrompt: 'My custom prompt',
+        },
+      });
+
+      expect(createResponse.statusCode).toBe(200);
+      const createBody = JSON.parse(createResponse.body);
+      expect(createBody.data.routingTimeoutMs).toBeUndefined();
+      expect(createBody.data.repairAttempts).toBeUndefined();
+
+      context.agentConfigStore.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Default',
+        systemPrompt: 'Global prompt',
+        routingTimeoutMs: 50000,
+        repairAttempts: 1,
+      });
+
+      const getResponse = await server.inject({
+        method: 'GET',
+        url: '/api/agents/foreground.default/config',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      });
+
+      expect(getResponse.statusCode).toBe(200);
+      const getBody = JSON.parse(getResponse.body);
+      expect(getBody.data.userOverride.routingTimeoutMs).toBeUndefined();
+      expect(getBody.data.userOverride.repairAttempts).toBeUndefined();
+      expect(getBody.data.effective.routingTimeoutMs).toBe(50000);
+      expect(getBody.data.effective.repairAttempts).toBe(1);
+    });
+
+    it('should preserve explicit timeout and repair values equal to defaults', async () => {
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/api/agents/foreground.default/config/override',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          displayName: 'My Override',
+          systemPrompt: 'My custom prompt',
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.data.routingTimeoutMs).toBe(60000);
+      expect(body.data.repairAttempts).toBe(1);
     });
 
     it('should update existing user override config', async () => {

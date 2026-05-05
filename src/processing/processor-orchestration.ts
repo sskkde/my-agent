@@ -797,6 +797,7 @@ function persistTurnTranscript(
     input: {
       inboundEventId,
       userMessageSummary: input.text,
+      inboundTimestamp: input.timestamp,
     },
     output: {
       visibleMessages,

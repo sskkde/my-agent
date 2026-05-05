@@ -43,17 +43,43 @@ const sanitizeContent = (content: string | undefined): string => {
 export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const label = eventTypeLabels[event.eventType];
+  const isAssistantPlaceholder = event.metadata?.assistantPlaceholder === true;
+  const isStreamingDraft = event.metadata?.streamingDraft === true;
+  const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined;
+
+  const label = isStreamingDraft ? 'Assistant (streaming)' : eventTypeLabels[event.eventType];
   const timestamp = formatTimestamp(event.timestamp);
   const sanitizedContent = sanitizeContent(event.content);
 
   const getEventClassName = (): string => {
     const baseClass = 'timeline-event-card';
+    if (isAssistantPlaceholder) {
+      return `${baseClass} timeline-event-card--assistant-placeholder`;
+    }
+    if (isStreamingDraft) {
+      return `${baseClass} timeline-event-card--streaming-draft`;
+    }
     const typeClass = `timeline-event-card--${event.eventType}`;
     return `${baseClass} ${typeClass}`;
   };
 
   const renderContent = (): React.ReactNode => {
+    if (isAssistantPlaceholder) {
+      return (
+        <div className="assistant-placeholder-animation">
+          <span className="placeholder-dot"></span>
+          <span className="placeholder-dot"></span>
+          <span className="placeholder-dot"></span>
+        </div>
+      );
+    }
+
+    if (isStreamingDraft) {
+      return sanitizedContent ? (
+        <div className="timeline-event-content">{sanitizedContent}</div>
+      ) : null;
+    }
+
     switch (event.eventType) {
       case 'thinking_summary':
         return (
@@ -92,9 +118,16 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
   return (
     <div
       className={getEventClassName()}
-      data-testid={`timeline-event-${event.eventId}`}
+      data-testid={
+        isAssistantPlaceholder
+          ? 'assistant-placeholder'
+          : isStreamingDraft
+            ? 'streaming-assistant-draft'
+            : `timeline-event-${event.eventId}`
+      }
       data-event-type={event.eventType}
       data-is-command={event.actor === 'command' ? 'true' : undefined}
+      data-attempt-id={attemptId}
     >
       <div className="timeline-event-header">
         <span className="timeline-event-label">{label}</span>

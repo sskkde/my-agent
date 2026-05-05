@@ -24,7 +24,7 @@ describe('AgentsTab', () => {
       allowedToolIds: ['read_file', 'write_file'],
       allowedSkillIds: ['git'],
       routingTimeoutMs: 30000,
-      repairAttempts: 3,
+      repairAttempts: 1,
     },
     userOverride: null,
     effective: {
@@ -35,7 +35,7 @@ describe('AgentsTab', () => {
       allowedToolIds: ['read_file', 'write_file'],
       allowedSkillIds: ['git'],
       routingTimeoutMs: 30000,
-      repairAttempts: 3,
+      repairAttempts: 1,
     },
   };
 
@@ -351,7 +351,7 @@ describe('AgentsTab', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: [],
           routingTimeoutMs: 30000,
-          repairAttempts: 5,
+          repairAttempts: 1,
         },
       };
       mockGetAgentConfig.mockResolvedValue(configWithOverride);
@@ -434,9 +434,111 @@ describe('AgentsTab', () => {
           expect.objectContaining({
             providerId: 'openai',
             model: 'gpt-4',
+            routingTimeoutMs: 30000,
+            repairAttempts: 1,
           })
         );
       });
+    });
+
+    it('should omit inherited timeout and repair fields when saving an untouched override', async () => {
+      const configWithInheritedOverride: AgentConfig = {
+        ...mockConfig,
+        global: {
+          ...mockConfig.global,
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+        },
+        userOverride: {
+          providerId: 'ollama',
+          model: 'llama2',
+          systemPrompt: '',
+          routingPrompt: '',
+          allowedToolIds: ['read_file'],
+          allowedSkillIds: [],
+        },
+        effective: {
+          providerId: 'ollama',
+          model: 'llama2',
+          systemPrompt: '',
+          routingPrompt: '',
+          allowedToolIds: ['read_file'],
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+        },
+      };
+      mockGetAgentConfig.mockResolvedValue(configWithInheritedOverride);
+      mockUpdateAgentConfig.mockResolvedValue(configWithInheritedOverride.userOverride!);
+
+      render(<AgentsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('scope-override-btn')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('scope-override-btn'));
+
+      expect(screen.getByTestId('timeout-input')).toHaveValue(60);
+      fireEvent.click(screen.getByTestId('agents-save-btn'));
+
+      await waitFor(() => {
+        expect(mockUpdateAgentConfig).toHaveBeenCalled();
+      });
+      const payload = mockUpdateAgentConfig.mock.calls[0]![2];
+      expect(mockUpdateAgentConfig).toHaveBeenCalledWith(
+        'foreground.default',
+        'override',
+        expect.objectContaining({
+          providerId: 'ollama',
+          model: 'llama2',
+        })
+      );
+      expect(payload).not.toHaveProperty('routingTimeoutMs');
+      expect(payload).not.toHaveProperty('repairAttempts');
+    });
+
+    it('should send timeout when override timeout is explicitly changed', async () => {
+      const configWithInheritedOverride: AgentConfig = {
+        ...mockConfig,
+        userOverride: {
+          providerId: 'ollama',
+          model: 'llama2',
+          systemPrompt: '',
+          routingPrompt: '',
+          allowedToolIds: ['read_file'],
+          allowedSkillIds: [],
+        },
+        effective: {
+          providerId: 'ollama',
+          model: 'llama2',
+          systemPrompt: '',
+          routingPrompt: '',
+          allowedToolIds: ['read_file'],
+          allowedSkillIds: [],
+          routingTimeoutMs: 60000,
+          repairAttempts: 1,
+        },
+      };
+      mockGetAgentConfig.mockResolvedValue(configWithInheritedOverride);
+      mockUpdateAgentConfig.mockResolvedValue(configWithInheritedOverride.userOverride!);
+
+      render(<AgentsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('scope-override-btn')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('scope-override-btn'));
+      fireEvent.change(screen.getByTestId('timeout-input'), { target: { value: '45' } });
+      fireEvent.click(screen.getByTestId('agents-save-btn'));
+
+      await waitFor(() => {
+        expect(mockUpdateAgentConfig).toHaveBeenCalled();
+      });
+      const payload = mockUpdateAgentConfig.mock.calls[0]![2];
+      expect(payload).toHaveProperty('routingTimeoutMs', 45000);
+      expect(payload).not.toHaveProperty('repairAttempts');
     });
 
     it('should show saving state during save', async () => {
@@ -467,7 +569,7 @@ describe('AgentsTab', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: [],
           routingTimeoutMs: 30000,
-          repairAttempts: 5,
+          repairAttempts: 1,
         },
       };
       mockGetAgentConfig.mockResolvedValue(configWithOverride);
@@ -499,7 +601,7 @@ describe('AgentsTab', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: [],
           routingTimeoutMs: 30000,
-          repairAttempts: 5,
+          repairAttempts: 1,
         },
       };
       mockGetAgentConfig.mockResolvedValue(configWithOverride);
@@ -573,7 +675,7 @@ describe('AgentsTab', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: [],
           routingTimeoutMs: 30000,
-          repairAttempts: 5,
+          repairAttempts: 1,
         },
       };
       mockGetAgentConfig.mockResolvedValue(configWithOverride);

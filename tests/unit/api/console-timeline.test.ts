@@ -433,4 +433,145 @@ describe('ConsoleTimelineService', () => {
       expect(assistantEvents[0].content).toBe('Public safe response');
     });
   });
+
+  describe('timestamp mapping', () => {
+    it('should use inboundTimestamp for user_message events when available', () => {
+      const sessionId = 'session-ts-001';
+      const inboundTime = '2024-01-15T09:59:00.000Z';
+      const completionTime = '2024-01-15T10:00:05.000Z';
+
+      const transcript: TurnTranscript = {
+        turnId: 'turn-ts-001',
+        sessionId,
+        userId: 'user-ts',
+        input: {
+          userMessageSummary: 'Hello',
+          inboundTimestamp: inboundTime,
+        },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-ts-001', role: 'assistant', content: 'Hi there' },
+          ],
+        },
+        visibility: 'public',
+        createdAt: completionTime,
+      };
+
+      mockTranscriptStore.saveTurn(transcript);
+
+      const timelineService = createConsoleTimelineService(stores);
+      const result = timelineService.getTimeline(sessionId);
+
+      const userEvent = result.events.find(e => e.eventType === 'user_message');
+      expect(userEvent).toBeDefined();
+      expect(userEvent?.timestamp).toBe(inboundTime);
+
+      const assistantEvent = result.events.find(e => e.eventType === 'assistant_message');
+      expect(assistantEvent).toBeDefined();
+      expect(assistantEvent?.timestamp).toBe(completionTime);
+    });
+
+    it('should fall back to createdAt for user_message when inboundTimestamp is absent', () => {
+      const sessionId = 'session-ts-002';
+      const createdAt = '2024-01-15T10:00:00.000Z';
+
+      const transcript: TurnTranscript = {
+        turnId: 'turn-ts-002',
+        sessionId,
+        userId: 'user-ts',
+        input: {
+          userMessageSummary: 'Hello',
+        },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-ts-002', role: 'assistant', content: 'Hi there' },
+          ],
+        },
+        visibility: 'public',
+        createdAt,
+      };
+
+      mockTranscriptStore.saveTurn(transcript);
+
+      const timelineService = createConsoleTimelineService(stores);
+      const result = timelineService.getTimeline(sessionId);
+
+      const userEvent = result.events.find(e => e.eventType === 'user_message');
+      expect(userEvent).toBeDefined();
+      expect(userEvent?.timestamp).toBe(createdAt);
+
+      const assistantEvent = result.events.find(e => e.eventType === 'assistant_message');
+      expect(assistantEvent).toBeDefined();
+      expect(assistantEvent?.timestamp).toBe(createdAt);
+    });
+
+    it('should use createdAt for error events regardless of inboundTimestamp', () => {
+      const sessionId = 'session-ts-003';
+      const inboundTime = '2024-01-15T09:59:00.000Z';
+      const completionTime = '2024-01-15T10:00:10.000Z';
+
+      const transcript: TurnTranscript = {
+        turnId: 'turn-ts-003',
+        sessionId,
+        userId: 'user-ts',
+        input: {
+          userMessageSummary: 'Trigger error',
+          inboundTimestamp: inboundTime,
+        },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-ts-003', role: 'error', content: '[ERROR] Failed' },
+          ],
+        },
+        visibility: 'public',
+        createdAt: completionTime,
+      };
+
+      mockTranscriptStore.saveTurn(transcript);
+
+      const timelineService = createConsoleTimelineService(stores);
+      const result = timelineService.getTimeline(sessionId);
+
+      const userEvent = result.events.find(e => e.eventType === 'user_message');
+      expect(userEvent?.timestamp).toBe(inboundTime);
+
+      const errorEvent = result.events.find(e => e.eventType === 'error');
+      expect(errorEvent?.timestamp).toBe(completionTime);
+    });
+
+    it('should use createdAt for system_status events regardless of inboundTimestamp', () => {
+      const sessionId = 'session-ts-004';
+      const inboundTime = '2024-01-15T09:59:00.000Z';
+      const completionTime = '2024-01-15T10:00:08.000Z';
+
+      const transcript: TurnTranscript = {
+        turnId: 'turn-ts-004',
+        sessionId,
+        userId: 'user-ts',
+        input: {
+          userMessageSummary: 'Complex task',
+          inboundTimestamp: inboundTime,
+        },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-ts-004a', role: 'assistant', content: 'Working on it' },
+            { messageId: 'msg-ts-004b', role: 'system_status', content: 'dispatch_tool: Running search' },
+          ],
+        },
+        visibility: 'public',
+        createdAt: completionTime,
+      };
+
+      mockTranscriptStore.saveTurn(transcript);
+
+      const timelineService = createConsoleTimelineService(stores);
+      const result = timelineService.getTimeline(sessionId);
+
+      const userEvent = result.events.find(e => e.eventType === 'user_message');
+      expect(userEvent?.timestamp).toBe(inboundTime);
+
+      const statusEvent = result.events.find(e => e.eventType === 'system_status');
+      expect(statusEvent?.timestamp).toBe(completionTime);
+    });
+  });
 });

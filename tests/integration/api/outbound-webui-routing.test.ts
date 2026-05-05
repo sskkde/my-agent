@@ -14,6 +14,43 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
   let deliveredEnvelopes: Array<{ channelId: string; envelope: OutboundEnvelope }>;
 
+  function createFailingProcessor(context: ApiContext): MessageProcessor {
+    return {
+      process: async (input): Promise<MessageProcessorOutput> => {
+        const timestamp = new Date().toISOString();
+        const output: MessageProcessorOutput = {
+          correlationId: input.correlationId,
+          success: false,
+          error: {
+            code: 'PROCESSING_ERROR',
+            message: 'Test processor failure',
+          },
+          timestamp,
+        };
+
+        context.stores.transcriptStore.saveTurn({
+          turnId: input.correlationId,
+          sessionId: input.sessionId,
+          userId: input.userId,
+          input: {
+            userMessageSummary: input.text,
+          },
+          output: {
+            visibleMessages: [{
+              messageId: `msg-${input.correlationId}-error`,
+              role: 'error',
+              content: '[PROCESSING_ERROR] Test processor failure',
+            }],
+          },
+          visibility: 'public',
+          createdAt: timestamp,
+        });
+
+        return output;
+      },
+    };
+  }
+
   beforeAll(async () => {
     deliveredEnvelopes = [];
 
@@ -25,6 +62,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
       throw new Error(`Failed to create API context: ${ctx.message}`);
     }
     apiContext = ctx;
+    apiContext.messageProcessor = createFailingProcessor(apiContext);
 
     const originalDeliver = apiContext.channelRegistry.deliver.bind(apiContext.channelRegistry);
     apiContext.channelRegistry.deliver = (channelId: string, envelope: OutboundEnvelope): DeliveryResult => {

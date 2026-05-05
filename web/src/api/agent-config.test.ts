@@ -35,7 +35,7 @@ describe('AgentConfig API', () => {
           allowedToolIds: ['read_file', 'write_file', 'execute_command'],
           allowedSkillIds: ['git', 'docker'],
           routingTimeoutMs: 30000,
-          repairAttempts: 3,
+          repairAttempts: 1,
         },
         userOverride: {
           providerId: 'ollama',
@@ -45,7 +45,7 @@ describe('AgentConfig API', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: ['git'],
           routingTimeoutMs: 30000,
-          repairAttempts: 5,
+          repairAttempts: 1,
         },
         effective: {
           providerId: 'ollama',
@@ -55,7 +55,7 @@ describe('AgentConfig API', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: ['git'],
           routingTimeoutMs: 30000,
-          repairAttempts: 5,
+          repairAttempts: 1,
         },
       };
 
@@ -84,7 +84,7 @@ describe('AgentConfig API', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: [],
           routingTimeoutMs: 30000,
-          repairAttempts: 3,
+          repairAttempts: 1,
         },
         userOverride: null,
         effective: {
@@ -95,7 +95,7 @@ describe('AgentConfig API', () => {
           allowedToolIds: ['read_file'],
           allowedSkillIds: [],
           routingTimeoutMs: 30000,
-          repairAttempts: 3,
+          repairAttempts: 1,
         },
       };
 
@@ -134,8 +134,8 @@ describe('AgentConfig API', () => {
         model: 'claude-3-opus',
         allowedToolIds: ['read_file', 'write_file', 'search_code'],
         allowedSkillIds: ['git'],
-        routingTimeoutMs: 120000,
-        repairAttempts: 2,
+        routingTimeoutMs: 60000,
+        repairAttempts: 1,
       };
 
       const mockResponse: AgentGlobalConfig = {
@@ -145,8 +145,8 @@ describe('AgentConfig API', () => {
         routingPrompt: '',
         allowedToolIds: ['read_file', 'write_file', 'search_code'],
         allowedSkillIds: ['git'],
-        routingTimeoutMs: 120000,
-        repairAttempts: 2,
+        routingTimeoutMs: 60000,
+        repairAttempts: 1,
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -175,7 +175,7 @@ describe('AgentConfig API', () => {
         allowedToolIds: ['read_file'],
         allowedSkillIds: ['docker'],
         routingTimeoutMs: 30000,
-        repairAttempts: 10,
+        repairAttempts: 1,
       };
 
       const mockResponse: AgentUserOverride = {
@@ -186,7 +186,7 @@ describe('AgentConfig API', () => {
         allowedToolIds: ['read_file'],
         allowedSkillIds: ['docker'],
         routingTimeoutMs: 30000,
-        repairAttempts: 10,
+        repairAttempts: 1,
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -221,7 +221,7 @@ describe('AgentConfig API', () => {
         allowedToolIds: ['read_file'],
         allowedSkillIds: [],
         routingTimeoutMs: 30000,
-        repairAttempts: 3,
+        repairAttempts: 1,
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -306,7 +306,7 @@ describe('AgentConfig Types', () => {
       allowedToolIds: ['read_file', 'write_file'],
       allowedSkillIds: ['git'],
       routingTimeoutMs: 30000,
-      repairAttempts: 3,
+      repairAttempts: 1,
     };
 
     expect(config.providerId).toBeTypeOf('string');
@@ -326,11 +326,25 @@ describe('AgentConfig Types', () => {
       allowedToolIds: ['read_file'],
       allowedSkillIds: ['docker'],
       routingTimeoutMs: 30000,
-      repairAttempts: 5,
+      repairAttempts: 1,
     };
 
     expect(override.providerId).toBe('ollama');
     expect(override.routingTimeoutMs).toBe(30000);
+  });
+
+  it('should allow inherited AgentUserOverride timing fields to be omitted', () => {
+    const override: AgentUserOverride = {
+      providerId: 'ollama',
+      model: 'llama2',
+      systemPrompt: '',
+      routingPrompt: '',
+      allowedToolIds: ['read_file'],
+      allowedSkillIds: ['docker'],
+    };
+
+    expect(override.routingTimeoutMs).toBeUndefined();
+    expect(override.repairAttempts).toBeUndefined();
   });
 
   it('should have correct AgentEffectiveConfig structure', () => {
@@ -341,8 +355,8 @@ describe('AgentConfig Types', () => {
       routingPrompt: '',
       allowedToolIds: ['read_file', 'execute_command'],
       allowedSkillIds: [],
-      routingTimeoutMs: 120000,
-      repairAttempts: 2,
+      routingTimeoutMs: 60000,
+      repairAttempts: 1,
     };
 
     expect(effective.providerId).toBe('openrouter');
@@ -360,7 +374,7 @@ describe('AgentConfig Types', () => {
         allowedToolIds: [],
         allowedSkillIds: [],
         routingTimeoutMs: 30000,
-        repairAttempts: 3,
+        repairAttempts: 1,
       },
       userOverride: null,
       effective: {
@@ -371,7 +385,7 @@ describe('AgentConfig Types', () => {
         allowedToolIds: [],
         allowedSkillIds: [],
         routingTimeoutMs: 30000,
-        repairAttempts: 3,
+        repairAttempts: 1,
       },
     };
 

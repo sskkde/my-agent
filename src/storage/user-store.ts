@@ -18,6 +18,7 @@ export interface UserStore {
   create(input: CreateUserInput): User;
   getById(userId: string): User | null;
   getByUsername(username: string): User | null;
+  getFirstCreated(): User | null;
   list(): User[];
   updatePassword(userId: string, passwordHash: string): boolean;
 }
@@ -79,6 +80,17 @@ class UserStoreImpl implements UserStore {
   getByUsername(username: string): User | null {
     const sql = 'SELECT * FROM users WHERE username = ?';
     const rows = this.connection.query<UserRow>(sql, [username]);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return this.rowToUser(rows[0]);
+  }
+
+  getFirstCreated(): User | null {
+    const sql = 'SELECT * FROM users ORDER BY created_at ASC, rowid ASC LIMIT 1';
+    const rows = this.connection.query<UserRow>(sql);
 
     if (rows.length === 0) {
       return null;

@@ -34,7 +34,7 @@ const initialFormData: FormData = {
   routingPrompt: '',
   allowedToolIds: [],
   allowedSkillIds: [],
-  routingTimeoutMs: 300000,
+  routingTimeoutMs: 60000,
 };
 
 const AGENT_ID = 'foreground.default';
@@ -54,6 +54,7 @@ const AgentsTab: React.FC = () => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [activeScope, setActiveScope] = useState<'global' | 'override'>('global');
   const [hasOverride, setHasOverride] = useState(false);
+  const [overrideTimingTouched, setOverrideTimingTouched] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -72,6 +73,7 @@ const AgentsTab: React.FC = () => {
       setTools(toolsData.tools);
       setSkills(skillsData.skills);
       setHasOverride(configData.userOverride !== null);
+      setOverrideTimingTouched(false);
 
       const effective = configData.effective;
       setFormData({
@@ -96,6 +98,9 @@ const AgentsTab: React.FC = () => {
   }, [fetchData]);
 
   const handleInputChange = (field: keyof FormData, value: string | number | string[]) => {
+    if (field === 'routingTimeoutMs' && activeScope === 'override') {
+      setOverrideTimingTouched(true);
+    }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -164,16 +169,24 @@ const AgentsTab: React.FC = () => {
     setSaveError(null);
 
     try {
-      const updateRequest: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest = {
+      const baseUpdateRequest = {
         providerId: formData.providerId,
         model: formData.model,
         systemPrompt: formData.systemPrompt,
         routingPrompt: formData.routingPrompt,
         allowedToolIds: formData.allowedToolIds,
         allowedSkillIds: formData.allowedSkillIds,
-        routingTimeoutMs: formData.routingTimeoutMs,
-        repairAttempts: config?.effective.repairAttempts ?? 1,
       };
+      const updateRequest: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest = activeScope === 'global'
+        ? {
+            ...baseUpdateRequest,
+            routingTimeoutMs: formData.routingTimeoutMs,
+            repairAttempts: config?.global.repairAttempts ?? config?.effective.repairAttempts ?? 1,
+          }
+        : {
+            ...baseUpdateRequest,
+            ...(overrideTimingTouched ? { routingTimeoutMs: formData.routingTimeoutMs } : {}),
+          };
 
       await updateAgentConfig(AGENT_ID, activeScope, updateRequest);
       await fetchData();
@@ -189,6 +202,7 @@ const AgentsTab: React.FC = () => {
     if (!hasOverride) {
       if (config) {
         const global = config.global;
+        setOverrideTimingTouched(false);
         setFormData({
           providerId: global.providerId,
           model: global.model,
@@ -223,6 +237,7 @@ const AgentsTab: React.FC = () => {
   const handleScopeChange = (scope: 'global' | 'override') => {
     setActiveScope(scope);
     setSaveError(null);
+    setOverrideTimingTouched(false);
 
     if (config) {
       if (scope === 'global') {
@@ -236,16 +251,17 @@ const AgentsTab: React.FC = () => {
           allowedSkillIds: global.allowedSkillIds,
           routingTimeoutMs: global.routingTimeoutMs,
         });
-      } else if (config.userOverride) {
+      } else {
         const override = config.userOverride;
+        const effective = config.effective;
         setFormData({
-          providerId: override.providerId,
-          model: override.model,
-          systemPrompt: override.systemPrompt ?? '',
-          routingPrompt: override.routingPrompt ?? '',
-          allowedToolIds: override.allowedToolIds,
-          allowedSkillIds: override.allowedSkillIds,
-          routingTimeoutMs: override.routingTimeoutMs,
+          providerId: override?.providerId ?? effective.providerId,
+          model: override?.model ?? effective.model,
+          systemPrompt: override?.systemPrompt ?? effective.systemPrompt ?? '',
+          routingPrompt: override?.routingPrompt ?? effective.routingPrompt ?? '',
+          allowedToolIds: override?.allowedToolIds ?? effective.allowedToolIds,
+          allowedSkillIds: override?.allowedSkillIds ?? effective.allowedSkillIds,
+          routingTimeoutMs: override?.routingTimeoutMs ?? effective.routingTimeoutMs,
         });
       }
     }

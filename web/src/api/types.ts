@@ -482,8 +482,8 @@ export interface AgentUserOverride {
   routingPrompt: string;
   allowedToolIds: string[];
   allowedSkillIds: string[];
-  routingTimeoutMs: number;
-  repairAttempts: number;
+  routingTimeoutMs?: number;
+  repairAttempts?: number;
 }
 
 export interface AgentEffectiveConfig {

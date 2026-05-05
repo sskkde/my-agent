@@ -1,5 +1,10 @@
 import type { ConnectionManager } from './connection.js';
 
+export const DEFAULT_ROUTING_TIMEOUT_MS = 60000;
+export const DEFAULT_REPAIR_ATTEMPTS = 1;
+export const INHERIT_ROUTING_TIMEOUT_MS = -1;
+export const INHERIT_REPAIR_ATTEMPTS = -1;
+
 export type AgentScope = 'global' | 'user';
 
 export interface AgentConfig {
@@ -9,14 +14,16 @@ export interface AgentConfig {
   userId: string | null;
   displayName: string;
   enabled: boolean;
-  systemPrompt: string;
+  systemPrompt: string | null;
   routingPrompt: string | null;
   providerId: string | null;
   model: string | null;
-  allowedToolIds: string[];
-  allowedSkillIds: string[];
+  allowedToolIds: string[] | null;
+  allowedSkillIds: string[] | null;
   routingTimeoutMs: number;
   repairAttempts: number;
+  promptType: string | null;
+  promptVersion: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,14 +34,16 @@ export interface UpsertAgentConfigInput {
   userId?: string;
   displayName: string;
   enabled?: boolean;
-  systemPrompt: string;
-  routingPrompt?: string;
-  providerId?: string;
-  model?: string;
-  allowedToolIds?: string[];
-  allowedSkillIds?: string[];
+  systemPrompt?: string | null;
+  routingPrompt?: string | null;
+  providerId?: string | null;
+  model?: string | null;
+  allowedToolIds?: string[] | null;
+  allowedSkillIds?: string[] | null;
   routingTimeoutMs?: number;
   repairAttempts?: number;
+  promptType?: string | null;
+  promptVersion?: string | null;
 }
 
 export interface AgentConfigStore {
@@ -52,14 +61,16 @@ interface AgentConfigRow {
   user_id: string;
   display_name: string;
   enabled: number;
-  system_prompt: string;
+  system_prompt: string | null;
   routing_prompt: string | null;
   provider_id: string | null;
   model: string | null;
-  allowed_tool_ids: string;
-  allowed_skill_ids: string;
+  allowed_tool_ids: string | null;
+  allowed_skill_ids: string | null;
   routing_timeout_ms: number;
   repair_attempts: number;
+  prompt_type: string | null;
+  prompt_version: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -125,12 +136,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
       `;
       const globalRows = this.connection.query<AgentConfigRow>(globalSql, ['foreground.default']);
 
-      if (globalRows.length > 0) {
-        const globalConfig = this.rowToConfig(globalRows[0]);
-        return this.mergeConfigs(globalConfig, userConfig);
-      }
-
-      return userConfig;
+      const globalConfig = globalRows.length > 0 ? this.rowToConfig(globalRows[0]) : null;
+      return this.mergeConfigs(globalConfig, userConfig);
     }
 
     return this.getGlobalDefault();
@@ -152,17 +159,33 @@ class AgentConfigStoreImpl implements AgentConfigStore {
     const now = new Date().toISOString();
     const agentConfigId = generateId();
     const userId = input.userId ?? '';
-
-    const allowedToolIds = JSON.stringify(input.allowedToolIds ?? []);
-    const allowedSkillIds = JSON.stringify(input.allowedSkillIds ?? []);
+    
+    const allowedToolIdsJson = input.allowedToolIds === undefined
+      ? (input.scope === 'user' ? null : JSON.stringify([]))
+      : (input.allowedToolIds === null ? null : JSON.stringify(input.allowedToolIds));
+    const allowedSkillIdsJson = input.allowedSkillIds === undefined
+      ? (input.scope === 'user' ? null : JSON.stringify([]))
+      : (input.allowedSkillIds === null ? null : JSON.stringify(input.allowedSkillIds));
+    
+    const routingTimeoutMs = input.routingTimeoutMs ?? (
+      input.scope === 'user' ? INHERIT_ROUTING_TIMEOUT_MS : DEFAULT_ROUTING_TIMEOUT_MS
+    );
+    const repairAttempts = input.repairAttempts ?? (
+      input.scope === 'user' ? INHERIT_REPAIR_ATTEMPTS : DEFAULT_REPAIR_ATTEMPTS
+    );
+    
+    const systemPrompt = input.systemPrompt === undefined
+      ? (input.scope === 'user' ? null : '')
+      : input.systemPrompt;
 
     const insertSql = `
       INSERT INTO agent_configs (
         agent_config_id, agent_id, scope, user_id, display_name, enabled,
         system_prompt, routing_prompt, provider_id, model,
         allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
+        prompt_type, prompt_version,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT DO UPDATE SET
         display_name = excluded.display_name,
         enabled = excluded.enabled,
@@ -174,6 +197,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
         allowed_skill_ids = excluded.allowed_skill_ids,
         routing_timeout_ms = excluded.routing_timeout_ms,
         repair_attempts = excluded.repair_attempts,
+        prompt_type = excluded.prompt_type,
+        prompt_version = excluded.prompt_version,
         updated_at = excluded.updated_at
     `;
 
@@ -184,14 +209,16 @@ class AgentConfigStoreImpl implements AgentConfigStore {
       userId,
       input.displayName,
       (input.enabled ?? true) ? 1 : 0,
-      input.systemPrompt,
+      systemPrompt,
       input.routingPrompt ?? null,
       input.providerId ?? null,
       input.model ?? null,
-      allowedToolIds,
-      allowedSkillIds,
-      input.routingTimeoutMs ?? 10000,
-      input.repairAttempts ?? 1,
+      allowedToolIdsJson,
+      allowedSkillIdsJson,
+      routingTimeoutMs,
+      repairAttempts,
+      input.promptType ?? null,
+      input.promptVersion ?? null,
       now,
       now,
     ];
@@ -220,7 +247,7 @@ class AgentConfigStoreImpl implements AgentConfigStore {
     return true;
   }
 
-  private mergeConfigs(global: AgentConfig, user: AgentConfig): AgentConfig {
+  private mergeConfigs(global: AgentConfig | null, user: AgentConfig): AgentConfig {
     return {
       agentConfigId: user.agentConfigId,
       agentId: user.agentId,
@@ -228,14 +255,20 @@ class AgentConfigStoreImpl implements AgentConfigStore {
       userId: user.userId,
       displayName: user.displayName,
       enabled: user.enabled,
-      systemPrompt: user.systemPrompt,
-      routingPrompt: user.routingPrompt ?? global.routingPrompt,
-      providerId: user.providerId ?? global.providerId,
-      model: user.model ?? global.model,
-      allowedToolIds: user.allowedToolIds.length > 0 ? user.allowedToolIds : global.allowedToolIds,
-      allowedSkillIds: user.allowedSkillIds.length > 0 ? user.allowedSkillIds : global.allowedSkillIds,
-      routingTimeoutMs: user.routingTimeoutMs !== 10000 ? user.routingTimeoutMs : global.routingTimeoutMs,
-      repairAttempts: user.repairAttempts !== 1 ? user.repairAttempts : global.repairAttempts,
+      systemPrompt: user.systemPrompt ?? global?.systemPrompt ?? null,
+      routingPrompt: user.routingPrompt ?? global?.routingPrompt ?? null,
+      providerId: user.providerId ?? global?.providerId ?? null,
+      model: user.model ?? global?.model ?? null,
+      allowedToolIds: user.allowedToolIds ?? global?.allowedToolIds ?? null,
+      allowedSkillIds: user.allowedSkillIds ?? global?.allowedSkillIds ?? null,
+      routingTimeoutMs: user.routingTimeoutMs === INHERIT_ROUTING_TIMEOUT_MS
+        ? global?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS
+        : user.routingTimeoutMs,
+      repairAttempts: user.repairAttempts === INHERIT_REPAIR_ATTEMPTS
+        ? global?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS
+        : user.repairAttempts,
+      promptType: user.promptType ?? global?.promptType ?? null,
+      promptVersion: user.promptVersion ?? global?.promptVersion ?? null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -253,10 +286,12 @@ class AgentConfigStoreImpl implements AgentConfigStore {
       routingPrompt: row.routing_prompt,
       providerId: row.provider_id,
       model: row.model,
-      allowedToolIds: parseJsonArray(row.allowed_tool_ids),
-      allowedSkillIds: parseJsonArray(row.allowed_skill_ids),
+      allowedToolIds: row.allowed_tool_ids === null ? null : parseJsonArray(row.allowed_tool_ids),
+      allowedSkillIds: row.allowed_skill_ids === null ? null : parseJsonArray(row.allowed_skill_ids),
       routingTimeoutMs: row.routing_timeout_ms,
       repairAttempts: row.repair_attempts,
+      promptType: row.prompt_type,
+      promptVersion: row.prompt_version,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

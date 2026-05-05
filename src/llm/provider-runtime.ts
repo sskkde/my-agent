@@ -36,9 +36,11 @@ interface CreateProviderScopedLLMAdapterOptions {
   providerConfigStore: ProviderConfigStore;
 }
 
-function providerCapabilities(selectedModel: string | null): ProviderCapabilities {
+function providerCapabilities(selectedModel: string | null, providerType?: ProviderType): ProviderCapabilities {
+  const supportsJsonMode = providerType === 'openai' || providerType === 'openrouter';
   return {
     ...DEFAULT_CAPABILITIES,
+    supportsJsonMode,
     supportedModels: selectedModel ? [selectedModel] : [],
   };
 }
@@ -59,6 +61,7 @@ function createRuntimeConfig(
   id: string,
   name: string,
   selectedModel: string | null,
+  providerType: ProviderType,
   overrides: Partial<RuntimeProviderConfig>
 ): RuntimeProviderConfig {
   return {
@@ -68,7 +71,7 @@ function createRuntimeConfig(
     priority: overrides.priority ?? 100,
     timeoutMs: overrides.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     retries: overrides.retries ?? DEFAULT_RETRIES,
-    capabilities: overrides.capabilities ?? providerCapabilities(selectedModel),
+    capabilities: overrides.capabilities ?? providerCapabilities(selectedModel, providerType),
     apiKey: overrides.apiKey,
     baseUrl: overrides.baseUrl,
     enableLogging: overrides.enableLogging,
@@ -98,6 +101,7 @@ function createDatabaseProvider(provider: ProviderConfigWithSecret, priority: nu
     provider.providerId,
     provider.displayName,
     provider.selectedModel,
+    provider.providerType,
     {
       priority,
       apiKey: provider.apiKey ?? undefined,
@@ -116,7 +120,7 @@ function createEnvProviders(): LLMProvider[] {
   const providers: LLMProvider[] = [];
 
   if (process.env.OPENROUTER_API_KEY) {
-    providers.push(new OpenRouterAdapter(createRuntimeConfig('openrouter', 'OpenRouter (Env)', null, {
+    providers.push(new OpenRouterAdapter(createRuntimeConfig('openrouter', 'OpenRouter (Env)', null, 'openrouter', {
       priority: 10,
       apiKey: process.env.OPENROUTER_API_KEY,
       baseUrl: process.env.OPENROUTER_BASE_URL,
@@ -124,7 +128,7 @@ function createEnvProviders(): LLMProvider[] {
   }
 
   if (process.env.OPENAI_API_KEY) {
-    providers.push(new OpenAIAdapter(createRuntimeConfig('openai', 'OpenAI (Env)', null, {
+    providers.push(new OpenAIAdapter(createRuntimeConfig('openai', 'OpenAI (Env)', null, 'openai', {
       priority: 20,
       apiKey: process.env.OPENAI_API_KEY,
       baseUrl: process.env.OPENAI_BASE_URL,
@@ -132,7 +136,7 @@ function createEnvProviders(): LLMProvider[] {
   }
 
   if (process.env.OLLAMA_BASE_URL) {
-    providers.push(new OllamaAdapter(createRuntimeConfig('ollama', 'Ollama (Env)', null, {
+    providers.push(new OllamaAdapter(createRuntimeConfig('ollama', 'Ollama (Env)', null, 'ollama', {
       priority: 30,
       baseUrl: process.env.OLLAMA_BASE_URL,
     })));

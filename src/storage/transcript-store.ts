@@ -17,6 +17,8 @@ export interface TurnTranscript {
     inboundEventId?: string;
     userMessageSummary?: string;
     contentRefs?: string[];
+    /** ISO timestamp of the inbound user message (when the user sent it). */
+    inboundTimestamp?: string;
   };
 
   output: {
@@ -82,6 +84,39 @@ interface TranscriptRow {
   createdAt: string;
 }
 
+const INBOUND_TS_PREFIX = '__inboundTimestamp:';
+
+function encodeContentRefs(refs: string[] | undefined, inboundTimestamp?: string): string | null {
+  const entries = [...(refs ?? [])];
+  if (inboundTimestamp) {
+    entries.push(`${INBOUND_TS_PREFIX}${inboundTimestamp}`);
+  }
+  return entries.length > 0 ? JSON.stringify(entries) : null;
+}
+
+function decodeContentRefs(raw: string | null): { contentRefs?: string[]; inboundTimestamp?: string } {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return {};
+    const refs: string[] = [];
+    let inboundTimestamp: string | undefined;
+    for (const entry of parsed) {
+      if (typeof entry === 'string' && entry.startsWith(INBOUND_TS_PREFIX)) {
+        inboundTimestamp = entry.slice(INBOUND_TS_PREFIX.length);
+      } else if (typeof entry === 'string') {
+        refs.push(entry);
+      }
+    }
+    return {
+      contentRefs: refs.length > 0 ? refs : undefined,
+      inboundTimestamp,
+    };
+  } catch {
+    return {};
+  }
+}
+
 class TranscriptStoreImpl implements TranscriptStore {
   private connection: ConnectionManager;
 
@@ -108,7 +143,7 @@ class TranscriptStoreImpl implements TranscriptStore {
       transcript.userId,
       transcript.input.inboundEventId ?? null,
       transcript.input.userMessageSummary ?? null,
-      transcript.input.contentRefs ? JSON.stringify(transcript.input.contentRefs) : null,
+      encodeContentRefs(transcript.input.contentRefs, transcript.input.inboundTimestamp),
       JSON.stringify(transcript.output.visibleMessages),
       transcript.output.artifactRefs ? JSON.stringify(transcript.output.artifactRefs) : null,
       transcript.runtimeSummary?.foregroundDecisionId ?? null,
@@ -245,6 +280,7 @@ class TranscriptStoreImpl implements TranscriptStore {
   }
 
   private rowToTranscript(row: TranscriptRow): TurnTranscript {
+    const decoded = decodeContentRefs(row.contentRefs);
     return {
       turnId: row.turnId,
       sessionId: row.sessionId,
@@ -252,7 +288,8 @@ class TranscriptStoreImpl implements TranscriptStore {
       input: {
         inboundEventId: row.inboundEventId ?? undefined,
         userMessageSummary: row.userMessageSummary ?? undefined,
-        contentRefs: row.contentRefs ? JSON.parse(row.contentRefs) : undefined
+        contentRefs: decoded.contentRefs,
+        inboundTimestamp: decoded.inboundTimestamp,
       },
       output: {
         visibleMessages: JSON.parse(row.visibleMessages),

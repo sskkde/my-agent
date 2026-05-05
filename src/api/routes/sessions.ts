@@ -85,6 +85,16 @@ function generateDefaultTitle(): string {
   return `New Session ${new Date().toLocaleString()}`;
 }
 
+function canAccessSession(request: FastifyRequest, session: Session): boolean {
+  const userId = request.user?.userId;
+  return !userId || session.userId === userId;
+}
+
+function sendSessionAccessDenied(reply: FastifyReply): FastifyReply {
+  const error = ApiErrorFactory.forbidden('Access denied to this session');
+  return reply.code(403).send(error);
+}
+
 export async function registerSessionsRoutes(server: FastifyInstance, context: ApiContext): Promise<void> {
   const sessionStore: SessionStore | undefined = 'stores' in context ? context.stores.sessionStore : undefined;
   const consoleTimelineService: ConsoleTimelineService | undefined = 'consoleTimelineService' in context
@@ -173,6 +183,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         const error = ApiErrorFactory.notFound('Session not found');
         return reply.code(404).send(error);
       }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(reply);
+      }
 
       const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user';
 
@@ -235,6 +248,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         const error = ApiErrorFactory.notFound('Session not found');
         return reply.code(404).send(error);
       }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(reply);
+      }
 
       let transcripts: TranscriptTurn[] = [];
       let total = 0;
@@ -261,6 +277,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         const error = ApiErrorFactory.notFound('Session not found');
         return reply.code(404).send(error);
       }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(reply);
+      }
 
       if (!text || typeof text !== 'string' || text.trim().length === 0) {
         const error = ApiErrorFactory.badRequest('Message text is required and cannot be empty or whitespace');
@@ -278,67 +297,95 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, 'webui');
       const processorInput = convertInboundEnvelopeToProcessorInput(envelope);
 
+      sessionStore?.updateActivity(sessionId, new Date().toISOString());
+
       // Process message asynchronously and route outbound via Gateway
-      context.messageProcessor.process(processorInput).then((output) => {
-        // Format outbound envelope using Gateway-owned correlation state
-        const messageType = output.success ? 'text' : 'error';
-        const outboundEnvelope = context.gateway.formatOutbound(
-          messageType,
-          {
-            text: output.success ? output.result?.text : undefined,
-            error: output.success ? undefined : output.error,
-          },
-          {
-            userId,
-            sessionId,
-            channel: envelope.sourceChannel, // Route back through original channel (webui)
-          },
-          envelope.envelopeId // Use envelopeId as correlationId for tracing
-        );
+      void (async () => {
+        try {
+          const output = await context.messageProcessor.process(processorInput);
 
-        // Deliver via channel registry - this publishes to timeline/SSE for webui
-        context.channelRegistry.deliver(envelope.sourceChannel, outboundEnvelope);
-      }).catch((error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown processing error';
-
-        // Create error outbound envelope
-        const errorEnvelope = context.gateway.formatOutbound(
-          'error',
-          {
-            error: {
-              code: 'PROCESSING_ERROR',
-              message: errorMessage,
+          const messageType = output.success ? 'text' : 'error';
+          const outboundEnvelope = context.gateway.formatOutbound(
+            messageType,
+            {
+              text: output.success ? output.result?.text : undefined,
+              error: output.success ? undefined : output.error,
             },
-          },
-          {
-            userId,
-            sessionId,
-            channel: envelope.sourceChannel,
-          },
-          envelope.envelopeId
-        );
+            {
+              userId,
+              sessionId,
+              channel: envelope.sourceChannel,
+            },
+            envelope.envelopeId
+          );
 
-        // Deliver error via channel registry
-        context.channelRegistry.deliver(envelope.sourceChannel, errorEnvelope);
+          context.channelRegistry.deliver(envelope.sourceChannel, outboundEnvelope);
 
-        // Also record error in event store for audit
-        context.stores.eventStore.append({
-          eventId: `error-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-          eventType: 'gateway_error',
-          sourceModule: 'gateway',
-          userId,
-          sessionId,
-          correlationId: envelope.envelopeId,
-          payload: {
-            error: errorMessage,
-            phase: 'async_processing',
-            envelopeId: envelope.envelopeId,
-          },
-          sensitivity: 'low',
-          retentionClass: 'short',
-          createdAt: new Date().toISOString(),
-        });
-      });
+          if (sessionStore && 'stores' in context) {
+            const transcripts = context.stores.transcriptStore.findBySession(sessionId);
+            const completedAt = new Date().toISOString();
+            sessionStore.updateMetadata(sessionId, {
+              messageCount: transcripts.length,
+              lastActivityAt: completedAt,
+            });
+          }
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown processing error';
+
+          try {
+            const errorEnvelope = context.gateway.formatOutbound(
+              'error',
+              {
+                error: {
+                  code: 'PROCESSING_ERROR',
+                  message: errorMessage,
+                },
+              },
+              {
+                userId,
+                sessionId,
+                channel: envelope.sourceChannel,
+              },
+              envelope.envelopeId
+            );
+
+            context.channelRegistry.deliver(envelope.sourceChannel, errorEnvelope);
+
+            if (sessionStore && 'stores' in context) {
+              const transcripts = context.stores.transcriptStore.findBySession(sessionId);
+              const errorTime = new Date().toISOString();
+              sessionStore.updateMetadata(sessionId, {
+                messageCount: transcripts.length,
+                lastActivityAt: errorTime,
+              });
+            }
+
+            context.stores.eventStore.append({
+              eventId: `error-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+              eventType: 'gateway_error',
+              sourceModule: 'gateway',
+              userId,
+              sessionId,
+              correlationId: envelope.envelopeId,
+              payload: {
+                error: errorMessage,
+                phase: 'async_processing',
+                envelopeId: envelope.envelopeId,
+              },
+              sensitivity: 'low',
+              retentionClass: 'short',
+              createdAt: new Date().toISOString(),
+            });
+          } catch (reportError) {
+            request.log.error({
+              err: reportError,
+              originalError: errorMessage,
+              sessionId,
+              envelopeId: envelope.envelopeId,
+            }, 'Failed to report asynchronous session processing error');
+          }
+        }
+      })();
 
       const response: SendMessageResponse = {
         accepted: true,
@@ -359,6 +406,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       if (!persistedSession) {
         const error = ApiErrorFactory.notFound('Session not found');
         return reply.code(404).send(error);
+      }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(reply);
       }
 
       const now = new Date().toISOString();
@@ -392,6 +442,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       if (!persistedSession) {
         const error = ApiErrorFactory.notFound('Session not found');
         return reply.code(404).send(error);
+      }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(reply);
       }
 
       if (status && !['active', 'archived', 'closed'].includes(status)) {
@@ -440,6 +493,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         const error = ApiErrorFactory.notFound('Session not found');
         return reply.code(404).send(error);
       }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(reply);
+      }
 
       let eventTypes: ConsoleTimelineEventType[] | undefined;
       if (eventTypesParam) {
@@ -481,6 +537,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       if (!persistedSession) {
         const error = ApiErrorFactory.notFound('Session not found');
         return reply.code(404).send(error);
+      }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(reply);
       }
 
       reply.raw.writeHead(200, {

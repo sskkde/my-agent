@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import * as api from '../../api/client';
 import { TimelineList } from '../../components/timeline/TimelineList';
 import type { ConsoleSessionInfo, ConsoleTimelineEvent, CreateProviderRequest, UpdateProviderRequest } from '../../api/types';
@@ -15,6 +15,23 @@ import type { ProcessingStatusPayload } from '../../api/types';
 type StreamStatus = 'connecting' | 'connected' | 'disconnected';
 
 const LOCAL_USER_MESSAGE_PREFIX = 'local-user-message';
+const SELECTED_SESSION_KEY = 'session-console-selected-session';
+const SSE_RECONNECT_BASE_DELAY_MS = 1000;
+const SSE_RECONNECT_MAX_DELAY_MS = 30000;
+const POST_SEND_POLL_MAX_ATTEMPTS = 30;
+const POST_SEND_POLL_INTERVAL_MS = 1000;
+
+interface AssistantPlaceholder {
+  sessionId: string;
+  timestamp: number;
+}
+
+interface StreamingDraft {
+  sessionId: string;
+  content: string;
+  sequence: number;
+  timestamp: number;
+}
 
 const createLocalUserMessageEvent = (
   sessionId: string,
@@ -46,6 +63,25 @@ const getBaselineServerMessageCount = (event: ConsoleTimelineEvent): number => {
   return typeof value === 'number' ? value : 0;
 };
 
+const isLocalMessageConfirmed = (
+  serverEvents: ConsoleTimelineEvent[],
+  localEvent: ConsoleTimelineEvent
+): boolean => {
+  if (!localEvent.content) return false;
+  return countServerUserMessagesByContent(serverEvents, localEvent.content) > getBaselineServerMessageCount(localEvent);
+};
+
+const hasAssistantOrErrorReplyAfter = (
+  serverEvents: ConsoleTimelineEvent[],
+  localEvent: ConsoleTimelineEvent
+): boolean => {
+  const sentAt = new Date(localEvent.timestamp).getTime();
+  return serverEvents.some((event) => {
+    if (!['assistant_message', 'error'].includes(event.eventType)) return false;
+    return new Date(event.timestamp).getTime() >= sentAt;
+  });
+};
+
 interface SessionConsoleTabProps {
   setActiveTab?: (tabId: TabId) => void;
   auth?: AuthContext;
@@ -59,7 +95,13 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
 
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(SELECTED_SESSION_KEY);
+    } catch {
+      return null;
+    }
+  });
   const [selectedSession, setSelectedSession] = useState<ConsoleSessionInfo | null>(null);
 
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([]);
@@ -77,53 +119,420 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
   const [localMessageEvents, setLocalMessageEvents] = useState<Map<string, ConsoleTimelineEvent[]>>(
     new Map()
   );
-  const [streamingDrafts, setStreamingDrafts] = useState<Map<string, { content: string; sequence: number }>>(new Map());
+  const [streamingDrafts, setStreamingDrafts] = useState<Map<string, StreamingDraft>>(new Map());
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatusPayload | null>(null);
+  const [pendingAssistantPlaceholders, setPendingAssistantPlaceholders] = useState<Map<string, AssistantPlaceholder>>(new Map());
 
   // Mobile drawer state
   const [isSessionsDrawerOpen, setIsSessionsDrawerOpen] = useState(false);
 
   const preferences = useMemo(() => loadPreferences(), []);
 
-  useEffect(() => {
-    let mounted = true;
+  const mountedRef = useRef(true);
+  const sseReconnectAttemptsRef = useRef(0);
+  const sseReconnectTimeoutRef = useRef<number | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const postSendPollAttemptsRef = useRef(0);
+  const postSendPollTimeoutRef = useRef<number | null>(null);
+  const selectedSessionIdRef = useRef<string | null>(selectedSessionId);
+  const sessionRefreshTimeoutRef = useRef<number | null>(null);
+  const pendingAssistantPlaceholdersRef = useRef(pendingAssistantPlaceholders);
 
-    const fetchSessions = async () => {
-      try {
-        setSessionsLoading(true);
+  const updatePendingAssistantPlaceholders = useCallback((
+    updater: (prev: Map<string, AssistantPlaceholder>) => Map<string, AssistantPlaceholder>
+  ) => {
+    setPendingAssistantPlaceholders((prev) => {
+      const next = updater(prev);
+      pendingAssistantPlaceholdersRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const clearSseReconnectTimeout = useCallback(() => {
+    if (sseReconnectTimeoutRef.current !== null) {
+      clearTimeout(sseReconnectTimeoutRef.current);
+      sseReconnectTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearPostSendPollTimeout = useCallback(() => {
+    if (postSendPollTimeoutRef.current !== null) {
+      clearTimeout(postSendPollTimeoutRef.current);
+      postSendPollTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearSessionRefreshTimeout = useCallback(() => {
+    if (sessionRefreshTimeoutRef.current !== null) {
+      clearTimeout(sessionRefreshTimeoutRef.current);
+      sessionRefreshTimeoutRef.current = null;
+    }
+  }, []);
+
+  const createAssistantPlaceholder = useCallback((sessionId: string): { attemptId: string; placeholder: AssistantPlaceholder } => ({
+    attemptId: `placeholder-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    placeholder: { sessionId, timestamp: Date.now() },
+  }), []);
+
+  const resolveAssistantPlaceholder = useCallback((currentAttemptId: string, resolvedAttemptId?: string): void => {
+    if (!resolvedAttemptId || resolvedAttemptId === currentAttemptId) return;
+    updatePendingAssistantPlaceholders((prev) => {
+      const placeholder = prev.get(currentAttemptId);
+      if (!placeholder) return prev;
+      const next = new Map(prev);
+      next.delete(currentAttemptId);
+      next.set(resolvedAttemptId, placeholder);
+      return next;
+    });
+  }, [updatePendingAssistantPlaceholders]);
+
+  const clearAssistantActivity = useCallback((
+    attemptIds: Array<string | undefined>,
+    clearOldestIfUnmatched = false,
+    sessionId = selectedSessionIdRef.current
+  ): void => {
+    const ids = attemptIds.filter((id): id is string => Boolean(id));
+    if (ids.length === 0 && !clearOldestIfUnmatched) return;
+
+    updatePendingAssistantPlaceholders((prev) => {
+      const next = new Map(prev);
+      const sizeBefore = next.size;
+      for (const id of ids) next.delete(id);
+      const matchedAny = next.size < sizeBefore;
+      if (!matchedAny && clearOldestIfUnmatched) {
+        const oldestId = Array.from(next.entries()).find(([, placeholder]) => (
+          !sessionId || placeholder.sessionId === sessionId
+        ))?.[0];
+        if (oldestId) next.delete(oldestId);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+
+    setStreamingDrafts((prev) => {
+      const next = new Map(prev);
+      const sizeBefore = next.size;
+      for (const id of ids) next.delete(id);
+      const matchedAny = next.size < sizeBefore;
+      if (!matchedAny && clearOldestIfUnmatched) {
+        const oldestId = Array.from(next.entries()).find(([, draft]) => (
+          !sessionId || draft.sessionId === sessionId
+        ))?.[0];
+        if (oldestId) next.delete(oldestId);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [updatePendingAssistantPlaceholders]);
+
+  const clearAssistantActivityForSession = useCallback((sessionId: string): void => {
+    updatePendingAssistantPlaceholders((prev) => {
+      const next = new Map(prev);
+      for (const [id, placeholder] of next.entries()) {
+        if (placeholder.sessionId === sessionId) next.delete(id);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+
+    setStreamingDrafts((prev) => {
+      const next = new Map(prev);
+      for (const [id, draft] of next.entries()) {
+        if (draft.sessionId === sessionId) next.delete(id);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [updatePendingAssistantPlaceholders]);
+
+  const fetchSessions = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
         setSessionsError(null);
-        const response = await api.getSessions();
-        if (mounted) {
-          setSessions(response.sessions);
+      } else {
+        setSessionsLoading(true);
+      }
+      const response = await api.getSessions();
+      if (mountedRef.current) {
+        setSessions(response.sessions);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setSessionsError(err instanceof Error ? err.message : 'Failed to load sessions');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setSessionsLoading(false);
+      }
+    }
+  }, []);
+
+  const scheduleSessionRefresh = useCallback(() => {
+    if (sessionRefreshTimeoutRef.current !== null) return;
+    sessionRefreshTimeoutRef.current = window.setTimeout(() => {
+      sessionRefreshTimeoutRef.current = null;
+      fetchSessions(true);
+    }, 250);
+  }, [fetchSessions]);
+
+  const fetchTimeline = useCallback(async (sessionId: string) => {
+    try {
+      const timelineResponse = await api.getSessionTimeline(sessionId);
+      if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+        setEvents((prev) => {
+          const existingIds = new Set(prev.map(e => e.eventId));
+          const newEvents = timelineResponse.events.filter(e => !existingIds.has(e.eventId));
+          if (newEvents.length === 0) return prev;
+          const merged = [...prev, ...newEvents];
+          merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          return merged;
+        });
+      }
+      return timelineResponse.events;
+    } catch (err) {
+      if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+        setTimelineError(err instanceof Error ? err.message : 'Failed to load timeline');
+      }
+      return null;
+    }
+  }, []);
+
+  const startPostSendPoll = useCallback((sessionId: string, localEvent: ConsoleTimelineEvent) => {
+    clearPostSendPollTimeout();
+    postSendPollAttemptsRef.current = 0;
+    
+    const poll = async () => {
+      if (
+        !mountedRef.current ||
+        selectedSessionIdRef.current !== sessionId ||
+        postSendPollAttemptsRef.current >= POST_SEND_POLL_MAX_ATTEMPTS
+      ) {
+        return;
+      }
+
+      postSendPollAttemptsRef.current += 1;
+      const serverEvents = await fetchTimeline(sessionId);
+      await fetchSessions(true);
+      
+      if (
+        serverEvents &&
+        mountedRef.current &&
+        selectedSessionIdRef.current === sessionId &&
+        isLocalMessageConfirmed(serverEvents, localEvent) &&
+        hasAssistantOrErrorReplyAfter(serverEvents, localEvent)
+      ) {
+        clearAssistantActivityForSession(sessionId);
+        return;
+      }
+
+      if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+        postSendPollTimeoutRef.current = window.setTimeout(poll, POST_SEND_POLL_INTERVAL_MS);
+      }
+    };
+
+    postSendPollTimeoutRef.current = window.setTimeout(poll, POST_SEND_POLL_INTERVAL_MS);
+  }, [clearPostSendPollTimeout, clearAssistantActivityForSession, fetchSessions, fetchTimeline]);
+
+  const connectSse = useCallback((sessionId: string) => {
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+
+    setStreamStatus('connecting');
+
+    unsubscribeRef.current = api.subscribeSessionTimeline(
+      sessionId,
+      (event) => {
+        if (!mountedRef.current) return;
+        if (selectedSessionIdRef.current !== sessionId) return;
+        
+        setEvents((prev) => {
+          if (prev.some((e) => e.eventId === event.eventId)) {
+            return prev;
+          }
+          return [...prev, event];
+        });
+
+        sseReconnectAttemptsRef.current = 0;
+
+        if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
+          scheduleSessionRefresh();
         }
-      } catch (err) {
-        if (mounted) {
-          setSessionsError(err instanceof Error ? err.message : 'Failed to load sessions');
+
+        if (['assistant_message', 'error'].includes(event.eventType)) {
+          const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined;
+          const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined;
+          clearAssistantActivity([attemptId, turnId], true);
         }
-      } finally {
-        if (mounted) {
-          setSessionsLoading(false);
+      },
+      () => {
+        if (!mountedRef.current) return;
+        if (selectedSessionIdRef.current !== sessionId) return;
+        setStreamStatus('disconnected');
+
+        if (sseReconnectAttemptsRef.current < 5) {
+          const delay = Math.min(
+            SSE_RECONNECT_BASE_DELAY_MS * Math.pow(2, sseReconnectAttemptsRef.current),
+            SSE_RECONNECT_MAX_DELAY_MS
+          );
+          sseReconnectAttemptsRef.current += 1;
+          
+          sseReconnectTimeoutRef.current = window.setTimeout(() => {
+            if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+              connectSse(sessionId);
+            }
+          }, delay);
+        }
+      },
+      (status) => {
+        if (!mountedRef.current) return;
+        if (selectedSessionIdRef.current !== sessionId) return;
+        setProcessingStatus(status);
+      },
+      (token) => {
+        if (!mountedRef.current) return;
+        if (selectedSessionIdRef.current !== sessionId) return;
+
+        const exactPlaceholder = pendingAssistantPlaceholdersRef.current.get(token.attemptId);
+        const fallbackPlaceholderEntry = exactPlaceholder
+          ? undefined
+          : Array.from(pendingAssistantPlaceholdersRef.current.entries()).find(([, placeholder]) => (
+              placeholder.sessionId === sessionId
+            ));
+        const placeholderTimestamp = exactPlaceholder?.timestamp ?? fallbackPlaceholderEntry?.[1].timestamp;
+        const placeholderIdToClear = exactPlaceholder ? token.attemptId : fallbackPlaceholderEntry?.[0];
+
+        updatePendingAssistantPlaceholders((prev) => {
+          const next = new Map(prev);
+          if (placeholderIdToClear) next.delete(placeholderIdToClear);
+          return next;
+        });
+
+        setStreamingDrafts((prev) => {
+          const next = new Map(prev);
+          const existing = next.get(token.attemptId);
+
+          if (!existing || token.sequence > existing.sequence) {
+            next.set(token.attemptId, {
+              sessionId,
+              content: (existing?.content || '') + token.delta,
+              sequence: token.sequence,
+              timestamp: existing?.timestamp ?? placeholderTimestamp ?? Date.now(),
+            });
+          }
+          return next;
+        });
+      }
+    );
+
+    setStreamStatus('connected');
+  }, [clearAssistantActivity, scheduleSessionRefresh, updatePendingAssistantPlaceholders]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    fetchSessions();
+
+    return () => {
+      mountedRef.current = false;
+      clearSseReconnectTimeout();
+      clearPostSendPollTimeout();
+      clearSessionRefreshTimeout();
+      setPendingAssistantPlaceholders(new Map());
+      pendingAssistantPlaceholdersRef.current = new Map();
+      setStreamingDrafts(new Map());
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, [fetchSessions, clearSseReconnectTimeout, clearPostSendPollTimeout, clearSessionRefreshTimeout]);
+
+  useEffect(() => {
+    selectedSessionIdRef.current = selectedSessionId;
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    pendingAssistantPlaceholdersRef.current = pendingAssistantPlaceholders;
+  }, [pendingAssistantPlaceholders]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && mountedRef.current) {
+        fetchSessions(true);
+        if (selectedSessionId) {
+          fetchTimeline(selectedSessionId);
+          if (streamStatus === 'disconnected') {
+            sseReconnectAttemptsRef.current = 0;
+            connectSse(selectedSessionId);
+          }
         }
       }
     };
 
-    fetchSessions();
+    const handleFocus = () => {
+      if (mountedRef.current) {
+        fetchSessions(true);
+        if (selectedSessionId) {
+          fetchTimeline(selectedSessionId);
+          if (streamStatus === 'disconnected') {
+            sseReconnectAttemptsRef.current = 0;
+            connectSse(selectedSessionId);
+          }
+        }
+      }
+    };
+
+    const handlePageShow = () => {
+      if (mountedRef.current) {
+        fetchSessions(true);
+        if (selectedSessionId) {
+          fetchTimeline(selectedSessionId);
+          if (streamStatus === 'disconnected') {
+            sseReconnectAttemptsRef.current = 0;
+            connectSse(selectedSessionId);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handlePageShow);
 
     return () => {
-      mounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handlePageShow);
     };
-  }, []);
+  }, [connectSse, fetchSessions, fetchTimeline, selectedSessionId, streamStatus]);
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      try {
+        localStorage.setItem(SELECTED_SESSION_KEY, selectedSessionId);
+      } catch (err) {
+        console.warn('Failed to persist selected session:', err);
+      }
+    } else {
+      try {
+        localStorage.removeItem(SELECTED_SESSION_KEY);
+      } catch (err) {
+        console.warn('Failed to clear selected session:', err);
+      }
+    }
+  }, [selectedSessionId]);
 
   useEffect(() => {
     if (!selectedSessionId) {
       setSelectedSession(null);
       setEvents([]);
+      setTimelineError(null);
       setStreamStatus('disconnected');
+      clearSseReconnectTimeout();
+      clearPostSendPollTimeout();
+      clearSessionRefreshTimeout();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
       return;
     }
-
-    let mounted = true;
-    let unsubscribe: (() => void) | null = null;
 
     const loadSessionAndTimeline = async () => {
       try {
@@ -131,7 +540,8 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
         setTimelineError(null);
 
         const sessionResponse = await api.getSession(selectedSessionId);
-        if (!mounted) return;
+        if (!mountedRef.current) return;
+        if (selectedSessionIdRef.current !== selectedSessionId) return;
         const sessionInfo: ConsoleSessionInfo = {
           ...sessionResponse.session,
           title: `Session ${sessionResponse.session.sessionId.slice(-8)}`,
@@ -142,66 +552,21 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
         setSelectedSession(sessionInfo);
 
         const timelineResponse = await api.getSessionTimeline(selectedSessionId);
-        if (!mounted) return;
+        if (!mountedRef.current) return;
+        if (selectedSessionIdRef.current !== selectedSessionId) return;
         setEvents(timelineResponse.events);
 
-        setStreamStatus('connecting');
-        unsubscribe = api.subscribeSessionTimeline(
-          selectedSessionId,
-          (event) => {
-            if (!mounted) return;
-            setEvents((prev) => {
-              if (prev.some((e) => e.eventId === event.eventId)) {
-                return prev;
-              }
-              return [...prev, event];
-            });
-
-            // If this is a final assistant message, remove any streaming draft for this attempt
-            if (event.eventType === 'assistant_message' && event.metadata?.attemptId) {
-              const attemptId = event.metadata.attemptId as string;
-              setStreamingDrafts((prev) => {
-                const next = new Map(prev);
-                next.delete(attemptId);
-                return next;
-              });
-            }
-          },
-          () => {
-            if (mounted) {
-              setStreamStatus('disconnected');
-            }
-          },
-          (status) => {
-            if (mounted) {
-              setProcessingStatus(status);
-            }
-          },
-          (token) => {
-            if (!mounted) return;
-            setStreamingDrafts((prev) => {
-              const next = new Map(prev);
-              const existing = next.get(token.attemptId);
-
-              // Only update if this is a newer sequence number
-              if (!existing || token.sequence > existing.sequence) {
-                next.set(token.attemptId, {
-                  content: (existing?.content || '') + token.delta,
-                  sequence: token.sequence,
-                });
-              }
-              return next;
-            });
-          }
-        );
-        setStreamStatus('connected');
+        connectSse(selectedSessionId);
       } catch (err) {
-        if (mounted) {
+        if (mountedRef.current && selectedSessionIdRef.current === selectedSessionId) {
+          if (err instanceof api.ApiClientError && ['FORBIDDEN', 'NOT_FOUND'].includes(err.code)) {
+            setSelectedSessionId(null);
+          }
           setTimelineError(err instanceof Error ? err.message : 'Failed to load timeline');
           setStreamStatus('disconnected');
         }
       } finally {
-        if (mounted) {
+        if (mountedRef.current && selectedSessionIdRef.current === selectedSessionId) {
           setTimelineLoading(false);
         }
       }
@@ -210,12 +575,15 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     loadSessionAndTimeline();
 
     return () => {
-      mounted = false;
-      if (unsubscribe) {
-        unsubscribe();
+      clearSseReconnectTimeout();
+      clearPostSendPollTimeout();
+      clearAssistantActivityForSession(selectedSessionId);
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
-  }, [selectedSessionId]);
+  }, [selectedSessionId, connectSse, clearSseReconnectTimeout, clearPostSendPollTimeout, clearSessionRefreshTimeout, clearAssistantActivityForSession]);
 
   const handleCreateSession = async () => {
     try {
@@ -243,13 +611,8 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
   }, []);
 
   const refreshSessions = useCallback(async () => {
-    try {
-      const response = await api.getSessions();
-      setSessions(response.sessions);
-    } catch (err) {
-      setSessionsError(err instanceof Error ? err.message : 'Failed to refresh sessions');
-    }
-  }, []);
+    await fetchSessions(true);
+  }, [fetchSessions]);
 
   const refreshProviders = useCallback(async () => {
     try {
@@ -349,16 +712,22 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
       setSending(true);
       setSendError(null);
       const localEvent = addLocalMessageEvent(selectedSessionId, escapedText);
+      const { attemptId: placeholderAttemptId, placeholder } = createAssistantPlaceholder(selectedSessionId);
+      updatePendingAssistantPlaceholders((prev) => {
+        const next = new Map(prev);
+        next.set(placeholderAttemptId, placeholder);
+        return next;
+      });
 
       try {
-        await api.sendMessage(selectedSessionId, escapedText);
+        const response = await api.sendMessage(selectedSessionId, escapedText);
         setDraft('');
-
-        const timelineResponse = await api.getSessionTimeline(selectedSessionId);
-        setEvents(timelineResponse.events);
+        resolveAssistantPlaceholder(placeholderAttemptId, response.correlationId);
+        startPostSendPoll(selectedSessionId, localEvent);
       } catch (err) {
         removeLocalMessageEvent(selectedSessionId, localEvent.eventId);
         setSendError(err instanceof Error ? err.message : 'Failed to send message');
+        clearAssistantActivity([placeholderAttemptId]);
       } finally {
         setSending(false);
       }
@@ -393,15 +762,24 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     setSendError(null);
     const localEvent = addLocalMessageEvent(selectedSessionId, trimmedDraft);
 
-    try {
-      await api.sendMessage(selectedSessionId, trimmedDraft);
-      setDraft('');
+    const { attemptId: placeholderAttemptId, placeholder } = createAssistantPlaceholder(selectedSessionId);
+    updatePendingAssistantPlaceholders((prev) => {
+      const next = new Map(prev);
+      next.set(placeholderAttemptId, placeholder);
+      return next;
+    });
 
-      const timelineResponse = await api.getSessionTimeline(selectedSessionId);
-      setEvents(timelineResponse.events);
+    try {
+      const response = await api.sendMessage(selectedSessionId, trimmedDraft);
+      setDraft('');
+      
+      resolveAssistantPlaceholder(placeholderAttemptId, response.correlationId);
+       
+      startPostSendPoll(selectedSessionId, localEvent);
     } catch (err) {
       removeLocalMessageEvent(selectedSessionId, localEvent.eventId);
       setSendError(err instanceof Error ? err.message : 'Failed to send message');
+      clearAssistantActivity([placeholderAttemptId]);
     } finally {
       setSending(false);
     }
@@ -416,13 +794,12 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     }
   };
 
-  const handleRetryStream = () => {
+  const handleRetryStream = useCallback(() => {
     if (selectedSessionId) {
-      const currentId = selectedSessionId;
-      setSelectedSessionId(null);
-      setTimeout(() => setSelectedSessionId(currentId), 0);
+      sseReconnectAttemptsRef.current = 0;
+      connectSse(selectedSessionId);
     }
-  };
+  }, [selectedSessionId, connectSse]);
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -470,7 +847,45 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
       return false;
     });
 
-    const allEvents = [...events, ...pendingMessageEvents, ...sessionLocalEvents];
+    // Create synthetic events for assistant placeholders and streaming drafts
+    const syntheticEvents: ConsoleTimelineEvent[] = [];
+    
+    // Add assistant placeholders
+    if (selectedSessionId) {
+      pendingAssistantPlaceholders.forEach((placeholder, attemptId) => {
+        if (placeholder.sessionId !== selectedSessionId) return;
+        syntheticEvents.push({
+          eventId: `synthetic-placeholder-${attemptId}`,
+          eventType: 'assistant_message',
+          sessionId: selectedSessionId,
+          timestamp: new Date(placeholder.timestamp).toISOString(),
+          metadata: {
+            assistantPlaceholder: true,
+            attemptId,
+          },
+          actor: 'assistant',
+        });
+      });
+
+      // Add streaming drafts
+      streamingDrafts.forEach((draft, attemptId) => {
+        if (draft.sessionId !== selectedSessionId) return;
+        syntheticEvents.push({
+          eventId: `synthetic-draft-${attemptId}`,
+          eventType: 'assistant_message',
+          sessionId: selectedSessionId,
+          timestamp: new Date(draft.timestamp).toISOString(),
+          content: draft.content,
+          metadata: {
+            streamingDraft: true,
+            attemptId,
+          },
+          actor: 'assistant',
+        });
+      });
+    }
+
+    const allEvents = [...events, ...pendingMessageEvents, ...sessionLocalEvents, ...syntheticEvents];
     const dedupedEvents = allEvents.filter((event, index) => (
       allEvents.findIndex((candidate) => candidate.eventId === event.eventId) === index
     ));
@@ -482,7 +897,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     }
 
     return dedupedEvents;
-  }, [events, localCommandEvents, localMessageEvents, selectedSessionId, preferences.reasoningVisible]);
+  }, [events, localCommandEvents, localMessageEvents, selectedSessionId, preferences.reasoningVisible, pendingAssistantPlaceholders, streamingDrafts]);
 
   const renderStreamStatus = () => {
     const statusText = streamStatus === 'connected'
@@ -632,22 +1047,6 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
                 loading={timelineLoading}
                 error={timelineError || undefined}
               />
-              {/* Streaming Drafts */}
-              {Array.from(streamingDrafts.entries()).map(([attemptId, draft]) => (
-                <div
-                  key={`draft-${attemptId}`}
-                  className="timeline-event-card timeline-event-card--streaming-draft"
-                  data-testid="streaming-assistant-draft"
-                  data-attempt-id={attemptId}
-                >
-                  <div className="timeline-event-header">
-                    <span className="timeline-event-label">Assistant (streaming)</span>
-                  </div>
-                  <div className="timeline-event-body">
-                    <div className="timeline-event-content">{draft.content}</div>
-                  </div>
-                </div>
-              ))}
             </div>
 
             {/* Error Display */}

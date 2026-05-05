@@ -300,8 +300,8 @@ Content-Type: application/json
   "routingPrompt": "Route tasks based on complexity...",
   "allowedToolIds": ["search", "read_file"],
   "allowedSkillIds": ["code-review"],
-  "routingTimeoutMs": 10000,
-  "repairAttempts": 2
+  "routingTimeoutMs": 60000,
+  "repairAttempts": 1
 }
 
 # Get current user's override configuration
@@ -318,7 +318,7 @@ Content-Type: application/json
   "allowedToolIds": ["search"],
   "allowedSkillIds": [],
   "routingTimeoutMs": 15000,
-  "repairAttempts": 3
+  "repairAttempts": 1
 }
 
 # Reset user override to global defaults

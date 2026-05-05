@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## Communication
+
+- 回复时使用中文。
+
 ## Quick Reference
 
 ```bash
@@ -72,7 +76,7 @@ Auth in tests: Create user + auth token manually, pass token in headers.
 ## LLM Router
 
 ForegroundAgent routes messages through LLM with structured JSON output.
-- Router timeout: 10s default
+- Router timeout: 60s default
 - Repair retry: 1 attempt on malformed JSON
 - Bypass: approval metadata and no-provider scenarios skip LLM
 - Tool guardrails: server-side intersection of suggested ∩ allowed ∩ known tools

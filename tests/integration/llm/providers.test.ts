@@ -306,6 +306,40 @@ describe('Multi-Provider LLM Adapter Integration', () => {
 
       consoleSpy.mockRestore();
     });
+
+    it('should normalize base URL by trimming trailing slashes', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        baseUrl: 'https://api.siliconflow.cn/v1/',
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.siliconflow.cn/v1/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+
+    it('should normalize base URL with multiple trailing slashes', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        baseUrl: 'https://api.siliconflow.cn/v1///',
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.siliconflow.cn/v1/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
   });
 
   describe('OpenRouter Adapter', () => {
@@ -389,6 +423,21 @@ describe('Multi-Provider LLM Adapter Integration', () => {
       );
 
       delete process.env.OPENROUTER_API_KEY;
+    });
+
+    it('should normalize base URL by trimming trailing slashes', async () => {
+      const adapter = new OpenRouterAdapter({
+        ...createTestProviderConfig('openrouter', 1),
+        apiKey: 'test-router-key',
+        baseUrl: 'https://custom-openrouter.com/api/v1/',
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://custom-openrouter.com/api/v1/chat/completions',
+        expect.any(Object)
+      );
     });
   });
 

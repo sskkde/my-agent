@@ -385,7 +385,75 @@ describe('TranscriptStore', () => {
 
     it('should return empty array when no planner match', () => {
       const results = store.findByPlannerRunId('non-existent-planner');
-      expect(results).toEqual([]);
+      expect(results).toHaveLength(0);
+    });
+  });
+
+  describe('inboundTimestamp', () => {
+    it('should persist and retrieve inboundTimestamp via contentRefs encoding', () => {
+      const inboundTs = '2024-01-15T09:59:00.000Z';
+      const transcript = createTestTranscript({
+        turnId: 'turn-inbound-ts',
+        input: {
+          inboundEventId: 'evt-1',
+          userMessageSummary: 'Hello',
+          contentRefs: ['doc-1'],
+          inboundTimestamp: inboundTs,
+        },
+      });
+      store.saveTurn(transcript);
+
+      const retrieved = store.getTurn('turn-inbound-ts');
+      expect(retrieved).not.toBeNull();
+      expect(retrieved?.input.inboundTimestamp).toBe(inboundTs);
+      expect(retrieved?.input.contentRefs).toEqual(['doc-1']);
+    });
+
+    it('should preserve contentRefs alongside inboundTimestamp', () => {
+      const transcript = createTestTranscript({
+        turnId: 'turn-refs-ts',
+        input: {
+          userMessageSummary: 'Test',
+          contentRefs: ['ref-a', 'ref-b'],
+          inboundTimestamp: '2024-06-01T12:00:00.000Z',
+        },
+      });
+      store.saveTurn(transcript);
+
+      const retrieved = store.getTurn('turn-refs-ts');
+      expect(retrieved?.input.contentRefs).toEqual(['ref-a', 'ref-b']);
+      expect(retrieved?.input.inboundTimestamp).toBe('2024-06-01T12:00:00.000Z');
+    });
+
+    it('should handle transcript without inboundTimestamp (backward compatible)', () => {
+      const transcript = createTestTranscript({
+        turnId: 'turn-no-ts',
+        input: {
+          userMessageSummary: 'Old format',
+          contentRefs: ['old-ref'],
+        },
+      });
+      store.saveTurn(transcript);
+
+      const retrieved = store.getTurn('turn-no-ts');
+      expect(retrieved).not.toBeNull();
+      expect(retrieved?.input.inboundTimestamp).toBeUndefined();
+      expect(retrieved?.input.contentRefs).toEqual(['old-ref']);
+    });
+
+    it('should handle transcript with inboundTimestamp but no contentRefs', () => {
+      const transcript = createTestTranscript({
+        turnId: 'turn-ts-only',
+        input: {
+          userMessageSummary: 'No refs',
+          inboundTimestamp: '2024-07-01T08:00:00.000Z',
+        },
+      });
+      store.saveTurn(transcript);
+
+      const retrieved = store.getTurn('turn-ts-only');
+      expect(retrieved?.input.inboundTimestamp).toBe('2024-07-01T08:00:00.000Z');
+      expect(retrieved?.input.contentRefs).toBeUndefined();
     });
   });
 });

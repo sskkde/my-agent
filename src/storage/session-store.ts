@@ -30,11 +30,17 @@ export interface ListSessionsOptions {
   offset?: number;
 }
 
+export interface UpdateMetadataInput {
+  messageCount?: number;
+  lastActivityAt?: string;
+}
+
 export interface SessionStore {
   create(input: CreateSessionInput): Session;
   getById(sessionId: string): Session | null;
   list(options?: ListSessionsOptions): Session[];
   updateActivity(sessionId: string, lastActivityAt: string): boolean;
+  updateMetadata(sessionId: string, input: UpdateMetadataInput): boolean;
   updateStatus(sessionId: string, status: 'active' | 'archived' | 'closed'): boolean;
   updateTitle(sessionId: string, title: string): boolean;
   updateUserId(sessionId: string, newUserId: string): boolean;
@@ -165,6 +171,39 @@ class SessionStoreImpl implements SessionStore {
 
     try {
       this.connection.exec(sql, [lastActivityAt, now, sessionId]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  updateMetadata(sessionId: string, input: UpdateMetadataInput): boolean {
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    const now = new Date().toISOString();
+
+    if (input.messageCount !== undefined) {
+      updates.push('message_count = ?');
+      params.push(input.messageCount);
+    }
+
+    if (input.lastActivityAt !== undefined) {
+      updates.push('last_activity_at = ?');
+      params.push(input.lastActivityAt);
+    }
+
+    if (updates.length === 0) {
+      return false;
+    }
+
+    updates.push('updated_at = ?');
+    params.push(now);
+    params.push(sessionId);
+
+    const sql = `UPDATE sessions SET ${updates.join(', ')} WHERE session_id = ?`;
+
+    try {
+      this.connection.exec(sql, params);
       return true;
     } catch {
       return false;

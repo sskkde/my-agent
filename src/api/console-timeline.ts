@@ -41,13 +41,16 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
     userId: turn.userId,
   };
 
+  const userTimestamp = turn.input.inboundTimestamp ?? turn.createdAt;
+  const outputTimestamp = turn.createdAt;
+
   // User message event from input
   if (turn.input.userMessageSummary) {
     events.push({
       eventId: `turn-${turn.turnId}-input`,
       eventType: 'user_message',
       sessionId: turn.sessionId,
-      timestamp: turn.createdAt,
+      timestamp: userTimestamp,
       content: turn.input.userMessageSummary,
       metadata: { ...baseMetadata },
       actor: turn.userId,
@@ -62,7 +65,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           eventId: `turn-${turn.turnId}-msg-${index}`,
           eventType: 'assistant_message',
           sessionId: turn.sessionId,
-          timestamp: turn.createdAt,
+          timestamp: outputTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
@@ -76,7 +79,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           eventId: `turn-${turn.turnId}-thinking-${index}`,
           eventType: 'thinking_summary',
           sessionId: turn.sessionId,
-          timestamp: turn.createdAt,
+          timestamp: outputTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
@@ -90,7 +93,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           eventId: `turn-${turn.turnId}-status-${index}`,
           eventType: 'system_status',
           sessionId: turn.sessionId,
-          timestamp: turn.createdAt,
+          timestamp: outputTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
@@ -104,7 +107,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           eventId: `turn-${turn.turnId}-approval-decision-${index}`,
           eventType: 'approval_decision',
           sessionId: turn.sessionId,
-          timestamp: turn.createdAt,
+          timestamp: outputTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
@@ -118,7 +121,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           eventId: `turn-${turn.turnId}-tool-result-${index}`,
           eventType: 'tool_result',
           sessionId: turn.sessionId,
-          timestamp: turn.createdAt,
+          timestamp: outputTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
@@ -132,7 +135,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           eventId: `turn-${turn.turnId}-error-${index}`,
           eventType: 'error',
           sessionId: turn.sessionId,
-          timestamp: turn.createdAt,
+          timestamp: outputTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
@@ -152,7 +155,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
         eventId: `turn-${turn.turnId}-tool-${index}`,
         eventType: 'tool_call',
         sessionId: turn.sessionId,
-        timestamp: turn.createdAt,
+        timestamp: outputTimestamp,
         content: summary,
         metadata: {
           ...baseMetadata,
@@ -170,7 +173,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
         eventId: `turn-${turn.turnId}-approval-${index}`,
         eventType: 'approval_request',
         sessionId: turn.sessionId,
-        timestamp: turn.createdAt,
+        timestamp: outputTimestamp,
         content: summary,
         metadata: {
           ...baseMetadata,
@@ -188,7 +191,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
         eventId: `turn-${turn.turnId}-artifact-${index}`,
         eventType: 'artifact_created',
         sessionId: turn.sessionId,
-        timestamp: turn.createdAt,
+        timestamp: outputTimestamp,
         content: `Artifact created: ${artifactRef}`,
         metadata: {
           ...baseMetadata,

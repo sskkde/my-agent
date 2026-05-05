@@ -3,6 +3,12 @@ import type { ApiContext } from '../context.js';
 import { ApiErrorFactory } from '../errors.js';
 import { getToolCatalog } from '../tool-catalog.js';
 import type { AgentConfig } from '../../storage/agent-config-store.js';
+import {
+  DEFAULT_REPAIR_ATTEMPTS,
+  DEFAULT_ROUTING_TIMEOUT_MS,
+  INHERIT_REPAIR_ATTEMPTS,
+  INHERIT_ROUTING_TIMEOUT_MS,
+} from '../../storage/agent-config-store.js';
 
 // Built-in skills (must match skills.ts)
 const BUILTIN_SKILL_IDS = [
@@ -37,7 +43,6 @@ interface ConfigResponse {
  */
 function mergeConfigs(global: AgentConfig | null, userOverride: AgentConfig | null): Partial<AgentConfig> | null {
   if (!global && !userOverride) return null;
-  if (!global) return userOverride as Partial<AgentConfig>;
   if (!userOverride) return global as Partial<AgentConfig>;
 
   return {
@@ -45,16 +50,22 @@ function mergeConfigs(global: AgentConfig | null, userOverride: AgentConfig | nu
     agentId: userOverride.agentId,
     scope: userOverride.scope,
     userId: userOverride.userId,
-    displayName: userOverride.displayName ?? global.displayName,
-    enabled: userOverride.enabled ?? global.enabled,
-    systemPrompt: userOverride.systemPrompt ?? global.systemPrompt,
-    routingPrompt: userOverride.routingPrompt ?? global.routingPrompt,
-    providerId: userOverride.providerId ?? global.providerId,
-    model: userOverride.model ?? global.model,
-    allowedToolIds: userOverride.allowedToolIds.length > 0 ? userOverride.allowedToolIds : global.allowedToolIds,
-    allowedSkillIds: userOverride.allowedSkillIds.length > 0 ? userOverride.allowedSkillIds : global.allowedSkillIds,
-    routingTimeoutMs: userOverride.routingTimeoutMs ?? global.routingTimeoutMs,
-    repairAttempts: userOverride.repairAttempts ?? global.repairAttempts,
+    displayName: userOverride.displayName ?? global?.displayName,
+    enabled: userOverride.enabled ?? global?.enabled,
+    systemPrompt: userOverride.systemPrompt ?? global?.systemPrompt,
+    routingPrompt: userOverride.routingPrompt ?? global?.routingPrompt,
+    providerId: userOverride.providerId ?? global?.providerId,
+    model: userOverride.model ?? global?.model,
+    allowedToolIds: userOverride.allowedToolIds ?? global?.allowedToolIds ?? [],
+    allowedSkillIds: userOverride.allowedSkillIds ?? global?.allowedSkillIds ?? [],
+    routingTimeoutMs: userOverride.routingTimeoutMs === INHERIT_ROUTING_TIMEOUT_MS
+      ? global?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS
+      : userOverride.routingTimeoutMs,
+    repairAttempts: userOverride.repairAttempts === INHERIT_REPAIR_ATTEMPTS
+      ? global?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS
+      : userOverride.repairAttempts,
+    promptType: userOverride.promptType ?? global?.promptType ?? null,
+    promptVersion: userOverride.promptVersion ?? global?.promptVersion ?? null,
     createdAt: userOverride.createdAt,
     updatedAt: userOverride.updatedAt,
   };
@@ -103,7 +114,18 @@ function sanitizeConfigForResponse(config: Partial<AgentConfig> | null): Partial
   if (!config) return null;
   // Remove sensitive/internal fields if any (currently none, but future-proof)
   const { ...sanitized } = config;
+  if (sanitized.scope === 'user' && sanitized.routingTimeoutMs === INHERIT_ROUTING_TIMEOUT_MS) {
+    delete sanitized.routingTimeoutMs;
+  }
+  if (sanitized.scope === 'user' && sanitized.repairAttempts === INHERIT_REPAIR_ATTEMPTS) {
+    delete sanitized.repairAttempts;
+  }
   return sanitized;
+}
+
+function isGlobalConfigAdmin(context: ApiContext, userId: string): boolean {
+  const firstUser = context.stores.userStore.getFirstCreated();
+  return firstUser?.userId === userId;
 }
 
 function validateConfigInput(
@@ -227,7 +249,6 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         const error = ApiErrorFactory.unauthorized('Authentication required');
         return reply.code(401).send(error);
       }
-
       const { agentId } = request.params;
 
       if (!validateAgentId(agentId)) {
@@ -267,6 +288,10 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
       if (!userId) {
         const error = ApiErrorFactory.unauthorized('Authentication required');
         return reply.code(401).send(error);
+      }
+      if (!isGlobalConfigAdmin(context, userId)) {
+        const error = ApiErrorFactory.forbidden('Only the setup owner can update global agent config');
+        return reply.code(403).send(error);
       }
 
       const { agentId } = request.params;
@@ -311,8 +336,8 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
           model: model !== undefined ? model : existingGlobal?.model ?? undefined,
           allowedToolIds: allowedToolIds ?? existingGlobal?.allowedToolIds ?? [],
           allowedSkillIds: allowedSkillIds ?? existingGlobal?.allowedSkillIds ?? [],
-          routingTimeoutMs: routingTimeoutMs ?? existingGlobal?.routingTimeoutMs ?? 10000,
-          repairAttempts: repairAttempts ?? existingGlobal?.repairAttempts ?? 1,
+          routingTimeoutMs: routingTimeoutMs ?? existingGlobal?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS,
+          repairAttempts: repairAttempts ?? existingGlobal?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS,
         });
 
         return reply.code(200).send({ data: sanitizeConfigForResponse(config) });
@@ -378,8 +403,8 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
           model: model !== undefined ? model : existingOverride?.model ?? undefined,
           allowedToolIds: allowedToolIds ?? existingOverride?.allowedToolIds ?? global?.allowedToolIds ?? [],
           allowedSkillIds: allowedSkillIds ?? existingOverride?.allowedSkillIds ?? global?.allowedSkillIds ?? [],
-          routingTimeoutMs: routingTimeoutMs ?? existingOverride?.routingTimeoutMs ?? global?.routingTimeoutMs ?? 10000,
-          repairAttempts: repairAttempts ?? existingOverride?.repairAttempts ?? global?.repairAttempts ?? 1,
+          routingTimeoutMs: routingTimeoutMs ?? existingOverride?.routingTimeoutMs,
+          repairAttempts: repairAttempts ?? existingOverride?.repairAttempts,
         });
 
         return reply.code(200).send({ data: sanitizeConfigForResponse(config) });
