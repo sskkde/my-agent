@@ -25,6 +25,7 @@ interface FormData {
   allowedToolIds: string[];
   allowedSkillIds: string[];
   routingTimeoutMs: number;
+  toolScopeMode: 'inherit' | 'all' | 'none' | 'custom';
 }
 
 const initialFormData: FormData = {
@@ -35,6 +36,7 @@ const initialFormData: FormData = {
   allowedToolIds: [],
   allowedSkillIds: [],
   routingTimeoutMs: 60000,
+  toolScopeMode: 'custom',
 };
 
 const AGENT_ID = 'foreground.default';
@@ -76,6 +78,13 @@ const AgentsTab: React.FC = () => {
       setOverrideTimingTouched(false);
 
       const effective = configData.effective;
+      const toolScopeMode = configData.userOverride?.allowedToolIds === null
+        ? 'inherit'
+        : configData.userOverride?.allowedToolIds?.length === 0
+          ? 'none'
+          : configData.userOverride?.allowedToolIds?.length === toolsData.tools.length
+            ? 'all'
+            : 'custom';
       setFormData({
         providerId: effective.providerId,
         model: effective.model,
@@ -84,6 +93,7 @@ const AgentsTab: React.FC = () => {
         allowedToolIds: effective.allowedToolIds,
         allowedSkillIds: effective.allowedSkillIds,
         routingTimeoutMs: effective.routingTimeoutMs,
+        toolScopeMode,
       });
     } catch (err) {
       const message = err instanceof ApiClientError ? err.message : '加载配置失败';
@@ -110,7 +120,22 @@ const AgentsTab: React.FC = () => {
       const updated = current.includes(toolId)
         ? current.filter((id) => id !== toolId)
         : [...current, toolId];
-      return { ...prev, allowedToolIds: updated };
+      return { ...prev, allowedToolIds: updated, toolScopeMode: 'custom' };
+    });
+  };
+
+  const handleToolScopeModeChange = (mode: 'inherit' | 'all' | 'none' | 'custom') => {
+    setFormData((prev) => {
+      if (mode === 'inherit') {
+        return { ...prev, allowedToolIds: [], toolScopeMode: 'inherit' };
+      }
+      if (mode === 'all') {
+        return { ...prev, allowedToolIds: tools.map((t) => t.name), toolScopeMode: 'all' };
+      }
+      if (mode === 'none') {
+        return { ...prev, allowedToolIds: [], toolScopeMode: 'none' };
+      }
+      return { ...prev, toolScopeMode: 'custom' };
     });
   };
 
@@ -174,7 +199,9 @@ const AgentsTab: React.FC = () => {
         model: formData.model,
         systemPrompt: formData.systemPrompt,
         routingPrompt: formData.routingPrompt,
-        allowedToolIds: formData.allowedToolIds,
+        allowedToolIds: activeScope === 'override' && formData.toolScopeMode === 'inherit'
+          ? null
+          : formData.allowedToolIds,
         allowedSkillIds: formData.allowedSkillIds,
       };
       const updateRequest: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest = activeScope === 'global'
@@ -411,40 +438,92 @@ const AgentsTab: React.FC = () => {
 
         <div className="agents-section">
           <h3>允许的工具</h3>
-          <div className="multi-select-actions">
-            <button
-              className="action-link"
-              onClick={handleSelectAllTools}
-              data-testid="select-all-tools-btn"
-            >
-              全选
-            </button>
-            <button
-              className="action-link"
-              onClick={handleDeselectAllTools}
-              data-testid="deselect-all-tools-btn"
-            >
-              取消全选
-            </button>
-          </div>
-          <div className="multi-select-grid" data-testid="tools-multi-select">
-            {tools.map((tool) => (
-              <label key={tool.name} className="multi-select-item">
+          {activeScope === 'override' && (
+            <div className="tool-scope-mode" data-testid="tool-scope-mode">
+              <label className="radio-label">
                 <input
-                  type="checkbox"
-                  checked={formData.allowedToolIds.includes(tool.name)}
-                  onChange={() => handleToolToggle(tool.name)}
-                  data-testid={`tool-checkbox-${tool.name}`}
+                  type="radio"
+                  name="toolScopeMode"
+                  value="inherit"
+                  checked={formData.toolScopeMode === 'inherit'}
+                  onChange={() => handleToolScopeModeChange('inherit')}
+                  data-testid="tool-scope-inherit"
                 />
-                <span className="multi-select-label">
-                  <span className="multi-select-name">{tool.name}</span>
-                  <span className="multi-select-desc">{tool.description}</span>
-                </span>
+                <span>继承全局</span>
               </label>
-            ))}
-          </div>
-          {tools.length === 0 && (
-            <p className="empty-hint">暂无可用的工具</p>
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="toolScopeMode"
+                  value="all"
+                  checked={formData.toolScopeMode === 'all'}
+                  onChange={() => handleToolScopeModeChange('all')}
+                  data-testid="tool-scope-all"
+                />
+                <span>允许所有工具</span>
+              </label>
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="toolScopeMode"
+                  value="none"
+                  checked={formData.toolScopeMode === 'none'}
+                  onChange={() => handleToolScopeModeChange('none')}
+                  data-testid="tool-scope-none"
+                />
+                <span>不允许任何工具</span>
+              </label>
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="toolScopeMode"
+                  value="custom"
+                  checked={formData.toolScopeMode === 'custom'}
+                  onChange={() => handleToolScopeModeChange('custom')}
+                  data-testid="tool-scope-custom"
+                />
+                <span>自定义</span>
+              </label>
+            </div>
+          )}
+          {formData.toolScopeMode === 'custom' && (
+            <>
+              <div className="multi-select-actions">
+                <button
+                  className="action-link"
+                  onClick={handleSelectAllTools}
+                  data-testid="select-all-tools-btn"
+                >
+                  全选
+                </button>
+                <button
+                  className="action-link"
+                  onClick={handleDeselectAllTools}
+                  data-testid="deselect-all-tools-btn"
+                >
+                  取消全选
+                </button>
+              </div>
+              <div className="multi-select-grid" data-testid="tools-multi-select">
+                {tools.map((tool) => (
+                  <label key={tool.name} className="multi-select-item">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowedToolIds.includes(tool.name)}
+                      onChange={() => handleToolToggle(tool.name)}
+                      data-testid={`tool-checkbox-${tool.name}`}
+                    />
+                    <span className="multi-select-label">
+                      <span className="multi-select-name">{tool.name}</span>
+                      <span className="multi-select-desc">{tool.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {tools.length === 0 && (
+                <p className="empty-hint">暂无可用的工具</p>
+              )}
+            </>
           )}
         </div>
 
@@ -577,6 +656,30 @@ const AgentsTab: React.FC = () => {
                   {hasOverride ? '已启用' : '未设置'}
                 </span>
               </div>
+              {config.effective.resolvedPromptType && (
+                <div className="effective-item">
+                  <span className="effective-label">提示词类型:</span>
+                  <span className="effective-value" data-testid="effective-prompt-type">
+                    {config.effective.resolvedPromptType}
+                  </span>
+                </div>
+              )}
+              {config.effective.resolvedPromptVersion && (
+                <div className="effective-item">
+                  <span className="effective-label">提示词版本:</span>
+                  <span className="effective-value" data-testid="effective-prompt-version">
+                    {config.effective.resolvedPromptVersion}
+                  </span>
+                </div>
+              )}
+              {config.effective.promptFallbackReason && (
+                <div className="effective-item">
+                  <span className="effective-label">提示词回退原因:</span>
+                  <span className="effective-value" data-testid="effective-prompt-fallback">
+                    {config.effective.promptFallbackReason === 'UNKNOWN_PROMPT_VERSION' ? '未知版本' : '未知类型'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -190,6 +190,14 @@ export function buildRoutingMessages(
     });
   }
 
+  // 3b. systemPrompt overlay from AgentConfig (if set)
+  if (agentConfig?.systemPrompt) {
+    messages.push({
+      role: 'system',
+      content: agentConfig.systemPrompt,
+    });
+  }
+
   // 4. User message: dynamic routing prompt
   const dynamicPrompt = buildDynamicRoutingPrompt(message, sessionState, effectiveToolIds);
   messages.push({

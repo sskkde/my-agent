@@ -495,6 +495,9 @@ export interface AgentEffectiveConfig {
   allowedSkillIds: string[];
   routingTimeoutMs: number;
   repairAttempts: number;
+  resolvedPromptType?: string;
+  resolvedPromptVersion?: string;
+  promptFallbackReason?: 'UNKNOWN_PROMPT_VERSION' | 'UNKNOWN_PROMPT_TYPE';
 }
 
 export interface AgentConfig {

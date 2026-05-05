@@ -247,7 +247,7 @@ Please respond with valid JSON matching the exact schema shown above.`;
         };
       }
 
-      return this.parseRouterOutput(result.response.content);
+      return this.parseRouterOutput(result.response.content, state, _toolCatalog);
     } catch (error) {
       return {
         success: false,
@@ -294,7 +294,11 @@ Please respond with valid JSON matching the exact schema shown above.`;
   /**
    * Parse and validate router output
    */
-  private parseRouterOutput(rawOutput: string): RouterResult {
+  private parseRouterOutput(
+    rawOutput: string,
+    state?: ForegroundSessionState,
+    toolCatalog?: string[]
+  ): RouterResult {
     const validRoutes: ForegroundDecisionRoute[] = [
       'answer_directly',
       'dispatch_tool',
@@ -457,8 +461,10 @@ Please respond with valid JSON matching the exact schema shown above.`;
 
     // Filter suggestedTools to only known tools (intersection with catalog)
     const rawSuggestedTools = obj.suggestedTools as string[] | undefined;
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog ?? []);
     const filteredSuggestedTools = rawSuggestedTools
-      ? this.filterAllowedTools(rawSuggestedTools)
+      ? this.filterAllowedTools(rawSuggestedTools, effectiveToolIds)
       : undefined;
 
     return {
@@ -475,15 +481,15 @@ Please respond with valid JSON matching the exact schema shown above.`;
   }
 
   /**
-   * Filter suggested tools against known tool catalog.
-   * SECURITY: Only allow tools that exist in the known catalog.
+   * Filter suggested tools against known tool catalog and allowed tools.
+   * SECURITY: Only allow tools that exist in the known catalog AND are in the allowed list.
    */
-  private filterAllowedTools(suggestedTools: string[]): string[] {
+  private filterAllowedTools(suggestedTools: string[], effectiveToolIds: string[]): string[] {
     const knownToolIds = getToolCatalog().map(t => t.name);
     const normalizedTools = suggestedTools.flatMap((toolId) => (
       knownToolIds.includes(toolId) ? [toolId] : TOOL_ALIASES[toolId] ?? []
     ));
-    return [...new Set(normalizedTools)];
+    return [...new Set(normalizedTools)].filter((id) => effectiveToolIds.includes(id));
   }
 
   /**

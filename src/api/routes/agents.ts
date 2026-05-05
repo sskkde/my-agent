@@ -9,6 +9,7 @@ import {
   INHERIT_REPAIR_ATTEMPTS,
   INHERIT_ROUTING_TIMEOUT_MS,
 } from '../../storage/agent-config-store.js';
+import { resolvePrompt } from '../../agents/prompt-registry.js';
 
 // Built-in skills (must match skills.ts)
 const BUILTIN_SKILL_IDS = [
@@ -34,7 +35,11 @@ const VALID_REPAIR_ATTEMPTS = [0, 1];
 interface ConfigResponse {
   global: Partial<AgentConfig> | null;
   userOverride: Partial<AgentConfig> | null;
-  effective: Partial<AgentConfig> | null;
+  effective: (Partial<AgentConfig> & {
+    resolvedPromptType?: string;
+    resolvedPromptVersion?: string;
+    promptFallbackReason?: 'UNKNOWN_PROMPT_VERSION' | 'UNKNOWN_PROMPT_TYPE';
+  }) | null;
 }
 
 /**
@@ -265,10 +270,21 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         // Effective is the field-level merged config
         const effective = mergeConfigs(global, userOverride);
 
+        // Resolve prompt metadata
+        const promptResolution = resolvePrompt(
+          effective?.promptType ?? 'foreground.router',
+          effective?.promptVersion ?? null
+        );
+
         const response: ConfigResponse = {
           global: sanitizeConfigForResponse(global),
           userOverride: sanitizeConfigForResponse(userOverride),
-          effective: sanitizeConfigForResponse(effective),
+          effective: effective ? {
+            ...sanitizeConfigForResponse(effective),
+            resolvedPromptType: promptResolution.record.id,
+            resolvedPromptVersion: promptResolution.record.version,
+            ...(promptResolution.fallbackReason ? { promptFallbackReason: promptResolution.fallbackReason } : {}),
+          } : null,
         };
 
         return reply.code(200).send({ data: response });
