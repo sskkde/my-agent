@@ -125,13 +125,68 @@ describe('prompt-registry', () => {
       expect(record?.runtimeEnabled).toBe(false);
     });
 
-    it('contains planning-related content', () => {
+    it('contains identity section', () => {
       const record = PROMPT_REGISTRY.get('planner.executor:2026-05-05');
       const prompt = record?.baseSystemPrompt ?? '';
 
-      expect(prompt).toContain('planning agent');
-      expect(prompt).toContain('structured plan');
-      expect(prompt).toContain('ask_user');
+      expect(prompt).toContain('IDENTITY');
+      expect(prompt).toContain('planning specialist');
+    });
+
+    it('contains responsibilities section', () => {
+      const record = PROMPT_REGISTRY.get('planner.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('RESPONSIBILITIES');
+      expect(prompt).toContain('Analyze the objective');
+      expect(prompt).toContain('Break work into atomic');
+      expect(prompt).toContain('Identify dependencies');
+    });
+
+    it('contains forbidden actions section', () => {
+      const record = PROMPT_REGISTRY.get('planner.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('FORBIDDEN ACTIONS');
+      expect(prompt).toContain('Do not execute write tools');
+      expect(prompt).toContain('Do not interact with the user directly');
+    });
+
+    it('contains tool policy section', () => {
+      const record = PROMPT_REGISTRY.get('planner.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('TOOL POLICY');
+      expect(prompt).toContain('Read-only tools');
+      expect(prompt).toContain('Write tools require explicit runtime grant');
+    });
+
+    it('contains output contract section with plan schema', () => {
+      const record = PROMPT_REGISTRY.get('planner.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('OUTPUT CONTRACT');
+      expect(prompt).toContain('planId');
+      expect(prompt).toContain('objective');
+      expect(prompt).toContain('steps');
+      expect(prompt).toContain('dependencies');
+      expect(prompt).toContain('successCriteria');
+    });
+
+    it('contains runtime requirements section', () => {
+      const record = PROMPT_REGISTRY.get('planner.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('RUNTIME REQUIREMENTS');
+      expect(prompt).toContain('planner runtime');
+      expect(prompt).toContain('Checkpoint support');
+      expect(prompt).toContain('Cancellation handling');
+    });
+
+    it('description indicates spec-only status', () => {
+      const record = PROMPT_REGISTRY.get('planner.executor:2026-05-05');
+      expect(record?.description).toContain('Spec-only');
+      expect(record?.description).toContain('not available in V1');
     });
   });
 
@@ -141,13 +196,70 @@ describe('prompt-registry', () => {
       expect(record?.runtimeEnabled).toBe(false);
     });
 
-    it('contains execution-related content', () => {
+    it('contains identity section', () => {
       const record = PROMPT_REGISTRY.get('subagent.executor:2026-05-05');
       const prompt = record?.baseSystemPrompt ?? '';
 
-      expect(prompt).toContain('subagent');
-      expect(prompt).toContain('background tasks');
-      expect(prompt).toContain('cancellation');
+      expect(prompt).toContain('IDENTITY');
+      expect(prompt).toContain('execution specialist');
+    });
+
+    it('contains responsibilities section', () => {
+      const record = PROMPT_REGISTRY.get('subagent.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('RESPONSIBILITIES');
+      expect(prompt).toContain('Execute the assigned task');
+      expect(prompt).toContain('Report progress');
+      expect(prompt).toContain('Collect and report evidence');
+    });
+
+    it('contains forbidden actions section', () => {
+      const record = PROMPT_REGISTRY.get('subagent.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('FORBIDDEN ACTIONS');
+      expect(prompt).toContain('Do not interact with the user directly');
+      expect(prompt).toContain('Do not use tools outside your granted scope');
+      expect(prompt).toContain('Do not exceed resource limits');
+    });
+
+    it('contains tool policy section', () => {
+      const record = PROMPT_REGISTRY.get('subagent.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('TOOL POLICY');
+      expect(prompt).toContain('Execute only tools explicitly listed');
+      expect(prompt).toContain('Respect rate limits');
+    });
+
+    it('contains output contract section with result schema', () => {
+      const record = PROMPT_REGISTRY.get('subagent.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('OUTPUT CONTRACT');
+      expect(prompt).toContain('taskId');
+      expect(prompt).toContain('status');
+      expect(prompt).toContain('progress');
+      expect(prompt).toContain('evidence');
+      expect(prompt).toContain('metrics');
+    });
+
+    it('contains runtime requirements section', () => {
+      const record = PROMPT_REGISTRY.get('subagent.executor:2026-05-05');
+      const prompt = record?.baseSystemPrompt ?? '';
+
+      expect(prompt).toContain('RUNTIME REQUIREMENTS');
+      expect(prompt).toContain('subagent runtime');
+      expect(prompt).toContain('Checkpoint support');
+      expect(prompt).toContain('Cancellation handling');
+      expect(prompt).toContain('Resource monitoring');
+    });
+
+    it('description indicates spec-only status', () => {
+      const record = PROMPT_REGISTRY.get('subagent.executor:2026-05-05');
+      expect(record?.description).toContain('Spec-only');
+      expect(record?.description).toContain('not available in V1');
     });
   });
 

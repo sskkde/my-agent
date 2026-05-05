@@ -201,6 +201,34 @@ describe('Agent Config API Integration', () => {
       const body = JSON.parse(response.body);
       expect(body.error.code).toBe('INVALID_AGENT_ID');
     });
+
+    it('should return 400 for planner.executor agent ID (spec-only)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/agents/planner.executor/config',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error.code).toBe('INVALID_AGENT_ID');
+    });
+
+    it('should return 400 for subagent.executor agent ID (spec-only)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/agents/subagent.executor/config',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error.code).toBe('INVALID_AGENT_ID');
+    });
   });
 
   describe('PATCH /api/agents/foreground.default/config/global', () => {
