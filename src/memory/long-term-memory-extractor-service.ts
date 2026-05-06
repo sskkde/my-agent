@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import type { TranscriptStore } from '../storage/transcript-store.js';
 import type { SummaryStore } from '../storage/summary-store.js';
 import type { LongTermMemoryStore, LongTermMemoryRecord } from '../storage/long-term-memory-store.js';
-import type { MemoryExtractionRunStore } from '../storage/memory-extraction-run-store.js';
+import type { MemoryExtractionRunStore, ResultCounts } from '../storage/memory-extraction-run-store.js';
 import type { LLMAdapter } from '../llm/adapter.js';
 import type { LLMRequest } from '../llm/types.js';
 import {
@@ -26,7 +26,7 @@ export type ExtractorServiceDeps = {
 };
 
 export type ExtractionResult =
-  | { status: 'succeeded'; memoriesCreated: number; memoriesSuperseded: number }
+  | { status: 'succeeded'; resultCounts: ResultCounts }
   | { status: 'duplicate' }
   | { status: 'failed'; errorCode: string };
 
@@ -113,12 +113,10 @@ function buildMemoryRecord(
     sourceRefs: {
       transcriptRefs: candidate.sourceRefs.transcriptRefs,
       summaryRefs: candidate.sourceRefs.summaryRefs,
+      extraction: candidate.sourceRefs.extraction,
     },
     scope: {
       visibility: 'private_user',
-      projectId: candidate.scope.projectId,
-      workflowId: candidate.scope.workflowId,
-      connector: candidate.scope.connector,
     },
     confidence: candidate.confidence,
     importance: candidate.importance as LongTermMemoryRecord['importance'],
@@ -154,9 +152,15 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
       try {
         run = deps.memoryExtractionRunStore.createPending({
           userId: deps.userId,
+          sessionId: deps.sessionId,
+          triggerTurnId: deps.triggerTurnId,
           windowHash: window.windowHash,
-          windowStart: window.includedTurnIds[0] ?? deps.triggerTurnId,
-          windowEnd: deps.triggerTurnId,
+          includedTurnIds: window.includedTurnIds,
+          sessionMemorySummaryId: window.sessionMemorySummaryId || undefined,
+          sourceRefs: {
+            triggerTurnId: window.triggerTurnId,
+            includedTurnIds: window.includedTurnIds,
+          },
         });
       } catch {
         return { status: 'duplicate' };
@@ -189,19 +193,30 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
           return { status: 'failed', errorCode: 'INVALID_JSON' };
         }
 
-        let memoriesCreated = 0;
-        let memoriesSuperseded = 0;
+        const resultCounts: ResultCounts = {
+          accepted: 0,
+          discarded: 0,
+          tombstoneSkipped: 0,
+          superseded: 0,
+        };
 
         for (const candidate of candidates) {
-          if (candidate.discardReason) continue;
+          if (candidate.discardReason) {
+            resultCounts.discarded++;
+            continue;
+          }
 
           const validation = validateExtractedCandidate(candidate, window);
-          if (!validation.valid || !validation.normalizedCandidate) continue;
+          if (!validation.valid || !validation.normalizedCandidate) {
+            resultCounts.discarded++;
+            continue;
+          }
 
           const normalized = validation.normalizedCandidate;
           const fingerprint = fingerprintMemoryCandidate(deps.userId, normalized);
 
           if (deps.longTermMemoryStore.hasTombstone(deps.userId, fingerprint, window.windowHash)) {
+            resultCounts.tombstoneSkipped++;
             continue;
           }
 
@@ -214,23 +229,20 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
                 updatedAt: new Date().toISOString(),
               },
             });
-            memoriesSuperseded++;
+            resultCounts.superseded++;
           }
 
           const record = buildMemoryRecord(deps.userId, normalized, window.windowHash);
           deps.longTermMemoryStore.save(record);
-          memoriesCreated++;
+          resultCounts.accepted++;
         }
 
-        deps.memoryExtractionRunStore.markSucceeded(run.runId, {
-          memoriesCreated,
-          memoriesSuperseded,
-        });
+        deps.memoryExtractionRunStore.markSucceeded(run.runId, resultCounts);
 
-        return { status: 'succeeded', memoriesCreated, memoriesSuperseded };
+        return { status: 'succeeded', resultCounts };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        deps.memoryExtractionRunStore.markFailed(run.runId, errorMessage);
+        deps.memoryExtractionRunStore.markFailed(run.runId, 'EXTRACTION_ERROR', errorMessage);
         return { status: 'failed', errorCode: 'EXTRACTION_ERROR' };
       }
     },

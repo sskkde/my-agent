@@ -703,7 +703,7 @@ describe('Long-term Memory Extraction', () => {
   // ============================================================================
 
   describe('canonicalizeMemoryCandidate', () => {
-    it('should normalize text by trimming whitespace', () => {
+    it('should normalize text by trimming whitespace and lowercasing', () => {
       const candidate: ExtractedMemoryCandidate = {
         memoryType: 'user_preference',
         text: '  Prefers dark mode  ',
@@ -723,7 +723,7 @@ describe('Long-term Memory Extraction', () => {
       };
 
       const canonical = canonicalizeMemoryCandidate(candidate);
-      expect(canonical.normalizedText).toBe('Prefers dark mode');
+      expect(canonical.normalizedText).toBe('prefers dark mode');
     });
 
     it('should normalize structured data with sorted keys', () => {

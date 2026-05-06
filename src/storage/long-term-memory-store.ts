@@ -51,6 +51,11 @@ export type MemorySourceRefs = {
   workflowRunId?: string;
   backgroundRunId?: string;
   artifactId?: string;
+  extraction?: {
+    windowHash: string;
+    triggerTurnId: string;
+    includedTurnIds: string[];
+  };
 };
 
 export type MemoryLifecycle = {
@@ -98,6 +103,8 @@ export type TombstoneInput = {
   userId: string;
   fingerprint: string;
   sourceWindowHash: string;
+  memoryId?: string;
+  reason?: string;
 };
 
 export interface LongTermMemoryStore {
@@ -239,6 +246,8 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
         userId: existing.userId,
         fingerprint: existing.fingerprint,
         sourceWindowHash: existing.sourceWindowHash,
+        memoryId: existing.memoryId,
+        reason: 'user_delete',
       });
     }
   }
@@ -308,26 +317,24 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
     const tombstoneId = `tombstone-${input.userId}-${input.fingerprint}-${input.sourceWindowHash}`;
     const sql = `
       INSERT OR IGNORE INTO memory_tombstones (
-        tombstone_id, user_id, fingerprint, source_window_hash, created_at
-      ) VALUES (?, ?, ?, ?, ?)
+        tombstone_id, user_id, memory_id, fingerprint, source_window_hash, reason, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     
     this.connection.exec(sql, [
       tombstoneId,
       input.userId,
+      input.memoryId ?? '',
       input.fingerprint,
       input.sourceWindowHash,
+      input.reason ?? '',
       new Date().toISOString(),
     ]);
   }
 
-  hasTombstone(userId: string, fingerprint: string, _sourceWindowHash: string): boolean {
-    const sql = `
-      SELECT 1 FROM memory_tombstones 
-      WHERE user_id = ? AND fingerprint = ?
-      LIMIT 1
-    `;
-    const rows = this.connection.query<{ '1': number }>(sql, [userId, fingerprint]);
+  hasTombstone(userId: string, fingerprint: string, sourceWindowHash: string): boolean {
+    const sql = 'SELECT 1 FROM memory_tombstones WHERE user_id = ? AND fingerprint = ? AND source_window_hash = ? LIMIT 1';
+    const rows = this.connection.query<{ 1: number }>(sql, [userId, fingerprint, sourceWindowHash]);
     return rows.length > 0;
   }
 

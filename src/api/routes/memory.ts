@@ -28,12 +28,7 @@ const VALID_MEMORY_TYPES: MemoryType[] = [
   'user_profile',
   'user_preference',
   'user_safety_rule',
-  'relationship',
   'project_state',
-  'routine',
-  'workflow_preference',
-  'durable_fact',
-  'episodic_summary',
 ];
 
 const DEFAULT_LIMIT = 50;
@@ -85,16 +80,18 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
           runs: runs.map(run => ({
             runId: run.runId,
             userId: run.userId,
+            sessionId: run.sessionId,
+            triggerTurnId: run.triggerTurnId,
             windowHash: run.windowHash,
-            windowStart: run.windowStart,
-            windowEnd: run.windowEnd,
+            includedTurnIds: run.includedTurnIds,
             status: run.status,
+            attempts: run.attempts,
+            resultCounts: run.resultCounts,
+            failureCode: run.failureCode,
+            failureMessage: run.failureMessage,
+            createdAt: run.createdAt,
             startedAt: run.startedAt,
             completedAt: run.completedAt,
-            resultCounts: run.resultCounts,
-            errorMessage: run.errorMessage,
-            createdAt: run.createdAt,
-            updatedAt: run.updatedAt,
           })),
           total: runs.length,
         },
@@ -144,8 +141,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
           data: {
             status: result.status,
             ...(result.status === 'succeeded' && {
-              memoriesCreated: result.memoriesCreated,
-              memoriesSuperseded: result.memoriesSuperseded,
+              resultCounts: result.resultCounts,
             }),
             ...(result.status === 'failed' && {
               errorCode: result.errorCode,

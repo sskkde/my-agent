@@ -86,7 +86,7 @@ export function stableJsonHash(value: unknown): string {
 }
 
 export function canonicalizeMemoryCandidate(candidate: ExtractedMemoryCandidate): CanonicalizedCandidate {
-  const normalizedText = candidate.text.trim();
+  const normalizedText = candidate.text.trim().toLowerCase();
   
   let normalizedStructured: Record<string, unknown> | undefined;
   if (candidate.structured) {
@@ -227,7 +227,7 @@ RESPONSE FORMAT (JSON only, no markdown):
       "keywords": ["keyword1", "keyword2"],
       "entities": [
         {
-          "entityType": "person|project|workflow|artifact|organization|connector_resource",
+          "entityType": "person|project|workflow|organization",
           "entityId": "optional-id",
           "displayName": "Display Name"
         }

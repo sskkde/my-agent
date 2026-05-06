@@ -310,9 +310,9 @@ export function createOrchestrationProcessor(
         resolvedModel
       ));
 
-      persistTurnTranscript(input, output, deps.transcriptStore);
+      const persisted = persistTurnTranscript(input, output, deps.transcriptStore);
 
-      if (deps.memoryExtractionScheduler && output.success) {
+      if (deps.memoryExtractionScheduler && persisted && output.success) {
         deps.memoryExtractionScheduler.scheduleAfterTurn({
           userId: input.userId,
           sessionId: input.sessionId,
@@ -769,7 +769,7 @@ function persistTurnTranscript(
   input: MessageProcessorInput,
   output: MessageProcessorOutput,
   transcriptStore: TranscriptStore
-): void {
+): boolean {
   const visibleMessages: VisibleMessage[] = [];
 
   if (output.success && output.result) {
@@ -819,9 +819,8 @@ function persistTurnTranscript(
 
   try {
     transcriptStore.saveTurn(transcript);
+    return true;
   } catch {
-    // Intentionally suppressed: transcript persistence is best-effort.
-    // Processing result must be returned even if persistence fails.
-    // Storage layer handles its own errors; processor continues.
+    return false;
   }
 }

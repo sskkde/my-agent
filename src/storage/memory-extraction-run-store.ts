@@ -3,39 +3,50 @@ import type { ConnectionManager } from './connection.js';
 export type ExtractionRunStatus = 'pending' | 'running' | 'succeeded' | 'failed';
 
 export type ResultCounts = {
-  memoriesCreated: number;
-  memoriesSuperseded: number;
+  accepted: number;
+  discarded: number;
+  tombstoneSkipped: number;
+  superseded: number;
 };
 
 export type MemoryExtractionRun = {
   runId: string;
   userId: string;
+  sessionId: string;
+  triggerTurnId: string;
   windowHash: string;
-  windowStart: string;
-  windowEnd: string;
+  includedTurnIds: string[];
+  sessionMemorySummaryId?: string;
   status: ExtractionRunStatus;
+  attempts: number;
+  resultCounts?: ResultCounts;
+  failureCode?: string;
+  failureMessage?: string;
+  sourceRefs: Record<string, unknown>;
+  createdAt: string;
   startedAt?: string;
   completedAt?: string;
-  resultCounts?: ResultCounts;
-  errorMessage?: string;
-  createdAt: string;
   updatedAt: string;
 };
 
 export type CreatePendingInput = {
   userId: string;
+  sessionId: string;
+  triggerTurnId: string;
   windowHash: string;
-  windowStart: string;
-  windowEnd: string;
+  includedTurnIds: string[];
+  sessionMemorySummaryId?: string;
+  sourceRefs?: Record<string, unknown>;
 };
 
 export interface MemoryExtractionRunStore {
   createPending(input: CreatePendingInput): MemoryExtractionRun;
   markRunning(runId: string): void;
   markSucceeded(runId: string, resultCounts: ResultCounts): void;
-  markFailed(runId: string, errorMessage: string): void;
+  markFailed(runId: string, failureCode: string, failureMessage?: string): void;
   getByWindowHash(userId: string, windowHash: string): MemoryExtractionRun | null;
   listByUser(userId: string): MemoryExtractionRun[];
+  deleteByWindowHash(userId: string, windowHash: string): void;
 }
 
 class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
@@ -51,17 +62,21 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     
     const sql = `
       INSERT INTO memory_extraction_runs (
-        run_id, user_id, window_hash, window_start, window_end, status,
+        run_id, user_id, session_id, trigger_turn_id, window_hash, included_turn_ids,
+        session_memory_summary_id, status, attempts, source_refs,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
     `;
     
     this.connection.exec(sql, [
       runId,
       input.userId,
+      input.sessionId,
+      input.triggerTurnId,
       input.windowHash,
-      input.windowStart,
-      input.windowEnd,
+      JSON.stringify(input.includedTurnIds),
+      input.sessionMemorySummaryId ?? null,
+      JSON.stringify(input.sourceRefs ?? {}),
       now,
       now,
     ]);
@@ -69,10 +84,14 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     return {
       runId,
       userId: input.userId,
+      sessionId: input.sessionId,
+      triggerTurnId: input.triggerTurnId,
       windowHash: input.windowHash,
-      windowStart: input.windowStart,
-      windowEnd: input.windowEnd,
+      includedTurnIds: input.includedTurnIds,
+      sessionMemorySummaryId: input.sessionMemorySummaryId,
       status: 'pending',
+      attempts: 0,
+      sourceRefs: input.sourceRefs ?? {},
       createdAt: now,
       updatedAt: now,
     };
@@ -90,7 +109,7 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     const now = new Date().toISOString();
     const sql = `
       UPDATE memory_extraction_runs 
-      SET status = 'running', started_at = ?, updated_at = ?
+      SET status = 'running', started_at = ?, attempts = attempts + 1, updated_at = ?
       WHERE run_id = ?
     `;
     
@@ -116,7 +135,7 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     this.connection.exec(sql, [now, JSON.stringify(resultCounts), now, runId]);
   }
 
-  markFailed(runId: string, errorMessage: string): void {
+  markFailed(runId: string, failureCode: string, failureMessage?: string): void {
     const current = this.getById(runId);
     if (!current) {
       throw new Error(`Extraction run "${runId}" not found`);
@@ -128,11 +147,11 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     const now = new Date().toISOString();
     const sql = `
       UPDATE memory_extraction_runs 
-      SET status = 'failed', completed_at = ?, error_message = ?, updated_at = ?
+      SET status = 'failed', completed_at = ?, failure_code = ?, failure_message = ?, updated_at = ?
       WHERE run_id = ?
     `;
     
-    this.connection.exec(sql, [now, errorMessage, now, runId]);
+    this.connection.exec(sql, [now, failureCode, failureMessage ?? null, now, runId]);
   }
 
   getByWindowHash(userId: string, windowHash: string): MemoryExtractionRun | null {
@@ -160,6 +179,14 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     return rows.map(r => this.rowToRun(r));
   }
 
+  deleteByWindowHash(userId: string, windowHash: string): void {
+    const sql = `
+      DELETE FROM memory_extraction_runs 
+      WHERE user_id = ? AND window_hash = ?
+    `;
+    this.connection.exec(sql, [userId, windowHash]);
+  }
+
   private getById(runId: string): MemoryExtractionRun | null {
     const sql = 'SELECT * FROM memory_extraction_runs WHERE run_id = ?';
     const rows = this.connection.query<ExtractionRunRow>(sql, [runId]);
@@ -175,14 +202,19 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     return {
       runId: row.run_id,
       userId: row.user_id,
+      sessionId: row.session_id,
+      triggerTurnId: row.trigger_turn_id,
       windowHash: row.window_hash,
-      windowStart: row.window_start,
-      windowEnd: row.window_end,
+      includedTurnIds: JSON.parse(row.included_turn_ids),
+      sessionMemorySummaryId: row.session_memory_summary_id ?? undefined,
       status: row.status as ExtractionRunStatus,
+      attempts: row.attempts,
       startedAt: row.started_at ?? undefined,
       completedAt: row.completed_at ?? undefined,
       resultCounts: row.result_counts ? JSON.parse(row.result_counts) : undefined,
-      errorMessage: row.error_message ?? undefined,
+      failureCode: row.failure_code ?? undefined,
+      failureMessage: row.failure_message ?? undefined,
+      sourceRefs: JSON.parse(row.source_refs),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -192,14 +224,19 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
 type ExtractionRunRow = {
   run_id: string;
   user_id: string;
+  session_id: string;
+  trigger_turn_id: string;
   window_hash: string;
-  window_start: string;
-  window_end: string;
+  included_turn_ids: string;
+  session_memory_summary_id: string | null;
   status: string;
+  attempts: number;
   started_at: string | null;
   completed_at: string | null;
   result_counts: string | null;
-  error_message: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+  source_refs: string;
   created_at: string;
   updated_at: string;
 };

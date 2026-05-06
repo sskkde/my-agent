@@ -53,10 +53,12 @@ export function createLongTermMemoryScheduler(
 
   return {
     scheduleAfterTurn(input: ScheduleInput): void {
-      const promise = executeExtraction(deps, input).catch(() => {});
-      pending.add(promise);
-      promise.finally(() => {
-        pending.delete(promise);
+      queueMicrotask(() => {
+        const promise = executeExtraction(deps, input).catch(() => {});
+        pending.add(promise);
+        promise.finally(() => {
+          pending.delete(promise);
+        });
       });
     },
 

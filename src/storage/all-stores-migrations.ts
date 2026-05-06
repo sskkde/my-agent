@@ -1565,6 +1565,105 @@ export const longTermMemoriesInvariantsMigration: Migration = {
   `
 };
 
+export const memoryExtractionRunsFullSchemaMigration: Migration = {
+  version: 39,
+  name: 'add_memory_extraction_runs_full_schema',
+  up: `
+    -- Recreate memory_extraction_runs with new schema (SQLite doesn't support dropping NOT NULL)
+    ALTER TABLE memory_extraction_runs RENAME TO memory_extraction_runs_old;
+    
+    CREATE TABLE memory_extraction_runs (
+      run_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_id TEXT NOT NULL DEFAULT '',
+      trigger_turn_id TEXT NOT NULL DEFAULT '',
+      window_hash TEXT NOT NULL,
+      included_turn_ids TEXT NOT NULL DEFAULT '[]',
+      session_memory_summary_id TEXT,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'succeeded', 'failed')),
+      attempts INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT,
+      completed_at TEXT,
+      result_counts TEXT,
+      failure_code TEXT,
+      failure_message TEXT,
+      source_refs TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    
+    INSERT INTO memory_extraction_runs (
+      run_id, user_id, window_hash, status, started_at, completed_at,
+      result_counts, created_at, updated_at
+    ) SELECT
+      run_id, user_id, window_hash, status, started_at, completed_at,
+      result_counts, created_at, updated_at
+    FROM memory_extraction_runs_old;
+    
+    DROP TABLE memory_extraction_runs_old;
+    
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_extraction_runs_unique
+      ON memory_extraction_runs(user_id, window_hash);
+    
+    CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_status
+      ON memory_extraction_runs(user_id, status);
+
+    CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_session_status
+      ON memory_extraction_runs(user_id, session_id, status);
+
+    -- Add missing columns to memory_tombstones
+    ALTER TABLE memory_tombstones ADD COLUMN memory_id TEXT NOT NULL DEFAULT '';
+    ALTER TABLE memory_tombstones ADD COLUMN reason TEXT NOT NULL DEFAULT '';
+
+    -- Add missing index on long_term_memories
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_source_window
+      ON long_term_memories(user_id, source_window_hash) WHERE source_window_hash IS NOT NULL
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_long_term_memories_source_window;
+    
+    ALTER TABLE memory_tombstones DROP COLUMN reason;
+    ALTER TABLE memory_tombstones DROP COLUMN memory_id;
+    
+    DROP INDEX IF EXISTS idx_memory_extraction_runs_session_status;
+    DROP INDEX IF EXISTS idx_memory_extraction_runs_status;
+    DROP INDEX IF EXISTS idx_memory_extraction_runs_unique;
+    
+    ALTER TABLE memory_extraction_runs RENAME TO memory_extraction_runs_new;
+    
+    CREATE TABLE memory_extraction_runs (
+      run_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      window_hash TEXT NOT NULL,
+      window_start TEXT NOT NULL,
+      window_end TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'succeeded', 'failed')),
+      started_at TEXT,
+      completed_at TEXT,
+      result_counts TEXT,
+      error_message TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    
+    INSERT INTO memory_extraction_runs (
+      run_id, user_id, window_hash, status, started_at, completed_at,
+      result_counts, created_at, updated_at
+    ) SELECT
+      run_id, user_id, window_hash, status, started_at, completed_at,
+      result_counts, created_at, updated_at
+    FROM memory_extraction_runs_new;
+    
+    DROP TABLE memory_extraction_runs_new;
+    
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_extraction_runs_unique
+      ON memory_extraction_runs(user_id, window_hash);
+    
+    CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_status
+      ON memory_extraction_runs(user_id, status)
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -1637,6 +1736,7 @@ export const allStoreMigrations: Migration[] = [
   // Long-term Memory store
   longTermMemoriesTableMigration,          // v37
   longTermMemoriesInvariantsMigration,     // v38
+  memoryExtractionRunsFullSchemaMigration, // v39
 ];
 
 /**

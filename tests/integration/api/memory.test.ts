@@ -92,10 +92,13 @@ describe('Memory Management API', () => {
     return {
       runId: `run-${userId}-${windowHash}`,
       userId,
+      sessionId: 'session-1',
+      triggerTurnId: 'turn-1',
       windowHash,
-      windowStart: now,
-      windowEnd: now,
+      includedTurnIds: ['turn-1'],
       status: 'succeeded',
+      attempts: 0,
+      sourceRefs: {},
       createdAt: now,
       updatedAt: now,
       ...overrides,
@@ -343,9 +346,10 @@ describe('Memory Management API', () => {
       const run = createTestExtractionRun();
       apiContext.stores.memoryExtractionRunStore.createPending({
         userId,
+        sessionId: run.sessionId,
+        triggerTurnId: run.triggerTurnId,
         windowHash: run.windowHash,
-        windowStart: run.windowStart,
-        windowEnd: run.windowEnd,
+        includedTurnIds: run.includedTurnIds,
       });
 
       const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`, {
@@ -368,12 +372,12 @@ describe('Memory Management API', () => {
       const sessionId = sessionBody.data.session.sessionId;
 
       const windowHash = `hash-session-${sessionId}`;
-      const now = new Date().toISOString();
       apiContext.stores.memoryExtractionRunStore.createPending({
         userId,
+        sessionId,
+        triggerTurnId: 'turn-1',
         windowHash,
-        windowStart: now,
-        windowEnd: now,
+        includedTurnIds: ['turn-1'],
       });
 
       const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs?sessionId=${sessionId}`, {
@@ -385,12 +389,12 @@ describe('Memory Management API', () => {
     it('should respect limit parameter', async () => {
       for (let i = 0; i < 5; i++) {
         const windowHash = `hash-limit-${i}-${Date.now()}`;
-        const now = new Date().toISOString();
         apiContext.stores.memoryExtractionRunStore.createPending({
           userId,
+          sessionId: 'session-1',
+          triggerTurnId: `turn-${i}`,
           windowHash,
-          windowStart: now,
-          windowEnd: now,
+          includedTurnIds: [`turn-${i}`],
         });
       }
 
@@ -413,9 +417,10 @@ describe('Memory Management API', () => {
       const otherUserRun = createTestExtractionRun({ userId: 'other-user', runId: 'run-other-user-hash' });
       apiContext.stores.memoryExtractionRunStore.createPending({
         userId: 'other-user',
+        sessionId: otherUserRun.sessionId,
+        triggerTurnId: otherUserRun.triggerTurnId,
         windowHash: otherUserRun.windowHash,
-        windowStart: otherUserRun.windowStart,
-        windowEnd: otherUserRun.windowEnd,
+        includedTurnIds: otherUserRun.includedTurnIds,
       });
 
       const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`, {
@@ -430,9 +435,10 @@ describe('Memory Management API', () => {
       const run = createTestExtractionRun();
       apiContext.stores.memoryExtractionRunStore.createPending({
         userId,
+        sessionId: run.sessionId,
+        triggerTurnId: run.triggerTurnId,
         windowHash: run.windowHash,
-        windowStart: run.windowStart,
-        windowEnd: run.windowEnd,
+        includedTurnIds: run.includedTurnIds,
       });
 
       const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`, {

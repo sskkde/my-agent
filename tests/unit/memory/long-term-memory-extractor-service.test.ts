@@ -291,9 +291,10 @@ describe('LongTermMemoryExtractorService', () => {
 
       extractionRunStore.createPending({
         userId: 'user-1',
+        sessionId: 'session-1',
+        triggerTurnId: 'turn-1',
         windowHash,
-        windowStart: 'turn-1',
-        windowEnd: 'turn-1',
+        includedTurnIds: ['turn-1'],
       });
 
       const llmResponse = JSON.stringify({ candidates: [] });
@@ -362,8 +363,8 @@ describe('LongTermMemoryExtractorService', () => {
 
       expect(result.status).toBe('succeeded');
       if (result.status === 'succeeded') {
-        expect(result.memoriesCreated).toBe(0);
-        expect(result.memoriesSuperseded).toBe(0);
+        expect(result.resultCounts.accepted).toBe(0);
+        expect(result.resultCounts.superseded).toBe(0);
       }
     });
 
@@ -380,8 +381,8 @@ describe('LongTermMemoryExtractorService', () => {
 
       expect(result.status).toBe('succeeded');
       if (result.status === 'succeeded') {
-        expect(result.memoriesCreated).toBe(1);
-        expect(result.memoriesSuperseded).toBe(0);
+        expect(result.resultCounts.accepted).toBe(1);
+        expect(result.resultCounts.superseded).toBe(0);
       }
 
       const memories = longTermMemoryStore.getByUserId('user-1');
@@ -548,8 +549,8 @@ describe('LongTermMemoryExtractorService', () => {
       expect(result2.status).toBe('succeeded');
 
       if (result2.status === 'succeeded') {
-        expect(result2.memoriesSuperseded).toBe(1);
-        expect(result2.memoriesCreated).toBe(1);
+        expect(result2.resultCounts.superseded).toBe(1);
+        expect(result2.resultCounts.accepted).toBe(1);
       }
 
       const oldMemory = longTermMemoryStore.getByMemoryId(firstMemoryId);
@@ -583,7 +584,7 @@ describe('LongTermMemoryExtractorService', () => {
 
       expect(result.status).toBe('succeeded');
       if (result.status === 'succeeded') {
-        expect(result.memoriesCreated).toBe(1);
+        expect(result.resultCounts.accepted).toBe(1);
       }
 
       const memories = longTermMemoryStore.getByUserId('user-1');
@@ -608,7 +609,7 @@ describe('LongTermMemoryExtractorService', () => {
 
       expect(result.status).toBe('succeeded');
       if (result.status === 'succeeded') {
-        expect(result.memoriesCreated).toBe(0);
+        expect(result.resultCounts.accepted).toBe(0);
       }
 
       const memories = longTermMemoryStore.getByUserId('user-1');
@@ -649,7 +650,7 @@ describe('LongTermMemoryExtractorService', () => {
 
       expect(result.status).toBe('succeeded');
       if (result.status === 'succeeded') {
-        expect(result.memoriesCreated).toBe(0);
+        expect(result.resultCounts.accepted).toBe(0);
       }
     });
   });

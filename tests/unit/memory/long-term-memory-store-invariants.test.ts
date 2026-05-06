@@ -377,9 +377,10 @@ describe('Memory Extraction Run Store', () => {
     it('should create pending extraction run', () => {
       const run = extractionRunStore.createPending({
         userId: 'user-123',
+        sessionId: 'session-001',
+        triggerTurnId: 'turn-001',
         windowHash: 'hash-window-001',
-        windowStart: '2024-01-01T00:00:00Z',
-        windowEnd: '2024-01-02T00:00:00Z',
+        includedTurnIds: ['turn-001'],
       });
 
       expect(run.status).toBe('pending');
@@ -390,18 +391,20 @@ describe('Memory Extraction Run Store', () => {
     it('should enforce unique constraint on user_id + window_hash', () => {
       extractionRunStore.createPending({
         userId: 'user-123',
+        sessionId: 'session-001',
+        triggerTurnId: 'turn-001',
         windowHash: 'hash-window-001',
-        windowStart: '2024-01-01T00:00:00Z',
-        windowEnd: '2024-01-02T00:00:00Z',
+        includedTurnIds: ['turn-001'],
       });
 
       // Should throw on duplicate
       expect(() => {
         extractionRunStore.createPending({
           userId: 'user-123',
+          sessionId: 'session-001',
+          triggerTurnId: 'turn-001',
           windowHash: 'hash-window-001',
-          windowStart: '2024-01-01T00:00:00Z',
-          windowEnd: '2024-01-02T00:00:00Z',
+          includedTurnIds: ['turn-001'],
         });
       }).toThrow();
     });
@@ -409,9 +412,10 @@ describe('Memory Extraction Run Store', () => {
     it('should get extraction run by window hash', () => {
       extractionRunStore.createPending({
         userId: 'user-123',
+        sessionId: 'session-001',
+        triggerTurnId: 'turn-001',
         windowHash: 'hash-window-001',
-        windowStart: '2024-01-01T00:00:00Z',
-        windowEnd: '2024-01-02T00:00:00Z',
+        includedTurnIds: ['turn-001'],
       });
 
       const run = extractionRunStore.getByWindowHash('user-123', 'hash-window-001');
@@ -423,23 +427,26 @@ describe('Memory Extraction Run Store', () => {
     it('should list extraction runs by user', () => {
       extractionRunStore.createPending({
         userId: 'user-123',
+        sessionId: 'session-001',
+        triggerTurnId: 'turn-001',
         windowHash: 'hash-window-001',
-        windowStart: '2024-01-01T00:00:00Z',
-        windowEnd: '2024-01-02T00:00:00Z',
+        includedTurnIds: ['turn-001'],
       });
 
       extractionRunStore.createPending({
         userId: 'user-123',
+        sessionId: 'session-001',
+        triggerTurnId: 'turn-002',
         windowHash: 'hash-window-002',
-        windowStart: '2024-01-02T00:00:00Z',
-        windowEnd: '2024-01-03T00:00:00Z',
+        includedTurnIds: ['turn-002'],
       });
 
       extractionRunStore.createPending({
         userId: 'user-456',
+        sessionId: 'session-002',
+        triggerTurnId: 'turn-003',
         windowHash: 'hash-window-003',
-        windowStart: '2024-01-01T00:00:00Z',
-        windowEnd: '2024-01-02T00:00:00Z',
+        includedTurnIds: ['turn-003'],
       });
 
       const runs = extractionRunStore.listByUser('user-123');
@@ -455,9 +462,10 @@ describe('Memory Extraction Run Store', () => {
     beforeEach(() => {
       run = extractionRunStore.createPending({
         userId: 'user-123',
+        sessionId: 'session-001',
+        triggerTurnId: 'turn-001',
         windowHash: 'hash-window-001',
-        windowStart: '2024-01-01T00:00:00Z',
-        windowEnd: '2024-01-02T00:00:00Z',
+        includedTurnIds: ['turn-001'],
       });
     });
 
@@ -472,36 +480,38 @@ describe('Memory Extraction Run Store', () => {
     it('should mark run as succeeded with result counts', () => {
       extractionRunStore.markRunning(run.runId);
       extractionRunStore.markSucceeded(run.runId, {
-        memoriesCreated: 5,
-        memoriesSuperseded: 2,
+        accepted: 5,
+        discarded: 1,
+        tombstoneSkipped: 0,
+        superseded: 2,
       });
 
       const updated = extractionRunStore.getByWindowHash('user-123', 'hash-window-001');
       expect(updated?.status).toBe('succeeded');
       expect(updated?.completedAt).toBeDefined();
-      expect(updated?.resultCounts?.memoriesCreated).toBe(5);
-      expect(updated?.resultCounts?.memoriesSuperseded).toBe(2);
+      expect(updated?.resultCounts?.accepted).toBe(5);
+      expect(updated?.resultCounts?.superseded).toBe(2);
     });
 
     it('should mark run as failed', () => {
       extractionRunStore.markRunning(run.runId);
-      extractionRunStore.markFailed(run.runId, 'LLM timeout');
+      extractionRunStore.markFailed(run.runId, 'LLM_ERROR', 'LLM timeout');
 
       const updated = extractionRunStore.getByWindowHash('user-123', 'hash-window-001');
       expect(updated?.status).toBe('failed');
       expect(updated?.completedAt).toBeDefined();
-      expect(updated?.errorMessage).toBe('LLM timeout');
+      expect(updated?.failureCode).toBe('LLM_ERROR');
     });
 
     it('should not transition from pending to succeeded directly', () => {
       expect(() => {
-        extractionRunStore.markSucceeded(run.runId, { memoriesCreated: 1, memoriesSuperseded: 0 });
+        extractionRunStore.markSucceeded(run.runId, { accepted: 1, discarded: 0, tombstoneSkipped: 0, superseded: 0 });
       }).toThrow();
     });
 
     it('should not transition from succeeded to running', () => {
       extractionRunStore.markRunning(run.runId);
-      extractionRunStore.markSucceeded(run.runId, { memoriesCreated: 1, memoriesSuperseded: 0 });
+      extractionRunStore.markSucceeded(run.runId, { accepted: 1, discarded: 0, tombstoneSkipped: 0, superseded: 0 });
 
       expect(() => {
         extractionRunStore.markRunning(run.runId);
