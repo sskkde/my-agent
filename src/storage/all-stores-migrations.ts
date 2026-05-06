@@ -20,6 +20,7 @@ import type { Migration } from './migrations.js';
  * - Artifact Store
  * - ToolResult Store
  * - Connector Store
+ * - Long-term Memory Store
  */
 
 // ============================================================================
@@ -1461,6 +1462,46 @@ export const agentConfigPromptBindingMigration: Migration = {
   `
 };
 
+export const longTermMemoriesTableMigration: Migration = {
+  version: 37,
+  name: 'create_long_term_memories_table',
+  up: `
+    CREATE TABLE IF NOT EXISTS long_term_memories (
+      memory_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      memory_type TEXT NOT NULL,
+      content TEXT NOT NULL,
+      entities TEXT,
+      source_refs TEXT NOT NULL,
+      scope TEXT NOT NULL,
+      confidence REAL NOT NULL,
+      importance TEXT NOT NULL,
+      sensitivity TEXT NOT NULL,
+      lifecycle TEXT NOT NULL,
+      retrieval TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_user_status
+      ON long_term_memories(user_id, json_extract(lifecycle, '$.status'));
+
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_type
+      ON long_term_memories(memory_type);
+
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_importance
+      ON long_term_memories(importance);
+
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_updated
+      ON long_term_memories(json_extract(lifecycle, '$.updatedAt'))
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_long_term_memories_user_status;
+    DROP INDEX IF EXISTS idx_long_term_memories_type;
+    DROP INDEX IF EXISTS idx_long_term_memories_importance;
+    DROP INDEX IF EXISTS idx_long_term_memories_updated;
+    DROP TABLE IF EXISTS long_term_memories
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -1529,6 +1570,9 @@ export const allStoreMigrations: Migration[] = [
   agentConfigsTableMigration,              // v34
   agentConfigRuntimeDefaultsMigration,     // v35
   agentConfigPromptBindingMigration,       // v36
+
+  // Long-term Memory store
+  longTermMemoriesTableMigration,          // v37
 ];
 
 /**
