@@ -3,7 +3,7 @@
 > **Status**: Formal Architecture Document  
 > **Scope**: Compare `agent_architecture_docs/`, `agent_architecture_lifecycle_storage_failure_docs/`, and `docs/RUNBOOK.md` against current implementation.  
 > **Last Updated**: 2026-05-06  
-> **P0 Work Status**: P0-1 (report baseline) complete; P0-2, P0-3, P0-6 complete; P0-4 (memory extraction pipeline) and P0-5 (visual workflow builder) remain partial — P0 phase not fully closed.
+> **P0 Work Status**: P0-1 (report baseline) complete; P0-2, P0-3, P0-4, P0-6 complete; P0-5 (visual workflow builder) remains partial — P0 phase not fully closed.
 
 ## 1. Executive Summary
 
@@ -43,7 +43,7 @@ Each subsystem is evaluated across four dimensions:
 | Tool Plane | Registry, execution pipeline, permission coordination, async operations, large result handling. | `src/tools/tool-registry.ts`, `src/tools/tool-executor.ts`, `src/tools/types.ts`, `src/tools/index.ts`, `src/tools/builtins/` (8 tools: `artifact-create.ts`, `artifact-update.ts`, `ask-user.ts`, `status-query.ts`, `memory-retrieve.ts`, `transcript-search.ts`, `plan-patch.ts`, `docs-search.ts`), `tests/unit/shared/lifecycle-conformance.test.ts` (ToolExecution state coverage) | 🟡 Partial | Large-result reference handling and external connector tool exposure are incomplete. | P1 |
 | Permission / Approval | Permission modes, approval requests, scoped grants, LLM pre-approval judge. | `src/permissions/permission-engine.ts`, `src/permissions/approval-handler.ts`, `src/permissions/types.ts`, `src/storage/approval-store.ts`, `src/storage/permission-grant-store.ts`, `tests/unit/shared/lifecycle-conformance.test.ts` (ApprovalRequest state coverage) | 🟡 Partial | Approval Center UI and LLM pre-approval judge are missing/incomplete. | P1 |
 | Context Manager | Multi-source context normalization, dedupe, pruning, ContextBundle views. | `src/context/context-manager.ts`, `src/context/context-views.ts`, `src/context/types.ts`, `src/context/index.ts` | 🟡 Partial | Policy-driven view tests across planner/workflow/background are limited. | P1 |
-| Memory System | Event/transcript/summary/long-term memory, extraction, recall, lifecycle. | `src/memory/session-memory-manager.ts`, `src/memory/summary-manager.ts`, `src/memory/memory-search.ts`, `src/memory/rolling-summary-policy.ts`, `src/memory/types.ts`, `src/storage/summary-store.ts`, `src/storage/long-term-memory-store.ts`, `tests/unit/memory/long-term-memory-lifecycle.test.ts` (20 tests: write, retrieve, delete, patch, lifecycle transitions) | 🟡 Partial | Extraction pipeline and retention/deletion/privacy lifecycle are incomplete. Long-term memory store implemented. | P0 |
+| Memory System | Event/transcript/summary/long-term memory, extraction, recall, lifecycle. | `src/memory/session-memory-manager.ts`, `src/memory/summary-manager.ts`, `src/memory/memory-search.ts`, `src/memory/rolling-summary-policy.ts`, `src/memory/long-term-memory-extraction.ts`, `src/memory/long-term-memory-extractor-service.ts`, `src/memory/long-term-memory-scheduler.ts`, `src/memory/long-term-memory-recall.ts`, `src/memory/types.ts`, `src/storage/summary-store.ts`, `src/storage/long-term-memory-store.ts`, `src/api/routes/memory.ts`, `tests/unit/memory/long-term-memory-lifecycle.test.ts` (20 tests), `tests/unit/memory/long-term-memory-extraction.test.ts` (44 tests), `tests/unit/memory/long-term-memory-extractor-service.test.ts` (22 tests), `tests/unit/memory/long-term-memory-recall.test.ts` (17 tests), `tests/integration/memory/long-term-memory-pipeline.test.ts` (10 tests), `tests/integration/api/memory.test.ts` (34 tests) | ✅ Implemented | Transcript/event redaction remains out of P0 scope. Long-term memory extraction pipeline complete. | P1 |
 | Subagent / Background Runtime | Background runs, checkpoint, watchdog, artifacts, recovery. | `src/subagents/background-runtime.ts`, `src/subagents/subagent-runtime.ts`, `src/subagents/types.ts`, `src/storage/background-run-store.ts`, `tests/unit/shared/lifecycle-conformance.test.ts` (BackgroundSubagentRun state coverage), `tests/integration/recovery/cancellation-cascade.test.ts` (background run cancellation) | 🟡 Partial | Artifact policy and recovery edge cases need verification. Cancellation cascade tested. | P0 |
 | Workflow Runtime | Versioned workflow definitions, workflow runs, step orchestration, visual builder. | `src/workflows/workflow-runtime.ts`, `src/workflows/types.ts`, `src/storage/workflow-run-store.ts`, `src/storage/workflow-definition-store.ts`, `src/storage/workflow-draft-store.ts`, `tests/integration/workflows/plan-to-workflow.test.ts` (22 tests: draft creation, validation, publish, run, complete, cancel, versioning), `tests/unit/shared/lifecycle-conformance.test.ts` (WorkflowRun state coverage) | 🟡 Partial | Visual Workflow Builder UI incomplete. Plan-to-Workflow compiler path tested. | P0 |
 | Event Trigger / Wait | Schedule/webhook/MCP/connector/approval triggers and wait conditions. | `src/triggers/event-trigger-runtime.ts`, `src/triggers/types.ts`, `src/storage/trigger-store.ts`, `src/storage/wait-condition-store.ts`, `tests/unit/shared/lifecycle-conformance.test.ts` (WaitCondition state coverage) | 🟡 Partial | Real trigger sources, duplicate/ordered event handling, production polling are incomplete. | P1 |
@@ -71,7 +71,7 @@ These items establish the technical safety net and baseline for subsequent work.
 | P0-1 | Create final `ARCHITECTURE_GAP_REPORT.md` from this draft. | Establishes shared status baseline. | Governance prerequisite | None | Report has status rubric, full subsystem matrix, priorities, assumptions, and evidence links. | ✅ Complete |
 | P0-2 | Add lifecycle conformance tests. | Prevents each runtime from drifting from global state model. | Technical blocker | Shared state definitions. | Tests cover planner, kernel, tool execution, background run, workflow run, approval, wait condition states. | ✅ Complete — `tests/unit/shared/lifecycle-conformance.test.ts` (29 tests) |
 | P0-3 | Define MCP/Connector minimum viable contract. | Real connectors depend on capability/auth/event semantics. | Technical blocker | Connector runtime and tool bridge. | Contract doc + tests for capability discovery, auth failure, async operation, idempotency. | ✅ Complete — `tests/integration/connectors/connector-runtime.test.ts` (capability discovery, auth failure handling, async operations, MCP mapping) |
-| P0-4 | Implement long-term memory lifecycle. | Memory is central to assistant architecture. | Technical blocker (partial) | Summary/session memory foundations. | Store + extraction + recall + delete/retention + privacy tests. | 🟡 Partial — Store implemented (`src/storage/long-term-memory-store.ts`), lifecycle tests exist (`tests/unit/memory/long-term-memory-lifecycle.test.ts` - 20 tests). Extraction pipeline incomplete. Blocks P2-3. |
+| P0-4 | Implement long-term memory lifecycle. | Memory is central to assistant architecture. | Technical blocker | Summary/session memory foundations. | Store + extraction + recall + delete/retention + privacy tests. | ✅ Complete — Store (`src/storage/long-term-memory-store.ts`), extraction contract (`src/memory/long-term-memory-extraction.ts`), extractor service (`src/memory/long-term-memory-extractor-service.ts`), scheduler (`src/memory/long-term-memory-scheduler.ts`), recall service (`src/memory/long-term-memory-recall.ts`), management API (`src/api/routes/memory.ts`). Tests: 147 total (20 lifecycle + 44 extraction + 22 extractor service + 17 recall + 10 pipeline + 34 API). Note: transcript/event redaction remains out of P0 scope. |
 | P0-5 | Implement Workflow Builder + Plan-to-Workflow minimum path. | Converts runtime skeleton into user-facing workflow capability. | Technical blocker (partial) | Workflow runtime, approval/tool policies. | UI/API can create, validate, publish, run a simple workflow compiled from a plan. | 🟡 Partial — Backend path tested (`tests/integration/workflows/plan-to-workflow.test.ts` - 22 tests). Visual Builder UI incomplete. No downstream P1/P2 item explicitly depends on this; consider splitting or reclassifying. |
 | P0-6 | Add failure recovery and cancellation cascade tests. | Ensures safety across background/workflow/tool/connector failures. | Technical blocker | Runtime state stores, dispatcher, recovery module. | Tests cover timeout, partial success, external operation failure, cancellation propagation. | ✅ Complete — `tests/integration/recovery/cancellation-cascade.test.ts` (24 tests covering all criteria) |
 
@@ -102,9 +102,9 @@ These items establish the technical safety net and baseline for subsequent work.
 - "Closed" means: implemented runtime path + persisted state if needed + tests + API/UI/ops visibility where applicable.
 - Module existence alone is not treated as implementation complete.
 - Real connector list is not yet chosen; P0 includes defining the minimum connector contract before selecting full integrations.
-- P0-4 (long-term memory) is marked partial because extraction pipeline is not implemented, though store and lifecycle tests exist.
+- P0-4 (long-term memory) is now complete with full extraction pipeline, recall service, and management API. Transcript/event redaction remains out of P0 scope.
 - P0-5 (workflow builder) is marked partial because visual Builder UI is incomplete, though backend path is tested.
-- **P0 phase is not fully closed**: P0-4 and P0-5 remain partial. P1/P2 work can proceed for items whose dependencies are satisfied (P0-2, P0-3, P0-6), but P2-3 (memory UI) remains blocked by P0-4 extraction pipeline.
+- **P0 phase is not fully closed**: P0-5 remains partial. P1/P2 work can proceed for items whose dependencies are satisfied (P0-2, P0-3, P0-4, P0-6). P2-3 (memory UI) is now unblocked.
 
 ## 6.1 Document Coverage Mapping
 
@@ -150,10 +150,21 @@ This section maps each architecture document to the subsystem matrix row(s) that
 - **Tests**: Capability discovery, auth failure handling, async operations, MCP tool descriptor mapping, event emission
 - **Verified**: ConnectorDefinition/Instance management, capability discovery returns proper structure, tool bridge maps capabilities correctly
 
-### P0-4: Long-term Memory Lifecycle 🟡 (Partial)
-- **Store**: `src/storage/long-term-memory-store.ts` — Full CRUD operations, soft delete, lifecycle transitions
-- **Tests**: `tests/unit/memory/long-term-memory-lifecycle.test.ts` — 20 tests covering write, retrieve, delete, patch, lifecycle transitions
-- **Remaining**: Extraction pipeline not implemented
+### P0-4: Long-term Memory Lifecycle ✅
+- **Store**: `src/storage/long-term-memory-store.ts` — Full CRUD operations, soft delete, lifecycle transitions, tombstones
+- **Extraction Contract**: `src/memory/long-term-memory-extraction.ts` — Fingerprint, canonicalization, validation, prompt builder
+- **Extractor Service**: `src/memory/long-term-memory-extractor-service.ts` — Window builder, LLM call, parsing, validation, upsert
+- **Scheduler**: `src/memory/long-term-memory-scheduler.ts` — Async per-turn trigger, fire-and-forget, drain for tests
+- **Recall Service**: `src/memory/long-term-memory-recall.ts` — Lexical search, importance/confidence sorting, recall metadata
+- **Management API**: `src/api/routes/memory.ts` — List, detail, delete, debug extraction runs, manual trigger
+- **Tests**: 147 total
+  - `tests/unit/memory/long-term-memory-lifecycle.test.ts` — 20 tests (write, retrieve, delete, patch, lifecycle transitions)
+  - `tests/unit/memory/long-term-memory-extraction.test.ts` — 44 tests (fingerprint, canonicalize, validate, prompt)
+  - `tests/unit/memory/long-term-memory-extractor-service.test.ts` — 22 tests (window builder, LLM call, parse, write, tombstone, supersede)
+  - `tests/unit/memory/long-term-memory-recall.test.ts` — 17 tests (lexical search, filtering, sorting, metadata update)
+  - `tests/integration/memory/long-term-memory-pipeline.test.ts` — 10 tests (scheduler integration, async trigger)
+  - `tests/integration/api/memory.test.ts` — 34 tests (list, detail, delete, debug endpoints, auth, ownership)
+- **Note**: Transcript/event redaction remains out of P0 scope.
 
 ### P0-5: Plan-to-Workflow Path 🟡 (Partial)
 - **File**: `tests/integration/workflows/plan-to-workflow.test.ts`
