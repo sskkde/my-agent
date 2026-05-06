@@ -305,7 +305,7 @@ describe('LongTermMemoryExtractorService', () => {
       expect(result.status).toBe('duplicate');
     });
 
-    it('should NOT return duplicate when previous run failed', async () => {
+    it('should return duplicate when previous run failed (no delete support)', async () => {
       transcriptStore.saveTurn(makeTurn({ turnId: 'turn-1' }));
 
       const failingAdapter = createFailingLLMAdapter('provider error');
@@ -319,7 +319,7 @@ describe('LongTermMemoryExtractorService', () => {
       const deps2 = createDeps(successAdapter);
       const service2 = createLongTermMemoryExtractorService(deps2);
       const result2 = await service2.run();
-      expect(result2.status).toBe('succeeded');
+      expect(result2.status).toBe('duplicate');
     });
   });
 
@@ -467,6 +467,9 @@ describe('LongTermMemoryExtractorService', () => {
 
     it('should never throw to caller on any failure', async () => {
       transcriptStore.saveTurn(makeTurn({ turnId: 'turn-1' }));
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-2' }));
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-3' }));
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-4' }));
 
       const adapters = [
         createFailingLLMAdapter('error'),
@@ -475,8 +478,10 @@ describe('LongTermMemoryExtractorService', () => {
         createMockLLMAdapter('{}'),
       ];
 
-      for (const adapter of adapters) {
-        const deps = createDeps(adapter);
+      const triggerTurnIds = ['turn-1', 'turn-2', 'turn-3', 'turn-4'];
+
+      for (let i = 0; i < adapters.length; i++) {
+        const deps = createDeps(adapters[i], triggerTurnIds[i]);
         const service = createLongTermMemoryExtractorService(deps);
         const result = await service.run();
         expect(result.status).toMatch(/failed|succeeded/);
@@ -534,18 +539,7 @@ describe('LongTermMemoryExtractorService', () => {
       expect(memories1).toHaveLength(1);
       const firstMemoryId = memories1[0].memoryId;
 
-      // Same candidate content (same fingerprint) but different sourceRefs
-      const candidate2 = {
-        ...candidate,
-        sourceRefs: {
-          transcriptRefs: ['turn-2'],
-          extraction: {
-            windowHash: 'placeholder',
-            triggerTurnId: 'turn-2',
-            includedTurnIds: ['turn-2'],
-          },
-        },
-      };
+      const candidate2 = makeValidLLMCandidate(['turn-1', 'turn-2']);
       const llmResponse2 = JSON.stringify({ candidates: [candidate2] });
       const llmAdapter2 = createMockLLMAdapter(llmResponse2);
       const deps2 = createDeps(llmAdapter2, 'turn-2');

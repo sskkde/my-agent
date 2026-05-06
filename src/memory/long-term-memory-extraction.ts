@@ -193,6 +193,7 @@ CONTEXT:
 - Window Hash: ${window.windowHash}
 - Trigger Turn: ${window.triggerTurnId}
 - Included Turns: ${window.includedTurnIds.join(', ')}
+- Session Memory Summary ID: ${window.sessionMemorySummaryId || 'none'}
 
 CONVERSATION:
 ${window.renderedInput}

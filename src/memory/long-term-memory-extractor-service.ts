@@ -175,7 +175,8 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
         const llmResult = await deps.llmAdapter.complete(request);
 
         if (!llmResult.success) {
-          const errorCode = llmResult.error?.code ?? 'LLM_ERROR';
+          const errorResult = llmResult as { success: false; error: { code?: string }; providerId: string };
+          const errorCode = errorResult.error?.code ?? 'LLM_ERROR';
           deps.memoryExtractionRunStore.markFailed(run.runId, errorCode);
           return { status: 'failed', errorCode };
         }
