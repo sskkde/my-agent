@@ -4,6 +4,7 @@ import type { SummaryStore } from '../../storage/summary-store.js';
 import type { TranscriptStore } from '../../storage/transcript-store.js';
 import type { PlanStore } from '../../storage/plan-store.js';
 import type { ToolResultStore } from '../../storage/tool-result-store.js';
+import type { LongTermMemoryStore } from '../../storage/long-term-memory-store.js';
 import { createArtifactCreateTool } from './artifact-create.js';
 import { createArtifactUpdateTool } from './artifact-update.js';
 import { createAskUserTool } from './ask-user.js';
@@ -18,6 +19,7 @@ export interface BuiltInToolsConfig {
   summaryStore: SummaryStore;
   transcriptStore: TranscriptStore;
   planStore: PlanStore;
+  longTermMemoryStore: LongTermMemoryStore;
   toolResultStore?: ToolResultStore;
 }
 
@@ -25,13 +27,13 @@ export function registerBuiltInTools(
   registry: ToolRegistry,
   config: BuiltInToolsConfig
 ): void {
-  const { artifactStore, summaryStore, transcriptStore, planStore, toolResultStore } = config;
+  const { artifactStore, summaryStore, transcriptStore, planStore, longTermMemoryStore, toolResultStore } = config;
 
   registry.register(createArtifactCreateTool(artifactStore));
   registry.register(createArtifactUpdateTool(artifactStore));
   registry.register(createAskUserTool());
   registry.register(createStatusQueryTool());
-  registry.register(createMemoryRetrieveTool(summaryStore, toolResultStore));
+  registry.register(createMemoryRetrieveTool(summaryStore, longTermMemoryStore, toolResultStore));
   registry.register(createTranscriptSearchTool(transcriptStore, toolResultStore));
   registry.register(createPlanPatchTool(planStore));
   registry.register(createDocsSearchTool(toolResultStore));

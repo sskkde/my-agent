@@ -12,6 +12,7 @@ import type { SummaryStore, SummaryRecord } from '../../../src/storage/summary-s
 import type { TranscriptStore, TurnTranscript } from '../../../src/storage/transcript-store.js';
 import type { PlanStore, ExecutionPlanRecord, PlanPatch, PlanStep } from '../../../src/storage/plan-store.js';
 import type { ToolResultStore, ToolResultBlob } from '../../../src/storage/tool-result-store.js';
+import type { LongTermMemoryStore, LongTermMemoryRecord, LongTermMemoryPatch, MemoryType, TombstoneInput } from '../../../src/storage/long-term-memory-store.js';
 import type { PermissionContext } from '../../../src/permissions/types.js';
 
 // Helper to create valid PermissionContext for tests
@@ -244,6 +245,85 @@ class MockToolResultStore implements ToolResultStore {
   applyMigrations(): void {}
 }
 
+class MockLongTermMemoryStore implements LongTermMemoryStore {
+  private memories: Map<string, LongTermMemoryRecord> = new Map();
+
+  save(record: LongTermMemoryRecord): void {
+    this.memories.set(record.memoryId, record);
+  }
+
+  getByMemoryId(memoryId: string): LongTermMemoryRecord | null {
+    return this.memories.get(memoryId) ?? null;
+  }
+
+  getByUserId(userId: string): LongTermMemoryRecord[] {
+    return Array.from(this.memories.values()).filter(
+      m => m.userId === userId && m.lifecycle.status !== 'deleted'
+    );
+  }
+
+  getByType(memoryType: MemoryType): LongTermMemoryRecord[] {
+    return Array.from(this.memories.values()).filter(
+      m => m.memoryType === memoryType && m.lifecycle.status !== 'deleted'
+    );
+  }
+
+  search(query: string, userId: string, limit?: number): LongTermMemoryRecord[] {
+    return this.getByUserId(userId)
+      .filter(m => 
+        m.content.text.toLowerCase().includes(query.toLowerCase()) ||
+        m.retrieval.keywords.some(k => k.toLowerCase().includes(query.toLowerCase()))
+      )
+      .slice(0, limit ?? 10);
+  }
+
+  delete(memoryId: string): void {
+    const existing = this.memories.get(memoryId);
+    if (existing) {
+      this.memories.set(memoryId, {
+        ...existing,
+        lifecycle: { ...existing.lifecycle, status: 'deleted' }
+      });
+    }
+  }
+
+  applyPatch(memoryId: string, patch: LongTermMemoryPatch): LongTermMemoryRecord {
+    const existing = this.memories.get(memoryId);
+    if (!existing) throw new Error(`Memory ${memoryId} not found`);
+    const updated = { ...existing, ...patch, memoryId, userId: existing.userId };
+    this.memories.set(memoryId, updated);
+    return updated;
+  }
+
+  findCurrentByFingerprint(userId: string, fingerprint: string): LongTermMemoryRecord | null {
+    return Array.from(this.memories.values()).find(
+      m => m.userId === userId && m.fingerprint === fingerprint && m.lifecycle.status === 'active'
+    ) ?? null;
+  }
+
+  upsertExtracted(record: LongTermMemoryRecord): void {
+    this.save(record);
+  }
+
+  createTombstone(_input: TombstoneInput): void {
+    // No-op for mock
+  }
+
+  hasTombstone(_userId: string, _fingerprint: string, _sourceWindowHash: string): boolean {
+    return false;
+  }
+
+  searchActive(query: string, userId: string, limit: number): LongTermMemoryRecord[] {
+    return this.getByUserId(userId)
+      .filter(m => 
+        m.lifecycle.status === 'active' &&
+        (m.content.text.toLowerCase().includes(query.toLowerCase()) ||
+         m.retrieval.keywords.some(k => k.toLowerCase().includes(query.toLowerCase())))
+      )
+      .slice(0, limit);
+  }
+}
+
 describe('Built-in Safe Tools', () => {
   let registry: ToolRegistry;
   let artifactStore: MockArtifactStore;
@@ -251,6 +331,7 @@ describe('Built-in Safe Tools', () => {
   let transcriptStore: MockTranscriptStore;
   let planStore: MockPlanStore;
   let toolResultStore: MockToolResultStore;
+  let longTermMemoryStore: MockLongTermMemoryStore;
 
   beforeEach(() => {
     artifactStore = new MockArtifactStore();
@@ -258,6 +339,7 @@ describe('Built-in Safe Tools', () => {
     transcriptStore = new MockTranscriptStore();
     planStore = new MockPlanStore();
     toolResultStore = new MockToolResultStore();
+    longTermMemoryStore = new MockLongTermMemoryStore();
     
     registry = createToolRegistry();
     registerBuiltInTools(registry, {
@@ -265,6 +347,7 @@ describe('Built-in Safe Tools', () => {
       summaryStore,
       transcriptStore,
       planStore,
+      longTermMemoryStore,
       toolResultStore,
     });
   });
@@ -532,8 +615,7 @@ describe('Built-in Safe Tools', () => {
         {
           toolCallId: 'tc_123',
           toolName: 'memory.retrieve',
-          userId: 'user_123',
-          sessionId: 'session_123',
+          userId: '',
           permissionContext: createTestPermissionContext(),
           executionStartTime: new Date().toISOString(),
           stores: { toolExecutionStore: { updateStatus: () => {}, saveResult: () => {} } },

@@ -146,20 +146,21 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
       }
 
       const existingRun = deps.memoryExtractionRunStore.getByWindowHash(deps.userId, window.windowHash);
-      if (existingRun) {
-        if (existingRun.status === 'succeeded' || existingRun.status === 'running' || existingRun.status === 'pending') {
-          return { status: 'duplicate' };
-        }
-        // Status is 'failed' — delete the failed run to allow retry
-        deps.memoryExtractionRunStore.deleteByWindowHash(deps.userId, window.windowHash);
+      if (existingRun && existingRun.status !== 'failed') {
+        return { status: 'duplicate' };
       }
 
-      const run = deps.memoryExtractionRunStore.createPending({
-        userId: deps.userId,
-        windowHash: window.windowHash,
-        windowStart: window.includedTurnIds[0] ?? deps.triggerTurnId,
-        windowEnd: deps.triggerTurnId,
-      });
+      let run;
+      try {
+        run = deps.memoryExtractionRunStore.createPending({
+          userId: deps.userId,
+          windowHash: window.windowHash,
+          windowStart: window.includedTurnIds[0] ?? deps.triggerTurnId,
+          windowEnd: deps.triggerTurnId,
+        });
+      } catch {
+        return { status: 'duplicate' };
+      }
 
       try {
         deps.memoryExtractionRunStore.markRunning(run.runId);
