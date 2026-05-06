@@ -3,7 +3,7 @@
 > **Status**: Formal Architecture Document  
 > **Scope**: Compare `agent_architecture_docs/`, `agent_architecture_lifecycle_storage_failure_docs/`, and `docs/RUNBOOK.md` against current implementation.  
 > **Last Updated**: 2026-05-06  
-> **P0 Work Status**: Partially Complete (P0-2, P0-3, P0-4, P0-5, P0-6 done; P0-1 complete)
+> **P0 Work Status**: P0-1 (report baseline) complete; P0-2, P0-3, P0-6 complete; P0-4 (memory extraction pipeline) and P0-5 (visual workflow builder) remain partial — P0 phase not fully closed.
 
 ## 1. Executive Summary
 
@@ -64,24 +64,24 @@ Each subsystem is evaluated across four dimensions:
 
 ### P0 — Architecture Closure Foundation
 
-These items unblock multiple other gaps and should be handled first.
+These items establish the technical safety net and baseline for subsequent work. P0-1 is a governance prerequisite; P0-2, P0-3, P0-6 are technical blockers; P0-4 and P0-5 remain partial and do not fully unlock P1/P2.
 
-| # | Work Item | Why P0 | Dependencies | Closure Criteria | Status |
-|---|---|---|---|---|---|
-| P0-1 | Create final `ARCHITECTURE_GAP_REPORT.md` from this draft. | Establishes shared status baseline. | None | Report has status rubric, full subsystem matrix, priorities, assumptions, and evidence links. | ✅ Complete |
-| P0-2 | Add lifecycle conformance tests. | Prevents each runtime from drifting from global state model. | Shared state definitions. | Tests cover planner, kernel, tool execution, background run, workflow run, approval, wait condition states. | ✅ Complete — `tests/unit/shared/lifecycle-conformance.test.ts` (29 tests) |
-| P0-3 | Define MCP/Connector minimum viable contract. | Real connectors depend on capability/auth/event semantics. | Connector runtime and tool bridge. | Contract doc + tests for capability discovery, auth failure, async operation, idempotency. | ✅ Complete — `tests/integration/connectors/connector-runtime.test.ts` (capability discovery, auth failure handling, async operations, MCP mapping) |
-| P0-4 | Implement long-term memory lifecycle. | Memory is central to assistant architecture. | Summary/session memory foundations. | Store + extraction + recall + delete/retention + privacy tests. | 🟡 Partial — Store implemented (`src/storage/long-term-memory-store.ts`), lifecycle tests exist (`tests/unit/memory/long-term-memory-lifecycle.test.ts` - 20 tests). Extraction pipeline incomplete. |
-| P0-5 | Implement Workflow Builder + Plan-to-Workflow minimum path. | Converts runtime skeleton into user-facing workflow capability. | Workflow runtime, approval/tool policies. | UI/API can create, validate, publish, run a simple workflow compiled from a plan. | 🟡 Partial — Backend path tested (`tests/integration/workflows/plan-to-workflow.test.ts` - 22 tests). Visual Builder UI incomplete. |
-| P0-6 | Add failure recovery and cancellation cascade tests. | Ensures safety across background/workflow/tool/connector failures. | Runtime state stores, dispatcher, recovery module. | Tests cover timeout, partial success, external operation failure, cancellation propagation. | ✅ Complete — `tests/integration/recovery/cancellation-cascade.test.ts` (24 tests covering all criteria) |
+| # | Work Item | Why P0 | Type | Dependencies | Closure Criteria | Status |
+|---|---|---|---|---|---|---|
+| P0-1 | Create final `ARCHITECTURE_GAP_REPORT.md` from this draft. | Establishes shared status baseline. | Governance prerequisite | None | Report has status rubric, full subsystem matrix, priorities, assumptions, and evidence links. | ✅ Complete |
+| P0-2 | Add lifecycle conformance tests. | Prevents each runtime from drifting from global state model. | Technical blocker | Shared state definitions. | Tests cover planner, kernel, tool execution, background run, workflow run, approval, wait condition states. | ✅ Complete — `tests/unit/shared/lifecycle-conformance.test.ts` (29 tests) |
+| P0-3 | Define MCP/Connector minimum viable contract. | Real connectors depend on capability/auth/event semantics. | Technical blocker | Connector runtime and tool bridge. | Contract doc + tests for capability discovery, auth failure, async operation, idempotency. | ✅ Complete — `tests/integration/connectors/connector-runtime.test.ts` (capability discovery, auth failure handling, async operations, MCP mapping) |
+| P0-4 | Implement long-term memory lifecycle. | Memory is central to assistant architecture. | Technical blocker (partial) | Summary/session memory foundations. | Store + extraction + recall + delete/retention + privacy tests. | 🟡 Partial — Store implemented (`src/storage/long-term-memory-store.ts`), lifecycle tests exist (`tests/unit/memory/long-term-memory-lifecycle.test.ts` - 20 tests). Extraction pipeline incomplete. Blocks P2-3. |
+| P0-5 | Implement Workflow Builder + Plan-to-Workflow minimum path. | Converts runtime skeleton into user-facing workflow capability. | Technical blocker (partial) | Workflow runtime, approval/tool policies. | UI/API can create, validate, publish, run a simple workflow compiled from a plan. | 🟡 Partial — Backend path tested (`tests/integration/workflows/plan-to-workflow.test.ts` - 22 tests). Visual Builder UI incomplete. No downstream P1/P2 item explicitly depends on this; consider splitting or reclassifying. |
+| P0-6 | Add failure recovery and cancellation cascade tests. | Ensures safety across background/workflow/tool/connector failures. | Technical blocker | Runtime state stores, dispatcher, recovery module. | Tests cover timeout, partial success, external operation failure, cancellation propagation. | ✅ Complete — `tests/integration/recovery/cancellation-cascade.test.ts` (24 tests covering all criteria) |
 
 ### P1 — Productization and External Use
 
 | # | Work Item | Why P1 | Dependencies | Closure Criteria |
 |---|---|---|---|---|
 | P1-1 | Approval Center UI and approval audit loop. | Approval backend needs user-facing operation loop. | Permission/approval stores. | UI lists pending approvals, approve/reject works, audit record visible. |
-| P1-2 | Add 1-2 real connector integrations. | Validates connector architecture beyond mocks. | P0-3. | At least one read connector and one write/approval-gated connector covered by tests. |
-| P1-3 | Implement real trigger sources. | Event trigger runtime needs production inputs. | Connector/webhook/schedule contracts. | Schedule + webhook trigger E2E tests with duplicate event/idempotency cases. |
+| P1-2 | Add 1-2 real connector integrations. | Validates connector architecture beyond mocks. | P0-3, P0-6. | At least one read connector and one write/approval-gated connector covered by tests. |
+| P1-3 | Implement real trigger sources. | Event trigger runtime needs production inputs. | P0-3, P0-6. | Schedule + webhook trigger E2E tests with duplicate event/idempotency cases. |
 | P1-4 | Observability / Replay UI. | Backend audit/replay needs operator workflows. | Observability stores and timeline. | UI can inspect run timeline, audit entries, replay-safe view. |
 | P1-5 | Tool large-result references. | Prevents context overflow and supports replay/audit. | Tool plane, artifact store, permission checks. | Large output becomes artifact/ref with access checks and replay behavior. |
 | P1-6 | Context view conformance tests. | Ensures planner/workflow/background agents get correct context bundles. | Context manager. | Tests verify source selection, pruning, dedupe, priority order. |
@@ -104,6 +104,35 @@ These items unblock multiple other gaps and should be handled first.
 - Real connector list is not yet chosen; P0 includes defining the minimum connector contract before selecting full integrations.
 - P0-4 (long-term memory) is marked partial because extraction pipeline is not implemented, though store and lifecycle tests exist.
 - P0-5 (workflow builder) is marked partial because visual Builder UI is incomplete, though backend path is tested.
+- **P0 phase is not fully closed**: P0-4 and P0-5 remain partial. P1/P2 work can proceed for items whose dependencies are satisfied (P0-2, P0-3, P0-6), but P2-3 (memory UI) remains blocked by P0-4 extraction pipeline.
+
+## 6.1 Document Coverage Mapping
+
+This section maps each architecture document to the subsystem matrix row(s) that absorb its responsibilities.
+
+| Document | Matrix Row(s) | Notes |
+|---|---|---|
+| `personal_assistant_agent_architecture_v4_memory_aligned.md` | All rows | Master architecture document; defines overall system |
+| `foreground_conversation_agent_and_planner_agent_v1.md` | Foreground Agent, Planner Runtime | |
+| `gateway_responsibilities_io_and_storage_v2_runtime_aligned.md` | Gateway | |
+| `runtime_dispatcher_responsibilities_io_v1.md` | Runtime Dispatcher | |
+| `agent_kernel_responsibilities_io_and_compact_v4_runtime_aligned.md` | Agent Kernel | |
+| `tool_plane_merged_responsibilities_io_and_exposure_policy_v2_async_operations.md` | Tool Plane | |
+| `permission_approval_engine_responsibilities_io_v3_runtime_aligned.md` | Permission / Approval | |
+| `context_manager_responsibilities_io_and_summaries_v2_runtime_aligned.md` | Context Manager | |
+| `memory_system_responsibilities_io_v2_layered_summary_planner.md` | Memory System | |
+| `workflow_runtime_responsibilities_io_v2.md` | Workflow Runtime | |
+| `event_trigger_runtime_responsibilities_io_v2_wait_conditions.md` | Event Trigger / Wait | |
+| `subagent_runtime_background_boundary_update_v3.md` | Subagent / Background Runtime | |
+| `connector_runtime_mcp_layer_responsibilities_io_v1.md` | Connector / MCP Layer | |
+| `observability_audit_replay_responsibilities_io_v1.md` | Observability / Audit / Replay | |
+| `planner_intent_router_plan_workflow_update_v3_session_memory.md` | Foreground Agent, Planner Runtime | Planner + SessionMemory collaboration |
+| `task_workflow_runtime_restructure_v2.md` | ⚪ Historical | Superseded by workflow/subagent/trigger docs |
+| `global_runtime_lifecycle_state_machine_v1.md` | Cross-cutting | Defines lifecycle categories used by all runtime rows |
+| `storage_model_indexing_strategy_v1.md` | Storage / Indexing | |
+| `planner_run_lifecycle_spec_v1.md` | Planner Runtime | |
+| `failure_recovery_interrupt_cancellation_policy_v1.md` | Failure / Recovery / Cancellation | |
+| `docs/RUNBOOK.md` | Runtime Bootstrap / Resources | |
 
 ## 7. Completed P0 Work Summary
 
