@@ -321,13 +321,13 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
     ]);
   }
 
-  hasTombstone(userId: string, fingerprint: string, sourceWindowHash: string): boolean {
+  hasTombstone(userId: string, fingerprint: string, _sourceWindowHash: string): boolean {
     const sql = `
       SELECT 1 FROM memory_tombstones 
-      WHERE user_id = ? AND fingerprint = ? AND source_window_hash = ?
+      WHERE user_id = ? AND fingerprint = ?
       LIMIT 1
     `;
-    const rows = this.connection.query<{ '1': number }>(sql, [userId, fingerprint, sourceWindowHash]);
+    const rows = this.connection.query<{ '1': number }>(sql, [userId, fingerprint]);
     return rows.length > 0;
   }
 
