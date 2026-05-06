@@ -1502,6 +1502,69 @@ export const longTermMemoriesTableMigration: Migration = {
   `
 };
 
+export const longTermMemoriesInvariantsMigration: Migration = {
+  version: 38,
+  name: 'add_long_term_memories_extraction_invariants',
+  up: `
+    ALTER TABLE long_term_memories ADD COLUMN fingerprint TEXT;
+    ALTER TABLE long_term_memories ADD COLUMN source_window_hash TEXT;
+    ALTER TABLE long_term_memories ADD COLUMN lifecycle_status TEXT NOT NULL DEFAULT 'active';
+
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_fingerprint
+      ON long_term_memories(user_id, fingerprint) WHERE fingerprint IS NOT NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_lifecycle_status
+      ON long_term_memories(user_id, lifecycle_status);
+
+    CREATE TABLE IF NOT EXISTS memory_extraction_runs (
+      run_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      window_hash TEXT NOT NULL,
+      window_start TEXT NOT NULL,
+      window_end TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'succeeded', 'failed')),
+      started_at TEXT,
+      completed_at TEXT,
+      result_counts TEXT,
+      error_message TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_extraction_runs_unique
+      ON memory_extraction_runs(user_id, window_hash);
+
+    CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_status
+      ON memory_extraction_runs(user_id, status);
+
+    CREATE TABLE IF NOT EXISTS memory_tombstones (
+      tombstone_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      source_window_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_tombstones_unique
+      ON memory_tombstones(user_id, fingerprint, source_window_hash)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_memory_tombstones_unique;
+    DROP TABLE IF EXISTS memory_tombstones;
+
+    DROP INDEX IF EXISTS idx_memory_extraction_runs_status;
+    DROP INDEX IF EXISTS idx_memory_extraction_runs_unique;
+    DROP TABLE IF EXISTS memory_extraction_runs;
+
+    DROP INDEX IF EXISTS idx_long_term_memories_lifecycle_status;
+    DROP INDEX IF EXISTS idx_long_term_memories_fingerprint;
+
+    ALTER TABLE long_term_memories DROP COLUMN lifecycle_status;
+    ALTER TABLE long_term_memories DROP COLUMN source_window_hash;
+    ALTER TABLE long_term_memories DROP COLUMN fingerprint
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -1573,6 +1636,7 @@ export const allStoreMigrations: Migration[] = [
 
   // Long-term Memory store
   longTermMemoriesTableMigration,          // v37
+  longTermMemoriesInvariantsMigration,     // v38
 ];
 
 /**

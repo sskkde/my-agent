@@ -86,11 +86,19 @@ export type LongTermMemoryRecord = {
   sensitivity: Sensitivity;
   lifecycle: MemoryLifecycle;
   retrieval: MemoryRetrieval;
+  fingerprint?: string;
+  sourceWindowHash?: string;
 };
 
 export type LongTermMemoryPatch = Partial<
   Omit<LongTermMemoryRecord, 'memoryId' | 'userId' | 'createdAt'>
 >;
+
+export type TombstoneInput = {
+  userId: string;
+  fingerprint: string;
+  sourceWindowHash: string;
+};
 
 export interface LongTermMemoryStore {
   save(record: LongTermMemoryRecord): void;
@@ -100,6 +108,11 @@ export interface LongTermMemoryStore {
   search(query: string, userId: string, limit?: number): LongTermMemoryRecord[];
   delete(memoryId: string): void;
   applyPatch(memoryId: string, patch: LongTermMemoryPatch): LongTermMemoryRecord;
+  findCurrentByFingerprint(userId: string, fingerprint: string): LongTermMemoryRecord | null;
+  upsertExtracted(record: LongTermMemoryRecord): void;
+  createTombstone(input: TombstoneInput): void;
+  hasTombstone(userId: string, fingerprint: string, sourceWindowHash: string): boolean;
+  searchActive(query: string, userId: string, limit: number): LongTermMemoryRecord[];
 }
 
 class LongTermMemoryStoreImpl implements LongTermMemoryStore {
@@ -110,11 +123,14 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
   }
 
   save(record: LongTermMemoryRecord): void {
+    const lifecycleStatus = record.lifecycle.status;
+    
     const sql = `
       INSERT INTO long_term_memories (
         memory_id, user_id, memory_type, content, entities, source_refs,
-        scope, confidence, importance, sensitivity, lifecycle, retrieval
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        scope, confidence, importance, sensitivity, lifecycle, retrieval,
+        fingerprint, source_window_hash, lifecycle_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(memory_id) DO UPDATE SET
         user_id = excluded.user_id,
         memory_type = excluded.memory_type,
@@ -126,7 +142,10 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
         importance = excluded.importance,
         sensitivity = excluded.sensitivity,
         lifecycle = excluded.lifecycle,
-        retrieval = excluded.retrieval
+        retrieval = excluded.retrieval,
+        fingerprint = excluded.fingerprint,
+        source_window_hash = excluded.source_window_hash,
+        lifecycle_status = excluded.lifecycle_status
     `;
 
     this.connection.exec(sql, [
@@ -141,7 +160,10 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
       record.importance,
       record.sensitivity,
       JSON.stringify(record.lifecycle),
-      JSON.stringify(record.retrieval)
+      JSON.stringify(record.retrieval),
+      record.fingerprint ?? null,
+      record.sourceWindowHash ?? null,
+      lifecycleStatus
     ]);
   }
 
@@ -159,7 +181,7 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
   getByUserId(userId: string): LongTermMemoryRecord[] {
     const sql = `
       SELECT * FROM long_term_memories 
-      WHERE user_id = ? AND json_extract(lifecycle, '$.status') != 'deleted'
+      WHERE user_id = ? AND lifecycle_status != 'deleted'
       ORDER BY json_extract(lifecycle, '$.updatedAt') DESC
     `;
     const rows = this.connection.query<MemoryRow>(sql, [userId]);
@@ -169,7 +191,7 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
   getByType(memoryType: MemoryType): LongTermMemoryRecord[] {
     const sql = `
       SELECT * FROM long_term_memories 
-      WHERE memory_type = ? AND json_extract(lifecycle, '$.status') != 'deleted'
+      WHERE memory_type = ? AND lifecycle_status != 'deleted'
       ORDER BY json_extract(lifecycle, '$.updatedAt') DESC
     `;
     const rows = this.connection.query<MemoryRow>(sql, [memoryType]);
@@ -180,7 +202,7 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
     const sql = `
       SELECT * FROM long_term_memories 
       WHERE user_id = ? 
-        AND json_extract(lifecycle, '$.status') != 'deleted'
+        AND lifecycle_status != 'deleted'
         AND (
           content LIKE ? 
           OR retrieval LIKE ?
@@ -201,7 +223,6 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
       throw new Error(`Memory with id "${memoryId}" not found`);
     }
 
-    // Soft delete: update status to 'deleted'
     const updated: LongTermMemoryRecord = {
       ...existing,
       lifecycle: {
@@ -212,6 +233,14 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
     };
 
     this.save(updated);
+
+    if (existing.fingerprint && existing.sourceWindowHash) {
+      this.createTombstone({
+        userId: existing.userId,
+        fingerprint: existing.fingerprint,
+        sourceWindowHash: existing.sourceWindowHash,
+      });
+    }
   }
 
   applyPatch(memoryId: string, patch: LongTermMemoryPatch): LongTermMemoryRecord {
@@ -238,6 +267,88 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
     return updated;
   }
 
+  findCurrentByFingerprint(userId: string, fingerprint: string): LongTermMemoryRecord | null {
+    const sql = `
+      SELECT * FROM long_term_memories 
+      WHERE user_id = ? 
+        AND fingerprint = ? 
+        AND lifecycle_status = 'active'
+      LIMIT 1
+    `;
+    const rows = this.connection.query<MemoryRow>(sql, [userId, fingerprint]);
+    
+    if (rows.length === 0) {
+      return null;
+    }
+    
+    return this.rowToRecord(rows[0]);
+  }
+
+  upsertExtracted(record: LongTermMemoryRecord): void {
+    if (!record.fingerprint) {
+      throw new Error('Cannot upsert memory without fingerprint');
+    }
+
+    const current = this.findCurrentByFingerprint(record.userId, record.fingerprint);
+    
+    if (current) {
+      this.applyPatch(current.memoryId, {
+        lifecycle: {
+          ...current.lifecycle,
+          status: 'superseded',
+          supersededBy: record.memoryId,
+        },
+      });
+    }
+
+    this.save(record);
+  }
+
+  createTombstone(input: TombstoneInput): void {
+    const tombstoneId = `tombstone-${input.userId}-${input.fingerprint}-${input.sourceWindowHash}`;
+    const sql = `
+      INSERT OR IGNORE INTO memory_tombstones (
+        tombstone_id, user_id, fingerprint, source_window_hash, created_at
+      ) VALUES (?, ?, ?, ?, ?)
+    `;
+    
+    this.connection.exec(sql, [
+      tombstoneId,
+      input.userId,
+      input.fingerprint,
+      input.sourceWindowHash,
+      new Date().toISOString(),
+    ]);
+  }
+
+  hasTombstone(userId: string, fingerprint: string, sourceWindowHash: string): boolean {
+    const sql = `
+      SELECT 1 FROM memory_tombstones 
+      WHERE user_id = ? AND fingerprint = ? AND source_window_hash = ?
+      LIMIT 1
+    `;
+    const rows = this.connection.query<{ '1': number }>(sql, [userId, fingerprint, sourceWindowHash]);
+    return rows.length > 0;
+  }
+
+  searchActive(query: string, userId: string, limit: number): LongTermMemoryRecord[] {
+    const sql = `
+      SELECT * FROM long_term_memories 
+      WHERE user_id = ? 
+        AND lifecycle_status = 'active'
+        AND (
+          content LIKE ? 
+          OR retrieval LIKE ?
+        )
+      ORDER BY json_extract(lifecycle, '$.updatedAt') DESC
+      LIMIT ?
+    `;
+    
+    const searchPattern = `%${query}%`;
+    const rows = this.connection.query<MemoryRow>(sql, [userId, searchPattern, searchPattern, limit]);
+    return rows.map(r => this.rowToRecord(r));
+  }
+
   private rowToRecord(row: MemoryRow): LongTermMemoryRecord {
     return {
       memoryId: row.memory_id,
@@ -251,7 +362,9 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
       importance: row.importance as Importance,
       sensitivity: row.sensitivity as Sensitivity,
       lifecycle: JSON.parse(row.lifecycle) as MemoryLifecycle,
-      retrieval: JSON.parse(row.retrieval) as MemoryRetrieval
+      retrieval: JSON.parse(row.retrieval) as MemoryRetrieval,
+      fingerprint: row.fingerprint ?? undefined,
+      sourceWindowHash: row.source_window_hash ?? undefined,
     };
   }
 }
@@ -269,6 +382,9 @@ type MemoryRow = {
   sensitivity: string;
   lifecycle: string;
   retrieval: string;
+  fingerprint: string | null;
+  source_window_hash: string | null;
+  lifecycle_status: string;
 };
 
 export function createLongTermMemoryStore(connection: ConnectionManager): LongTermMemoryStore {

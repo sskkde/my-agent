@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
+import { createMigrationRunner } from '../../../src/storage/migrations.js';
+import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.js';
 import { createLongTermMemoryStore, type LongTermMemoryStore, type LongTermMemoryRecord } from '../../../src/storage/long-term-memory-store.js';
 
 describe('Long-term Memory Lifecycle', () => {
@@ -38,22 +40,9 @@ describe('Long-term Memory Lifecycle', () => {
     connection = createConnectionManager(':memory:');
     connection.open();
     
-    connection.exec(`
-      CREATE TABLE IF NOT EXISTS long_term_memories (
-        memory_id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        memory_type TEXT NOT NULL,
-        content TEXT NOT NULL,
-        entities TEXT,
-        source_refs TEXT NOT NULL,
-        scope TEXT NOT NULL,
-        confidence REAL NOT NULL,
-        importance TEXT NOT NULL,
-        sensitivity TEXT NOT NULL,
-        lifecycle TEXT NOT NULL,
-        retrieval TEXT NOT NULL
-      )
-    `);
+    const migrationRunner = createMigrationRunner(connection);
+    migrationRunner.init();
+    migrationRunner.apply(allStoreMigrations);
     
     store = createLongTermMemoryStore(connection);
   });

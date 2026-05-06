@@ -33,6 +33,8 @@ import { createProviderScopedLLMAdapter, type ProviderScopedLLMAdapter } from '.
 import type { Stores } from '../gateway/types.js';
 import type { PlanStore } from '../storage/plan-store.js';
 import type { AdapterRegistry, TargetRuntime, RuntimeAdapter } from '../dispatcher/types.js';
+import { createLongTermMemoryStore, type LongTermMemoryStore } from '../storage/long-term-memory-store.js';
+import { createMemoryExtractionRunStore, type MemoryExtractionRunStore } from '../storage/memory-extraction-run-store.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -57,6 +59,8 @@ export interface ApiContext {
     sessionStore: SessionStore;
     userStore: UserStore;
     authTokenStore: AuthTokenStore;
+    longTermMemoryStore: LongTermMemoryStore;
+    memoryExtractionRunStore: MemoryExtractionRunStore;
   };
   providerConfigStore: ProviderConfigStore;
   agentConfigStore: AgentConfigStore;
@@ -194,6 +198,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let authTokenStore: AuthTokenStore;
   let providerConfigStore: ProviderConfigStore;
   let agentConfigStore: AgentConfigStore;
+  let longTermMemoryStore: LongTermMemoryStore;
+  let memoryExtractionRunStore: MemoryExtractionRunStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -211,6 +217,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     authTokenStore = (existingStores as Record<string, unknown>)?.authTokenStore as AuthTokenStore ?? createAuthTokenStore(connection);
     providerConfigStore = (existingStores as Record<string, unknown>)?.providerConfigStore as ProviderConfigStore ?? createProviderConfigStore(connection);
     agentConfigStore = (existingStores as Record<string, unknown>)?.agentConfigStore as AgentConfigStore ?? createAgentConfigStore(connection);
+    longTermMemoryStore = (existingStores as Record<string, unknown>)?.longTermMemoryStore as LongTermMemoryStore ?? createLongTermMemoryStore(connection);
+    memoryExtractionRunStore = (existingStores as Record<string, unknown>)?.memoryExtractionRunStore as MemoryExtractionRunStore ?? createMemoryExtractionRunStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -392,6 +400,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       sessionStore,
       userStore,
       authTokenStore,
+      longTermMemoryStore,
+      memoryExtractionRunStore,
     },
     providerConfigStore,
     agentConfigStore,
