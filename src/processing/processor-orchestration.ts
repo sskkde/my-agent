@@ -25,6 +25,7 @@ import type { EventStore } from '../storage/event-store.js';
 import type { ProviderConfigStore } from '../storage/provider-config-store.js';
 import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-store.js';
 import type { SessionStore } from '../storage/session-store.js';
+import type { LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js';
 import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js';
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js';
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js';
@@ -124,6 +125,8 @@ export interface ProcessorOrchestrationDeps {
     emitStatus(payload: ProcessingStatusPayload): void;
     emitToken?(payload: TokenStreamPayload): void;
   };
+  /** Scheduler for async long-term memory extraction after transcript persistence */
+  memoryExtractionScheduler?: LongTermMemoryScheduler;
 }
 
 /**
@@ -308,6 +311,14 @@ export function createOrchestrationProcessor(
       ));
 
       persistTurnTranscript(input, output, deps.transcriptStore);
+
+      if (deps.memoryExtractionScheduler && output.success) {
+        deps.memoryExtractionScheduler.scheduleAfterTurn({
+          userId: input.userId,
+          sessionId: input.sessionId,
+          triggerTurnId: input.correlationId,
+        });
+      }
 
       emitStatus(deps, buildStatusPayload(
         input.sessionId,

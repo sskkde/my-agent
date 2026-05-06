@@ -35,6 +35,7 @@ import type { PlanStore } from '../storage/plan-store.js';
 import type { AdapterRegistry, TargetRuntime, RuntimeAdapter } from '../dispatcher/types.js';
 import { createLongTermMemoryStore, type LongTermMemoryStore } from '../storage/long-term-memory-store.js';
 import { createMemoryExtractionRunStore, type MemoryExtractionRunStore } from '../storage/memory-extraction-run-store.js';
+import { createLongTermMemoryScheduler, type LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -360,6 +361,14 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     },
   };
 
+  const memoryExtractionScheduler: LongTermMemoryScheduler | undefined = createLongTermMemoryScheduler({
+    transcriptStore,
+    summaryStore,
+    longTermMemoryStore,
+    memoryExtractionRunStore,
+    llmAdapter,
+  });
+
   const messageProcessor = injectedMessageProcessor ?? createOrchestrationMessageProcessor({
     gateway,
     stores,
@@ -375,6 +384,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     sessionStore,
     runWithProvidersForUser,
     processingObserver,
+    memoryExtractionScheduler,
   });
 
   return {
