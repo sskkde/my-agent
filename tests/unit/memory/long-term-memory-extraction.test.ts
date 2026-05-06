@@ -504,6 +504,33 @@ describe('Long-term Memory Extraction', () => {
       expect(result.normalizedCandidate?.scope.visibility).toBe('private_user');
     });
 
+    it('should strip extra scope fields (projectId, workflowId, connector)', () => {
+      const candidate = {
+        memoryType: 'user_preference',
+        text: 'Prefers dark mode',
+        confidence: 0.9,
+        importance: 'high',
+        sensitivity: 'low' as const,
+        keywords: ['dark mode'],
+        scope: { visibility: 'workspace' as const, projectId: 'proj-1', workflowId: 'wf-1', connector: 'slack' },
+        sourceRefs: {
+          transcriptRefs: ['turn-1'],
+          extraction: {
+            windowHash: 'hash1',
+            triggerTurnId: 'turn-1',
+            includedTurnIds: ['turn-1'],
+          },
+        },
+      };
+
+      const result = validateExtractedCandidate(candidate, validWindow);
+      expect(result.valid).toBe(true);
+      expect(result.normalizedCandidate?.scope).toEqual({ visibility: 'private_user' });
+      expect(result.normalizedCandidate?.scope).not.toHaveProperty('projectId');
+      expect(result.normalizedCandidate?.scope).not.toHaveProperty('workflowId');
+      expect(result.normalizedCandidate?.scope).not.toHaveProperty('connector');
+    });
+
     it('should clamp importance to valid values', () => {
       const candidate = {
         memoryType: 'user_preference',

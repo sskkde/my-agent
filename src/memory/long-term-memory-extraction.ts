@@ -173,7 +173,6 @@ export function validateExtractedCandidate(
     memoryType: candidate.memoryType as AllowedLongTermMemoryType,
     importance,
     scope: {
-      ...candidate.scope,
       visibility: 'private_user' as Visibility,
     },
   };
