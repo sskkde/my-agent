@@ -70,6 +70,7 @@ export interface ApiContext {
   connection: ConnectionManager;
   consoleTimelineService: ConsoleTimelineService;
   timelineBroadcaster: TimelineBroadcaster;
+  memoryExtractionScheduler?: LongTermMemoryScheduler;
 }
 
 export interface ApiContextOptions {
@@ -420,6 +421,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     connection,
     consoleTimelineService,
     timelineBroadcaster,
+    memoryExtractionScheduler,
   };
 }
 

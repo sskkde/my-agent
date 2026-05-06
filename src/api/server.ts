@@ -20,6 +20,7 @@ import { registerProviderRoutes } from './routes/providers.js';
 import { registerModelsRoutes } from './routes/models.js';
 import { registerToolsRoutes } from './routes/tools.js';
 import { registerAgentRoutes } from './routes/agents.js';
+import { registerMemoryRoutes } from './routes/memory.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
 import { createApiContext, type ApiContext } from './context.js';
 
@@ -66,6 +67,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerModelsRoutes(server, context);
     registerToolsRoutes(server, context);
     registerAgentRoutes(server, context);
+    registerMemoryRoutes(server, context);
   } else {
     server.get('/api/health', async (): Promise<HealthResponse> => {
       return {
