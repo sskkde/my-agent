@@ -82,7 +82,7 @@ ForegroundAgent routes messages through LLM with structured JSON output.
 - Tool guardrails: server-side intersection of suggested ∩ allowed ∩ known tools
 
 Known tool IDs (sync with `src/api/tool-catalog.ts`):
-`artifact.create`, `artifact.update`, `ask_user`, `status.query`, `memory.retrieve`, `transcript.search`, `plan.patch`, `docs.search`
+`artifact.create`, `artifact.update`, `ask_user`, `status.query`, `memory.retrieve`, `transcript.search`, `plan.patch`, `docs.search`, `file.read`, `file.glob`, `file.grep`, `session.list`, `session.history`, `web.fetch`, `web.search`
 
 ## Agent Config (V1)
 

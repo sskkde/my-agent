@@ -58,10 +58,10 @@ cd web && npm install
 Start both the API server and frontend dev server:
 
 ```bash
-# Start the API server (runs on port 3000)
+# Start the API server (runs on port 3003)
 npm run start:api
 
-# In another terminal, start the frontend (runs on port 5173)
+# In another terminal, start the frontend (runs on port 3002)
 cd web && npm run dev
 ```
 
@@ -77,8 +77,14 @@ npm run dev:web
 
 ### Expected Ports
 
-- **API Server**: http://localhost:3000
-- **Frontend (Vite)**: http://localhost:5173
+- **API Server**: http://localhost:3003
+- **Frontend (Vite)**: http://localhost:3002
+
+### Port Exposure Policy
+
+All servers (API, Vite dev, debug, e2e) bind to `localhost` by default. Binding to `localhost` restricts the service to the local network interface; it does not provide a complete browser-origin security boundary.
+Production public ingress requires an explicit `HOST=0.0.0.0` environment variable. Setting `NODE_ENV=production` alone does **not** expose the API publicly.
+The Vite dev server is always bound to `localhost` and cannot be exposed via environment variables.
 
 ### Building
 

@@ -119,6 +119,10 @@ export const DEFAULT_RESOURCE_CONFIG: ResourceConfig = {
 | `NODE_ENV` | Environment mode | `development` |
 | `LOG_LEVEL` | Logging verbosity | `info` |
 | `DATABASE_PATH` | SQLite database file | `./data/app.db` |
+| `PORT` | API server port | `3003` |
+| `HOST` | API server bind address | `localhost` (requires explicit `HOST=0.0.0.0` for public ingress) |
+| `VITE_PORT` | Vite dev server port | `3002` |
+| `VITE_API_TARGET` | API proxy target for Vite | `http://localhost:3003` |
 | `SHUTDOWN_TIMEOUT_MS` | Graceful shutdown timeout | `30000` |
 
 ### Configuration Example
@@ -133,7 +137,17 @@ NODE_ENV=production
 LOG_LEVEL=warn
 DATABASE_PATH=./data/production.db
 SHUTDOWN_TIMEOUT_MS=60000
+
+# Ports (production public ingress)
+PORT=3003
+HOST=0.0.0.0
 ```
+
+### Port Exposure Policy
+
+All servers (API, Vite dev, debug, e2e) bind to `localhost` by default. Binding to `localhost` restricts the service to the local network interface; it does not provide a complete browser-origin security boundary.
+Production public ingress requires an explicit `HOST=0.0.0.0` environment variable. Setting `NODE_ENV=production` alone does **not** expose the API publicly.
+The Vite dev server is always bound to `localhost` and cannot be exposed via environment variables.
 
 ## Common Issues and Solutions
 

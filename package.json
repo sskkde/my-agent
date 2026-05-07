@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "start:dev": "tsx src/index.ts",
     "start:api": "tsx src/api/server.ts",
-    "start:api:e2e": "DATABASE_PATH=./data/e2e.db PORT=3103 tsx src/api/server.ts",
+    "start:api:e2e": "DATABASE_PATH=./data/e2e.db PORT=3103 HOST=localhost tsx src/api/server.ts",
     "reset:e2e-db": "tsx scripts/reset-e2e-db.ts",
     "dev:web": "npm --prefix web run dev",
     "build:web": "npm --prefix web run build",
