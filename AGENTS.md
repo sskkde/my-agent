@@ -118,5 +118,3 @@ Copy `.env.example` to `.env`. Key vars:
 | Web | 3002 | 3102 |
 
 ## Git Workflow
-
-**Every round of changes must be committed at the end.** After completing a batch of related changes (task, feature, fix), stage and commit with a clear message before moving to the next round.
