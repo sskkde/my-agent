@@ -81,8 +81,8 @@ describe('Tools and Models API Integration', () => {
       const body = JSON.parse(response.body);
       expect(body.data).toBeDefined();
       expect(body.data.tools).toBeDefined();
-      expect(body.data.total).toBe(14);
-      expect(body.data.tools).toHaveLength(14);
+      expect(body.data.total).toBe(15);
+      expect(body.data.tools).toHaveLength(15);
     });
 
     it('should return tools with correct structure', async () => {
@@ -124,7 +124,7 @@ describe('Tools and Models API Integration', () => {
       }
     });
 
-    it('should include all 14 built-in tools', async () => {
+    it('should include all 15 built-in tools', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/tools',
@@ -148,6 +148,23 @@ describe('Tools and Models API Integration', () => {
       expect(toolNames).toContain('session.list');
       expect(toolNames).toContain('session.history');
       expect(toolNames).toContain('web.fetch');
+      expect(toolNames).toContain('web.search');
+    });
+
+    it('should return correct metadata for web.search', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/tools',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      const webSearch = body.data.tools.find((t: { name: string }) => t.name === 'web.search');
+
+      expect(webSearch).toBeDefined();
+      expect(webSearch.description).toBe('Search the public web for information using an external search provider');
+      expect(webSearch.category).toBe('search');
+      expect(webSearch.sensitivity).toBe('medium');
     });
 
     it('should return correct metadata for artifact.create', async () => {

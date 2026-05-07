@@ -8,6 +8,7 @@ import { createSummaryStore, type SummaryStore } from '../storage/summary-store.
 import { createApprovalStore, type ApprovalStore } from '../storage/approval-store.js';
 import { createPermissionGrantStore, type PermissionGrantStore } from '../storage/permission-grant-store.js';
 import { createToolExecutionStore, type ToolExecutionStore } from '../storage/tool-execution-store.js';
+import { createToolResultStore, type ToolResultStore } from '../storage/tool-result-store.js';
 import { createPlannerRunStore, type PlannerRunStore } from '../storage/planner-run-store.js';
 import { createBackgroundRunStore, type BackgroundRunStore } from '../storage/background-run-store.js';
 import { createKernelRunStore, type KernelRunStore } from '../storage/kernel-run-store.js';
@@ -36,6 +37,15 @@ import type { AdapterRegistry, TargetRuntime, RuntimeAdapter } from '../dispatch
 import { createLongTermMemoryStore, type LongTermMemoryStore } from '../storage/long-term-memory-store.js';
 import { createMemoryExtractionRunStore, type MemoryExtractionRunStore } from '../storage/memory-extraction-run-store.js';
 import { createLongTermMemoryScheduler, type LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js';
+import { createWorkflowDraftStore, type WorkflowDraftStore } from '../storage/workflow-draft-store.js';
+import { createWorkflowDefinitionStore, type WorkflowDefinitionStore } from '../storage/workflow-definition-store.js';
+import { createWorkflowRunStore, type WorkflowRunStore } from '../storage/workflow-run-store.js';
+import { createWorkflowRuntime, type WorkflowRuntime } from '../workflows/workflow-runtime.js';
+import { createTriggerStore, type TriggerStore } from '../storage/trigger-store.js';
+import { createWebhookTriggerStore, type WebhookTriggerStore } from '../storage/webhook-trigger-store.js';
+import { createWebhookDeliveryStore, type WebhookDeliveryStore } from '../storage/webhook-delivery-store.js';
+import { createScheduleTriggerStore, type ScheduleTriggerStore } from '../storage/schedule-trigger-store.js';
+import { createEventTriggerRuntime, type EventTriggerRuntime } from '../triggers/event-trigger-runtime.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -54,6 +64,7 @@ export interface ApiContext {
     approvalStore: ApprovalStore;
     permissionGrantStore: PermissionGrantStore;
     toolExecutionStore: ToolExecutionStore;
+    toolResultStore: ToolResultStore;
     plannerRunStore: PlannerRunStore;
     backgroundRunStore: BackgroundRunStore;
     kernelRunStore: KernelRunStore;
@@ -62,6 +73,13 @@ export interface ApiContext {
     authTokenStore: AuthTokenStore;
     longTermMemoryStore: LongTermMemoryStore;
     memoryExtractionRunStore: MemoryExtractionRunStore;
+    workflowDraftStore: WorkflowDraftStore;
+    workflowDefinitionStore: WorkflowDefinitionStore;
+    workflowRunStore: WorkflowRunStore;
+    triggerStore: TriggerStore;
+    webhookTriggerStore: WebhookTriggerStore;
+    webhookDeliveryStore: WebhookDeliveryStore;
+    scheduleTriggerStore: ScheduleTriggerStore;
   };
   providerConfigStore: ProviderConfigStore;
   agentConfigStore: AgentConfigStore;
@@ -71,6 +89,8 @@ export interface ApiContext {
   consoleTimelineService: ConsoleTimelineService;
   timelineBroadcaster: TimelineBroadcaster;
   memoryExtractionScheduler?: LongTermMemoryScheduler;
+  workflowRuntime: WorkflowRuntime;
+  triggerRuntime: EventTriggerRuntime;
 }
 
 export interface ApiContextOptions {
@@ -202,6 +222,14 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let agentConfigStore: AgentConfigStore;
   let longTermMemoryStore: LongTermMemoryStore;
   let memoryExtractionRunStore: MemoryExtractionRunStore;
+  let toolResultStore: ToolResultStore;
+  let workflowDraftStore: WorkflowDraftStore;
+  let workflowDefinitionStore: WorkflowDefinitionStore;
+  let workflowRunStore: WorkflowRunStore;
+  let triggerStore: TriggerStore;
+  let webhookTriggerStore: WebhookTriggerStore;
+  let webhookDeliveryStore: WebhookDeliveryStore;
+  let scheduleTriggerStore: ScheduleTriggerStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -211,6 +239,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     approvalStore = existingStores?.approvalStore ?? createApprovalStore(connection);
     permissionGrantStore = existingStores?.permissionGrantStore ?? createPermissionGrantStore(connection);
     toolExecutionStore = existingStores?.toolExecutionStore ?? createToolExecutionStore(connection);
+    toolResultStore = (existingStores as Record<string, unknown>)?.toolResultStore as ToolResultStore ?? createToolResultStore(connection);
     plannerRunStore = existingStores?.plannerRunStore ?? createPlannerRunStore(connection);
     backgroundRunStore = existingStores?.backgroundRunStore ?? createBackgroundRunStore(connection);
     kernelRunStore = existingStores?.kernelRunStore ?? createKernelRunStore(connection);
@@ -221,6 +250,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     agentConfigStore = (existingStores as Record<string, unknown>)?.agentConfigStore as AgentConfigStore ?? createAgentConfigStore(connection);
     longTermMemoryStore = (existingStores as Record<string, unknown>)?.longTermMemoryStore as LongTermMemoryStore ?? createLongTermMemoryStore(connection);
     memoryExtractionRunStore = (existingStores as Record<string, unknown>)?.memoryExtractionRunStore as MemoryExtractionRunStore ?? createMemoryExtractionRunStore(connection);
+    workflowDraftStore = (existingStores as Record<string, unknown>)?.workflowDraftStore as WorkflowDraftStore ?? createWorkflowDraftStore(connection);
+    workflowDefinitionStore = (existingStores as Record<string, unknown>)?.workflowDefinitionStore as WorkflowDefinitionStore ?? createWorkflowDefinitionStore(connection);
+    workflowRunStore = (existingStores as Record<string, unknown>)?.workflowRunStore as WorkflowRunStore ?? createWorkflowRunStore(connection);
+    triggerStore = (existingStores as Record<string, unknown>)?.triggerStore as TriggerStore ?? createTriggerStore(connection);
+    webhookTriggerStore = (existingStores as Record<string, unknown>)?.webhookTriggerStore as WebhookTriggerStore ?? createWebhookTriggerStore(connection);
+    webhookDeliveryStore = (existingStores as Record<string, unknown>)?.webhookDeliveryStore as WebhookDeliveryStore ?? createWebhookDeliveryStore(connection);
+    scheduleTriggerStore = (existingStores as Record<string, unknown>)?.scheduleTriggerStore as ScheduleTriggerStore ?? createScheduleTriggerStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -370,6 +406,30 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     llmAdapter,
   });
 
+  const workflowRuntime = createWorkflowRuntime({
+    draftStore: workflowDraftStore,
+    definitionStore: workflowDefinitionStore,
+    workflowRunStore,
+    runtimeActionStore,
+    eventStore,
+  });
+
+  const triggerRuntime = createEventTriggerRuntime({
+    triggerStore,
+    waitConditionStore: {
+      create: () => { throw new Error('WaitConditionStore not implemented'); },
+      getById: () => null,
+      findByTarget: () => [],
+      findByStatus: () => [],
+      markSatisfied: () => { throw new Error('Not implemented'); },
+      markFailed: () => { throw new Error('Not implemented'); },
+      markTimeout: () => { throw new Error('Not implemented'); },
+      findExpired: () => [],
+    },
+    eventStore,
+    runtimeActionStore,
+  });
+
   const messageProcessor = injectedMessageProcessor ?? createOrchestrationMessageProcessor({
     gateway,
     stores,
@@ -405,6 +465,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       approvalStore,
       permissionGrantStore,
       toolExecutionStore,
+      toolResultStore,
       plannerRunStore,
       backgroundRunStore,
       kernelRunStore,
@@ -413,6 +474,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       authTokenStore,
       longTermMemoryStore,
       memoryExtractionRunStore,
+      workflowDraftStore,
+      workflowDefinitionStore,
+      workflowRunStore,
+      triggerStore,
+      webhookTriggerStore,
+      webhookDeliveryStore,
+      scheduleTriggerStore,
     },
     providerConfigStore,
     agentConfigStore,
@@ -422,6 +490,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     consoleTimelineService,
     timelineBroadcaster,
     memoryExtractionScheduler,
+    workflowRuntime,
+    triggerRuntime,
   };
 }
 

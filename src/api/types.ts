@@ -130,6 +130,13 @@ export interface ApprovalInfo {
   requestedBy: string;
   requestedAt: string;
   expiresAt?: string;
+  respondedAt?: string;
+  responseBy?: string;
+  responseReason?: string;
+}
+
+export interface ApprovalDetailResponse {
+  approval: ApprovalInfo;
 }
 
 export interface ApprovalsResponse {
@@ -445,4 +452,21 @@ export interface ToolSummary {
 export interface ToolsResponse {
   tools: ToolSummary[];
   total: number;
+}
+
+// =============================================================================
+// Tool Result Types - Task 6 (Large Result Ref)
+// =============================================================================
+
+export interface ToolResultResponse {
+  resultId: string;
+  toolExecutionId: string;
+  toolName: string;
+  userId: string;
+  sessionId?: string;
+  sizeBytes: number;
+  contentType: string;
+  preview?: string;
+  sensitivity: string;
+  createdAt: string;
 }

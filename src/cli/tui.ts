@@ -39,6 +39,8 @@ const CONFIG = {
   version: '0.1.0',
 };
 
+const API_BASE_URL = process.env.API_BASE_URL ?? `http://localhost:${process.env.PORT ?? '3003'}`;
+
 /**
  * Print colored text to stdout
  */
@@ -203,19 +205,19 @@ async function executeStatus(): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1000);
 
-    const response = await fetch('http://localhost:3000/health', {
+    const response = await fetch(`${API_BASE_URL}/api/health`, {
       signal: controller.signal,
     });
 
     clearTimeout(timeout);
 
     if (response.ok) {
-      output += `API Server: ${COLORS.green}Online${COLORS.reset} (localhost:3000)\n`;
+      output += `API Server: ${COLORS.green}Online${COLORS.reset} (${API_BASE_URL})\n`;
     } else {
-      output += `API Server: ${COLORS.yellow}Degraded${COLORS.reset} (localhost:3000)\n`;
+      output += `API Server: ${COLORS.yellow}Degraded${COLORS.reset} (${API_BASE_URL})\n`;
     }
   } catch {
-    output += `API Server: ${COLORS.dim}Offline${COLORS.reset} (localhost:3000 not reachable)\n`;
+    output += `API Server: ${COLORS.dim}Offline${COLORS.reset} (${API_BASE_URL} not reachable)\n`;
   }
 
   return output;
@@ -232,7 +234,7 @@ async function executeProviders(): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
 
-    const response = await fetch('http://localhost:3000/api/providers', {
+    const response = await fetch(`${API_BASE_URL}/api/providers`, {
       signal: controller.signal,
     });
 
@@ -298,7 +300,7 @@ async function executeModels(): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
 
-    const response = await fetch('http://localhost:3000/api/models', {
+    const response = await fetch(`${API_BASE_URL}/api/models`, {
       signal: controller.signal,
     });
 
@@ -449,7 +451,7 @@ async function handleProviderConnect(args: string[]): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch('http://localhost:3000/api/providers', {
+    const response = await fetch(`${API_BASE_URL}/api/providers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
@@ -498,7 +500,7 @@ async function handleProviderTest(args: string[]): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
-    const response = await fetch(`http://localhost:3000/api/providers/${providerId}/test`, {
+    const response = await fetch(`${API_BASE_URL}/api/providers/${providerId}/test`, {
       method: 'POST',
       signal: controller.signal,
     });
@@ -565,7 +567,7 @@ async function handleProviderEnable(args: string[], enableValue: boolean): Promi
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`http://localhost:3000/api/providers/${providerId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/providers/${providerId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled: enableValue }),
@@ -627,7 +629,7 @@ async function handleProviderDelete(args: string[]): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`http://localhost:3000/api/providers/${providerId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/providers/${providerId}`, {
       method: 'DELETE',
       signal: controller.signal,
     });

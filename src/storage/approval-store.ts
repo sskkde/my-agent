@@ -67,6 +67,7 @@ export interface ApprovalStore {
   getById(id: string): ApprovalRequest | null;
   update(id: string, updates: UpdateApprovalRequest): ApprovalRequest;
   findPendingByUser(userId: string): ApprovalRequest[];
+  findByUser(userId: string): ApprovalRequest[];
   findPendingBySession(sessionId: string): ApprovalRequest[];
   findExpired(before: string): ApprovalRequest[];
   delete(id: string): void;
@@ -195,6 +196,14 @@ class ApprovalStoreImpl implements ApprovalStore {
     const results = this.connection.query<ApprovalRequestRow>(
       'SELECT * FROM approval_requests WHERE user_id = ? AND status = ?',
       [userId, APPROVAL_STATES.PENDING]
+    );
+    return results.map(row => this.rowToRequest(row));
+  }
+
+  findByUser(userId: string): ApprovalRequest[] {
+    const results = this.connection.query<ApprovalRequestRow>(
+      'SELECT * FROM approval_requests WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
     );
     return results.map(row => this.rowToRequest(row));
   }

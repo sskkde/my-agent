@@ -100,6 +100,9 @@ function buildDynamicRoutingPrompt(
   const toolIdsSummary = effectiveToolIds.length > 0
     ? effectiveToolIds.join(', ')
     : 'none';
+  const webSearchGuidance = effectiveToolIds.includes('web.search')
+    ? '- Use web.search for live web search, current news, real-time weather, or other real-time internet lookups when a simple search is enough. Do NOT use docs.search, transcript.search, or memory.retrieve for live web queries.'
+    : '- None of the available tools provide live web search, real-time weather data, or current internet lookups. For questions requiring internet access, use answer_directly and explain the limitation or ask for clarification.';
 
   return `You are a message router for an AI assistant. Analyze the user message and decide how to handle it.
 
@@ -127,9 +130,7 @@ AVAILABLE TOOL IDS (use ONLY these exact IDs in suggestedTools):
 When using dispatch_tool, suggestedTools must use only the exact tool IDs listed above. Do NOT suggest tools that are not listed.
 
 IMPORTANT TOOL GUIDANCE:
-- None of the available tools provide live web search, real-time weather data, or current internet lookups.
-- For questions about current weather, live news, real-time web data, or anything requiring internet access, use answer_directly and explain the limitation or ask for clarification.
-- Do NOT use docs.search, transcript.search, or memory.retrieve for real-time web/weather queries — these search internal documents, transcripts, and memory, not the live internet.
+${webSearchGuidance}
 
 USER MESSAGE: "${message}"
 

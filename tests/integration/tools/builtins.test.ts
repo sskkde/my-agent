@@ -884,6 +884,38 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
+  describe('web.search', () => {
+    it('should be registered as a built-in search tool', () => {
+      const tool = registry.getTool('web.search');
+
+      expect(tool).toBeDefined();
+      expect(tool?.category).toBe('search');
+      expect(tool?.sensitivity).toBe('medium');
+    });
+
+    it('should return recoverable error when search provider is not configured', async () => {
+      const tool = registry.getTool('web.search');
+      expect(tool).toBeDefined();
+
+      const result = await tool!.handler(
+        { query: 'latest TypeScript release' },
+        {
+          toolCallId: 'tc_web_search_123',
+          toolName: 'web.search',
+          userId: 'user_123',
+          sessionId: 'session_123',
+          permissionContext: createTestPermissionContext(),
+          executionStartTime: new Date().toISOString(),
+          stores: { toolExecutionStore: { updateStatus: () => {}, saveResult: () => {} } },
+        }
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PROVIDER_NOT_CONFIGURED');
+      expect(result.error?.recoverable).toBe(true);
+    });
+  });
+
   describe('Large result handling', () => {
     it('should store large results in ToolResultStore and return preview + resultRef', async () => {
       const tool = registry.getTool('transcript.search');

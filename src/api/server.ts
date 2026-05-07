@@ -21,6 +21,9 @@ import { registerModelsRoutes } from './routes/models.js';
 import { registerToolsRoutes } from './routes/tools.js';
 import { registerAgentRoutes } from './routes/agents.js';
 import { registerMemoryRoutes } from './routes/memory.js';
+import { registerWorkflowRoutes } from './routes/workflows.js';
+import { registerToolResultsRoutes } from './routes/tool-results.js';
+import { registerTriggerRoutes } from './routes/triggers.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
 import { createApiContext, type ApiContext } from './context.js';
 
@@ -49,6 +52,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
         '/api/auth/login',
         '/api/auth/logout',
         '/api/tools',
+        '/api/webhooks/*',
       ],
     });
 
@@ -68,6 +72,9 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerToolsRoutes(server, context);
     registerAgentRoutes(server, context);
     registerMemoryRoutes(server, context);
+    registerWorkflowRoutes(server, context);
+    registerToolResultsRoutes(server, context);
+    registerTriggerRoutes(server, context);
   } else {
     server.get('/api/health', async (): Promise<HealthResponse> => {
       return {
@@ -123,15 +130,44 @@ if (isMainModule) {
         process.exit(1);
       }
       const server = await createApiServer(contextResult);
-      const apiPort = parseInt(process.env.PORT || '3003', 10);
-      await server.listen({ port: apiPort, host: '0.0.0.0' });
-      console.log(`API server listening on http://localhost:${apiPort}`);
+      const { port, host } = resolveListenOptions();
+      await server.listen({ port, host });
+      console.log(`API server listening on http://${host}:${port}`);
     } catch (err) {
       console.error('Failed to start server:', err);
       process.exit(1);
     }
   };
   start();
+}
+
+/**
+ * Resolve API listen options from environment.
+ * - Default port: 3003
+ * - Default host: localhost (always, regardless of NODE_ENV)
+ * - HOST env var explicitly overrides the default host.
+ *   Production public ingress requires explicit HOST=0.0.0.0.
+ * - PORT must be a valid integer in Node.js listen range (0-65535).
+ *   Port 0 is allowed for dynamic port assignment (used by tests).
+ */
+export function resolveListenOptions(env: Record<string, string | undefined> = process.env): { port: number; host: string } {
+  const portStr = env.PORT ?? '3003';
+
+  // Strict validation: only pure decimal digit strings are accepted.
+  // This rejects empty strings, partial numerics (123abc), decimals (3003.5),
+  // negatives (-1), and non-numeric values (abc).
+  if (!/^\d+$/.test(portStr)) {
+    throw new Error(`Invalid PORT "${portStr}": must be an integer between 0 and 65535`);
+  }
+
+  const port = Number(portStr);
+  if (port < 0 || port > 65535) {
+    throw new Error(`Invalid PORT "${portStr}": must be an integer between 0 and 65535`);
+  }
+  
+  // Default host is always localhost; production public ingress requires explicit HOST=0.0.0.0
+  const host = env.HOST ?? 'localhost';
+  return { port, host };
 }
 
 export { FastifyInstance };

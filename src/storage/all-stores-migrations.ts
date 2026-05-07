@@ -1664,6 +1664,94 @@ export const memoryExtractionRunsFullSchemaMigration: Migration = {
   `
 };
 
+// ============================================================================
+// STORE 30: Webhook Triggers (version 40)
+// ============================================================================
+export const webhookTriggersTableMigration: Migration = {
+  version: 40,
+  name: 'create_webhook_triggers_table',
+  up: `
+    CREATE TABLE webhook_triggers (
+      webhook_id TEXT PRIMARY KEY,
+      owner_user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      secret_hash TEXT NOT NULL,
+      secret_last4 TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('active', 'paused', 'deleted')),
+      trigger_registration_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_webhook_triggers_owner ON webhook_triggers(owner_user_id);
+    CREATE INDEX idx_webhook_triggers_status ON webhook_triggers(status);
+    CREATE INDEX idx_webhook_triggers_registration ON webhook_triggers(trigger_registration_id) WHERE trigger_registration_id IS NOT NULL
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_webhook_triggers_registration;
+    DROP INDEX IF EXISTS idx_webhook_triggers_status;
+    DROP INDEX IF EXISTS idx_webhook_triggers_owner;
+    DROP TABLE IF EXISTS webhook_triggers
+  `
+};
+
+// ============================================================================
+// STORE 31: Webhook Deliveries (version 41) - for idempotency
+// ============================================================================
+export const webhookDeliveriesTableMigration: Migration = {
+  version: 41,
+  name: 'create_webhook_deliveries_table',
+  up: `
+    CREATE TABLE webhook_deliveries (
+      delivery_id TEXT PRIMARY KEY,
+      webhook_id TEXT NOT NULL,
+      event_id TEXT,
+      received_at TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('accepted', 'duplicate', 'rejected')),
+      CONSTRAINT unique_delivery_per_webhook UNIQUE (webhook_id, delivery_id)
+    );
+    CREATE INDEX idx_webhook_deliveries_webhook ON webhook_deliveries(webhook_id, received_at DESC);
+    CREATE INDEX idx_webhook_deliveries_event ON webhook_deliveries(event_id) WHERE event_id IS NOT NULL
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_webhook_deliveries_event;
+    DROP INDEX IF EXISTS idx_webhook_deliveries_webhook;
+    DROP TABLE IF EXISTS webhook_deliveries
+  `
+};
+
+// ============================================================================
+// STORE 32: Schedule Triggers (version 42)
+// ============================================================================
+export const scheduleTriggersTableMigration: Migration = {
+  version: 42,
+  name: 'create_schedule_triggers_table',
+  up: `
+    CREATE TABLE schedule_triggers (
+      schedule_id TEXT PRIMARY KEY,
+      owner_user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      schedule_pattern TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('active', 'paused', 'completed', 'expired')),
+      trigger_registration_id TEXT,
+      last_run_at TEXT,
+      next_run_at TEXT,
+      run_count INTEGER NOT NULL DEFAULT 0,
+      max_runs INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_schedule_triggers_owner ON schedule_triggers(owner_user_id);
+    CREATE INDEX idx_schedule_triggers_status ON schedule_triggers(status);
+    CREATE INDEX idx_schedule_triggers_next_run ON schedule_triggers(next_run_at) WHERE status = 'active' AND next_run_at IS NOT NULL
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_schedule_triggers_next_run;
+    DROP INDEX IF EXISTS idx_schedule_triggers_status;
+    DROP INDEX IF EXISTS idx_schedule_triggers_owner;
+    DROP TABLE IF EXISTS schedule_triggers
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -1737,6 +1825,11 @@ export const allStoreMigrations: Migration[] = [
   longTermMemoriesTableMigration,          // v37
   longTermMemoriesInvariantsMigration,     // v38
   memoryExtractionRunsFullSchemaMigration, // v39
+
+  // Webhook and Schedule Trigger stores
+  webhookTriggersTableMigration,           // v40
+  webhookDeliveriesTableMigration,         // v41
+  scheduleTriggersTableMigration,          // v42
 ];
 
 /**

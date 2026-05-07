@@ -49,6 +49,7 @@ const KNOWN_TOOL_IDS: string[] = [
   'session.list',
   'session.history',
   'web.fetch',
+  'web.search',
 ];
 
 /**

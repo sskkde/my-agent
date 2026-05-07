@@ -21,6 +21,7 @@ const KNOWN_TOOL_IDS: string[] = [
   'session.list',
   'session.history',
   'web.fetch',
+  'web.search',
 ];
 
 /**
@@ -35,6 +36,7 @@ const KNOWN_SKILL_IDS: string[] = [
   'transcript.search',
   'plan.patch',
   'docs.search',
+  'web.search',
 ];
 
 describe('LLM Router Guardrails', () => {
@@ -312,11 +314,12 @@ describe('LLM Router Guardrails', () => {
         'malicious_tool',
         'another.unknown',
         'docs.search',
+        'web.search',
       ];
 
       const filtered = suggestedTools.filter(toolId => KNOWN_TOOL_IDS.includes(toolId));
 
-      expect(filtered).toEqual(['artifact.create', 'artifact.update', 'docs.search']);
+      expect(filtered).toEqual(['artifact.create', 'artifact.update', 'docs.search', 'web.search']);
       expect(filtered).not.toContain('malicious_tool');
       expect(filtered).not.toContain('another.unknown');
     });

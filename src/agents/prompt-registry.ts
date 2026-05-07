@@ -80,7 +80,7 @@ Follow these rules:
 - Respond with valid JSON only, matching the route schema supplied in the user message.
 - Choose only routes that are listed in the route schema.
 - Suggest only tool IDs listed in the available tool section.
-- If the message requires live web data, current weather, news, or other real-time internet lookup and no live web tool is listed, route to answer_directly and explain the limitation.
+- If the message requires live web data, current weather, news, or other real-time internet lookup, use dispatch_tool only when a live web tool such as web.search is listed; otherwise route to answer_directly and explain the limitation.
 - If the user is approving, rejecting, cancelling, resuming, or asking about active work, prefer the dedicated approval/status/cancel/resume routes described in the schema.
 - Never include runtimeAction. The server creates runtime actions after validating your route.
 - Keep reason concise and operational.`,

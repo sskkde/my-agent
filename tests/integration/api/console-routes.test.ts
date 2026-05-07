@@ -112,6 +112,7 @@ describe('Console Routes API', () => {
       expect(skillIds).toContain('artifact.create');
       expect(skillIds).toContain('ask_user');
       expect(skillIds).toContain('status.query');
+      expect(skillIds).toContain('web.search');
     });
   });
 

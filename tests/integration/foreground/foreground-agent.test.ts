@@ -901,6 +901,7 @@ describe('Foreground Conversation Agent', () => {
       expect(prompt).toContain('docs.search');
       expect(prompt).toContain('transcript.search');
       expect(prompt).toContain('memory.retrieve');
+      expect(prompt).toContain('web.search');
     });
 
     it('should render "none" when agentConfig.allowedToolIds is empty array', async () => {
@@ -990,7 +991,7 @@ describe('Foreground Conversation Agent', () => {
       expect(toolIdsSection).not.toContain('memory.retrieve');
     });
 
-    it('should include weather/real-time guidance in the prompt', async () => {
+    it('should include live web search guidance in the prompt', async () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'answer_directly',
         reason: 'Weather question',
@@ -1002,10 +1003,9 @@ describe('Foreground Conversation Agent', () => {
       const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
       const prompt = request?.messages.find((m) => m.role === 'user')?.content;
 
-      expect(prompt).toContain('live web search');
+      expect(prompt).toContain('Use web.search for live web search');
       expect(prompt).toContain('real-time weather');
-      expect(prompt).toContain('answer_directly');
-      expect(prompt).toContain('Do NOT use docs.search, transcript.search, or memory.retrieve for real-time web/weather queries');
+      expect(prompt).toContain('Do NOT use docs.search, transcript.search, or memory.retrieve for live web queries');
     });
 
     it('should use registry base prompt as first system message', async () => {
@@ -1040,6 +1040,21 @@ describe('Foreground Conversation Agent', () => {
       expect(prompt).toContain('artifact.create');
       expect(prompt).toContain('plan.patch');
       expect(prompt).toContain('docs.search');
+      expect(prompt).toContain('web.search');
+    });
+
+    it('should preserve web.search suggestions instead of aliasing them to docs.search', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'dispatch_tool',
+        reason: 'Live web lookup',
+        suggestedTools: ['web.search'],
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const decision = await agent.processMessage(createInput('今天北京天气如何？'), baseState);
+
+      expect(decision.route).toBe('dispatch_tool');
+      expect(decision.suggestedTools).toEqual(['web.search']);
     });
   });
 

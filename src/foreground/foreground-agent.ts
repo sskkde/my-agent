@@ -28,7 +28,9 @@ export interface ForegroundAgent {
 
 const TOOL_ALIASES: Record<string, string[]> = {
   search: ['docs.search'],
-  'web.search': ['docs.search'],
+  'web.search': ['web.search'],
+  'internet.search': ['web.search'],
+  web: ['web.search'],
   'docs': ['docs.search'],
   'documentation.search': ['docs.search'],
   'transcript': ['transcript.search'],
