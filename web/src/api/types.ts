@@ -122,6 +122,13 @@ export interface ApprovalInfo {
   requestedBy: string;
   requestedAt: string;
   expiresAt?: string;
+  respondedAt?: string;
+  responseBy?: string;
+  responseReason?: string;
+}
+
+export interface ApprovalDetailResponse {
+  approval: ApprovalInfo;
 }
 
 export interface ApprovalsResponse {
@@ -343,6 +350,18 @@ export interface LogsResponse {
   total: number;
 }
 
+export interface RedactedPreview {
+  eventId: string;
+  eventType: string;
+  preview: string;
+}
+
+export interface RedactedPreview {
+  eventId: string;
+  eventType: string;
+  preview: string;
+}
+
 export interface DebugReplayResponse {
   sessionId: string;
   eventCount: number;
@@ -350,6 +369,7 @@ export interface DebugReplayResponse {
   runRefs: string[];
   approvalRefs: string[];
   lastEventId: string | null;
+  redactedPreviews: RedactedPreview[];
 }
 
 export interface InstancesResponse {
@@ -531,4 +551,83 @@ export interface UpdateAgentUserOverrideRequest {
 
 export interface ResetAgentConfigOverrideResponse {
   success: boolean;
+}
+
+// =============================================================================
+// Workflow Types - Task 3 (P0-5 Builder UI)
+// =============================================================================
+
+export type WorkflowStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait';
+
+export interface WorkflowStepConfig {
+  toolName?: string;
+  agentId?: string;
+  subagentType?: string;
+  approvalScope?: string;
+  waitCondition?: Record<string, unknown>;
+}
+
+export interface WorkflowStep {
+  stepId: string;
+  stepType: WorkflowStepType;
+  name: string;
+  description?: string;
+  config: WorkflowStepConfig;
+  nextStepId?: string;
+  requiresApproval?: boolean;
+}
+
+export interface WorkflowValidationIssue {
+  code: string;
+  message: string;
+  stepId?: string;
+  severity: 'error' | 'warning';
+}
+
+export interface WorkflowDraftResponse {
+  draftId: string;
+  name: string;
+  description?: string;
+  steps: WorkflowStep[];
+  ownerUserId: string;
+  status: string;
+  validationIssues: WorkflowValidationIssue[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowDefinitionResponse {
+  workflowId: string;
+  name: string;
+  description?: string;
+  version: number;
+  steps: WorkflowStep[];
+  ownerUserId: string;
+  status: string;
+  publishedFromDraftId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowRunStepInfo {
+  stepRunId: string;
+  stepId: string;
+  stepType: string;
+  status: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface WorkflowRunResponse {
+  workflowRunId: string;
+  definitionId: string;
+  version: number;
+  status: string;
+  currentStepIds: string[];
+  stepRuns: WorkflowRunStepInfo[];
+}
+
+export interface WorkflowValidationResult {
+  valid: boolean;
+  issues: WorkflowValidationIssue[];
 }

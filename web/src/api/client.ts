@@ -9,6 +9,7 @@ import type {
   SendMessageResponse,
   RunsResponse,
   ApprovalsResponse,
+  ApprovalDetailResponse,
   ApprovalDecisionRequest,
   ApprovalDecisionResponse,
   SseRunEvent,
@@ -38,6 +39,11 @@ import type {
   ResetAgentConfigOverrideResponse,
   ProcessingStatusPayload,
   TokenStreamPayload,
+  WorkflowDraftResponse,
+  WorkflowDefinitionResponse,
+  WorkflowRunResponse,
+  WorkflowValidationResult,
+  WorkflowStep,
 } from './types';
 
 const API_BASE = '/api';
@@ -121,6 +127,12 @@ export async function getRuns(): Promise<RunsResponse> {
 export async function getApprovals(): Promise<ApprovalsResponse> {
   const response = await fetch(`${API_BASE}/approvals`, { credentials: 'include' });
   const result = await parseResponse<{ data: ApprovalsResponse }>(response);
+  return result.data;
+}
+
+export async function getApprovalDetail(approvalId: string): Promise<ApprovalDetailResponse> {
+  const response = await fetch(`${API_BASE}/approvals/${approvalId}`, { credentials: 'include' });
+  const result = await parseResponse<{ data: ApprovalDetailResponse }>(response);
   return result.data;
 }
 
@@ -222,12 +234,14 @@ export async function getLogs(
   sourceModule?: string,
   eventType?: string,
   limit?: number,
-  offset?: number
+  offset?: number,
+  runRef?: string
 ): Promise<LogsResponse> {
   const params = new URLSearchParams();
   if (sessionId) params.append('sessionId', sessionId);
   if (sourceModule) params.append('sourceModule', sourceModule);
   if (eventType) params.append('eventType', eventType);
+  if (runRef) params.append('runRef', runRef);
   if (limit !== undefined) params.append('limit', String(limit));
   if (offset !== undefined) params.append('offset', String(offset));
   const query = params.toString() ? `?${params.toString()}` : '';
@@ -484,3 +498,86 @@ export async function resetAgentConfigOverride(
 }
 
 export { ApiClientError };
+
+// =============================================================================
+// Workflow API - Task 3 (P0-5 Builder UI)
+// =============================================================================
+
+export async function listWorkflowDrafts(): Promise<WorkflowDraftResponse[]> {
+  const response = await fetch(`${API_BASE}/workflows/drafts`, { credentials: 'include' });
+  const result = await parseResponse<{ data: WorkflowDraftResponse[] }>(response);
+  return result.data;
+}
+
+export async function getWorkflowDraft(draftId: string): Promise<WorkflowDraftResponse> {
+  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}`, { credentials: 'include' });
+  const result = await parseResponse<{ data: WorkflowDraftResponse }>(response);
+  return result.data;
+}
+
+export async function createWorkflowDraft(payload: {
+  name: string;
+  description?: string;
+  steps: WorkflowStep[];
+}): Promise<WorkflowDraftResponse> {
+  const response = await fetch(`${API_BASE}/workflows/drafts`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await parseResponse<{ data: WorkflowDraftResponse }>(response);
+  return result.data;
+}
+
+export async function updateWorkflowDraft(
+  draftId: string,
+  payload: { name?: string; description?: string; steps?: WorkflowStep[] }
+): Promise<WorkflowDraftResponse> {
+  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await parseResponse<{ data: WorkflowDraftResponse }>(response);
+  return result.data;
+}
+
+export async function validateWorkflowDraft(draftId: string): Promise<WorkflowValidationResult> {
+  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}/validate`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  const result = await parseResponse<{ data: WorkflowValidationResult }>(response);
+  return result.data;
+}
+
+export async function publishWorkflowDraft(draftId: string): Promise<WorkflowDefinitionResponse> {
+  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}/publish`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  const result = await parseResponse<{ data: WorkflowDefinitionResponse }>(response);
+  return result.data;
+}
+
+export async function startWorkflowRun(
+  definitionId: string,
+  inputData?: Record<string, unknown>
+): Promise<WorkflowRunResponse> {
+  const response = await fetch(`${API_BASE}/workflows/runs`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ definitionId, inputData }),
+  });
+  const result = await parseResponse<{ data: WorkflowRunResponse }>(response);
+  return result.data;
+}
+
+export async function listWorkflowDefinitions(): Promise<WorkflowDefinitionResponse[]> {
+  const response = await fetch(`${API_BASE}/workflows/definitions`, { credentials: 'include' });
+  const result = await parseResponse<{ data: WorkflowDefinitionResponse[] }>(response);
+  return result.data;
+}

@@ -12,6 +12,7 @@ import InstancesTab from './features/instances/InstancesTab';
 import SkillsTab from './features/skills/SkillsTab';
 import AgentsTab from './features/agents/AgentsTab';
 import SettingsTab from './features/settings/SettingsTab';
+import WorkflowsTab from './features/workflows/WorkflowsTab';
 import LoginPage from './features/auth/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import type { TabId } from './components/TabNav';
@@ -65,6 +66,8 @@ function AppContent() {
         return <AgentsTab />;
       case 'settings':
         return <SettingsTab />;
+      case 'workflows':
+        return <WorkflowsTab />;
     }
   };
 

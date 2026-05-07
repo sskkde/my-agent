@@ -10,7 +10,8 @@ export type TabId =
   | 'instances'
   | 'skills'
   | 'agents'
-  | 'settings';
+  | 'settings'
+  | 'workflows';
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings';
 
@@ -97,6 +98,13 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'System status',
         testId: 'tab-status',
         iconKey: 'info',
+      },
+      {
+        id: 'workflows',
+        label: '工作流',
+        description: 'Workflow builder',
+        testId: 'tab-workflows',
+        iconKey: 'gitBranch',
       },
     ],
   },
