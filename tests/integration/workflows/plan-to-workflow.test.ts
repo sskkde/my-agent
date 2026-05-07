@@ -24,72 +24,21 @@ import {
   createWorkflowRuntime,
   type WorkflowRuntime,
 } from '../../../src/workflows/workflow-runtime.js';
-import type {
-  WorkflowStep,
-  WorkflowDraft,
-} from '../../../src/workflows/types.js';
+import type { WorkflowDraft } from '../../../src/workflows/types.js';
+import {
+  compilePlanToWorkflowDraft,
+  type PlanToWorkflowInput,
+} from '../../../src/workflows/plan-to-workflow-compiler.js';
 
-// ============================================================================
-// Plan-like Input Structure (simplified ExecutionPlan)
-// ============================================================================
-
-/**
- * Simplified plan-like structure that mimics what Planner would generate.
- * This is the input to the PlanToWorkflowCompiler.
- */
-interface PlanLikeInput {
-  planId: string;
-  name: string;
-  description?: string;
-  ownerUserId: string;
-  steps: PlanStep[];
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * A step in the plan-like structure.
- * Maps to WorkflowStepDraft in the architecture doc.
- */
-interface PlanStep {
-  stepId: string;
-  title: string;
-  description?: string;
-  stepType: 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait';
-  config: Record<string, unknown>;
-  nextStepId?: string;
-}
-
-// ============================================================================
-// Plan-to-Workflow Converter (Minimal Implementation)
-// ============================================================================
-
-/**
- * Converts a plan-like structure to a WorkflowDraft.
- * This is a minimal implementation of the PlanToWorkflowCompiler concept.
- */
-function convertPlanToWorkflowDraft(
-  plan: PlanLikeInput,
+function compileAndCreateDraft(
+  plan: PlanToWorkflowInput,
   workflowRuntime: WorkflowRuntime
 ): WorkflowDraft {
-  // Convert plan steps to workflow steps
-  const workflowSteps: WorkflowStep[] = plan.steps.map(planStep => ({
-    stepId: planStep.stepId,
-    stepType: planStep.stepType,
-    name: planStep.title,
-    description: planStep.description,
-    config: planStep.config,
-    nextStepId: planStep.nextStepId,
-  }));
-
-  // Create draft through workflow runtime
-  const draft = workflowRuntime.createDraft({
-    name: plan.name,
-    description: plan.description,
-    steps: workflowSteps,
-    ownerUserId: plan.ownerUserId,
-  });
-
-  return draft;
+  const result = compilePlanToWorkflowDraft(plan);
+  if (!result.success) {
+    throw new Error(`Compilation failed: ${result.errors.map(e => e.message).join(', ')}`);
+  }
+  return workflowRuntime.createDraft(result.payload);
 }
 
 // ============================================================================
@@ -318,7 +267,7 @@ const workflowRuntimeMigrations: Migration[] = [
 /**
  * Creates a valid plan-like input for testing.
  */
-function createValidPlanInput(): PlanLikeInput {
+function createValidPlanInput(): PlanToWorkflowInput {
   return {
     planId: 'plan_001',
     name: 'Data Processing Pipeline',
@@ -368,7 +317,7 @@ function createValidPlanInput(): PlanLikeInput {
 /**
  * Creates an invalid plan-like input for testing validation.
  */
-function createInvalidPlanInput(): PlanLikeInput {
+function createInvalidPlanInput(): PlanToWorkflowInput {
   return {
     planId: 'plan_invalid',
     name: 'Invalid Workflow',
@@ -379,7 +328,6 @@ function createInvalidPlanInput(): PlanLikeInput {
         title: 'Missing Tool Name',
         stepType: 'tool_call',
         config: {
-          // Missing toolName - will fail validation
           toolParams: { param: 'value' },
         },
         nextStepId: 'nonexistent_step',
@@ -387,7 +335,7 @@ function createInvalidPlanInput(): PlanLikeInput {
       {
         stepId: 'step_002',
         title: 'Invalid Step Type',
-        stepType: 'invalid_type' as PlanStep['stepType'],
+        stepType: 'invalid_type',
         config: {},
       },
     ],
@@ -437,7 +385,7 @@ describe('Plan-to-Workflow Integration', () => {
   describe('Step 1: Create Workflow Draft from Plan', () => {
     it('should convert a valid plan-like input to a workflow draft', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       // Verify draft was created
       expect(draft.draftId).toBeDefined();
@@ -462,7 +410,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should persist the draft in the store', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       const retrieved = draftStore.getDraftById(draft.draftId);
       expect(retrieved).not.toBeNull();
@@ -472,7 +420,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should emit workflow_draft_created event', () => {
       const planInput = createValidPlanInput();
-      convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      compileAndCreateDraft(planInput, workflowRuntime);
 
       const events = eventStore.query({ eventType: 'workflow_draft_created' });
       expect(events.length).toBeGreaterThan(0);
@@ -483,7 +431,7 @@ describe('Plan-to-Workflow Integration', () => {
   describe('Step 2: Validate Draft', () => {
     it('should validate a valid draft without issues', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       const issues = workflowRuntime.validateDraft(draft.draftId);
 
@@ -496,22 +444,18 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should detect validation issues in an invalid draft', () => {
       const planInput = createInvalidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const result = compilePlanToWorkflowDraft(planInput);
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
-
-      expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.code === 'MISSING_TOOL_NAME')).toBe(true);
-      expect(issues.some(i => i.code === 'INVALID_STEP_TYPE')).toBe(true);
-      expect(issues.some(i => i.code === 'INVALID_NEXT_STEP')).toBe(true);
-
-      const updatedDraft = draftStore.getDraftById(draft.draftId);
-      expect(updatedDraft?.status).toBe('invalid');
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some(e => e.code === 'MISSING_TOOL_NAME')).toBe(true);
+      expect(result.errors.some(e => e.code === 'UNSUPPORTED_STEP_TYPE')).toBe(true);
+      expect(result.errors.some(e => e.code === 'INVALID_NEXT_STEP_ID')).toBe(true);
     });
 
     it('should emit workflow_draft_validated event', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
 
@@ -523,7 +467,7 @@ describe('Plan-to-Workflow Integration', () => {
   describe('Step 3: Publish Draft as Definition', () => {
     it('should publish a valid draft as a workflow definition', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -541,7 +485,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should persist the definition in the store', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -552,18 +496,19 @@ describe('Plan-to-Workflow Integration', () => {
       expect(retrieved?.status).toBe('published');
     });
 
-    it('should throw error when publishing invalid draft', () => {
+    it('should reject invalid plans before publishing', () => {
       const planInput = createInvalidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const result = compilePlanToWorkflowDraft(planInput);
 
-      expect(() => {
-        workflowRuntime.publishDraft(draft.draftId);
-      }).toThrow('Cannot publish draft with validation issues');
+      expect(result.success).toBe(false);
+      expect(result.errors.some(e => e.code === 'MISSING_TOOL_NAME')).toBe(true);
+      expect(result.errors.some(e => e.code === 'UNSUPPORTED_STEP_TYPE')).toBe(true);
+      expect(result.errors.some(e => e.code === 'INVALID_NEXT_STEP_ID')).toBe(true);
     });
 
     it('should emit workflow_definition_published event', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       workflowRuntime.publishDraft(draft.draftId);
@@ -576,7 +521,7 @@ describe('Plan-to-Workflow Integration', () => {
   describe('Step 4: Run Published Definition', () => {
     it('should start a workflow run from a published definition', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -599,7 +544,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should persist the workflow run in the store', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -617,7 +562,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should create step runs for all workflow steps', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -636,7 +581,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should emit workflow_run_started event', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -654,7 +599,7 @@ describe('Plan-to-Workflow Integration', () => {
   describe('Step 5: Complete WorkflowRun', () => {
     it('should complete workflow when all steps finish successfully', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -700,7 +645,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should emit workflow_run_completed event when workflow finishes', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
 
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
@@ -723,7 +668,7 @@ describe('Plan-to-Workflow Integration', () => {
     });
 
     it('should fail workflow when a step fails and onFailure is fail_workflow', () => {
-      const planInput: PlanLikeInput = {
+      const planInput: PlanToWorkflowInput = {
         planId: 'plan_fail',
         name: 'Failing Workflow',
         ownerUserId: 'user_plan_003',
@@ -740,7 +685,7 @@ describe('Plan-to-Workflow Integration', () => {
         ],
       };
 
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
 
@@ -760,7 +705,7 @@ describe('Plan-to-Workflow Integration', () => {
     });
 
     it('should continue workflow when step fails and onFailure is continue', () => {
-      const planInput: PlanLikeInput = {
+      const planInput: PlanToWorkflowInput = {
         planId: 'plan_continue',
         name: 'Continue On Failure',
         ownerUserId: 'user_plan_004',
@@ -786,7 +731,7 @@ describe('Plan-to-Workflow Integration', () => {
         ],
       };
 
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
 
@@ -810,7 +755,7 @@ describe('Plan-to-Workflow Integration', () => {
     it('should complete the full path: plan → draft → validate → publish → run → complete', () => {
       // Step 1: Create draft from plan
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
       expect(draft.draftId).toBeDefined();
       expect(draft.status).toBe('draft');
 
@@ -860,7 +805,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should handle cancellation at any stage', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
 
@@ -886,12 +831,12 @@ describe('Plan-to-Workflow Integration', () => {
       const planInput = createValidPlanInput();
 
       // First version
-      const draft1 = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft1 = compileAndCreateDraft(planInput, workflowRuntime);
       workflowRuntime.validateDraft(draft1.draftId);
       const def1 = workflowRuntime.publishDraft(draft1.draftId);
 
       // Second version (same name)
-      const draft2 = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft2 = compileAndCreateDraft(planInput, workflowRuntime);
       workflowRuntime.validateDraft(draft2.draftId);
       const def2 = workflowRuntime.publishDraft(draft2.draftId);
 
@@ -902,7 +847,7 @@ describe('Plan-to-Workflow Integration', () => {
 
     it('should track which draft a definition was published from', () => {
       const planInput = createValidPlanInput();
-      const draft = convertPlanToWorkflowDraft(planInput, workflowRuntime);
+      const draft = compileAndCreateDraft(planInput, workflowRuntime);
       workflowRuntime.validateDraft(draft.draftId);
       const definition = workflowRuntime.publishDraft(draft.draftId);
 
