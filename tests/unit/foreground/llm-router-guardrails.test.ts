@@ -15,6 +15,12 @@ const KNOWN_TOOL_IDS: string[] = [
   'transcript.search',
   'plan.patch',
   'docs.search',
+  'file.read',
+  'file.glob',
+  'file.grep',
+  'session.list',
+  'session.history',
+  'web.fetch',
 ];
 
 /**

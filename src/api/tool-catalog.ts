@@ -49,6 +49,42 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     category: 'search',
     sensitivity: 'low',
   },
+  {
+    name: 'file.read',
+    description: 'Read file contents from the workspace',
+    category: 'read',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'file.glob',
+    description: 'Find files matching a glob pattern in the workspace',
+    category: 'search',
+    sensitivity: 'low',
+  },
+  {
+    name: 'file.grep',
+    description: 'Search for pattern matches in files within the workspace',
+    category: 'search',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'session.list',
+    description: 'List sessions for the current user',
+    category: 'read',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'session.history',
+    description: 'Get session message history',
+    category: 'read',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'web.fetch',
+    description: 'Fetch content from a URL (read-only, safe)',
+    category: 'read',
+    sensitivity: 'medium',
+  },
 ];
 
 export function getToolCatalog(): ToolSummary[] {

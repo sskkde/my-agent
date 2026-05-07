@@ -13,6 +13,7 @@ import type { TranscriptStore, TurnTranscript } from '../../../src/storage/trans
 import type { PlanStore, ExecutionPlanRecord, PlanPatch, PlanStep } from '../../../src/storage/plan-store.js';
 import type { ToolResultStore, ToolResultBlob } from '../../../src/storage/tool-result-store.js';
 import type { LongTermMemoryStore, LongTermMemoryRecord, LongTermMemoryPatch, MemoryType, TombstoneInput } from '../../../src/storage/long-term-memory-store.js';
+import type { SessionStore, Session, CreateSessionInput, ListSessionsOptions, UpdateMetadataInput } from '../../../src/storage/session-store.js';
 import type { PermissionContext } from '../../../src/permissions/types.js';
 
 // Helper to create valid PermissionContext for tests
@@ -324,6 +325,112 @@ class MockLongTermMemoryStore implements LongTermMemoryStore {
   }
 }
 
+class MockSessionStore implements SessionStore {
+  private sessions: Map<string, Session> = new Map();
+
+  create(input: CreateSessionInput): Session {
+    const session: Session = {
+      sessionId: input.sessionId,
+      userId: input.userId,
+      title: input.title,
+      status: input.status ?? 'active',
+      messageCount: input.messageCount ?? 0,
+      lastActivityAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      metadata: input.metadata,
+    };
+    this.sessions.set(session.sessionId, session);
+    return session;
+  }
+
+  getById(sessionId: string): Session | null {
+    return this.sessions.get(sessionId) ?? null;
+  }
+
+  list(options?: ListSessionsOptions): Session[] {
+    let result = Array.from(this.sessions.values());
+    if (options?.userId) {
+      result = result.filter(s => s.userId === options.userId);
+    }
+    if (options?.status) {
+      result = result.filter(s => s.status === options.status);
+    }
+    return result;
+  }
+
+  updateActivity(sessionId: string, lastActivityAt: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.lastActivityAt = lastActivityAt;
+      return true;
+    }
+    return false;
+  }
+
+  updateMetadata(sessionId: string, input: UpdateMetadataInput): boolean {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      if (input.messageCount !== undefined) {
+        session.messageCount = input.messageCount;
+      }
+      if (input.lastActivityAt !== undefined) {
+        session.lastActivityAt = input.lastActivityAt;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  updateStatus(sessionId: string, status: 'active' | 'archived' | 'closed'): boolean {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.status = status;
+      return true;
+    }
+    return false;
+  }
+
+  updateTitle(sessionId: string, title: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.title = title;
+      return true;
+    }
+    return false;
+  }
+
+  updateUserId(sessionId: string, newUserId: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.userId = newUserId;
+      return true;
+    }
+    return false;
+  }
+
+  setModel(sessionId: string, selectedModel: string, selectedProviderId: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.selectedModel = selectedModel;
+      session.selectedProviderId = selectedProviderId;
+      return true;
+    }
+    return false;
+  }
+
+  getCount(options?: { userId?: string; status?: 'active' | 'archived' | 'closed' }): number {
+    let result = Array.from(this.sessions.values());
+    if (options?.userId) {
+      result = result.filter(s => s.userId === options.userId);
+    }
+    if (options?.status) {
+      result = result.filter(s => s.status === options.status);
+    }
+    return result.length;
+  }
+}
+
 describe('Built-in Safe Tools', () => {
   let registry: ToolRegistry;
   let artifactStore: MockArtifactStore;
@@ -332,6 +439,7 @@ describe('Built-in Safe Tools', () => {
   let planStore: MockPlanStore;
   let toolResultStore: MockToolResultStore;
   let longTermMemoryStore: MockLongTermMemoryStore;
+  let sessionStore: MockSessionStore;
 
   beforeEach(() => {
     artifactStore = new MockArtifactStore();
@@ -340,6 +448,7 @@ describe('Built-in Safe Tools', () => {
     planStore = new MockPlanStore();
     toolResultStore = new MockToolResultStore();
     longTermMemoryStore = new MockLongTermMemoryStore();
+    sessionStore = new MockSessionStore();
     
     registry = createToolRegistry();
     registerBuiltInTools(registry, {
@@ -349,6 +458,7 @@ describe('Built-in Safe Tools', () => {
       planStore,
       longTermMemoryStore,
       toolResultStore,
+      sessionStore,
     });
   });
 

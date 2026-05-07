@@ -5,6 +5,7 @@ import type { TranscriptStore } from '../../storage/transcript-store.js';
 import type { PlanStore } from '../../storage/plan-store.js';
 import type { ToolResultStore } from '../../storage/tool-result-store.js';
 import type { LongTermMemoryStore } from '../../storage/long-term-memory-store.js';
+import type { SessionStore } from '../../storage/session-store.js';
 import { createArtifactCreateTool } from './artifact-create.js';
 import { createArtifactUpdateTool } from './artifact-update.js';
 import { createAskUserTool } from './ask-user.js';
@@ -13,6 +14,12 @@ import { createMemoryRetrieveTool } from './memory-retrieve.js';
 import { createTranscriptSearchTool } from './transcript-search.js';
 import { createPlanPatchTool } from './plan-patch.js';
 import { createDocsSearchTool } from './docs-search.js';
+import { createFileReadTool } from './file-read.js';
+import { createFileGlobTool } from './file-glob.js';
+import { createFileGrepTool } from './file-grep.js';
+import { createSessionListTool } from './session-list.js';
+import { createSessionHistoryTool } from './session-history.js';
+import { createWebFetchTool } from './web-fetch.js';
 
 export interface BuiltInToolsConfig {
   artifactStore: ArtifactStore;
@@ -21,13 +28,14 @@ export interface BuiltInToolsConfig {
   planStore: PlanStore;
   longTermMemoryStore: LongTermMemoryStore;
   toolResultStore?: ToolResultStore;
+  sessionStore: SessionStore;
 }
 
 export function registerBuiltInTools(
   registry: ToolRegistry,
   config: BuiltInToolsConfig
 ): void {
-  const { artifactStore, summaryStore, transcriptStore, planStore, longTermMemoryStore, toolResultStore } = config;
+  const { artifactStore, summaryStore, transcriptStore, planStore, longTermMemoryStore, toolResultStore, sessionStore } = config;
 
   registry.register(createArtifactCreateTool(artifactStore));
   registry.register(createArtifactUpdateTool(artifactStore));
@@ -37,6 +45,12 @@ export function registerBuiltInTools(
   registry.register(createTranscriptSearchTool(transcriptStore, toolResultStore));
   registry.register(createPlanPatchTool(planStore));
   registry.register(createDocsSearchTool(toolResultStore));
+  registry.register(createFileReadTool());
+  registry.register(createFileGlobTool());
+  registry.register(createFileGrepTool());
+  registry.register(createSessionListTool(sessionStore));
+  registry.register(createSessionHistoryTool(sessionStore, transcriptStore));
+  registry.register(createWebFetchTool());
 }
 
 export {
@@ -48,4 +62,10 @@ export {
   createTranscriptSearchTool,
   createPlanPatchTool,
   createDocsSearchTool,
+  createFileReadTool,
+  createFileGlobTool,
+  createFileGrepTool,
+  createSessionListTool,
+  createSessionHistoryTool,
+  createWebFetchTool,
 };
