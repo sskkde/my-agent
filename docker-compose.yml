@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    volumes:
+      - agent_data:/data
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3003
+      - DATABASE_PATH=/data/agent-platform.db
+      - NODE_ENV=development
+      - APP_SECRET_KEY=dev-secret-key-change-in-production
+      - WEB_SEARCH_BACKEND=none
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3003/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - VITE_PORT=3002
+      - VITE_HOST=0.0.0.0
+      - VITE_API_TARGET=http://api:3003
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  agent_data:

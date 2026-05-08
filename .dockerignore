@@ -1,0 +1,58 @@
+# Dependencies
+node_modules
+web/node_modules
+
+# Build outputs
+dist
+web/dist
+
+# Database files
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+coverage
+.nyc_output
+test-results
+playwright-report
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+README.md
+docs
+*.md
+
+# Temporary files
+tmp
+temp
+*.tmp
