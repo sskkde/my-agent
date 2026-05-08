@@ -24,6 +24,8 @@ export interface AgentConfig {
   repairAttempts: number;
   promptType: string | null;
   promptVersion: string | null;
+  searchLlmProviderId: string | null;
+  searchLlmModel: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +46,8 @@ export interface UpsertAgentConfigInput {
   repairAttempts?: number;
   promptType?: string | null;
   promptVersion?: string | null;
+  searchLlmProviderId?: string | null;
+  searchLlmModel?: string | null;
 }
 
 export interface AgentConfigStore {
@@ -71,6 +75,8 @@ interface AgentConfigRow {
   repair_attempts: number;
   prompt_type: string | null;
   prompt_version: string | null;
+  search_llm_provider_id: string | null;
+  search_llm_model: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -183,9 +189,9 @@ class AgentConfigStoreImpl implements AgentConfigStore {
         agent_config_id, agent_id, scope, user_id, display_name, enabled,
         system_prompt, routing_prompt, provider_id, model,
         allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-        prompt_type, prompt_version,
+        prompt_type, prompt_version, search_llm_provider_id, search_llm_model,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT DO UPDATE SET
         display_name = excluded.display_name,
         enabled = excluded.enabled,
@@ -199,6 +205,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
         repair_attempts = excluded.repair_attempts,
         prompt_type = excluded.prompt_type,
         prompt_version = excluded.prompt_version,
+        search_llm_provider_id = excluded.search_llm_provider_id,
+        search_llm_model = excluded.search_llm_model,
         updated_at = excluded.updated_at
     `;
 
@@ -219,6 +227,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
       repairAttempts,
       input.promptType ?? null,
       input.promptVersion ?? null,
+      input.searchLlmProviderId ?? null,
+      input.searchLlmModel ?? null,
       now,
       now,
     ];
@@ -269,6 +279,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
         : user.repairAttempts,
       promptType: user.promptType ?? global?.promptType ?? null,
       promptVersion: user.promptVersion ?? global?.promptVersion ?? null,
+      searchLlmProviderId: user.searchLlmProviderId ?? global?.searchLlmProviderId ?? null,
+      searchLlmModel: user.searchLlmModel ?? global?.searchLlmModel ?? null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -292,6 +304,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
       repairAttempts: row.repair_attempts,
       promptType: row.prompt_type,
       promptVersion: row.prompt_version,
+      searchLlmProviderId: row.search_llm_provider_id,
+      searchLlmModel: row.search_llm_model,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

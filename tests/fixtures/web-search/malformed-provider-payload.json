@@ -1,0 +1,7 @@
+{
+  "query": "malformed test",
+  "results": "this should be an array not a string",
+  "invalid_structure": {
+    "nested": true
+  }
+}

@@ -200,7 +200,7 @@ const AgentsTab: React.FC = () => {
         systemPrompt: formData.systemPrompt,
         routingPrompt: formData.routingPrompt,
         allowedToolIds: activeScope === 'override' && formData.toolScopeMode === 'inherit'
-          ? null
+          ? undefined
           : formData.allowedToolIds,
         allowedSkillIds: formData.allowedSkillIds,
       };
@@ -238,6 +238,7 @@ const AgentsTab: React.FC = () => {
           allowedToolIds: global.allowedToolIds,
           allowedSkillIds: global.allowedSkillIds,
           routingTimeoutMs: global.routingTimeoutMs,
+          toolScopeMode: 'custom',
         });
       }
       return;
@@ -277,18 +278,28 @@ const AgentsTab: React.FC = () => {
           allowedToolIds: global.allowedToolIds,
           allowedSkillIds: global.allowedSkillIds,
           routingTimeoutMs: global.routingTimeoutMs,
+          toolScopeMode: 'custom',
         });
       } else {
         const override = config.userOverride;
         const effective = config.effective;
+        const overrideToolIds = override?.allowedToolIds ?? effective.allowedToolIds;
+        const derivedToolScopeMode = override?.allowedToolIds === null
+          ? 'inherit'
+          : overrideToolIds.length === 0
+            ? 'none'
+            : overrideToolIds.length === tools.length
+              ? 'all'
+              : 'custom';
         setFormData({
           providerId: override?.providerId ?? effective.providerId,
           model: override?.model ?? effective.model,
           systemPrompt: override?.systemPrompt ?? effective.systemPrompt ?? '',
           routingPrompt: override?.routingPrompt ?? effective.routingPrompt ?? '',
-          allowedToolIds: override?.allowedToolIds ?? effective.allowedToolIds,
+          allowedToolIds: overrideToolIds,
           allowedSkillIds: override?.allowedSkillIds ?? effective.allowedSkillIds,
           routingTimeoutMs: override?.routingTimeoutMs ?? effective.routingTimeoutMs,
+          toolScopeMode: derivedToolScopeMode,
         });
       }
     }

@@ -165,7 +165,7 @@ test.describe('All Console Tabs Navigation', () => {
     await page.goto('/');
   });
 
-  test('should display all 11 tab navigation items', async ({ page }) => {
+  test('should display all 12 tab navigation items', async ({ page }) => {
     await expect(page.getByTestId('tab-session-console')).toBeVisible();
     await expect(page.getByTestId('tab-dashboard')).toBeVisible();
     await expect(page.getByTestId('tab-sessions')).toBeVisible();
@@ -174,6 +174,7 @@ test.describe('All Console Tabs Navigation', () => {
     await expect(page.getByTestId('tab-channels')).toBeVisible();
     await expect(page.getByTestId('tab-instances')).toBeVisible();
     await expect(page.getByTestId('tab-status')).toBeVisible();
+    await expect(page.getByTestId('tab-workflows')).toBeVisible();
     await expect(page.getByTestId('tab-agent-monitor')).toBeVisible();
     await expect(page.getByTestId('tab-skills')).toBeVisible();
     await expect(page.getByTestId('tab-settings')).toBeVisible();
@@ -214,13 +215,18 @@ test.describe('All Console Tabs Navigation', () => {
     await expect(page.getByTestId('settings-panel')).toBeVisible();
   });
 
+  test('should switch to workflows tab and show workflows panel', async ({ page }) => {
+    await page.getByTestId('tab-workflows').click();
+    await expect(page.getByTestId('workflows-panel')).toBeVisible();
+  });
+
   test('session-console shows session list on load without auto-creating', async ({ page }) => {
     await page.getByTestId('tab-session-console').click();
     await expect(page.getByTestId('session-new-button')).toBeVisible();
     await expect(page.getByTestId('session-empty-state')).toBeVisible();
   });
 
-  test('should navigate all 11 tabs with no console errors', async ({ page }) => {
+  test('should navigate all 12 tabs with no console errors', async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
@@ -243,6 +249,7 @@ test.describe('All Console Tabs Navigation', () => {
       'tab-channels',
       'tab-instances',
       'tab-status',
+      'tab-workflows',
       'tab-agent-monitor',
       'tab-skills',
       'tab-settings',

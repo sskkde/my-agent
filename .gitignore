@@ -12,6 +12,8 @@ build/
 # Temporary files
 .tmp/
 temp/
+outside-temp/
+outside-symlink-temp/
 *.tmp
 
 # Database files

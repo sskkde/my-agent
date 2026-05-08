@@ -1,0 +1,18 @@
+{
+  "query": "AI agent frameworks",
+  "results": [
+    {
+      "title": "LangChain: Build context-aware reasoning applications",
+      "url": "https://www.langchain.com/",
+      "content": "LangChain is a framework for developing applications powered by language models.",
+      "score": 0.95
+    },
+    {
+      "title": "AutoGPT: An autonomous GPT-4 experiment",
+      "url": "https://github.com/Significant-Gravitas/AutoGPT",
+      "content": "AutoGPT is an experimental open-source application showcasing the capabilities of the GPT-4 language model.",
+      "score": 0.88
+    }
+  ],
+  "response_time": 0.42
+}

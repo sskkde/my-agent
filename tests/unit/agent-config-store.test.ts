@@ -23,6 +23,8 @@ const CREATE_TABLE_SQL = `
     repair_attempts INTEGER NOT NULL DEFAULT 1,
     prompt_type TEXT,
     prompt_version TEXT,
+    search_llm_provider_id TEXT,
+    search_llm_model TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )
@@ -810,6 +812,181 @@ describe('agent-config-store', () => {
       expect(result).not.toBeNull();
       expect(result?.promptType).toBe('custom.router'); // explicit
       expect(result?.promptVersion).toBe('v2'); // explicit
+    });
+  });
+
+  describe('searchLlmProviderId and searchLlmModel', () => {
+    it('should store searchLlmProviderId and searchLlmModel in config', () => {
+      const result = store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+
+      expect(result.searchLlmProviderId).toBe('provider-search');
+      expect(result.searchLlmModel).toBe('gpt-4.1-mini');
+    });
+
+    it('should inherit searchLlmProviderId from global when user override has null', () => {
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        searchLlmProviderId: null,
+        searchLlmModel: null,
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.searchLlmProviderId).toBe('provider-search');
+      expect(result?.searchLlmModel).toBe('gpt-4.1-mini');
+    });
+
+    it('should use explicit user override searchLlmProviderId when provided', () => {
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-global-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        searchLlmProviderId: 'provider-user-search',
+        searchLlmModel: 'gpt-4.1-nano',
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.searchLlmProviderId).toBe('provider-user-search');
+      expect(result?.searchLlmModel).toBe('gpt-4.1-nano');
+    });
+
+    it('should inherit search llm fields when user override omits them', () => {
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result).not.toBeNull();
+      expect(result?.searchLlmProviderId).toBe('provider-search');
+      expect(result?.searchLlmModel).toBe('gpt-4.1-mini');
+    });
+
+    it('should update inherited search llm fields when global changes', () => {
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-search-v1',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        searchLlmProviderId: null,
+        searchLlmModel: null,
+      });
+
+      expect(store.getByUser('user-001')?.searchLlmProviderId).toBe('provider-search-v1');
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-search-v2',
+        searchLlmModel: 'gpt-4.1-nano',
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result?.searchLlmProviderId).toBe('provider-search-v2');
+      expect(result?.searchLlmModel).toBe('gpt-4.1-nano');
+    });
+
+    it('should NOT update explicit user search llm fields when global changes', () => {
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-global-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId: 'user-001',
+        displayName: 'User Agent',
+        enabled: true,
+        systemPrompt: 'User system prompt',
+        searchLlmProviderId: 'provider-user-search',
+        searchLlmModel: 'gpt-4.1-nano',
+      });
+
+      store.upsert({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Global Agent',
+        enabled: true,
+        systemPrompt: 'System prompt',
+        searchLlmProviderId: 'provider-global-new',
+        searchLlmModel: 'gpt-4.1-turbo',
+      });
+
+      const result = store.getByUser('user-001');
+      expect(result?.searchLlmProviderId).toBe('provider-user-search');
+      expect(result?.searchLlmModel).toBe('gpt-4.1-nano');
     });
   });
 });

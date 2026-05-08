@@ -159,6 +159,68 @@ cp .env.example .env
 
 Then edit `.env` with your actual values.
 
+## Web Search Configuration
+
+The platform supports web search through multiple backends. Configure your preferred search provider:
+
+### Backend Options
+
+| Backend | Description | Requirements |
+|---------|-------------|--------------|
+| `auto` | Default. Tries SearXNG → Tavily → Remote API | At least one lightweight provider configured |
+| `searxng` | Self-hosted SearXNG instance | `SEARXNG_BASE_URL` |
+| `tavily` | Tavily API service | `TAVILY_API_KEY` |
+| `remote` | Custom remote search API | `WEB_SEARCH_API_URL` + `WEB_SEARCH_API_KEY` |
+| `playwright` | Browser-based DuckDuckGo scraping | `npm run install:playwright` |
+| `auto-browser` | Tries lightweight providers → Playwright fallback | Playwright installed |
+| `none` | Disable web search | None |
+
+### Environment Variables
+
+```bash
+# Backend selection (default: auto)
+WEB_SEARCH_BACKEND=auto
+
+# SearXNG (lightweight, self-hosted)
+SEARXNG_BASE_URL=http://localhost:8080
+
+# Tavily (API-based)
+TAVILY_API_KEY=your_tavily_api_key_here
+TAVILY_BASE_URL=https://api.tavily.com  # Optional
+
+# Legacy Remote API
+WEB_SEARCH_API_URL=https://your-search-api.example.com/search
+WEB_SEARCH_API_KEY=your_api_key_here
+```
+
+### Playwright Setup (Optional)
+
+For browser-based search fallback, install Chromium:
+
+```bash
+npm run install:playwright
+```
+
+This is only required if you use `playwright` or `auto-browser` backend modes. Default `auto` mode does not require Playwright.
+
+### Search LLM Configuration
+
+Configure a dedicated LLM for web search summarization through Agent Configuration API:
+
+```bash
+PATCH /api/agents/foreground.default/config/global
+{
+  "searchLlmProviderId": "ollama",
+  "searchLlmModel": "llama2"
+}
+```
+
+Fields:
+- `searchLlmProviderId`: Provider ID for search LLM (must support function calling)
+- `searchLlmModel`: Model ID for search LLM
+
+These fields follow the same inheritance semantics as `providerId`/`model`: null inherits from global, explicit string overrides.
+
 ## Architecture Overview
 
 The agent platform is built around a modular architecture with clear separation of concerns:

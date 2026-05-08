@@ -57,6 +57,8 @@ describe('LLM Router Guardrails', () => {
     repairAttempts: 1,
     promptType: null,
     promptVersion: null,
+    searchLlmProviderId: null,
+    searchLlmModel: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,

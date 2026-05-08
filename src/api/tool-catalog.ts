@@ -85,6 +85,12 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     category: 'read',
     sensitivity: 'medium',
   },
+  {
+    name: 'web.search',
+    description: 'Search the public web for information using an external search provider',
+    category: 'search',
+    sensitivity: 'medium',
+  },
 ];
 
 export function getToolCatalog(): ToolSummary[] {

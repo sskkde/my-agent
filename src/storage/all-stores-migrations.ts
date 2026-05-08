@@ -1752,6 +1752,22 @@ export const scheduleTriggersTableMigration: Migration = {
   `
 };
 
+// ============================================================================
+// STORE 33: Agent Config Search LLM Fields (version 43)
+// ============================================================================
+export const agentConfigSearchLlmFieldsMigration: Migration = {
+  version: 43,
+  name: 'add_agent_config_search_llm_fields',
+  up: `
+    ALTER TABLE agent_configs ADD COLUMN search_llm_provider_id TEXT;
+    ALTER TABLE agent_configs ADD COLUMN search_llm_model TEXT
+  `,
+  down: `
+    -- SQLite doesn't support DROP COLUMN, would need table recreation
+    -- This is a no-op for rollback
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -1830,6 +1846,9 @@ export const allStoreMigrations: Migration[] = [
   webhookTriggersTableMigration,           // v40
   webhookDeliveriesTableMigration,         // v41
   scheduleTriggersTableMigration,          // v42
+
+  // Agent Config Search LLM fields
+  agentConfigSearchLlmFieldsMigration,     // v43
 ];
 
 /**

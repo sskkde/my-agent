@@ -125,6 +125,48 @@ export const DEFAULT_RESOURCE_CONFIG: ResourceConfig = {
 | `VITE_API_TARGET` | API proxy target for Vite | `http://localhost:3003` |
 | `SHUTDOWN_TIMEOUT_MS` | Graceful shutdown timeout | `30000` |
 
+### Web Search Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `WEB_SEARCH_BACKEND` | Backend selection: `auto` \| `searxng` \| `tavily` \| `remote` \| `playwright` \| `auto-browser` \| `none` | `auto` |
+| `SEARXNG_BASE_URL` | SearXNG instance URL | None |
+| `TAVILY_API_KEY` | Tavily API key | None |
+| `TAVILY_BASE_URL` | Custom Tavily endpoint | `https://api.tavily.com` |
+| `WEB_SEARCH_API_URL` | Legacy remote search API URL | None |
+| `WEB_SEARCH_API_KEY` | Legacy remote API key | None |
+
+### Web Search Backend Selection
+
+The platform supports multiple web search backends with automatic fallback:
+
+**Default Provider Order (auto mode):**
+1. SearXNG (if `SEARXNG_BASE_URL` is configured)
+2. Tavily (if `TAVILY_API_KEY` is configured)
+3. Remote API (if `WEB_SEARCH_API_URL` is configured)
+4. Error: `PROVIDER_NOT_CONFIGURED`
+
+**Browser Fallback (auto-browser mode):**
+1. SearXNG → Tavily → Remote API (as above)
+2. Playwright/DuckDuckGo (if Chromium is installed)
+
+**Explicit Backend Selection:**
+- `searxng`: Use only SearXNG
+- `tavily`: Use only Tavily
+- `remote`: Use only legacy remote API
+- `playwright`: Use only browser-based DuckDuckGo
+- `none`: Disable web search entirely
+
+### Playwright Installation (Optional)
+
+For browser-based search fallback, install Chromium:
+
+```bash
+npm run install:playwright
+```
+
+This is only required for `playwright` or `auto-browser` modes. Default `auto` mode does not require Playwright.
+
 ### Configuration Example
 
 ```bash
@@ -200,6 +242,35 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 2. Verify all environment variables are set
 3. Run typecheck: `npm run typecheck`
 4. Check Node.js version: `node --version` (requires v20+)
+
+### Web Search Failures
+
+**Symptom:** `PROVIDER_NOT_CONFIGURED` error or search returns no results
+
+**Solutions:**
+1. Check `WEB_SEARCH_BACKEND` is set correctly
+2. Verify at least one provider is configured:
+   - SearXNG: `SEARXNG_BASE_URL` must be reachable
+   - Tavily: `TAVILY_API_KEY` must be valid
+   - Remote: `WEB_SEARCH_API_URL` and `WEB_SEARCH_API_KEY` must be set
+3. For Playwright mode, run `npm run install:playwright`
+4. Check provider endpoint is accessible: `curl $SEARXNG_BASE_URL/search?q=test`
+5. Verify search LLM is configured via Agent Configuration API
+
+### Search LLM Not Configured
+
+**Symptom:** Search requests fall through to default behavior
+
+**Solutions:**
+1. Configure search LLM via API:
+   ```bash
+   curl -X PATCH http://localhost:3003/api/agents/foreground.default/config/global \
+     -H "Content-Type: application/json" \
+     -d '{"searchLlmProviderId": "ollama", "searchLlmModel": "llama2"}'
+   ```
+2. Verify provider exists and is enabled
+3. Ensure model supports function calling
+4. Check provider credentials (API key or base URL)
 
 ## Log Locations and Debugging
 

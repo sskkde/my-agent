@@ -1,9 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import type { ApiContext } from '../context.js';
 import { ApiErrorFactory } from '../errors.js';
+import type { EventRecord } from '../../storage/event-store.js';
 
 interface ReplayParams {
   sessionId: string;
+}
+
+interface RedactedPreview {
+  eventId: string;
+  eventType: string;
+  preview: string;
 }
 
 interface ReplayResponse {
@@ -12,6 +19,57 @@ interface ReplayResponse {
   runRefs: string[];
   approvalRefs: string[];
   lastEventId: string | null;
+  redactedPreviews: RedactedPreview[];
+}
+
+const PREVIEW_MAX_LENGTH = 100;
+
+const SENSITIVE_FIELDS = new Set([
+  'apiKey',
+  'api_key',
+  'password',
+  'secret',
+  'token',
+  'credential',
+  'authorization',
+  'auth',
+]);
+
+function redactSensitiveFields(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (SENSITIVE_FIELDS.has(key)) {
+      result[key] = '[redacted]';
+    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      result[key] = redactSensitiveFields(value as Record<string, unknown>);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function createRedactedPreview(event: EventRecord): RedactedPreview {
+  if (event.sensitivity !== 'low') {
+    return {
+      eventId: event.eventId,
+      eventType: event.eventType,
+      preview: '[redacted]',
+    };
+  }
+
+  const redactedPayload = redactSensitiveFields(event.payload);
+  let previewStr = JSON.stringify(redactedPayload);
+  
+  if (previewStr.length > PREVIEW_MAX_LENGTH) {
+    previewStr = previewStr.substring(0, PREVIEW_MAX_LENGTH) + '...';
+  }
+
+  return {
+    eventId: event.eventId,
+    eventType: event.eventType,
+    preview: previewStr,
+  };
 }
 
 export function registerDebugRoutes(server: FastifyInstance, context: ApiContext): void {
@@ -68,12 +126,15 @@ export function registerDebugRoutes(server: FastifyInstance, context: ApiContext
       ? events[events.length - 1]
       : null;
 
+    const redactedPreviews = events.slice(0, 10).map(createRedactedPreview);
+
     const response: ReplayResponse = {
       eventCount,
       transcriptCount,
       runRefs: Array.from(runRefs),
       approvalRefs: Array.from(approvalRefs),
       lastEventId: lastEvent?.eventId ?? null,
+      redactedPreviews,
     };
 
     return reply.code(200).send({ data: response } as unknown as ReplayResponse);

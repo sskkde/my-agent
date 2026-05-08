@@ -1,5 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { createWebSearchTool, type WebSearchParams, type WebSearchResult } from '../../../src/tools/builtins/web-search.js';
+import { createWebSearchTool, type WebSearchParams } from '../../../src/tools/builtins/web-search.js';
+import type { WebSearchResult } from '../../../src/search/types.js';
 import type { ToolExecutionContext } from '../../../src/tools/types.js';
 
 function createToolContext(): ToolExecutionContext {

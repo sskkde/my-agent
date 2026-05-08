@@ -110,6 +110,21 @@ Copy `.env.example` to `.env`. Key vars:
 - `DATABASE_PATH` - SQLite file path (default: `./data/app.db`)
 - `OPENROUTER_API_KEY` / `OLLAMA_BASE_URL` - LLM providers
 
+### Web Search Environment Variables
+- `WEB_SEARCH_BACKEND` - Backend selection: `auto` (default) | `searxng` | `tavily` | `remote` | `playwright` | `auto-browser` | `none`
+- `SEARXNG_BASE_URL` - SearXNG instance URL (lightweight provider)
+- `TAVILY_API_KEY` - Tavily API key (lightweight provider)
+- `TAVILY_BASE_URL` - Optional custom Tavily endpoint
+- `WEB_SEARCH_API_URL` - Legacy remote search API URL
+- `WEB_SEARCH_API_KEY` - Legacy remote API key
+
+### Search LLM Config Fields
+AgentConfig supports dedicated search LLM fields:
+- `searchLlmProviderId` - Provider ID for web search summarization (must support function calling)
+- `searchLlmModel` - Model ID for web search
+
+These fields follow same inheritance as `providerId`/`model`: null inherits from global, explicit string overrides.
+
 ## Ports
 
 | Service | Dev | E2E |

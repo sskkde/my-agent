@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "title": "Remote Search Result A",
+      "url": "https://remote.example.com/result-a",
+      "snippet": "Content from legacy remote search provider."
+    },
+    {
+      "title": "Remote Search Result B",
+      "url": "https://remote.example.com/result-b",
+      "snippet": "Another result from the remote endpoint."
+    }
+  ],
+  "total": 2,
+  "provider": "custom"
+}

@@ -20,6 +20,7 @@ import { createFileGrepTool } from './file-grep.js';
 import { createSessionListTool } from './session-list.js';
 import { createSessionHistoryTool } from './session-history.js';
 import { createWebFetchTool } from './web-fetch.js';
+import { createWebSearchTool } from './web-search.js';
 
 export interface BuiltInToolsConfig {
   artifactStore: ArtifactStore;
@@ -51,6 +52,7 @@ export function registerBuiltInTools(
   registry.register(createSessionListTool(sessionStore));
   registry.register(createSessionHistoryTool(sessionStore, transcriptStore));
   registry.register(createWebFetchTool());
+  registry.register(createWebSearchTool());
 }
 
 export {
@@ -68,4 +70,5 @@ export {
   createSessionListTool,
   createSessionHistoryTool,
   createWebFetchTool,
+  createWebSearchTool,
 };

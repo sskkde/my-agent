@@ -110,6 +110,19 @@ describe('Documentation and Runbook', () => {
       expect(runbook).toContain('Description');
     });
 
+    it('should contain web search backend configuration', () => {
+      const runbook = readFileSync(runbookPath, 'utf-8');
+      expect(runbook).toContain('WEB_SEARCH_BACKEND');
+      expect(runbook).toContain('SEARXNG_BASE_URL');
+      expect(runbook).toContain('TAVILY_API_KEY');
+    });
+
+    it('should contain web search troubleshooting', () => {
+      const runbook = readFileSync(runbookPath, 'utf-8');
+      expect(runbook).toContain('Web Search');
+      expect(runbook).toContain('PROVIDER_NOT_CONFIGURED');
+    });
+
     it('should contain troubleshooting guide', () => {
       const runbook = readFileSync(runbookPath, 'utf-8');
       expect(runbook).toContain('Common Issues');
@@ -179,6 +192,14 @@ describe('Documentation and Runbook', () => {
           expect(isValid, `Line "${line}" may contain a real secret`).toBe(true);
         }
       }
+    });
+
+    it('should contain web search environment variables', () => {
+      const envExample = readFileSync(envExamplePath, 'utf-8');
+      expect(envExample).toContain('WEB_SEARCH_BACKEND');
+      expect(envExample).toContain('SEARXNG_BASE_URL');
+      expect(envExample).toContain('TAVILY_API_KEY');
+      expect(envExample).toContain('WEB_SEARCH_API_URL');
     });
   });
 

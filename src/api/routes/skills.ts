@@ -51,6 +51,12 @@ const BUILTIN_SKILLS: SkillSummary[] = [
     type: 'builtin',
     enabled: true,
   },
+  {
+    skillId: 'web.search',
+    name: 'web.search',
+    type: 'builtin',
+    enabled: true,
+  },
 ];
 
 export function registerSkillRoutes(server: FastifyInstance, _context: ApiContext): void {

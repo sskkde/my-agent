@@ -1,5 +1,12 @@
 import type { ToolDefinition, ToolHandler, ToolExecutionContext, ToolExecutionResult } from '../types.js';
+import type { WebSearchResult, SearchBackend, SearchErrorCode } from '../../search/types.js';
+import type { Browser } from 'playwright';
 import { validateTimeout } from './web-safety.js';
+import { resolveSearchBackend } from '../../search/backend-resolver.js';
+import { normalizeSearXNGResponse } from '../../search/providers/searxng.js';
+import { normalizeTavilyResponse } from '../../search/providers/tavily.js';
+import { normalizeLegacyRemoteResponse } from '../../search/providers/legacy-remote.js';
+import { searchWithDuckDuckGoBrowser } from '../../search/browser/duckduckgo-provider.js';
 
 export interface WebSearchParams {
   query: string;
@@ -14,19 +21,12 @@ export interface WebSearchResultItem {
   source?: string;
 }
 
-export interface WebSearchResult {
-  query: string;
-  results: WebSearchResultItem[];
-  total: number;
-  provider: string;
-  endpointHost: string;
-}
-
 export interface WebSearchToolConfig {
   endpointUrl?: string;
   apiKey?: string;
   provider?: string;
   fetchImpl?: typeof fetch;
+  browser?: Browser;
 }
 
 const DEFAULT_LIMIT = 5;
@@ -40,69 +40,12 @@ function normalizeLimit(limit: number | undefined): number {
   return Math.max(1, Math.min(Math.floor(limit), MAX_LIMIT));
 }
 
-function getStringField(record: Record<string, unknown>, keys: string[]): string | undefined {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value;
-    }
+function getBackendFromEnv(): SearchBackend {
+  const backendEnv = process.env.WEB_SEARCH_BACKEND;
+  if (backendEnv === 'searxng' || backendEnv === 'tavily' || backendEnv === 'remote' || backendEnv === 'playwright' || backendEnv === 'auto-browser' || backendEnv === 'none') {
+    return backendEnv;
   }
-
-  return undefined;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
-
-function extractResultArray(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  const record = asRecord(payload);
-  if (!record) {
-    return [];
-  }
-
-  const directCandidates = [record.results, record.items, record.organic, record.webPages];
-  for (const candidate of directCandidates) {
-    if (Array.isArray(candidate)) {
-      return candidate;
-    }
-  }
-
-  const web = asRecord(record.web);
-  if (web && Array.isArray(web.results)) {
-    return web.results;
-  }
-
-  const webPages = asRecord(record.webPages);
-  if (webPages && Array.isArray(webPages.value)) {
-    return webPages.value;
-  }
-
-  return [];
-}
-
-function normalizeSearchItem(item: unknown): WebSearchResultItem | undefined {
-  const record = asRecord(item);
-  if (!record) {
-    return undefined;
-  }
-
-  const title = getStringField(record, ['title', 'name']);
-  const url = getStringField(record, ['url', 'link', 'href']);
-  const snippet = getStringField(record, ['snippet', 'description', 'content', 'summary']) ?? '';
-
-  if (!title || !url) {
-    return undefined;
-  }
-
-  const source = getStringField(record, ['source', 'displayLink', 'siteName']);
-  return source ? { title, url, snippet, source } : { title, url, snippet };
+  return 'auto';
 }
 
 function buildSearchUrl(endpointUrl: string, query: string, limit: number): URL {
@@ -120,6 +63,240 @@ function buildSearchUrl(endpointUrl: string, query: string, limit: number): URL 
   }
 
   return url;
+}
+
+async function fetchWithSearXNG(
+  baseUrl: string,
+  query: string,
+  limit: number,
+  timeoutMs: number,
+  fetchImpl: typeof fetch
+): Promise<{ success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string }> {
+  const searchUrl = buildSearchUrl(baseUrl, query, limit);
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetchImpl(searchUrl, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; WebSearchTool/1.0)',
+      },
+    });
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        errorCode: 'PROVIDER_ERROR',
+        message: `SearXNG returned HTTP ${response.status}`,
+      };
+    }
+    
+    const payload = await response.json() as unknown;
+    const result = normalizeSearXNGResponse(payload, baseUrl);
+    
+    // Apply limit to results
+    result.results = result.results.slice(0, limit);
+    result.total = result.results.length;
+    
+    return { success: true, result };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        errorCode: 'TIMEOUT',
+        message: `SearXNG request timed out after ${timeoutMs}ms`,
+      };
+    }
+    return {
+      success: false,
+      errorCode: 'SEARCH_FAILED',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchWithTavily(
+  apiKey: string,
+  query: string,
+  limit: number,
+  timeoutMs: number,
+  fetchImpl: typeof fetch,
+  baseUrl?: string
+): Promise<{ success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string }> {
+  const tavilyUrl = baseUrl ?? 'https://api.tavily.com/search';
+  const searchUrl = new URL(tavilyUrl);
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetchImpl(searchUrl, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'Mozilla/5.0 (compatible; WebSearchTool/1.0)',
+      },
+      body: JSON.stringify({
+        query,
+        max_results: limit,
+      }),
+    });
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        errorCode: 'PROVIDER_ERROR',
+        message: `Tavily returned HTTP ${response.status}`,
+      };
+    }
+    
+    const payload = await response.json() as unknown;
+    const result = normalizeTavilyResponse(payload, baseUrl);
+    
+    // Apply limit to results
+    result.results = result.results.slice(0, limit);
+    result.total = result.results.length;
+    
+    return { success: true, result };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        errorCode: 'TIMEOUT',
+        message: `Tavily request timed out after ${timeoutMs}ms`,
+      };
+    }
+    return {
+      success: false,
+      errorCode: 'SEARCH_FAILED',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchWithLegacyRemote(
+  endpointUrl: string,
+  apiKey: string | undefined,
+  query: string,
+  limit: number,
+  timeoutMs: number,
+  fetchImpl: typeof fetch,
+  provider?: string
+): Promise<{ success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string }> {
+  let searchUrl: URL;
+  try {
+    searchUrl = buildSearchUrl(endpointUrl, query, limit);
+  } catch {
+    return {
+      success: false,
+      errorCode: 'INVALID_ENDPOINT',
+      message: 'WEB_SEARCH_API_URL must be a valid URL',
+    };
+  }
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'User-Agent': 'Mozilla/5.0 (compatible; WebSearchTool/1.0)',
+    };
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+    
+    const response = await fetchImpl(searchUrl, {
+      method: 'GET',
+      signal: controller.signal,
+      headers,
+    });
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        errorCode: 'PROVIDER_ERROR',
+        message: `Remote search returned HTTP ${response.status}`,
+      };
+    }
+    
+    const payload = await response.json() as unknown;
+    const result = normalizeLegacyRemoteResponse(payload, endpointUrl, provider);
+    
+    // Apply limit to results
+    result.results = result.results.slice(0, limit);
+    result.total = result.results.length;
+    
+    return { success: true, result };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        errorCode: 'TIMEOUT',
+        message: `Remote request timed out after ${timeoutMs}ms`,
+      };
+    }
+    return {
+      success: false,
+      errorCode: 'SEARCH_FAILED',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchWithPlaywright(
+  query: string,
+  limit: number,
+  timeoutMs: number,
+  browser?: Browser
+): Promise<{ success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string }> {
+  if (!browser) {
+    return {
+      success: false,
+      errorCode: 'BROWSER_SEARCH_UNAVAILABLE',
+      message: 'Playwright browser not available',
+    };
+  }
+  
+  const browserResult = await searchWithDuckDuckGoBrowser({
+    query,
+    browser,
+    timeoutMs,
+  });
+  
+  if (!browserResult.success) {
+    return {
+      success: false,
+      errorCode: browserResult.errorCode ?? 'BROWSER_SEARCH_UNAVAILABLE',
+      message: 'Browser search failed',
+    };
+  }
+  
+  // Apply limit to results
+  const results = browserResult.results?.slice(0, limit) ?? [];
+  
+  return {
+    success: true,
+    result: {
+      query,
+      results,
+      total: results.length,
+      provider: browserResult.provider ?? 'duckduckgo-browser',
+      endpointHost: browserResult.endpointHost ?? 'duckduckgo.com',
+    },
+  };
 }
 
 export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefinition {
@@ -141,100 +318,116 @@ export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefin
       };
     }
 
-    const endpointUrl = config.endpointUrl ?? process.env.WEB_SEARCH_API_URL;
-    if (!endpointUrl) {
-      return {
-        success: false,
-        error: {
-          code: 'PROVIDER_NOT_CONFIGURED',
-          message: 'WEB_SEARCH_API_URL is not configured',
-          recoverable: true,
-        },
-      };
-    }
-
     const limit = normalizeLimit(typedParams.limit);
     const timeoutMs = validateTimeout(typedParams.timeoutMs);
-    let searchUrl: URL;
-    try {
-      searchUrl = buildSearchUrl(endpointUrl, query, limit);
-    } catch {
+    const fetchImpl = config.fetchImpl ?? globalThis.fetch;
+
+    // Resolve backend from environment and config
+    const backend = getBackendFromEnv();
+    const searxngBaseUrl = process.env.SEARXNG_BASE_URL;
+    const tavilyApiKey = process.env.TAVILY_API_KEY;
+    const tavilyBaseUrl = process.env.TAVILY_BASE_URL;
+    const remoteApiUrl = config.endpointUrl ?? process.env.WEB_SEARCH_API_URL;
+    const remoteApiKey = config.apiKey ?? process.env.WEB_SEARCH_API_KEY;
+
+    const backendResult = resolveSearchBackend({
+      backend,
+      searxngBaseUrl,
+      tavilyApiKey,
+      remoteApiUrl,
+    });
+
+    if (backendResult.selectedBackend === 'none') {
       return {
         success: false,
         error: {
-          code: 'INVALID_ENDPOINT',
-          message: 'WEB_SEARCH_API_URL must be a valid URL',
+          code: backendResult.errorCode ?? 'PROVIDER_NOT_CONFIGURED',
+          message: 'No search provider configured',
           recoverable: true,
         },
       };
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    // Execute search based on selected backend
+    let searchResult: { success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string };
 
-    try {
-      const fetchImpl = config.fetchImpl ?? globalThis.fetch;
-      const apiKey = config.apiKey ?? process.env.WEB_SEARCH_API_KEY;
-      const headers: Record<string, string> = {
-        Accept: 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; WebSearchTool/1.0)',
-      };
-      if (apiKey) {
-        headers.Authorization = `Bearer ${apiKey}`;
-      }
+    switch (backendResult.selectedBackend) {
+      case 'searxng':
+        if (!backendResult.baseUrl) {
+          return {
+            success: false,
+            error: {
+              code: 'PROVIDER_NOT_CONFIGURED',
+              message: 'SEARXNG_BASE_URL is not configured',
+              recoverable: true,
+            },
+          };
+        }
+        searchResult = await fetchWithSearXNG(backendResult.baseUrl, query, limit, timeoutMs, fetchImpl);
+        break;
 
-      const response = await fetchImpl(searchUrl, {
-        method: 'GET',
-        signal: controller.signal,
-        headers,
-      });
+      case 'tavily':
+        if (!tavilyApiKey) {
+          return {
+            success: false,
+            error: {
+              code: 'PROVIDER_NOT_CONFIGURED',
+              message: 'TAVILY_API_KEY is not configured',
+              recoverable: true,
+            },
+          };
+        }
+        searchResult = await fetchWithTavily(tavilyApiKey, query, limit, timeoutMs, fetchImpl, tavilyBaseUrl);
+        break;
 
-      if (!response.ok) {
+      case 'remote':
+        if (!backendResult.baseUrl) {
+          return {
+            success: false,
+            error: {
+              code: 'PROVIDER_NOT_CONFIGURED',
+              message: 'WEB_SEARCH_API_URL is not configured',
+              recoverable: true,
+            },
+          };
+        }
+        searchResult = await fetchWithLegacyRemote(backendResult.baseUrl, remoteApiKey, query, limit, timeoutMs, fetchImpl, config.provider);
+        break;
+
+      case 'playwright':
+        searchResult = await fetchWithPlaywright(query, limit, timeoutMs, config.browser);
+        break;
+
+      default:
         return {
           success: false,
           error: {
-            code: 'PROVIDER_ERROR',
-            message: `Search provider returned HTTP ${response.status}`,
+            code: 'PROVIDER_NOT_CONFIGURED',
+            message: 'No search provider configured',
             recoverable: true,
           },
         };
-      }
+    }
 
-      const payload = await response.json() as unknown;
-      const results = extractResultArray(payload)
-        .map(normalizeSearchItem)
-        .filter((item): item is WebSearchResultItem => item !== undefined)
-        .slice(0, limit);
-
-      const result: WebSearchResult = {
-        query,
-        results,
-        total: results.length,
-        provider: config.provider ?? 'custom',
-        endpointHost: searchUrl.hostname,
-      };
-
-      return {
-        success: true,
-        data: result,
-        resultPreview: `Found ${results.length} web results for "${query}"`,
-        structuredContent: result as unknown as Record<string, unknown>,
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    if (!searchResult.success) {
       return {
         success: false,
         error: {
-          code: error instanceof Error && error.name === 'AbortError' ? 'TIMEOUT' : 'SEARCH_FAILED',
-          message: error instanceof Error && error.name === 'AbortError'
-            ? `Search request timed out after ${timeoutMs}ms`
-            : errorMessage,
+          code: searchResult.errorCode,
+          message: searchResult.message,
           recoverable: true,
         },
       };
-    } finally {
-      clearTimeout(timeoutId);
     }
+
+    const result = searchResult.result;
+
+    return {
+      success: true,
+      data: result,
+      resultPreview: `Found ${result.results.length} web results for "${query}"`,
+      structuredContent: result as unknown as Record<string, unknown>,
+    };
   };
 
   return {

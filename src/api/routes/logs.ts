@@ -7,6 +7,7 @@ interface LogsQueryParams {
   sessionId?: string;
   sourceModule?: string;
   eventType?: string;
+  runRef?: string;
   limit?: string;
   offset?: string;
 }
@@ -97,6 +98,7 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
       sessionId,
       sourceModule,
       eventType,
+      runRef,
       limit: limitStr,
       offset: offsetStr,
     } = request.query;
@@ -109,6 +111,7 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
       sessionId,
       sourceModule,
       eventType,
+      runId: runRef,
       limit,
       offset,
     });
@@ -117,6 +120,7 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
       sessionId,
       sourceModule,
       eventType,
+      runId: runRef,
     });
 
     const logs = events.map(mapEventToLogEntry);

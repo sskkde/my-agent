@@ -20,7 +20,8 @@
     "test:web": "npm --prefix web test",
     "db:migrate": "tsx src/cli/migrate.ts",
     "db:health": "tsx src/cli/db-health.ts",
-    "db:backup": "tsx src/cli/db-backup.ts"
+    "db:backup": "tsx src/cli/db-backup.ts",
+    "install:playwright": "npx playwright install chromium"
   },
   "keywords": [
     "agent",
@@ -42,5 +43,8 @@
     "@fastify/cors": "^11.2.0",
     "better-sqlite3": "^12.9.0",
     "fastify": "^5.8.5"
+  },
+  "optionalDependencies": {
+    "playwright": "^1.59.1"
   }
 }

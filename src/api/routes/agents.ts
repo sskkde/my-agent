@@ -21,6 +21,7 @@ const BUILTIN_SKILL_IDS = [
   'transcript.search',
   'plan.patch',
   'docs.search',
+  'web.search',
 ];
 
 // Valid agent IDs (V1 only supports foreground.default)
@@ -71,6 +72,8 @@ function mergeConfigs(global: AgentConfig | null, userOverride: AgentConfig | nu
       : userOverride.repairAttempts,
     promptType: userOverride.promptType ?? global?.promptType ?? null,
     promptVersion: userOverride.promptVersion ?? global?.promptVersion ?? null,
+    searchLlmProviderId: userOverride.searchLlmProviderId ?? global?.searchLlmProviderId ?? null,
+    searchLlmModel: userOverride.searchLlmModel ?? global?.searchLlmModel ?? null,
     createdAt: userOverride.createdAt,
     updatedAt: userOverride.updatedAt,
   };
@@ -87,6 +90,8 @@ interface UpdateGlobalConfigRequest {
   allowedSkillIds?: string[];
   routingTimeoutMs?: number;
   repairAttempts?: number;
+  searchLlmProviderId?: string;
+  searchLlmModel?: string;
 }
 
 interface UpdateOverrideConfigRequest {
@@ -100,6 +105,8 @@ interface UpdateOverrideConfigRequest {
   allowedSkillIds?: string[] | null;
   routingTimeoutMs?: number;
   repairAttempts?: number;
+  searchLlmProviderId?: string | null;
+  searchLlmModel?: string | null;
 }
 
 function validateAgentId(agentId: string): boolean {
@@ -239,6 +246,27 @@ function validateConfigInput(
     return { valid: false, error: { code: 'INVALID_ENABLED', message: 'Enabled must be a boolean' } };
   }
 
+  // Validate searchLlmProviderId if provided
+  if (input.searchLlmProviderId !== undefined) {
+    if (input.searchLlmProviderId !== null) {
+      const provider = providerConfigStore.getById(input.searchLlmProviderId);
+      if (!provider) {
+        return { valid: false, error: { code: 'INVALID_PROVIDER_ID', message: 'Provider not found' } };
+      }
+      // Verify provider ownership for both global and user override
+      if (userId && provider.userId !== userId) {
+        return { valid: false, error: { code: 'PROVIDER_ACCESS_DENIED', message: 'Provider does not belong to the current user' } };
+      }
+    }
+  }
+
+  // Validate searchLlmModel if provided
+  if (input.searchLlmModel !== undefined && input.searchLlmModel !== null) {
+    if (typeof input.searchLlmModel !== 'string' || input.searchLlmModel.trim().length === 0) {
+      return { valid: false, error: { code: 'INVALID_MODEL', message: 'Model must be a non-empty string' } };
+    }
+  }
+
   return { valid: true };
 }
 
@@ -318,7 +346,7 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         return reply.code(400).send(error);
       }
 
-      const validation = validateConfigInput(request.body, providerConfigStore, null, true);
+      const validation = validateConfigInput(request.body, providerConfigStore, userId, true);
       if (!validation.valid) {
         const error = ApiErrorFactory.badRequest(validation.error!.message);
         error.error.code = validation.error!.code;
@@ -336,6 +364,8 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         allowedSkillIds,
         routingTimeoutMs,
         repairAttempts,
+        searchLlmProviderId,
+        searchLlmModel,
       } = request.body;
 
       try {
@@ -354,6 +384,8 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
           allowedSkillIds: allowedSkillIds ?? existingGlobal?.allowedSkillIds ?? [],
           routingTimeoutMs: routingTimeoutMs ?? existingGlobal?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS,
           repairAttempts: repairAttempts ?? existingGlobal?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS,
+          searchLlmProviderId: searchLlmProviderId !== undefined ? searchLlmProviderId : existingGlobal?.searchLlmProviderId ?? undefined,
+          searchLlmModel: searchLlmModel !== undefined ? searchLlmModel : existingGlobal?.searchLlmModel ?? undefined,
         });
 
         return reply.code(200).send({ data: sanitizeConfigForResponse(config) });
@@ -401,6 +433,8 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         allowedSkillIds,
         routingTimeoutMs,
         repairAttempts,
+        searchLlmProviderId,
+        searchLlmModel,
       } = request.body;
 
       try {
@@ -437,6 +471,12 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
             : existingOverride?.allowedSkillIds ?? null,
           routingTimeoutMs: routingTimeoutMs ?? existingOverride?.routingTimeoutMs,
           repairAttempts: repairAttempts ?? existingOverride?.repairAttempts,
+          searchLlmProviderId: searchLlmProviderId !== undefined 
+            ? searchLlmProviderId 
+            : existingOverride?.searchLlmProviderId ?? null,
+          searchLlmModel: searchLlmModel !== undefined 
+            ? searchLlmModel 
+            : existingOverride?.searchLlmModel ?? null,
         });
 
         return reply.code(200).send({ data: sanitizeConfigForResponse(config) });

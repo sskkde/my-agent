@@ -15,17 +15,22 @@ import {
   createDocsConnectorAdapter,
   DocsConnectorAdapter,
 } from './docs-connector.js';
+import {
+  GitHubConnectorAdapter,
+} from '../github/github-connector.js';
 
 export * from './gmail-connector.js';
 export * from './calendar-connector.js';
 export * from './contacts-connector.js';
 export * from './docs-connector.js';
+export { GitHubConnectorAdapter } from '../github/github-connector.js';
 
 export interface MockConnectors {
   gmail: GmailConnectorAdapter;
   calendar: CalendarConnectorAdapter;
   contacts: ContactsConnectorAdapter;
   docs: DocsConnectorAdapter;
+  github?: GitHubConnectorAdapter;
 }
 
 export function createMockConnectors(): MockConnectors {
@@ -65,4 +70,5 @@ export const MOCK_CONNECTOR_TYPES = {
   CALENDAR: 'calendar',
   CONTACTS: 'contacts',
   DOCS: 'docs',
+  GITHUB: 'github',
 } as const;
