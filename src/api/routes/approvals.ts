@@ -5,7 +5,7 @@ import type { ApiContext } from '../context.js';
 import { APPROVAL_STATES } from '../../storage/approval-store.js';
 
 export function registerApprovalRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get<{ Reply: { data: ApprovalsResponse } }>('/api/approvals', async (request): Promise<{ data: ApprovalsResponse }> => {
+  server.get<{ Reply: ApprovalsResponse }>('/api/approvals', async (request): Promise<ApprovalsResponse> => {
     const userId = request.user?.userId ?? 'local-user';
     const userApprovals = context.stores.approvalStore.findByUser(userId);
 
@@ -28,10 +28,8 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
     }));
 
     return {
-      data: {
-        approvals,
-        total: approvals.length,
-      },
+      approvals,
+      total: approvals.length,
     };
   });
 

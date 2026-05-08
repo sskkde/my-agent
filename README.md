@@ -9,6 +9,34 @@ Before you begin, ensure you have the following installed:
 - **Node.js** (v20 or later) - Required for running the TypeScript application
 - **SQLite3** - Database for persistent storage
 - **npm** - Package manager (comes with Node.js)
+- **Docker** (optional) - For containerized deployment
+
+## Docker 快速开始
+
+使用 Docker Compose 可以快速启动整个平台：
+
+```bash
+# 构建镜像
+docker compose build
+
+# 启动服务
+docker compose up -d
+
+# 查看日志
+docker compose logs -f
+
+# 停止服务
+docker compose down
+```
+
+启动后访问：
+- **API**: http://localhost:3003
+- **Web UI**: http://localhost:3002
+
+Docker 配置说明：
+- 数据持久化存储在 `agent_data` volume
+- API 服务包含健康检查，确保服务就绪后再启动 Web
+- 默认禁用 Web 搜索（`WEB_SEARCH_BACKEND=none`），可在 `docker-compose.yml` 中配置
 
 ## Installation
 
@@ -113,6 +141,86 @@ npm run test:web
 
 - The MVP is local-only with no authentication
 - Server-Sent Events (SSE) are used for real-time task updates
+
+## MVP 功能
+
+平台提供以下核心功能：
+
+### 会话管理
+
+- 创建和管理对话会话
+- 会话历史记录和上下文保持
+- 实时消息流（SSE）
+- 会话元数据管理
+
+### 审批流程
+
+- 工具调用前的权限审批
+- 审批请求和响应机制
+- 可配置的审批策略
+- 审批历史记录
+
+### 工作流
+
+- 多步骤任务编排
+- 工作流定义和执行
+- 步骤依赖管理
+- 错误处理和重试
+
+### 触发器
+
+- 事件驱动的自动化
+- 触发器规则配置
+- 条件匹配和执行
+- 触发器日志
+
+## 开发指南
+
+### 本地开发
+
+```bash
+# 安装依赖
+npm install
+npm --prefix web install
+
+# 运行数据库迁移
+npm run db:migrate
+
+# 启动 API 服务（端口 3003）
+npm run start:api
+
+# 启动前端开发服务（端口 3002）
+npm run dev:web
+```
+
+### 测试
+
+```bash
+# 运行所有测试
+npm test
+
+# 运行单元测试
+npm run test:unit
+
+# 运行集成测试
+npm run test:integration
+
+# 运行 E2E 测试
+npm run test:e2e
+
+# 运行前端测试
+npm run test:web
+```
+
+### 类型检查
+
+```bash
+# 后端类型检查
+npm run typecheck
+
+# 前端类型检查
+npm --prefix web run typecheck
+```
 
 ## Testing
 
