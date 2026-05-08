@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: webPort,
-    host: 'localhost',
+    host: process.env.VITE_HOST ?? 'localhost',
     strictPort: true,
     allowedHosts: ['agent.nas-1.club'],
     proxy: {
