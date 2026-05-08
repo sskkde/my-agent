@@ -55,3 +55,6 @@ web/playwright/.auth/*.json
 # Agent local state
 .sisyphus/
 agent/.sisyphus/
+
+# Agent configuration (local only)
+AGENTS.md
