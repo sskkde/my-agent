@@ -81,6 +81,18 @@ function buildActiveWorkSummary(state: ForegroundSessionState): string {
   return parts.length > 0 ? `- ${parts.join('\n- ')}` : '- No active work';
 }
 
+function buildConversationHistorySummary(state: ForegroundSessionState): string {
+  const history = state.conversationHistory ?? [];
+  if (history.length === 0) {
+    return '- No prior conversation in this session';
+  }
+
+  return history
+    .slice(-20)
+    .map((entry) => `- ${entry.role}: ${entry.message}`)
+    .join('\n');
+}
+
 /**
  * Build the dynamic routing prompt (user message content)
  */
@@ -93,6 +105,7 @@ function buildDynamicRoutingPrompt(
   const sessionContext = hydratedSession.sessionContext;
 
   const activeWorkSummary = buildActiveWorkSummary(state);
+  const conversationHistorySummary = buildConversationHistorySummary(state);
   const policySummary = `Steps threshold: ${effectivePolicy.estimatedStepsGte}, Max complexity: ${effectivePolicy.maxComplexity}, Allowed tools: ${effectivePolicy.allowedToolCategories.join(', ') || 'none'}`;
   const personaPrompt = currentPersona.directDelegationPolicy ? `Persona: ${currentPersona.name}` : '';
 
@@ -120,6 +133,9 @@ SESSION STATE:
 - Active planner runs: ${sessionContext.activePlannerRunIds.length}
 - Active background runs: ${sessionContext.activeBackgroundRunIds.length}
 ${activeWorkSummary}
+
+RECENT CONVERSATION HISTORY:
+${conversationHistorySummary}
 
 POLICY: ${policySummary}
 ${personaPrompt}

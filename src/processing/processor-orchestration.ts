@@ -29,6 +29,7 @@ import type { LongTermMemoryScheduler } from '../memory/long-term-memory-schedul
 import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js';
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js';
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js';
+import type { SearchSubagent, SearchSubagentInput, SearchSubagentResult } from '../search/search-subagent.js';
 
 /**
  * Known tool IDs from the catalog - used for server-side validation
@@ -51,6 +52,8 @@ const KNOWN_TOOL_IDS: string[] = [
   'web.fetch',
   'web.search',
 ];
+
+const CONVERSATION_HISTORY_TURN_LIMIT = 20;
 
 /**
  * Filter suggested tools against AgentConfig allowlist and known catalog.
@@ -134,6 +137,8 @@ export interface ProcessorOrchestrationDeps {
   };
   /** Scheduler for async long-term memory extraction after transcript persistence */
   memoryExtractionScheduler?: LongTermMemoryScheduler;
+  /** Search subagent for pure web.search dispatch */
+  searchSubagent?: SearchSubagent;
 }
 
 /**
@@ -268,7 +273,8 @@ export function createOrchestrationProcessor(
             defaultPersonaName,
             resolvedProvider,
             resolvedModelInner,
-            agentConfig ?? undefined
+            agentConfig ?? undefined,
+            buildConversationHistory(deps.transcriptStore, input.sessionId)
           );
 
           emitStatus(deps, buildStatusPayload(
@@ -367,7 +373,8 @@ function buildForegroundSessionState(
   personaName: string,
   resolvedProvider?: string,
   resolvedModel?: string,
-  agentConfig?: AgentConfig
+  agentConfig?: AgentConfig,
+  conversationHistory?: ForegroundSessionState['conversationHistory']
 ): ForegroundSessionState {
   return {
     hydratedSession,
@@ -389,7 +396,60 @@ function buildForegroundSessionState(
     agentConfig,
     resolvedProvider,
     resolvedModel,
+    conversationHistory,
   };
+}
+
+function buildConversationHistory(
+  transcriptStore: TranscriptStore,
+  sessionId: string
+): ForegroundSessionState['conversationHistory'] {
+  const transcripts = transcriptStore
+    .findBySession(sessionId)
+    .slice(-CONVERSATION_HISTORY_TURN_LIMIT);
+
+  const history: NonNullable<ForegroundSessionState['conversationHistory']> = [];
+
+  for (const turn of transcripts) {
+    const userMessage = turn.input.userMessageSummary?.trim();
+    let hasUserMessage = false;
+
+    if (userMessage) {
+      history.push({
+        turnId: turn.turnId,
+        role: 'user',
+        message: userMessage,
+        timestamp: turn.input.inboundTimestamp ?? turn.createdAt,
+      });
+      hasUserMessage = true;
+    }
+
+    for (const visibleMessage of turn.output.visibleMessages) {
+      const content = visibleMessage.content.trim();
+      if (!content) {
+        continue;
+      }
+
+      if (visibleMessage.role === 'assistant') {
+        history.push({
+          turnId: turn.turnId,
+          role: 'assistant',
+          message: content,
+          timestamp: turn.createdAt,
+        });
+      } else if (visibleMessage.role === 'user' && !hasUserMessage) {
+        history.push({
+          turnId: turn.turnId,
+          role: 'user',
+          message: content,
+          timestamp: turn.input.inboundTimestamp ?? turn.createdAt,
+        });
+        hasUserMessage = true;
+      }
+    }
+  }
+
+  return history.length > 0 ? history : undefined;
 }
 
 async function handleDecisionRoute(
@@ -498,6 +558,42 @@ async function handleDispatchToolRoute(
       'None of the suggested tools are allowed for this user',
       { route: decision.route, originalSuggestions: decision.suggestedTools }
     );
+  }
+  // EXACT-MATCH BRANCH: Invoke SearchSubagent for pure web.search
+  // Metis guardrail: Only invoke when filteredTools.length === 1 && filteredTools[0] === 'web.search'
+  if (filteredTools.length === 1 && filteredTools[0] === 'web.search' && deps.searchSubagent) {
+    // Get effective AgentConfig for user
+    const agentConfig = deps.agentConfigStore?.getByUser(input.userId);
+    
+    if (agentConfig && agentConfig.searchLlmProviderId && agentConfig.searchLlmModel) {
+      try {
+        const searchInput: SearchSubagentInput = {
+          query: input.text,
+          userId: input.userId,
+          sessionId: input.sessionId,
+        };
+        
+        const searchResult: SearchSubagentResult = await deps.searchSubagent.execute(searchInput);
+        
+        if (searchResult.success) {
+          return createSuccessOutput(correlationId, {
+            text: searchResult.answer,
+            route: decision.route,
+            data: {
+              reason: decision.reason,
+              suggestedTools: filteredTools,
+              searchSubagentMetadata: searchResult.metadata,
+            },
+          });
+        } else {
+          // SearchSubagent failed - fall through to default behavior
+          // Log the failure but don't block the request
+        }
+      } catch (error) {
+        // SearchSubagent threw an error - fall through to default behavior
+        // Log the error but don't block the request
+      }
+    }
   }
 
   const activeTools: ProcessingToolStatus[] = filteredTools.map(toolId => ({

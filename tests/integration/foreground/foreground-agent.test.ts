@@ -246,6 +246,43 @@ describe('Foreground Conversation Agent', () => {
       expect(prompt).toContain('suggestedTools must use only the exact tool IDs');
     });
 
+    it('includes recent conversation history in the routing prompt', async () => {
+      mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
+        route: 'answer_directly',
+        reason: 'Uses prior context',
+        userVisibleResponse: 'Your codename is Mercury.',
+      }));
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+
+      const state: ForegroundSessionState = {
+        ...baseState,
+        conversationHistory: [
+          {
+            turnId: 'turn-history-1',
+            role: 'user',
+            message: 'My project codename is Mercury.',
+            timestamp: '2024-01-15T09:00:00.000Z',
+          },
+          {
+            turnId: 'turn-history-1',
+            role: 'assistant',
+            message: 'I will remember Mercury for this session.',
+            timestamp: '2024-01-15T09:00:10.000Z',
+          },
+        ],
+      };
+
+      await agent.processMessage(createInput('What is the codename?'), state);
+
+      const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
+      const prompt = request?.messages.find((message) => message.role === 'user')?.content;
+
+      expect(prompt).toContain('RECENT CONVERSATION HISTORY');
+      expect(prompt).toContain('- user: My project codename is Mercury.');
+      expect(prompt).toContain('- assistant: I will remember Mercury for this session.');
+      expect(prompt).toContain('USER MESSAGE: "What is the codename?"');
+    });
+
     it('should route simple read task to dispatch_tool', async () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
@@ -616,6 +653,8 @@ describe('Foreground Conversation Agent', () => {
         repairAttempts: 1,
         promptType: null,
         promptVersion: null,
+        searchLlmProviderId: null,
+        searchLlmModel: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -637,6 +676,8 @@ describe('Foreground Conversation Agent', () => {
         repairAttempts: 2,
         promptType: null,
         promptVersion: null,
+        searchLlmProviderId: null,
+        searchLlmModel: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -729,6 +770,8 @@ describe('Foreground Conversation Agent', () => {
         repairAttempts: 1,
         promptType: null,
         promptVersion: null,
+        searchLlmProviderId: null,
+        searchLlmModel: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -888,6 +931,8 @@ describe('Foreground Conversation Agent', () => {
           repairAttempts: 1,
           promptType: null,
           promptVersion: null,
+          searchLlmProviderId: null,
+          searchLlmModel: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -930,6 +975,8 @@ describe('Foreground Conversation Agent', () => {
           repairAttempts: 1,
           promptType: null,
           promptVersion: null,
+          searchLlmProviderId: null,
+          searchLlmModel: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -972,6 +1019,8 @@ describe('Foreground Conversation Agent', () => {
           repairAttempts: 1,
           promptType: null,
           promptVersion: null,
+          searchLlmProviderId: null,
+          searchLlmModel: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -1086,6 +1135,8 @@ describe('Foreground Conversation Agent', () => {
           repairAttempts: 1,
           promptType: null,
           promptVersion: null,
+          searchLlmProviderId: null,
+          searchLlmModel: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -1152,6 +1203,8 @@ describe('Foreground Conversation Agent', () => {
           repairAttempts: 1,
           promptType: null,
           promptVersion: null,
+          searchLlmProviderId: null,
+          searchLlmModel: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -1190,6 +1243,8 @@ describe('Foreground Conversation Agent', () => {
           repairAttempts: 1,
           promptType: null,
           promptVersion: null,
+          searchLlmProviderId: null,
+          searchLlmModel: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },

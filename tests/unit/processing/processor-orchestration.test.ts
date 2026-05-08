@@ -752,6 +752,72 @@ describe('ProcessorOrchestration', () => {
       expect(foregroundState.currentPersona.name).toBe('Assistant');
       expect(foregroundState.effectivePolicy.estimatedStepsGte).toBe(3);
     });
+
+    it('should include prior transcript turns as conversation history', async () => {
+      const correlationId = 'corr-history-555';
+      vi.mocked(mockTranscriptStore.findBySession).mockReturnValue([
+        {
+          turnId: 'turn-history-1',
+          sessionId: 'session-history',
+          userId: 'user-history',
+          input: {
+            userMessageSummary: 'My project codename is Mercury.',
+            inboundTimestamp: '2024-01-15T09:00:00.000Z',
+          },
+          output: {
+            visibleMessages: [
+              {
+                messageId: 'msg-history-1-assistant',
+                role: 'assistant',
+                content: 'I will remember Mercury for this session.',
+              },
+            ],
+          },
+          visibility: 'public',
+          createdAt: '2024-01-15T09:00:10.000Z',
+        },
+      ]);
+
+      const mockDecision: ForegroundDecision = {
+        route: 'answer_directly',
+        requiresPlanner: false,
+        reason: 'Test history',
+        userVisibleResponse: 'Response',
+      };
+
+      vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue(mockDecision);
+
+      const processor = createOrchestrationProcessor({ deps });
+      const input: MessageProcessorInput = {
+        correlationId,
+        userId: 'user-history',
+        sessionId: 'session-history',
+        text: 'What is the codename?',
+        timestamp: '2024-01-15T12:00:00.000Z',
+        metadata: {},
+      };
+
+      await processor(input);
+
+      const callArgs = vi.mocked(mockForegroundAgent.processMessage).mock.calls[0];
+      const foregroundState = callArgs[1] as ForegroundSessionState;
+
+      expect(mockTranscriptStore.findBySession).toHaveBeenCalledWith('session-history');
+      expect(foregroundState.conversationHistory).toEqual([
+        {
+          turnId: 'turn-history-1',
+          role: 'user',
+          message: 'My project codename is Mercury.',
+          timestamp: '2024-01-15T09:00:00.000Z',
+        },
+        {
+          turnId: 'turn-history-1',
+          role: 'assistant',
+          message: 'I will remember Mercury for this session.',
+          timestamp: '2024-01-15T09:00:10.000Z',
+        },
+      ]);
+    });
   });
 
   describe('persona customization', () => {
@@ -1266,6 +1332,8 @@ describe('ProcessorOrchestration', () => {
         repairAttempts: 0,
         promptType: null,
         promptVersion: null,
+        searchLlmProviderId: null,
+        searchLlmModel: null,
         createdAt: '2024-01-15T10:00:00.000Z',
         updatedAt: '2024-01-15T10:00:00.000Z',
       };
