@@ -28,10 +28,8 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
     }));
 
     return {
-      data: {
-        approvals,
-        total: approvals.length,
-      },
+      approvals,
+      total: approvals.length,
     };
   });
 
