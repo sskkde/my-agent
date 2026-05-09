@@ -11,7 +11,8 @@ export type TabId =
   | 'skills'
   | 'agents'
   | 'settings'
-  | 'workflows';
+  | 'workflows'
+  | 'approvals';
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings';
 
@@ -105,6 +106,13 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'Workflow builder',
         testId: 'tab-workflows',
         iconKey: 'gitBranch',
+      },
+      {
+        id: 'approvals',
+        label: '审批',
+        description: 'Approval management',
+        testId: 'tab-approvals',
+        iconKey: 'checkCircle',
       },
     ],
   },
