@@ -135,6 +135,14 @@ class ForegroundAgentImpl implements ForegroundAgent {
         }
       }
 
+      // Deterministic fallback when LLM fails
+      if (llmResult.error?.code === 'LLM_REQUEST_FAILED') {
+        const fallbackDecision = this.routeDeterministically(input.message, state, toolCatalog);
+        if (fallbackDecision) {
+          return fallbackDecision;
+        }
+      }
+
       // Both attempts failed - return graceful processing error
       return this.createDecision('answer_directly', {
         reason: 'LLM routing temporarily unavailable',
@@ -169,6 +177,49 @@ class ForegroundAgentImpl implements ForegroundAgent {
       complexity: options.complexity,
       suggestedTools: options.suggestedTools,
     };
+  }
+
+  private routeDeterministically(
+    userMessage: string,
+    state: ForegroundSessionState,
+    toolCatalog: string[]
+  ): ForegroundDecision | null {
+    const content = userMessage.toLowerCase().trim();
+
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
+
+    if (content.includes('search') || content.includes('find') || content.includes('look up') || content.includes('搜索') || content.includes('查找')) {
+      const suggestedTools = this.filterAllowedTools(['docs.search'], effectiveToolIds);
+      if (suggestedTools.length > 0) {
+        return this.createDecision('dispatch_tool', {
+          reason: 'Deterministic fallback: search-related query detected',
+          userVisibleResponse: 'Searching for information...',
+          suggestedTools,
+        });
+      }
+    }
+
+    if (content.includes('status') || content.includes('progress') || content.includes('what is running') || content.includes('状态')) {
+      const suggestedTools = this.filterAllowedTools(['status.query'], effectiveToolIds);
+      if (suggestedTools.length > 0) {
+        return this.createDecision('status_query', {
+          reason: 'Deterministic fallback: status query detected',
+          userVisibleResponse: 'Checking status...',
+          suggestedTools,
+        });
+      }
+    }
+
+    if (content.includes('plan') || content.includes('step') || content.includes('task') || content.includes('计划') || content.includes('步骤')) {
+      return this.createDecision('spawn_planner', {
+        reason: 'Deterministic fallback: planning-related query detected',
+        userVisibleResponse: 'Planning your task...',
+        requiresPlanner: true,
+      });
+    }
+
+    return null;
   }
 
   private getEffectiveConfig(state?: ForegroundSessionState): AgentConfig | undefined {
