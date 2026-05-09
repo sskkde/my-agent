@@ -1,4 +1,4 @@
-export type WorkflowStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait' | 'condition';
+export type WorkflowStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait' | 'condition' | 'branch' | 'parallel_group';
 
 export type WorkflowDraftStatus = 'draft' | 'validating' | 'invalid';
 
@@ -25,6 +25,22 @@ export interface WorkflowStepConfig {
     retryDelayMs: number;
   };
   onFailure?: 'fail_workflow' | 'continue' | 'retry';
+  // Condition step config
+  conditionExpression?: string;
+  trueNextStepId?: string;
+  falseNextStepId?: string;
+  // Branch step config
+  branches?: WorkflowBranch[];
+  // Parallel group config
+  parallelSteps?: WorkflowStep[];
+  maxParallel?: number;
+}
+
+export interface WorkflowBranch {
+  branchId: string;
+  name: string;
+  condition?: string;
+  steps: WorkflowStep[];
 }
 
 export interface WorkflowStep {
@@ -34,6 +50,7 @@ export interface WorkflowStep {
   description?: string;
   config: WorkflowStepConfig;
   nextStepId?: string;
+  selectedBranch?: string;
 }
 
 export interface WorkflowDraft {
@@ -91,4 +108,15 @@ export interface StepExecutionResult {
   success: boolean;
   output?: unknown;
   error?: string;
+  errorCategory?: 'undefined_variable' | 'expression_error' | 'execution_error';
+}
+
+export interface ConditionEvalResult {
+  conditionMet: boolean;
+  selectedBranch?: string;
+  error?: {
+    code: 'UNDEFINED_VARIABLE' | 'EXPRESSION_ERROR';
+    message: string;
+    variableName?: string;
+  };
 }
