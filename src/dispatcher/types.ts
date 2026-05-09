@@ -1,5 +1,7 @@
 import type { RuntimeActionState, Source, TargetRef, RuntimeAction as StorageRuntimeAction } from '../storage/runtime-action-store.js';
 import type { SourceModule, SensitivityLevel, RetentionClass, RelatedRefs } from '../storage/event-store.js';
+import type { TraceStore } from '../observability/types.js';
+import type { AuditRecorder } from '../observability/audit-types.js';
 
 export { RuntimeActionState, Source, TargetRef, SourceModule, SensitivityLevel, RetentionClass, RelatedRefs };
 
@@ -140,6 +142,7 @@ export interface DispatchContext {
   userId?: string;
   sessionId?: string;
   traceId?: string;
+  parentSpanId?: string;
   permissionContext?: PermissionContext;
   callerModule: string;
 }
@@ -197,6 +200,8 @@ export interface RuntimeDispatcherConfig {
   };
   adapterRegistry: AdapterRegistry;
   permissionHook?: PermissionHook;
+  traceStore?: TraceStore;
+  auditRecorder?: AuditRecorder;
 }
 
 export type DispatchEventType =

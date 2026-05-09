@@ -5,7 +5,7 @@
  */
 
 import type { ConnectorResponse } from '../types.js';
-import type { Recoverability } from '../../shared/errors.js';
+import type { Recoverability, RuntimeErrorCategory } from '../../shared/errors.js';
 
 // Normalized result status (aligned with ToolExecutionResult)
 export type NormalizedResultStatus =
@@ -46,6 +46,7 @@ export interface NormalizedError {
   code: string;
   message: string;
   recoverable: boolean;
+  category?: RuntimeErrorCategory;
 }
 
 // Normalized connector result
@@ -85,6 +86,30 @@ const ERROR_CODE_RECOVERABILITY: Record<string, Recoverability> = {
   'validation_error': 'non_recoverable',
   'unsupported_operation': 'non_recoverable',
 };
+
+const ERROR_CODE_CATEGORY: Record<string, RuntimeErrorCategory> = {
+  invalid_credentials: 'connector_auth_error',
+  token_expired: 'connector_auth_error',
+  token_revoked: 'connector_auth_error',
+  insufficient_permissions: 'permission_error',
+  permission_denied: 'permission_error',
+  approval_rejected: 'approval_rejected',
+  service_unavailable: 'system_internal_error',
+  internal_error: 'system_internal_error',
+  connection_failed: 'system_internal_error',
+  dns_failure: 'system_internal_error',
+  resource_not_found: 'connector_auth_error',
+  invalid_request: 'user_input_error',
+  validation_error: 'tool_validation_error',
+  unsupported_operation: 'tool_validation_error',
+  rate_limited: 'connector_rate_limited',
+  connector_timeout: 'timeout',
+  timeout: 'timeout',
+};
+
+function determineErrorCategory(code: string, fallback: RuntimeErrorCategory): RuntimeErrorCategory {
+  return ERROR_CODE_CATEGORY[code] ?? fallback;
+}
 
 /**
  * Determines recoverability based on error code
@@ -153,6 +178,7 @@ export function normalizeConnectorResponse(
           code: response.error?.code ?? 'auth_required',
           message: response.error?.message ?? 'Authentication required',
           recoverable: true,
+          category: 'connector_auth_error',
         },
         recoverability: 'recoverable_with_user',
         metadata: {
@@ -170,9 +196,10 @@ export function normalizeConnectorResponse(
         error: {
           code: 'permission_denied',
           message: response.error?.message ?? 'Permission denied',
-          recoverable: true,
+          recoverable: false,
+          category: 'permission_error',
         },
-        recoverability: 'recoverable_with_user',
+        recoverability: 'non_recoverable',
         metadata: { sensitivity },
       };
     
@@ -184,6 +211,7 @@ export function normalizeConnectorResponse(
           code: 'rate_limited',
           message: response.error?.message ?? 'Rate limit exceeded',
           recoverable: true,
+          category: 'connector_rate_limited',
         },
         recoverability: 'retryable_later',
         metadata: {
@@ -208,6 +236,7 @@ export function normalizeConnectorResponse(
           code: errorCode,
           message: errorMessage,
           recoverable: connectorRecoverable,
+          category: determineErrorCategory(errorCode, connectorRecoverable ? 'system_internal_error' : 'tool_execution_error'),
         },
         recoverability: determineErrorRecoverability(errorCode, connectorRecoverable),
         metadata: { sensitivity },
@@ -220,6 +249,7 @@ export function normalizeConnectorResponse(
           code: 'connector_timeout',
           message: response.error?.message ?? 'Connector operation timed out',
           recoverable: true,
+          category: 'timeout',
         },
         recoverability: 'retryable_later',
         metadata: { sensitivity },

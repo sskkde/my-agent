@@ -3,6 +3,8 @@
 
 import type { ToolDefinition, ToolCategory, ToolSensitivity } from '../tools/types.js';
 import type { ConnectorDefinition as StoreConnectorDefinition, ConnectorInstance as StoreConnectorInstance, ConnectorType, ConnectorStatus } from '../storage/connector-store.js';
+import type { TraceStore } from '../observability/types.js';
+import type { AuditRecorder } from '../observability/audit-types.js';
 
 // Re-export from storage for convenience
 export type { ConnectorType, ConnectorStatus };
@@ -164,6 +166,8 @@ export interface ConnectorRuntimeConfig {
   eventStore?: {
     append(event: unknown | unknown[]): void;
   };
+  traceStore?: TraceStore;
+  auditRecorder?: AuditRecorder;
 }
 
 // Connector Runtime Interface

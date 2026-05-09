@@ -3,6 +3,7 @@ import type { PermissionGrantStore } from '../storage/permission-grant-store.js'
 import type { ConnectorPolicyStore, ConnectorPolicy } from '../storage/connector-policy-store.js';
 import type { EventStore } from '../storage/event-store.js';
 import type { AuditRecorder } from '../observability/audit-types.js';
+import type { TraceStore } from '../observability/types.js';
 import {
   type PermissionCheckRequest,
   type PermissionDecision,
@@ -34,6 +35,7 @@ export interface PermissionEngineDeps {
   eventStore: EventStore;
   connectorPolicyStore?: ConnectorPolicyStore;
   auditRecorder?: AuditRecorder;
+  traceStore?: TraceStore;
 }
 
 export function createPermissionEngine(
@@ -186,6 +188,40 @@ export function createPermissionEngine(
       const { context, actionType, resource, operationType } = request;
       const correlationId = `corr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const timestamp = new Date().toISOString();
+      const spanId = `span_perm_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      deps.traceStore?.createSpan({
+        spanId,
+        traceId: correlationId,
+        spanType: 'permission_check',
+        module: 'permission',
+        operation: actionType,
+        status: 'started',
+        startTime: timestamp,
+        metadata: { permissionId: spanId, action: actionType, resource, operationType },
+      });
+
+      function finishDecision(decision: PermissionDecision): PermissionDecision {
+        deps.traceStore?.updateSpan(spanId, {
+          status: 'completed',
+          endTime: new Date().toISOString(),
+          durationMs: Date.now() - new Date(timestamp).getTime(),
+          metadata: { permissionId: spanId, action: actionType, resource, decision: decision.status },
+        });
+        deps.auditRecorder?.recordPermissionDecision({
+          decisionId: spanId,
+          userId: context.userId,
+          sessionId: context.sessionId,
+          actionType,
+          resource,
+          operationType,
+          decision: decision.status,
+          reason: decision.reason,
+          approvalId: decision.approvalRequest?.id ?? decision.requestId,
+          correlationId,
+        });
+        return decision;
+      }
 
       if (context.mode === 'hard_deny') {
         emitAuditEvent({
@@ -199,7 +235,7 @@ export function createPermissionEngine(
           correlationId,
           timestamp,
         });
-        return createDeniedDecision('Operation denied by hard_deny policy');
+        return finishDecision(createDeniedDecision('Operation denied by hard_deny policy'));
       }
 
       if (request.connectorId && request.connectorResource && request.connectorAction) {
@@ -240,11 +276,11 @@ export function createPermissionEngine(
             });
           }
 
-          return createDeniedDecision(
+          return finishDecision(createDeniedDecision(
             `Connector policy denies this operation`,
             policyCheck.policy.policyId,
             policyCheck.policy.auditLabel ?? undefined
-          );
+          ));
         }
 
         if (policyCheck.policy && policyCheck.policy.effect === 'allow') {
@@ -263,7 +299,7 @@ export function createPermissionEngine(
             connectorResource: request.connectorResource,
             connectorAction: request.connectorAction,
           });
-          return createAllowedDecision('Connector policy allows this operation');
+          return finishDecision(createAllowedDecision('Connector policy allows this operation'));
         }
       }
 
@@ -279,9 +315,9 @@ export function createPermissionEngine(
           correlationId,
           timestamp,
         });
-        return createDeniedDecision(
+        return finishDecision(createDeniedDecision(
           `Operation type '${operationType}' not allowed in mode '${context.mode}'`
-        );
+        ));
       }
 
       if (fullConfig.respectExistingGrants) {
@@ -313,11 +349,11 @@ export function createPermissionEngine(
                 connectorAction: request.connectorAction,
               });
 
-              return createDeniedDecision(
+              return finishDecision(createDeniedDecision(
                 `Connector hard-deny policy overrides bypass grant`,
                 policyCheck.policy.policyId,
                 policyCheck.policy.auditLabel ?? undefined
-              );
+              ));
             }
           }
 
@@ -333,7 +369,7 @@ export function createPermissionEngine(
             correlationId,
             timestamp,
           });
-          return createAllowedDecision('Operation allowed by existing grant', grantCheck.grant);
+          return finishDecision(createAllowedDecision('Operation allowed by existing grant', grantCheck.grant));
         }
       }
 
@@ -351,7 +387,7 @@ export function createPermissionEngine(
             correlationId,
             timestamp,
           });
-          return createDeniedDecision('Too many pending approval requests');
+          return finishDecision(createDeniedDecision('Too many pending approval requests'));
         }
 
         const approvalRequest = createApprovalRequest(request);
@@ -369,11 +405,11 @@ export function createPermissionEngine(
           timestamp,
         });
 
-        return createRequiresApprovalDecision(
+        return finishDecision(createRequiresApprovalDecision(
           'Write operation requires approval',
           approvalRequest.id,
           approvalRequest
-        );
+        ));
       }
 
       emitAuditEvent({
@@ -388,7 +424,7 @@ export function createPermissionEngine(
         timestamp,
       });
 
-      return createAllowedDecision('Operation allowed by permission mode');
+      return finishDecision(createAllowedDecision('Operation allowed by permission mode'));
     },
 
     checkConnectorPolicy(
