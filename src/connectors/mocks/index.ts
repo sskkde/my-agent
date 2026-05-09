@@ -16,6 +16,14 @@ import {
   DocsConnectorAdapter,
 } from './docs-connector.js';
 import {
+  createWebConnectorAdapter,
+  WebConnectorAdapter,
+} from './web-connector.js';
+import {
+  createSearchConnectorAdapter,
+  SearchConnectorAdapter,
+} from './search-connector.js';
+import {
   GitHubConnectorAdapter,
 } from '../github/github-connector.js';
 
@@ -23,6 +31,8 @@ export * from './gmail-connector.js';
 export * from './calendar-connector.js';
 export * from './contacts-connector.js';
 export * from './docs-connector.js';
+export * from './web-connector.js';
+export * from './search-connector.js';
 export { GitHubConnectorAdapter } from '../github/github-connector.js';
 
 export interface MockConnectors {
@@ -30,6 +40,8 @@ export interface MockConnectors {
   calendar: CalendarConnectorAdapter;
   contacts: ContactsConnectorAdapter;
   docs: DocsConnectorAdapter;
+  web: WebConnectorAdapter;
+  search: SearchConnectorAdapter;
   github?: GitHubConnectorAdapter;
 }
 
@@ -39,6 +51,8 @@ export function createMockConnectors(): MockConnectors {
     calendar: createCalendarConnectorAdapter(),
     contacts: createContactsConnectorAdapter(),
     docs: createDocsConnectorAdapter(),
+    web: createWebConnectorAdapter(),
+    search: createSearchConnectorAdapter(),
   };
 }
 
@@ -61,6 +75,14 @@ export function registerMockConnectors(runtime: ConnectorRuntime): MockConnector
     'docs',
     connectors.docs
   );
+  (runtime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+    'web',
+    connectors.web
+  );
+  (runtime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+    'search',
+    connectors.search
+  );
 
   return connectors;
 }
@@ -70,5 +92,7 @@ export const MOCK_CONNECTOR_TYPES = {
   CALENDAR: 'calendar',
   CONTACTS: 'contacts',
   DOCS: 'docs',
+  WEB: 'web',
+  SEARCH: 'search',
   GITHUB: 'github',
 } as const;

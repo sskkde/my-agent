@@ -94,12 +94,18 @@ export interface MCPServerDefinition {
   version: string;
   description?: string;
   baseUrl: string;
+  configType?: 'stdio' | 'http';
+  command?: string;
+  args?: string[];
   authentication?: {
     type: 'bearer' | 'api_key' | 'oauth2';
     required: boolean;
   };
   capabilities: string[];
   supportedFormats: string[];
+  trustLevel?: 'trusted' | 'verified' | 'untrusted';
+  sandboxPolicy?: Record<string, unknown>;
+  status?: 'active' | 'inactive' | 'error';
   createdAt: string;
   updatedAt: string;
 }
@@ -108,14 +114,20 @@ export interface MCPServerDefinition {
 export interface MCPSession {
   sessionId: string;
   serverId: string;
-  connectorInstanceId: string;
-  status: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectorInstanceId?: string;
+  status: 'connecting' | 'connected' | 'disconnected' | 'error' | 'active' | 'unhealthy' | 'closed';
   authTokenRef?: string;
   metadata?: Record<string, unknown>;
+  lastError?: string;
+  lastHealthCheck?: string;
   connectedAt?: string;
   lastActivityAt?: string;
   disconnectedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export type McpSession = MCPSession;
 
 // MCP Tool Descriptor - tool schema from MCP server
 export interface MCPToolDescriptor {
