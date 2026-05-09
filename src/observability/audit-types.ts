@@ -36,6 +36,7 @@ export type AuditType =
   | 'workflow_run'
   | 'subagent_run'
   | 'connector_access'
+  | 'connector_resource_access'
   | 'memory_write'
   | 'memory_delete'
   | 'summary_write'
@@ -318,6 +319,8 @@ export interface ConnectorAccessAuditRequest {
   connectorInstanceId: string;
   operation: string;
   status: 'success' | 'failure';
+  resourceRef?: string;
+  payloadSummary?: Record<string, unknown>;
   correlationId?: string;
   causationId?: string;
 }
@@ -336,15 +339,27 @@ export interface MemoryWriteAuditRequest {
   causationId?: string;
 }
 
+export interface SummaryWriteAuditRequest {
+  summaryId: string;
+  summaryType: string;
+  userId: string;
+  sessionId?: string;
+  runId?: string;
+  correlationId?: string;
+  causationId?: string;
+}
+
 // ============================================================================
 // Dispatch Audit Request
 // ============================================================================
 
 export interface DispatchAuditRequest {
+  actionId?: string;
   userId: string;
   sessionId?: string;
   targetRuntime: string;
   targetAction: string;
+  status?: 'pending' | 'completed' | 'failed' | 'blocked';
   payloadSummary: string;
   correlationId?: string;
   causationId?: string;
@@ -366,6 +381,7 @@ export interface AuditRecorder {
   recordSubagentRun(run: SubagentRunAuditRequest): AuditRecord;
   recordConnectorAccess(access: ConnectorAccessAuditRequest): AuditRecord;
   recordMemoryWrite(write: MemoryWriteAuditRequest): AuditRecord;
+  recordSummaryWrite(write: SummaryWriteAuditRequest): AuditRecord;
   recordDispatch(dispatch: DispatchAuditRequest): AuditRecord;
   getStore(): AuditStore;
   getPolicy(): AuditPolicy;

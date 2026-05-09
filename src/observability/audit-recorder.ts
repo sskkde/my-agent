@@ -22,6 +22,7 @@ import type {
   SubagentRunAuditRequest,
   ConnectorAccessAuditRequest,
   MemoryWriteAuditRequest,
+  SummaryWriteAuditRequest,
   DispatchAuditRequest,
 } from './audit-types.js';
 
@@ -466,19 +467,23 @@ class AuditRecorderImpl implements AuditRecorder {
 
   recordConnectorAccess(access: ConnectorAccessAuditRequest): AuditRecord {
     const record = this.createBaseRecord(
-      'connector_access',
+      access.resourceRef ? 'connector_resource_access' : 'connector_access',
       access.userId,
       access.sessionId,
       'connector',
       'access_connector',
       `Connector ${access.connectorInstanceId} accessed: ${access.operation}`,
       {
+        connectorId: access.connectorInstanceId,
         connectorInstanceId: access.connectorInstanceId,
         operation: access.operation,
+        resourceRef: access.resourceRef ?? access.connectorInstanceId,
+        redacted: true,
+        payloadSummary: access.payloadSummary,
         status: access.status,
       },
       access.status === 'failure' ? 'high' : 'medium',
-      'medium',
+      'high',
       access.status === 'success' ? 'completed' : 'failed',
       {
         correlationId: access.correlationId,
@@ -492,7 +497,7 @@ class AuditRecorderImpl implements AuditRecorder {
 
   recordMemoryWrite(write: MemoryWriteAuditRequest): AuditRecord {
     const record = this.createBaseRecord(
-      'memory_write',
+      write.operation === 'delete' ? 'memory_delete' : 'memory_write',
       write.userId,
       write.sessionId,
       'memory',
@@ -516,6 +521,33 @@ class AuditRecorderImpl implements AuditRecorder {
     return this.storeRecord(record);
   }
 
+  recordSummaryWrite(write: SummaryWriteAuditRequest): AuditRecord {
+    const record = this.createBaseRecord(
+      'summary_write',
+      write.userId,
+      write.sessionId,
+      'memory',
+      'summary_write',
+      `Summary ${write.summaryId} written: ${write.summaryType}`,
+      {
+        summaryId: write.summaryId,
+        summaryType: write.summaryType,
+        sessionId: write.sessionId,
+        runId: write.runId,
+      },
+      'medium',
+      'medium',
+      'completed',
+      {
+        correlationId: write.correlationId ?? write.runId,
+        causationId: write.causationId,
+        targetType: 'summary',
+        targetRef: write.summaryId,
+      }
+    );
+    return this.storeRecord(record);
+  }
+
   recordDispatch(dispatch: DispatchAuditRequest): AuditRecord {
     const record = this.createBaseRecord(
       'dispatch',
@@ -525,13 +557,15 @@ class AuditRecorderImpl implements AuditRecorder {
       'dispatch_request',
       `Dispatch to ${dispatch.targetRuntime}:${dispatch.targetAction}`,
       {
+        actionId: dispatch.actionId,
         targetRuntime: dispatch.targetRuntime,
         targetAction: dispatch.targetAction,
+        status: dispatch.status ?? 'completed',
         payloadSummary: dispatch.payloadSummary,
       },
       'low',
       'low',
-      'completed',
+      dispatch.status ?? 'completed',
       {
         correlationId: dispatch.correlationId,
         causationId: dispatch.causationId,

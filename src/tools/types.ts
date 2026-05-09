@@ -3,6 +3,8 @@
 
 import type { RuntimeContextDelta } from '../context/types.js';
 import type { PermissionDecision, PermissionContext as PermContext } from '../permissions/types.js';
+import type { TraceStore } from '../observability/types.js';
+import type { AuditRecorder } from '../observability/audit-types.js';
 
 export type PermissionContext = PermContext;
 
@@ -180,6 +182,8 @@ export interface ToolExecutorConfig {
   contextManager?: {
     applyDelta: (delta: RuntimeContextDelta) => void;
   };
+  traceStore?: TraceStore;
+  auditRecorder?: AuditRecorder;
 }
 
 // Tool pool for kernel context
