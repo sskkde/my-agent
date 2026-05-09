@@ -13,6 +13,35 @@ The current codebase has a broad implementation skeleton for nearly every docume
 
 However, many subsystems are **not yet document-complete**. The main gap is not missing directories; it is missing end-to-end productized capability. In several areas, the code has a runtime foundation but lacks one or more of: real external integration, UI/API management loop, lifecycle conformance tests, operational observability, or production-grade edge-case handling.
 
+## Phase 3 Completion Status: IMPLEMENTED ✅
+
+All Phase 3 architecture requirements completed as of 2026-05-09.
+
+### Area Status
+| Area | Status | Files |
+|------|--------|-------|
+| Connector Runtime | ✅ | Mock suite, response normalizer, request router |
+| MCP | ✅ | Registry, session manager, tool/notification bridge |
+| Tool Plane | ✅ | Schema provider, orchestrator, result blob/processor |
+| Memory/Summary | ✅ | Source-bound summary, rolling/topic-shift, long-term lifecycle (save/delete/tombstone/recall) |
+| Observability | ✅ | Trace/audit coverage, timeline queries, retention, metrics |
+| Replay/Recovery | ✅ | Timeline-only/state-rebuild replay, failure analyzer, retry/cancellation |
+| Workflow/Trigger | ✅ | Condition/branch/parallel, retry/onFailure/polling, schedule/webhook/connector/MCP triggers |
+| Permission | ✅ | Connector policies, scoped grants, approval codes, pre-approval judge |
+| E2E/CI | ✅ | Connector/workflow E2E, memory/replay E2E, CI matrix |
+| Cross-Runtime | ✅ | End-to-end integration tests |
+
+### Guardrail Exclusions (Intentional)
+- Real OAuth provider rollout — NOT implemented
+- MCP marketplace — NOT implemented
+- Full visual workflow builder rewrite — NOT implemented
+- Production vector embedding pipeline — NOT implemented
+- External archive/S3 storage — NOT implemented
+
+### Verification
+- `npm run typecheck` — PASS
+- `npm test` — PASS
+
 ## 2. Status Rubric
 
 Use this rubric instead of judging by directory existence.
