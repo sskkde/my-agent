@@ -1,11 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createRuntimeDispatcher } from '../../../src/dispatcher/runtime-dispatcher.js';
 import { createAdapterRegistry } from '../../../src/dispatcher/adapter-registry.js';
+import { registerDefaultRuntimeAdapters } from '../../../src/dispatcher/runtime-adapters.js';
+import { createBackgroundRuntime } from '../../../src/subagents/background-runtime.js';
 import type {
   RuntimeAction,
   RuntimeAdapter
 } from '../../../src/dispatcher/types.js';
-import type { RuntimeActionStore, EventStore } from '../../../src/storage/index.js';
+import type { RuntimeActionStore, EventStore, BackgroundRunStore } from '../../../src/storage/index.js';
+import type { ToolExecutor } from '../../../src/tools/types.js';
+import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js';
+import type { WorkflowRuntime } from '../../../src/workflows/workflow-runtime.js';
+import type { EventTriggerRuntime } from '../../../src/triggers/event-trigger-runtime.js';
+import type { AgentKernel } from '../../../src/kernel/agent-kernel.js';
+import type { PermissionGrantStore } from '../../../src/storage/permission-grant-store.js';
 
 function createMockRuntimeActionStore(): RuntimeActionStore {
   const actions = new Map<string, ReturnType<RuntimeActionStore['findById']>>();
@@ -706,5 +714,175 @@ describe('RuntimeDispatcher Integration', () => {
 
       expect(result.status).toBe('completed');
     });
+  });
+});
+
+describe('RuntimeDispatcher with subagent_runtime adapter', () => {
+  let actionStore: RuntimeActionStore;
+  let eventStore: EventStore;
+  let adapterRegistry: ReturnType<typeof createAdapterRegistry>;
+  let dispatcher: ReturnType<typeof createRuntimeDispatcher>;
+  let backgroundRunStore: ReturnType<typeof createMockBackgroundRunStore>;
+  let backgroundRuntime: ReturnType<typeof createBackgroundRuntime>;
+
+  function createMockBackgroundRunStore() {
+    const runs = new Map<string, { backgroundRunId: string; userId: string; sessionId?: string; agentType: string; status: string; launchSource: string; priority?: number; scheduledAt?: string; expiresAt?: string; retryCount: number; createdAt: string; updatedAt: string; checkpointData?: unknown; startedAt?: string; completedAt?: string; resultData?: unknown; errorMessage?: string }>();
+
+    return {
+      runs,
+      create: (run: { backgroundRunId: string; userId: string; sessionId?: string; agentType: string; status: string; launchSource: string; priority?: number; scheduledAt?: string; expiresAt?: string; retryCount: number; createdAt: string; updatedAt: string; checkpointData?: unknown }) => {
+        runs.set(run.backgroundRunId, { ...run, retryCount: run.retryCount ?? 0 });
+      },
+      getById: (id: string) => runs.get(id) ?? null,
+      updateStatus: (id: string, status: string) => {
+        const run = runs.get(id);
+        if (run) {
+          run.status = status;
+          run.updatedAt = new Date().toISOString();
+        }
+      },
+      saveCheckpoint: () => {},
+      saveRecoveryPoint: () => {},
+      saveResult: () => {},
+      incrementRetryCount: () => {},
+      getByUserAndStatus: () => [],
+      getBySessionAndStatus: () => [],
+      getBySubagentRunId: () => [],
+      getByLaunchSource: () => [],
+      getByStatus: (status: string) => Array.from(runs.values()).filter(r => r.status === status),
+      getExpiredRuns: () => [],
+    };
+  }
+
+  function createMockEventStoreForSubagent(): EventStore {
+    return {
+      append: () => {},
+      query: () => [],
+      findByCorrelationId: () => [],
+      findByCausationId: () => [],
+      updateUserIdForSession: () => 0,
+    };
+  }
+
+  beforeEach(() => {
+    actionStore = createMockRuntimeActionStore();
+    eventStore = createMockEventStoreForSubagent();
+    adapterRegistry = createAdapterRegistry();
+    backgroundRunStore = createMockBackgroundRunStore();
+    backgroundRuntime = createBackgroundRuntime({
+      backgroundRunStore: backgroundRunStore as unknown as BackgroundRunStore,
+      eventStore,
+      maxConcurrentRuns: 2,
+      watchdogTimeoutMs: 5000,
+    });
+
+    registerDefaultRuntimeAdapters({
+      adapterRegistry,
+      toolExecutor: { execute: vi.fn() } as unknown as ToolExecutor,
+      plannerRuntime: { resumePlannerRun: vi.fn(), cancelPlannerRun: vi.fn() } as unknown as PlannerRuntime,
+      workflowRuntime: { startWorkflowRun: vi.fn() } as unknown as WorkflowRuntime,
+      triggerRuntime: { registerWaitCondition: vi.fn(), registerTrigger: vi.fn() } as unknown as EventTriggerRuntime,
+      agentKernel: { run: vi.fn() } as unknown as AgentKernel,
+      permissionGrantStore: { findByUser: vi.fn(() => []) } as unknown as PermissionGrantStore,
+      backgroundRuntime,
+    });
+
+    dispatcher = createRuntimeDispatcher({
+      actionStore,
+      eventStore,
+      adapterRegistry,
+    });
+  });
+
+  it('should dispatch launch_background_subagent and return backgroundRunId', async () => {
+    const action: RuntimeAction = {
+      actionId: 'test-launch-bg-001',
+      actionType: 'launch_background_subagent',
+      source: { sourceModule: 'planner' },
+      targetRuntime: 'subagent_runtime',
+      targetAction: 'launch',
+      payload: {
+        agentType: 'research-agent',
+        taskSpec: { objective: 'Research topic X' },
+        launchSource: 'planner',
+      },
+      userId: 'user-test-001',
+      sessionId: 'session-test-001',
+      status: 'created',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const result = await dispatcher.dispatch({
+      requestId: 'req-launch-bg-001',
+      action,
+      context: { callerModule: 'planner' },
+    });
+
+    expect(result.status).toBe('completed');
+    expect(result.result).toBeDefined();
+    const resultData = result.result as { backgroundRunId?: string; status?: string };
+    expect(resultData.backgroundRunId).toBeDefined();
+    expect(resultData.backgroundRunId).toMatch(/^bg-/);
+    expect(resultData.status).toBe('queued');
+  });
+
+  it('should dispatch cancel_background_subagent and transition to cancelled', async () => {
+    const launchAction: RuntimeAction = {
+      actionId: 'test-cancel-bg-001',
+      actionType: 'launch_background_subagent',
+      source: { sourceModule: 'planner' },
+      targetRuntime: 'subagent_runtime',
+      targetAction: 'launch',
+      payload: {
+        agentType: 'research-agent',
+        taskSpec: { objective: 'Research topic Y' },
+        launchSource: 'planner',
+      },
+      userId: 'user-test-002',
+      status: 'created',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const launchResult = await dispatcher.dispatch({
+      requestId: 'req-cancel-bg-001',
+      action: launchAction,
+      context: { callerModule: 'planner' },
+    });
+
+    const launchData = launchResult.result as { backgroundRunId: string };
+    const backgroundRunId = launchData.backgroundRunId;
+
+    const cancelAction: RuntimeAction = {
+      actionId: 'test-cancel-bg-002',
+      actionType: 'cancel_background_subagent',
+      source: { sourceModule: 'planner' },
+      targetRuntime: 'subagent_runtime',
+      targetAction: 'cancel',
+      payload: { backgroundRunId },
+      status: 'created',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const cancelResult = await dispatcher.dispatch({
+      requestId: 'req-cancel-bg-002',
+      action: cancelAction,
+      context: { callerModule: 'planner' },
+    });
+
+    expect(cancelResult.status).toBe('completed');
+    const cancelData = cancelResult.result as { backgroundRunId?: string; status?: string };
+    expect(cancelData.backgroundRunId).toBe(backgroundRunId);
+    expect(cancelData.status).toBe('cancelled');
+
+    const run = backgroundRuntime.getBackgroundRun(backgroundRunId);
+    expect(run?.status).toBe('cancelled');
+  });
+
+  it('should verify subagent_runtime adapter is registered', () => {
+    expect(adapterRegistry.getAdapter('subagent_runtime')).not.toBeNull();
+    expect(adapterRegistry.listAdapters()).toContain('subagent_runtime');
   });
 });

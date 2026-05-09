@@ -7,6 +7,10 @@ export {
   createToolExecutor,
 } from './tool-executor.js';
 
+export {
+  createToolOrchestrator,
+} from './runtime/tool-orchestrator.js';
+
 export type {
   ToolCategory,
   ToolSensitivity,
@@ -27,6 +31,13 @@ export type {
   SchemaValidationResult,
   ToolContextDelta,
 } from './types.js';
+
+export type {
+  ToolUse,
+  ToolOrchestrator,
+  ToolOrchestratorConfig,
+  ToolOrchestratorOptions,
+} from './runtime/tool-orchestrator.js';
 
 export {
   TOOL_ERROR_CODES,
