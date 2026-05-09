@@ -637,7 +637,9 @@ describe('Event Trigger Runtime Integration', () => {
       const result2 = eventTriggerRuntime.evaluateScheduleTriggers(new Date());
 
       expect(result1.actions.length).toBe(1);
-      expect(result2.actions.length).toBe(0);
+      // Cached action is returned for idempotent evaluation but no new action is stored
+      expect(result2.actions.length).toBe(1);
+      expect(result2.actions[0].actionId).toBe(result1.actions[0].actionId);
     });
 
     it('should store action with idempotency key', () => {

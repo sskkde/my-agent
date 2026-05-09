@@ -323,6 +323,8 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
 
         if (cached) {
           // Return cached result for idempotent evaluation
+          // The event/action were already stored; returning them from cache
+          // allows callers to verify the SAME actionId is reused
           firedEvents.push(cached.event);
           firedActions.push(cached.action);
           fired++;
