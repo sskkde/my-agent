@@ -59,6 +59,16 @@ const SENSITIVE_FIELD_PATTERNS = [
 export class ReplaySafetyGuard {
   private readonly policy: ReplaySafetyPolicy;
 
+  /** Structural JSON field names that should NOT be scanned for side-effect indicators. */
+  private static readonly STRUCTURAL_FIELDS = new Set([
+    'createdAt', 'updatedAt', 'created_at', 'updated_at',
+    'timestamp', 'startTime', 'endTime', 'startedAt', 'completedAt',
+    'correlationId', 'causationId', 'eventId', 'auditId',
+    'actionId', 'spanId', 'traceId', 'memoryId', 'runId',
+    'sessionId', 'userId', 'sensitivity', 'retentionClass',
+    'riskLevel', 'metadata',
+  ]);
+
   constructor(policy: Partial<ReplaySafetyPolicy> = {}) {
     this.policy = { ...DEFAULT_REPLAY_SAFETY_POLICY, ...policy };
   }
@@ -122,10 +132,28 @@ export class ReplaySafetyGuard {
 
   private stringifyPayload(payload: unknown): string {
     try {
-      return JSON.stringify(payload);
+      const cleaned = this.stripStructuralFields(payload);
+      return JSON.stringify(cleaned);
     } catch {
       return '';
     }
+  }
+
+  private stripStructuralFields(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.stripStructuralFields(item));
+    }
+    if (value && typeof value === 'object') {
+      const result: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(value)) {
+        if (ReplaySafetyGuard.STRUCTURAL_FIELDS.has(key)) {
+          continue;
+        }
+        result[key] = this.stripStructuralFields(val);
+      }
+      return result;
+    }
+    return value;
   }
 }
 
