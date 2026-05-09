@@ -31,8 +31,11 @@ import { createPlannerRuntime, type PlannerRuntime } from '../planner/planner-ru
 import { AgentKernel } from '../kernel/agent-kernel.js';
 import type { LLMAdapter } from '../llm/adapter.js';
 import { createProviderScopedLLMAdapter, type ProviderScopedLLMAdapter } from '../llm/provider-runtime.js';
+import { createMockLLMAdapter } from '../llm/mock-adapter.js';
 import type { Stores } from '../gateway/types.js';
-import type { PlanStore } from '../storage/plan-store.js';
+import { createPlanStore, type PlanStore } from '../storage/plan-store.js';
+import { createWaitConditionStore, type WaitConditionStore } from '../storage/wait-condition-store.js';
+import { createArtifactStore, type ArtifactStore } from '../storage/artifact-store.js';
 import type { AdapterRegistry, TargetRuntime, RuntimeAdapter } from '../dispatcher/types.js';
 import { createLongTermMemoryStore, type LongTermMemoryStore } from '../storage/long-term-memory-store.js';
 import { createMemoryExtractionRunStore, type MemoryExtractionRunStore } from '../storage/memory-extraction-run-store.js';
@@ -46,6 +49,12 @@ import { createWebhookTriggerStore, type WebhookTriggerStore } from '../storage/
 import { createWebhookDeliveryStore, type WebhookDeliveryStore } from '../storage/webhook-delivery-store.js';
 import { createScheduleTriggerStore, type ScheduleTriggerStore } from '../storage/schedule-trigger-store.js';
 import { createEventTriggerRuntime, type EventTriggerRuntime } from '../triggers/event-trigger-runtime.js';
+import { createPermissionEngine, type PermissionEngine } from '../permissions/permission-engine.js';
+import { createToolRegistry } from '../tools/tool-registry.js';
+import { createToolExecutor } from '../tools/tool-executor.js';
+import type { ToolRegistry, ToolExecutor } from '../tools/types.js';
+import { registerBuiltInTools } from '../tools/builtins/index.js';
+import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -56,6 +65,9 @@ export interface ApiContext {
   plannerRuntime: PlannerRuntime;
   agentKernel: AgentKernel;
   llmAdapter: LLMAdapter;
+  permissionEngine: PermissionEngine;
+  toolRegistry: ToolRegistry;
+  toolExecutor: ToolExecutor;
   stores: {
     eventStore: EventStore;
     runtimeActionStore: RuntimeActionStore;
@@ -80,6 +92,9 @@ export interface ApiContext {
     webhookTriggerStore: WebhookTriggerStore;
     webhookDeliveryStore: WebhookDeliveryStore;
     scheduleTriggerStore: ScheduleTriggerStore;
+    planStore: PlanStore;
+    waitConditionStore: WaitConditionStore;
+    artifactStore: ArtifactStore;
   };
   providerConfigStore: ProviderConfigStore;
   agentConfigStore: AgentConfigStore;
@@ -230,6 +245,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let webhookTriggerStore: WebhookTriggerStore;
   let webhookDeliveryStore: WebhookDeliveryStore;
   let scheduleTriggerStore: ScheduleTriggerStore;
+  let planStore: PlanStore;
+  let waitConditionStore: WaitConditionStore;
+  let artifactStore: ArtifactStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -257,6 +275,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     webhookTriggerStore = (existingStores as Record<string, unknown>)?.webhookTriggerStore as WebhookTriggerStore ?? createWebhookTriggerStore(connection);
     webhookDeliveryStore = (existingStores as Record<string, unknown>)?.webhookDeliveryStore as WebhookDeliveryStore ?? createWebhookDeliveryStore(connection);
     scheduleTriggerStore = (existingStores as Record<string, unknown>)?.scheduleTriggerStore as ScheduleTriggerStore ?? createScheduleTriggerStore(connection);
+    planStore = (existingStores as Record<string, unknown>)?.planStore as PlanStore ?? createPlanStore(connection);
+    waitConditionStore = (existingStores as Record<string, unknown>)?.waitConditionStore as WaitConditionStore ?? createWaitConditionStore(connection);
+    artifactStore = (existingStores as Record<string, unknown>)?.artifactStore as ArtifactStore ?? createArtifactStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -308,9 +329,15 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     });
   }
 
-  // Use injected LLM adapter or create a request-scoped adapter that resolves
-  // providers per user without mutating shared server-wide provider state.
-  const llmAdapter = injectedLlmAdapter ?? createProviderScopedLLMAdapter({ providerConfigStore });
+  // Determine whether to use mock LLM adapter
+  const useMockLLM = process.env.NODE_ENV === 'test' || process.env.MVP_USE_MOCK_LLM === 'true';
+
+  // Use injected LLM adapter or create appropriate adapter based on environment
+  const llmAdapter = injectedLlmAdapter ?? (
+    useMockLLM
+      ? createMockLLMAdapter()
+      : createProviderScopedLLMAdapter({ providerConfigStore })
+  );
 
   const foregroundAgent = injectedForegroundAgent ?? createForegroundAgent({
     llmAdapter,
@@ -342,11 +369,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 
   // Use injected planner runtime or create default
   const plannerRuntime = injectedPlannerRuntime ?? createPlannerRuntime({
-    planStore: {
-      createPlan: () => { throw new Error('PlanStore not implemented'); },
-      getPlan: () => { throw new Error('PlanStore not implemented'); },
-      applyPatch: () => { throw new Error('PlanStore not implemented'); },
-    } as unknown as PlanStore,
+    planStore,
     plannerRunStore,
     runtimeActionStore,
     eventStore: {
@@ -358,19 +381,78 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     } as unknown as EventStore,
   });
 
-  // Use injected agent kernel or create default with safe LLM adapter
+  // Create permission engine
+  const permissionEngine = createPermissionEngine({
+    approvalStore,
+    grantStore: permissionGrantStore,
+    eventStore,
+  });
+
+  // Create tool registry and register built-in tools
+  const toolRegistry = createToolRegistry();
+  registerBuiltInTools(toolRegistry, {
+    artifactStore,
+    summaryStore,
+    transcriptStore,
+    planStore,
+    longTermMemoryStore,
+    toolResultStore,
+    sessionStore,
+  });
+
+  // Create tool executor
+  const toolExecutor = createToolExecutor({
+    registry: toolRegistry,
+    permissionEngine,
+    toolExecutionStore: {
+      create: (exec) => toolExecutionStore.create({
+        toolCallId: exec.toolCallId,
+        toolName: exec.toolName,
+        userId: exec.userId,
+        sessionId: exec.sessionId,
+        kernelRunId: exec.kernelRunId,
+        status: exec.status as import('../shared/states.js').ToolExecutionState,
+        params: exec.params,
+        sensitivity: exec.sensitivity as import('../storage/tool-execution-store.js').SensitivityLevel,
+      }),
+      updateStatus: (toolCallId, status) => toolExecutionStore.updateStatus(toolCallId, status as import('../shared/states.js').ToolExecutionState),
+      saveResult: (toolCallId, result) => toolExecutionStore.saveResult(toolCallId, result),
+    },
+    eventStore: {
+      append: (event) => eventStore.append(event as EventRecord | EventRecord[]),
+    },
+  });
+
+  // Adapter for AgentKernel's ToolExecutor interface
+  const kernelToolExecutor: import('../kernel/types.js').ToolExecutor = {
+    execute: async (request) => {
+      const result = await toolExecutor.execute({
+        toolCallId: request.toolCallId,
+        toolName: request.toolName,
+        params: request.params,
+        userId: request.userId,
+        sessionId: request.sessionId,
+        kernelRunId: request.kernelRunId,
+        permissionContext: {
+          userId: request.permissionContext.userId,
+          sessionId: request.sessionId ?? '',
+          mode: 'ask_on_write',
+          grants: [],
+        },
+      });
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error,
+        resultPreview: result.resultPreview,
+      };
+    },
+  };
+
+  // Use injected agent kernel or create default with real tool executor
   const agentKernel = injectedAgentKernel ?? new AgentKernel({
     llmAdapter,
-    toolExecutor: {
-      execute: async () => ({
-        success: false,
-        error: {
-          code: 'TOOL_EXECUTION_NOT_CONFIGURED',
-          message: 'Tool execution not configured in this context',
-          recoverable: false,
-        },
-      }),
-    },
+    toolExecutor: kernelToolExecutor,
     contextManager: {
         assembleBundle: () => ({
           runId: 'default',
@@ -412,22 +494,35 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     workflowRunStore,
     runtimeActionStore,
     eventStore,
+    dispatcher: runtimeDispatcher as unknown as {
+      dispatch(request: {
+        actionType: import('../dispatcher/types.js').RuntimeActionType;
+        targetRuntime: string;
+        targetAction: string;
+        payload: Record<string, unknown>;
+        userId?: string;
+        sessionId?: string;
+        correlationId?: string;
+      }): Promise<{ success: boolean; result?: unknown; error?: string }>;
+    },
   });
 
   const triggerRuntime = createEventTriggerRuntime({
     triggerStore,
-    waitConditionStore: {
-      create: () => { throw new Error('WaitConditionStore not implemented'); },
-      getById: () => null,
-      findByTarget: () => [],
-      findByStatus: () => [],
-      markSatisfied: () => { throw new Error('Not implemented'); },
-      markFailed: () => { throw new Error('Not implemented'); },
-      markTimeout: () => { throw new Error('Not implemented'); },
-      findExpired: () => [],
-    },
+    waitConditionStore,
     eventStore,
     runtimeActionStore,
+  });
+
+  // Register default runtime adapters
+  registerDefaultRuntimeAdapters({
+    adapterRegistry,
+    toolExecutor,
+    plannerRuntime,
+    workflowRuntime,
+    triggerRuntime,
+    agentKernel,
+    permissionGrantStore,
   });
 
   const messageProcessor = injectedMessageProcessor ?? createOrchestrationMessageProcessor({
@@ -457,6 +552,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     plannerRuntime,
     agentKernel,
     llmAdapter,
+    permissionEngine,
+    toolRegistry,
+    toolExecutor,
     stores: {
       eventStore,
       runtimeActionStore,
@@ -481,6 +579,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       webhookTriggerStore,
       webhookDeliveryStore,
       scheduleTriggerStore,
+      planStore,
+      waitConditionStore,
+      artifactStore,
     },
     providerConfigStore,
     agentConfigStore,
