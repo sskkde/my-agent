@@ -3,9 +3,10 @@ import type { ApprovalsResponse, ApprovalDecisionRequest, ApprovalInfo } from '.
 import { ApiErrorFactory } from '../errors.js';
 import type { ApiContext } from '../context.js';
 import { APPROVAL_STATES } from '../../storage/approval-store.js';
+import { generateId, GRANT_ID_PREFIX } from '../../shared/ids.js';
 
 export function registerApprovalRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get<{ Reply: ApprovalsResponse }>('/api/approvals', async (request): Promise<ApprovalsResponse> => {
+  server.get<{ Reply: ApprovalsResponse }>('/api/approvals', async (request, reply): Promise<ApprovalsResponse> => {
     const userId = request.user?.userId ?? 'local-user';
     const userApprovals = context.stores.approvalStore.findByUser(userId);
 
@@ -27,10 +28,12 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
       responseReason: approval.responseReason ?? undefined,
     }));
 
-    return {
-      approvals,
-      total: approvals.length,
-    };
+    return reply.code(200).send({
+      data: {
+        approvals,
+        total: approvals.length,
+      },
+    });
   });
 
   server.get<{ Params: { approvalId: string } }>(
@@ -105,6 +108,67 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         responseBy,
         responseReason: reason,
       });
+
+      // Create permission grant and event for approved decisions
+      if (decision === 'approved') {
+        // Create permission grant
+        const grantId = generateId(GRANT_ID_PREFIX);
+        context.stores.permissionGrantStore.create({
+          id: grantId,
+          userId: existing.userId,
+          scope: existing.scope ?? 'tool',
+          action: existing.actionType,
+          resourcePattern: existing.resource ?? '*',
+          sourceContext: approvalId,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+
+        // Write approval_resolved event
+        context.stores.eventStore.append({
+          eventId: `evt-approval-${Date.now()}`,
+          eventType: 'approval_resolved',
+          sourceModule: 'permission',
+          userId: existing.userId,
+          sessionId: existing.sessionId,
+          relatedRefs: { approvalId },
+          payload: { approvalId, decision: 'approved', grantCreated: true },
+          sensitivity: 'medium',
+          retentionClass: 'standard',
+          createdAt: now,
+        });
+
+        // Notify triggerRuntime if available
+        if (context.triggerRuntime?.handleApprovalResolved) {
+          context.triggerRuntime.handleApprovalResolved({
+            approvalId,
+            status: 'approved',
+            result: { grantCreated: true },
+          });
+        }
+      } else {
+        // Write approval_resolved event for rejected
+        context.stores.eventStore.append({
+          eventId: `evt-approval-${Date.now()}`,
+          eventType: 'approval_resolved',
+          sourceModule: 'permission',
+          userId: existing.userId,
+          sessionId: existing.sessionId,
+          relatedRefs: { approvalId },
+          payload: { approvalId, decision: 'rejected', grantCreated: false },
+          sensitivity: 'medium',
+          retentionClass: 'standard',
+          createdAt: now,
+        });
+
+        // Notify triggerRuntime if available
+        if (context.triggerRuntime?.handleApprovalResolved) {
+          context.triggerRuntime.handleApprovalResolved({
+            approvalId,
+            status: 'rejected',
+            result: { grantCreated: false },
+          });
+        }
+      }
 
       return reply.send({
         data: {

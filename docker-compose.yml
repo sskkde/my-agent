@@ -23,8 +23,8 @@ services:
 
   web:
     build:
-      context: ./web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: web/Dockerfile
     ports:
       - "3002:3002"
     environment:

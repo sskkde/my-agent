@@ -21,6 +21,7 @@ import { createSessionListTool } from './session-list.js';
 import { createSessionHistoryTool } from './session-history.js';
 import { createWebFetchTool } from './web-fetch.js';
 import { createWebSearchTool } from './web-search.js';
+import { createMockConnectorTools } from './mock-connector-tools.js';
 
 export interface BuiltInToolsConfig {
   artifactStore: ArtifactStore;
@@ -53,6 +54,10 @@ export function registerBuiltInTools(
   registry.register(createSessionHistoryTool(sessionStore, transcriptStore));
   registry.register(createWebFetchTool());
   registry.register(createWebSearchTool());
+
+  // Register mock connector tools
+  const mockConnectorTools = createMockConnectorTools();
+  mockConnectorTools.forEach(tool => registry.register(tool));
 }
 
 export {
@@ -71,4 +76,5 @@ export {
   createSessionHistoryTool,
   createWebFetchTool,
   createWebSearchTool,
+  createMockConnectorTools,
 };
