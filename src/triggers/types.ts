@@ -18,6 +18,8 @@ import type { RuntimeAction } from '../storage/runtime-action-store.js';
  */
 export type TriggerEventType =
   | 'schedule_trigger_fired'
+  | 'webhook_trigger_fired'
+  | 'connector_event_trigger_fired'
   | 'mcp_notification'
   | 'approval_resolved_trigger'
   | 'wait_condition_satisfied'
@@ -169,6 +171,53 @@ export interface HandleApprovalResolvedInput {
   resolvedAt?: string;
 }
 
+export interface ScheduleTriggerDefinition extends Omit<RegisterTriggerInput, 'triggerType' | 'conditionType' | 'conditionPattern' | 'metadata'> {
+  intervalMs: number;
+  nextRunAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface WebhookTriggerPayload {
+  eventId?: string;
+  idempotencyKey?: string;
+  eventType?: string;
+  payload?: Record<string, unknown>;
+  userId?: string;
+  sessionId?: string;
+  [key: string]: unknown;
+}
+
+export interface ConnectorTriggerEvent {
+  eventId?: string;
+  idempotencyKey?: string;
+  eventType: string;
+  connectorId?: string;
+  connectorInstanceId?: string;
+  operationId?: string;
+  payload?: Record<string, unknown>;
+  timestamp?: string;
+  userId?: string;
+  sessionId?: string;
+  [key: string]: unknown;
+}
+
+export interface McpTriggerNotification {
+  id?: string;
+  idempotencyKey?: string;
+  method?: string;
+  serverId?: string;
+  sessionId?: string;
+  params?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface TriggerActionResult {
+  matched: number;
+  events: RuntimeTriggerEvent[];
+  actions: RuntimeAction[];
+}
+
 // ============================================================================
 // Event Trigger Runtime Configuration
 // ============================================================================
@@ -184,6 +233,7 @@ export interface EventTriggerRuntimeConfig {
     findByStatus(status: string): TriggerRegistration[];
     incrementTriggerCount(id: string): TriggerRegistration;
     updateStatus(id: string, status: string): TriggerRegistration;
+    updateMetadata?(id: string, metadata: string): TriggerRegistration;
     findExpired(before: string): TriggerRegistration[];
   };
   waitConditionStore: {
@@ -222,6 +272,8 @@ export interface EventTriggerRuntime {
    */
   registerTrigger(input: RegisterTriggerInput): TriggerRegistration;
 
+  registerSchedule(definition: ScheduleTriggerDefinition): TriggerRegistration;
+
   /**
    * Register a new wait condition
    */
@@ -245,6 +297,12 @@ export interface EventTriggerRuntime {
     events: RuntimeTriggerEvent[];
     actions: RuntimeAction[];
   };
+
+  handleWebhook(webhookPayload: WebhookTriggerPayload, signature: string): TriggerActionResult;
+
+  handleConnectorEvent(event: ConnectorTriggerEvent): TriggerActionResult;
+
+  handleMcpNotification(notification: McpTriggerNotification): TriggerActionResult;
 
   /**
    * Get a trigger registration by ID
@@ -275,10 +333,12 @@ export interface EventTriggerRuntime {
  * Target types that can be resumed
  */
 export type ResumeTargetType =
+  | 'workflow_run'
   | 'workflow_step_run'
   | 'background_run'
   | 'planner_run'
-  | 'kernel_run';
+  | 'kernel_run'
+  | 'notification';
 
 /**
  * Parameters for creating a resume action
