@@ -30,6 +30,7 @@ import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus 
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js';
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js';
 import type { SearchSubagent, SearchSubagentInput, SearchSubagentResult } from '../search/search-subagent.js';
+import { randomUUID } from 'crypto';
 
 /**
  * Known tool IDs from the catalog - used for server-side validation
@@ -539,6 +540,26 @@ function handleStatusQueryRoute(
 }
 
 /**
+ * Infers appropriate parameters for a tool based on its name and user text.
+ * Server-side parameter construction prevents LLM from injecting arbitrary payloads.
+ */
+function inferToolParams(toolName: string, text: string): Record<string, unknown> {
+  switch (toolName) {
+    case 'docs.search':
+    case 'web.search':
+      return { query: text };
+    case 'status.query':
+      return {};
+    case 'memory.retrieve':
+      return { query: text };
+    case 'transcript.search':
+      return { query: text };
+    default:
+      return { query: text };
+  }
+}
+
+/**
  * Handles the dispatch_tool route
  */
 async function handleDispatchToolRoute(
@@ -609,6 +630,57 @@ async function handleDispatchToolRoute(
     resolvedModel,
     activeTools
   ));
+
+  if (!decision.runtimeAction && filteredTools && filteredTools.length > 0) {
+    const primaryTool = filteredTools[0];
+    const now = new Date().toISOString();
+    const serverRuntimeAction = {
+      actionId: randomUUID(),
+      actionType: 'execute_tool' as const,
+      source: { sourceModule: 'processing', sourceAction: 'handleDispatchToolRoute' },
+      targetRuntime: 'tool_plane' as const,
+      targetAction: 'execute_tool',
+      userId: input.userId,
+      sessionId: input.sessionId,
+      payload: {
+        toolName: primaryTool,
+        params: inferToolParams(primaryTool, input.text),
+      },
+      status: 'created' as const,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      const dispatchResult = await deps.runtimeDispatcher.dispatch({
+        requestId: correlationId,
+        action: serverRuntimeAction,
+        context: {
+          userId: input.userId,
+          sessionId: input.sessionId,
+          callerModule: 'processing',
+        },
+      });
+
+      return createSuccessOutput(correlationId, {
+        text: decision.userVisibleResponse || 'Processing tool request...',
+        route: decision.route,
+        data: {
+          reason: decision.reason,
+          suggestedTools: filteredTools,
+          hasRuntimeAction: true,
+          dispatchResult: {
+            actionId: dispatchResult.actionId,
+            status: dispatchResult.status,
+            targetRuntime: dispatchResult.targetRuntime,
+          },
+        },
+      });
+    } catch (error) {
+      // Dispatch failed - fall through to default behavior
+      // This can happen when no adapter is registered for the target runtime
+    }
+  }
 
   if (decision.runtimeAction) {
     try {
