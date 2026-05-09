@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
 import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
 import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js';
@@ -222,6 +222,8 @@ describe('Workflow Polling Wait Condition Integration', () => {
   let clock: TestClock;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+
     connection = createConnectionManager(':memory:');
     connection.open();
     migrations = createMigrationRunner(connection);
@@ -242,7 +244,7 @@ describe('Workflow Polling Wait Condition Integration', () => {
       workflowRunStore,
       runtimeActionStore,
       eventStore,
-waitConditionStore,
+      waitConditionStore,
       clock: {
         now: () => clock.now(),
         nowISO: () => clock.nowISO(),
@@ -250,11 +252,16 @@ waitConditionStore,
       },
     });
   });
-  });
 
   afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
     connection?.close();
   });
+
+  async function advanceRuntimeTimers(ms: number): Promise<void> {
+    await vi.advanceTimersByTimeAsync(ms);
+  }
 
   describe('Polling Wait Step', () => {
     it('should validate polling_wait step requires pollingCondition', () => {
@@ -331,7 +338,7 @@ waitConditionStore,
         inputData: { status: 'pending' },
       });
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await advanceRuntimeTimers(50);
 
       const waitConditions = waitConditionStore.findByStatus('active');
       expect(waitConditions.length).toBeGreaterThan(0);
@@ -377,7 +384,7 @@ waitConditionStore,
 
       clock.advance(600);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await advanceRuntimeTimers(100);
 
       const timeoutEvents = eventStore.query({ eventType: 'workflow_polling_wait_timeout' });
       expect(timeoutEvents.length).toBeGreaterThan(0);
@@ -423,7 +430,7 @@ waitConditionStore,
         inputData: { status: 'ready' },
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await advanceRuntimeTimers(100);
 
       const satisfiedEvents = eventStore.query({ eventType: 'workflow_polling_wait_satisfied' });
       expect(satisfiedEvents.length).toBeGreaterThan(0);
@@ -461,7 +468,7 @@ waitConditionStore,
         inputData: { status: 'pending' },
       });
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await advanceRuntimeTimers(50);
 
       const pollEvents = eventStore.query({ eventType: 'workflow_polling_wait_poll' });
       expect(pollEvents.length).toBeGreaterThan(0);
@@ -500,7 +507,7 @@ waitConditionStore,
         inputData: { status: 'pending' },
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await advanceRuntimeTimers(100);
 
       const errorEvents = eventStore.query({ eventType: 'workflow_polling_wait_error' });
       expect(errorEvents.length).toBeGreaterThan(0);
@@ -549,7 +556,7 @@ waitConditionStore,
 
       clock.advance(300);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await advanceRuntimeTimers(100);
 
       const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
       expect(updatedRun?.currentStepIds).toContain('step_002');
@@ -583,7 +590,7 @@ waitConditionStore,
         inputData: { status: 'ready' },
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await advanceRuntimeTimers(100);
 
       const satisfiedConditions = waitConditionStore.findByStatus('satisfied');
       expect(satisfiedConditions.length).toBeGreaterThan(0);
@@ -624,7 +631,7 @@ waitConditionStore,
 
       clock.advance(200);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await advanceRuntimeTimers(100);
 
       const timeoutConditions = waitConditionStore.findByStatus('timeout');
       expect(timeoutConditions.length).toBeGreaterThan(0);
