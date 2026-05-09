@@ -18,6 +18,7 @@ import type { RuntimeAction } from '../storage/runtime-action-store.js';
  */
 export type TriggerEventType =
   | 'schedule_trigger_fired'
+  | 'mcp_notification'
   | 'approval_resolved_trigger'
   | 'wait_condition_satisfied'
   | 'wait_condition_timeout'
