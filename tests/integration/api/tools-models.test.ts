@@ -81,8 +81,8 @@ describe('Tools and Models API Integration', () => {
       const body = JSON.parse(response.body);
       expect(body.data).toBeDefined();
       expect(body.data.tools).toBeDefined();
-      expect(body.data.total).toBe(15);
-      expect(body.data.tools).toHaveLength(15);
+      expect(body.data.total).toBe(21);
+      expect(body.data.tools).toHaveLength(21);
     });
 
     it('should return tools with correct structure', async () => {

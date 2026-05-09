@@ -140,8 +140,10 @@ export interface ApprovalDetailResponse {
 }
 
 export interface ApprovalsResponse {
-  approvals: ApprovalInfo[];
-  total: number;
+  data: {
+    approvals: ApprovalInfo[];
+    total: number;
+  };
 }
 
 export interface ApprovalDecisionRequest {

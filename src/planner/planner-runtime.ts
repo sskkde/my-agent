@@ -99,12 +99,9 @@ class PlannerRuntimeImpl implements PlannerRuntime {
     const now = new Date().toISOString();
 
     const steps: PlanStep[] = [
-      {
-        stepId: 'step_001',
-        description: 'Initialize planning for: ' + input.objective,
-        status: 'pending',
-        dependencies: [],
-      },
+      { stepId: 'step_001', description: 'Analyze objective: ' + input.objective, status: 'pending', dependencies: [] },
+      { stepId: 'step_002', description: 'Execute required tool or agent action', status: 'pending', dependencies: ['step_001'] },
+      { stepId: 'step_003', description: 'Summarize result and update session', status: 'pending', dependencies: ['step_002'] },
     ];
 
     const plan: ExecutionPlanRecord = {
@@ -145,8 +142,8 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       planId,
       userId: input.userId,
       sessionId: input.sessionId,
-      targetRuntime: 'execution_engine',
-      targetAction: 'execute_plan',
+      targetRuntime: 'agent_kernel',
+      targetAction: 'start_agent_run',
       payload: {
         planId,
         objective: input.objective,

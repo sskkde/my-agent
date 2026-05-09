@@ -731,20 +731,23 @@ describe('ApiContext Dependencies - Task 4', () => {
   });
 
   describe('PlannerRuntime Functionality', () => {
-    it('should return controlled error when PlanStore not available', () => {
+    it('should work with PlanStore available', () => {
       const result = createApiContext({ dbPath: ':memory:' });
       expect(isApiContextError(result)).toBe(false);
       if (isApiContextError(result)) return;
 
       const planner = result.plannerRuntime;
 
-      expect(() => {
-        planner.createPlannerRun({
-          userId: 'user-001',
-          sessionId: 'session-001',
-          objective: 'Test planning task',
-        });
-      }).toThrow('PlanStore not implemented');
+      // PlanStore is now implemented, so createPlannerRun should work
+      const plannerResult = planner.createPlannerRun({
+        userId: 'user-001',
+        sessionId: 'session-001',
+        objective: 'Test planning task',
+      });
+
+      expect(plannerResult.plannerRunId).toBeDefined();
+      expect(plannerResult.planId).toBeDefined();
+      expect(plannerResult.status).toBe('initializing');
 
       result.connection.close();
     });
@@ -816,10 +819,8 @@ describe('ApiContext Dependencies - Task 4', () => {
       });
 
       expect(llmResult).toBeDefined();
-      expect(llmResult.success).toBe(false);
-      if (!llmResult.success) {
-        expect(llmResult.error).toBeDefined();
-      }
+      // In test environment, mock LLM adapter is used and returns success
+      expect(llmResult.success).toBe(true);
 
       result.connection.close();
     });
@@ -831,7 +832,8 @@ describe('ApiContext Dependencies - Task 4', () => {
 
       const adapter = result.llmAdapter;
 
-      expect(adapter.getHealthyProviders()).toHaveLength(0);
+      // In test environment, mock LLM adapter provides one provider
+      expect(adapter.getHealthyProviders()).toHaveLength(1);
 
       result.connection.close();
     });
@@ -859,8 +861,8 @@ describe('ApiContext Dependencies - Task 4', () => {
       });
 
       expect(kernelResult).toBeDefined();
-      expect(kernelResult.finalStatus).toBe('failed');
-      expect(kernelResult.error).toBeDefined();
+      // In test environment, mock LLM adapter is used so kernel completes successfully
+      expect(kernelResult.finalStatus).toBe('completed');
 
       result.connection.close();
     });

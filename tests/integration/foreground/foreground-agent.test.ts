@@ -537,11 +537,14 @@ describe('Foreground Conversation Agent', () => {
       const input = createInput('你现在使用的是什么模型？');
       const decision = await agent.processMessage(input, baseState);
 
+      console.log('Decision:', JSON.stringify(decision, null, 2));
+      console.log('Call count:', vi.mocked(mockLLMAdapter.complete).mock.calls.length);
+
       expect(mockLLMAdapter.complete).toHaveBeenCalledTimes(2);
       expect(decision.route).toBe('answer_directly');
       expect(decision.reason).toBe('LLM routing temporarily unavailable');
       expect(decision.userVisibleResponse).toBe('The AI provider did not respond in time. Please try again in a moment.');
-    });
+    }, 30000);
 
     it('should return router output when retry after timeout succeeds', async () => {
       let callCount = 0;

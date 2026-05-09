@@ -30,9 +30,9 @@ describe('Approvals API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { approvals: unknown[]; total: number };
-      expect(body.approvals).toEqual([]);
-      expect(body.total).toBe(0);
+      const body = await response.json() as { data: { approvals: unknown[]; total: number } };
+      expect(body.data.approvals).toEqual([]);
+      expect(body.data.total).toBe(0);
     });
 
     it('should return only approvals for authenticated user', async () => {
@@ -63,10 +63,10 @@ describe('Approvals API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { approvals: Array<{ id: string; userId: string }>; total: number };
-      expect(body.total).toBe(1);
-      expect(body.approvals[0].id).toBe(approval1.id);
-      expect(body.approvals[0].userId).toBe(userId);
+      const body = await response.json() as { data: { approvals: Array<{ id: string; userId: string }>; total: number } };
+      expect(body.data.total).toBe(1);
+      expect(body.data.approvals[0].id).toBe(approval1.id);
+      expect(body.data.approvals[0].userId).toBe(userId);
 
       approvalStore.delete(approval1.id);
       approvalStore.delete(approval2.id);
@@ -102,10 +102,10 @@ describe('Approvals API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { approvals: Array<{ id: string; status: string }>; total: number };
-      expect(body.total).toBe(2);
+      const body = await response.json() as { data: { approvals: Array<{ id: string; status: string }>; total: number } };
+      expect(body.data.total).toBe(2);
       
-      const ids = body.approvals.map(a => a.id);
+      const ids = body.data.approvals.map(a => a.id);
       expect(ids).toContain('pending-approval');
       expect(ids).toContain('resolved-approval');
 
