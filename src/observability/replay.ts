@@ -7,6 +7,7 @@ import type { TimelineBuilder, TimelineRootType, RuntimeTimeline, TimelineEvent 
 import type { EventStore, EventRecord } from '../storage/event-store.js';
 import type { AuditStore, AuditRecord } from './audit-types.js';
 import type { TraceStore, RuntimeSpan } from './types.js';
+import { ReplaySafetyGuard } from '../replay/replay-safety-guard.js';
 
 // ============================================================================
 // Replay Types
@@ -21,13 +22,15 @@ export interface SafetyPolicy {
   allowToolExecution: boolean;
   allowConnectorAccess: boolean;
   maxReplayDepth: number;
+  requireApprovalForSideEffects?: boolean;
+  redactSensitivePayloads?: boolean;
 }
 
 export interface ReplayRequest {
   rootType: ReplayRootType;
   rootId: string;
   replayMode: ReplayMode;
-  safetyPolicy: SafetyPolicy;
+  safetyPolicy?: SafetyPolicy;
   includeSensitiveData?: boolean;
 }
 
@@ -112,6 +115,8 @@ export const DEFAULT_SAFETY_POLICY: SafetyPolicy = {
   allowToolExecution: false,
   allowConnectorAccess: false,
   maxReplayDepth: 10,
+  requireApprovalForSideEffects: true,
+  redactSensitivePayloads: true,
 };
 
 // ============================================================================
@@ -131,9 +136,11 @@ export interface ReplayServiceConfig {
 
 export class ReplayService {
   private config: ReplayServiceConfig;
+  private safetyGuard: ReplaySafetyGuard;
 
   constructor(config: ReplayServiceConfig) {
     this.config = config;
+    this.safetyGuard = new ReplaySafetyGuard();
   }
 
   /**
@@ -144,11 +151,12 @@ export class ReplayService {
     const warnings: string[] = [];
 
     try {
+      const safetyPolicy = { ...DEFAULT_SAFETY_POLICY, ...request.safetyPolicy };
       // Build the timeline first (needed for both modes)
       const timeline = this.buildTimelineOnly(request.rootType, request.rootId);
 
       // Check safety and identify blocked actions
-      const blockedActions = this.checkSafety(timeline, request.safetyPolicy);
+      const blockedActions = this.checkSafety(timeline, safetyPolicy);
 
       // Preserve original trace references
       const originalTraceRefs = this.preserveTraceRefs(timeline);
@@ -162,7 +170,7 @@ export class ReplayService {
 
       // For timeline_only mode, return timeline with potential redaction
       if (request.replayMode === 'timeline_only') {
-        const processedTimeline = request.includeSensitiveData
+        const processedTimeline = request.includeSensitiveData || !safetyPolicy.redactSensitivePayloads
           ? timeline
           : this.redactSensitiveData(timeline);
 
@@ -180,11 +188,11 @@ export class ReplayService {
         const stateSnapshot = this.buildStateRebuild(request.rootType, request.rootId);
 
         // Redact sensitive data if not explicitly allowed
-        const processedTimeline = request.includeSensitiveData
+        const processedTimeline = request.includeSensitiveData || !safetyPolicy.redactSensitivePayloads
           ? timeline
           : this.redactSensitiveData(timeline);
 
-        const processedSnapshot = request.includeSensitiveData
+        const processedSnapshot = request.includeSensitiveData || !safetyPolicy.redactSensitivePayloads
           ? stateSnapshot
           : this.redactStateSnapshot(stateSnapshot);
 
@@ -228,6 +236,14 @@ export class ReplayService {
         warnings,
       };
     }
+  }
+
+  replayTimelineOnly(_replayId: string, sessionId: string): TimelineEvent[] {
+    return this.redactSensitiveData(this.buildTimelineOnly('session', sessionId)).events;
+  }
+
+  replayStateRebuild(runId: string): StateSnapshot {
+    return this.buildStateRebuild('planner_run', runId);
   }
 
   /**
@@ -281,9 +297,14 @@ export class ReplayService {
    */
   checkSafety(timeline: RuntimeTimeline, policy: SafetyPolicy): BlockedAction[] {
     const blockedActions: BlockedAction[] = [];
+    const guard = new ReplaySafetyGuard({
+      allowExternalWrites: policy.allowExternalWrites,
+      requireApprovalForSideEffects: policy.requireApprovalForSideEffects ?? true,
+      redactSensitivePayloads: policy.redactSensitivePayloads ?? true,
+    });
 
     for (const event of timeline.events) {
-      const blockedReason = this.checkEventSafety(event, policy);
+      const blockedReason = this.checkEventSafety(event, policy, guard);
       if (blockedReason) {
         blockedActions.push({
           eventId: event.eventId,
@@ -649,10 +670,19 @@ export class ReplayService {
     };
   }
 
-  private checkEventSafety(event: TimelineEvent, policy: SafetyPolicy): string | null {
+  private checkEventSafety(
+    event: TimelineEvent,
+    policy: SafetyPolicy,
+    guard: ReplaySafetyGuard = this.safetyGuard
+  ): string | null {
     const sourceData = event.sourceData as Record<string, unknown> | undefined;
     const eventType = event.eventType;
     const module = event.module.toLowerCase();
+    const payload = this.extractSafetyPayload(event);
+    const guardResult = guard.check(`${eventType}:${event.description}`, payload);
+    if (!guardResult.allowed) {
+      return guardResult.reason ?? 'Replay action blocked by safety policy';
+    }
 
     // First check audit records for specific blocked action types (highest priority)
     if (eventType === 'audit' && sourceData) {
@@ -709,6 +739,19 @@ export class ReplayService {
     }
 
     return null;
+  }
+
+  private extractSafetyPayload(event: TimelineEvent): unknown {
+    const sourceData = event.sourceData as Record<string, unknown> | undefined;
+    if (!sourceData) {
+      return { description: event.description, module: event.module };
+    }
+
+    return {
+      ...sourceData,
+      description: event.description,
+      module: event.module,
+    };
   }
 
   private extractCorrelationId(
