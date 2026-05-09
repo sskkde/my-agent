@@ -13,7 +13,7 @@ The current codebase has a broad implementation skeleton for nearly every docume
 
 However, many subsystems are **not yet document-complete**. The main gap is not missing directories; it is missing end-to-end productized capability. In several areas, the code has a runtime foundation but lacks one or more of: real external integration, UI/API management loop, lifecycle conformance tests, operational observability, or production-grade edge-case handling.
 
-## Phase 3 Completion Status: IMPLEMENTED ✅
+## Phase 3 Completion Status: IMPLEMENTED (with known gaps) ⚠️
 
 All Phase 3 architecture requirements completed as of 2026-05-09.
 
@@ -30,6 +30,11 @@ All Phase 3 architecture requirements completed as of 2026-05-09.
 | Permission | ✅ | Connector policies, scoped grants, approval codes, pre-approval judge |
 | E2E/CI | ✅ | Connector/workflow E2E, memory/replay E2E, CI matrix |
 | Cross-Runtime | ✅ | End-to-end integration tests |
+
+### Known Gaps (Not Fully Implemented)
+- Memory management UI (T18) — Backend API exists at `src/api/routes/memory.ts`, frontend UI not implemented
+- E2E tests (T28/T29) — Skeleton tests exist; full E2E connector/workflow/memory flows require real server setup
+- Pre-existing E2E failures (flow-7-trigger, observability-all-flows) — Pre-date Phase 3 work
 
 ### Guardrail Exclusions (Intentional)
 - Real OAuth provider rollout — NOT implemented

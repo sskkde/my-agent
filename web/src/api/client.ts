@@ -44,6 +44,10 @@ import type {
   WorkflowRunResponse,
   WorkflowValidationResult,
   WorkflowStep,
+  MemoriesResponse,
+  MemoryItem,
+  MemoryDetailResponse,
+  DeleteMemoryResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -579,5 +583,32 @@ export async function startWorkflowRun(
 export async function listWorkflowDefinitions(): Promise<WorkflowDefinitionResponse[]> {
   const response = await fetch(`${API_BASE}/workflows/definitions`, { credentials: 'include' });
   const result = await parseResponse<{ data: WorkflowDefinitionResponse[] }>(response);
+  return result.data;
+}
+
+// Memory API
+export async function getMemories(params?: { query?: string; type?: string; limit?: number }): Promise<MemoriesResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.query) searchParams.set('query', params.query);
+  if (params?.type) searchParams.set('type', params.type);
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  const qs = searchParams.toString();
+  const response = await fetch(`${API_BASE}/memory${qs ? `?${qs}` : ''}`, { credentials: 'include' });
+  const result = await parseResponse<{ data: MemoriesResponse }>(response);
+  return result.data;
+}
+
+export async function getMemory(memoryId: string): Promise<MemoryItem> {
+  const response = await fetch(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, { credentials: 'include' });
+  const result = await parseResponse<{ data: MemoryDetailResponse }>(response);
+  return result.data.memory;
+}
+
+export async function deleteMemory(memoryId: string): Promise<DeleteMemoryResponse> {
+  const response = await fetch(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const result = await parseResponse<{ data: DeleteMemoryResponse }>(response);
   return result.data;
 }

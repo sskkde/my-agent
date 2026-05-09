@@ -12,7 +12,8 @@ export type TabId =
   | 'agents'
   | 'settings'
   | 'workflows'
-  | 'approvals';
+  | 'approvals'
+  | 'memory';
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings';
 
@@ -113,6 +114,13 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'Approval management',
         testId: 'tab-approvals',
         iconKey: 'checkCircle',
+      },
+      {
+        id: 'memory',
+        label: '记忆',
+        description: 'Memory management',
+        testId: 'tab-memory',
+        iconKey: 'database',
       },
     ],
   },
