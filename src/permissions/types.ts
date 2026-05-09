@@ -51,8 +51,11 @@ export interface PermissionCheckRequest {
   operationType: 'read' | 'write' | 'execute' | 'delete' | 'admin';
   justification?: string;
   metadata?: Record<string, unknown>;
-  /** ID of the runtime action waiting for this approval (if any) */
   pendingActionId?: string;
+  connectorId?: string;
+  connectorResource?: string;
+  connectorAction?: string;
+  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export type PermissionDecisionStatus =
@@ -68,6 +71,8 @@ export interface PermissionDecision {
   requestId?: string;
   approvalRequest?: ApprovalRequest;
   grant?: StoragePermissionGrant;
+  policyRef?: string;
+  auditLabel?: string;
 }
 
 export function createAllowedDecision(reason: string, grant?: StoragePermissionGrant): PermissionDecision {
@@ -79,11 +84,13 @@ export function createAllowedDecision(reason: string, grant?: StoragePermissionG
   };
 }
 
-export function createDeniedDecision(reason: string): PermissionDecision {
+export function createDeniedDecision(reason: string, policyRef?: string, auditLabel?: string): PermissionDecision {
   return {
     status: 'denied',
     allowed: false,
     reason,
+    policyRef,
+    auditLabel,
   };
 }
 
@@ -221,7 +228,7 @@ export type PermissionAuditEventType =
   | 'grant_revoked';
 
 export interface PermissionAuditEvent {
-  eventType: PermissionAuditEventType;
+  eventType: PermissionAuditEventType | 'connector_policy_denied';
   userId: string;
   sessionId: string;
   actionType: string;
@@ -232,4 +239,9 @@ export interface PermissionAuditEvent {
   grantId?: string;
   correlationId: string;
   timestamp: string;
+  policyRef?: string;
+  auditLabel?: string;
+  connectorId?: string;
+  connectorResource?: string;
+  connectorAction?: string;
 }

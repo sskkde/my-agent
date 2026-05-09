@@ -1,6 +1,8 @@
 import type { ApprovalStore } from '../storage/approval-store.js';
 import type { PermissionGrantStore } from '../storage/permission-grant-store.js';
+import type { ConnectorPolicyStore, ConnectorPolicy } from '../storage/connector-policy-store.js';
 import type { EventStore } from '../storage/event-store.js';
+import type { AuditRecorder } from '../observability/audit-types.js';
 import {
   type PermissionCheckRequest,
   type PermissionDecision,
@@ -17,12 +19,21 @@ import { APPROVAL_STATES } from '../storage/approval-store.js';
 
 export interface PermissionEngine {
   checkPermission(request: PermissionCheckRequest): PermissionDecision;
+  checkConnectorPolicy(
+    connectorId: string,
+    resource: string,
+    action: string,
+    userId: string,
+    riskLevel?: 'low' | 'medium' | 'high' | 'critical'
+  ): { denied: boolean; policy?: ConnectorPolicy };
 }
 
 export interface PermissionEngineDeps {
   approvalStore: ApprovalStore;
   grantStore: PermissionGrantStore;
   eventStore: EventStore;
+  connectorPolicyStore?: ConnectorPolicyStore;
+  auditRecorder?: AuditRecorder;
 }
 
 export function createPermissionEngine(
@@ -48,11 +59,69 @@ export function createPermissionEngine(
         reason: event.reason,
         requestId: event.requestId,
         grantId: event.grantId,
+        policyRef: event.policyRef,
+        auditLabel: event.auditLabel,
+        connectorId: event.connectorId,
+        connectorResource: event.connectorResource,
+        connectorAction: event.connectorAction,
       },
       sensitivity: 'medium',
       retentionClass: 'standard',
       createdAt: event.timestamp,
     });
+  }
+
+  function checkConnectorPolicyInternal(
+    connectorId: string,
+    resource: string,
+    action: string,
+    userId: string,
+    riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
+  ): { denied: boolean; policy?: ConnectorPolicy } {
+    if (!deps.connectorPolicyStore) {
+      return { denied: false };
+    }
+
+    const effectivePolicies = deps.connectorPolicyStore.getEffectivePolicies(
+      connectorId,
+      resource,
+      action,
+      userId
+    );
+
+    for (const policy of effectivePolicies) {
+      if (policy.effect === 'deny') {
+        return { denied: true, policy };
+      }
+
+      if (policy.effect === 'allow') {
+        if (policy.allowedScopes && policy.allowedScopes.length > 0) {
+          const actionScope = action === 'read' ? 'read' : 
+                              action === 'write' ? 'write' : 
+                              action === 'delete' ? 'delete' : 
+                              action === 'execute' ? 'execute' : action;
+          const hasAllowedScope = policy.allowedScopes.some(scope => 
+            scope === '*' || scope === actionScope
+          );
+          if (!hasAllowedScope) {
+            return { denied: true, policy };
+          }
+        }
+
+        if (policy.riskCap) {
+          const riskLevels = ['low', 'medium', 'high', 'critical'];
+          const capIndex = riskLevels.indexOf(policy.riskCap);
+          const requestIndex = riskLevels.indexOf(riskLevel);
+          if (requestIndex > capIndex) {
+            return { denied: true, policy };
+          }
+        }
+
+        return { denied: false, policy };
+      }
+    }
+
+    return { denied: false };
   }
 
   function checkExistingGrants(
@@ -133,6 +202,71 @@ export function createPermissionEngine(
         return createDeniedDecision('Operation denied by hard_deny policy');
       }
 
+      if (request.connectorId && request.connectorResource && request.connectorAction) {
+        const policyCheck = checkConnectorPolicyInternal(
+          request.connectorId,
+          request.connectorResource,
+          request.connectorAction,
+          context.userId,
+          request.riskLevel
+        );
+
+        if (policyCheck.denied && policyCheck.policy) {
+          emitAuditEvent({
+            eventType: 'connector_policy_denied',
+            userId: context.userId,
+            sessionId: context.sessionId,
+            actionType,
+            resource,
+            decision: 'denied',
+            reason: `Connector policy ${policyCheck.policy.policyId} denies this operation`,
+            correlationId,
+            timestamp,
+            policyRef: policyCheck.policy.policyId,
+            auditLabel: policyCheck.policy.auditLabel ?? undefined,
+            connectorId: request.connectorId,
+            connectorResource: request.connectorResource,
+            connectorAction: request.connectorAction,
+          });
+
+          if (deps.auditRecorder) {
+            deps.auditRecorder.recordConnectorAccess({
+              userId: context.userId,
+              sessionId: context.sessionId,
+              connectorInstanceId: request.connectorId,
+              operation: request.connectorAction,
+              status: 'failure',
+              correlationId,
+            });
+          }
+
+          return createDeniedDecision(
+            `Connector policy denies this operation`,
+            policyCheck.policy.policyId,
+            policyCheck.policy.auditLabel ?? undefined
+          );
+        }
+
+        if (policyCheck.policy && policyCheck.policy.effect === 'allow') {
+          emitAuditEvent({
+            eventType: 'permission_granted',
+            userId: context.userId,
+            sessionId: context.sessionId,
+            actionType,
+            resource,
+            decision: 'allowed',
+            reason: 'Connector policy allows this operation',
+            policyRef: policyCheck.policy.policyId,
+            correlationId,
+            timestamp,
+            connectorId: request.connectorId,
+            connectorResource: request.connectorResource,
+            connectorAction: request.connectorAction,
+          });
+          return createAllowedDecision('Connector policy allows this operation');
+        }
+      }
+
       if (!modeAllowsOperation(context.mode, operationType)) {
         emitAuditEvent({
           eventType: 'permission_denied',
@@ -153,6 +287,40 @@ export function createPermissionEngine(
       if (fullConfig.respectExistingGrants) {
         const grantCheck = checkExistingGrants(request);
         if (grantCheck.allowed) {
+          if (request.connectorId && request.connectorResource && request.connectorAction) {
+            const policyCheck = checkConnectorPolicyInternal(
+              request.connectorId,
+              request.connectorResource,
+              request.connectorAction,
+              context.userId,
+              request.riskLevel
+            );
+            if (policyCheck.denied && policyCheck.policy) {
+              emitAuditEvent({
+                eventType: 'connector_policy_denied',
+                userId: context.userId,
+                sessionId: context.sessionId,
+                actionType,
+                resource,
+                decision: 'denied',
+                reason: `Connector hard-deny policy ${policyCheck.policy.policyId} overrides bypass grant`,
+                correlationId,
+                timestamp,
+                policyRef: policyCheck.policy.policyId,
+                auditLabel: policyCheck.policy.auditLabel ?? undefined,
+                connectorId: request.connectorId,
+                connectorResource: request.connectorResource,
+                connectorAction: request.connectorAction,
+              });
+
+              return createDeniedDecision(
+                `Connector hard-deny policy overrides bypass grant`,
+                policyCheck.policy.policyId,
+                policyCheck.policy.auditLabel ?? undefined
+              );
+            }
+          }
+
           emitAuditEvent({
             eventType: 'permission_granted',
             userId: context.userId,
@@ -221,6 +389,16 @@ export function createPermissionEngine(
       });
 
       return createAllowedDecision('Operation allowed by permission mode');
+    },
+
+    checkConnectorPolicy(
+      connectorId: string,
+      resource: string,
+      action: string,
+      userId: string,
+      riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
+    ): { denied: boolean; policy?: ConnectorPolicy } {
+      return checkConnectorPolicyInternal(connectorId, resource, action, userId, riskLevel);
     },
   };
 }
