@@ -148,6 +148,10 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
         return { status: 'duplicate' };
       }
 
+      if (deps.longTermMemoryStore.hasTombstoneForSource(deps.userId, window.windowHash)) {
+        return { status: 'succeeded', resultCounts: { accepted: 0, discarded: 0, tombstoneSkipped: 1, superseded: 0 } };
+      }
+
       let run;
       try {
         run = deps.memoryExtractionRunStore.createPending({
