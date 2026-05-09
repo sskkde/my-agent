@@ -87,6 +87,14 @@ export function createPermissionEngine(
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + fullConfig.defaultExpiryMs).toISOString();
 
+    const metadata: Record<string, unknown> = {
+      operationType: request.operationType,
+      correlationId,
+    };
+    if (request.pendingActionId) {
+      metadata.pendingActionId = request.pendingActionId;
+    }
+
     const storageRequest = deps.approvalStore.create({
       id,
       userId: request.context.userId,
@@ -98,10 +106,7 @@ export function createPermissionEngine(
       requestedBy: 'permission_engine',
       requestedAt: now,
       expiresAt,
-      metadata: JSON.stringify({
-        operationType: request.operationType,
-        correlationId,
-      }),
+      metadata: JSON.stringify(metadata),
     });
 
     return fromStorageApprovalRequest(storageRequest);

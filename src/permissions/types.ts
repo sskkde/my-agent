@@ -51,6 +51,8 @@ export interface PermissionCheckRequest {
   operationType: 'read' | 'write' | 'execute' | 'delete' | 'admin';
   justification?: string;
   metadata?: Record<string, unknown>;
+  /** ID of the runtime action waiting for this approval (if any) */
+  pendingActionId?: string;
 }
 
 export type PermissionDecisionStatus =
