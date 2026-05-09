@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS connector_policies (
   allowed_scopes TEXT,
   risk_cap TEXT,
   audit_label TEXT,
-  created_at TEXT NOT NULL
+  user_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT
 );
 
 -- Index: by connector_id for policy lookups

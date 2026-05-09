@@ -941,8 +941,8 @@ export const traceSpansTableMigration: Migration = {
       span_id TEXT PRIMARY KEY,
       trace_id TEXT NOT NULL,
       parent_span_id TEXT,
-      span_type TEXT NOT NULL CHECK(span_type IN ('dispatch', 'tool_execution', 'kernel_run', 'planner_run', 'workflow_run', 'background_run', 'trigger', 'connector_call', 'permission_check')),
-      module TEXT NOT NULL CHECK(module IN ('gateway', 'dispatcher', 'kernel', 'tool', 'workflow', 'subagent', 'trigger', 'connector', 'permission', 'memory')),
+      span_type TEXT NOT NULL CHECK(span_type IN ('dispatch', 'foreground_run', 'tool_execution', 'tool_call', 'kernel_run', 'planner_run', 'workflow_run', 'background_run', 'subagent_run', 'trigger', 'trigger_evaluation', 'connector_call', 'permission_check', 'memory_write', 'summary_write', 'replay')),
+      module TEXT NOT NULL CHECK(module IN ('gateway', 'foreground_agent', 'planner', 'dispatcher', 'kernel', 'tool', 'workflow', 'subagent', 'trigger', 'connector', 'permission', 'memory')),
       operation TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('started', 'completed', 'failed', 'cancelled')),
       start_time TEXT NOT NULL,
@@ -977,7 +977,7 @@ export const metricsTableMigration: Migration = {
       metric_id TEXT PRIMARY KEY,
       trace_id TEXT,
       span_id TEXT,
-      module TEXT NOT NULL CHECK(module IN ('gateway', 'dispatcher', 'kernel', 'tool', 'workflow', 'subagent', 'trigger', 'connector', 'permission', 'memory')),
+      module TEXT NOT NULL CHECK(module IN ('gateway', 'foreground_agent', 'planner', 'dispatcher', 'kernel', 'tool', 'workflow', 'subagent', 'trigger', 'connector', 'permission', 'memory')),
       metric_type TEXT NOT NULL CHECK(metric_type IN ('counter', 'gauge', 'histogram', 'timer')),
       name TEXT NOT NULL,
       value REAL NOT NULL,
@@ -1014,7 +1014,7 @@ export const auditRecordsTableMigration: Migration = {
   up: `
     CREATE TABLE audit_records (
       audit_id TEXT PRIMARY KEY,
-      audit_type TEXT NOT NULL CHECK(audit_type IN ('user_input', 'assistant_output', 'tool_call', 'external_write', 'permission_decision', 'approval_request', 'approval_response', 'workflow_change', 'workflow_run', 'subagent_run', 'connector_access', 'memory_write', 'memory_delete', 'summary_write', 'dispatch')),
+      audit_type TEXT NOT NULL CHECK(audit_type IN ('user_input', 'assistant_output', 'tool_call', 'external_write', 'permission_decision', 'approval_request', 'approval_response', 'workflow_change', 'workflow_run', 'subagent_run', 'connector_access', 'connector_resource_access', 'memory_write', 'memory_delete', 'summary_write', 'dispatch')),
       timestamp TEXT NOT NULL,
       user_id TEXT NOT NULL,
       session_id TEXT,
@@ -1768,6 +1768,76 @@ export const agentConfigSearchLlmFieldsMigration: Migration = {
   `
 };
 
+export const toolResultBlobsTableMigration: Migration = {
+  version: 44,
+  name: 'create_tool_result_blobs_table',
+  up: `
+    CREATE TABLE tool_result_blobs (
+      blob_id TEXT PRIMARY KEY,
+      tool_call_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      session_id TEXT,
+      content_type TEXT NOT NULL,
+      preview TEXT,
+      storage_ref TEXT NOT NULL,
+      sensitivity TEXT NOT NULL DEFAULT 'low' CHECK(sensitivity IN ('low', 'medium', 'high', 'restricted')),
+      size_bytes INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_tool_result_blobs_tool_call ON tool_result_blobs(tool_call_id);
+    CREATE INDEX idx_tool_result_blobs_user ON tool_result_blobs(user_id);
+    CREATE INDEX idx_tool_result_blobs_session ON tool_result_blobs(session_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_tool_result_blobs_session;
+    DROP INDEX IF EXISTS idx_tool_result_blobs_user;
+    DROP INDEX IF EXISTS idx_tool_result_blobs_tool_call;
+    DROP TABLE IF EXISTS tool_result_blobs
+  `
+};
+
+export const approvalRequestScopedGrantsMigration: Migration = {
+  version: 45,
+  name: 'add_scoped_grants_fields',
+  up: `
+    ALTER TABLE approval_requests ADD COLUMN scope_type TEXT;
+    ALTER TABLE approval_requests ADD COLUMN scope_ref TEXT;
+    ALTER TABLE approval_requests ADD COLUMN approval_code TEXT
+  `,
+  down: `
+    ALTER TABLE approval_requests DROP COLUMN approval_code;
+    ALTER TABLE approval_requests DROP COLUMN scope_ref;
+    ALTER TABLE approval_requests DROP COLUMN scope_type
+  `
+};
+
+export const connectorPoliciesTableMigration: Migration = {
+  version: 46,
+  name: 'create_connector_policies_table',
+  up: `
+    CREATE TABLE IF NOT EXISTS connector_policies (
+      policy_id TEXT PRIMARY KEY,
+      connector_id TEXT NOT NULL,
+      resource_pattern TEXT NOT NULL,
+      action TEXT NOT NULL,
+      effect TEXT NOT NULL CHECK(effect IN ('allow', 'deny')),
+      allowed_scopes TEXT,
+      risk_cap TEXT,
+      audit_label TEXT,
+      user_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_connector_policies_connector ON connector_policies(connector_id);
+    CREATE INDEX IF NOT EXISTS idx_connector_policies_effect ON connector_policies(effect)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_connector_policies_effect;
+    DROP INDEX IF EXISTS idx_connector_policies_connector;
+    DROP TABLE IF EXISTS connector_policies
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -1849,6 +1919,15 @@ export const allStoreMigrations: Migration[] = [
 
   // Agent Config Search LLM fields
   agentConfigSearchLlmFieldsMigration,     // v43
+
+  // Tool Result Blobs
+  toolResultBlobsTableMigration,            // v44
+
+  // Scoped Grants and Approval Code
+  approvalRequestScopedGrantsMigration,      // v45
+
+  // Connector Policies
+  connectorPoliciesTableMigration,            // v46
 ];
 
 /**
