@@ -196,10 +196,10 @@ export function normalizeConnectorResponse(
         error: {
           code: 'permission_denied',
           message: response.error?.message ?? 'Permission denied',
-          recoverable: false,
+          recoverable: response.error?.recoverable ?? true,
           category: 'permission_error',
         },
-        recoverability: 'non_recoverable',
+        recoverability: response.error?.recoverable === false ? 'non_recoverable' : 'recoverable_with_user',
         metadata: { sensitivity },
       };
     

@@ -475,7 +475,7 @@ describe('Workflow Condition and Branch Execution', () => {
       expect(afterConditionRun?.currentStepIds).toContain('step_low_priority');
     });
 
-    it('should fail workflow when undefined variable and onFailure is fail_workflow', () => {
+    it('should fail workflow when undefined variable and onFailure is fail', () => {
       const steps: WorkflowStep[] = [
         {
           stepId: 'step_set_data',
@@ -492,7 +492,7 @@ describe('Workflow Condition and Branch Execution', () => {
             conditionExpression: 'missing.value == "test"',
             trueNextStepId: 'step_true_branch',
             falseNextStepId: 'step_false_branch',
-            onFailure: 'fail_workflow',
+            onFailure: 'fail',
           },
         },
         {

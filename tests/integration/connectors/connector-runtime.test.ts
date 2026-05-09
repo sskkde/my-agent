@@ -352,7 +352,7 @@ describe('Connector Runtime Integration', () => {
       const toolBridge = createConnectorToolBridge();
       const toolDef = toolBridge.bridgeCapabilityToToolDefinition(capability);
 
-      expect(toolDef.name).toBe('connector.test.read_data');
+      expect(toolDef.name).toBe('connector.test.execute');
       expect(toolDef.description).toBe('Read data from external source');
       expect(toolDef.category).toBe('read');
       expect(toolDef.sensitivity).toBe('low');
