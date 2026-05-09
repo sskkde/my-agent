@@ -48,6 +48,7 @@ export interface TriggerStore {
   findByStatus(status: TriggerStatus): TriggerRegistration[];
   incrementTriggerCount(id: string): TriggerRegistration;
   updateStatus(id: string, status: TriggerStatus): TriggerRegistration;
+  updateMetadata(id: string, metadata: string): TriggerRegistration;
   findExpired(before: string): TriggerRegistration[];
   delete(id: string): void;
 }
@@ -178,6 +179,25 @@ class TriggerStoreImpl implements TriggerStore {
     return {
       ...existing,
       status,
+      updatedAt: now,
+    };
+  }
+
+  updateMetadata(id: string, metadata: string): TriggerRegistration {
+    const existing = this.getById(id);
+    if (!existing) {
+      throw new Error(`Trigger registration not found: ${id}`);
+    }
+
+    const now = new Date().toISOString();
+    this.connection.exec(
+      'UPDATE trigger_registrations SET metadata = ?, updated_at = ? WHERE id = ?',
+      [metadata, now, id]
+    );
+
+    return {
+      ...existing,
+      metadata,
       updatedAt: now,
     };
   }

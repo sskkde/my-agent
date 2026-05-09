@@ -1,7 +1,7 @@
 import type { ConnectionManager } from './connection.js';
 import type { WorkflowRunState } from '../shared/states.js';
 
-export type WorkflowStepType = 'agent_run' | 'subagent_run' | 'tool_call' | 'approval' | 'wait' | 'condition';
+export type WorkflowStepType = 'agent_run' | 'subagent_run' | 'tool_call' | 'approval' | 'wait' | 'condition' | 'branch' | 'parallel_group' | 'polling_wait';
 
 export interface WorkflowRun {
   workflowRunId: string;
@@ -51,6 +51,7 @@ export interface WorkflowRunStore {
   createStepRun(step: Omit<WorkflowStepRun, 'createdAt' | 'updatedAt'>): void;
   getStepRunById(stepRunId: string): WorkflowStepRun | null;
   updateStepStatus(stepRunId: string, status: WorkflowRunState): void;
+  saveStepOutput(stepRunId: string, output: unknown): void;
   linkStepToKernelRun(stepRunId: string, kernelRunId: string): void;
   linkStepToSubagentRun(stepRunId: string, subagentRunId: string): void;
   linkStepToToolCall(stepRunId: string, toolCallId: string): void;
@@ -295,6 +296,14 @@ class WorkflowRunStoreImpl implements WorkflowRunStore {
        SET status = ?, completed_at = COALESCE(?, completed_at), updated_at = ? 
        WHERE step_run_id = ?`,
       [status, completedAt, now, stepRunId]
+    );
+  }
+
+  saveStepOutput(stepRunId: string, output: unknown): void {
+    const now = new Date().toISOString();
+    this.connection.exec(
+      `UPDATE workflow_step_runs SET output_data = ?, updated_at = ? WHERE step_run_id = ?`,
+      [JSON.stringify(output), now, stepRunId]
     );
   }
 

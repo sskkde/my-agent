@@ -32,7 +32,7 @@ All Phase 3 architecture requirements completed as of 2026-05-09.
 | Cross-Runtime | ✅ | End-to-end integration tests |
 
 ### Known Gaps (Not Fully Implemented)
-- Memory management UI (T18) — Backend API exists at `src/api/routes/memory.ts`, frontend UI not implemented
+- Memory management UI (T18) — Now COMPLETE ✅ (MemoryTab component + backend API)
 - E2E tests (T28/T29) — Skeleton tests exist; full E2E connector/workflow/memory flows require real server setup
 - Pre-existing E2E failures (flow-7-trigger, observability-all-flows) — Pre-date Phase 3 work
 
