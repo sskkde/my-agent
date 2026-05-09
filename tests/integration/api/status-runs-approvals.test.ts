@@ -39,9 +39,9 @@ describe('Status, Approvals, and Runs API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { approvals: unknown[]; total: number };
-      expect(body.approvals).toEqual([]);
-      expect(body.total).toBe(0);
+      const body = await response.json() as { data: { approvals: unknown[]; total: number } };
+      expect(body.data.approvals).toEqual([]);
+      expect(body.data.total).toBe(0);
     });
   });
 

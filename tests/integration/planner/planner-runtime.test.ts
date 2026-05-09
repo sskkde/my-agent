@@ -275,8 +275,8 @@ describe('Planner Runtime Integration', () => {
 
       // Verify RuntimeAction was emitted (not directly invoked)
       expect(result.actions).toHaveLength(1);
-      expect(result.actions[0]?.targetRuntime).toBe('execution_engine');
-      expect(result.actions[0]?.targetAction).toBe('execute_plan');
+      expect(result.actions[0]?.targetRuntime).toBe('agent_kernel');
+      expect(result.actions[0]?.targetAction).toBe('start_agent_run');
       expect(result.actions[0]?.payload.planId).toBe(result.planId);
       expect(result.actions[0]?.status).toBe(RUNTIME_ACTION_STATES.CREATED);
     });
