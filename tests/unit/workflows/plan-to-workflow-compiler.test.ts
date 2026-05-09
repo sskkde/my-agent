@@ -273,22 +273,46 @@ describe('compilePlanToWorkflowDraft', () => {
     });
   });
 
-  describe('rejection: unsupported condition', () => {
-    it('rejects condition step type', () => {
-      const plan = {
+  describe('acceptance: condition step', () => {
+    it('accepts condition step with required fields', () => {
+      const plan: PlanToWorkflowInput = {
         planId: 'plan_condition',
         name: 'Condition Workflow',
         ownerUserId: 'user_001',
         steps: [
-          { stepId: 's1', title: 'Check', stepType: 'condition', config: {} },
+          {
+            stepId: 's1',
+            title: 'Check',
+            stepType: 'condition',
+            config: {
+              conditionExpression: 'input.value == "test"',
+              trueNextStepId: 's2',
+            },
+          },
+          { stepId: 's2', title: 'True Branch', stepType: 'tool_call', config: { toolName: 't1' } },
+        ],
+      };
+
+      const result = compilePlanToWorkflowDraft(plan);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects condition step without conditionExpression', () => {
+      const plan: PlanToWorkflowInput = {
+        planId: 'plan_condition_no_expr',
+        name: 'Condition Without Expression',
+        ownerUserId: 'user_001',
+        steps: [
+          { stepId: 's1', title: 'Check', stepType: 'condition', config: { trueNextStepId: 's2' } },
+          { stepId: 's2', title: 'True Branch', stepType: 'tool_call', config: { toolName: 't1' } },
         ],
       };
 
       const result = compilePlanToWorkflowDraft(plan);
 
       expect(result.success).toBe(false);
-      expect(result.errors.some(e => e.code === CompilerErrorCode.UNSUPPORTED_CONDITION)).toBe(true);
-      expect(result.errors.find(e => e.code === CompilerErrorCode.UNSUPPORTED_CONDITION)?.stepId).toBe('s1');
+      expect(result.errors.some(e => e.code === CompilerErrorCode.MISSING_CONDITION_EXPRESSION)).toBe(true);
     });
   });
 
@@ -330,43 +354,94 @@ describe('compilePlanToWorkflowDraft', () => {
     });
   });
 
-  describe('rejection: branching (multiple incoming refs)', () => {
-    it('rejects when multiple steps point to the same nextStepId', () => {
+  describe('acceptance: branch step', () => {
+    it('accepts branch step with required fields', () => {
       const plan: PlanToWorkflowInput = {
         planId: 'plan_branch',
-        name: 'Branching Workflow',
+        name: 'Branch Workflow',
         ownerUserId: 'user_001',
         steps: [
-          { stepId: 's1', title: 'Step 1', stepType: 'tool_call', config: { toolName: 't1' }, nextStepId: 's3' },
-          { stepId: 's2', title: 'Step 2', stepType: 'tool_call', config: { toolName: 't2' }, nextStepId: 's3' },
-          { stepId: 's3', title: 'Step 3', stepType: 'tool_call', config: { toolName: 't3' } },
+          {
+            stepId: 's1',
+            title: 'Branch Step',
+            stepType: 'branch',
+            config: {
+              branches: [
+                {
+                  branchId: 'b1',
+                  name: 'Branch 1',
+                  steps: [
+                    { stepId: 's2', title: 'Branch Step', stepType: 'tool_call', config: { toolName: 't1' } },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      const result = compilePlanToWorkflowDraft(plan);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects branch step without branches', () => {
+      const plan: PlanToWorkflowInput = {
+        planId: 'plan_branch_no_branches',
+        name: 'Branch Without Branches',
+        ownerUserId: 'user_001',
+        steps: [
+          { stepId: 's1', title: 'Branch Step', stepType: 'branch', config: {} },
         ],
       };
 
       const result = compilePlanToWorkflowDraft(plan);
 
       expect(result.success).toBe(false);
-      expect(result.errors.some(e => e.code === CompilerErrorCode.BRANCHING_DETECTED)).toBe(true);
-      expect(result.errors.find(e => e.code === CompilerErrorCode.BRANCHING_DETECTED)?.stepId).toBe('s3');
+      expect(result.errors.some(e => e.code === CompilerErrorCode.MISSING_BRANCHES)).toBe(true);
     });
   });
 
-  describe('rejection: loop', () => {
-    it('rejects when workflow contains a loop', () => {
+  describe('acceptance: parallel_group step', () => {
+    it('accepts parallel_group step with required fields', () => {
       const plan: PlanToWorkflowInput = {
-        planId: 'plan_loop',
-        name: 'Loop Workflow',
+        planId: 'plan_parallel',
+        name: 'Parallel Workflow',
         ownerUserId: 'user_001',
         steps: [
-          { stepId: 's1', title: 'Step 1', stepType: 'tool_call', config: { toolName: 't1' }, nextStepId: 's2' },
-          { stepId: 's2', title: 'Step 2', stepType: 'tool_call', config: { toolName: 't2' }, nextStepId: 's1' },
+          {
+            stepId: 's1',
+            title: 'Parallel Step',
+            stepType: 'parallel_group',
+            config: {
+              parallelSteps: [
+                { stepId: 'p1', title: 'Parallel 1', stepType: 'tool_call', config: { toolName: 't1' } },
+                { stepId: 'p2', title: 'Parallel 2', stepType: 'tool_call', config: { toolName: 't2' } },
+              ],
+            },
+          },
+        ],
+      };
+
+      const result = compilePlanToWorkflowDraft(plan);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects parallel_group step without parallelSteps', () => {
+      const plan: PlanToWorkflowInput = {
+        planId: 'plan_parallel_no_steps',
+        name: 'Parallel Without Steps',
+        ownerUserId: 'user_001',
+        steps: [
+          { stepId: 's1', title: 'Parallel Step', stepType: 'parallel_group', config: {} },
         ],
       };
 
       const result = compilePlanToWorkflowDraft(plan);
 
       expect(result.success).toBe(false);
-      expect(result.errors.some(e => e.code === CompilerErrorCode.LOOP_DETECTED)).toBe(true);
+      expect(result.errors.some(e => e.code === CompilerErrorCode.MISSING_PARALLEL_STEPS)).toBe(true);
     });
   });
 
