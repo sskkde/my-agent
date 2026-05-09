@@ -14,6 +14,7 @@ import AgentsTab from './features/agents/AgentsTab';
 import SettingsTab from './features/settings/SettingsTab';
 import WorkflowsTab from './features/workflows/WorkflowsTab';
 import ApprovalsTab from './features/approvals/ApprovalsTab';
+import MemoryTab from './features/memory/MemoryTab';
 import LoginPage from './features/auth/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import type { TabId } from './components/TabNav';
@@ -71,6 +72,8 @@ function AppContent() {
         return <WorkflowsTab />;
       case 'approvals':
         return <ApprovalsTab />;
+      case 'memory':
+        return <MemoryTab />;
     }
   };
 
