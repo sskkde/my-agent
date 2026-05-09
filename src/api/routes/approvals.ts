@@ -2,8 +2,72 @@ import type { FastifyInstance } from 'fastify';
 import type { ApprovalsResponse, ApprovalDecisionRequest, ApprovalInfo } from '../types.js';
 import { ApiErrorFactory } from '../errors.js';
 import type { ApiContext } from '../context.js';
-import { APPROVAL_STATES } from '../../storage/approval-store.js';
-import { generateId, GRANT_ID_PREFIX } from '../../shared/ids.js';
+import { APPROVAL_STATES, type ApprovalRequest } from '../../storage/approval-store.js';
+import { generateId, GRANT_ID_PREFIX, ACTION_ID_PREFIX } from '../../shared/ids.js';
+import type { RuntimeAction as DispatcherRuntimeAction, TargetRuntime } from '../../dispatcher/types.js';
+
+async function dispatchPendingAction(
+  approval: ApprovalRequest,
+  decision: 'approved' | 'rejected',
+  context: ApiContext
+): Promise<void> {
+  if (!approval.metadata) return;
+
+  let metadata: Record<string, unknown>;
+  try {
+    metadata = JSON.parse(approval.metadata);
+  } catch {
+    return;
+  }
+
+  const pendingActionId = metadata.pendingActionId as string | undefined;
+  if (!pendingActionId) return;
+
+  const pendingAction = context.stores.runtimeActionStore.findById(pendingActionId);
+  if (!pendingAction) return;
+
+  if (pendingAction.status !== 'waiting_for_approval') return;
+
+  if (decision === 'approved') {
+    context.stores.runtimeActionStore.updateStatus(pendingActionId, 'created');
+
+    const resumeAction: DispatcherRuntimeAction = {
+      actionId: generateId(ACTION_ID_PREFIX),
+      actionType: 'resume_agent_run',
+      source: { sourceModule: 'permission' },
+      targetRuntime: pendingAction.targetRuntime as TargetRuntime,
+      targetAction: 'resume_agent_run',
+      payload: {
+        originalActionId: pendingActionId,
+        approvalId: approval.id,
+        decision: 'approved',
+      },
+      sessionId: approval.sessionId,
+      userId: approval.userId,
+      targetRef: { ...pendingAction.targetRef, approvalId: approval.id },
+      status: 'created',
+      correlationId: pendingAction.correlationId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await context.runtimeDispatcher.dispatch({
+      requestId: `req-resume-${Date.now()}`,
+      action: resumeAction,
+      context: {
+        callerModule: 'permission',
+        userId: approval.userId,
+        sessionId: approval.sessionId,
+      },
+    });
+  } else {
+    context.stores.runtimeActionStore.updateStatus(
+      pendingActionId,
+      'denied',
+      `Approval rejected: ${approval.responseReason ?? 'No reason provided'}`
+    );
+  }
+}
 
 export function registerApprovalRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get<{ Reply: ApprovalsResponse }>('/api/approvals', async (request, reply): Promise<ApprovalsResponse> => {
@@ -48,7 +112,6 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         return reply.code(404).send(error);
       }
 
-      // Check ownership - only the owner can view detail
       if (approval.userId !== userId) {
         const error = ApiErrorFactory.notFound(`Approval ${approvalId} not found`);
         return reply.code(404).send(error);
@@ -109,9 +172,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         responseReason: reason,
       });
 
-      // Create permission grant and event for approved decisions
       if (decision === 'approved') {
-        // Create permission grant
         const grantId = generateId(GRANT_ID_PREFIX);
         context.stores.permissionGrantStore.create({
           id: grantId,
@@ -123,7 +184,6 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         });
 
-        // Write approval_resolved event
         context.stores.eventStore.append({
           eventId: `evt-approval-${Date.now()}`,
           eventType: 'approval_resolved',
@@ -137,7 +197,8 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
           createdAt: now,
         });
 
-        // Notify triggerRuntime if available
+        await dispatchPendingAction(existing, 'approved', context);
+
         if (context.triggerRuntime?.handleApprovalResolved) {
           context.triggerRuntime.handleApprovalResolved({
             approvalId,
@@ -146,7 +207,6 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
           });
         }
       } else {
-        // Write approval_resolved event for rejected
         context.stores.eventStore.append({
           eventId: `evt-approval-${Date.now()}`,
           eventType: 'approval_resolved',
@@ -160,7 +220,8 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
           createdAt: now,
         });
 
-        // Notify triggerRuntime if available
+        await dispatchPendingAction(existing, 'rejected', context);
+
         if (context.triggerRuntime?.handleApprovalResolved) {
           context.triggerRuntime.handleApprovalResolved({
             approvalId,
