@@ -42,26 +42,28 @@ export function registerDefaultRuntimeAdapters(deps: {
   // Tool plane adapter - executes tools
   const toolPlaneAdapter: RuntimeAdapter = {
     async execute(action: RuntimeAction): Promise<unknown> {
+      // Read userId/sessionId from action top-level (with fallback to payload for backward compatibility)
+      const userId = action.userId ?? (action.payload as Record<string, unknown>)?.userId as string | undefined;
+      const sessionId = action.sessionId ?? (action.payload as Record<string, unknown>)?.sessionId as string | undefined;
+
       const payload = action.payload as {
         toolCallId?: string;
         toolName?: string;
         params?: unknown;
-        userId?: string;
-        sessionId?: string;
         kernelRunId?: string;
       };
 
-      if (!payload.toolCallId || !payload.toolName || !payload.userId) {
+      if (!payload.toolCallId || !payload.toolName || !userId) {
         throw new Error('Tool plane action missing required fields: toolCallId, toolName, userId');
       }
 
       // Get user's permission grants
-      const grants = permissionGrantStore.findByUser(payload.userId);
+      const grants = permissionGrantStore.findByUser(userId);
 
       // Construct permission context
       const permissionContext = createPermissionContext(
-        payload.userId,
-        payload.sessionId ?? '',
+        userId,
+        sessionId ?? '',
         'ask_on_write',
         grants
       );
@@ -71,8 +73,8 @@ export function registerDefaultRuntimeAdapters(deps: {
         toolCallId: payload.toolCallId,
         toolName: payload.toolName,
         params: payload.params,
-        userId: payload.userId,
-        sessionId: payload.sessionId,
+        userId,
+        sessionId,
         kernelRunId: payload.kernelRunId,
         permissionContext,
       });
