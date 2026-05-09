@@ -13,8 +13,10 @@ import { createMigrationRunner } from '../../src/storage/migrations.js';
 import { allStoreMigrations } from '../../src/storage/all-stores-migrations.js';
 import { createEventStore, type EventStore } from '../../src/storage/event-store.js';
 import { createRuntimeActionStore, type RuntimeActionStore } from '../../src/storage/runtime-action-store.js';
-import { createAuditStore, type AuditStore } from '../../src/observability/audit-store.js';
-import { createTraceStore, type TraceStore } from '../../src/observability/trace-store.js';
+import { createAuditStore } from '../../src/observability/audit-store.js';
+import { createTraceStore } from '../../src/observability/trace-store.js';
+import type { AuditStore } from '../../src/observability/audit-types.js';
+import type { TraceStore } from '../../src/observability/types.js';
 import { createLongTermMemoryStore, type LongTermMemoryStore } from '../../src/storage/long-term-memory-store.js';
 import { createTimelineBuilder, type TimelineBuilder } from '../../src/observability/timeline.js';
 import {

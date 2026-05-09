@@ -32,6 +32,7 @@ export interface WorkflowRuntime {
   handleStepCompletion(stepRunId: string, result: StepExecutionResult): void;
   getWorkflowRun(workflowRunId: string): WorkflowRunResult | null;
   cancelWorkflowRun(workflowRunId: string): void;
+  shutdown(): void;
 }
 
 interface WorkflowRuntimeConfig {
@@ -73,6 +74,7 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
   private clock: { now: () => number; nowISO: () => string; advance: (ms: number) => void };
   private stepAttemptCounts: Map<string, number> = new Map();
   private stepAuditTrails: Map<string, RetryAttemptAuditEntry[]> = new Map();
+  private pendingTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(config: WorkflowRuntimeConfig) {
     this.draftStore = config.draftStore;
@@ -519,7 +521,16 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       });
 
       this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.QUEUED);
-      setTimeout(() => this.executeStep(stepRunId), delayMs);
+      const timerId = `retry_${stepRunId}`;
+      const existingTimer = this.pendingTimers.get(timerId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+      const timer = setTimeout(() => {
+        this.pendingTimers.delete(timerId);
+        this.executeStep(stepRunId);
+      }, delayMs);
+      this.pendingTimers.set(timerId, timer);
     } else {
       this.applyOnFailurePolicy(stepRunId, step, workflowRun, result, auditTrail, now);
     }
@@ -1052,6 +1063,16 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
         cancelledAt: new Date().toISOString(),
       },
     });
+  }
+
+  shutdown(): void {
+    for (const timer of this.pendingTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingTimers.clear();
+
+    this.stepAttemptCounts.clear();
+    this.stepAuditTrails.clear();
   }
 
   private validateSteps(context: WorkflowValidationContext): void {

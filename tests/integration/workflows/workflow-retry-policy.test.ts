@@ -192,6 +192,7 @@ describe('Workflow Retry Policy Integration', () => {
   let eventStore: EventStore;
   let workflowRuntime: WorkflowRuntime;
   let clock: TestClock;
+  let allRuntimes: WorkflowRuntime[] = [];
 
   beforeEach(() => {
     connection = createConnectionManager(':memory:');
@@ -206,6 +207,7 @@ describe('Workflow Retry Policy Integration', () => {
     runtimeActionStore = createRuntimeActionStore(connection);
     eventStore = createEventStore(connection);
     clock = new TestClock('2024-01-01T00:00:00.000Z');
+    allRuntimes = [];
 
     workflowRuntime = createWorkflowRuntime({
       draftStore,
@@ -219,9 +221,13 @@ describe('Workflow Retry Policy Integration', () => {
         advance: (ms: number) => clock.advance(ms),
       },
     });
+    allRuntimes.push(workflowRuntime);
   });
 
   afterEach(() => {
+    for (const rt of allRuntimes) {
+      rt.shutdown();
+    }
     connection?.close();
   });
 
@@ -251,6 +257,7 @@ describe('Workflow Retry Policy Integration', () => {
         },
         dispatcher: mockDispatcher,
       });
+      allRuntimes.push(workflowRuntimeWithDispatcher);
 
       const steps: WorkflowStep[] = [
         {
@@ -323,6 +330,7 @@ describe('Workflow Retry Policy Integration', () => {
         },
         dispatcher: mockDispatcher,
       });
+      allRuntimes.push(workflowRuntimeWithDispatcher);
 
       const steps: WorkflowStep[] = [
         {
@@ -590,6 +598,7 @@ describe('Workflow Retry Policy Integration', () => {
         },
         dispatcher: mockDispatcher,
       });
+      allRuntimes.push(workflowRuntimeWithDispatcher);
 
       const steps: WorkflowStep[] = [
         {
@@ -666,6 +675,7 @@ describe('Workflow Retry Policy Integration', () => {
         },
         dispatcher: mockDispatcher,
       });
+      allRuntimes.push(workflowRuntimeWithDispatcher);
 
       const steps: WorkflowStep[] = [
         {

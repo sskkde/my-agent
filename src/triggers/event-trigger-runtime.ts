@@ -322,6 +322,10 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
         const cached = this.firedTriggerCache.get(cacheKey);
 
         if (cached) {
+          // Return cached result for idempotent evaluation
+          firedEvents.push(cached.event);
+          firedActions.push(cached.action);
+          fired++;
           continue;
         }
 
