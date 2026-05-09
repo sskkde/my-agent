@@ -678,36 +678,35 @@ export class ReplayService {
     const sourceData = event.sourceData as Record<string, unknown> | undefined;
     const eventType = event.eventType;
     const module = event.module.toLowerCase();
-    const payload = this.extractSafetyPayload(event);
-    const guardResult = guard.check(`${eventType}:${event.description}`, payload);
-    if (!guardResult.allowed) {
-      return guardResult.reason ?? 'Replay action blocked by safety policy';
-    }
 
-    // First check audit records for specific blocked action types (highest priority)
+    // Audit-specific checks run FIRST for precise blocking reasons.
     if (eventType === 'audit' && sourceData) {
       const auditData = sourceData as unknown as AuditRecord;
 
-      // Check external writes first
       if (auditData.auditType === 'external_write') {
         return policy.allowExternalWrites
           ? null
           : 'External write operation blocked by default safety policy';
       }
 
-      // Then check tool calls
       if (auditData.auditType === 'tool_call') {
         return policy.allowToolExecution
           ? null
           : 'Tool execution blocked by default safety policy';
       }
 
-      // Then check connector access
       if (auditData.auditType === 'connector_access') {
         return policy.allowConnectorAccess
           ? null
           : 'Connector access blocked by default safety policy';
       }
+    }
+
+    // Guard check for non-audit events and audit events that passed audit-specific checks.
+    const payload = this.extractSafetyPayload(event);
+    const guardResult = guard.check(`${eventType}:${event.description}`, payload);
+    if (!guardResult.allowed) {
+      return guardResult.reason ?? 'Replay action blocked by safety policy';
     }
 
     // Check event description for external write indicators
