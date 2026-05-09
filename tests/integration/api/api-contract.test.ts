@@ -152,10 +152,12 @@ describe('API Contract', () => {
   describe('ApprovalsResponse', () => {
     it('should have approvals array and total count', () => {
       const response: ApprovalsResponse = {
-        approvals: [],
-        total: 0,
+        data: {
+          approvals: [],
+          total: 0,
+        },
       };
-      expect(response.total).toBe(0);
+      expect(response.data.total).toBe(0);
     });
   });
 
