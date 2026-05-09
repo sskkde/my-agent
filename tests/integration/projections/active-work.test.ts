@@ -6,6 +6,8 @@ import { createApprovalStore, type ApprovalStore, type CreateApprovalRequest, AP
 import { createPlanStore, type PlanStore } from '../../../src/storage/plan-store.js';
 import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
 import { createSummaryStore, type SummaryStore } from '../../../src/storage/summary-store.js';
+import { createBackgroundRunStore, type BackgroundRunStore } from '../../../src/storage/background-run-store.js';
+import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js';
 import type { PlannerState } from '../../../src/shared/states.js';
 import {
   createActiveWorkProjectionBuilder,
@@ -26,6 +28,8 @@ describe('ActiveWorkProjection', () => {
   let planStore: PlanStore;
   let eventStore: EventStore;
   let summaryStore: SummaryStore;
+  let backgroundRunStore: BackgroundRunStore;
+  let workflowRunStore: WorkflowRunStore;
   let projectionBuilder: ActiveWorkProjectionBuilder;
 
   beforeEach(async () => {
@@ -193,6 +197,67 @@ describe('ActiveWorkProjection', () => {
           DROP TABLE IF EXISTS summaries;
         `,
       },
+      {
+        version: 6,
+        name: 'create_background_runs_table',
+        up: `
+          CREATE TABLE background_runs (
+            background_run_id TEXT PRIMARY KEY,
+            subagent_run_id TEXT,
+            user_id TEXT NOT NULL,
+            session_id TEXT,
+            agent_type TEXT NOT NULL,
+            status TEXT NOT NULL,
+            launch_source TEXT NOT NULL,
+            checkpoint_data TEXT,
+            recovery_point TEXT,
+            result_data TEXT,
+            error_message TEXT,
+            priority INTEGER DEFAULT 0,
+            scheduled_at TEXT,
+            started_at TEXT,
+            completed_at TEXT,
+            expires_at TEXT,
+            retry_count INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+          CREATE INDEX idx_background_runs_user_status ON background_runs(user_id, status);
+          CREATE INDEX idx_background_runs_session_status ON background_runs(session_id, status);
+        `,
+        down: `
+          DROP INDEX IF EXISTS idx_background_runs_user_status;
+          DROP INDEX IF EXISTS idx_background_runs_session_status;
+          DROP TABLE IF EXISTS background_runs;
+        `,
+      },
+      {
+        version: 7,
+        name: 'create_workflow_runs_table',
+        up: `
+          CREATE TABLE workflow_runs (
+            workflow_run_id TEXT PRIMARY KEY,
+            workflow_id TEXT NOT NULL,
+            workflow_version TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            trigger_event_id TEXT,
+            status TEXT NOT NULL,
+            current_step_ids TEXT,
+            input_data TEXT,
+            output_data TEXT,
+            context_data TEXT,
+            started_at TEXT,
+            completed_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+          CREATE INDEX idx_workflow_runs_owner_status ON workflow_runs(owner_user_id, status);
+        `,
+        down: `
+          DROP INDEX IF EXISTS idx_workflow_runs_owner_status;
+          DROP TABLE IF EXISTS workflow_runs;
+        `,
+      },
     ];
 
     migrations.apply(tableMigrations);
@@ -203,6 +268,8 @@ describe('ActiveWorkProjection', () => {
     planStore = createPlanStore(connection);
     eventStore = createEventStore(connection);
     summaryStore = createSummaryStore(connection);
+    backgroundRunStore = createBackgroundRunStore(connection);
+    workflowRunStore = createWorkflowRunStore(connection);
 
     // Create projection builder
     projectionBuilder = createActiveWorkProjectionBuilder({
@@ -211,6 +278,8 @@ describe('ActiveWorkProjection', () => {
       planStore,
       eventStore,
       summaryStore,
+      backgroundRunStore,
+      workflowRunStore,
     });
   });
 
@@ -470,6 +539,8 @@ describe('ActiveWorkProjection', () => {
         planStore,
         eventStore,
         summaryStore,
+        backgroundRunStore,
+        workflowRunStore,
       }, {
         defaultTtlMs: 0, // Immediate expiration
       });
@@ -579,6 +650,8 @@ describe('ActiveWorkProjection', () => {
         planStore,
         eventStore,
         summaryStore,
+        backgroundRunStore,
+        workflowRunStore,
       });
 
       customBuilder.registerSource(customSource);

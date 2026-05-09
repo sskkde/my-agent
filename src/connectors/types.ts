@@ -42,10 +42,14 @@ export interface ConnectorCallRequest {
 // Connector Response Status
 export type ConnectorResponseStatus =
   | 'success'
+  | 'started_async'
+  | 'partial_success'
   | 'auth_required'
+  | 'permission_denied'
   | 'rate_limited'
   | 'failed'
-  | 'async_started';
+  | 'timeout'
+  | 'cancelled';
 
 // Connector Response - result of a connector call
 export interface ConnectorResponse {

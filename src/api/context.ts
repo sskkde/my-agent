@@ -57,6 +57,7 @@ import { createToolExecutor } from '../tools/tool-executor.js';
 import type { ToolRegistry, ToolExecutor } from '../tools/types.js';
 import { registerBuiltInTools } from '../tools/builtins/index.js';
 import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js';
+import { createBackgroundRuntime } from '../subagents/background-runtime.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -506,6 +507,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     runtimeActionStore,
   });
 
+  const backgroundRuntime = createBackgroundRuntime({
+    backgroundRunStore,
+    eventStore,
+    maxConcurrentRuns: 10,
+    watchdogTimeoutMs: 60000,
+  });
+
   // Register default runtime adapters
   registerDefaultRuntimeAdapters({
     adapterRegistry,
@@ -515,6 +523,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     triggerRuntime,
     agentKernel,
     permissionGrantStore,
+    backgroundRuntime,
   });
 
   const messageProcessor = injectedMessageProcessor ?? createOrchestrationMessageProcessor({

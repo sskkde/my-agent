@@ -1,5 +1,6 @@
 import type { AdapterRegistry, RuntimeAdapter, RuntimeAction } from './types.js';
-import type { ToolExecutor } from '../tools/types.js';
+import type { ToolExecutor, ToolRegistry } from '../tools/types.js';
+import { createToolOrchestrator, type ToolUse } from '../tools/runtime/tool-orchestrator.js';
 import type { PlannerRuntime } from '../planner/planner-runtime.js';
 import type { WorkflowRuntime } from '../workflows/workflow-runtime.js';
 import type { EventTriggerRuntime } from '../triggers/event-trigger-runtime.js';
@@ -8,6 +9,8 @@ import type { PermissionGrantStore } from '../storage/permission-grant-store.js'
 import type { PlannerResumeEvent } from '../planner/types.js';
 import type { WaitConditionType, RegisterTriggerInput, RegisterWaitConditionInput } from '../triggers/types.js';
 import type { KernelRunInput } from '../kernel/types.js';
+import type { BackgroundRuntime, BackgroundRunInput } from '../subagents/background-runtime.js';
+import type { SubagentTaskSpec } from '../subagents/types.js';
 import { createPermissionContext } from '../permissions/types.js';
 
 /**
@@ -19,24 +22,29 @@ import { createPermissionContext } from '../permissions/types.js';
  * - workflow_runtime: Handles workflow run operations
  * - event_trigger_runtime: Handles trigger and wait condition registration
  * - agent_kernel: Runs agent kernel execution
+ * - subagent_runtime: Handles background subagent operations
  */
 export function registerDefaultRuntimeAdapters(deps: {
   adapterRegistry: AdapterRegistry;
   toolExecutor: ToolExecutor;
+  toolRegistry?: ToolRegistry;
   plannerRuntime: PlannerRuntime;
   workflowRuntime: WorkflowRuntime;
   triggerRuntime: EventTriggerRuntime;
   agentKernel: AgentKernel;
   permissionGrantStore: PermissionGrantStore;
+  backgroundRuntime: BackgroundRuntime;
 }): void {
   const {
     adapterRegistry,
     toolExecutor,
+    toolRegistry,
     plannerRuntime,
     workflowRuntime,
     triggerRuntime,
     agentKernel,
     permissionGrantStore,
+    backgroundRuntime,
   } = deps;
 
   // Tool plane adapter - executes tools
@@ -49,9 +57,53 @@ export function registerDefaultRuntimeAdapters(deps: {
       const payload = action.payload as {
         toolCallId?: string;
         toolName?: string;
+        toolUses?: Array<{
+          toolCallId?: string;
+          toolName?: string;
+          params?: unknown;
+          kernelRunId?: string;
+          timeoutMs?: number;
+        }>;
         params?: unknown;
         kernelRunId?: string;
       };
+
+      if (payload.toolUses) {
+        if (!userId) {
+          throw new Error('Tool plane batch action missing required field: userId');
+        }
+
+        if (!toolRegistry) {
+          throw new Error('Tool plane batch action requires toolRegistry');
+        }
+
+        const grants = permissionGrantStore.findByUser(userId);
+        const permissionContext = createPermissionContext(
+          userId,
+          sessionId ?? '',
+          'ask_on_write',
+          grants
+        );
+        const toolUses: ToolUse[] = payload.toolUses.map((toolUse) => {
+          if (!toolUse.toolCallId || !toolUse.toolName) {
+            throw new Error('Tool plane batch action missing required fields: toolCallId, toolName');
+          }
+
+          return {
+            toolCallId: toolUse.toolCallId,
+            toolName: toolUse.toolName,
+            params: toolUse.params,
+            userId,
+            sessionId,
+            kernelRunId: toolUse.kernelRunId ?? payload.kernelRunId,
+            permissionContext,
+            timeoutMs: toolUse.timeoutMs,
+          };
+        });
+
+        const orchestrator = createToolOrchestrator({ executor: toolExecutor, registry: toolRegistry });
+        return orchestrator.executeBatch(toolUses, { timeoutMs: action.policy?.timeoutMs });
+      }
 
       if (!payload.toolCallId || !payload.toolName || !userId) {
         throw new Error('Tool plane action missing required fields: toolCallId, toolName, userId');
@@ -228,10 +280,86 @@ export function registerDefaultRuntimeAdapters(deps: {
     },
   };
 
+  // Subagent runtime adapter - handles background subagent operations
+  const subagentRuntimeAdapter: RuntimeAdapter = {
+    async execute(action: RuntimeAction): Promise<unknown> {
+      const actionType = action.actionType;
+      const payload = action.payload as Record<string, unknown>;
+
+      switch (actionType) {
+        case 'launch_background_subagent': {
+          const userId = action.userId ?? (payload.userId as string | undefined);
+          const sessionId = action.sessionId ?? (payload.sessionId as string | undefined);
+          const agentType = payload.agentType as string | undefined;
+          const taskSpec = payload.taskSpec as SubagentTaskSpec | undefined;
+          const launchSource = payload.launchSource as string | undefined;
+          const priority = payload.priority as number | undefined;
+          const scheduledAt = payload.scheduledAt as string | undefined;
+          const expiresAt = payload.expiresAt as string | undefined;
+          const artifactRefs = payload.artifactRefs as string[] | undefined;
+
+          if (!userId || !agentType || !taskSpec || !launchSource) {
+            throw new Error('launch_background_subagent missing required fields: userId, agentType, taskSpec, launchSource');
+          }
+
+          const input: BackgroundRunInput = {
+            userId,
+            sessionId,
+            agentType,
+            taskSpec,
+            launchSource,
+            priority,
+            scheduledAt,
+            expiresAt,
+            artifactRefs,
+          };
+
+          const backgroundRunId = backgroundRuntime.enqueueBackgroundRun(input);
+          return { backgroundRunId, status: 'queued' };
+        }
+
+        case 'resume_background_subagent': {
+          const backgroundRunId = payload.backgroundRunId as string | undefined;
+
+          if (!backgroundRunId) {
+            throw new Error('resume_background_subagent missing backgroundRunId');
+          }
+
+          const run = backgroundRuntime.getBackgroundRun(backgroundRunId);
+          if (!run) {
+            throw new Error(`Background run not found: ${backgroundRunId}`);
+          }
+
+          if (run.status === 'queued') {
+            await backgroundRuntime.startBackgroundRun(backgroundRunId);
+            return { backgroundRunId, status: 'running' };
+          }
+
+          return { backgroundRunId, status: run.status };
+        }
+
+        case 'cancel_background_subagent': {
+          const backgroundRunId = payload.backgroundRunId as string | undefined;
+
+          if (!backgroundRunId) {
+            throw new Error('cancel_background_subagent missing backgroundRunId');
+          }
+
+          backgroundRuntime.cancelBackgroundRun(backgroundRunId);
+          return { backgroundRunId, status: 'cancelled' };
+        }
+
+        default:
+          throw new Error(`Unknown subagent_runtime action type: ${actionType}`);
+      }
+    },
+  };
+
   // Register all adapters
   adapterRegistry.register('tool_plane', toolPlaneAdapter);
   adapterRegistry.register('planner_runtime', plannerRuntimeAdapter);
   adapterRegistry.register('workflow_runtime', workflowRuntimeAdapter);
   adapterRegistry.register('event_trigger_runtime', eventTriggerRuntimeAdapter);
   adapterRegistry.register('agent_kernel', agentKernelAdapter);
+  adapterRegistry.register('subagent_runtime', subagentRuntimeAdapter);
 }

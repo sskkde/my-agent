@@ -138,7 +138,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
       const rawResult = await adapter.execute(instance, request);
       const response = this.normalizeResponse(rawResult, request.requestId, instanceId);
 
-      if (response.status === 'async_started') {
+      if (response.status === 'started_async') {
         const operationRef = this.createAsyncOperationRef(
           instanceId,
           response.metadata?.operationId || this.generateId('op')
@@ -217,7 +217,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
 
     if (this.isAsyncStarted(raw)) {
       return {
-        status: 'async_started',
+        status: 'started_async',
         requestId: reqId,
         connectorInstanceId: instId,
         data: raw.data,
@@ -292,7 +292,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
       obj !== null &&
       'status' in obj &&
       typeof (obj as ConnectorResponse).status === 'string' &&
-      ['success', 'auth_required', 'rate_limited', 'failed', 'async_started'].includes(
+      ['success', 'auth_required', 'rate_limited', 'failed', 'started_async'].includes(
         (obj as ConnectorResponse).status
       )
     );

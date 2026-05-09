@@ -11,6 +11,8 @@ export type ToolCategory =
   | 'read'      // Read-only operations (files, data, status)
   | 'write'     // Write operations (create, update)
   | 'delete'    // Delete operations
+  | 'send'      // Send outbound messages/notifications
+  | 'automation' // Browser/UI/system automation
   | 'execute'   // Execute commands, scripts
   | 'search'    // Search operations
   | 'admin'     // Administrative operations
@@ -73,6 +75,8 @@ export interface ToolExecutionContext {
 // Tool execution result
 export interface ToolExecutionResult {
   success: boolean;
+  status?: 'cancelled' | 'timeout' | 'skipped';
+  synthetic?: boolean;
   data?: unknown;
   error?: {
     code: string;
