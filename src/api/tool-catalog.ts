@@ -91,6 +91,42 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     category: 'search',
     sensitivity: 'medium',
   },
+  {
+    name: 'email.search',
+    description: 'Search emails matching a query (mock implementation)',
+    category: 'search',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'email.send_draft',
+    description: 'Create an email draft (mock implementation)',
+    category: 'write',
+    sensitivity: 'high',
+  },
+  {
+    name: 'calendar.list',
+    description: 'List calendar events (mock implementation)',
+    category: 'read',
+    sensitivity: 'low',
+  },
+  {
+    name: 'calendar.create_event',
+    description: 'Create a calendar event (mock implementation)',
+    category: 'write',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'contacts.search',
+    description: 'Search contacts matching a query (mock implementation)',
+    category: 'search',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'docs.read',
+    description: 'Read a document by ID (mock implementation)',
+    category: 'read',
+    sensitivity: 'low',
+  },
 ];
 
 export function getToolCatalog(): ToolSummary[] {
