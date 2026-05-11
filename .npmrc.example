@@ -1,0 +1,8 @@
+# WARNING: This is an EXAMPLE. Review and customize before using.
+# Copy to .npmrc: cp .npmrc.example .npmrc
+
+# Enforce engines field check during install
+engine-strict=true
+
+# Optional: Custom registry (uncomment if needed)
+# registry=https://registry.npmjs.org/
