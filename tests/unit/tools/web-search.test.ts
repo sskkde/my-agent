@@ -1,4 +1,4 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { createWebSearchTool, type WebSearchParams } from '../../../src/tools/builtins/web-search.js';
 import type { WebSearchResult } from '../../../src/search/types.js';
 import type { ToolExecutionContext } from '../../../src/tools/types.js';
@@ -60,6 +60,10 @@ describe('web.search tool', () => {
   });
 
   describe('Provider Configuration', () => {
+    beforeEach(() => {
+      vi.stubEnv('WEB_SEARCH_BACKEND', 'remote');
+    });
+
     it('should return recoverable error when endpoint is not configured', async () => {
       vi.stubEnv('WEB_SEARCH_API_URL', '');
       const tool = createWebSearchTool({ endpointUrl: undefined });
@@ -80,6 +84,10 @@ describe('web.search tool', () => {
   });
 
   describe('Search Execution', () => {
+    beforeEach(() => {
+      vi.stubEnv('WEB_SEARCH_BACKEND', 'remote');
+    });
+
     it('should fetch and normalize provider results', async () => {
       const fetchImpl = vi.fn().mockResolvedValue({
         ok: true,
