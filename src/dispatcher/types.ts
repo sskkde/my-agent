@@ -245,6 +245,7 @@ export type DispatchFailureCode =
   | 'permission_denied'
   | 'approval_required'
   | 'idempotency_duplicate'
+  | 'duplicate_rejected'
   | 'timeout'
   | 'queue_full'
   | 'concurrency_limited'

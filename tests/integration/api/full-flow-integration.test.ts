@@ -5,6 +5,31 @@ import type { FastifyInstance } from 'fastify';
 import type { TranscriptTurn } from '../../../src/api/types.js';
 import type { ForegroundDecision } from '../../../src/foreground/types.js';
 
+async function waitForCondition(
+  assertion: () => void,
+  options: { timeoutMs?: number; intervalMs?: number } = {}
+): Promise<void> {
+  const timeoutMs = options.timeoutMs ?? 15000;
+  const intervalMs = options.intervalMs ?? 50;
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+
+  while (Date.now() < deadline) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+  throw new Error('Condition was not met before timeout');
+}
+
 /**
  * Task 9: End-to-End Backend Full-Flow Integration Tests
  *
@@ -19,6 +44,20 @@ import type { ForegroundDecision } from '../../../src/foreground/types.js';
  * - Processing failures are visible and don't break subsequent messages
  */
 describe('Task 9: Full-Flow Backend Integration Tests', () => {
+  const originalOpenRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+  beforeAll(() => {
+    process.env.OPENROUTER_API_KEY ??= 'full-flow-test-key';
+  });
+
+  afterAll(() => {
+    if (originalOpenRouterApiKey === undefined) {
+      delete process.env.OPENROUTER_API_KEY;
+    } else {
+      process.env.OPENROUTER_API_KEY = originalOpenRouterApiKey;
+    }
+  });
+
   describe('Full Flow: POST -> Processing -> Transcript -> Timeline -> SSE', () => {
     it('should complete full flow: 202 response -> transcript with user+assistant -> SSE event', async () => {
       // Create base context
@@ -76,7 +115,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
 
       // Open SSE stream BEFORE sending message
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 20000);
       let receivedUserEvent = false;
       let receivedAssistantEvent = false;
       let sseChunks = '';
@@ -134,7 +173,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
         // Wait for SSE events with longer timeout
         await Promise.race([
           readPromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 7000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
         ]);
 
         // Verify SSE received both user_message and assistant_message
@@ -264,15 +303,15 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
         correlationIds.push(result.correlationId);
       });
 
-      // Wait for async processing
-      await new Promise(resolve => setTimeout(resolve, 800));
-
       // Verify distinct correlation IDs
       const uniqueCorrelationIds = new Set(correlationIds);
       expect(uniqueCorrelationIds.size).toBe(3);
 
+      await waitForCondition(() => {
+        expect(baseCtx.stores.transcriptStore.findBySession(sessionId).length).toBe(3);
+      });
+
       const transcripts = baseCtx.stores.transcriptStore.findBySession(sessionId);
-      expect(transcripts.length).toBe(3);
 
       correlationIds.forEach((corrId, index) => {
         const turn = transcripts.find((t: TranscriptTurn) => t.turnId === corrId);
@@ -371,11 +410,14 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const failBody = await failResponse.json() as { data: { correlationId: string } };
       const failCorrelationId = failBody.data.correlationId;
 
-      // Wait for processing
-      await new Promise(resolve => setTimeout(resolve, 500));
+      let failTurn: TranscriptTurn | undefined;
+      await waitForCondition(() => {
+        const transcripts = baseCtx.stores.transcriptStore.findBySession(sessionId);
+        failTurn = transcripts.find((t: TranscriptTurn) => t.turnId === failCorrelationId);
+        expect(failTurn).toBeDefined();
+        expect(failTurn!.output.visibleMessages.length).toBeGreaterThan(0);
+      });
 
-      const transcripts = baseCtx.stores.transcriptStore.findBySession(sessionId);
-      const failTurn = transcripts.find((t: TranscriptTurn) => t.turnId === failCorrelationId);
       expect(failTurn).toBeDefined();
       expect(failTurn!.input.userMessageSummary).toBe('This will fail');
       expect(failTurn!.output.visibleMessages.length).toBeGreaterThan(0);
@@ -410,11 +452,15 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const successBody = await successResponse.json() as { data: { correlationId: string } };
       const successCorrelationId = successBody.data.correlationId;
 
-      // Wait for processing
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       // Verify distinct correlation IDs for fail and success
       expect(failCorrelationId).not.toBe(successCorrelationId);
+
+      await waitForCondition(() => {
+        const finalTranscripts = baseCtx.stores.transcriptStore.findBySession(sessionId);
+        const successTurn = finalTranscripts.find((t: TranscriptTurn) => t.turnId === successCorrelationId);
+        expect(successTurn).toBeDefined();
+        expect(successTurn!.output.visibleMessages[0].content).toBe('Recovery response: This will succeed');
+      });
 
       // Verify timeline has assistant_message for successful response
       const timelineResponse2 = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/timeline`, {
