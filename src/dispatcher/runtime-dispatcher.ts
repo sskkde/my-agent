@@ -11,7 +11,34 @@ import type {
   SourceModule,
   RuntimeActionType
 } from './types.js';
-import type { RuntimeActionState } from '../storage/runtime-action-store.js';
+import type { RuntimeActionState, RuntimeAction as StorageRuntimeAction } from '../storage/runtime-action-store.js';
+
+const WRITE_ACTION_TYPES: ReadonlySet<string> = new Set([
+  'write', 'delete', 'send', 'execute'
+]);
+
+export function isWriteActionClass(actionType: string): boolean {
+  return WRITE_ACTION_TYPES.has(actionType);
+}
+
+export function getWriteActionClass(actionType: string): string | null {
+  return isWriteActionClass(actionType) ? actionType : null;
+}
+
+const IN_FLIGHT_STATES: ReadonlySet<RuntimeActionState> = new Set([
+  'dispatching',
+  'queued',
+  'waiting_for_approval',
+]);
+
+const TERMINAL_STATES: ReadonlySet<RuntimeActionState> = new Set([
+  'failed',
+  'timeout',
+  'cancelled',
+  'duplicate',
+  'denied',
+  'completed',
+]);
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -153,23 +180,27 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
     if (action.idempotencyKey) {
       const existing = this.actionStore.findByIdempotencyKey(action.idempotencyKey);
-      if (existing && existing.actionId !== action.actionId && existing.status === 'completed') {
-        const result: DispatchResult = {
+      if (existing && existing.actionId !== action.actionId) {
+        const behavior = action.policy?.idempotency?.duplicateBehavior ?? 'return_previous';
+        const writeActionClass = getWriteActionClass(action.targetAction);
+
+        const idempotencyResult = this.resolveIdempotencyDuplicate(
           requestId,
-          actionId: action.actionId,
-          status: 'duplicate',
-          targetRuntime: action.targetRuntime as TargetRuntime,
-          result: existing.result,
-          idempotency: {
-            key: action.idempotencyKey,
-            duplicateOfActionId: existing.actionId
-          },
-          createdAt: new Date().toISOString()
-        };
-        this.emitEvent('dispatch_duplicate', request, result);
-        this.recordDispatchAudit(action, result.status);
-        this.endDispatchSpan(spanId, 'completed');
-        return result;
+          action,
+          existing,
+          behavior,
+          writeActionClass,
+          spanId
+        );
+
+        if (idempotencyResult) {
+          this.emitEvent('dispatch_duplicate', request, idempotencyResult);
+          this.recordDispatchAudit(action, idempotencyResult.status,
+            idempotencyResult.error?.message);
+          this.endDispatchSpan(spanId,
+            idempotencyResult.status === 'failed' ? 'failed' : 'completed');
+          return idempotencyResult;
+        }
       }
     }
 
@@ -297,6 +328,115 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
           reject(error);
         });
     });
+  }
+
+  private resolveIdempotencyDuplicate(
+    requestId: string,
+    action: RuntimeAction,
+    existing: StorageRuntimeAction,
+    behavior: 'return_previous' | 'drop' | 'fail',
+    writeActionClass: string | null,
+    spanId: string
+  ): DispatchResult | null {
+    const effectiveBehavior = writeActionClass && behavior === 'return_previous'
+      ? 'fail'
+      : behavior;
+
+    switch (effectiveBehavior) {
+      case 'return_previous':
+        return this.buildReturnPreviousResult(requestId, action, existing, spanId);
+      case 'drop':
+        return this.buildDropResult(requestId, action, existing, spanId);
+      case 'fail':
+        return this.buildFailResult(requestId, action, existing, spanId);
+    }
+  }
+
+  private buildReturnPreviousResult(
+    requestId: string,
+    action: RuntimeAction,
+    existing: StorageRuntimeAction,
+    _spanId: string
+  ): DispatchResult {
+    const isInFlight = IN_FLIGHT_STATES.has(existing.status);
+    const base: DispatchResult = {
+      requestId,
+      actionId: action.actionId,
+      status: 'duplicate',
+      targetRuntime: action.targetRuntime as TargetRuntime,
+      result: existing.result,
+      idempotency: {
+        key: action.idempotencyKey!,
+        duplicateOfActionId: existing.actionId
+      },
+      createdAt: new Date().toISOString()
+    };
+
+    if (isInFlight) {
+      base.waitingState = {
+        waitingFor: existing.status === 'waiting_for_approval' ? 'approval' : 'target_runtime'
+      };
+    }
+
+    return base;
+  }
+
+  private buildDropResult(
+    requestId: string,
+    action: RuntimeAction,
+    existing: StorageRuntimeAction,
+    _spanId: string
+  ): DispatchResult {
+    this.updateActionStatus(action.actionId, 'duplicate',
+      `Dropped duplicate of ${existing.actionId}`);
+
+    return {
+      requestId,
+      actionId: action.actionId,
+      status: 'duplicate',
+      targetRuntime: action.targetRuntime as TargetRuntime,
+      idempotency: {
+        key: action.idempotencyKey!,
+        duplicateOfActionId: existing.actionId
+      },
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  private buildFailResult(
+    requestId: string,
+    action: RuntimeAction,
+    existing: StorageRuntimeAction,
+    _spanId: string
+  ): DispatchResult {
+    const isInFlight = IN_FLIGHT_STATES.has(existing.status);
+    const isTerminal = TERMINAL_STATES.has(existing.status);
+
+    const reason = isInFlight
+      ? `Duplicate action rejected: original action ${existing.actionId} is still in-flight (${existing.status})`
+      : isTerminal
+        ? `Duplicate action rejected: original action ${existing.actionId} already reached terminal state (${existing.status})`
+        : `Duplicate action rejected: original action ${existing.actionId} exists with status ${existing.status}`;
+
+    this.updateActionStatus(action.actionId, 'failed', reason);
+
+    return {
+      requestId,
+      actionId: action.actionId,
+      status: 'failed',
+      targetRuntime: action.targetRuntime as TargetRuntime,
+      error: {
+        code: 'duplicate_rejected',
+        message: reason,
+        recoverable: false
+      },
+      idempotency: {
+        key: action.idempotencyKey!,
+        duplicateOfActionId: existing.actionId
+      },
+      createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString()
+    };
   }
 
   private updateActionStatus(
