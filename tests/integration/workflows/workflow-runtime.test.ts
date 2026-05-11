@@ -242,7 +242,7 @@ function createValidSteps(): WorkflowStep[] {
         toolName: 'test_tool',
         toolParams: { param1: 'value1' },
         retryPolicy: { maxRetries: 3, retryDelayMs: 1000 },
-        onFailure: 'fail_workflow',
+        onFailure: 'fail',
       },
       nextStepId: 'step_002',
     },
@@ -703,7 +703,7 @@ describe('Workflow Runtime Integration', () => {
           stepId: 'step_001',
           stepType: 'tool_call',
           name: 'Failing Step',
-          config: { toolName: 'test_tool', onFailure: 'fail_workflow' },
+          config: { toolName: 'test_tool', onFailure: 'fail' },
         },
       ];
 

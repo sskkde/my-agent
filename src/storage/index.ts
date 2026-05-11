@@ -17,6 +17,12 @@ export {
   type ToolResultStore,
   createToolResultStore,
 } from './tool-result-store.js';
+export {
+  type ToolResultBlobRecord,
+  type ToolResultBlobStore,
+  type BlobSensitivity,
+  createToolResultBlobStore,
+} from './tool-result-blob-store.js';
 export * from './kernel-run-store.js';
 export * from './planner-run-store.js';
 export * from './wait-condition-store.js';

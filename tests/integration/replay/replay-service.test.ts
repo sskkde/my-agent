@@ -559,7 +559,7 @@ describe('Replay Service Integration', () => {
 
       const result = replayService.replay(request);
 
-      expect(result.status).toBe('success');
+      expect(result.status).toBe('partial');
       expect(result.stateSnapshot).toBeDefined();
       expect(result.stateSnapshot?.plannerRun).toBeDefined();
       expect(result.stateSnapshot?.plannerRun?.plannerRunId).toBe(plannerRunId);
@@ -679,6 +679,7 @@ describe('Replay Service Integration', () => {
         allowToolExecution: false,
         allowConnectorAccess: false,
         maxReplayDepth: 10,
+        requireApprovalForSideEffects: false,
       };
 
       const request: ReplayRequest = {
@@ -723,7 +724,7 @@ describe('Replay Service Integration', () => {
 
       expect(result.status).toBe('partial');
       expect(result.blockedActions.length).toBeGreaterThan(0);
-      expect(result.blockedActions[0]?.reason).toContain('blocked by default safety policy');
+      expect(result.blockedActions[0]?.reason).toContain('blocked by default replay safety policy');
     });
   });
 

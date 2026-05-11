@@ -111,6 +111,24 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
     }
 
     const instanceId = instance.connectorInstanceId;
+    const traceId = request.correlationId ?? request.requestId;
+    const spanId = this.generateId('span');
+    const startedAt = Date.now();
+
+    this.config.traceStore?.createSpan({
+      spanId,
+      traceId,
+      spanType: 'connector_call',
+      module: 'connector',
+      operation: request.operation,
+      status: 'started',
+      startTime: new Date(startedAt).toISOString(),
+      metadata: {
+        connectorId: instanceId,
+        operation: request.operation,
+        resourceRef: request.capabilityId,
+      },
+    });
 
     const definition = this.config.connectorStore.findDefinitionById(instance.connectorDefinitionId);
     if (!definition) {
@@ -138,7 +156,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
       const rawResult = await adapter.execute(instance, request);
       const response = this.normalizeResponse(rawResult, request.requestId, instanceId);
 
-      if (response.status === 'async_started') {
+      if (response.status === 'started_async') {
         const operationRef = this.createAsyncOperationRef(
           instanceId,
           response.metadata?.operationId || this.generateId('op')
@@ -156,6 +174,8 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
           },
         });
 
+        this.completeObservability(request, instanceId, spanId, startedAt, 'success', 'started_async');
+
         return operationRef;
       }
 
@@ -167,6 +187,15 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
         operation: request.operation,
         status: response.status,
       });
+
+      this.completeObservability(
+        request,
+        instanceId,
+        spanId,
+        startedAt,
+        response.status === 'success' || response.status === 'partial_success' ? 'success' : 'failure',
+        response.status
+      );
 
       return response;
     } catch (error) {
@@ -188,8 +217,48 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
         errorCode: 'EXECUTION_ERROR',
       });
 
+      this.completeObservability(request, instanceId, spanId, startedAt, 'failure', response.status, errorMessage);
+
       return response;
     }
+  }
+
+  private completeObservability(
+    request: ConnectorCallRequest,
+    connectorInstanceId: string,
+    spanId: string,
+    startedAt: number,
+    auditStatus: 'success' | 'failure',
+    status: string,
+    error?: string
+  ): void {
+    const durationMs = Date.now() - startedAt;
+    this.config.traceStore?.updateSpan(spanId, {
+      status: auditStatus === 'success' ? 'completed' : 'failed',
+      endTime: new Date().toISOString(),
+      durationMs,
+      error,
+      metadata: {
+        connectorId: connectorInstanceId,
+        operation: request.operation,
+        status,
+        durationMs,
+      },
+    });
+    this.config.auditRecorder?.recordConnectorAccess({
+      userId: request.userId,
+      sessionId: request.sessionId,
+      connectorInstanceId,
+      operation: request.operation,
+      resourceRef: request.capabilityId,
+      payloadSummary: {
+        operation: request.operation,
+        paramKeys: Object.keys(request.params),
+      },
+      status: auditStatus,
+      correlationId: request.correlationId ?? request.requestId,
+      causationId: request.requestId,
+    });
   }
 
   normalizeResponse(raw: unknown, requestId?: string, connectorInstanceId?: string): ConnectorResponse {
@@ -217,7 +286,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
 
     if (this.isAsyncStarted(raw)) {
       return {
-        status: 'async_started',
+        status: 'started_async',
         requestId: reqId,
         connectorInstanceId: instId,
         data: raw.data,
@@ -292,7 +361,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
       obj !== null &&
       'status' in obj &&
       typeof (obj as ConnectorResponse).status === 'string' &&
-      ['success', 'auth_required', 'rate_limited', 'failed', 'async_started'].includes(
+      ['success', 'auth_required', 'rate_limited', 'failed', 'started_async'].includes(
         (obj as ConnectorResponse).status
       )
     );

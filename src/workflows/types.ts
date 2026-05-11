@@ -1,4 +1,7 @@
-export type WorkflowStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait' | 'condition';
+import type { RuntimeErrorCategory } from '../shared/errors.js';
+import type { BackoffStrategy } from '../shared/retry.js';
+
+export type WorkflowStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait' | 'condition' | 'branch' | 'parallel_group' | 'polling_wait';
 
 export type WorkflowDraftStatus = 'draft' | 'validating' | 'invalid';
 
@@ -11,6 +14,16 @@ export interface ValidationIssue {
   severity: 'error' | 'warning';
 }
 
+export interface WorkflowStepRetryPolicy {
+  maxAttempts: number;
+  backoff: BackoffStrategy;
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+  retryableErrorCategories?: RuntimeErrorCategory[];
+}
+
+export type OnFailurePolicy = 'fail' | 'continue' | 'skip' | 'compensate';
+
 export interface WorkflowStepConfig {
   toolName?: string;
   toolParams?: Record<string, unknown>;
@@ -20,11 +33,35 @@ export interface WorkflowStepConfig {
   subagentParams?: Record<string, unknown>;
   approvalScope?: string;
   waitCondition?: Record<string, unknown>;
+  // Legacy retry policy (deprecated, use retryPolicy)
   retryPolicy?: {
     maxRetries: number;
     retryDelayMs: number;
   };
-  onFailure?: 'fail_workflow' | 'continue' | 'retry';
+  // New retry policy with full support
+  retryPolicyV2?: WorkflowStepRetryPolicy;
+  onFailure?: OnFailurePolicy;
+  compensateHook?: string;
+  // Condition step config
+  conditionExpression?: string;
+  trueNextStepId?: string;
+  falseNextStepId?: string;
+  // Branch step config
+  branches?: WorkflowBranch[];
+  // Parallel group config
+  parallelSteps?: WorkflowStep[];
+  maxParallel?: number;
+  // Polling wait config
+  pollingCondition?: string;
+  pollingIntervalMs?: number;
+  timeoutMs?: number;
+}
+
+export interface WorkflowBranch {
+  branchId: string;
+  name: string;
+  condition?: string;
+  steps: WorkflowStep[];
 }
 
 export interface WorkflowStep {
@@ -34,6 +71,7 @@ export interface WorkflowStep {
   description?: string;
   config: WorkflowStepConfig;
   nextStepId?: string;
+  selectedBranch?: string;
 }
 
 export interface WorkflowDraft {
@@ -91,4 +129,27 @@ export interface StepExecutionResult {
   success: boolean;
   output?: unknown;
   error?: string;
+  errorCategory?: RuntimeErrorCategory | 'undefined_variable' | 'expression_error' | 'execution_error';
+  recoverability?: 'retryable_later' | 'recoverable_auto' | 'non_recoverable';
+  attemptNumber?: number;
+  auditTrail?: RetryAttemptAuditEntry[];
+}
+
+export interface RetryAttemptAuditEntry {
+  attempt: number;
+  status: 'started' | 'succeeded' | 'failed' | 'retry_scheduled';
+  errorCategory?: string;
+  errorCode?: string;
+  delayMs?: number;
+  timestamp: string;
+}
+
+export interface ConditionEvalResult {
+  conditionMet: boolean;
+  selectedBranch?: string;
+  error?: {
+    code: 'UNDEFINED_VARIABLE' | 'EXPRESSION_ERROR';
+    message: string;
+    variableName?: string;
+  };
 }

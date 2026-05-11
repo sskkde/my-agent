@@ -5,17 +5,16 @@
  * This is a deterministic compiler that validates the plan structure before
  * conversion and returns stable machine-readable error codes.
  *
- * Supported step types: tool_call, agent_run, subagent_run, approval, wait
- * Rejected: condition, branching, loops, duplicate IDs, missing required configs
+ * Supported step types: tool_call, agent_run, subagent_run, approval, wait, condition, branch, parallel_group
+ * Rejected: duplicate IDs, missing required configs
  */
 
 import type { WorkflowStep, WorkflowStepType } from './types.js';
 
 /**
  * Supported step types for the compiler.
- * Note: 'condition' is explicitly NOT supported.
  */
-export type CompilerStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait';
+export type CompilerStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'approval' | 'wait' | 'condition' | 'branch' | 'parallel_group';
 
 /**
  * A step in the plan-like input structure.
@@ -50,16 +49,17 @@ export const CompilerErrorCode = {
   MISSING_WORKFLOW_NAME: 'MISSING_WORKFLOW_NAME',
   EMPTY_STEPS: 'EMPTY_STEPS',
   DUPLICATE_STEP_ID: 'DUPLICATE_STEP_ID',
-  UNSUPPORTED_CONDITION: 'UNSUPPORTED_CONDITION',
   UNSUPPORTED_STEP_TYPE: 'UNSUPPORTED_STEP_TYPE',
   INVALID_NEXT_STEP_ID: 'INVALID_NEXT_STEP_ID',
-  BRANCHING_DETECTED: 'BRANCHING_DETECTED',
-  LOOP_DETECTED: 'LOOP_DETECTED',
   MISSING_TOOL_NAME: 'MISSING_TOOL_NAME',
   MISSING_AGENT_ID: 'MISSING_AGENT_ID',
   MISSING_SUBAGENT_TYPE: 'MISSING_SUBAGENT_TYPE',
   MISSING_APPROVAL_SCOPE: 'MISSING_APPROVAL_SCOPE',
   MISSING_WAIT_CONDITION: 'MISSING_WAIT_CONDITION',
+  MISSING_CONDITION_EXPRESSION: 'MISSING_CONDITION_EXPRESSION',
+  MISSING_BRANCH_TARGETS: 'MISSING_BRANCH_TARGETS',
+  MISSING_BRANCHES: 'MISSING_BRANCHES',
+  MISSING_PARALLEL_STEPS: 'MISSING_PARALLEL_STEPS',
 } as const;
 
 export type CompilerErrorCodeType = typeof CompilerErrorCode[keyof typeof CompilerErrorCode];
@@ -117,17 +117,7 @@ export function compilePlanToWorkflowDraft(plan: PlanToWorkflowInput): CompilerR
     return { success: false, errors };
   }
 
-  for (const step of plan.steps) {
-    if (step.stepType === 'condition') {
-      errors.push({
-        code: CompilerErrorCode.UNSUPPORTED_CONDITION,
-        message: `Step ${step.stepId} uses unsupported step type 'condition'`,
-        stepId: step.stepId,
-      });
-    }
-  }
-
-  const validStepTypes = ['tool_call', 'agent_run', 'subagent_run', 'approval', 'wait'];
+  const validStepTypes = ['tool_call', 'agent_run', 'subagent_run', 'approval', 'wait', 'condition', 'branch', 'parallel_group'];
   for (const step of plan.steps) {
     if (!isCompilerStepType(step.stepType)) {
       errors.push({
@@ -174,62 +164,6 @@ export function compilePlanToWorkflowDraft(plan: PlanToWorkflowInput): CompilerR
         message: `Step ${step.stepId} references non-existent nextStepId: ${step.nextStepId}`,
         stepId: step.stepId,
       });
-    }
-  }
-
-  const incomingRefs = new Map<string, string[]>();
-  for (const step of plan.steps) {
-    if (step.nextStepId !== undefined) {
-      const refs = incomingRefs.get(step.nextStepId) ?? [];
-      refs.push(step.stepId);
-      incomingRefs.set(step.nextStepId, refs);
-    }
-  }
-  for (const [targetStepId, sources] of incomingRefs) {
-    if (sources.length > 1) {
-      errors.push({
-        code: CompilerErrorCode.BRANCHING_DETECTED,
-        message: `Step ${targetStepId} has multiple incoming references from: ${sources.join(', ')}. Branching is not supported.`,
-        stepId: targetStepId,
-      });
-    }
-  }
-
-  const visited = new Set<string>();
-  const recursionStack = new Set<string>();
-
-  function detectCycle(stepId: string): boolean {
-    if (recursionStack.has(stepId)) {
-      return true;
-    }
-    if (visited.has(stepId)) {
-      return false;
-    }
-
-    visited.add(stepId);
-    recursionStack.add(stepId);
-
-    const step = plan.steps.find(s => s.stepId === stepId);
-    if (step?.nextStepId) {
-      if (detectCycle(step.nextStepId)) {
-        return true;
-      }
-    }
-
-    recursionStack.delete(stepId);
-    return false;
-  }
-
-  for (const step of plan.steps) {
-    if (!visited.has(step.stepId)) {
-      if (detectCycle(step.stepId)) {
-        errors.push({
-          code: CompilerErrorCode.LOOP_DETECTED,
-          message: `Loop detected in workflow involving step: ${step.stepId}`,
-          stepId: step.stepId,
-        });
-        break;
-      }
     }
   }
 
@@ -282,6 +216,40 @@ export function compilePlanToWorkflowDraft(plan: PlanToWorkflowInput): CompilerR
           });
         }
         break;
+      case 'condition':
+        if (!config.conditionExpression) {
+          errors.push({
+            code: CompilerErrorCode.MISSING_CONDITION_EXPRESSION,
+            message: `Step ${step.stepId} is missing required config field 'conditionExpression'`,
+            stepId: step.stepId,
+          });
+        }
+        if (!config.trueNextStepId && !config.falseNextStepId) {
+          errors.push({
+            code: CompilerErrorCode.MISSING_BRANCH_TARGETS,
+            message: `Step ${step.stepId} must have at least one branch target`,
+            stepId: step.stepId,
+          });
+        }
+        break;
+      case 'branch':
+        if (!config.branches || !Array.isArray(config.branches) || config.branches.length === 0) {
+          errors.push({
+            code: CompilerErrorCode.MISSING_BRANCHES,
+            message: `Step ${step.stepId} is missing required config field 'branches'`,
+            stepId: step.stepId,
+          });
+        }
+        break;
+      case 'parallel_group':
+        if (!config.parallelSteps || !Array.isArray(config.parallelSteps) || config.parallelSteps.length === 0) {
+          errors.push({
+            code: CompilerErrorCode.MISSING_PARALLEL_STEPS,
+            message: `Step ${step.stepId} is missing required config field 'parallelSteps'`,
+            stepId: step.stepId,
+          });
+        }
+        break;
     }
   }
 
@@ -316,7 +284,10 @@ function isCompilerStepType(stepType: string): stepType is CompilerStepType {
     || stepType === 'agent_run'
     || stepType === 'subagent_run'
     || stepType === 'approval'
-    || stepType === 'wait';
+    || stepType === 'wait'
+    || stepType === 'condition'
+    || stepType === 'branch'
+    || stepType === 'parallel_group';
 }
 
 /**

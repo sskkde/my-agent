@@ -19,6 +19,7 @@ export type MemoryType =
 export type MemoryStatus =
   | 'active'
   | 'low_priority'
+  | 'compressed'
   | 'archived'
   | 'expired'
   | 'superseded'
@@ -107,6 +108,16 @@ export type TombstoneInput = {
   reason?: string;
 };
 
+export type MemoryTombstone = {
+  tombstoneId: string;
+  userId: string;
+  memoryId: string;
+  fingerprint: string;
+  sourceWindowHash: string;
+  reason: string;
+  createdAt: string;
+};
+
 export interface LongTermMemoryStore {
   save(record: LongTermMemoryRecord): void;
   getByMemoryId(memoryId: string): LongTermMemoryRecord | null;
@@ -118,7 +129,9 @@ export interface LongTermMemoryStore {
   findCurrentByFingerprint(userId: string, fingerprint: string): LongTermMemoryRecord | null;
   upsertExtracted(record: LongTermMemoryRecord): void;
   createTombstone(input: TombstoneInput): void;
+  getTombstone(memoryId: string): MemoryTombstone | null;
   hasTombstone(userId: string, fingerprint: string, sourceWindowHash: string): boolean;
+  hasTombstoneForSource(userId: string, sourceWindowHash: string): boolean;
   searchActive(query: string, userId: string, limit: number): LongTermMemoryRecord[];
 }
 
@@ -298,6 +311,13 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
       throw new Error('Cannot upsert memory without fingerprint');
     }
 
+    if (
+      record.sourceWindowHash &&
+      this.hasTombstone(record.userId, record.fingerprint, record.sourceWindowHash)
+    ) {
+      return;
+    }
+
     const current = this.findCurrentByFingerprint(record.userId, record.fingerprint);
     
     if (current) {
@@ -338,6 +358,21 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
     return rows.length > 0;
   }
 
+  getTombstone(memoryId: string): MemoryTombstone | null {
+    const sql = 'SELECT * FROM memory_tombstones WHERE memory_id = ? LIMIT 1';
+    const rows = this.connection.query<TombstoneRow>(sql, [memoryId]);
+    if (rows.length === 0) {
+      return null;
+    }
+    return this.rowToTombstone(rows[0]);
+  }
+
+  hasTombstoneForSource(userId: string, sourceWindowHash: string): boolean {
+    const sql = 'SELECT 1 FROM memory_tombstones WHERE user_id = ? AND source_window_hash = ? LIMIT 1';
+    const rows = this.connection.query<{ 1: number }>(sql, [userId, sourceWindowHash]);
+    return rows.length > 0;
+  }
+
   searchActive(query: string, userId: string, limit: number): LongTermMemoryRecord[] {
     const sql = `
       SELECT * FROM long_term_memories 
@@ -374,6 +409,18 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
       sourceWindowHash: row.source_window_hash ?? undefined,
     };
   }
+
+  private rowToTombstone(row: TombstoneRow): MemoryTombstone {
+    return {
+      tombstoneId: row.tombstone_id,
+      userId: row.user_id,
+      memoryId: row.memory_id,
+      fingerprint: row.fingerprint,
+      sourceWindowHash: row.source_window_hash,
+      reason: row.reason,
+      createdAt: row.created_at,
+    };
+  }
 }
 
 type MemoryRow = {
@@ -392,6 +439,16 @@ type MemoryRow = {
   fingerprint: string | null;
   source_window_hash: string | null;
   lifecycle_status: string;
+};
+
+type TombstoneRow = {
+  tombstone_id: string;
+  user_id: string;
+  memory_id: string;
+  fingerprint: string;
+  source_window_hash: string;
+  reason: string;
+  created_at: string;
 };
 
 export function createLongTermMemoryStore(connection: ConnectionManager): LongTermMemoryStore {

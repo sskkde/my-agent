@@ -18,11 +18,26 @@ class ToolExecutorImpl implements ToolExecutor {
 
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
     const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext } = request;
+    const traceId = kernelRunId || toolCallId;
+    const spanId = `span_${toolCallId}`;
+    const startedAt = Date.now();
+
+    this.config.traceStore?.createSpan({
+      spanId,
+      traceId,
+      spanType: 'tool_call',
+      module: 'tool',
+      operation: toolName,
+      status: 'started',
+      startTime: new Date(startedAt).toISOString(),
+      metadata: { toolCallId, toolName },
+    });
 
     try {
       const tool = this.config.registry.getTool(toolName);
 
       if (!tool) {
+        this.endToolSpan(spanId, startedAt, 'failed', 'Tool not found');
         return this.createErrorResult(
           'TOOL_NOT_FOUND',
           `Tool not found: ${toolName}`,
@@ -44,6 +59,7 @@ class ToolExecutorImpl implements ToolExecutor {
       const validationResult = this.validateParams(params, tool.schema);
       if (!validationResult.valid) {
         this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED);
+        this.endToolSpan(spanId, startedAt, 'failed', validationResult.errors?.join(', '));
         return this.createErrorResult(
           'SCHEMA_VALIDATION_FAILED',
           `Schema validation failed: ${validationResult.errors?.join(', ')}`,
@@ -64,6 +80,7 @@ class ToolExecutorImpl implements ToolExecutor {
 
       if (!permissionDecision.allowed) {
         this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.DENIED);
+        this.endToolSpan(spanId, startedAt, 'failed', permissionDecision.reason || 'Permission denied');
         return this.createErrorResult(
           'PERMISSION_DENIED',
           permissionDecision.reason || 'Permission denied',
@@ -115,6 +132,19 @@ class ToolExecutorImpl implements ToolExecutor {
         this.config.contextManager.applyDelta(finalResult.contextDelta);
       }
 
+      this.config.auditRecorder?.recordToolCall({
+        toolCallId,
+        toolName,
+        userId,
+        sessionId,
+        params: this.normalizeRecordParams(params),
+        result: finalResult.resultPreview,
+        status: finalResult.success ? 'success' : 'failure',
+        correlationId: toolCallId,
+        causationId: kernelRunId,
+      });
+      this.endToolSpan(spanId, startedAt, finalResult.success ? 'completed' : 'failed', finalResult.error?.message);
+
       if (finalResult.events && finalResult.events.length > 0 && this.config.eventStore) {
         for (const event of finalResult.events) {
           this.config.eventStore.append({
@@ -137,6 +167,7 @@ class ToolExecutorImpl implements ToolExecutor {
       this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED);
 
       const errorMessage = error instanceof Error ? error.message : String(error);
+      this.endToolSpan(spanId, startedAt, 'failed', errorMessage);
       return this.createErrorResult(
         'EXECUTION_FAILED',
         errorMessage,
@@ -225,6 +256,27 @@ class ToolExecutorImpl implements ToolExecutor {
       runId: delta.runId || kernelRunId || 'unknown',
       source: delta.source || 'tool_result',
     };
+  }
+
+  private normalizeRecordParams(params: unknown): Record<string, unknown> {
+    if (typeof params === 'object' && params !== null && !Array.isArray(params)) {
+      return params as Record<string, unknown>;
+    }
+    return { value: params };
+  }
+
+  private endToolSpan(
+    spanId: string,
+    startedAt: number,
+    status: 'completed' | 'failed',
+    error?: string
+  ): void {
+    this.config.traceStore?.updateSpan(spanId, {
+      status,
+      endTime: new Date().toISOString(),
+      durationMs: Date.now() - startedAt,
+      error,
+    });
   }
 
   private createErrorResult(code: string, message: string, recoverable: boolean): ToolExecutionResult {

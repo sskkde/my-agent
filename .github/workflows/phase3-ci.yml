@@ -1,0 +1,71 @@
+name: Phase 3 CI (Mock/No-LLM)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci
+      
+      - name: Install frontend dependencies
+        run: npm --prefix web ci
+      
+      - name: Backend typecheck
+        run: npm run typecheck
+      
+      - name: Backend tests (unit + integration)
+        run: npm test
+      
+      - name: Frontend tests
+        run: npm --prefix web test
+      
+      - name: Frontend build
+        run: npm --prefix web run build
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+      NODE_ENV: test
+      DATABASE_PATH: ./data/e2e.db
+      PORT: 3103
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci
+      
+      - name: Install frontend dependencies
+        run: npm --prefix web ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+      
+      - name: Reset E2E database
+        run: npm run reset:e2e-db
+      
+      - name: Run E2E tests
+        run: npm run test:e2e

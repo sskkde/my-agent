@@ -643,6 +643,7 @@ async function handleDispatchToolRoute(
       userId: input.userId,
       sessionId: input.sessionId,
       payload: {
+        toolCallId: randomUUID(),
         toolName: primaryTool,
         params: inferToolParams(primaryTool, input.text),
       },

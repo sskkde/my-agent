@@ -94,17 +94,39 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
   private eventStore: RuntimeDispatcherConfig['eventStore'];
   private adapterRegistry: RuntimeDispatcherConfig['adapterRegistry'];
   private permissionHook?: RuntimeDispatcherConfig['permissionHook'];
+  private traceStore?: RuntimeDispatcherConfig['traceStore'];
+  private auditRecorder?: RuntimeDispatcherConfig['auditRecorder'];
 
   constructor(config: RuntimeDispatcherConfig) {
     this.actionStore = config.actionStore;
     this.eventStore = config.eventStore;
     this.adapterRegistry = config.adapterRegistry;
     this.permissionHook = config.permissionHook;
+    this.traceStore = config.traceStore;
+    this.auditRecorder = config.auditRecorder;
   }
 
   async dispatch(request: DispatchRequest): Promise<DispatchResult> {
     const { action, requestId } = request;
     const startTime = Date.now();
+    const traceId = request.context.traceId ?? action.correlationId ?? generateId();
+    const spanId = generateId();
+
+    this.traceStore?.createSpan({
+      spanId,
+      traceId,
+      parentSpanId: request.context.parentSpanId,
+      spanType: 'dispatch',
+      module: 'dispatcher',
+      operation: action.targetAction,
+      status: 'started',
+      startTime: new Date(startTime).toISOString(),
+      metadata: {
+        actionId: action.actionId,
+        targetRuntime: action.targetRuntime,
+        actionType: action.actionType,
+      },
+    });
 
     this.actionStore.save(action);
 
@@ -121,6 +143,8 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         false
       );
       this.updateActionStatus(action.actionId, 'failed', validation.error);
+      this.recordDispatchAudit(action, result.status, validation.error);
+      this.endDispatchSpan(spanId, 'failed', validation.error);
       this.emitEvent('dispatch_failed', request, result);
       return result;
     }
@@ -143,6 +167,8 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
           createdAt: new Date().toISOString()
         };
         this.emitEvent('dispatch_duplicate', request, result);
+        this.recordDispatchAudit(action, result.status);
+        this.endDispatchSpan(spanId, 'completed');
         return result;
       }
     }
@@ -164,6 +190,8 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
           completedAt: new Date().toISOString()
         };
         this.updateActionStatus(action.actionId, 'denied', permissionResult.reason);
+        this.recordDispatchAudit(action, result.status, permissionResult.reason);
+        this.endDispatchSpan(spanId, 'failed', permissionResult.reason);
         this.emitEvent('dispatch_denied', request, result);
         return result;
       }
@@ -184,6 +212,8 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         'failed',
         `No adapter for runtime: ${action.targetRuntime}`
       );
+      this.recordDispatchAudit(action, result.status, result.error?.message);
+      this.endDispatchSpan(spanId, 'failed', result.error?.message);
       this.emitEvent('dispatch_failed', request, result);
       return result;
     }
@@ -215,6 +245,8 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
       };
 
       this.updateActionStatus(action.actionId, 'completed', undefined, targetResult as Record<string, unknown>);
+      this.recordDispatchAudit(action, result.status);
+      this.endDispatchSpan(spanId, 'completed');
       this.emitEvent('dispatch_completed', request, result);
       return result;
     } catch (error) {
@@ -239,6 +271,8 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
       const actionStatus: RuntimeActionState = isTimeout ? 'timeout' : 'failed';
       this.updateActionStatus(action.actionId, actionStatus, errorMessage);
+      this.recordDispatchAudit(action, result.status, errorMessage);
+      this.endDispatchSpan(spanId, 'failed', errorMessage);
       this.emitEvent('dispatch_failed', request, result);
       return result;
     }
@@ -281,6 +315,28 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
   ): void {
     const event = createDispatchEvent(eventType, request, result);
     this.eventStore.append(event);
+  }
+
+  private endDispatchSpan(spanId: string, status: 'completed' | 'failed', error?: string): void {
+    this.traceStore?.endSpan(spanId, status, error);
+  }
+
+  private recordDispatchAudit(
+    action: RuntimeAction,
+    status: DispatchStatus,
+    error?: string
+  ): void {
+    this.auditRecorder?.recordDispatch({
+      actionId: action.actionId,
+      userId: action.userId ?? 'system',
+      sessionId: action.sessionId,
+      targetRuntime: action.targetRuntime,
+      targetAction: action.targetAction,
+      status: status === 'completed' || status === 'duplicate' ? 'completed' : status === 'denied' ? 'blocked' : 'failed',
+      payloadSummary: error ?? action.actionType,
+      correlationId: action.correlationId,
+      causationId: action.causationId,
+    });
   }
 }
 
