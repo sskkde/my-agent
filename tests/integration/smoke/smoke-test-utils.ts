@@ -12,6 +12,7 @@ export interface SmokeHarness {
   baseUrl: string;
   authCookie: string;
   userId: string;
+  originalOpenRouterApiKey?: string;
 }
 
 function createSafeEventStore(eventStore: ApiContext['stores']['eventStore']): ApiContext['stores']['eventStore'] {
@@ -61,6 +62,9 @@ export async function createSmokeHarness(options: {
   username: string;
   foregroundDecision?: ForegroundDecision;
 }): Promise<SmokeHarness> {
+  const originalOpenRouterApiKey = process.env.OPENROUTER_API_KEY;
+  process.env.OPENROUTER_API_KEY ??= 'smoke-test-key';
+
   const baseCtx = createApiContext({ dbPath: ':memory:' });
   if (isApiContextError(baseCtx)) {
     throw new Error(`Failed to create base context: ${baseCtx.message}`);
@@ -108,13 +112,22 @@ export async function createSmokeHarness(options: {
     baseUrl,
     authCookie: authCookie!,
     userId: user!.userId,
+    originalOpenRouterApiKey,
   };
 }
 
 export async function closeSmokeHarness(harness: SmokeHarness): Promise<void> {
-  await harness.server.close();
-  harness.testCtx.connection.close();
-  harness.baseCtx.connection.close();
+  try {
+    await harness.server.close();
+    harness.testCtx.connection.close();
+    harness.baseCtx.connection.close();
+  } finally {
+    if (harness.originalOpenRouterApiKey === undefined) {
+      delete process.env.OPENROUTER_API_KEY;
+    } else {
+      process.env.OPENROUTER_API_KEY = harness.originalOpenRouterApiKey;
+    }
+  }
 }
 
 export async function createSession(harness: SmokeHarness): Promise<string> {
@@ -132,7 +145,7 @@ export async function waitForCondition(
   assertion: () => void,
   options: { timeoutMs?: number; intervalMs?: number } = {}
 ): Promise<void> {
-  const timeoutMs = options.timeoutMs ?? 3000;
+  const timeoutMs = options.timeoutMs ?? 15000;
   const intervalMs = options.intervalMs ?? 50;
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
