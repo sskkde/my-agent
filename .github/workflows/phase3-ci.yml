@@ -12,6 +12,7 @@ jobs:
     env:
       WEB_SEARCH_BACKEND: none
       NODE_ENV: test
+      NPM_CONFIG_INCLUDE: dev
     steps:
       - uses: actions/checkout@v4
       
@@ -22,10 +23,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --include=dev
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci
+        run: npm --prefix web ci --include=dev
       
       - name: Backend typecheck
         run: npm run typecheck
@@ -44,6 +45,7 @@ jobs:
     env:
       WEB_SEARCH_BACKEND: none
       NODE_ENV: test
+      NPM_CONFIG_INCLUDE: dev
       DATABASE_PATH: ./data/e2e.db
       PORT: 3103
     steps:
@@ -56,10 +58,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --include=dev
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci
+        run: npm --prefix web ci --include=dev
       
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
