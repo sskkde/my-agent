@@ -65,6 +65,7 @@ The following capabilities were explicitly excluded from P0 scope:
 - **Detailed Status**: See [ARCHITECTURE_GAP_REPORT.md](../../ARCHITECTURE_GAP_REPORT.md) for full subsystem matrix, priority roadmap, and evidence links.
 - **Runtime Verification**: See [ARCHITECTURE_RUNTIME_CHECKLIST.md](./ARCHITECTURE_RUNTIME_CHECKLIST.md) for verification entry points and smoke test procedures.
 - **Audit Findings**: See `.sisyphus/plans/p0-audit-report.md` for the gap analysis that informed this scope declaration.
+- **Phase 3-A Scope**: See [PHASE3A_SCOPE.md](./PHASE3A_SCOPE.md) for Phase 3-A scope definition.
 
 ---
 
