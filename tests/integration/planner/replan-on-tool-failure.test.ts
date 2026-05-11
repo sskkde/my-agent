@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
 import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
 import { createPlanStore, type PlanStore } from '../../../src/storage/plan-store.js';
-import { createPlannerRunStore, type PlannerRunStore } from '../../../src/storage/planner-run-store.js';
+import { createPlannerRunStore, type PlannerRunStore, type PlannerRunRecord } from '../../../src/storage/planner-run-store.js';
 import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
 import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
 import { PLANNER_STATES } from '../../../src/shared/states.js';
@@ -346,8 +346,8 @@ describe('Planner: Tool Failure Replan', () => {
       plannerRuntime.replan(plannerRunId, failureReasons[i]!);
 
       // After replan, check state
-      let currentRun = plannerRunStore.findActive('user_replan_001')
-        .find(r => r.plannerRunId === plannerRunId);
+let currentRun: PlannerRunRecord | null = plannerRunStore.findActive('user_replan_001')
+          .find(r => r.plannerRunId === plannerRunId) ?? null;
       expect(currentRun?.status).toBe(PLANNER_STATES.REPLANNING);
 
       if (i < failureReasons.length - 1) {
@@ -355,7 +355,7 @@ describe('Planner: Tool Failure Replan', () => {
         plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING);
 
         currentRun = plannerRunStore.findActive('user_replan_001')
-          .find(r => r.plannerRunId === plannerRunId);
+          .find(r => r.plannerRunId === plannerRunId) ?? null;
         expect(currentRun?.status).toBe(PLANNER_STATES.PLANNING);
       } else {
         // Last replan still failed → degrade to FAILED (valid: replanning → failed)
