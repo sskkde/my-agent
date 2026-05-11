@@ -2,7 +2,7 @@
 set -e
 
 echo "Running database migrations..."
-npm run db:migrate || echo "Migration failed or already applied"
+npm run db:migrate
 
 echo "Starting application..."
 exec "$@"

@@ -27,6 +27,7 @@ import { createOrchestrationProcessor, type ProcessorOrchestrationDeps } from '.
 import { createForegroundAgent, type ForegroundAgent } from '../foreground/foreground-agent.js';
 import { createRuntimeDispatcher } from '../dispatcher/runtime-dispatcher.js';
 import type { RuntimeDispatcher, RuntimeDispatcherConfig } from '../dispatcher/types.js';
+import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js';
 import { createPlannerRuntime, type PlannerRuntime } from '../planner/planner-runtime.js';
 import { AgentKernel } from '../kernel/agent-kernel.js';
 import type { LLMAdapter } from '../llm/adapter.js';
@@ -44,6 +45,7 @@ import { createWorkflowDraftStore, type WorkflowDraftStore } from '../storage/wo
 import { createWorkflowDefinitionStore, type WorkflowDefinitionStore } from '../storage/workflow-definition-store.js';
 import { createWorkflowRunStore, type WorkflowRunStore } from '../storage/workflow-run-store.js';
 import { createWorkflowRuntime, type WorkflowRuntime } from '../workflows/workflow-runtime.js';
+import { createWorkflowDispatcherAdapter } from '../workflows/workflow-dispatcher-adapter.js';
 import { createTriggerStore, type TriggerStore } from '../storage/trigger-store.js';
 import { createWebhookTriggerStore, type WebhookTriggerStore } from '../storage/webhook-trigger-store.js';
 import { createWebhookDeliveryStore, type WebhookDeliveryStore } from '../storage/webhook-delivery-store.js';
@@ -55,6 +57,7 @@ import { createToolExecutor } from '../tools/tool-executor.js';
 import type { ToolRegistry, ToolExecutor } from '../tools/types.js';
 import { registerBuiltInTools } from '../tools/builtins/index.js';
 import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js';
+import { createBackgroundRuntime } from '../subagents/background-runtime.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -468,7 +471,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       addItem: () => {},
       applyDelta: () => {},
     },
-    dispatcher: runtimeDispatcher as unknown as import('../kernel/types.js').RuntimeDispatcher,
+    dispatcher: createKernelDispatcherAdapter(runtimeDispatcher),
     maxIterations: 10,
     timeoutMs: 30000,
   });
@@ -494,17 +497,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     workflowRunStore,
     runtimeActionStore,
     eventStore,
-    dispatcher: runtimeDispatcher as unknown as {
-      dispatch(request: {
-        actionType: import('../dispatcher/types.js').RuntimeActionType;
-        targetRuntime: string;
-        targetAction: string;
-        payload: Record<string, unknown>;
-        userId?: string;
-        sessionId?: string;
-        correlationId?: string;
-      }): Promise<{ success: boolean; result?: unknown; error?: string }>;
-    },
+    dispatcher: createWorkflowDispatcherAdapter(runtimeDispatcher),
   });
 
   const triggerRuntime = createEventTriggerRuntime({
@@ -512,6 +505,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     waitConditionStore,
     eventStore,
     runtimeActionStore,
+  });
+
+  const backgroundRuntime = createBackgroundRuntime({
+    backgroundRunStore,
+    eventStore,
+    maxConcurrentRuns: 10,
+    watchdogTimeoutMs: 60000,
   });
 
   // Register default runtime adapters
@@ -523,6 +523,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     triggerRuntime,
     agentKernel,
     permissionGrantStore,
+    backgroundRuntime,
   });
 
   const messageProcessor = injectedMessageProcessor ?? createOrchestrationMessageProcessor({

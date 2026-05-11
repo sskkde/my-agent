@@ -7,6 +7,22 @@ export type PermissionMode =
   | 'background_limited'
   | 'hard_deny';
 
+export type PermissionScopeType =
+  | 'one_shot'
+  | 'session'
+  | 'plan'
+  | 'workflow_run'
+  | 'background_run'
+  | 'connector';
+
+export type ApprovalCode =
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'APPROVED_WITH_CONDITIONS'
+  | 'REJECTED_PERMANENTLY';
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
 export function modeAllowsOperation(mode: PermissionMode, operationType: string): boolean {
   switch (mode) {
     case 'read_only':
@@ -51,6 +67,13 @@ export interface PermissionCheckRequest {
   operationType: 'read' | 'write' | 'execute' | 'delete' | 'admin';
   justification?: string;
   metadata?: Record<string, unknown>;
+  pendingActionId?: string;
+  connectorId?: string;
+  connectorResource?: string;
+  connectorAction?: string;
+  riskLevel?: RiskLevel;
+  scopeType?: PermissionScopeType;
+  scopeRef?: string;
 }
 
 export type PermissionDecisionStatus =
@@ -66,6 +89,10 @@ export interface PermissionDecision {
   requestId?: string;
   approvalRequest?: ApprovalRequest;
   grant?: StoragePermissionGrant;
+  policyRef?: string;
+  auditLabel?: string;
+  approvalCode?: ApprovalCode;
+  bypassExpiresAt?: string;
 }
 
 export function createAllowedDecision(reason: string, grant?: StoragePermissionGrant): PermissionDecision {
@@ -77,11 +104,13 @@ export function createAllowedDecision(reason: string, grant?: StoragePermissionG
   };
 }
 
-export function createDeniedDecision(reason: string): PermissionDecision {
+export function createDeniedDecision(reason: string, policyRef?: string, auditLabel?: string): PermissionDecision {
   return {
     status: 'denied',
     allowed: false,
     reason,
+    policyRef,
+    auditLabel,
   };
 }
 
@@ -122,6 +151,9 @@ export interface ApprovalRequest {
   responseBy?: string;
   responseReason?: string;
   correlationId?: string;
+  approvalCode?: ApprovalCode;
+  scopeType?: PermissionScopeType;
+  scopeRef?: string;
 }
 
 export interface CreateApprovalRequest {
@@ -153,6 +185,9 @@ export function fromStorageApprovalRequest(storage: StorageApprovalRequest): App
     respondedAt: storage.respondedAt ?? undefined,
     responseBy: storage.responseBy ?? undefined,
     responseReason: storage.responseReason ?? undefined,
+    approvalCode: storage.approvalCode ?? undefined,
+    scopeType: storage.scopeType ?? undefined,
+    scopeRef: storage.scopeRef ?? undefined,
   };
 }
 
@@ -173,6 +208,9 @@ export function toStorageApprovalRequest(
     respondedAt: request.respondedAt ?? null,
     responseBy: request.responseBy ?? null,
     responseReason: request.responseReason ?? null,
+    approvalCode: request.approvalCode ?? null,
+    scopeType: request.scopeType ?? null,
+    scopeRef: request.scopeRef ?? null,
   };
 }
 
@@ -186,6 +224,7 @@ export interface ApprovalResponse {
   respondedAt: string;
   grantScope?: string;
   grantDuration?: number;
+  approvalCode?: ApprovalCode;
 }
 
 export interface ApprovalResponseResult {
@@ -219,7 +258,7 @@ export type PermissionAuditEventType =
   | 'grant_revoked';
 
 export interface PermissionAuditEvent {
-  eventType: PermissionAuditEventType;
+  eventType: PermissionAuditEventType | 'connector_policy_denied';
   userId: string;
   sessionId: string;
   actionType: string;
@@ -230,4 +269,36 @@ export interface PermissionAuditEvent {
   grantId?: string;
   correlationId: string;
   timestamp: string;
+  policyRef?: string;
+  auditLabel?: string;
+  connectorId?: string;
+  connectorResource?: string;
+  connectorAction?: string;
+  approvalCode?: ApprovalCode;
+}
+
+export type PreApprovalRecommendation = 'allow' | 'deny' | 'ask';
+
+export interface PreApprovalJudgeResult {
+  recommended: PreApprovalRecommendation;
+  confidence: number;
+  reason?: string;
+}
+
+export interface PreApprovalJudgeAction {
+  actionType: string;
+  resource?: string;
+  operationType: 'read' | 'write' | 'execute' | 'delete' | 'admin';
+  userId: string;
+  sessionId: string;
+  riskLevel?: RiskLevel;
+  connectorId?: string;
+  connectorResource?: string;
+  connectorAction?: string;
+  scopeType?: PermissionScopeType;
+  scopeRef?: string;
+}
+
+export interface PreApprovalJudge {
+  evaluate(action: PreApprovalJudgeAction): Promise<PreApprovalJudgeResult>;
 }

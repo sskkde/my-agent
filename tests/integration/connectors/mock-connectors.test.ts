@@ -129,6 +129,9 @@ describe('Mock Connectors Integration', () => {
             status TEXT NOT NULL,
             risk_level TEXT,
             scope TEXT,
+            scope_type TEXT,
+            scope_ref TEXT,
+            approval_code TEXT,
             action_type TEXT NOT NULL,
             resource TEXT,
             justification TEXT,
@@ -670,6 +673,272 @@ describe('Mock Connectors Integration', () => {
       expect(readToolDef.sensitivity).toBe('low');
       expect(writeToolDef.category).toBe('write');
       expect(writeToolDef.sensitivity).toBe('medium');
+    });
+  });
+
+  describe('Documented Suite Registration', () => {
+    it('should register all 6 documented connector types', () => {
+      const connectorTypes = [
+        MOCK_CONNECTOR_TYPES.GMAIL,
+        MOCK_CONNECTOR_TYPES.CALENDAR,
+        MOCK_CONNECTOR_TYPES.CONTACTS,
+        MOCK_CONNECTOR_TYPES.DOCS,
+        MOCK_CONNECTOR_TYPES.WEB,
+        MOCK_CONNECTOR_TYPES.SEARCH,
+      ];
+
+      for (const type of connectorTypes) {
+        const instance = createMockConnectorInstance(type, `suite-instance-${type}`);
+        expect(instance).toBeDefined();
+        expect(instance.connectorDefinitionId).toBeDefined();
+
+        const capabilities = connectorRuntime.discoverCapabilities(instance.id);
+        expect(capabilities.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should expose capabilities through ConnectorRuntime for each connector', () => {
+      const instance = createMockConnectorInstance(MOCK_CONNECTOR_TYPES.WEB, 'web-cap-instance');
+      const capabilities = connectorRuntime.discoverCapabilities(instance.id);
+
+      expect(capabilities).toBeDefined();
+      expect(capabilities.length).toBeGreaterThan(0);
+      expect(capabilities.some(c => c.capabilityId.includes('web'))).toBe(true);
+    });
+
+    it('should expose search capabilities through ConnectorRuntime', () => {
+      const instance = createMockConnectorInstance(MOCK_CONNECTOR_TYPES.SEARCH, 'search-cap-instance');
+      const capabilities = connectorRuntime.discoverCapabilities(instance.id);
+
+      expect(capabilities).toBeDefined();
+      expect(capabilities.length).toBeGreaterThan(0);
+      expect(capabilities.some(c => c.capabilityId.includes('search'))).toBe(true);
+    });
+  });
+
+  describe('Mock Email Failures', () => {
+    it('should return auth_required status when authentication is required', async () => {
+      const { createWebConnectorAdapter } = await import('../../../src/connectors/mocks/web-connector.js');
+      const authRequiredAdapter = createWebConnectorAdapter({ authState: 'unauthenticated' });
+
+      const testRuntime = createConnectorRuntime({
+        connectorStore,
+        toolBridge: createConnectorToolBridge(),
+        eventStore,
+      });
+
+      (testRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'custom',
+        authRequiredAdapter
+      );
+
+      const def = testRuntime.registerDefinition({
+        connectorId: 'web-auth-test-001',
+        name: 'Web Auth Test Connector',
+        connectorType: 'custom',
+        version: '1.0.0',
+        capabilities: ['web.web_fetch'],
+        status: 'active',
+      });
+
+      const instance = testRuntime.createInstance({
+        connectorInstanceId: 'web-auth-instance',
+        connectorDefinitionId: def.id,
+        userId: 'test-user-001',
+        name: 'Web Auth Test Instance',
+        authStateRef: 'auth-test',
+        status: 'active',
+      });
+
+      const request: ConnectorCallRequest = {
+        requestId: 'req-auth-001',
+        connectorInstanceId: instance.id,
+        capabilityId: 'web.web_fetch',
+        operation: 'web_fetch',
+        params: { url: 'https://example.com' },
+        userId: 'test-user-001',
+      };
+
+      const response = await testRuntime.executeCall(request) as ConnectorResponse;
+
+      expect(response.status).toBe('auth_required');
+      expect(response.error).toBeDefined();
+      expect(response.error?.code).toBe('AUTH_REQUIRED');
+      expect(response.error?.recoverable).toBe(true);
+    });
+
+    it('should return rate_limited status with retryAfterMs', async () => {
+      const { createWebConnectorAdapter } = await import('../../../src/connectors/mocks/web-connector.js');
+      const rateLimitedAdapter = createWebConnectorAdapter({ rateLimitMode: 'exhausted' });
+
+      const testRuntime = createConnectorRuntime({
+        connectorStore,
+        toolBridge: createConnectorToolBridge(),
+        eventStore,
+      });
+
+      (testRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'custom',
+        rateLimitedAdapter
+      );
+
+      const def = testRuntime.registerDefinition({
+        connectorId: 'web-rate-test-001',
+        name: 'Web Rate Test Connector',
+        connectorType: 'custom',
+        version: '1.0.0',
+        capabilities: ['web.web_fetch'],
+        status: 'active',
+      });
+
+      const instance = testRuntime.createInstance({
+        connectorInstanceId: 'web-rate-instance',
+        connectorDefinitionId: def.id,
+        userId: 'test-user-001',
+        name: 'Web Rate Test Instance',
+        authStateRef: 'rate-test',
+        status: 'active',
+      });
+
+      const request: ConnectorCallRequest = {
+        requestId: 'req-rate-001',
+        connectorInstanceId: instance.id,
+        capabilityId: 'web.web_fetch',
+        operation: 'web_fetch',
+        params: { url: 'https://example.com' },
+        userId: 'test-user-001',
+      };
+
+      const response = await testRuntime.executeCall(request) as ConnectorResponse;
+
+      expect(response.status).toBe('rate_limited');
+      expect(response.error).toBeDefined();
+      expect(response.error?.code).toBe('RATE_LIMIT_EXCEEDED');
+      expect(response.error?.recoverable).toBe(true);
+      expect(response.metadata?.retryAfterMs).toBe(30000);
+    });
+
+    it('should return auth_challenge metadata for auth_required responses', async () => {
+      const { normalizeConnectorResponse } = await import('../../../src/connectors/runtime/connector-response-normalizer.js');
+      
+      const authResponse: ConnectorResponse = {
+        status: 'auth_required',
+        requestId: 'req-auth-meta',
+        connectorInstanceId: 'auth-instance',
+        error: {
+          code: 'AUTH_REQUIRED',
+          message: 'Authentication required',
+          recoverable: true,
+        },
+      };
+
+      const normalized = normalizeConnectorResponse(authResponse);
+
+      expect(normalized.status).toBe('failed');
+      expect(normalized.recoverability).toBe('recoverable_with_user');
+      expect(normalized.metadata?.authChallenge).toBeDefined();
+      expect(normalized.metadata?.authChallenge?.message).toBe('Authentication required');
+    });
+  });
+
+  describe('Mock Docs Async Operations', () => {
+    it('should support async operations through docs connector', async () => {
+      const instance = createMockConnectorInstance(MOCK_CONNECTOR_TYPES.DOCS, 'docs-async-instance');
+
+      const request: ConnectorCallRequest = {
+        requestId: 'req-docs-async-001',
+        connectorInstanceId: instance.id,
+        capabilityId: 'docs.create_doc',
+        operation: 'create_doc',
+        params: { title: 'Async Test Doc', content: 'Test content' },
+        userId: 'test-user-001',
+      };
+
+      const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
+
+      expect(response.status).toBe('success');
+      expect(response.data).toBeDefined();
+      expect((response.data as { id: string }).id).toBeDefined();
+    });
+
+    it('should handle docs read operations', async () => {
+      const instance = createMockConnectorInstance(MOCK_CONNECTOR_TYPES.DOCS, 'docs-read-instance');
+
+      const request: ConnectorCallRequest = {
+        requestId: 'req-docs-read-001',
+        connectorInstanceId: instance.id,
+        capabilityId: 'docs.read_doc',
+        operation: 'read_doc',
+        params: { docId: 'doc-001' },
+        userId: 'test-user-001',
+      };
+
+      const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
+
+      expect(response.status).toBe('success');
+      expect(response.data).toBeDefined();
+      expect((response.data as { id: string }).id).toBe('doc-001');
+    });
+  });
+
+  describe('Web and Search Connector Operations', () => {
+    it('should execute web_fetch through web connector', async () => {
+      const instance = createMockConnectorInstance(MOCK_CONNECTOR_TYPES.WEB, 'web-fetch-instance');
+
+      const request: ConnectorCallRequest = {
+        requestId: 'req-web-001',
+        connectorInstanceId: instance.id,
+        capabilityId: 'web.web_fetch',
+        operation: 'web_fetch',
+        params: { url: 'https://example.com/page1' },
+        userId: 'test-user-001',
+      };
+
+      const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
+
+      expect(response.status).toBe('success');
+      expect(response.data).toBeDefined();
+      expect((response.data as { url: string }).url).toBe('https://example.com/page1');
+    });
+
+    it('should execute web_search through web connector', async () => {
+      const instance = createMockConnectorInstance(MOCK_CONNECTOR_TYPES.WEB, 'web-search-instance');
+
+      const request: ConnectorCallRequest = {
+        requestId: 'req-web-search-001',
+        connectorInstanceId: instance.id,
+        capabilityId: 'web.web_search',
+        operation: 'web_search',
+        params: { query: 'test query', limit: 5 },
+        userId: 'test-user-001',
+      };
+
+      const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
+
+      expect(response.status).toBe('success');
+      expect(response.data).toBeDefined();
+      expect((response.data as { results: unknown[] }).results).toBeDefined();
+      expect((response.data as { query: string }).query).toBe('test query');
+    });
+
+    it('should execute search through search connector', async () => {
+      const instance = createMockConnectorInstance(MOCK_CONNECTOR_TYPES.SEARCH, 'search-instance');
+
+      const request: ConnectorCallRequest = {
+        requestId: 'req-search-001',
+        connectorInstanceId: instance.id,
+        capabilityId: 'search.web_search',
+        operation: 'web_search',
+        params: { query: 'TypeScript', limit: 10 },
+        userId: 'test-user-001',
+      };
+
+      const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
+
+      expect(response.status).toBe('success');
+      expect(response.data).toBeDefined();
+      expect((response.data as { results: unknown[] }).results).toBeDefined();
+      expect((response.data as { totalResults: number }).totalResults).toBeGreaterThanOrEqual(0);
     });
   });
 });

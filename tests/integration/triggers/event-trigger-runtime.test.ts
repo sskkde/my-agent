@@ -6,8 +6,9 @@ import { createWaitConditionStore, type WaitConditionStore, WAIT_CONDITION_STATE
 import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
 import { createRuntimeActionStore, type RuntimeActionStore, type RuntimeAction } from '../../../src/storage/runtime-action-store.js';
 import { createEventTriggerRuntime, type EventTriggerRuntime } from '../../../src/triggers/event-trigger-runtime.js';
+import { TestClock } from '../../helpers/clock.js';
 
-const eventTriggerRuntimeMigrations: Migration[] = [
+export const eventTriggerRuntimeMigrations: Migration[] = [
   {
     version: 1,
     name: 'create_events_table',
@@ -636,8 +637,9 @@ describe('Event Trigger Runtime Integration', () => {
       const result2 = eventTriggerRuntime.evaluateScheduleTriggers(new Date());
 
       expect(result1.actions.length).toBe(1);
+      // Cached action is returned for idempotent evaluation but no new action is stored
       expect(result2.actions.length).toBe(1);
-      expect(result1.actions[0]?.actionId).toBe(result2.actions[0]?.actionId);
+      expect(result2.actions[0].actionId).toBe(result1.actions[0].actionId);
     });
 
     it('should store action with idempotency key', () => {
@@ -679,6 +681,25 @@ describe('Event Trigger Runtime Integration', () => {
   });
 
   describe('Target resume RuntimeAction creation', () => {
+    it('should create workflow_run start action', () => {
+      const pastTime = new Date(Date.now() - 1000).toISOString();
+
+      eventTriggerRuntime.registerTrigger({
+        triggerType: 'schedule',
+        conditionType: 'schedule',
+        conditionPattern: pastTime,
+        targetType: 'workflow_run',
+        targetRef: 'wf_def_123',
+      });
+
+      const result = eventTriggerRuntime.evaluateScheduleTriggers(new Date());
+
+      expect(result.actions.length).toBe(1);
+      expect(result.actions[0]?.targetRuntime).toBe('workflow_runtime');
+      expect(result.actions[0]?.targetAction).toBe('start_workflow_run');
+      expect(result.actions[0]?.actionType).toBe('start_workflow_run');
+    });
+
     it('should create workflow_step_run resume action', () => {
       const pastTime = new Date(Date.now() - 1000).toISOString();
 
@@ -731,6 +752,42 @@ describe('Event Trigger Runtime Integration', () => {
       expect(result.actions.length).toBe(1);
       expect(result.actions[0]?.targetRuntime).toBe('planner_runtime');
       expect(result.actions[0]?.targetAction).toBe('resume_planner_run');
+    });
+
+    it('should create kernel_run resume action', () => {
+      const pastTime = new Date(Date.now() - 1000).toISOString();
+
+      eventTriggerRuntime.registerTrigger({
+        triggerType: 'schedule',
+        conditionType: 'schedule',
+        conditionPattern: pastTime,
+        targetType: 'kernel_run',
+        targetRef: 'run_123',
+      });
+
+      const result = eventTriggerRuntime.evaluateScheduleTriggers(new Date());
+
+      expect(result.actions.length).toBe(1);
+      expect(result.actions[0]?.targetRuntime).toBe('agent_kernel');
+      expect(result.actions[0]?.targetAction).toBe('resume_agent_run');
+    });
+
+    it('should create notification action', () => {
+      const pastTime = new Date(Date.now() - 1000).toISOString();
+
+      eventTriggerRuntime.registerTrigger({
+        triggerType: 'schedule',
+        conditionType: 'schedule',
+        conditionPattern: pastTime,
+        targetType: 'notification',
+        targetRef: 'notif_123',
+      });
+
+      const result = eventTriggerRuntime.evaluateScheduleTriggers(new Date());
+
+      expect(result.actions.length).toBe(1);
+      expect(result.actions[0]?.targetRuntime).toBe('notification_center');
+      expect(result.actions[0]?.targetAction).toBe('send_notification');
     });
 
     it('should include correct targetRef in action payload', () => {
@@ -833,6 +890,82 @@ describe('Event Trigger Runtime Integration', () => {
 
       const conditions = eventTriggerRuntime.findWaitConditionsByTarget('background_run', 'bg_run_target');
       expect(conditions.length).toBe(2);
+    });
+  });
+
+  describe('Webhook and MCP event triggers', () => {
+    it('should fire webhook trigger once per idempotency key with signature validation', () => {
+      eventTriggerRuntime.registerTrigger({
+        triggerType: 'webhook',
+        conditionType: 'webhook',
+        conditionPattern: '{"eventType":"invoice.paid"}',
+        targetType: 'workflow_run',
+        targetRef: 'wf_def_invoice',
+      });
+
+      const payload = {
+        idempotencyKey: 'webhook_evt_1',
+        eventType: 'invoice.paid',
+        secret: 'test_secret',
+        payload: { invoiceId: 'inv_1' },
+      };
+
+      const invalid = eventTriggerRuntime.handleWebhook(payload, 'wrong');
+      const first = eventTriggerRuntime.handleWebhook(payload, 'sha256=test_secret');
+      const duplicate = eventTriggerRuntime.handleWebhook(payload, 'sha256=test_secret');
+
+      expect(invalid.matched).toBe(0);
+      expect(first.matched).toBe(1);
+      expect(first.actions[0]?.targetAction).toBe('start_workflow_run');
+      expect(duplicate.matched).toBe(0);
+      expect(runtimeActionStore.query({ status: 'created' })).toHaveLength(1);
+    });
+
+    it('should route mcp notifications idempotently', () => {
+      eventTriggerRuntime.registerTrigger({
+        triggerType: 'mcp_notification',
+        conditionType: 'mcp_notification',
+        conditionPattern: '{"method":"resources/updated"}',
+        targetType: 'planner_run',
+        targetRef: 'pl_run_mcp',
+      });
+
+      const first = eventTriggerRuntime.handleMcpNotification({
+        id: 'mcp_evt_1',
+        method: 'resources/updated',
+        serverId: 'fs',
+        sessionId: 'mcp_sess_1',
+      });
+      const duplicate = eventTriggerRuntime.handleMcpNotification({
+        id: 'mcp_evt_1',
+        method: 'resources/updated',
+        serverId: 'fs',
+        sessionId: 'mcp_sess_1',
+      });
+
+      expect(first.matched).toBe(1);
+      expect(first.actions[0]?.targetAction).toBe('resume_planner_run');
+      expect(duplicate.matched).toBe(0);
+    });
+
+    it('should advance recurring schedule nextRunAt using fake clock', () => {
+      const clock = new TestClock('2026-05-09T09:00:00.000Z');
+      const schedule = eventTriggerRuntime.registerSchedule({
+        intervalMs: 60 * 60 * 1000,
+        nextRunAt: '2026-05-09T10:00:00.000Z',
+        targetType: 'workflow_step_run',
+        targetRef: 'wf_step_recurring',
+      });
+
+      expect(eventTriggerRuntime.evaluateScheduleTriggers(new Date(clock.now())).fired).toBe(0);
+
+      clock.advance(60 * 60 * 1000);
+      const result = eventTriggerRuntime.evaluateScheduleTriggers(new Date(clock.now()));
+
+      expect(result.fired).toBe(1);
+      const updated = eventTriggerRuntime.getTrigger(schedule.id);
+      const metadata = JSON.parse(updated?.metadata ?? '{}') as { nextRunAt?: string };
+      expect(metadata.nextRunAt).toBe('2026-05-09T11:00:00.000Z');
     });
   });
 });

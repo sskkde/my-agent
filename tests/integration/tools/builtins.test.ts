@@ -12,7 +12,7 @@ import type { SummaryStore, SummaryRecord } from '../../../src/storage/summary-s
 import type { TranscriptStore, TurnTranscript } from '../../../src/storage/transcript-store.js';
 import type { PlanStore, ExecutionPlanRecord, PlanPatch, PlanStep } from '../../../src/storage/plan-store.js';
 import type { ToolResultStore, ToolResultBlob } from '../../../src/storage/tool-result-store.js';
-import type { LongTermMemoryStore, LongTermMemoryRecord, LongTermMemoryPatch, MemoryType, TombstoneInput } from '../../../src/storage/long-term-memory-store.js';
+import type { LongTermMemoryStore, LongTermMemoryRecord, LongTermMemoryPatch, MemoryType, TombstoneInput, MemoryTombstone } from '../../../src/storage/long-term-memory-store.js';
 import type { SessionStore, Session, CreateSessionInput, ListSessionsOptions, UpdateMetadataInput } from '../../../src/storage/session-store.js';
 import type { PermissionContext } from '../../../src/permissions/types.js';
 
@@ -311,6 +311,14 @@ class MockLongTermMemoryStore implements LongTermMemoryStore {
   }
 
   hasTombstone(_userId: string, _fingerprint: string, _sourceWindowHash: string): boolean {
+    return false;
+  }
+
+  getTombstone(_memoryId: string): MemoryTombstone | null {
+    return null;
+  }
+
+  hasTombstoneForSource(_userId: string, _sourceWindowHash: string): boolean {
     return false;
   }
 

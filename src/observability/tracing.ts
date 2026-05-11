@@ -319,7 +319,7 @@ export function createTracingHooks(
     ): RuntimeSpan => {
       return collector.startSpan(
         traceId,
-        'background_run',
+        'subagent_run',
         'subagent',
         `subagent_${agentType}`,
         parentSpanId,
@@ -334,11 +334,11 @@ export function createTracingHooks(
     ): RuntimeSpan => {
       return collector.startSpan(
         traceId,
+        'trigger_evaluation',
         'trigger',
-        'trigger',
-        `trigger_${triggerType}`,
+        `trigger_evaluation_${triggerType}`,
         parentSpanId,
-        { triggerType }
+        { triggerId: triggerType, eventType: triggerType }
       );
     },
 
@@ -382,7 +382,7 @@ export function createTracingHooks(
     ): RuntimeSpan => {
       return collector.startSpan(
         traceId,
-        'kernel_run',
+        operation === 'summary_write' ? 'summary_write' : 'memory_write',
         'memory',
         `memory_${operation}`,
         parentSpanId,

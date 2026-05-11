@@ -9,6 +9,8 @@
 
 export type SourceModule =
   | 'gateway'
+  | 'foreground_agent'
+  | 'planner'
   | 'dispatcher'
   | 'kernel'
   | 'tool'
@@ -25,14 +27,21 @@ export type SourceModule =
 
 export type SpanType =
   | 'dispatch'
+  | 'foreground_run'
   | 'tool_execution'
+  | 'tool_call'
   | 'kernel_run'
   | 'planner_run'
   | 'workflow_run'
   | 'background_run'
+  | 'subagent_run'
   | 'trigger'
+  | 'trigger_evaluation'
   | 'connector_call'
-  | 'permission_check';
+  | 'permission_check'
+  | 'memory_write'
+  | 'summary_write'
+  | 'replay';
 
 // ============================================================================
 // Metric Types

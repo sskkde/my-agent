@@ -3,9 +3,13 @@ import type { ApprovalStore } from '../storage/approval-store.js';
 import type { PlanStore } from '../storage/plan-store.js';
 import type { EventStore } from '../storage/event-store.js';
 import type { SummaryStore } from '../storage/summary-store.js';
-import type { PlannerState } from '../shared/states.js';
+import type { BackgroundRunStore, BackgroundRun } from '../storage/background-run-store.js';
+import type { WorkflowRunStore, WorkflowRun } from '../storage/workflow-run-store.js';
+import type { PlannerState, BackgroundSubagentState, WorkflowRunState } from '../shared/states.js';
 import {
   PLANNER_STATES,
+  BACKGROUND_SUBAGENT_STATES,
+  WORKFLOW_RUN_STATES,
 } from '../shared/states.js';
 import type {
   ActiveWorkProjection,
@@ -23,6 +27,20 @@ const TERMINAL_PLANNER_STATES: PlannerState[] = [
   PLANNER_STATES.ARCHIVED,
 ];
 
+const TERMINAL_BACKGROUND_STATES: BackgroundSubagentState[] = [
+  BACKGROUND_SUBAGENT_STATES.COMPLETED,
+  BACKGROUND_SUBAGENT_STATES.FAILED,
+  BACKGROUND_SUBAGENT_STATES.CANCELLED,
+  BACKGROUND_SUBAGENT_STATES.EXPIRED,
+];
+
+const TERMINAL_WORKFLOW_STATES: WorkflowRunState[] = [
+  WORKFLOW_RUN_STATES.COMPLETED,
+  WORKFLOW_RUN_STATES.FAILED,
+  WORKFLOW_RUN_STATES.CANCELLED,
+  WORKFLOW_RUN_STATES.TIMEOUT,
+];
+
 export interface ActiveWorkProjectionBuilderOptions {
   defaultTtlMs?: number;
 }
@@ -38,6 +56,8 @@ export interface StoreDependencies {
   planStore: PlanStore;
   eventStore: EventStore;
   summaryStore: SummaryStore;
+  backgroundRunStore: BackgroundRunStore;
+  workflowRunStore: WorkflowRunStore;
 }
 
 export interface ActiveWorkProjectionBuilder {
@@ -80,18 +100,21 @@ class ActiveWorkProjectionBuilderImpl implements ActiveWorkProjectionBuilder {
       },
     });
 
-    // Register stub sources for BackgroundRun and WorkflowRun (Tasks 30/35)
+    // Register BackgroundRun source - queries all active (non-terminal) background runs
     this.registerSource({
       name: 'background_run_source',
-      getActiveWork: async (): Promise<PartialActiveWorkProjection> => {
-        return { activeBackgroundRuns: [] };
+      getActiveWork: async (userId: string): Promise<PartialActiveWorkProjection> => {
+        const activeRuns = this.getActiveBackgroundRuns(userId);
+        return { activeBackgroundRuns: activeRuns };
       },
     });
 
+    // Register WorkflowRun source - queries all active (non-terminal) workflow runs
     this.registerSource({
       name: 'workflow_run_source',
-      getActiveWork: async (): Promise<PartialActiveWorkProjection> => {
-        return { activeWorkflowRuns: [] };
+      getActiveWork: async (userId: string): Promise<PartialActiveWorkProjection> => {
+        const activeRuns = this.getActiveWorkflowRuns(userId);
+        return { activeWorkflowRuns: activeRuns };
       },
     });
 
@@ -118,6 +141,74 @@ class ActiveWorkProjectionBuilderImpl implements ActiveWorkProjectionBuilder {
         return {};
       },
     });
+  }
+
+  /**
+   * Get all active (non-terminal) background runs for a user.
+   * Queries each non-terminal status individually and combines results.
+   */
+  private getActiveBackgroundRuns(userId: string): Array<{ runId: string; status: string; startedAt: string; objective?: string }> {
+    const allStatuses = Object.values(BACKGROUND_SUBAGENT_STATES) as BackgroundSubagentState[];
+    const activeStatuses = allStatuses.filter(
+      status => !TERMINAL_BACKGROUND_STATES.includes(status)
+    );
+
+    const runs: BackgroundRun[] = [];
+    for (const status of activeStatuses) {
+      const statusRuns = this.stores.backgroundRunStore.getByUserAndStatus(userId, status);
+      runs.push(...statusRuns);
+    }
+
+    // Deduplicate by backgroundRunId (in case same run appears in multiple queries)
+    const seen = new Set<string>();
+    const uniqueRuns = runs.filter(run => {
+      if (seen.has(run.backgroundRunId)) {
+        return false;
+      }
+      seen.add(run.backgroundRunId);
+      return true;
+    });
+
+    return uniqueRuns.map(run => ({
+      runId: run.backgroundRunId,
+      status: run.status,
+      startedAt: run.startedAt ?? run.createdAt ?? new Date().toISOString(),
+      objective: run.agentType,
+    }));
+  }
+
+  /**
+   * Get all active (non-terminal) workflow runs for a user.
+   * Queries each non-terminal status individually and combines results.
+   */
+  private getActiveWorkflowRuns(userId: string): Array<{ runId: string; status: string; startedAt: string; objective?: string }> {
+    const allStatuses = Object.values(WORKFLOW_RUN_STATES) as WorkflowRunState[];
+    const activeStatuses = allStatuses.filter(
+      status => !TERMINAL_WORKFLOW_STATES.includes(status)
+    );
+
+    const runs: WorkflowRun[] = [];
+    for (const status of activeStatuses) {
+      const statusRuns = this.stores.workflowRunStore.getWorkflowRunsByOwnerAndStatus(userId, status);
+      runs.push(...statusRuns);
+    }
+
+    // Deduplicate by workflowRunId (in case same run appears in multiple queries)
+    const seen = new Set<string>();
+    const uniqueRuns = runs.filter(run => {
+      if (seen.has(run.workflowRunId)) {
+        return false;
+      }
+      seen.add(run.workflowRunId);
+      return true;
+    });
+
+    return uniqueRuns.map(run => ({
+      runId: run.workflowRunId,
+      status: run.status,
+      startedAt: run.startedAt ?? run.createdAt ?? new Date().toISOString(),
+      objective: run.workflowId,
+    }));
   }
 
   async buildProjection(

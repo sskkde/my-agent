@@ -3,6 +3,8 @@
 
 import type { RuntimeContextDelta } from '../context/types.js';
 import type { PermissionDecision, PermissionContext as PermContext } from '../permissions/types.js';
+import type { TraceStore } from '../observability/types.js';
+import type { AuditRecorder } from '../observability/audit-types.js';
 
 export type PermissionContext = PermContext;
 
@@ -11,6 +13,8 @@ export type ToolCategory =
   | 'read'      // Read-only operations (files, data, status)
   | 'write'     // Write operations (create, update)
   | 'delete'    // Delete operations
+  | 'send'      // Send outbound messages/notifications
+  | 'automation' // Browser/UI/system automation
   | 'execute'   // Execute commands, scripts
   | 'search'    // Search operations
   | 'admin'     // Administrative operations
@@ -73,6 +77,8 @@ export interface ToolExecutionContext {
 // Tool execution result
 export interface ToolExecutionResult {
   success: boolean;
+  status?: 'cancelled' | 'timeout' | 'skipped';
+  synthetic?: boolean;
   data?: unknown;
   error?: {
     code: string;
@@ -176,6 +182,8 @@ export interface ToolExecutorConfig {
   contextManager?: {
     applyDelta: (delta: RuntimeContextDelta) => void;
   };
+  traceStore?: TraceStore;
+  auditRecorder?: AuditRecorder;
 }
 
 // Tool pool for kernel context

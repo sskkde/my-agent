@@ -986,4 +986,64 @@ describe('BackgroundRuntime', () => {
       expect(run?.status).toBe('completed');
     });
   });
+
+  describe('dispatcher cancel path', () => {
+    it('should cancel a running background run via dispatcher', async () => {
+      const bgRunId = runtime.enqueueBackgroundRun({
+        userId: 'user-dispatcher-001',
+        sessionId: 'session-dispatcher-001',
+        agentType: 'research-agent',
+        taskSpec: { objective: 'Dispatcher cancel test' },
+        launchSource: 'dispatcher-test',
+      });
+
+      await runtime.startBackgroundRun(bgRunId);
+      expect(runtime.getBackgroundRun(bgRunId)?.status).toBe('running');
+
+      runtime.cancelBackgroundRun(bgRunId);
+
+      const run = runtime.getBackgroundRun(bgRunId);
+      expect(run?.status).toBe('cancelled');
+
+      const notifications = runtime.getPendingNotifications();
+      const cancelNotification = notifications.find(n => n.backgroundRunId === bgRunId && n.type === 'cancelled');
+      expect(cancelNotification).toBeDefined();
+      expect(cancelNotification?.userId).toBe('user-dispatcher-001');
+    });
+
+    it('should cancel a queued background run via dispatcher', () => {
+      const bgRunId = runtime.enqueueBackgroundRun({
+        userId: 'user-dispatcher-002',
+        agentType: 'research-agent',
+        taskSpec: { objective: 'Queued cancel test' },
+        launchSource: 'dispatcher-test',
+      });
+
+      expect(runtime.getBackgroundRun(bgRunId)?.status).toBe('queued');
+
+      runtime.cancelBackgroundRun(bgRunId);
+
+      const run = runtime.getBackgroundRun(bgRunId);
+      expect(run?.status).toBe('cancelled');
+    });
+
+    it('should emit BackgroundRunCancelled event when cancelled via dispatcher', async () => {
+      const bgRunId = runtime.enqueueBackgroundRun({
+        userId: 'user-dispatcher-003',
+        agentType: 'research-agent',
+        taskSpec: { objective: 'Event emission test' },
+        launchSource: 'dispatcher-test',
+      });
+
+      await runtime.startBackgroundRun(bgRunId);
+      runtime.cancelBackgroundRun(bgRunId);
+
+      const cancelledEvents = eventStore.events.filter(
+        e => e.eventType === 'BackgroundRunCancelled' && e.relatedRefs?.backgroundRunId === bgRunId
+      );
+      expect(cancelledEvents.length).toBe(1);
+      expect(cancelledEvents[0].payload.backgroundRunId).toBe(bgRunId);
+      expect(cancelledEvents[0].payload.agentType).toBe('research-agent');
+    });
+  });
 });

@@ -3,6 +3,7 @@ import type { WorkflowDefinitionStore } from '../storage/workflow-definition-sto
 import type { WorkflowRunStore } from '../storage/workflow-run-store.js';
 import type { RuntimeActionStore, RuntimeAction } from '../storage/runtime-action-store.js';
 import type { EventStore, EventRecord, SourceModule } from '../storage/event-store.js';
+import type { WaitConditionStore, WaitCondition } from '../storage/wait-condition-store.js';
 import { WORKFLOW_RUN_STATES, RUNTIME_ACTION_STATES } from '../shared/states.js';
 import type { WorkflowRunState } from '../shared/states.js';
 import type { RuntimeActionType } from '../dispatcher/types.js';
@@ -16,7 +17,11 @@ import type {
   WorkflowRunResult,
   WorkflowStepRunInfo,
   StepExecutionResult,
+  ConditionEvalResult,
+  RetryAttemptAuditEntry,
 } from './types.js';
+import { evaluateConditionExpression } from './expression-evaluator.js';
+import type { RuntimeErrorCategory } from '../shared/errors.js';
 
 export interface WorkflowRuntime {
   createDraft(draft: Omit<WorkflowDraft, 'draftId' | 'status' | 'validationIssues' | 'createdAt' | 'updatedAt'>): WorkflowDraft;
@@ -27,6 +32,7 @@ export interface WorkflowRuntime {
   handleStepCompletion(stepRunId: string, result: StepExecutionResult): void;
   getWorkflowRun(workflowRunId: string): WorkflowRunResult | null;
   cancelWorkflowRun(workflowRunId: string): void;
+  shutdown(): void;
 }
 
 interface WorkflowRuntimeConfig {
@@ -35,7 +41,9 @@ interface WorkflowRuntimeConfig {
   workflowRunStore: WorkflowRunStore;
   runtimeActionStore: RuntimeActionStore;
   eventStore: EventStore;
+  waitConditionStore?: WaitConditionStore;
   dispatcher?: RuntimeDispatcher;
+  clock?: { now: () => number; nowISO: () => string; advance: (ms: number) => void };
 }
 
 interface RuntimeDispatcher {
@@ -61,7 +69,12 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
   private workflowRunStore: WorkflowRunStore;
   private runtimeActionStore: RuntimeActionStore;
   private eventStore: EventStore;
+  private waitConditionStore?: WaitConditionStore;
   private dispatcher?: RuntimeDispatcher;
+  private clock: { now: () => number; nowISO: () => string; advance: (ms: number) => void };
+  private stepAttemptCounts: Map<string, number> = new Map();
+  private stepAuditTrails: Map<string, RetryAttemptAuditEntry[]> = new Map();
+  private pendingTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(config: WorkflowRuntimeConfig) {
     this.draftStore = config.draftStore;
@@ -69,7 +82,9 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
     this.workflowRunStore = config.workflowRunStore;
     this.runtimeActionStore = config.runtimeActionStore;
     this.eventStore = config.eventStore;
+    this.waitConditionStore = config.waitConditionStore;
     this.dispatcher = config.dispatcher;
+    this.clock = config.clock ?? { now: Date.now, nowISO: () => new Date().toISOString(), advance: () => {} };
   }
 
   createDraft(
@@ -226,6 +241,52 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
         stepType: step.stepType,
         status: WORKFLOW_RUN_STATES.QUEUED,
       });
+
+      if (step.stepType === 'branch' && step.config.branches) {
+        for (const branch of step.config.branches) {
+          for (const branchStep of branch.steps) {
+            const branchStepRunId = generateId('wf_step_run_');
+
+            this.workflowRunStore.createStepRun({
+              stepRunId: branchStepRunId,
+              workflowRunId,
+              stepId: branchStep.stepId,
+              stepType: branchStep.stepType,
+              status: WORKFLOW_RUN_STATES.QUEUED,
+              inputData: this.buildStepInput(branchStep, input.inputData),
+            });
+
+            stepRuns.push({
+              stepRunId: branchStepRunId,
+              stepId: branchStep.stepId,
+              stepType: branchStep.stepType,
+              status: WORKFLOW_RUN_STATES.QUEUED,
+            });
+          }
+        }
+      }
+
+      if (step.stepType === 'parallel_group' && step.config.parallelSteps) {
+        for (const parallelStep of step.config.parallelSteps) {
+          const parallelStepRunId = generateId('wf_step_run_');
+
+          this.workflowRunStore.createStepRun({
+            stepRunId: parallelStepRunId,
+            workflowRunId,
+            stepId: parallelStep.stepId,
+            stepType: parallelStep.stepType,
+            status: WORKFLOW_RUN_STATES.QUEUED,
+            inputData: this.buildStepInput(parallelStep, input.inputData),
+          });
+
+          stepRuns.push({
+            stepRunId: parallelStepRunId,
+            stepId: parallelStep.stepId,
+            stepType: parallelStep.stepType,
+            status: WORKFLOW_RUN_STATES.QUEUED,
+          });
+        }
+      }
     }
 
     this.workflowRunStore.updateWorkflowStatus(workflowRunId, WORKFLOW_RUN_STATES.RUNNING);
@@ -274,8 +335,6 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       throw new Error(`Workflow run not found: ${stepRun.workflowRunId}`);
     }
 
-    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.RUNNING);
-
     const definition = this.definitionStore.getDefinitionById(workflowRun.workflowId);
     if (!definition) {
       throw new Error(`Definition not found: ${workflowRun.workflowId}`);
@@ -285,6 +344,28 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
     if (!step) {
       throw new Error(`Step not found: ${stepRun.stepId}`);
     }
+
+    if (step.stepType === 'condition') {
+      this.executeConditionStep(stepRunId);
+      return;
+    }
+
+    if (step.stepType === 'branch') {
+      this.executeBranchStep(stepRunId);
+      return;
+    }
+
+    if (step.stepType === 'parallel_group') {
+      this.executeParallelGroupStep(stepRunId);
+      return;
+    }
+
+    if (step.stepType === 'polling_wait') {
+      this.executePollingWaitStep(stepRunId);
+      return;
+    }
+
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.RUNNING);
 
     const action = this.createRuntimeAction({
       workflowRunId: stepRun.workflowRunId,
@@ -360,10 +441,13 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       throw new Error(`Step not found: ${stepRun.stepId}`);
     }
 
-    const now = new Date().toISOString();
+    const now = this.clock.nowISO();
 
     if (result.success) {
+      this.stepAttemptCounts.delete(stepRunId);
+      this.stepAuditTrails.delete(stepRunId);
       this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+      this.workflowRunStore.saveStepOutput(stepRunId, result.output);
 
       this.emitEvent({
         eventType: 'workflow_step_completed',
@@ -375,50 +459,553 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
           stepId: step.stepId,
           output: result.output,
           completedAt: now,
+          attemptNumber: result.attemptNumber,
         },
       });
 
       this.advanceToNextStep(stepRun.workflowRunId, step, result.output);
     } else {
-      const shouldRetry = this.shouldRetryStep(step);
+      this.handleStepFailure(stepRunId, step, workflowRun, result, now);
+    }
+  }
 
-      if (shouldRetry) {
-        this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.QUEUED);
+  private handleStepFailure(
+    stepRunId: string,
+    step: WorkflowStep,
+    workflowRun: { workflowRunId: string; ownerUserId: string },
+    result: StepExecutionResult,
+    now: string
+  ): void {
+    const retryPolicy = step.config.retryPolicyV2;
+    const currentAttempt = (this.stepAttemptCounts.get(stepRunId) ?? 0) + 1;
+    this.stepAttemptCounts.set(stepRunId, currentAttempt);
+
+    const auditEntry: RetryAttemptAuditEntry = {
+      attempt: currentAttempt,
+      status: 'failed',
+      errorCategory: result.errorCategory,
+      errorCode: result.error ? 'EXECUTION_ERROR' : undefined,
+      timestamp: now,
+    };
+
+    const auditTrail = this.stepAuditTrails.get(stepRunId) ?? [];
+    auditTrail.push(auditEntry);
+    this.stepAuditTrails.set(stepRunId, auditTrail);
+
+    const shouldRetry = this.shouldRetryStepV2(step, result, currentAttempt);
+
+    if (shouldRetry) {
+      const delayMs = this.calculateRetryDelay(step, currentAttempt);
+      auditTrail.push({
+        attempt: currentAttempt + 1,
+        status: 'retry_scheduled',
+        delayMs,
+        timestamp: now,
+      });
+
+      this.emitEvent({
+        eventType: 'workflow_step_retry_scheduled',
+        sourceModule: 'workflow',
+        userId: workflowRun.ownerUserId,
+        relatedRefs: { workflowRunId: workflowRun.workflowRunId, stepRunId },
+        payload: {
+          stepRunId,
+          stepId: step.stepId,
+          attempt: currentAttempt,
+          maxAttempts: retryPolicy?.maxAttempts ?? 1,
+          delayMs,
+          error: result.error,
+          errorCategory: result.errorCategory,
+          scheduledAt: now,
+        },
+      });
+
+      this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.QUEUED);
+      const timerId = `retry_${stepRunId}`;
+      const existingTimer = this.pendingTimers.get(timerId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+      const timer = setTimeout(() => {
+        this.pendingTimers.delete(timerId);
         this.executeStep(stepRunId);
-      } else if (step.config.onFailure === 'continue') {
-        this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
-        this.advanceToNextStep(stepRun.workflowRunId, step, null);
+      }, delayMs);
+      this.pendingTimers.set(timerId, timer);
+    } else {
+      this.applyOnFailurePolicy(stepRunId, step, workflowRun, result, auditTrail, now);
+    }
+  }
+
+  private shouldRetryStepV2(step: WorkflowStep, result: StepExecutionResult, currentAttempt: number): boolean {
+    const retryPolicy = step.config.retryPolicyV2;
+    if (!retryPolicy) {
+      return false;
+    }
+
+    const maxAttempts = retryPolicy.maxAttempts ?? 1;
+    if (currentAttempt >= maxAttempts) {
+      return false;
+    }
+
+    if (result.recoverability === 'non_recoverable') {
+      return false;
+    }
+
+    const errorCategory = result.errorCategory as RuntimeErrorCategory | undefined;
+    if (errorCategory && retryPolicy.retryableErrorCategories) {
+      return retryPolicy.retryableErrorCategories.includes(errorCategory);
+    }
+
+    return result.recoverability === 'retryable_later' || result.recoverability === 'recoverable_auto';
+  }
+
+  private calculateRetryDelay(step: WorkflowStep, attempt: number): number {
+    const retryPolicy = step.config.retryPolicyV2;
+    if (!retryPolicy) {
+      return 1000;
+    }
+
+    const initialDelay = retryPolicy.initialDelayMs ?? 1000;
+    const maxDelay = retryPolicy.maxDelayMs ?? 30000;
+    const backoff = retryPolicy.backoff ?? 'exponential';
+
+    let delay: number;
+    switch (backoff) {
+      case 'none':
+        delay = 0;
+        break;
+      case 'fixed':
+        delay = initialDelay;
+        break;
+      case 'linear':
+        delay = initialDelay * attempt;
+        break;
+      case 'exponential':
+      default:
+        delay = initialDelay * Math.pow(2, attempt - 1);
+        break;
+    }
+
+    return Math.min(delay, maxDelay);
+  }
+
+  private applyOnFailurePolicy(
+    stepRunId: string,
+    step: WorkflowStep,
+    workflowRun: { workflowRunId: string; ownerUserId: string },
+    result: StepExecutionResult,
+    auditTrail: RetryAttemptAuditEntry[],
+    now: string
+  ): void {
+    const onFailure = step.config.onFailure ?? 'fail';
+
+    switch (onFailure) {
+      case 'continue':
+        this.handleOnFailureContinue(stepRunId, step, workflowRun, result, auditTrail, now);
+        break;
+      case 'skip':
+        this.handleOnFailureSkip(stepRunId, step, workflowRun, result, auditTrail, now);
+        break;
+      case 'compensate':
+        this.handleOnFailureCompensate(stepRunId, step, workflowRun, result, auditTrail, now);
+        break;
+      case 'fail':
+      default:
+        this.handleOnFailureFail(stepRunId, step, workflowRun, result, auditTrail, now);
+        break;
+    }
+
+    this.stepAttemptCounts.delete(stepRunId);
+    this.stepAuditTrails.delete(stepRunId);
+  }
+
+  private handleOnFailureFail(
+    stepRunId: string,
+    step: WorkflowStep,
+    workflowRun: { workflowRunId: string; ownerUserId: string },
+    result: StepExecutionResult,
+    auditTrail: RetryAttemptAuditEntry[],
+    now: string
+  ): void {
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.FAILED);
+    this.workflowRunStore.updateWorkflowStatus(workflowRun.workflowRunId, WORKFLOW_RUN_STATES.FAILED);
+
+    this.emitEvent({
+      eventType: 'workflow_step_failed',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: workflowRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: step.stepId,
+        error: result.error,
+        errorCategory: result.errorCategory,
+        failedAt: now,
+        auditTrail,
+      },
+    });
+
+    this.emitEvent({
+      eventType: 'workflow_run_failed',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: workflowRun.workflowRunId },
+      payload: {
+        workflowRunId: workflowRun.workflowRunId,
+        failedStepId: step.stepId,
+        error: result.error,
+        errorCategory: result.errorCategory,
+        failedAt: now,
+      },
+    });
+  }
+
+  private handleOnFailureContinue(
+    stepRunId: string,
+    step: WorkflowStep,
+    workflowRun: { workflowRunId: string; ownerUserId: string },
+    result: StepExecutionResult,
+    auditTrail: RetryAttemptAuditEntry[],
+    now: string
+  ): void {
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+    this.workflowRunStore.saveStepOutput(stepRunId, { failed: true, error: result.error, continued: true });
+
+    this.emitEvent({
+      eventType: 'workflow_step_failed_continue',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: workflowRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: step.stepId,
+        error: result.error,
+        errorCategory: result.errorCategory,
+        continuedAt: now,
+        auditTrail,
+      },
+    });
+
+    this.advanceToNextStep(workflowRun.workflowRunId, step, null);
+  }
+
+  private handleOnFailureSkip(
+    stepRunId: string,
+    step: WorkflowStep,
+    workflowRun: { workflowRunId: string; ownerUserId: string },
+    result: StepExecutionResult,
+    auditTrail: RetryAttemptAuditEntry[],
+    now: string
+  ): void {
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.CANCELLED);
+
+    this.emitEvent({
+      eventType: 'workflow_step_skipped',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: workflowRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: step.stepId,
+        reason: 'onFailure=skip',
+        error: result.error,
+        errorCategory: result.errorCategory,
+        skippedAt: now,
+        auditTrail,
+      },
+    });
+
+    this.advanceToNextStep(workflowRun.workflowRunId, step, null);
+  }
+
+  private handleOnFailureCompensate(
+    stepRunId: string,
+    step: WorkflowStep,
+    workflowRun: { workflowRunId: string; ownerUserId: string },
+    result: StepExecutionResult,
+    auditTrail: RetryAttemptAuditEntry[],
+    now: string
+  ): void {
+    const compensateHook = step.config.compensateHook;
+
+    this.emitEvent({
+      eventType: 'workflow_step_compensate_requested',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: workflowRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: step.stepId,
+        compensateHook,
+        error: result.error,
+        errorCategory: result.errorCategory,
+        requestedAt: now,
+        auditTrail,
+      },
+    });
+
+    if (compensateHook && this.dispatcher) {
+      const action = this.createRuntimeAction({
+        workflowRunId: workflowRun.workflowRunId,
+        stepRunId,
+        userId: workflowRun.ownerUserId,
+        targetRuntime: 'workflow_runtime',
+        targetAction: 'execute_compensate_hook',
+        payload: {
+          stepRunId,
+          stepId: step.stepId,
+          compensateHook,
+          originalError: result.error,
+          originalErrorCategory: result.errorCategory,
+        },
+      });
+
+      this.dispatcher
+        .dispatch({
+          actionType: action.actionType as RuntimeActionType,
+          targetRuntime: action.targetRuntime,
+          targetAction: action.targetAction,
+          payload: action.payload as Record<string, unknown>,
+          userId: workflowRun.ownerUserId,
+          correlationId: workflowRun.workflowRunId,
+        })
+        .then(compensateResult => {
+          if (compensateResult.success) {
+            this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+            this.emitEvent({
+              eventType: 'workflow_step_compensated',
+              sourceModule: 'workflow',
+              userId: workflowRun.ownerUserId,
+              relatedRefs: { workflowRunId: workflowRun.workflowRunId, stepRunId },
+              payload: {
+                stepRunId,
+                stepId: step.stepId,
+                compensateResult: compensateResult.result,
+                compensatedAt: this.clock.nowISO(),
+              },
+            });
+            this.advanceToNextStep(workflowRun.workflowRunId, step, null);
+          } else {
+            this.handleOnFailureFail(stepRunId, step, workflowRun, result, auditTrail, this.clock.nowISO());
+          }
+        })
+        .catch(() => {
+          this.handleOnFailureFail(stepRunId, step, workflowRun, result, auditTrail, this.clock.nowISO());
+        });
+    } else {
+      this.handleOnFailureFail(stepRunId, step, workflowRun, result, auditTrail, now);
+    }
+  }
+
+  private executePollingWaitStep(stepRunId: string): void {
+    const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+    if (!stepRun) {
+      throw new Error(`Step run not found: ${stepRunId}`);
+    }
+
+    const workflowRun = this.workflowRunStore.getWorkflowRunById(stepRun.workflowRunId);
+    if (!workflowRun) {
+      throw new Error(`Workflow run not found: ${stepRun.workflowRunId}`);
+    }
+
+    const definition = this.definitionStore.getDefinitionById(workflowRun.workflowId);
+    if (!definition) {
+      throw new Error(`Definition not found: ${workflowRun.workflowId}`);
+    }
+
+    const step = definition.steps.find(s => s.stepId === stepRun.stepId);
+    if (!step) {
+      throw new Error(`Step not found: ${stepRun.stepId}`);
+    }
+
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.RUNNING);
+
+    const pollingCondition = step.config.pollingCondition || '';
+    const pollingIntervalMs = step.config.pollingIntervalMs ?? 1000;
+    const timeoutMs = step.config.timeoutMs ?? 60000;
+
+    if (!this.waitConditionStore) {
+      this.handleStepCompletion(stepRunId, {
+        success: false,
+        error: 'WaitConditionStore not configured',
+        errorCategory: 'system_internal_error',
+        recoverability: 'non_recoverable',
+      });
+      return;
+    }
+
+    const waitConditionId = generateId('wait_');
+    const timeoutAt = new Date(this.clock.now() + timeoutMs).toISOString();
+
+    const waitCondition = this.waitConditionStore.create({
+      id: waitConditionId,
+      waitType: 'polling',
+      conditionPattern: pollingCondition,
+      targetType: 'workflow_step_run',
+      targetRef: stepRunId,
+      status: 'active',
+      priority: 0,
+      timeoutAt,
+      metadata: JSON.stringify({
+        pollingIntervalMs,
+        stepRunId,
+        workflowRunId: stepRun.workflowRunId,
+      }),
+    });
+
+    this.emitEvent({
+      eventType: 'workflow_polling_wait_registered',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: step.stepId,
+        waitConditionId,
+        pollingCondition,
+        pollingIntervalMs,
+        timeoutMs,
+        timeoutAt,
+        registeredAt: this.clock.nowISO(),
+      },
+    });
+
+    this.evaluatePollingCondition(stepRunId, waitCondition, pollingCondition, pollingIntervalMs, timeoutAt, 0);
+  }
+
+  private evaluatePollingCondition(
+    stepRunId: string,
+    waitCondition: WaitCondition,
+    pollingCondition: string,
+    pollingIntervalMs: number,
+    timeoutAt: string,
+    pollAttempt: number
+  ): void {
+    const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+    if (!stepRun) {
+      return;
+    }
+
+    const workflowRun = this.workflowRunStore.getWorkflowRunById(stepRun.workflowRunId);
+    if (!workflowRun) {
+      return;
+    }
+
+    const now = this.clock.now();
+    const timeoutTime = new Date(timeoutAt).getTime();
+
+    if (now >= timeoutTime) {
+      if (this.waitConditionStore) {
+        this.waitConditionStore.markTimeout(waitCondition.id);
+      }
+
+      this.emitEvent({
+        eventType: 'workflow_polling_wait_timeout',
+        sourceModule: 'workflow',
+        userId: workflowRun.ownerUserId,
+        relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+        payload: {
+          stepRunId,
+          waitConditionId: waitCondition.id,
+          pollAttempt,
+          timedOutAt: this.clock.nowISO(),
+        },
+      });
+
+      this.handleStepCompletion(stepRunId, {
+        success: false,
+        error: 'Polling wait timed out',
+        errorCategory: 'timeout',
+        recoverability: 'retryable_later',
+        attemptNumber: pollAttempt,
+      });
+      return;
+    }
+
+    const stepOutputs = this.collectStepOutputs(stepRun.workflowRunId);
+    let inputData: Record<string, unknown> | undefined;
+    if (workflowRun.inputData) {
+      if (typeof workflowRun.inputData === 'string') {
+        try {
+          inputData = JSON.parse(workflowRun.inputData);
+        } catch {
+          inputData = undefined;
+        }
       } else {
-        this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.FAILED);
-        this.workflowRunStore.updateWorkflowStatus(stepRun.workflowRunId, WORKFLOW_RUN_STATES.FAILED);
-
-        this.emitEvent({
-          eventType: 'workflow_step_failed',
-          sourceModule: 'workflow',
-          userId: workflowRun.ownerUserId,
-          relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
-          payload: {
-            stepRunId,
-            stepId: step.stepId,
-            error: result.error,
-            failedAt: now,
-          },
-        });
-
-        this.emitEvent({
-          eventType: 'workflow_run_failed',
-          sourceModule: 'workflow',
-          userId: workflowRun.ownerUserId,
-          relatedRefs: { workflowRunId: stepRun.workflowRunId },
-          payload: {
-            workflowRunId: stepRun.workflowRunId,
-            failedStepId: step.stepId,
-            error: result.error,
-            failedAt: now,
-          },
-        });
+        inputData = workflowRun.inputData as Record<string, unknown>;
       }
     }
+
+    const result = evaluateConditionExpression(pollingCondition, stepOutputs, inputData);
+
+    if (result.error) {
+      this.emitEvent({
+        eventType: 'workflow_polling_wait_error',
+        sourceModule: 'workflow',
+        userId: workflowRun.ownerUserId,
+        relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+        payload: {
+          stepRunId,
+          waitConditionId: waitCondition.id,
+          pollAttempt,
+          error: result.error.message,
+          errorAt: this.clock.nowISO(),
+        },
+      });
+
+      this.handleStepCompletion(stepRunId, {
+        success: false,
+        error: result.error.message,
+        errorCategory: 'expression_error',
+        recoverability: 'non_recoverable',
+        attemptNumber: pollAttempt,
+      });
+      return;
+    }
+
+    if (result.conditionMet) {
+      if (this.waitConditionStore) {
+        this.waitConditionStore.markSatisfied(waitCondition.id, 'polling_evaluator', { conditionMet: true, pollAttempt });
+      }
+
+      this.emitEvent({
+        eventType: 'workflow_polling_wait_satisfied',
+        sourceModule: 'workflow',
+        userId: workflowRun.ownerUserId,
+        relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+        payload: {
+          stepRunId,
+          waitConditionId: waitCondition.id,
+          pollAttempt,
+          satisfiedAt: this.clock.nowISO(),
+        },
+      });
+
+      this.handleStepCompletion(stepRunId, {
+        success: true,
+        output: { conditionMet: true, pollAttempt },
+        attemptNumber: pollAttempt,
+      });
+      return;
+    }
+
+    this.emitEvent({
+      eventType: 'workflow_polling_wait_poll',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        waitConditionId: waitCondition.id,
+        pollAttempt,
+        nextPollInMs: pollingIntervalMs,
+        polledAt: this.clock.nowISO(),
+      },
+    });
+
+    setTimeout(() => {
+      this.evaluatePollingCondition(stepRunId, waitCondition, pollingCondition, pollingIntervalMs, timeoutAt, pollAttempt + 1);
+    }, pollingIntervalMs);
   }
 
   getWorkflowRun(workflowRunId: string): WorkflowRunResult | null {
@@ -478,6 +1065,16 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
     });
   }
 
+  shutdown(): void {
+    for (const timer of this.pendingTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingTimers.clear();
+
+    this.stepAttemptCounts.clear();
+    this.stepAuditTrails.clear();
+  }
+
   private validateSteps(context: WorkflowValidationContext): void {
     if (context.draft.steps.length === 0) {
       context.issues.push({
@@ -488,7 +1085,7 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       return;
     }
 
-    const validStepTypes = ['tool_call', 'agent_run', 'subagent_run', 'approval', 'wait'];
+    const validStepTypes = ['tool_call', 'agent_run', 'subagent_run', 'approval', 'wait', 'condition', 'branch', 'parallel_group', 'polling_wait'];
 
     for (const step of context.draft.steps) {
       if (!step.stepId) {
@@ -570,6 +1167,62 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
           context.issues.push({
             code: 'MISSING_WAIT_CONDITION',
             message: `Step ${step.stepId} is missing waitCondition in config`,
+            stepId: step.stepId,
+            severity: 'error',
+          });
+        }
+        break;
+      case 'condition':
+        if (!config.conditionExpression) {
+          context.issues.push({
+            code: 'MISSING_CONDITION_EXPRESSION',
+            message: `Step ${step.stepId} is missing conditionExpression in config`,
+            stepId: step.stepId,
+            severity: 'error',
+          });
+        }
+        if (!config.trueNextStepId && !config.falseNextStepId) {
+          context.issues.push({
+            code: 'MISSING_BRANCH_TARGETS',
+            message: `Step ${step.stepId} must have at least one branch target (trueNextStepId or falseNextStepId)`,
+            stepId: step.stepId,
+            severity: 'error',
+          });
+        }
+        break;
+      case 'branch':
+        if (!config.branches || config.branches.length === 0) {
+          context.issues.push({
+            code: 'MISSING_BRANCHES',
+            message: `Step ${step.stepId} is missing branches in config`,
+            stepId: step.stepId,
+            severity: 'error',
+          });
+        }
+        break;
+      case 'parallel_group':
+        if (!config.parallelSteps || config.parallelSteps.length === 0) {
+          context.issues.push({
+            code: 'MISSING_PARALLEL_STEPS',
+            message: `Step ${step.stepId} is missing parallelSteps in config`,
+            stepId: step.stepId,
+            severity: 'error',
+          });
+        }
+        break;
+      case 'polling_wait':
+        if (!config.pollingCondition) {
+          context.issues.push({
+            code: 'MISSING_POLLING_CONDITION',
+            message: `Step ${step.stepId} is missing pollingCondition in config`,
+            stepId: step.stepId,
+            severity: 'error',
+          });
+        }
+        if (!config.timeoutMs || config.timeoutMs <= 0) {
+          context.issues.push({
+            code: 'MISSING_POLLING_TIMEOUT',
+            message: `Step ${step.stepId} must have a valid timeoutMs for polling_wait`,
             stepId: step.stepId,
             severity: 'error',
           });
@@ -709,13 +1362,544 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
     }
   }
 
-  private shouldRetryStep(step: WorkflowStep): boolean {
-    const retryPolicy = step.config.retryPolicy;
-    if (!retryPolicy || retryPolicy.maxRetries <= 0) {
-      return false;
+  private collectStepOutputs(workflowRunId: string): Map<string, unknown> {
+    const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(workflowRunId);
+    const outputs = new Map<string, unknown>();
+
+    for (const stepRun of stepRuns) {
+      if (stepRun.status === WORKFLOW_RUN_STATES.COMPLETED && stepRun.outputData) {
+        if (typeof stepRun.outputData === 'string') {
+          try {
+            const output = JSON.parse(stepRun.outputData);
+            outputs.set(stepRun.stepId, output);
+          } catch {
+            outputs.set(stepRun.stepId, stepRun.outputData);
+          }
+        } else {
+          outputs.set(stepRun.stepId, stepRun.outputData);
+        }
+      }
     }
 
-    return false;
+    return outputs;
+  }
+
+  private executeConditionStep(stepRunId: string): void {
+    const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+    if (!stepRun) {
+      throw new Error(`Step run not found: ${stepRunId}`);
+    }
+
+    const workflowRun = this.workflowRunStore.getWorkflowRunById(stepRun.workflowRunId);
+    if (!workflowRun) {
+      throw new Error(`Workflow run not found: ${stepRun.workflowRunId}`);
+    }
+
+    const definition = this.definitionStore.getDefinitionById(workflowRun.workflowId);
+    if (!definition) {
+      throw new Error(`Definition not found: ${workflowRun.workflowId}`);
+    }
+
+    const step = definition.steps.find(s => s.stepId === stepRun.stepId);
+    if (!step) {
+      throw new Error(`Step not found: ${stepRun.stepId}`);
+    }
+
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.RUNNING);
+
+    const stepOutputs = this.collectStepOutputs(stepRun.workflowRunId);
+    let inputData: Record<string, unknown> | undefined;
+    if (workflowRun.inputData) {
+      if (typeof workflowRun.inputData === 'string') {
+        try {
+          inputData = JSON.parse(workflowRun.inputData);
+        } catch {
+          inputData = undefined;
+        }
+      } else {
+        inputData = workflowRun.inputData as Record<string, unknown>;
+      }
+    }
+
+    const expression = step.config.conditionExpression || '';
+    const result: ConditionEvalResult = evaluateConditionExpression(expression, stepOutputs, inputData);
+
+    const now = new Date().toISOString();
+
+    if (result.error) {
+      const onFailure = step.config.onFailure ?? 'fail';
+
+      if (onFailure === 'continue') {
+        this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+        this.workflowRunStore.saveStepOutput(stepRunId, { conditionError: result.error });
+
+        const nextStepId = result.conditionMet ? step.config.trueNextStepId : step.config.falseNextStepId;
+        if (nextStepId) {
+          const nextStep = definition.steps.find(s => s.stepId === nextStepId);
+          if (nextStep) {
+            const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(stepRun.workflowRunId);
+            const nextStepRun = stepRuns.find(sr => sr.stepId === nextStep.stepId);
+            if (nextStepRun) {
+              this.workflowRunStore.updateCurrentSteps(stepRun.workflowRunId, [nextStep.stepId]);
+              this.executeStep(nextStepRun.stepRunId);
+            }
+          }
+        }
+      } else {
+        this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.FAILED);
+        this.workflowRunStore.updateWorkflowStatus(stepRun.workflowRunId, WORKFLOW_RUN_STATES.FAILED);
+
+        this.emitEvent({
+          eventType: 'workflow_step_failed',
+          sourceModule: 'workflow',
+          userId: workflowRun.ownerUserId,
+          relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+          payload: {
+            stepRunId,
+            stepId: step.stepId,
+            error: result.error.message,
+            errorCategory: 'undefined_variable',
+            failedAt: now,
+          },
+        });
+      }
+      return;
+    }
+
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+    this.workflowRunStore.saveStepOutput(stepRunId, { conditionMet: result.conditionMet });
+
+    this.emitEvent({
+      eventType: 'workflow_condition_evaluated',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: step.stepId,
+        conditionMet: result.conditionMet,
+        evaluatedAt: now,
+      },
+    });
+
+    const nextStepId = result.conditionMet ? step.config.trueNextStepId : step.config.falseNextStepId;
+
+    if (!nextStepId) {
+      this.workflowRunStore.saveWorkflowOutput(stepRun.workflowRunId, { finalOutput: { conditionMet: result.conditionMet } });
+      this.workflowRunStore.updateWorkflowStatus(stepRun.workflowRunId, WORKFLOW_RUN_STATES.COMPLETED);
+
+      this.emitEvent({
+        eventType: 'workflow_run_completed',
+        sourceModule: 'workflow',
+        relatedRefs: { workflowRunId: stepRun.workflowRunId },
+        payload: {
+          workflowRunId: stepRun.workflowRunId,
+          completedAt: now,
+        },
+      });
+      return;
+    }
+
+    const nextStep = definition.steps.find(s => s.stepId === nextStepId);
+    if (!nextStep) return;
+
+    const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(stepRun.workflowRunId);
+    const nextStepRun = stepRuns.find(sr => sr.stepId === nextStep.stepId);
+
+    if (nextStepRun) {
+      this.workflowRunStore.updateCurrentSteps(stepRun.workflowRunId, [nextStep.stepId]);
+      this.executeStep(nextStepRun.stepRunId);
+    }
+  }
+
+  private executeBranchStep(stepRunId: string): void {
+    const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+    if (!stepRun) {
+      throw new Error(`Step run not found: ${stepRunId}`);
+    }
+
+    const workflowRun = this.workflowRunStore.getWorkflowRunById(stepRun.workflowRunId);
+    if (!workflowRun) {
+      throw new Error(`Workflow run not found: ${stepRun.workflowRunId}`);
+    }
+
+    const definition = this.definitionStore.getDefinitionById(workflowRun.workflowId);
+    if (!definition) {
+      throw new Error(`Definition not found: ${workflowRun.workflowId}`);
+    }
+
+    const step = definition.steps.find(s => s.stepId === stepRun.stepId);
+    if (!step) {
+      throw new Error(`Step not found: ${stepRun.stepId}`);
+    }
+
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.RUNNING);
+
+    const branches = step.config.branches || [];
+    if (branches.length === 0) {
+      this.handleStepCompletion(stepRunId, { success: false, error: 'No branches defined' });
+      return;
+    }
+
+    const stepOutputs = this.collectStepOutputs(stepRun.workflowRunId);
+    let inputData: Record<string, unknown> | undefined;
+    if (workflowRun.inputData) {
+      if (typeof workflowRun.inputData === 'string') {
+        try {
+          inputData = JSON.parse(workflowRun.inputData);
+        } catch {
+          inputData = undefined;
+        }
+      } else {
+        inputData = workflowRun.inputData as Record<string, unknown>;
+      }
+    }
+
+    let selectedBranch = branches[0];
+    for (const branch of branches) {
+      if (branch.condition) {
+        const result = evaluateConditionExpression(branch.condition, stepOutputs, inputData);
+        if (!result.error && result.conditionMet) {
+          selectedBranch = branch;
+          break;
+        }
+      }
+    }
+
+    const now = new Date().toISOString();
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+    this.workflowRunStore.saveStepOutput(stepRunId, { selectedBranch: selectedBranch.branchId });
+
+    this.emitEvent({
+      eventType: 'workflow_branch_selected',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: step.stepId,
+        selectedBranch: selectedBranch.branchId,
+        selectedAt: now,
+      },
+    });
+
+    for (const branch of branches) {
+      if (branch.branchId !== selectedBranch.branchId) {
+        this.skipBranchSteps(branch.steps, stepRun.workflowRunId, workflowRun.ownerUserId);
+      }
+    }
+
+    if (selectedBranch.steps.length === 0) {
+      this.advanceToNextStep(stepRun.workflowRunId, step, null);
+      return;
+    }
+
+    const firstBranchStep = selectedBranch.steps[0];
+    if (!firstBranchStep) {
+      this.advanceToNextStep(stepRun.workflowRunId, step, null);
+      return;
+    }
+
+    const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(stepRun.workflowRunId);
+    const firstBranchStepRun = stepRuns.find(sr => sr.stepId === firstBranchStep.stepId);
+
+    if (firstBranchStepRun) {
+      this.workflowRunStore.updateCurrentSteps(stepRun.workflowRunId, [firstBranchStep.stepId]);
+      this.executeBranchInternalStep(firstBranchStepRun.stepRunId, firstBranchStep, selectedBranch.steps, step);
+    }
+  }
+
+  private executeBranchInternalStep(
+    stepRunId: string,
+    branchStep: WorkflowStep,
+    branchSteps: WorkflowStep[],
+    parentBranchStep: WorkflowStep
+  ): void {
+    const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+    if (!stepRun) {
+      throw new Error(`Step run not found: ${stepRunId}`);
+    }
+
+    const workflowRun = this.workflowRunStore.getWorkflowRunById(stepRun.workflowRunId);
+    if (!workflowRun) {
+      throw new Error(`Workflow run not found: ${stepRun.workflowRunId}`);
+    }
+
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.RUNNING);
+
+    const action = this.createRuntimeAction({
+      workflowRunId: stepRun.workflowRunId,
+      stepRunId,
+      userId: workflowRun.ownerUserId,
+      targetRuntime: this.getTargetRuntimeForStepType(branchStep.stepType),
+      targetAction: this.getTargetActionForStepType(branchStep.stepType),
+      payload: {
+        stepRunId,
+        stepType: branchStep.stepType,
+        stepConfig: branchStep.config,
+        inputData: stepRun.inputData,
+      },
+    });
+
+    if (this.dispatcher) {
+      this.dispatcher
+        .dispatch({
+          actionType: action.actionType as RuntimeActionType,
+          targetRuntime: action.targetRuntime,
+          targetAction: action.targetAction,
+          payload: action.payload as Record<string, unknown>,
+          userId: workflowRun.ownerUserId,
+          correlationId: stepRun.workflowRunId,
+        })
+        .then(result => {
+          this.handleBranchInternalStepCompletion(
+            stepRunId,
+            branchStep,
+            branchSteps,
+            parentBranchStep,
+            {
+              success: result.success,
+              output: result.result,
+              error: result.error,
+            }
+          );
+        })
+        .catch(error => {
+          this.handleBranchInternalStepCompletion(
+            stepRunId,
+            branchStep,
+            branchSteps,
+            parentBranchStep,
+            {
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            }
+          );
+        });
+    }
+
+    this.emitEvent({
+      eventType: 'workflow_step_executing',
+      sourceModule: 'workflow',
+      userId: workflowRun.ownerUserId,
+      relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+      payload: {
+        stepRunId,
+        stepId: branchStep.stepId,
+        stepType: branchStep.stepType,
+        actionId: action.actionId,
+      },
+    });
+  }
+
+  private handleBranchInternalStepCompletion(
+    stepRunId: string,
+    branchStep: WorkflowStep,
+    branchSteps: WorkflowStep[],
+    parentBranchStep: WorkflowStep,
+    result: StepExecutionResult
+  ): void {
+    const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+    if (!stepRun) {
+      throw new Error(`Step run not found: ${stepRunId}`);
+    }
+
+    const workflowRun = this.workflowRunStore.getWorkflowRunById(stepRun.workflowRunId);
+    if (!workflowRun) {
+      throw new Error(`Workflow run not found: ${stepRun.workflowRunId}`);
+    }
+
+    const now = new Date().toISOString();
+
+    if (result.success) {
+      this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+
+      this.emitEvent({
+        eventType: 'workflow_step_completed',
+        sourceModule: 'workflow',
+        userId: workflowRun.ownerUserId,
+        relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+        payload: {
+          stepRunId,
+          stepId: branchStep.stepId,
+          output: result.output,
+          completedAt: now,
+        },
+      });
+
+      const currentIndex = branchSteps.findIndex(s => s.stepId === branchStep.stepId);
+      const nextBranchStep = branchSteps[currentIndex + 1];
+
+      if (nextBranchStep) {
+        const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(stepRun.workflowRunId);
+        const nextStepRun = stepRuns.find(sr => sr.stepId === nextBranchStep.stepId);
+
+        if (nextStepRun) {
+          this.workflowRunStore.updateCurrentSteps(stepRun.workflowRunId, [nextBranchStep.stepId]);
+          this.executeBranchInternalStep(nextStepRun.stepRunId, nextBranchStep, branchSteps, parentBranchStep);
+        }
+      } else {
+        this.advanceToNextStep(stepRun.workflowRunId, parentBranchStep, result.output);
+      }
+    } else {
+      const onFailure = branchStep.config.onFailure ?? 'fail';
+
+      if (onFailure === 'continue') {
+        this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.COMPLETED);
+
+        const currentIndex = branchSteps.findIndex(s => s.stepId === branchStep.stepId);
+        const nextBranchStep = branchSteps[currentIndex + 1];
+
+        if (nextBranchStep) {
+          const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(stepRun.workflowRunId);
+          const nextStepRun = stepRuns.find(sr => sr.stepId === nextBranchStep.stepId);
+
+          if (nextStepRun) {
+            this.workflowRunStore.updateCurrentSteps(stepRun.workflowRunId, [nextBranchStep.stepId]);
+            this.executeBranchInternalStep(nextStepRun.stepRunId, nextBranchStep, branchSteps, parentBranchStep);
+          }
+        } else {
+          this.advanceToNextStep(stepRun.workflowRunId, parentBranchStep, null);
+        }
+      } else {
+        this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.FAILED);
+        this.workflowRunStore.updateWorkflowStatus(stepRun.workflowRunId, WORKFLOW_RUN_STATES.FAILED);
+
+        this.emitEvent({
+          eventType: 'workflow_step_failed',
+          sourceModule: 'workflow',
+          userId: workflowRun.ownerUserId,
+          relatedRefs: { workflowRunId: stepRun.workflowRunId, stepRunId },
+          payload: {
+            stepRunId,
+            stepId: branchStep.stepId,
+            error: result.error,
+            failedAt: now,
+          },
+        });
+
+        this.emitEvent({
+          eventType: 'workflow_run_failed',
+          sourceModule: 'workflow',
+          userId: workflowRun.ownerUserId,
+          relatedRefs: { workflowRunId: stepRun.workflowRunId },
+          payload: {
+            workflowRunId: stepRun.workflowRunId,
+            failedStepId: branchStep.stepId,
+            error: result.error,
+            failedAt: now,
+          },
+        });
+      }
+    }
+  }
+
+  private skipBranchSteps(steps: WorkflowStep[], workflowRunId: string, userId: string): void {
+    for (const step of steps) {
+      const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(workflowRunId);
+      const stepRun = stepRuns.find(sr => sr.stepId === step.stepId);
+
+      if (stepRun) {
+        this.workflowRunStore.updateStepStatus(stepRun.stepRunId, WORKFLOW_RUN_STATES.CANCELLED);
+
+        this.emitEvent({
+          eventType: 'workflow_step_skipped',
+          sourceModule: 'workflow',
+          userId,
+          relatedRefs: { workflowRunId, stepRunId: stepRun.stepRunId },
+          payload: {
+            stepRunId: stepRun.stepRunId,
+            stepId: step.stepId,
+            reason: 'Branch not selected',
+            skippedAt: new Date().toISOString(),
+          },
+        });
+      }
+    }
+  }
+
+  private async executeParallelGroupStep(stepRunId: string): Promise<void> {
+    const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+    if (!stepRun) {
+      throw new Error(`Step run not found: ${stepRunId}`);
+    }
+
+    const workflowRun = this.workflowRunStore.getWorkflowRunById(stepRun.workflowRunId);
+    if (!workflowRun) {
+      throw new Error(`Workflow run not found: ${stepRun.workflowRunId}`);
+    }
+
+    const definition = this.definitionStore.getDefinitionById(workflowRun.workflowId);
+    if (!definition) {
+      throw new Error(`Definition not found: ${workflowRun.workflowId}`);
+    }
+
+    const step = definition.steps.find(s => s.stepId === stepRun.stepId);
+    if (!step) {
+      throw new Error(`Step not found: ${stepRun.stepId}`);
+    }
+
+    this.workflowRunStore.updateStepStatus(stepRunId, WORKFLOW_RUN_STATES.RUNNING);
+
+    const parallelSteps = step.config.parallelSteps || [];
+    const maxParallel = step.config.maxParallel || 5;
+
+    if (parallelSteps.length === 0) {
+      this.handleStepCompletion(stepRunId, { success: true, output: { parallelResults: [] } });
+      return;
+    }
+
+    const stepRuns = this.workflowRunStore.getStepsByWorkflowRunId(stepRun.workflowRunId);
+    const parallelStepRunIds: string[] = [];
+
+    for (const parallelStep of parallelSteps) {
+      const parallelStepRun = stepRuns.find(sr => sr.stepId === parallelStep.stepId);
+      if (parallelStepRun) {
+        parallelStepRunIds.push(parallelStepRun.stepRunId);
+      }
+    }
+
+    this.workflowRunStore.updateCurrentSteps(stepRun.workflowRunId, parallelSteps.map(s => s.stepId));
+
+    const batchSize = Math.min(maxParallel, parallelStepRunIds.length);
+
+    for (let i = 0; i < parallelStepRunIds.length; i += batchSize) {
+      const batch = parallelStepRunIds.slice(i, i + batchSize);
+      const promises = batch.map(stepRunId => this.executeParallelStep(stepRunId));
+
+      await Promise.all(promises);
+    }
+
+    const allStepRuns = this.workflowRunStore.getStepsByWorkflowRunId(stepRun.workflowRunId);
+    const allCompleted = parallelSteps.every(ps => {
+      const psr = allStepRuns.find(sr => sr.stepId === ps.stepId);
+      return psr && (psr.status === WORKFLOW_RUN_STATES.COMPLETED || psr.status === WORKFLOW_RUN_STATES.FAILED);
+    });
+
+    if (allCompleted) {
+      this.handleStepCompletion(stepRunId, { success: true, output: { parallelGroupCompleted: true } });
+    }
+  }
+
+  private executeParallelStep(stepRunId: string): Promise<void> {
+    return new Promise((resolve) => {
+      this.executeStep(stepRunId);
+
+      const checkCompletion = () => {
+        const stepRun = this.workflowRunStore.getStepRunById(stepRunId);
+        if (stepRun && (
+          stepRun.status === WORKFLOW_RUN_STATES.COMPLETED ||
+          stepRun.status === WORKFLOW_RUN_STATES.FAILED ||
+          stepRun.status === WORKFLOW_RUN_STATES.CANCELLED
+        )) {
+          resolve();
+        } else {
+          setTimeout(checkCompletion, 100);
+        }
+      };
+
+      checkCompletion();
+    });
   }
 
   private getTargetRuntimeForStepType(stepType: string): string {
@@ -729,6 +1913,7 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       case 'approval':
         return 'permission_engine';
       case 'wait':
+      case 'polling_wait':
         return 'event_trigger_runtime';
       default:
         return 'workflow_runtime';
@@ -746,6 +1931,7 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       case 'approval':
         return 'request_approval';
       case 'wait':
+      case 'polling_wait':
         return 'register_wait_condition';
       default:
         return 'execute_step';

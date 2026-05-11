@@ -69,6 +69,11 @@ export interface TimelineBuilderConfig {
   actionStore: RuntimeActionStore;
 }
 
+export interface TimelineQueryOptions {
+  limit?: number;
+  offset?: number;
+}
+
 // ============================================================================
 // Timeline Builder
 // ============================================================================
@@ -110,6 +115,30 @@ export class TimelineBuilder {
     };
   }
 
+  queryBySessionId(sessionId: string, _options: TimelineQueryOptions = {}): RuntimeTimeline {
+    return this.buildTimeline('session', sessionId);
+  }
+
+  queryByRunId(runId: string, _options: TimelineQueryOptions = {}): RuntimeTimeline {
+    return this.buildTimeline('planner_run', runId);
+  }
+
+  queryByWorkflowRunId(workflowRunId: string, _options: TimelineQueryOptions = {}): RuntimeTimeline {
+    return this.buildTimeline('workflow_run', workflowRunId);
+  }
+
+  queryByBackgroundRunId(backgroundRunId: string, _options: TimelineQueryOptions = {}): RuntimeTimeline {
+    return this.buildTimeline('background_run', backgroundRunId);
+  }
+
+  queryByToolCallId(toolCallId: string, _options: TimelineQueryOptions = {}): RuntimeTimeline {
+    return this.buildTimeline('tool_call', toolCallId);
+  }
+
+  queryByApprovalId(approvalId: string, _options: TimelineQueryOptions = {}): RuntimeTimeline {
+    return this.buildTimeline('approval', approvalId);
+  }
+
   /**
    * Query and add events from the EventStore based on root type and ID.
    */
@@ -126,7 +155,7 @@ export class TimelineBuilder {
         eventRecords = eventStore.query({ sessionId: rootId });
         break;
       case 'planner_run':
-        eventRecords = eventStore.query({ plannerRunId: rootId });
+        eventRecords = [...eventStore.query({ plannerRunId: rootId }), ...eventStore.query({ runId: rootId })];
         break;
       case 'workflow_run':
         eventRecords = eventStore.query({
@@ -205,6 +234,8 @@ export class TimelineBuilder {
         auditRecords = auditStore.findByToolCallId(rootId);
         break;
       case 'planner_run':
+        auditRecords = auditStore.findByCorrelationId(rootId);
+        break;
       case 'workflow_run':
       case 'background_run':
       case 'subagent_run':
@@ -326,7 +357,10 @@ export class TimelineBuilder {
 
     switch (rootType) {
       case 'planner_run':
-        actions = actionStore.query({ plannerRunId: rootId });
+        actions = this.dedupeActions([
+          ...actionStore.query({ plannerRunId: rootId }),
+          ...actionStore.query({ sessionId: rootId }),
+        ]);
         break;
       case 'workflow_run':
         actions = actionStore.query({ workflowRunId: rootId });
@@ -409,6 +443,17 @@ export class TimelineBuilder {
       status: this.mapActionStatus(action.status),
       sourceData: action,
     };
+  }
+
+  private dedupeActions(actions: RuntimeAction[]): RuntimeAction[] {
+    const seen = new Set<string>();
+    return actions.filter((action) => {
+      if (seen.has(action.actionId)) {
+        return false;
+      }
+      seen.add(action.actionId);
+      return true;
+    });
   }
 
   private mapEventStatus(record: EventRecord): TimelineEventStatus {

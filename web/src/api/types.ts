@@ -631,3 +631,33 @@ export interface WorkflowValidationResult {
   valid: boolean;
   issues: WorkflowValidationIssue[];
 }
+
+export interface MemoryItem {
+  memoryId: string;
+  userId: string;
+  type: string;
+  content: string;
+  sensitivity: string;
+  lifecycle: {
+    status: string;
+    createdAt: string;
+  };
+  keywords?: string[];
+  sourceRefs?: Array<{ sourceType: string; sourceId: string }>;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface MemoriesResponse {
+  memories: MemoryItem[];
+  total: number;
+}
+
+export interface MemoryDetailResponse {
+  memory: MemoryItem;
+}
+
+export interface DeleteMemoryResponse {
+  deleted: boolean;
+  memoryId: string;
+}

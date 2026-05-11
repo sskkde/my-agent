@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import type { ApprovalCode, PermissionScopeType } from '../permissions/types.js';
 
 export const APPROVAL_STATES = {
   PENDING: 'pending',
@@ -17,6 +18,8 @@ export interface ApprovalRequest {
   status: ApprovalState;
   riskLevel?: string | null;
   scope?: string | null;
+  scopeType?: PermissionScopeType | null;
+  scopeRef?: string | null;
   actionType: string;
   resource?: string | null;
   justification?: string | null;
@@ -26,6 +29,7 @@ export interface ApprovalRequest {
   respondedAt?: string | null;
   responseBy?: string | null;
   responseReason?: string | null;
+  approvalCode?: ApprovalCode | null;
   idempotencyKey?: string | null;
   metadata?: string | null;
   sourceContext?: string | null;
@@ -40,6 +44,8 @@ export interface CreateApprovalRequest {
   status: ApprovalState;
   riskLevel?: string;
   scope?: string;
+  scopeType?: PermissionScopeType;
+  scopeRef?: string;
   actionType: string;
   resource?: string;
   justification?: string;
@@ -49,6 +55,7 @@ export interface CreateApprovalRequest {
   respondedAt?: string;
   responseBy?: string;
   responseReason?: string;
+  approvalCode?: ApprovalCode;
   idempotencyKey?: string;
   metadata?: string;
   sourceContext?: string;
@@ -59,6 +66,7 @@ export interface UpdateApprovalRequest {
   respondedAt?: string;
   responseBy?: string;
   responseReason?: string;
+  approvalCode?: ApprovalCode;
   expiresAt?: string;
 }
 
@@ -89,6 +97,8 @@ class ApprovalStoreImpl implements ApprovalStore {
       status: request.status,
       riskLevel: request.riskLevel ?? null,
       scope: request.scope ?? null,
+      scopeType: request.scopeType ?? null,
+      scopeRef: request.scopeRef ?? null,
       actionType: request.actionType,
       resource: request.resource ?? null,
       justification: request.justification ?? null,
@@ -98,6 +108,7 @@ class ApprovalStoreImpl implements ApprovalStore {
       respondedAt: request.respondedAt ?? null,
       responseBy: request.responseBy ?? null,
       responseReason: request.responseReason ?? null,
+      approvalCode: request.approvalCode ?? null,
       idempotencyKey: request.idempotencyKey ?? null,
       metadata: request.metadata ?? null,
       sourceContext: request.sourceContext ?? null,
@@ -107,11 +118,11 @@ class ApprovalStoreImpl implements ApprovalStore {
 
     this.connection.exec(
       `INSERT INTO approval_requests (
-        id, user_id, session_id, status, risk_level, scope, action_type, resource,
+        id, user_id, session_id, status, risk_level, scope, scope_type, scope_ref, action_type, resource,
         justification, requested_by, requested_at, expires_at, responded_at,
-        response_by, response_reason, idempotency_key, metadata, source_context,
+        response_by, response_reason, approval_code, idempotency_key, metadata, source_context,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         approval.id,
         approval.userId,
@@ -119,6 +130,8 @@ class ApprovalStoreImpl implements ApprovalStore {
         approval.status,
         approval.riskLevel,
         approval.scope,
+        approval.scopeType,
+        approval.scopeRef,
         approval.actionType,
         approval.resource,
         approval.justification,
@@ -128,6 +141,7 @@ class ApprovalStoreImpl implements ApprovalStore {
         approval.respondedAt,
         approval.responseBy,
         approval.responseReason,
+        approval.approvalCode,
         approval.idempotencyKey,
         approval.metadata,
         approval.sourceContext,
@@ -165,6 +179,7 @@ class ApprovalStoreImpl implements ApprovalStore {
       respondedAt: updates.respondedAt ?? existing.respondedAt,
       responseBy: updates.responseBy ?? existing.responseBy,
       responseReason: updates.responseReason ?? existing.responseReason,
+      approvalCode: updates.approvalCode ?? existing.approvalCode,
       expiresAt: updates.expiresAt ?? existing.expiresAt,
       updatedAt: now,
     };
@@ -175,6 +190,7 @@ class ApprovalStoreImpl implements ApprovalStore {
         responded_at = ?,
         response_by = ?,
         response_reason = ?,
+        approval_code = ?,
         expires_at = ?,
         updated_at = ?
       WHERE id = ?`,
@@ -183,6 +199,7 @@ class ApprovalStoreImpl implements ApprovalStore {
         updated.respondedAt,
         updated.responseBy,
         updated.responseReason,
+        updated.approvalCode,
         updated.expiresAt,
         updated.updatedAt,
         id,
@@ -236,6 +253,8 @@ class ApprovalStoreImpl implements ApprovalStore {
       status: row.status as ApprovalState,
       riskLevel: row.risk_level,
       scope: row.scope,
+      scopeType: row.scope_type as PermissionScopeType | null,
+      scopeRef: row.scope_ref,
       actionType: row.action_type,
       resource: row.resource,
       justification: row.justification,
@@ -245,6 +264,7 @@ class ApprovalStoreImpl implements ApprovalStore {
       respondedAt: row.responded_at,
       responseBy: row.response_by,
       responseReason: row.response_reason,
+      approvalCode: row.approval_code as ApprovalCode | null,
       idempotencyKey: row.idempotency_key,
       metadata: row.metadata,
       sourceContext: row.source_context,
@@ -261,6 +281,8 @@ interface ApprovalRequestRow {
   status: string;
   risk_level: string | null;
   scope: string | null;
+  scope_type: string | null;
+  scope_ref: string | null;
   action_type: string;
   resource: string | null;
   justification: string | null;
@@ -270,6 +292,7 @@ interface ApprovalRequestRow {
   responded_at: string | null;
   response_by: string | null;
   response_reason: string | null;
+  approval_code: string | null;
   idempotency_key: string | null;
   metadata: string | null;
   source_context: string | null;

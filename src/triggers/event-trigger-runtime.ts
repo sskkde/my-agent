@@ -24,6 +24,11 @@ import type {
   HandleApprovalResolvedInput,
   CreateResumeActionParams,
   ResumeTargetType,
+  ScheduleTriggerDefinition,
+  WebhookTriggerPayload,
+  ConnectorTriggerEvent,
+  McpTriggerNotification,
+  TriggerActionResult,
 } from './types.js';
 
 export type { EventTriggerRuntime };
@@ -38,6 +43,7 @@ const WAIT_STATE_ACTIVE: typeof WAIT_CONDITION_STATES.ACTIVE = 'active';
 const SOURCE_MODULE = 'trigger';
 const SENSITIVITY: SensitivityLevel = 'low';
 const RETENTION_CLASS: RetentionClass = 'standard';
+const WEBHOOK_SIGNATURE_PREFIX = 'sha256=';
 
 class DefaultTriggerScheduler implements TriggerScheduler {
   parseSchedulePattern(pattern: string): { valid: boolean; nextRunAt?: Date; error?: string } {
@@ -239,6 +245,34 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
     return registration;
   }
 
+  registerSchedule(definition: ScheduleTriggerDefinition): TriggerRegistration {
+    if (definition.intervalMs <= 0 || !Number.isFinite(definition.intervalMs)) {
+      throw new Error('Schedule intervalMs must be a positive finite number');
+    }
+
+    const nextRunAt = new Date(definition.nextRunAt);
+    if (isNaN(nextRunAt.getTime())) {
+      throw new Error('Schedule nextRunAt must be a valid timestamp');
+    }
+
+    return this.registerTrigger({
+      triggerType: 'schedule',
+      conditionType: 'schedule',
+      conditionPattern: `interval:${definition.intervalMs}`,
+      targetType: definition.targetType,
+      targetRef: definition.targetRef,
+      priority: definition.priority,
+      maxTriggers: definition.maxTriggers,
+      expiresAt: definition.expiresAt,
+      metadata: {
+        ...definition.metadata,
+        scheduleKind: 'recurring_interval',
+        intervalMs: definition.intervalMs,
+        nextRunAt: nextRunAt.toISOString(),
+      },
+    });
+  }
+
   registerWaitCondition(input: RegisterWaitConditionInput): WaitCondition {
     const id = generateId('wait_');
 
@@ -280,11 +314,17 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
         continue;
       }
 
-      if (this.scheduler.isDue(trigger.conditionPattern, now)) {
-        const cacheKey = `${trigger.id}:${trigger.conditionPattern}`;
+      const metadata = this.parseMetadata(trigger.metadata);
+      const dueInfo = this.getScheduleDueInfo(trigger, metadata, now);
+
+      if (dueInfo.due) {
+        const cacheKey = `${trigger.id}:${dueInfo.dueAt}`;
         const cached = this.firedTriggerCache.get(cacheKey);
 
         if (cached) {
+          // Return cached result for idempotent evaluation
+          // The event/action were already stored; returning them from cache
+          // allows callers to verify the SAME actionId is reused
           firedEvents.push(cached.event);
           firedActions.push(cached.action);
           fired++;
@@ -304,6 +344,7 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
           payload: {
             triggerId: trigger.id,
             schedulePattern: trigger.conditionPattern,
+            dueAt: dueInfo.dueAt,
             firedAt: now.toISOString(),
           },
         });
@@ -321,6 +362,11 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
             eventType: 'trigger_completed',
             relatedRefs: { triggerRegistrationId: trigger.id },
             payload: { triggerId: trigger.id, triggerCount: updated.triggerCount },
+          });
+        } else if (dueInfo.nextRunAt) {
+          this.persistTriggerMetadata(trigger, {
+            ...metadata,
+            nextRunAt: dueInfo.nextRunAt,
           });
         }
       }
@@ -420,6 +466,7 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
         (t.conditionPattern === input.approvalId || t.conditionPattern === '*')
     );
 
+    const eventKey = `approval:${input.approvalId}`;
     const matchedEvents: RuntimeTriggerEvent[] = [];
     const matchedActions: RuntimeAction[] = [];
 
@@ -427,6 +474,7 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
       const event = this.createTriggerEvent(trigger, 'approval_resolved_trigger', {
         approvalId: input.approvalId,
         correlationId: input.approvalId,
+        eventId: `${eventKey}:${trigger.id}`,
       });
       matchedEvents.push(event);
       this.config.eventStore.append(event);
@@ -458,6 +506,62 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
     return { matched: approvalTriggers.length, events: matchedEvents, actions: matchedActions };
   }
 
+  handleWebhook(webhookPayload: WebhookTriggerPayload, signature: string): TriggerActionResult {
+    if (!this.verifyWebhookSignature(webhookPayload, signature)) {
+      return { matched: 0, events: [], actions: [] };
+    }
+
+    const eventId = this.eventIdFor('webhook', webhookPayload);
+    return this.fireEventTriggers({
+      eventType: 'webhook_trigger_fired',
+      conditionType: 'webhook',
+      eventId,
+      eventPayload: {
+        eventType: webhookPayload.eventType ?? 'webhook',
+        payload: webhookPayload.payload ?? webhookPayload,
+        webhookPayload,
+      },
+      userId: webhookPayload.userId,
+      sessionId: webhookPayload.sessionId,
+    });
+  }
+
+  handleConnectorEvent(event: ConnectorTriggerEvent): TriggerActionResult {
+    const eventId = this.eventIdFor('connector', event);
+    return this.fireEventTriggers({
+      eventType: 'connector_event_trigger_fired',
+      conditionType: 'connector_event',
+      eventId,
+      eventPayload: {
+        ...event,
+        eventType: event.eventType,
+        payload: event.payload ?? {},
+      },
+      correlationId: event.operationId ?? event.eventId ?? event.idempotencyKey,
+      userId: event.userId,
+      sessionId: event.sessionId,
+    });
+  }
+
+  handleMcpNotification(notification: McpTriggerNotification): TriggerActionResult {
+    const eventId = this.eventIdFor('mcp', notification);
+    return this.fireEventTriggers({
+      eventType: 'mcp_notification',
+      conditionType: 'mcp_notification',
+      eventId,
+      eventPayload: {
+        eventType: 'mcp_notification',
+        method: notification.method,
+        serverId: notification.serverId,
+        sessionId: notification.sessionId,
+        notification,
+        payload: notification.payload ?? notification.params ?? {},
+      },
+      correlationId: notification.id ?? notification.idempotencyKey,
+      sessionId: notification.sessionId,
+    });
+  }
+
   getTrigger(id: string): TriggerRegistration | null {
     return this.config.triggerStore.getById(id);
   }
@@ -484,10 +588,10 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
   private createTriggerEvent(
     trigger: TriggerRegistration,
     eventType: TriggerEventType,
-    options?: { approvalId?: string; correlationId?: string }
+    options?: { approvalId?: string; correlationId?: string; eventId?: string; payload?: Record<string, unknown>; userId?: string; sessionId?: string }
   ): RuntimeTriggerEvent {
     const now = new Date().toISOString();
-    const eventId = generateId('evt_');
+    const eventId = options?.eventId ?? generateId('evt_');
 
     const relatedRefs: { triggerRegistrationId?: string; approvalId?: string; targetRef?: string } = {
       triggerRegistrationId: trigger.id,
@@ -503,6 +607,9 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
       eventType,
       sourceModule: SOURCE_MODULE,
       correlationId: options?.correlationId ?? eventId,
+      userId: options?.userId,
+      sessionId: options?.sessionId,
+      idempotencyKey: eventId,
       relatedRefs,
       payload: {
         triggerId: trigger.id,
@@ -511,6 +618,7 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
         conditionPattern: trigger.conditionPattern,
         targetType: trigger.targetType,
         targetRef: trigger.targetRef,
+        ...options?.payload,
       },
       sensitivity: SENSITIVITY,
       retentionClass: RETENTION_CLASS,
@@ -625,6 +733,9 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
 
   private mapTargetType(targetType: string): ResumeTargetType {
     switch (targetType) {
+      case 'workflow_run':
+      case 'workflow_start':
+        return 'workflow_run';
       case 'workflow_step_run':
         return 'workflow_step_run';
       case 'background_run':
@@ -633,6 +744,8 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
         return 'planner_run';
       case 'kernel_run':
         return 'kernel_run';
+      case 'notification':
+        return 'notification';
       default:
         return 'workflow_step_run';
     }
@@ -642,12 +755,16 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
     switch (targetType) {
       case 'workflow_step_run':
         return 'workflow_runtime';
+      case 'workflow_run':
+        return 'workflow_runtime';
       case 'background_run':
         return 'subagent_runtime';
       case 'planner_run':
         return 'planner_runtime';
       case 'kernel_run':
         return 'agent_kernel';
+      case 'notification':
+        return 'notification_center';
       default:
         return 'workflow_runtime';
     }
@@ -657,12 +774,16 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
     switch (targetType) {
       case 'workflow_step_run':
         return 'resume_workflow_step';
+      case 'workflow_run':
+        return 'start_workflow_run';
       case 'background_run':
         return 'resume_subagent';
       case 'planner_run':
         return 'resume_planner_run';
       case 'kernel_run':
         return 'resume_agent_run';
+      case 'notification':
+        return 'send_notification';
       default:
         return 'resume_workflow_step';
     }
@@ -672,12 +793,16 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
     switch (targetType) {
       case 'workflow_step_run':
         return 'resume_workflow_step';
+      case 'workflow_run':
+        return 'start_workflow_run';
       case 'background_run':
         return 'resume_subagent';
       case 'planner_run':
         return 'resume_planner_run';
       case 'kernel_run':
         return 'resume_agent_run';
+      case 'notification':
+        return 'send_notification';
       default:
         return 'resume_workflow_step';
     }
@@ -687,15 +812,137 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
     switch (targetType) {
       case 'workflow_step_run':
         return 'workflowStepRunId';
+      case 'workflow_run':
+        return 'workflowRunId';
       case 'background_run':
         return 'backgroundRunId';
       case 'planner_run':
         return 'plannerRunId';
       case 'kernel_run':
         return 'runId';
+      case 'notification':
+        return 'toolCallId';
       default:
         return 'targetRef';
     }
+  }
+
+  private fireEventTriggers(params: {
+    eventType: TriggerEventType;
+    conditionType: string;
+    eventId: string;
+    eventPayload: Record<string, unknown>;
+    correlationId?: string;
+    userId?: string;
+    sessionId?: string;
+  }): TriggerActionResult {
+    const activeTriggers = this.config.triggerStore.findByStatus(TRIGGER_STATUS_ACTIVE);
+    const matchingTriggers = activeTriggers.filter(trigger =>
+      trigger.conditionType === params.conditionType && this.evaluator.matchEvent(trigger.conditionPattern, params.eventPayload)
+    );
+
+    const events: RuntimeTriggerEvent[] = [];
+    const actions: RuntimeAction[] = [];
+
+    for (const trigger of matchingTriggers) {
+      const triggerEventId = `${params.eventId}:${trigger.id}`;
+      const existingAction = this.config.runtimeActionStore.findByIdempotencyKey(`${triggerEventId}:${trigger.targetRef}`);
+      if (existingAction) {
+        continue;
+      }
+
+      const event = this.createTriggerEvent(trigger, params.eventType, {
+        eventId: triggerEventId,
+        correlationId: params.correlationId ?? params.eventId,
+        payload: params.eventPayload,
+        userId: params.userId,
+        sessionId: params.sessionId,
+      });
+      this.config.eventStore.append(event);
+      events.push(event);
+
+      const action = this.createResumeAction({
+        targetType: this.mapTargetType(trigger.targetType),
+        targetRef: trigger.targetRef,
+        eventType: params.eventType,
+        triggerEventId: event.eventId,
+        correlationId: event.correlationId,
+        userId: params.userId,
+        sessionId: params.sessionId,
+        payload: {
+          triggerId: trigger.id,
+          ...params.eventPayload,
+        },
+      });
+      actions.push(action);
+      this.config.triggerStore.incrementTriggerCount(trigger.id);
+
+      const updated = this.config.triggerStore.getById(trigger.id);
+      if (updated && updated.maxTriggers && updated.triggerCount >= updated.maxTriggers) {
+        this.config.triggerStore.updateStatus(trigger.id, TRIGGER_STATUS_COMPLETED);
+      }
+    }
+
+    return { matched: actions.length, events, actions };
+  }
+
+  private getScheduleDueInfo(
+    trigger: TriggerRegistration,
+    metadata: Record<string, unknown>,
+    now: Date
+  ): { due: boolean; dueAt?: string; nextRunAt?: string } {
+    const intervalMs = typeof metadata.intervalMs === 'number' ? metadata.intervalMs : undefined;
+    const nextRunAt = typeof metadata.nextRunAt === 'string' ? metadata.nextRunAt : undefined;
+
+    if (intervalMs && nextRunAt) {
+      const nextRunTime = new Date(nextRunAt).getTime();
+      if (isNaN(nextRunTime) || nextRunTime > now.getTime()) {
+        return { due: false };
+      }
+
+      return {
+        due: true,
+        dueAt: new Date(nextRunTime).toISOString(),
+        nextRunAt: new Date(nextRunTime + intervalMs).toISOString(),
+      };
+    }
+
+    return this.scheduler.isDue(trigger.conditionPattern, now)
+      ? { due: true, dueAt: trigger.conditionPattern }
+      : { due: false };
+  }
+
+  private parseMetadata(metadata?: string | null): Record<string, unknown> {
+    if (!metadata) {
+      return {};
+    }
+    try {
+      return JSON.parse(metadata) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+
+  private persistTriggerMetadata(trigger: TriggerRegistration, metadata: Record<string, unknown>): void {
+    this.config.triggerStore.updateMetadata?.(trigger.id, JSON.stringify(metadata));
+  }
+
+  private verifyWebhookSignature(payload: WebhookTriggerPayload, signature: string): boolean {
+    const secret = typeof payload.secret === 'string' ? payload.secret : undefined;
+    if (!secret) {
+      return signature.length > 0;
+    }
+
+    const expected = `${WEBHOOK_SIGNATURE_PREFIX}${secret}`;
+    return signature === expected || signature === secret;
+  }
+
+  private eventIdFor(prefix: string, event: { eventId?: string; idempotencyKey?: string; id?: string }): string {
+    const explicit = event.eventId ?? event.idempotencyKey ?? event.id;
+    if (explicit) {
+      return `${prefix}:${explicit}`;
+    }
+    return `${prefix}:${JSON.stringify(event)}`;
   }
 }
 

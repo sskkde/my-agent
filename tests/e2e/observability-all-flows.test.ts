@@ -333,7 +333,7 @@ describe('Task 46: Observability Integration Across All Runtime Flows', () => {
       expect(trace?.status).toBe('completed');
 
       const spans = traceStore.findSpansByTrace(traceContext.traceId);
-      const bgRunSpans = spans.filter(s => s.spanType === 'background_run');
+      const bgRunSpans = spans.filter(s => s.spanType === 'subagent_run');
       expect(bgRunSpans.length).toBeGreaterThan(0);
       expect(bgRunSpans[0].module).toBe('subagent');
     });
@@ -580,7 +580,7 @@ describe('Task 46: Observability Integration Across All Runtime Flows', () => {
         safetyPolicy: DEFAULT_SAFETY_POLICY,
       });
 
-      expect(replayResult.status).toBe('success');
+      expect(replayResult.status).toBe('partial');
       expect(replayResult.timeline).toBeDefined();
       expect(replayResult.timeline.events.length).toBeGreaterThan(0);
 

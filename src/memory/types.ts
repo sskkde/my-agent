@@ -205,11 +205,116 @@ export type MemorySearchResult = {
 };
 
 // ============================================================================
+// Write Control Types
+// ============================================================================
+
+/**
+ * Error codes for summary write operations
+ */
+export type SummaryWriteErrorCode =
+  | 'MISSING_SOURCE_REFS'
+  | 'INVALID_SCHEMA'
+  | 'DETERMINISTIC_FIELD_VIOLATION'
+  | 'NOT_FOUND';
+
+/**
+ * Result of a summary write operation
+ */
+export type SummaryWriteResult<T> =
+  | { success: true; data: T; version: number }
+  | { success: false; code: SummaryWriteErrorCode; message: string };
+
+/**
+ * Summary version history entry
+ */
+export type SummaryVersionEntry = {
+  version: number;
+  summaryId: string;
+  summaryType: SummaryType;
+  changedFields: string[];
+  previousValues: Record<string, unknown>;
+  sourceRefs: SourceRefs;
+  createdAt: string;
+  createdBy: 'llm' | 'system';
+};
+
+/**
+ * Write options for summary operations
+ */
+export type SummaryWriteOptions = {
+  /** Source references - REQUIRED for all writes */
+  sourceRefs: SourceRefs;
+  /** Whether this is an LLM-generated write (triggers deterministic field protection) */
+  isLlmGenerated?: boolean;
+  /** Confidence level for the write */
+  confidence?: 'low' | 'medium' | 'high';
+};
+
+/**
+ * Summary content that can be written (LLM-provided fields only)
+ */
+export type SummaryContent = {
+  /** The summary text */
+  summary: string;
+  /** Structured state extracted from the summary */
+  structuredState?: Record<string, unknown>;
+  /** Retrieval metadata for search */
+  retrieval?: RetrievalMetadata;
+};
+
+/**
+ * Rolling summary content
+ */
+export type RollingSummaryContent = SummaryContent & {
+  /** Turn range covered by this summary */
+  turnRange: {
+    startTurn: number;
+    endTurn: number;
+  };
+};
+
+/**
+ * Workflow run summary content
+ */
+export type WorkflowRunSummaryContent = SummaryContent & {
+  /** Workflow run status */
+  workflowStatus: string;
+  /** Step completion summary */
+  stepSummary?: Record<string, unknown>;
+};
+
+/**
+ * Background subagent summary content
+ */
+export type BackgroundSubagentSummaryContent = SummaryContent & {
+  /** Subagent type */
+  subagentType: string;
+  /** Task description */
+  taskDescription?: string;
+};
+
+/**
+ * Compact summary content
+ */
+export type CompactSummaryContent = SummaryContent & {
+  /** Original summary IDs that were compacted */
+  compactedSummaryIds: string[];
+  /** Compression ratio */
+  compressionRatio: number;
+};
+
+// ============================================================================
 // Manager Interface Types
 // ============================================================================
 
 /**
- * Summary manager interface for working summary operations
+ * Summary manager interface for all summary write operations
+ * 
+ * All write methods enforce source-bound controls:
+ * - sourceRefs is REQUIRED (non-empty)
+ * - Deterministic fields are protected from LLM overwrites
+ * - Invalid schemas trigger low-confidence fallback
+ * - Versioning tracks all changes
  */
 export interface SummaryManager {
   /**
@@ -221,6 +326,111 @@ export interface SummaryManager {
    * Check if source references are valid
    */
   validateSourceRefs(sourceRefs: SourceRefs): boolean;
+
+  // =========================================================================
+  // Source-bound Write Methods
+  // =========================================================================
+
+  /**
+   * Write working summary with source-bound controls
+   * @throws Error with code MISSING_SOURCE_REFS if sourceRefs is empty
+   */
+  writeWorkingSummary(
+    sessionId: string,
+    runId: string,
+    userId: string,
+    content: SummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<WorkingSummary>>;
+
+  /**
+   * Write session memory with source-bound controls
+   */
+  writeSessionMemory(
+    sessionId: string,
+    userId: string,
+    content: SummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SessionMemory>>;
+
+  /**
+   * Write rolling summary with source-bound controls
+   */
+  writeRollingSummary(
+    sessionId: string,
+    userId: string,
+    summaryType: 'rolling_5_turns' | 'rolling_10_turns',
+    content: RollingSummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>>;
+
+  /**
+   * Write daily summary with source-bound controls
+   */
+  writeDailySummary(
+    userId: string,
+    content: SummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>>;
+
+  /**
+   * Write workflow run summary with source-bound controls
+   */
+  writeWorkflowRunSummary(
+    workflowRunId: string,
+    userId: string,
+    content: WorkflowRunSummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>>;
+
+  /**
+   * Write background subagent summary with source-bound controls
+   */
+  writeBackgroundSubagentSummary(
+    backgroundRunId: string,
+    userId: string,
+    content: BackgroundSubagentSummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>>;
+
+  /**
+   * Write compact summary with source-bound controls
+   */
+  writeCompactSummary(
+    sessionId: string,
+    userId: string,
+    content: CompactSummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>>;
+
+  // =========================================================================
+  // Versioning and History
+  // =========================================================================
+
+  /**
+   * Get version history for a summary
+   */
+  getVersionHistory(summaryId: string, limit?: number): SummaryVersionEntry[];
+
+  /**
+   * Get current version number for a summary
+   */
+  getCurrentVersion(summaryId: string): number;
+
+  // =========================================================================
+  // Low-confidence Fallback
+  // =========================================================================
+
+  /**
+   * Store a low-confidence fallback summary (for invalid schemas)
+   */
+  storeLowConfidenceFallback(
+    summaryType: SummaryType,
+    userId: string,
+    rawContent: unknown,
+    validationErrors: string[],
+    options: SummaryWriteOptions
+  ): SummaryRecord;
 }
 
 /**

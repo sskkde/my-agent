@@ -1,4 +1,5 @@
 import type {
+  RetryAttemptAudit,
   RetryExecutor,
   RetryExecutorConfig,
   RetryOperation,
@@ -17,9 +18,10 @@ class RetryExecutorImpl implements RetryExecutor {
 
   async executeWithRetry(operation: RetryOperation, policy: RetryPolicy): Promise<RetryResult> {
     let attempts = 0;
-    const maxAttempts = policy.maxRetries + 1;
+    const maxAttempts = this.getMaxAttempts(policy);
     const startTime = Date.now();
     const timeoutMs = this.config.timeoutMs || 30000;
+    const auditTrail: RetryAttemptAudit[] = [];
 
     while (attempts < maxAttempts) {
       if (Date.now() - startTime > timeoutMs) {
@@ -30,6 +32,7 @@ class RetryExecutorImpl implements RetryExecutor {
           success: false,
           attempts,
           timedOut: true,
+          auditTrail,
           error: {
             code: 'TIMEOUT',
             message: 'Operation timed out',
@@ -38,19 +41,23 @@ class RetryExecutorImpl implements RetryExecutor {
       }
 
       attempts++;
+      auditTrail.push(this.createAudit(attempts, 'started', operation.operationName));
 
       try {
         const remainingTime = timeoutMs - (Date.now() - startTime);
         const operationTimeout = Math.min(remainingTime, timeoutMs);
 
         const result = await this.runWithTimeout(operation.operation(), operationTimeout, operation.cancelToken);
+        auditTrail.push(this.createAudit(attempts, 'succeeded', operation.operationName));
         return {
           success: true,
           data: result,
           attempts,
+          auditTrail,
         };
       } catch (error) {
         const runtimeError = this.normalizeError(error);
+        auditTrail.push(this.createAudit(attempts, 'failed', operation.operationName, runtimeError));
 
         const isLastAttempt = attempts >= maxAttempts;
 
@@ -59,9 +66,10 @@ class RetryExecutorImpl implements RetryExecutor {
             return {
               success: false,
               attempts,
+              auditTrail,
               error: {
                 code: 'MAX_RETRIES_EXCEEDED',
-                message: `Max retries (${policy.maxRetries}) exceeded. Last error: ${runtimeError.message}`,
+                message: `Max retry attempts (${maxAttempts}) exceeded. Last error: ${runtimeError.message}`,
               },
             };
           }
@@ -69,6 +77,7 @@ class RetryExecutorImpl implements RetryExecutor {
           return {
             success: false,
             attempts,
+            auditTrail,
             error: {
               code: runtimeError.code,
               message: runtimeError.message,
@@ -85,6 +94,7 @@ class RetryExecutorImpl implements RetryExecutor {
                 attempts,
                 requiresUserApproval: true,
                 failedDueToApproval: true,
+                auditTrail,
                 error: {
                   code: 'RETRY_REJECTED',
                   message: approval.reason || 'Retry rejected by user',
@@ -96,6 +106,7 @@ class RetryExecutorImpl implements RetryExecutor {
               success: false,
               attempts,
               requiresUserApproval: true,
+              auditTrail,
               error: {
                 code: 'APPROVAL_REQUIRED',
                 message: 'Non-idempotent write requires approval before retry',
@@ -105,6 +116,7 @@ class RetryExecutorImpl implements RetryExecutor {
         }
 
         const delayMs = this.calculateDelay(attempts - 1, policy);
+        auditTrail.push(this.createAudit(attempts, 'retry_scheduled', operation.operationName, runtimeError, delayMs));
         await this.sleep(delayMs);
       }
     }
@@ -112,9 +124,10 @@ class RetryExecutorImpl implements RetryExecutor {
     return {
       success: false,
       attempts,
+      auditTrail,
       error: {
         code: 'MAX_RETRIES_EXCEEDED',
-        message: `Max retries (${policy.maxRetries}) exceeded`,
+        message: `Max retry attempts (${maxAttempts}) exceeded`,
       },
     };
   }
@@ -124,8 +137,9 @@ class RetryExecutorImpl implements RetryExecutor {
       return false;
     }
 
-    if (policy.retryableErrors && policy.retryableErrors.length > 0) {
-      return policy.retryableErrors.includes(error.category);
+    const retryableCategories = policy.retryableErrorCategories ?? policy.retryableErrors ?? policy.retryOn;
+    if (retryableCategories && retryableCategories.length > 0) {
+      return retryableCategories.includes(error.category);
     }
 
     const retryableRecoverabilities = ['retryable_later', 'recoverable_auto'];
@@ -135,28 +149,81 @@ class RetryExecutorImpl implements RetryExecutor {
   private calculateDelay(attemptNumber: number, policy: RetryPolicy): number {
     const initialDelay = policy.initialDelayMs || 100;
     const maxDelay = policy.maxDelayMs || 30000;
+    const backoffStrategy = policy.backoffStrategy ?? policy.backoff ?? BACKOFF_STRATEGIES.EXPONENTIAL;
+    const jitterRatio = policy.jitterRatio ?? 0;
 
-    switch (policy.backoffStrategy) {
+    let delayMs: number;
+    switch (backoffStrategy) {
       case BACKOFF_STRATEGIES.NONE:
-        return 0;
+        delayMs = 0;
+        break;
 
       case BACKOFF_STRATEGIES.FIXED:
-        return Math.min(initialDelay, maxDelay);
+        delayMs = initialDelay;
+        break;
 
       case BACKOFF_STRATEGIES.LINEAR:
-        return Math.min(initialDelay * (attemptNumber + 1), maxDelay);
+        delayMs = initialDelay * (attemptNumber + 1);
+        break;
 
       case BACKOFF_STRATEGIES.EXPONENTIAL:
-        return Math.min(initialDelay * Math.pow(2, attemptNumber), maxDelay);
+        delayMs = initialDelay * Math.pow(2, attemptNumber);
+        break;
 
       default:
-        return Math.min(initialDelay, maxDelay);
+        delayMs = initialDelay;
     }
+
+    const boundedDelay = Math.min(delayMs, maxDelay);
+    if (jitterRatio <= 0 || boundedDelay <= 0) {
+      return boundedDelay;
+    }
+
+    const jitter = boundedDelay * jitterRatio * Math.random();
+    return Math.min(Math.floor(boundedDelay + jitter), maxDelay);
+  }
+
+  private getMaxAttempts(policy: RetryPolicy): number {
+    if (policy.maxAttempts !== undefined) {
+      return Math.max(1, policy.maxAttempts);
+    }
+
+    return Math.max(1, (policy.maxRetries ?? 0) + 1);
+  }
+
+  private createAudit(
+    attempt: number,
+    status: RetryAttemptAudit['status'],
+    operationName: string,
+    error?: RuntimeError,
+    delayMs?: number
+  ): RetryAttemptAudit {
+    return {
+      attempt,
+      status,
+      operationName,
+      errorCategory: error?.category,
+      errorCode: error?.code,
+      delayMs,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   private normalizeError(error: unknown): RuntimeError {
     if (error && typeof error === 'object' && 'category' in error) {
-      return error as RuntimeError;
+      const candidate = error as Partial<RuntimeError> & { message?: string };
+      return {
+        errorId: candidate.errorId ?? `err-${Date.now()}`,
+        category: candidate.category as RuntimeError['category'],
+        code: candidate.code ?? String(candidate.category).toUpperCase(),
+        message: candidate.message ?? 'Runtime error',
+        recoverability: candidate.recoverability ?? 'non_recoverable',
+        source: candidate.source ?? { module: 'retry_executor' },
+        userVisible: candidate.userVisible,
+        technical: candidate.technical,
+        createdAt: candidate.createdAt ?? new Date().toISOString(),
+        attempts: candidate.attempts,
+      };
     }
 
     const errorMessage = error instanceof Error ? error.message : String(error);
