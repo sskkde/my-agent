@@ -123,6 +123,11 @@ describe('SessionConsoleTab', () => {
       expect(screen.getByTestId('session-new-button')).toBeInTheDocument();
     });
 
+    // Wait for the button to be enabled (not disabled by sessionsLoading)
+    await waitFor(() => {
+      expect(screen.getByTestId('session-new-button')).not.toBeDisabled();
+    });
+
     fireEvent.click(screen.getByTestId('session-new-button'));
 
     await waitFor(() => {
