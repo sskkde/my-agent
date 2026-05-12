@@ -43,7 +43,7 @@ describe('Schema Drift', () => {
       const version = migrations.getCurrentVersion();
       const latest = getLatestMigrationVersion();
       expect(version).toBe(latest);
-      expect(version).toBe(46);
+      expect(version).toBe(47);
     });
   });
 

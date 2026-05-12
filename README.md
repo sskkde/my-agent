@@ -173,6 +173,30 @@ npm run test:web
 - 触发器规则配置
 - 条件匹配和执行
 - 触发器日志
+- 定时触发（Cron 调度）
+- Webhook 触发器
+- 连接器事件触发器
+
+### 连接器管理
+
+- 连接器列表和详情查看
+- 连接器实例配置
+- 工具和事件清单查看
+- Mock 连接器支持
+
+### 可观测性控制台
+
+- 运行列表和状态过滤
+- 时间线视图
+- 回放预览（只读，无副作用）
+- 运行审计和追踪
+
+### 死信队列（DLQ）
+
+- 失败事件捕获和存储
+- 重试机制
+- 丢弃和审计追踪
+- 幂等性保证
 
 ## 开发指南
 
@@ -392,6 +416,7 @@ The agent platform is built around a modular architecture with clear separation 
 | `npm run test:unit` | Run unit tests only |
 | `npm run test:integration` | Run integration tests |
 | `npm run test:e2e` | Run end-to-end tests |
+| `npm run test:phase4` | Run Phase 4 specific tests |
 | `npm run test:api` | Run API integration tests |
 | `npm run typecheck` | TypeScript type checking |
 | `npm run start:dev` | Start development server |

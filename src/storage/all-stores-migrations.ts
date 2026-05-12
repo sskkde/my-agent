@@ -1838,6 +1838,34 @@ export const connectorPoliciesTableMigration: Migration = {
   `
 };
 
+export const deadLetterTableMigration: Migration = {
+  version: 47,
+  name: 'create_dead_letter_table',
+  up: `
+    CREATE TABLE IF NOT EXISTS dead_letter (
+      event_id TEXT PRIMARY KEY,
+      source_module TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      payload TEXT,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'retrying', 'discarded', 'resolved')),
+      failure_count INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      enqueued_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      discarded_at TEXT,
+      resolved_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_dead_letter_status ON dead_letter(status);
+    CREATE INDEX IF NOT EXISTS idx_dead_letter_source ON dead_letter(source_module, source_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_dead_letter_source;
+    DROP INDEX IF EXISTS idx_dead_letter_status;
+    DROP TABLE IF EXISTS dead_letter
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -1928,6 +1956,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Connector Policies
   connectorPoliciesTableMigration,            // v46
+
+  // Dead Letter Queue
+  deadLetterTableMigration,                   // v47
 ];
 
 /**

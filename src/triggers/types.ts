@@ -8,6 +8,7 @@ import type { TriggerRegistration } from '../storage/trigger-store.js';
 import type { WaitCondition } from '../storage/wait-condition-store.js';
 import type { EventRecord } from '../storage/event-store.js';
 import type { RuntimeAction } from '../storage/runtime-action-store.js';
+import type { DeadLetterQueue } from '../dead-letter/dead-letter-queue.js';
 
 // ============================================================================
 // Trigger Event Types
@@ -256,6 +257,7 @@ export interface EventTriggerRuntimeConfig {
   };
   scheduler?: TriggerScheduler;
   evaluator?: WaitConditionEvaluator;
+  dlq?: DeadLetterQueue;
 }
 
 // ============================================================================

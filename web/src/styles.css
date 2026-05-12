@@ -5442,3 +5442,452 @@ body {
   }
 }
 
+/* ==========================================================================
+   Connectors Tab Styles
+   ========================================================================== */
+
+.connectors-panel {
+  display: flex;
+  height: 100%;
+  background: var(--bg);
+}
+
+.connectors-list-section {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.connectors-list-header {
+  margin-bottom: 20px;
+}
+
+.connectors-list-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.connectors-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.connectors-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.connectors-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.connector-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.connector-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connector-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.connector-type {
+  padding: 2px 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Sidebar for detail view */
+.connectors-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+}
+
+.connectors-sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.connectors-detail-info {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.connectors-detail-info h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 12px;
+}
+
+.connector-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.connector-type-badge {
+  padding: 4px 10px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.connector-description {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.connector-capabilities {
+  margin-top: 16px;
+}
+
+.connector-capabilities h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.capability-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.capability-tag {
+  padding: 4px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Main content for detail view */
+.connectors-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.connectors-main-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.connectors-main-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.connectors-instances-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 24px;
+}
+
+.connectors-instance-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.connectors-instance-card:hover {
+  border-color: var(--accent);
+}
+
+.connectors-instance-card.active {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+}
+
+.instance-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-strong);
+}
+
+/* Config panel */
+.connectors-config-panel {
+  margin: 16px 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.config-panel-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.config-panel-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.config-panel-body {
+  padding: 16px;
+}
+
+.config-textarea {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 200px;
+}
+
+.config-error {
+  padding: 10px 14px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.connectors-error {
+  padding: 16px 24px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 14px;
+}
+
+/* ==========================================================================
+   Triggers Tab Styles
+   ========================================================================== */
+
+.triggers-panel {
+  display: flex;
+  height: 100%;
+  background: var(--bg);
+}
+
+.triggers-content {
+  display: flex;
+  flex: 1;
+  gap: 24px;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.triggers-list-section {
+  flex: 1;
+}
+
+.triggers-list-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 16px;
+}
+
+.triggers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trigger-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trigger-item:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.trigger-item.active {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+}
+
+.trigger-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trigger-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.trigger-status {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.trigger-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.trigger-status.paused {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.trigger-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.toggle-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 4px;
+}
+
+.toggle-btn.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.toggle-btn.paused {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.toggle-btn:hover {
+  opacity: 0.9;
+}
+
+.toggle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.trigger-logs-section {
+  flex: 1;
+  max-width: 480px;
+}
+
+.trigger-logs-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 16px;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.logs-table th,
+.logs-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.logs-table th {
+  font-weight: 600;
+  color: var(--text-strong);
+  background: var(--bg);
+}
+
+.logs-table td {
+  color: var(--text);
+}
+
+.logs-table tr:hover td {
+  background: var(--bg);
+}
+
+.error-text {
+  color: #991b1b;
+}
+
+.triggers-error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  align-items: center;
+}
+
+.triggers-error p {
+  font-size: 14px;
+  color: #991b1b;
+}
+
+

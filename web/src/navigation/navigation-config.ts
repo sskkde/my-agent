@@ -13,7 +13,10 @@ export type TabId =
   | 'settings'
   | 'workflows'
   | 'approvals'
-  | 'memory';
+  | 'triggers'
+  | 'memory'
+  | 'observability'
+  | 'connectors';
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings';
 
@@ -116,11 +119,25 @@ export const NAV_GROUPS: NavGroup[] = [
         iconKey: 'checkCircle',
       },
       {
+        id: 'triggers',
+        label: '触发器',
+        description: 'Trigger management',
+        testId: 'tab-triggers',
+        iconKey: 'zap',
+      },
+      {
         id: 'memory',
         label: '记忆',
         description: 'Memory management',
         testId: 'tab-memory',
         iconKey: 'database',
+      },
+      {
+        id: 'observability',
+        label: '可观测',
+        description: 'Observability console',
+        testId: 'tab-observability',
+        iconKey: 'eye',
       },
     ],
   },
@@ -149,6 +166,13 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'Agent configuration',
         testId: 'tab-agents',
         iconKey: 'settings',
+      },
+      {
+        id: 'connectors',
+        label: '连接器',
+        description: 'Connector management',
+        testId: 'tab-connectors',
+        iconKey: 'plug',
       },
     ],
   },
