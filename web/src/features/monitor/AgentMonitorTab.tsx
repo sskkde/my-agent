@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getRuns, subscribeRuns, RunEventCallback } from '../../api/client';
 import type { RunInfo, RunsResponse, SseRunEvent } from '../../api/types';
+import RunDetailView from './RunDetailView';
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -40,6 +41,7 @@ const AgentMonitorTab: React.FC = () => {
   const [runsError, setRunsError] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [retryKey, setRetryKey] = useState(0);
+  const [selectedRun, setSelectedRun] = useState<RunInfo | null>(null);
 
   const handleEvent: RunEventCallback = useCallback((event) => {
     setRuns((prev) => updateRunFromEvent(prev, event));
@@ -88,7 +90,12 @@ const AgentMonitorTab: React.FC = () => {
     return (
       <ul className="run-list">
         {runList.map((run) => (
-          <li key={run.runId} className={`run-card run-status-${run.status}`}>
+          <li
+            key={run.runId}
+            className={`run-card run-status-${run.status} ${selectedRun?.runId === run.runId ? 'run-card--selected' : ''}`}
+            onClick={() => setSelectedRun(run)}
+            data-testid={`run-card-${run.runId}`}
+          >
             <span className="run-id">{run.runId}</span>
             <span className="run-objective">{run.objective || '-'}</span>
             <span className="run-status-badge">{run.status}</span>
@@ -118,19 +125,29 @@ const AgentMonitorTab: React.FC = () => {
           无法加载运行历史
         </div>
       )}
-      <div data-testid="runs-list" className="runs-container">
-        <section className="run-group">
-          <h3>运行中</h3>
-          {renderRunList(activeRuns, '暂无运行中的任务')}
-        </section>
-        <section className="run-group">
-          <h3>等待中</h3>
-          {renderRunList(waitingRuns, '暂无等待中的任务')}
-        </section>
-        <section className="run-group">
-          <h3>已完成</h3>
-          {renderRunList(terminalRuns, '暂无已完成的任务')}
-        </section>
+      <div className="monitor-content">
+        <div data-testid="runs-list" className="runs-container">
+          <section className="run-group">
+            <h3>运行中</h3>
+            {renderRunList(activeRuns, '暂无运行中的任务')}
+          </section>
+          <section className="run-group">
+            <h3>等待中</h3>
+            {renderRunList(waitingRuns, '暂无等待中的任务')}
+          </section>
+          <section className="run-group">
+            <h3>已完成</h3>
+            {renderRunList(terminalRuns, '暂无已完成的任务')}
+          </section>
+        </div>
+        {selectedRun && (
+          <div className="run-detail-panel">
+            <RunDetailView
+              run={selectedRun}
+              onClose={() => setSelectedRun(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

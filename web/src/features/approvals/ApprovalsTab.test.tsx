@@ -6,6 +6,8 @@ import * as client from '../../api/client';
 vi.mock('../../api/client');
 
 describe('ApprovalsTab', () => {
+  const mockOnTabChange = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -19,7 +21,7 @@ describe('ApprovalsTab', () => {
       total: 2,
     });
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('approvals-panel')).toBeInTheDocument();
@@ -44,7 +46,7 @@ describe('ApprovalsTab', () => {
       status: 'approved',
     });
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('approval-row-approval-1')).toBeInTheDocument();
@@ -76,7 +78,7 @@ describe('ApprovalsTab', () => {
       status: 'rejected',
     });
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('approval-row-approval-1')).toBeInTheDocument();
@@ -104,7 +106,7 @@ describe('ApprovalsTab', () => {
       total: 0,
     });
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByText(/暂无待审批项/)).toBeInTheDocument();
@@ -114,7 +116,7 @@ describe('ApprovalsTab', () => {
   it('shows error message when API fails', async () => {
     vi.mocked(client.getApprovals).mockRejectedValue(new Error('API error'));
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByText(/无法加载审批列表/)).toBeInTheDocument();
@@ -124,7 +126,7 @@ describe('ApprovalsTab', () => {
   it('shows loading state initially', () => {
     vi.mocked(client.getApprovals).mockImplementation(() => new Promise(() => {}));
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     expect(screen.getByText('加载中...')).toBeInTheDocument();
   });
@@ -139,7 +141,7 @@ describe('ApprovalsTab', () => {
       total: 3,
     });
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByText('待审批:')).toBeInTheDocument();
@@ -156,7 +158,7 @@ describe('ApprovalsTab', () => {
       total: 1,
     });
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('approval-row-approval-1')).toBeInTheDocument();
@@ -186,7 +188,7 @@ describe('ApprovalsTab', () => {
       status: 'approved',
     });
 
-    render(<ApprovalsTab />);
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('approval-row-approval-1')).toBeInTheDocument();
@@ -206,5 +208,60 @@ describe('ApprovalsTab', () => {
 
     // Verify getApprovals was called again after approval
     expect(client.getApprovals).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows "查看运行 →" link when plannerRunId is present', async () => {
+    vi.mocked(client.getApprovals).mockResolvedValue({
+      approvals: [
+        { id: 'approval-1', userId: 'user1', sessionId: 's1', status: 'pending', actionType: 'test', resource: 'resource-1', requestedBy: 'user1', requestedAt: new Date().toISOString(), plannerRunId: 'pl_run_123' },
+      ],
+      total: 1,
+    });
+
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('approval-row-approval-1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('view-run-approval-1')).toBeInTheDocument();
+    expect(screen.getByText('查看运行 →')).toBeInTheDocument();
+  });
+
+  it('clicking "查看运行 →" navigates to agent-monitor tab', async () => {
+    vi.mocked(client.getApprovals).mockResolvedValue({
+      approvals: [
+        { id: 'approval-1', userId: 'user1', sessionId: 's1', status: 'pending', actionType: 'test', resource: 'resource-1', requestedBy: 'user1', requestedAt: new Date().toISOString(), plannerRunId: 'pl_run_123' },
+      ],
+      total: 1,
+    });
+
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('view-run-approval-1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('view-run-approval-1'));
+
+    expect(mockOnTabChange).toHaveBeenCalledWith('agent-monitor');
+  });
+
+  it('shows "无关联运行" when plannerRunId is not present', async () => {
+    vi.mocked(client.getApprovals).mockResolvedValue({
+      approvals: [
+        { id: 'approval-1', userId: 'user1', sessionId: 's1', status: 'pending', actionType: 'test', resource: 'resource-1', requestedBy: 'user1', requestedAt: new Date().toISOString() },
+      ],
+      total: 1,
+    });
+
+    render(<ApprovalsTab onTabChange={mockOnTabChange} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('approval-row-approval-1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('无关联运行')).toBeInTheDocument();
+    expect(screen.queryByTestId('view-run-approval-1')).not.toBeInTheDocument();
   });
 });

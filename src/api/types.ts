@@ -133,6 +133,7 @@ export interface ApprovalInfo {
   respondedAt?: string;
   responseBy?: string;
   responseReason?: string;
+  plannerRunId?: string;
 }
 
 export interface ApprovalDetailResponse {

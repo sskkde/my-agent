@@ -125,6 +125,7 @@ export interface ApprovalInfo {
   respondedAt?: string;
   responseBy?: string;
   responseReason?: string;
+  plannerRunId?: string;
 }
 
 export interface ApprovalDetailResponse {
@@ -660,4 +661,34 @@ export interface MemoryDetailResponse {
 export interface DeleteMemoryResponse {
   deleted: boolean;
   memoryId: string;
+}
+
+// =============================================================================
+// PlannerRun Timeline / Summary Types - Task 18
+// =============================================================================
+
+export interface PlannerRunEvent {
+  eventId: string;
+  eventType: string;
+  timestamp: string;
+  payload?: Record<string, unknown>;
+  sourceModule?: string;
+}
+
+export interface PlannerRunEventsResponse {
+  events: PlannerRunEvent[];
+  total: number;
+}
+
+export interface PlannerRunSummary {
+  plannerRunId: string;
+  status: string;
+  goal?: string;
+  stepCount: number;
+  currentStep: string | null;
+  planVersion: number;
+}
+
+export interface PlannerRunSummaryResponse {
+  summary: PlannerRunSummary;
 }
