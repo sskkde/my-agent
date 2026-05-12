@@ -48,6 +48,8 @@ import type {
   MemoryItem,
   MemoryDetailResponse,
   DeleteMemoryResponse,
+  PlannerRunEventsResponse,
+  PlannerRunSummaryResponse,
 } from './types';
 
 const API_BASE = '/api';
@@ -610,5 +612,17 @@ export async function deleteMemory(memoryId: string): Promise<DeleteMemoryRespon
     credentials: 'include',
   });
   const result = await parseResponse<{ data: DeleteMemoryResponse }>(response);
+  return result.data;
+}
+
+export async function getPlannerRunEvents(plannerRunId: string): Promise<PlannerRunEventsResponse> {
+  const response = await fetch(`${API_BASE}/planner-runs/${plannerRunId}/events`, { credentials: 'include' });
+  const result = await parseResponse<{ data: PlannerRunEventsResponse }>(response);
+  return result.data;
+}
+
+export async function getPlannerRunSummary(plannerRunId: string): Promise<PlannerRunSummaryResponse> {
+  const response = await fetch(`${API_BASE}/planner-runs/${plannerRunId}/summary`, { credentials: 'include' });
+  const result = await parseResponse<{ data: PlannerRunSummaryResponse }>(response);
   return result.data;
 }

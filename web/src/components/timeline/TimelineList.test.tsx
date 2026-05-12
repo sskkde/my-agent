@@ -1,8 +1,16 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TimelineList } from './TimelineList';
 import { TimelineEventCard } from './TimelineEventCard';
 import type { ConsoleTimelineEvent } from '../../api/types';
+
+vi.mock('../../api/client', () => ({
+  respondApproval: vi.fn(),
+}));
+
+import * as api from '../../api/client';
+
+const mockRespondApproval = api.respondApproval as ReturnType<typeof vi.fn>;
 
 const createMockEvent = (
   eventId: string,
@@ -230,5 +238,169 @@ describe('TimelineEventCard', () => {
     event.timestamp = '2024-01-15T10:30:00.000Z';
     render(<TimelineEventCard event={event} />);
     expect(screen.getByText(/\d{2}:\d{2}:\d{2}/)).toBeInTheDocument();
+  });
+});
+
+describe('TimelineEventCard Approval Actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const createApprovalEvent = (
+    eventId: string,
+    approvalRequestId: string | undefined,
+    approvalStatus: string | undefined,
+    content?: string,
+    metadata?: Record<string, unknown>
+  ): ConsoleTimelineEvent => ({
+    eventId,
+    eventType: 'approval_request',
+    sessionId: 'test-session',
+    timestamp: new Date().toISOString(),
+    content,
+    actor: 'system',
+    metadata: {
+      approvalRequestId,
+      approvalStatus,
+      ...metadata,
+    },
+  });
+
+  it('renders approval_request without metadata as plain content', () => {
+    const event = createMockEvent('approval-no-meta', 'approval_request', 'Please approve');
+    render(<TimelineEventCard event={event} />);
+    expect(screen.getByText('Please approve')).toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-approve-/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-reject-/)).not.toBeInTheDocument();
+  });
+
+  it('renders approve/reject buttons for pending approval', () => {
+    const event = createApprovalEvent('approval-pending', 'appr-123', 'pending', 'Write file');
+    render(<TimelineEventCard event={event} />);
+    expect(screen.getByText('Write file')).toBeInTheDocument();
+    expect(screen.getByTestId('approval-approve-appr-123')).toBeInTheDocument();
+    expect(screen.getByTestId('approval-reject-appr-123')).toBeInTheDocument();
+  });
+
+  it('shows approved status without buttons for approved approval', () => {
+    const event = createApprovalEvent('approval-approved', 'appr-456', 'approved', 'Write file');
+    render(<TimelineEventCard event={event} />);
+    expect(screen.getByText('Write file')).toBeInTheDocument();
+    expect(screen.getByText('已批准')).toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-approve-/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-reject-/)).not.toBeInTheDocument();
+  });
+
+  it('shows rejected status without buttons for rejected approval', () => {
+    const event = createApprovalEvent('approval-rejected', 'appr-789', 'rejected', 'Write file');
+    render(<TimelineEventCard event={event} />);
+    expect(screen.getByText('Write file')).toBeInTheDocument();
+    expect(screen.getByText('已拒绝')).toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-approve-/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-reject-/)).not.toBeInTheDocument();
+  });
+
+  it('hides buttons for approval belonging to different user', () => {
+    const event = createApprovalEvent(
+      'approval-other-user',
+      'appr-other',
+      'pending',
+      'Write file',
+      { currentUserId: 'user-1', userId: 'user-2' }
+    );
+    render(<TimelineEventCard event={event} />);
+    expect(screen.getByText('Write file')).toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-approve-/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/approval-reject-/)).not.toBeInTheDocument();
+  });
+
+  it('shows buttons for approval belonging to current user', () => {
+    const event = createApprovalEvent(
+      'approval-same-user',
+      'appr-same',
+      'pending',
+      'Write file',
+      { currentUserId: 'user-1', userId: 'user-1' }
+    );
+    render(<TimelineEventCard event={event} />);
+    expect(screen.getByTestId('approval-approve-appr-same')).toBeInTheDocument();
+    expect(screen.getByTestId('approval-reject-appr-same')).toBeInTheDocument();
+  });
+
+  it('calls approve API when approve button clicked', async () => {
+    mockRespondApproval.mockResolvedValue({ success: true, approvalId: 'appr-approve', status: 'approved' });
+
+    const event = createApprovalEvent('approval-click', 'appr-click', 'pending', 'Write file');
+    render(<TimelineEventCard event={event} />);
+
+    fireEvent.click(screen.getByTestId('approval-approve-appr-click'));
+
+    await waitFor(() => {
+      expect(mockRespondApproval).toHaveBeenCalledWith('appr-click', 'approved');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('已批准')).toBeInTheDocument();
+    });
+  });
+
+  it('calls reject API when reject button clicked', async () => {
+    mockRespondApproval.mockResolvedValue({ success: true, approvalId: 'appr-reject', status: 'rejected' });
+
+    const event = createApprovalEvent('approval-reject-click', 'appr-reject-click', 'pending', 'Write file');
+    render(<TimelineEventCard event={event} />);
+
+    fireEvent.click(screen.getByTestId('approval-reject-appr-reject-click'));
+
+    await waitFor(() => {
+      expect(mockRespondApproval).toHaveBeenCalledWith('appr-reject-click', 'rejected', undefined);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('已拒绝')).toBeInTheDocument();
+    });
+  });
+
+  it('shows loading state while action is in progress', async () => {
+    let resolveApproval: (value: { success: boolean }) => void = () => {};
+    const pendingPromise = new Promise<{ success: boolean }>((resolve) => {
+      resolveApproval = resolve;
+    });
+    mockRespondApproval.mockReturnValue(pendingPromise);
+
+    const event = createApprovalEvent('approval-loading', 'appr-loading', 'pending', 'Write file');
+    render(<TimelineEventCard event={event} />);
+
+    const approveBtn = screen.getByTestId('approval-approve-appr-loading');
+    expect(approveBtn).toHaveTextContent('批准');
+
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('approval-approve-appr-loading')).toHaveTextContent('处理中...');
+    });
+
+    await waitFor(() => {
+      resolveApproval({ success: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('已批准')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error message on API failure', async () => {
+    mockRespondApproval.mockRejectedValue(new Error('Network error'));
+
+    const event = createApprovalEvent('approval-error', 'appr-error', 'pending', 'Write file');
+    render(<TimelineEventCard event={event} />);
+
+    fireEvent.click(screen.getByTestId('approval-approve-appr-error'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('approval-approve-appr-error')).toBeInTheDocument();
   });
 });

@@ -71,7 +71,7 @@ function AppContent() {
       case 'workflows':
         return <WorkflowsTab />;
       case 'approvals':
-        return <ApprovalsTab />;
+        return <ApprovalsTab onTabChange={setActiveTab} />;
       case 'memory':
         return <MemoryTab />;
     }

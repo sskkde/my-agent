@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import * as client from '../../api/client';
 import type { ApprovalsResponse, ApprovalInfo } from '../../api/types';
+import type { TabId } from '../../navigation/navigation-config';
 
-const ApprovalsTab: React.FC = () => {
+interface ApprovalsTabProps {
+  onTabChange: (tab: TabId) => void;
+}
+
+const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
   const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null);
   const [approvalsError, setApprovalsError] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<ApprovalInfo | null>(null);
@@ -95,6 +100,20 @@ const ApprovalsTab: React.FC = () => {
                       <span>资源: {approval.resource || '-'}</span>
                       <span>请求者: {approval.requestedBy}</span>
                       <span>请求时间: {formatDate(approval.requestedAt)}</span>
+                    </div>
+
+                    <div className="approval-run-link">
+                      {approval.plannerRunId ? (
+                        <button
+                          className="run-link-btn"
+                          onClick={() => onTabChange('agent-monitor')}
+                          data-testid={`view-run-${approval.id}`}
+                        >
+                          查看运行 →
+                        </button>
+                      ) : (
+                        <span className="no-run-text">无关联运行</span>
+                      )}
                     </div>
 
                     {selectedApproval?.id === approval.id && (

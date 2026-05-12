@@ -6,6 +6,23 @@ import { APPROVAL_STATES, type ApprovalRequest } from '../../storage/approval-st
 import { generateId, GRANT_ID_PREFIX, ACTION_ID_PREFIX } from '../../shared/ids.js';
 import type { RuntimeAction as DispatcherRuntimeAction, TargetRuntime } from '../../dispatcher/types.js';
 
+function extractPlannerRunId(approval: ApprovalRequest, context: ApiContext): string | undefined {
+  if (!approval.metadata) return undefined;
+
+  try {
+    const metadata = JSON.parse(approval.metadata) as Record<string, unknown>;
+    const pendingActionId = metadata.pendingActionId as string | undefined;
+    if (!pendingActionId) return undefined;
+
+    const pendingAction = context.stores.runtimeActionStore.findById(pendingActionId);
+    if (!pendingAction) return undefined;
+
+    return pendingAction.targetRef?.plannerRunId;
+  } catch {
+    return undefined;
+  }
+}
+
 async function dispatchPendingAction(
   approval: ApprovalRequest,
   decision: 'approved' | 'rejected',
@@ -90,6 +107,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
       respondedAt: approval.respondedAt ?? undefined,
       responseBy: approval.responseBy ?? undefined,
       responseReason: approval.responseReason ?? undefined,
+      plannerRunId: extractPlannerRunId(approval, context),
     }));
 
     return reply.code(200).send({
@@ -133,6 +151,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         respondedAt: approval.respondedAt ?? undefined,
         responseBy: approval.responseBy ?? undefined,
         responseReason: approval.responseReason ?? undefined,
+        plannerRunId: extractPlannerRunId(approval, context),
       };
 
       return reply.send({ data: { approval: approvalInfo } });

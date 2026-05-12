@@ -24,6 +24,7 @@ import { registerMemoryRoutes } from './routes/memory.js';
 import { registerWorkflowRoutes } from './routes/workflows.js';
 import { registerToolResultsRoutes } from './routes/tool-results.js';
 import { registerTriggerRoutes } from './routes/triggers.js';
+import { registerPlannerRunRoutes } from './routes/planner-runs.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
 import { createApiContext, type ApiContext } from './context.js';
 
@@ -75,6 +76,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerWorkflowRoutes(server, context);
     registerToolResultsRoutes(server, context);
     registerTriggerRoutes(server, context);
+    registerPlannerRunRoutes(server, context);
   } else {
     server.get('/api/health', async (): Promise<HealthResponse> => {
       return {
