@@ -50,6 +50,7 @@ import { createTriggerStore, type TriggerStore } from '../storage/trigger-store.
 import { createWebhookTriggerStore, type WebhookTriggerStore } from '../storage/webhook-trigger-store.js';
 import { createWebhookDeliveryStore, type WebhookDeliveryStore } from '../storage/webhook-delivery-store.js';
 import { createScheduleTriggerStore, type ScheduleTriggerStore } from '../storage/schedule-trigger-store.js';
+import { createConnectorStore, type ConnectorStore } from '../storage/connector-store.js';
 import { createEventTriggerRuntime, type EventTriggerRuntime } from '../triggers/event-trigger-runtime.js';
 import { createPermissionEngine, type PermissionEngine } from '../permissions/permission-engine.js';
 import { createToolRegistry } from '../tools/tool-registry.js';
@@ -58,6 +59,10 @@ import type { ToolRegistry, ToolExecutor } from '../tools/types.js';
 import { registerBuiltInTools } from '../tools/builtins/index.js';
 import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js';
 import { createBackgroundRuntime } from '../subagents/background-runtime.js';
+import { createAuditRecorder } from '../observability/audit-recorder.js';
+import { createAuditStore } from '../observability/audit-store.js';
+import type { AuditRecorder } from '../observability/audit-types.js';
+import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead-letter-store.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -98,6 +103,8 @@ export interface ApiContext {
     planStore: PlanStore;
     waitConditionStore: WaitConditionStore;
     artifactStore: ArtifactStore;
+    connectorStore: ConnectorStore;
+    deadLetterStore: DeadLetterStore;
   };
   providerConfigStore: ProviderConfigStore;
   agentConfigStore: AgentConfigStore;
@@ -109,6 +116,7 @@ export interface ApiContext {
   memoryExtractionScheduler?: LongTermMemoryScheduler;
   workflowRuntime: WorkflowRuntime;
   triggerRuntime: EventTriggerRuntime;
+  auditRecorder: AuditRecorder;
 }
 
 export interface ApiContextOptions {
@@ -248,9 +256,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let webhookTriggerStore: WebhookTriggerStore;
   let webhookDeliveryStore: WebhookDeliveryStore;
   let scheduleTriggerStore: ScheduleTriggerStore;
+  let connectorStore: ConnectorStore;
   let planStore: PlanStore;
   let waitConditionStore: WaitConditionStore;
   let artifactStore: ArtifactStore;
+  let deadLetterStore: DeadLetterStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -278,9 +288,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     webhookTriggerStore = (existingStores as Record<string, unknown>)?.webhookTriggerStore as WebhookTriggerStore ?? createWebhookTriggerStore(connection);
     webhookDeliveryStore = (existingStores as Record<string, unknown>)?.webhookDeliveryStore as WebhookDeliveryStore ?? createWebhookDeliveryStore(connection);
     scheduleTriggerStore = (existingStores as Record<string, unknown>)?.scheduleTriggerStore as ScheduleTriggerStore ?? createScheduleTriggerStore(connection);
+    connectorStore = (existingStores as Record<string, unknown>)?.connectorStore as ConnectorStore ?? createConnectorStore(connection);
     planStore = (existingStores as Record<string, unknown>)?.planStore as PlanStore ?? createPlanStore(connection);
     waitConditionStore = (existingStores as Record<string, unknown>)?.waitConditionStore as WaitConditionStore ?? createWaitConditionStore(connection);
     artifactStore = (existingStores as Record<string, unknown>)?.artifactStore as ArtifactStore ?? createArtifactStore(connection);
+    deadLetterStore = (existingStores as Record<string, unknown>)?.deadLetterStore as DeadLetterStore ?? createDeadLetterStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -544,6 +556,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     memoryExtractionScheduler,
   });
 
+  const auditStore = createAuditStore(connection);
+  const auditRecorder = createAuditRecorder({ auditStore });
+
   return {
     gateway,
     channelRegistry,
@@ -583,6 +598,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       planStore,
       waitConditionStore,
       artifactStore,
+      connectorStore,
+      deadLetterStore,
     },
     providerConfigStore,
     agentConfigStore,
@@ -594,6 +611,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     memoryExtractionScheduler,
     workflowRuntime,
     triggerRuntime,
+    auditRecorder,
   };
 }
 

@@ -24,8 +24,11 @@ import { registerMemoryRoutes } from './routes/memory.js';
 import { registerWorkflowRoutes } from './routes/workflows.js';
 import { registerToolResultsRoutes } from './routes/tool-results.js';
 import { registerTriggerRoutes } from './routes/triggers.js';
+import { registerConnectorRoutes } from './routes/connectors.js';
 import { registerPlannerRunRoutes } from './routes/planner-runs.js';
+import { registerObservabilityRoutes } from './routes/observability.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
+import { registerRequestIdMiddleware } from './middleware/request-id.js';
 import { createApiContext, type ApiContext } from './context.js';
 
 export async function createApiServer(context?: ApiContext): Promise<FastifyInstance> {
@@ -38,6 +41,8 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   });
+
+  registerRequestIdMiddleware(server);
 
   if (context) {
     registerSetupRoutes(server, context);
@@ -76,7 +81,9 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerWorkflowRoutes(server, context);
     registerToolResultsRoutes(server, context);
     registerTriggerRoutes(server, context);
+    registerConnectorRoutes(server, context);
     registerPlannerRunRoutes(server, context);
+    registerObservabilityRoutes(server, context);
   } else {
     server.get('/api/health', async (): Promise<HealthResponse> => {
       return {

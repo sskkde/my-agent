@@ -4,7 +4,7 @@ import { createMigrationRunner } from '../storage/migrations.js';
 import { getLatestMigrationVersion } from '../storage/all-stores-migrations.js';
 import fs from 'fs';
 
-const DB_PATH = process.env.DATABASE_URL || './data/agent-platform.db';
+const DB_PATH = process.env.DATABASE_PATH || process.env.DATABASE_URL || './data/agent-platform.db';
 
 interface HealthCheckResult {
   healthy: boolean;
