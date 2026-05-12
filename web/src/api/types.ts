@@ -692,3 +692,39 @@ export interface PlannerRunSummary {
 export interface PlannerRunSummaryResponse {
   summary: PlannerRunSummary;
 }
+
+// =============================================================================
+// Trigger Types - TriggersTab UI
+// =============================================================================
+
+export interface TriggerResponse {
+  triggerId: string;
+  name: string;
+  triggerType: 'schedule' | 'webhook';
+  status: 'active' | 'paused';
+  createdAt: string;
+  // schedule-specific
+  cronExpression?: string;
+  // webhook-specific
+  webhookKey?: string;
+  webhookUrl?: string;
+}
+
+export interface TriggerLogEntry {
+  logId: string;
+  triggerId: string;
+  eventType: string;
+  status: string;
+  executedAt: string;
+  error?: string;
+}
+
+export interface TriggersResponse {
+  triggers: TriggerResponse[];
+  total: number;
+}
+
+export interface TriggerLogsResponse {
+  logs: TriggerLogEntry[];
+  total: number;
+}

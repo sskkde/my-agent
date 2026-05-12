@@ -237,6 +237,13 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
 
       longTermMemoryStore.delete(memoryId);
 
+      context.auditRecorder.recordMemoryWrite({
+        memoryId,
+        userId,
+        operation: 'delete',
+        contentSummary: memory.content.text.substring(0, 200),
+      });
+
       return reply.code(200).send({
         data: {
           deleted: true,

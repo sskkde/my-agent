@@ -12,6 +12,7 @@ import type { EventRecord, SensitivityLevel, RetentionClass } from '../storage/e
 import type { RuntimeAction, RuntimeActionState } from '../storage/runtime-action-store.js';
 import type { TargetRuntime, RuntimeActionType } from '../dispatcher/types.js';
 import { generateId } from '../shared/ids.js';
+import type { DeadLetterQueue } from '../dead-letter/dead-letter-queue.js';
 import type {
   TriggerEventType,
   RuntimeTriggerEvent,
@@ -44,6 +45,7 @@ const SOURCE_MODULE = 'trigger';
 const SENSITIVITY: SensitivityLevel = 'low';
 const RETENTION_CLASS: RetentionClass = 'standard';
 const WEBHOOK_SIGNATURE_PREFIX = 'sha256=';
+const MAX_WEBHOOK_FAILURES = 3;
 
 class DefaultTriggerScheduler implements TriggerScheduler {
   parseSchedulePattern(pattern: string): { valid: boolean; nextRunAt?: Date; error?: string } {
@@ -202,12 +204,15 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
   private config: EventTriggerRuntimeConfig;
   private scheduler: TriggerScheduler;
   private evaluator: WaitConditionEvaluator;
+  private dlq: DeadLetterQueue | undefined;
   private firedTriggerCache: Map<string, { event: RuntimeTriggerEvent; action: RuntimeAction }> = new Map();
+  private webhookFailureCount: Map<string, number> = new Map();
 
   constructor(config: EventTriggerRuntimeConfig) {
     this.config = config;
     this.scheduler = config.scheduler ?? new DefaultTriggerScheduler();
     this.evaluator = config.evaluator ?? new DefaultWaitConditionEvaluator();
+    this.dlq = config.dlq;
   }
 
   registerTrigger(input: RegisterTriggerInput): TriggerRegistration {
@@ -508,6 +513,7 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
 
   handleWebhook(webhookPayload: WebhookTriggerPayload, signature: string): TriggerActionResult {
     if (!this.verifyWebhookSignature(webhookPayload, signature)) {
+      this.trackWebhookFailure(webhookPayload, 'Invalid signature');
       return { matched: 0, events: [], actions: [] };
     }
 
@@ -524,6 +530,24 @@ class EventTriggerRuntimeImpl implements EventTriggerRuntime {
       userId: webhookPayload.userId,
       sessionId: webhookPayload.sessionId,
     });
+  }
+
+  private trackWebhookFailure(webhookPayload: WebhookTriggerPayload, reason: string): void {
+    if (!this.dlq) {
+      return;
+    }
+
+    const key = String(webhookPayload.eventId ?? webhookPayload.idempotencyKey ?? 'unknown');
+    const count = (this.webhookFailureCount.get(key) ?? 0) + 1;
+    this.webhookFailureCount.set(key, count);
+
+    if (count >= MAX_WEBHOOK_FAILURES) {
+      this.webhookFailureCount.delete(key);
+      this.dlq.enqueue('trigger.webhook', key, reason, {
+        ...webhookPayload,
+        failureCount: count,
+      });
+    }
   }
 
   handleConnectorEvent(event: ConnectorTriggerEvent): TriggerActionResult {
