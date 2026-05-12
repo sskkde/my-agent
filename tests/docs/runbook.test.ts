@@ -186,6 +186,9 @@ describe('Documentation and Runbook', () => {
             value.includes('warn') ||
             value.includes('./') ||
             value.includes('30000') ||
+            value === 'mock' ||
+            value === 'disabled' ||
+            value === 'true' ||
             value.startsWith('#') ||
             value.trim() === '';
 

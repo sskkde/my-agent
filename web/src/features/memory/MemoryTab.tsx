@@ -10,6 +10,7 @@ const MemoryTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMemory, setSelectedMemory] = useState<MemoryItem | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const fetchMemories = useCallback(async (query?: string) => {
     setLoading(true);
@@ -45,10 +46,12 @@ const MemoryTab: React.FC = () => {
       setMemories(prev => prev.filter(m => m.memoryId !== memoryId));
       setTotal(prev => prev - 1);
       if (selectedMemory?.memoryId === memoryId) setSelectedMemory(null);
-    } catch (err) {
-      console.error('Failed to delete memory:', err);
+      setToast({ message: '记忆已删除', type: 'success' });
+    } catch {
+      setToast({ message: '删除失败，请重试', type: 'error' });
     } finally {
       setDeleting(null);
+      setTimeout(() => setToast(null), 3000);
     }
   };
 
@@ -103,6 +106,12 @@ const MemoryTab: React.FC = () => {
 
       {error && (
         <div data-testid="memory-error" className="memory-error">加载记忆失败</div>
+      )}
+
+      {toast && (
+        <div data-testid="memory-toast" className={`memory-toast toast-${toast.type}`}>
+          {toast.message}
+        </div>
       )}
 
       {!loading && !error && (

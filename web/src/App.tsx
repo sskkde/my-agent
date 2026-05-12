@@ -14,7 +14,10 @@ import AgentsTab from './features/agents/AgentsTab';
 import SettingsTab from './features/settings/SettingsTab';
 import WorkflowsTab from './features/workflows/WorkflowsTab';
 import ApprovalsTab from './features/approvals/ApprovalsTab';
+import TriggersTab from './features/triggers/TriggersTab';
 import MemoryTab from './features/memory/MemoryTab';
+import ConnectorsTab from './features/connectors/ConnectorsTab';
+import ObservabilityTab from './features/observability/ObservabilityTab';
 import LoginPage from './features/auth/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import type { TabId } from './components/TabNav';
@@ -72,8 +75,14 @@ function AppContent() {
         return <WorkflowsTab />;
       case 'approvals':
         return <ApprovalsTab onTabChange={setActiveTab} />;
+      case 'triggers':
+        return <TriggersTab />;
       case 'memory':
         return <MemoryTab />;
+      case 'observability':
+        return <ObservabilityTab />;
+      case 'connectors':
+        return <ConnectorsTab />;
     }
   };
 

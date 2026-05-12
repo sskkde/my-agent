@@ -1,139 +1,144 @@
 #!/usr/bin/env node
-import { createConnectionManager } from '../storage/connection.js';
-import { createMigrationRunner } from '../storage/migrations.js';
-import type { Migration } from '../storage/migrations.js';
 import fs from 'fs';
 import path from 'path';
+import { createConnectionManager, type ConnectionManager } from '../storage/connection.js';
+import { allStoreMigrations } from '../storage/all-stores-migrations.js';
+import { createMigrationRunner } from '../storage/migrations.js';
 
-const DB_PATH = process.env.DATABASE_URL || './data/agent-platform.db';
+const DB_PATH = process.env.DATABASE_PATH || process.env.DATABASE_URL || './data/agent-platform.db';
 
 async function main(): Promise<void> {
   const command = process.argv[2] || 'up';
-  
-  // Ensure data directory exists
+
+  ensureDataDirectory();
+
+  if (command === 'up') {
+    runMigrations();
+    return;
+  }
+
+  if (command === 'status') {
+    printMigrationStatus();
+    return;
+  }
+
+  if (command === 'create') {
+    console.error('Migration creation uses src/storage/all-stores-migrations.ts. Add new migrations there.');
+    process.exit(1);
+  }
+
+  console.error(`Unknown command: ${command}`);
+  console.error('Usage: db:migrate [up|status]');
+  process.exit(1);
+}
+
+function ensureDataDirectory(): void {
   const dataDir = path.dirname(DB_PATH);
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
-  
+}
+
+function runMigrations(): void {
   const connection = createConnectionManager(DB_PATH);
   connection.open();
-  
+
   try {
     const migrations = createMigrationRunner(connection);
     migrations.init();
-    
-    if (command === 'up') {
-      const migrationFiles = loadMigrations();
-      if (migrationFiles.length === 0) {
-        console.log('No migrations found.');
-        return;
-      }
-      
-      const currentVersion = migrations.getCurrentVersion();
-      console.log(`Current database version: ${currentVersion}`);
-      
-      migrations.apply(migrationFiles);
-      
-      const newVersion = migrations.getCurrentVersion();
-      console.log(`Migrated to version: ${newVersion}`);
-      
-      if (newVersion === currentVersion) {
-        console.log('Database is up to date.');
-      } else {
-        console.log(`Applied ${newVersion - currentVersion} migration(s).`);
-      }
-    } else if (command === 'status') {
-      const version = migrations.getCurrentVersion();
-      console.log(`Current database version: ${version}`);
-      
-      const migrationFiles = loadMigrations();
-      console.log(`Available migrations: ${migrationFiles.length}`);
-      
-      if (migrationFiles.length > 0) {
-        console.log('\nMigration files:');
-        for (const m of migrationFiles) {
-          const status = m.version <= version ? '✓ applied' : '○ pending';
-          console.log(`  ${status} ${m.version.toString().padStart(3, '0')}_${m.name}`);
-        }
-      }
-    } else if (command === 'create') {
-      const name = process.argv[3];
-      if (!name) {
-        console.error('Usage: db:migrate create <migration-name>');
-        process.exit(1);
-      }
-      
-      const migrationFiles = loadMigrations();
-      const nextVersion = migrationFiles.length > 0 
-        ? Math.max(...migrationFiles.map(m => m.version)) + 1 
-        : 1;
-      
-      const migrationsDir = path.join(process.cwd(), 'migrations');
-      if (!fs.existsSync(migrationsDir)) {
-        fs.mkdirSync(migrationsDir, { recursive: true });
-      }
-      
-      const filename = `${nextVersion.toString().padStart(3, '0')}_${name}.sql`;
-      const filepath = path.join(migrationsDir, filename);
-      
-      const template = `-- Migration: ${name}
--- Version: ${nextVersion}
--- Created: ${new Date().toISOString()}
+    const currentVersion = migrations.getCurrentVersion();
+    const latestVersion = allStoreMigrations[allStoreMigrations.length - 1]?.version ?? 0;
+    console.log(`Current database version: ${currentVersion}`);
 
--- Up migration
+    if (shouldResetLegacySqlDatabase(connection, currentVersion)) {
+      connection.close();
+      const backupPath = backupLegacyDatabase();
+      removeDatabaseFiles(DB_PATH);
+      console.log(`Backed up legacy SQL-migration database to: ${backupPath}`);
+      connection.open();
+    }
 
+    const runner = createMigrationRunner(connection);
+    runner.init();
+    const versionBeforeApply = runner.getCurrentVersion();
+    runner.apply(allStoreMigrations);
+    const newVersion = runner.getCurrentVersion();
 
--- Down migration (for rollback)
-
-`;
-      
-      fs.writeFileSync(filepath, template);
-      console.log(`Created migration: ${filepath}`);
+    console.log(`Migrated to version: ${newVersion}`);
+    if (newVersion === versionBeforeApply) {
+      console.log('Database is up to date.');
     } else {
-      console.error(`Unknown command: ${command}`);
-      console.error('Usage: db:migrate [up|status|create]');
-      process.exit(1);
+      console.log(`Applied ${newVersion - versionBeforeApply} migration(s).`);
+    }
+
+    if (newVersion !== latestVersion) {
+      throw new Error(`Expected migration version ${latestVersion}, got ${newVersion}`);
+    }
+  } finally {
+    if (connection.isOpen()) {
+      connection.close();
+    }
+  }
+}
+
+function printMigrationStatus(): void {
+  const connection = createConnectionManager(DB_PATH);
+  connection.open();
+
+  try {
+    const migrations = createMigrationRunner(connection);
+    migrations.init();
+    const version = migrations.getCurrentVersion();
+    console.log(`Current database version: ${version}`);
+    console.log(`Available migrations: ${allStoreMigrations.length}`);
+    console.log('\nMigrations:');
+    for (const migration of allStoreMigrations) {
+      const status = migration.version <= version ? '✓ applied' : '○ pending';
+      console.log(`  ${status} ${migration.version.toString().padStart(3, '0')}_${migration.name}`);
     }
   } finally {
     connection.close();
   }
 }
 
-function loadMigrations(): Migration[] {
-  const migrationsDir = path.join(process.cwd(), 'migrations');
-  
-  if (!fs.existsSync(migrationsDir)) {
-    return [];
+function shouldResetLegacySqlDatabase(connection: ConnectionManager, currentVersion: number): boolean {
+  if (currentVersion === 0 || currentVersion >= (allStoreMigrations[allStoreMigrations.length - 1]?.version ?? 0)) {
+    return false;
   }
-  
-  const files = fs.readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort();
-  
-  const migrations: Migration[] = [];
-  
-  for (const filename of files) {
-    const match = filename.match(/^(\d+)_(.+)\.sql$/);
-    if (!match) continue;
-    
-    const version = parseInt(match[1], 10);
-    const name = match[2];
-    const content = fs.readFileSync(path.join(migrationsDir, filename), 'utf-8');
-    
-    // Parse up and down sections
-    const upMatch = content.match(/--\s*Up\s*migration\s*\n([\s\S]*?)(?=--\s*Down|$)/i);
-    const downMatch = content.match(/--\s*Down\s*migration\s*\n([\s\S]*)/i);
-    
-    migrations.push({
-      version,
-      name,
-      up: upMatch ? upMatch[1].trim() : '',
-      down: downMatch ? downMatch[1].trim() : ''
-    });
+
+  return !tableExists(connection, 'events') || !tableExists(connection, 'runtime_actions');
+}
+
+function tableExists(connection: ConnectionManager, tableName: string): boolean {
+  const rows = connection.query<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+    [tableName]
+  );
+  return rows.length > 0;
+}
+
+function backupLegacyDatabase(): string {
+  if (!fs.existsSync(DB_PATH)) {
+    return '';
   }
-  
-  return migrations;
+
+  const backupDir = path.join(path.dirname(DB_PATH), 'backups');
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupPath = path.join(backupDir, `legacy-sql-migrations-${timestamp}.db`);
+  fs.copyFileSync(DB_PATH, backupPath);
+  return backupPath;
+}
+
+function removeDatabaseFiles(dbPath: string): void {
+  for (const filePath of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+    if (fs.existsSync(filePath)) {
+      fs.rmSync(filePath);
+    }
+  }
 }
 
 main().catch(err => {

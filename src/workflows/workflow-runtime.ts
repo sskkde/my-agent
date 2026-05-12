@@ -1053,6 +1053,23 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       }
     }
 
+    const nonTerminalActionStates: string[] = [
+      RUNTIME_ACTION_STATES.CREATED,
+      RUNTIME_ACTION_STATES.VALIDATED,
+      RUNTIME_ACTION_STATES.ACCEPTED,
+      RUNTIME_ACTION_STATES.QUEUED,
+      RUNTIME_ACTION_STATES.DISPATCHING,
+      RUNTIME_ACTION_STATES.WAITING_FOR_APPROVAL,
+      RUNTIME_ACTION_STATES.WAITING_FOR_TARGET,
+    ];
+
+    const runtimeActions = this.runtimeActionStore.query({ workflowRunId });
+    for (const action of runtimeActions) {
+      if (nonTerminalActionStates.includes(action.status)) {
+        this.runtimeActionStore.updateStatus(action.actionId, RUNTIME_ACTION_STATES.CANCELLED, 'Workflow run cancelled');
+      }
+    }
+
     this.emitEvent({
       eventType: 'workflow_run_cancelled',
       sourceModule: 'workflow',
@@ -1060,6 +1077,8 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
       relatedRefs: { workflowRunId },
       payload: {
         workflowRunId,
+        cancelledStepCount: stepRuns.filter(sr => !terminalStates.includes(sr.status)).length,
+        cancelledActionCount: runtimeActions.filter(a => nonTerminalActionStates.includes(a.status)).length,
         cancelledAt: new Date().toISOString(),
       },
     });

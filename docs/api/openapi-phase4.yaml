@@ -1,0 +1,614 @@
+openapi: "3.0.3"
+info:
+  title: Phase 4 Automation API
+  description: |
+    API endpoints for connectors, observability, and dead-letter queue management.
+    All Phase 4 endpoints use the standard API response envelope.
+  version: "1.0.0"
+  contact:
+    name: Agent Platform Team
+
+servers:
+  - url: http://localhost:3003
+    description: Local development server
+
+tags:
+  - name: Connectors
+    description: Connector definition and instance management
+  - name: Observability
+    description: Run execution visibility, console views, and replay previews
+  - name: Dead Letter Queue
+    description: Internal dead-letter queue for failed event processing (no HTTP endpoints)
+
+paths:
+  # ==========================================================================
+  # Connectors API
+  # ==========================================================================
+  /api/connectors:
+    get:
+      tags: [Connectors]
+      summary: List all connector definitions
+      description: Returns all registered connector definitions across all types.
+      operationId: listConnectors
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: List of connector definitions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/connectors/{id}:
+    get:
+      tags: [Connectors]
+      summary: Get connector definition detail
+      description: Returns a single connector definition by its ID.
+      operationId: getConnectorById
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Connector definition ID
+      responses:
+        "200":
+          description: Connector definition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorDefinitionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/connectors/{id}/instances:
+    get:
+      tags: [Connectors]
+      summary: List connector instances
+      description: Returns all instances for a given connector definition belonging to the authenticated user.
+      operationId: listConnectorInstances
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Connector definition ID
+      responses:
+        "200":
+          description: List of connector instances
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/connectors/{id}/instances/{iid}/config:
+    patch:
+      tags: [Connectors]
+      summary: Update connector instance config
+      description: Patches the configuration of a specific connector instance.
+      operationId: updateInstanceConfig
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Connector definition ID
+        - name: iid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Connector instance ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                config:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Updated connector instance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorInstanceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ==========================================================================
+  # Observability API
+  # ==========================================================================
+  /api/observability/runs:
+    get:
+      tags: [Observability]
+      summary: List observable runs
+      description: |
+        Lists planner and workflow runs available for observability inspection.
+        Optionally filter by status.
+      operationId: listObservableRuns
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter runs by status (e.g. completed, failed, active)
+      responses:
+        "200":
+          description: List of runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunListResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/observability/runs/{runId}/console:
+    get:
+      tags: [Observability]
+      summary: Get console view for a run
+      description: |
+        Returns a unified console view combining timeline events, audit records,
+        and run status for a specific planner or workflow run.
+      operationId: getRunConsole
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Run ID (planner or workflow run)
+      responses:
+        "200":
+          description: Console view for the run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsoleViewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/observability/runs/{runId}/replay-preview:
+    get:
+      tags: [Observability]
+      summary: Preview replay for a run
+      description: |
+        Returns a preview of the replay results for a given run.
+        Uses a strict read-only safety policy (no external writes, tool execution,
+        or connector access). Sensitive payloads are redacted.
+      operationId: previewReplay
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Run ID (planner or workflow run)
+      responses:
+        "200":
+          description: Replay preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplayPreviewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+# ============================================================================
+# Component Schemas
+# ============================================================================
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: agent-platform-session
+      description: Session cookie set after login
+
+  schemas:
+    # ---- Envelope ----
+    ApiEnvelope:
+      type: object
+      required: [ok, requestId]
+      properties:
+        ok:
+          type: boolean
+          description: true for success responses, false for errors
+        requestId:
+          type: string
+          description: Traceable request identifier from x-request-id header
+
+    ApiErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code (e.g. NOT_FOUND, UNAUTHORIZED)
+        message:
+          type: string
+          description: Human-readable error description
+        details:
+          description: Optional additional error details
+
+    # ---- Connectors ----
+    ConnectorDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+        connectorId:
+          type: string
+        name:
+          type: string
+        connectorType:
+          type: string
+          enum: [api, messaging, storage, database, custom]
+        version:
+          type: string
+        description:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        configSchema:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum: [draft, active, deprecated, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConnectorInstance:
+      type: object
+      properties:
+        id:
+          type: string
+        connectorInstanceId:
+          type: string
+        connectorDefinitionId:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        authStateRef:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum: [draft, active, deprecated, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConnectorListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ConnectorDefinition"
+
+    ConnectorDefinitionResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ConnectorDefinition"
+
+    InstanceListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ConnectorInstance"
+
+    ConnectorInstanceResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ConnectorInstance"
+
+    # ---- Observability ----
+    RunListEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [planner_run, workflow_run]
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        summary:
+          type: string
+
+    RunListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              properties:
+                runs:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/RunListEntry"
+
+    TimelineEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        description:
+          type: string
+        status:
+          type: string
+        module:
+          type: string
+
+    AuditRecord:
+      type: object
+      properties:
+        auditId:
+          type: string
+        auditType:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        actionSummary:
+          type: string
+        status:
+          type: string
+        riskLevel:
+          type: string
+
+    ConsoleView:
+      type: object
+      properties:
+        runId:
+          type: string
+        runType:
+          type: string
+          enum: [planner_run, workflow_run]
+        timeline:
+          type: object
+          properties:
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/TimelineEvent"
+            startTime:
+              type: string
+              format: date-time
+            endTime:
+              type: string
+              format: date-time
+            durationMs:
+              type: integer
+            status:
+              type: string
+        audit:
+          type: object
+          properties:
+            totalRecords:
+              type: integer
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditRecord"
+        status:
+          type: object
+          properties:
+            runStatus:
+              type: string
+            startedAt:
+              type: string
+              format: date-time
+            completedAt:
+              type: string
+              format: date-time
+            errorMessage:
+              type: string
+
+    ConsoleViewResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ConsoleView"
+
+    BlockedAction:
+      type: object
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+        action:
+          type: string
+        reason:
+          type: string
+        module:
+          type: string
+
+    ReplayPreview:
+      type: object
+      properties:
+        runId:
+          type: string
+        runType:
+          type: string
+          enum: [planner_run, workflow_run]
+        status:
+          type: string
+          enum: [success, partial, blocked, error]
+        timeline:
+          type: object
+          properties:
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/TimelineEvent"
+            startTime:
+              type: string
+              format: date-time
+            endTime:
+              type: string
+              format: date-time
+            durationMs:
+              type: integer
+            rootStatus:
+              type: string
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedAction"
+        stateSnapshot:
+          nullable: true
+        warnings:
+          type: array
+          items:
+            type: string
+
+    ReplayPreviewResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ReplayPreview"
+
+    # ---- Error Envelope ----
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [error]
+          properties:
+            error:
+              $ref: "#/components/schemas/ApiErrorDetail"
+
+  # ---- Standard Responses ----
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "BAD_REQUEST"
+              message: "Invalid request body"
+            requestId: "abc12345"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "UNAUTHORIZED"
+              message: "Authentication required"
+            requestId: "abc12345"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "NOT_FOUND"
+              message: "Resource not found"
+            requestId: "abc12345"
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An unexpected error occurred"
+            requestId: "abc12345"
