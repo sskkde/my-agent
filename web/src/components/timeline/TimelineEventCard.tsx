@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/types';
-import { useApprovalActions } from '../../features/approvals/ApprovalActionHandler';
+import { ToolCallCard } from '../ToolCallCard';
+import { ApprovalCard } from '../ApprovalCard';
+import { BackgroundTaskCard } from '../BackgroundTaskCard';
 
 export interface TimelineEventCardProps {
   event: ConsoleTimelineEvent;
@@ -37,14 +39,11 @@ const formatTimestamp = (timestamp: string): string => {
 
 const sanitizeContent = (content: string | undefined): string => {
   if (!content) return '';
-  // Remove any HTML tags to prevent XSS
   return content.replace(/<[^>]*>/g, '');
 };
 
 export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [actionTaken, setActionTaken] = useState<'approved' | 'rejected' | null>(null);
-  const { approve, reject, isSubmitting, error } = useApprovalActions();
 
   const isAssistantPlaceholder = event.metadata?.assistantPlaceholder === true;
   const isStreamingDraft = event.metadata?.streamingDraft === true;
@@ -54,13 +53,48 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
     ? event.metadata.approvalRequestId
     : undefined;
   const approvalStatus = typeof event.metadata?.approvalStatus === 'string'
-    ? event.metadata.approvalStatus as 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled'
+    ? event.metadata.approvalStatus as 'pending' | 'approved' | 'rejected'
     : undefined;
-  const currentUserId = typeof event.metadata?.currentUserId === 'string'
-    ? event.metadata.currentUserId
+  const actionType = typeof event.metadata?.actionType === 'string'
+    ? event.metadata.actionType
     : undefined;
-  const approvalUserId = typeof event.metadata?.userId === 'string'
-    ? event.metadata.userId
+  const resource = typeof event.metadata?.resource === 'string'
+    ? event.metadata.resource
+    : undefined;
+  const justification = typeof event.metadata?.justification === 'string'
+    ? event.metadata.justification
+    : undefined;
+  const riskLevel = typeof event.metadata?.riskLevel === 'string'
+    ? event.metadata.riskLevel
+    : undefined;
+
+  const toolName = typeof event.metadata?.toolName === 'string'
+    ? event.metadata.toolName
+    : undefined;
+  const parameters = typeof event.metadata?.parameters === 'object' && event.metadata.parameters !== null
+    ? event.metadata.parameters as Record<string, unknown>
+    : undefined;
+  const toolResult = typeof event.metadata?.result === 'string'
+    ? event.metadata.result
+    : undefined;
+  const toolStatus = typeof event.metadata?.status === 'string'
+    ? event.metadata.status as 'running' | 'completed' | 'failed'
+    : undefined;
+  const durationMs = typeof event.metadata?.durationMs === 'number'
+    ? event.metadata.durationMs
+    : undefined;
+
+  const taskId = typeof event.metadata?.taskId === 'string'
+    ? event.metadata.taskId
+    : undefined;
+  const taskLabel = typeof event.metadata?.label === 'string'
+    ? event.metadata.label
+    : undefined;
+  const progress = typeof event.metadata?.progress === 'number'
+    ? event.metadata.progress
+    : undefined;
+  const taskMessage = typeof event.metadata?.message === 'string'
+    ? event.metadata.message
     : undefined;
 
   const label = isStreamingDraft ? 'Assistant (streaming)' : eventTypeLabels[event.eventType];
@@ -116,6 +150,17 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
 
       case 'tool_call':
       case 'tool_result':
+        if (toolName && parameters) {
+          return (
+            <ToolCallCard
+              toolName={toolName}
+              parameters={parameters}
+              result={toolResult}
+              status={toolStatus ?? 'completed'}
+              durationMs={durationMs}
+            />
+          );
+        }
         return (
           <div className="timeline-code-block">
             <pre className="timeline-code-content">
@@ -125,76 +170,55 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         );
 
       case 'approval_request':
+        if (approvalRequestId && actionType) {
+          return (
+            <ApprovalCard
+              approvalId={approvalRequestId}
+              actionType={actionType}
+              resource={resource}
+              justification={justification}
+              riskLevel={riskLevel}
+              status={approvalStatus ?? 'pending'}
+              onApprove={() => {}}
+              onReject={() => {}}
+            />
+          );
+        }
         if (!approvalRequestId) {
           return sanitizedContent ? (
             <div className="timeline-event-content">{sanitizedContent}</div>
           ) : null;
         }
+        return sanitizedContent ? (
+          <div className="timeline-event-content">{sanitizedContent}</div>
+        ) : null;
 
-        const effectiveStatus = actionTaken ?? approvalStatus;
-        const isOwnApproval = !currentUserId || !approvalUserId || currentUserId === approvalUserId;
-        const isPending = effectiveStatus === 'pending';
-
-        const handleApprove = async () => {
-          if (!approvalRequestId) return;
-          try {
-            await approve(approvalRequestId);
-            setActionTaken('approved');
-          } catch {
-            // noop - error displayed via hook
-          }
-        };
-
-        const handleReject = async () => {
-          if (!approvalRequestId) return;
-          try {
-            await reject(approvalRequestId);
-            setActionTaken('rejected');
-          } catch {
-            // noop - error displayed via hook
-          }
-        };
-
-        return (
-          <div className="timeline-approval-request">
-            {sanitizedContent && (
-              <div className="timeline-event-content">{sanitizedContent}</div>
-            )}
-            {isPending && isOwnApproval && (
-              <div className="timeline-approval-actions">
-                <button
-                  data-testid={`approval-approve-${approvalRequestId}`}
-                  onClick={handleApprove}
-                  disabled={isSubmitting}
-                  className="timeline-approval-btn timeline-approval-btn--approve"
-                >
-                  {isSubmitting ? '处理中...' : '批准'}
-                </button>
-                <button
-                  data-testid={`approval-reject-${approvalRequestId}`}
-                  onClick={handleReject}
-                  disabled={isSubmitting}
-                  className="timeline-approval-btn timeline-approval-btn--reject"
-                >
-                  {isSubmitting ? '处理中...' : '拒绝'}
-                </button>
-              </div>
-            )}
-            {effectiveStatus === 'approved' && (
-              <div className="timeline-approval-status timeline-approval-status--approved">
-                已批准
-              </div>
-            )}
-            {effectiveStatus === 'rejected' && (
-              <div className="timeline-approval-status timeline-approval-status--rejected">
-                已拒绝
-              </div>
-            )}
-            {error && (
-              <div className="timeline-approval-error">{error}</div>
-            )}
-          </div>
-        );
+      case 'run_started':
+      case 'run_progress':
+      case 'run_completed':
+      case 'run_failed':
+      case 'run_cancelled':
+        if (taskId && taskLabel) {
+          const runStatusMap: Record<string, 'running' | 'completed' | 'failed' | 'cancelled'> = {
+            run_started: 'running',
+            run_progress: 'running',
+            run_completed: 'completed',
+            run_failed: 'failed',
+            run_cancelled: 'cancelled',
+          };
+          return (
+            <BackgroundTaskCard
+              taskId={taskId}
+              label={taskLabel}
+              status={runStatusMap[event.eventType]}
+              progress={progress}
+              message={taskMessage}
+            />
+          );
+        }
+        return sanitizedContent ? (
+          <div className="timeline-event-content">{sanitizedContent}</div>
+        ) : null;
 
       default:
         return sanitizedContent ? (
