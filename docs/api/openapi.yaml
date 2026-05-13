@@ -1,0 +1,3839 @@
+openapi: "3.0.3"
+info:
+  title: Agent Platform API
+  description: |
+    Agent Platform Product Experience API - A multi-agent platform for task orchestration 
+    and execution with LLM providers, background task processing, workflows, triggers, and connectors.
+    
+    All endpoints use a standard API response envelope:
+    - Success: `{ ok: true, data: ..., requestId: "..." }`
+    - Error: `{ ok: false, error: { code: "...", message: "..." }, requestId: "..." }`
+  version: "v0.5.0"
+  contact:
+    name: Agent Platform Team
+
+servers:
+  - url: http://localhost:3003
+    description: Development
+  - url: http://localhost:3103
+    description: E2E Testing
+
+tags:
+  - name: Auth & Setup
+    description: Authentication and initial setup endpoints
+  - name: Sessions
+    description: Session management and messaging
+  - name: Agents & Providers
+    description: Agent configuration and LLM provider management
+  - name: Workflows
+    description: Workflow definition and execution
+  - name: Triggers
+    description: Schedule and webhook triggers
+  - name: Approvals
+    description: Approval request management
+  - name: Memory
+    description: Long-term memory management
+  - name: Observability
+    description: Run execution visibility, console views, and replay previews
+  - name: Connectors
+    description: Connector definition and instance management
+  - name: System
+    description: Health, status, usage, logs, and system configuration
+
+paths:
+  # ==========================================================================
+  # Auth & Setup
+  # ==========================================================================
+  /api/setup/status:
+    get:
+      tags: [Auth & Setup]
+      summary: Get setup status
+      description: Returns whether initial setup is required
+      operationId: getSetupStatus
+      responses:
+        "200":
+          description: Setup status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupStatusResponse"
+
+  /api/setup/user:
+    post:
+      tags: [Auth & Setup]
+      summary: Create initial user
+      description: Creates the first user and logs them in (only allowed when no users exist)
+      operationId: createInitialUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/auth/login:
+    post:
+      tags: [Auth & Setup]
+      summary: Login
+      description: Authenticate with username and password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/logout:
+    post:
+      tags: [Auth & Setup]
+      summary: Logout
+      description: End the current session
+      operationId: logout
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /api/auth/me:
+    get:
+      tags: [Auth & Setup]
+      summary: Get current user
+      description: Returns the currently authenticated user
+      operationId: getCurrentUser
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ==========================================================================
+  # Sessions
+  # ==========================================================================
+  /api/sessions:
+    get:
+      tags: [Sessions]
+      summary: List sessions
+      description: Returns paginated list of sessions for the current user
+      operationId: listSessions
+      security:
+        - cookieSession: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, archived, closed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Sessions]
+      summary: Create session
+      description: Creates a new session
+      operationId: createSession
+      security:
+        - cookieSession: []
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+
+  /api/sessions/{sessionId}:
+    get:
+      tags: [Sessions]
+      summary: Get session
+      description: Returns session details
+      operationId: getSession
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      responses:
+        "200":
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Sessions]
+      summary: Update session
+      description: Updates session title or status
+      operationId: updateSession
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchSessionRequest"
+      responses:
+        "200":
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/sessions/{sessionId}/messages:
+    post:
+      tags: [Sessions]
+      summary: Send message
+      description: Sends a message to the session (processed asynchronously)
+      operationId: sendMessage
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "202":
+          description: Message accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendMessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/sessions/{sessionId}/transcripts:
+    get:
+      tags: [Sessions]
+      summary: Get transcripts
+      description: Returns all transcripts for a session
+      operationId: getTranscripts
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      responses:
+        "200":
+          description: Session transcripts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/sessions/{sessionId}/resume:
+    post:
+      tags: [Sessions]
+      summary: Resume session
+      description: Resumes a session and returns recent timeline
+      operationId: resumeSession
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      responses:
+        "200":
+          description: Session resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResumeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/sessions/{sessionId}/timeline:
+    get:
+      tags: [Sessions]
+      summary: Get timeline
+      description: Returns paginated timeline events for a session
+      operationId: getTimeline
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: eventTypes
+          in: query
+          schema:
+            type: string
+          description: Comma-separated list of event types to filter
+      responses:
+        "200":
+          description: Timeline events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/sessions/{sessionId}/timeline/stream:
+    get:
+      tags: [Sessions]
+      summary: Stream timeline (SSE)
+      description: Server-Sent Events endpoint for real-time timeline updates
+      operationId: streamTimeline
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+        - name: after
+          in: query
+          schema:
+            type: string
+          description: Event ID to resume from
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/sessions/{sessionId}/model:
+    patch:
+      tags: [Sessions]
+      summary: Set session model
+      description: Sets the model and provider for a session
+      operationId: setSessionModel
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetModelRequest"
+      responses:
+        "200":
+          description: Model set successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/sessions/{sessionId}/usage:
+    get:
+      tags: [Sessions]
+      summary: Get session usage
+      description: Returns usage statistics for a session
+      operationId: getSessionUsage
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      responses:
+        "200":
+          description: Usage summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
+  # Agents & Providers
+  # ==========================================================================
+  /api/agents/{agentId}/config:
+    get:
+      tags: [Agents & Providers]
+      summary: Get agent config
+      description: Returns global, user override, and effective config for an agent
+      operationId: getAgentConfig
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/agentId"
+      responses:
+        "200":
+          description: Agent configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/agents/{agentId}/config/global:
+    patch:
+      tags: [Agents & Providers]
+      summary: Update global agent config
+      description: Updates the global default configuration (admin only)
+      operationId: updateGlobalAgentConfig
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/agentId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAgentConfigRequest"
+      responses:
+        "200":
+          description: Config updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentConfig"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/agents/{agentId}/config/override:
+    patch:
+      tags: [Agents & Providers]
+      summary: Update user override config
+      description: Updates the user-specific override configuration
+      operationId: updateUserOverrideConfig
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/agentId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOverrideConfigRequest"
+      responses:
+        "200":
+          description: Override updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentConfig"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Agents & Providers]
+      summary: Delete user override config
+      description: Resets user override to global defaults
+      operationId: deleteUserOverrideConfig
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/agentId"
+      responses:
+        "204":
+          description: Override deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/providers:
+    get:
+      tags: [Agents & Providers]
+      summary: List providers
+      description: Returns all configured providers for the current user
+      operationId: listProviders
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Agents & Providers]
+      summary: Create provider
+      description: Creates a new provider configuration
+      operationId: createProvider
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProviderRequest"
+      responses:
+        "201":
+          description: Provider created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/providers/{providerId}:
+    patch:
+      tags: [Agents & Providers]
+      summary: Update provider
+      description: Updates a provider configuration
+      operationId: updateProvider
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProviderRequest"
+      responses:
+        "200":
+          description: Provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Agents & Providers]
+      summary: Delete provider
+      description: Deletes a provider configuration
+      operationId: deleteProvider
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      responses:
+        "204":
+          description: Provider deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/providers/{providerId}/test:
+    post:
+      tags: [Agents & Providers]
+      summary: Test provider connection
+      description: Tests the provider connection
+      operationId: testProvider
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/providerId"
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestProviderResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/models:
+    get:
+      tags: [Agents & Providers]
+      summary: List models and providers
+      description: Returns available providers and optionally session's selected model
+      operationId: listModels
+      security:
+        - cookieSession: []
+      parameters:
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Models and providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/tools:
+    get:
+      tags: [Agents & Providers]
+      summary: List tools
+      description: Returns available tool catalog
+      operationId: listTools
+      responses:
+        "200":
+          description: Tool catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolsResponse"
+
+  /api/tool-results/{resultId}:
+    get:
+      tags: [Agents & Providers]
+      summary: Get tool result
+      description: Returns a stored tool result by ID
+      operationId: getToolResult
+      security:
+        - cookieSession: []
+      parameters:
+        - name: resultId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tool result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
+  # Workflows
+  # ==========================================================================
+  /api/workflows/drafts:
+    get:
+      tags: [Workflows]
+      summary: List workflow drafts
+      description: Returns all workflow drafts for the current user
+      operationId: listWorkflowDrafts
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of drafts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Workflows]
+      summary: Create workflow draft
+      description: Creates a new workflow draft
+      operationId: createWorkflowDraft
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDraftRequest"
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/workflows/drafts/{draftId}:
+    get:
+      tags: [Workflows]
+      summary: Get workflow draft
+      description: Returns a specific workflow draft
+      operationId: getWorkflowDraft
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/draftId"
+      responses:
+        "200":
+          description: Draft details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Workflows]
+      summary: Update workflow draft
+      description: Updates a workflow draft
+      operationId: updateWorkflowDraft
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/draftId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDraftRequest"
+      responses:
+        "200":
+          description: Draft updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Workflows]
+      summary: Delete workflow draft
+      description: Deletes a workflow draft
+      operationId: deleteWorkflowDraft
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/draftId"
+      responses:
+        "204":
+          description: Draft deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/workflows/drafts/{draftId}/validate:
+    post:
+      tags: [Workflows]
+      summary: Validate workflow draft
+      description: Validates a workflow draft and returns issues
+      operationId: validateWorkflowDraft
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/draftId"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/workflows/drafts/{draftId}/publish:
+    post:
+      tags: [Workflows]
+      summary: Publish workflow draft
+      description: Publishes a draft as a workflow definition
+      operationId: publishWorkflowDraft
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/draftId"
+      responses:
+        "201":
+          description: Workflow published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefinitionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/workflows/definitions:
+    get:
+      tags: [Workflows]
+      summary: List workflow definitions
+      description: Returns all published workflow definitions
+      operationId: listWorkflowDefinitions
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of definitions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefinitionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/workflows/definitions/{workflowId}:
+    get:
+      tags: [Workflows]
+      summary: Get workflow definition
+      description: Returns a specific workflow definition
+      operationId: getWorkflowDefinition
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/workflowId"
+      responses:
+        "200":
+          description: Definition details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefinitionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/workflows/runs:
+    get:
+      tags: [Workflows]
+      summary: List workflow runs
+      description: Returns all workflow runs for the current user
+      operationId: listWorkflowRuns
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Workflows]
+      summary: Start workflow run
+      description: Starts a new workflow run from a definition
+      operationId: startWorkflowRun
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRunRequest"
+      responses:
+        "201":
+          description: Run started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/workflows/runs/{workflowRunId}:
+    get:
+      tags: [Workflows]
+      summary: Get workflow run
+      description: Returns details of a specific workflow run
+      operationId: getWorkflowRun
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/workflowRunId"
+      responses:
+        "200":
+          description: Run details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
+  # Triggers
+  # ==========================================================================
+  /api/triggers/schedules:
+    get:
+      tags: [Triggers]
+      summary: List schedule triggers
+      description: Returns all schedule triggers for the current user
+      operationId: listScheduleTriggers
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of schedules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Triggers]
+      summary: Create schedule trigger
+      description: Creates a new schedule trigger
+      operationId: createScheduleTrigger
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleRequest"
+      responses:
+        "201":
+          description: Schedule created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleTriggerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/triggers/schedules/{scheduleId}:
+    get:
+      tags: [Triggers]
+      summary: Get schedule trigger
+      description: Returns a specific schedule trigger
+      operationId: getScheduleTrigger
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/scheduleId"
+      responses:
+        "200":
+          description: Schedule details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleTriggerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Triggers]
+      summary: Update schedule trigger
+      description: Updates a schedule trigger status
+      operationId: updateScheduleTrigger
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/scheduleId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTriggerStatusRequest"
+      responses:
+        "200":
+          description: Schedule updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleTriggerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Triggers]
+      summary: Delete schedule trigger
+      description: Deletes a schedule trigger
+      operationId: deleteScheduleTrigger
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/scheduleId"
+      responses:
+        "204":
+          description: Schedule deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/triggers/webhooks:
+    get:
+      tags: [Triggers]
+      summary: List webhook triggers
+      description: Returns all webhook triggers for the current user
+      operationId: listWebhookTriggers
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Triggers]
+      summary: Create webhook trigger
+      description: Creates a new webhook trigger
+      operationId: createWebhookTrigger
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookRequest"
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTriggerCreatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/triggers/webhooks/{webhookId}:
+    get:
+      tags: [Triggers]
+      summary: Get webhook trigger
+      description: Returns a specific webhook trigger
+      operationId: getWebhookTrigger
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+      responses:
+        "200":
+          description: Webhook details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTriggerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Triggers]
+      summary: Update webhook trigger
+      description: Updates a webhook trigger status
+      operationId: updateWebhookTrigger
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTriggerStatusRequest"
+      responses:
+        "200":
+          description: Webhook updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTriggerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Triggers]
+      summary: Delete webhook trigger
+      description: Deletes a webhook trigger
+      operationId: deleteWebhookTrigger
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+      responses:
+        "204":
+          description: Webhook deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/webhooks/{webhookId}/deliver:
+    post:
+      tags: [Triggers]
+      summary: Deliver webhook payload
+      description: Receives webhook delivery (authenticated via HMAC signature)
+      operationId: deliverWebhook
+      parameters:
+        - $ref: "#/components/parameters/webhookId"
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Delivery-Id
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Webhook accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDeliveryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
+  # Approvals
+  # ==========================================================================
+  /api/approvals:
+    get:
+      tags: [Approvals]
+      summary: List approvals
+      description: Returns all approvals for the current user
+      operationId: listApprovals
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of approvals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/approvals/{approvalId}:
+    get:
+      tags: [Approvals]
+      summary: Get approval
+      description: Returns a specific approval
+      operationId: getApproval
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/approvalId"
+      responses:
+        "200":
+          description: Approval details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Approvals]
+      summary: Decide on approval
+      description: Approve or reject an approval request
+      operationId: decideApproval
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/approvalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecisionRequest"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDecisionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  # ==========================================================================
+  # Memory
+  # ==========================================================================
+  /api/memory:
+    get:
+      tags: [Memory]
+      summary: List memories
+      description: Returns memories for the current user with optional search
+      operationId: listMemories
+      security:
+        - cookieSession: []
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [user_profile, user_preference, user_safety_rule, project_state]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of memories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/memory/{memoryId}:
+    get:
+      tags: [Memory]
+      summary: Get memory
+      description: Returns a specific memory
+      operationId: getMemory
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/memoryId"
+      responses:
+        "200":
+          description: Memory details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Memory]
+      summary: Delete memory
+      description: Deletes a specific memory
+      operationId: deleteMemory
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/memoryId"
+      responses:
+        "200":
+          description: Memory deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryDeleteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/memory/debug/extraction-runs:
+    get:
+      tags: [Memory]
+      summary: List extraction runs (debug)
+      description: Returns memory extraction run history
+      operationId: listExtractionRuns
+      security:
+        - cookieSession: []
+      parameters:
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of extraction runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionRunListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/memory/debug/extract:
+    post:
+      tags: [Memory]
+      summary: Trigger extraction (debug)
+      description: Manually triggers memory extraction for a turn
+      operationId: triggerExtraction
+      security:
+        - cookieSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DebugExtractRequest"
+      responses:
+        "200":
+          description: Extraction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
+  # Observability
+  # ==========================================================================
+  /api/observability/runs:
+    get:
+      tags: [Observability]
+      summary: List observable runs
+      description: Lists planner and workflow runs available for inspection
+      operationId: listObservableRuns
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status
+      responses:
+        "200":
+          description: List of runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunListResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/observability/runs/{runId}/console:
+    get:
+      tags: [Observability]
+      summary: Get console view
+      description: Returns console view with timeline, audit, and status
+      operationId: getRunConsole
+      parameters:
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Console view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsoleViewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/observability/runs/{runId}/replay-preview:
+    get:
+      tags: [Observability]
+      summary: Preview replay
+      description: Returns read-only replay preview with safety policy
+      operationId: previewReplay
+      parameters:
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Replay preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplayPreviewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ==========================================================================
+  # Connectors
+  # ==========================================================================
+  /api/connectors:
+    get:
+      tags: [Connectors]
+      summary: List connectors
+      description: Returns all registered connector definitions
+      operationId: listConnectors
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of connectors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/connectors/{id}:
+    get:
+      tags: [Connectors]
+      summary: Get connector
+      description: Returns a specific connector definition
+      operationId: getConnector
+      security:
+        - cookieSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Connector details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorDefinition"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/connectors/{id}/instances:
+    get:
+      tags: [Connectors]
+      summary: List connector instances
+      description: Returns instances for a connector definition
+      operationId: listConnectorInstances
+      security:
+        - cookieSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of instances
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/connectors/{id}/instances/{iid}/config:
+    patch:
+      tags: [Connectors]
+      summary: Update instance config
+      description: Updates configuration of a connector instance
+      operationId: updateInstanceConfig
+      security:
+        - cookieSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: iid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInstanceConfigRequest"
+      responses:
+        "200":
+          description: Instance updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorInstance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ==========================================================================
+  # System
+  # ==========================================================================
+  /api/health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Returns system health status
+      operationId: getHealth
+      responses:
+        "200":
+          description: System health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/health/ready:
+    get:
+      tags: [System]
+      summary: Readiness check
+      description: Returns whether the system is ready to serve requests
+      operationId: getReady
+      responses:
+        "200":
+          description: System ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+        "503":
+          description: System not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+
+  /api/runs:
+    get:
+      tags: [System]
+      summary: List runs
+      description: Returns list of all runs (planner, background, kernel)
+      operationId: listRuns
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: List of runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/runs/stream:
+    get:
+      tags: [System]
+      summary: Stream runs (SSE)
+      description: Server-Sent Events endpoint for run updates
+      operationId: streamRuns
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/usage:
+    get:
+      tags: [System]
+      summary: List usage
+      description: Returns paginated usage summaries
+      operationId: listUsage
+      security:
+        - cookieSession: []
+      parameters:
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Usage summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/logs:
+    get:
+      tags: [System]
+      summary: List logs
+      description: Returns paginated log entries
+      operationId: listLogs
+      security:
+        - cookieSession: []
+      parameters:
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: sourceModule
+          in: query
+          schema:
+            type: string
+        - name: eventType
+          in: query
+          schema:
+            type: string
+        - name: runRef
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/logs/stream:
+    get:
+      tags: [System]
+      summary: Stream logs (SSE)
+      description: Server-Sent Events endpoint for log updates
+      operationId: streamLogs
+      security:
+        - cookieSession: []
+      parameters:
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: after
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/settings:
+    get:
+      tags: [System]
+      summary: Get settings
+      description: Returns system settings
+      operationId: getSettings
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/instances:
+    get:
+      tags: [System]
+      summary: List instances
+      description: Returns instance status
+      operationId: listInstances
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Instance status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstancesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/channels:
+    get:
+      tags: [System]
+      summary: List channels
+      description: Returns registered channels
+      operationId: listChannels
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Channels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/skills:
+    get:
+      tags: [System]
+      summary: List skills
+      description: Returns available skills
+      operationId: listSkills
+      security:
+        - cookieSession: []
+      responses:
+        "200":
+          description: Skills
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/planner-runs/{plannerRunId}/events:
+    get:
+      tags: [System]
+      summary: Get planner run events
+      description: Returns events for a planner run
+      operationId: getPlannerRunEvents
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/plannerRunId"
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlannerRunEventsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/planner-runs/{plannerRunId}/summary:
+    get:
+      tags: [System]
+      summary: Get planner run summary
+      description: Returns summary for a planner run
+      operationId: getPlannerRunSummary
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/plannerRunId"
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlannerRunSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/debug/replay/{sessionId}:
+    get:
+      tags: [System]
+      summary: Debug replay
+      description: Returns debug replay information for a session
+      operationId: debugReplay
+      security:
+        - cookieSession: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      responses:
+        "200":
+          description: Replay debug info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DebugReplayResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ============================================================================
+# Component Schemas
+# ============================================================================
+components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: agent-platform-session
+      description: Session cookie set after login
+
+  parameters:
+    sessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Session ID
+    agentId:
+      name: agentId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Agent ID
+    providerId:
+      name: providerId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Provider ID
+    approvalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Approval ID
+    memoryId:
+      name: memoryId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Memory ID
+    draftId:
+      name: draftId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Workflow draft ID
+    workflowId:
+      name: workflowId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Workflow definition ID
+    workflowRunId:
+      name: workflowRunId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Workflow run ID
+    scheduleId:
+      name: scheduleId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Schedule trigger ID
+    webhookId:
+      name: webhookId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Webhook trigger ID
+    runId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Run ID
+    plannerRunId:
+      name: plannerRunId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Planner run ID
+
+  schemas:
+    # ---- Envelope ----
+    ApiEnvelope:
+      type: object
+      required: [ok, requestId]
+      properties:
+        ok:
+          type: boolean
+          description: true for success, false for error
+        requestId:
+          type: string
+          description: Traceable request identifier
+
+    ApiErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          description: Additional error details
+
+    SuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [error]
+          properties:
+            error:
+              $ref: "#/components/schemas/ApiErrorDetail"
+
+    # ---- Auth & Setup ----
+    SetupStatusResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [needsSetup]
+              properties:
+                needsSetup:
+                  type: boolean
+
+    CreateUserRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    UserMetadata:
+      type: object
+      required: [userId, username, createdAt]
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AuthSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [user]
+              properties:
+                user:
+                  $ref: "#/components/schemas/UserMetadata"
+
+    # ---- Sessions ----
+    SessionInfo:
+      type: object
+      required: [sessionId, userId, messageCount, lastActivityAt]
+      properties:
+        sessionId:
+          type: string
+        userId:
+          type: string
+        messageCount:
+          type: integer
+        lastActivityAt:
+          type: string
+          format: date-time
+        activePlannerRunIds:
+          type: array
+          items:
+            type: string
+        activeBackgroundRunIds:
+          type: array
+          items:
+            type: string
+        selectedModel:
+          type: string
+        selectedProviderId:
+          type: string
+
+    SessionResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [session]
+              properties:
+                session:
+                  $ref: "#/components/schemas/SessionInfo"
+
+    ConsoleSessionInfo:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [active, archived, closed]
+        messageCount:
+          type: integer
+        lastActivityAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        selectedModel:
+          type: string
+        selectedProviderId:
+          type: string
+
+    SessionListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PaginatedResponse"
+
+    PatchSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+          enum: [active, archived, closed]
+
+    SendMessageRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+
+    SendMessageResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                accepted:
+                  type: boolean
+                status:
+                  type: string
+                correlationId:
+                  type: string
+                envelopeId:
+                  type: string
+
+    TranscriptTurn:
+      type: object
+      properties:
+        turnId:
+          type: string
+        sessionId:
+          type: string
+        userId:
+          type: string
+        input:
+          type: object
+        output:
+          type: object
+        runtimeSummary:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+
+    TranscriptsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                transcripts:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TranscriptTurn"
+                total:
+                  type: integer
+
+    ConsoleTimelineEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+        sessionId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        content:
+          type: string
+        metadata:
+          type: object
+
+    TimelineResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PaginatedResponse"
+
+    SessionResumeResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                session:
+                  $ref: "#/components/schemas/ConsoleSessionInfo"
+                timeline:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ConsoleTimelineEvent"
+
+    SetModelRequest:
+      type: object
+      required: [providerId, model]
+      properties:
+        providerId:
+          type: string
+        model:
+          type: string
+
+    # ---- Agents & Providers ----
+    AgentConfig:
+      type: object
+      properties:
+        agentConfigId:
+          type: string
+        agentId:
+          type: string
+        scope:
+          type: string
+          enum: [global, user]
+        userId:
+          type: string
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        systemPrompt:
+          type: string
+        routingPrompt:
+          type: string
+        providerId:
+          type: string
+        model:
+          type: string
+        allowedToolIds:
+          type: array
+          items:
+            type: string
+        allowedSkillIds:
+          type: array
+          items:
+            type: string
+        routingTimeoutMs:
+          type: integer
+        repairAttempts:
+          type: integer
+        searchLlmProviderId:
+          type: string
+        searchLlmModel:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AgentConfigResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                global:
+                  $ref: "#/components/schemas/AgentConfig"
+                userOverride:
+                  $ref: "#/components/schemas/AgentConfig"
+                effective:
+                  $ref: "#/components/schemas/AgentConfig"
+
+    UpdateAgentConfigRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        systemPrompt:
+          type: string
+        routingPrompt:
+          type: string
+        providerId:
+          type: string
+        model:
+          type: string
+        allowedToolIds:
+          type: array
+          items:
+            type: string
+        allowedSkillIds:
+          type: array
+          items:
+            type: string
+        routingTimeoutMs:
+          type: integer
+        repairAttempts:
+          type: integer
+        searchLlmProviderId:
+          type: string
+        searchLlmModel:
+          type: string
+
+    UpdateOverrideConfigRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        systemPrompt:
+          type: string
+          nullable: true
+        routingPrompt:
+          type: string
+          nullable: true
+        providerId:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        allowedToolIds:
+          type: array
+          items:
+            type: string
+          nullable: true
+        allowedSkillIds:
+          type: array
+          items:
+            type: string
+          nullable: true
+        routingTimeoutMs:
+          type: integer
+        repairAttempts:
+          type: integer
+        searchLlmProviderId:
+          type: string
+          nullable: true
+        searchLlmModel:
+          type: string
+          nullable: true
+
+    ProviderSummary:
+      type: object
+      required: [providerId, providerType, displayName, enabled, configured, source]
+      properties:
+        providerId:
+          type: string
+        providerType:
+          type: string
+          enum: [openai, openrouter, ollama, custom]
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        configured:
+          type: boolean
+        apiKeyLast4:
+          type: string
+          nullable: true
+        baseUrl:
+          type: string
+          nullable: true
+        selectedModel:
+          type: string
+          nullable: true
+        source:
+          type: string
+        lastTestStatus:
+          type: string
+          nullable: true
+        lastTestedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProviderListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProviderSummary"
+
+    CreateProviderRequest:
+      type: object
+      required: [providerType]
+      properties:
+        providerType:
+          type: string
+          enum: [openai, openrouter, ollama, custom]
+        displayName:
+          type: string
+        apiKey:
+          type: string
+        baseUrl:
+          type: string
+        selectedModel:
+          type: string
+
+    UpdateProviderRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        apiKey:
+          type: string
+        baseUrl:
+          type: string
+        selectedModel:
+          type: string
+        enabled:
+          type: boolean
+
+    TestProviderResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [success, latencyMs]
+              properties:
+                success:
+                  type: boolean
+                latencyMs:
+                  type: integer
+                modelCount:
+                  type: integer
+                error:
+                  type: string
+
+    ModelsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [providers]
+              properties:
+                providers:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ProviderSummary"
+                selectedModel:
+                  type: string
+                selectedProviderId:
+                  type: string
+
+    ToolSummary:
+      type: object
+      required: [name, description, category, sensitivity]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [read, write, delete, execute, search, admin, connector, internal]
+        sensitivity:
+          type: string
+          enum: [low, medium, high, restricted]
+
+    ToolsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [tools, total]
+              properties:
+                tools:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ToolSummary"
+                total:
+                  type: integer
+
+    ToolResultResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [resultId, toolExecutionId, toolName, userId, sizeBytes, contentType, sensitivity, createdAt]
+              properties:
+                resultId:
+                  type: string
+                toolExecutionId:
+                  type: string
+                toolName:
+                  type: string
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+                sizeBytes:
+                  type: integer
+                contentType:
+                  type: string
+                preview:
+                  type: string
+                sensitivity:
+                  type: string
+                createdAt:
+                  type: string
+                  format: date-time
+
+    # ---- Workflows ----
+    WorkflowStep:
+      type: object
+      required: [stepId, stepType, name]
+      properties:
+        stepId:
+          type: string
+        stepType:
+          type: string
+        name:
+          type: string
+        config:
+          type: object
+
+    DraftResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [draftId, name, steps, ownerUserId, status, createdAt, updatedAt]
+              properties:
+                draftId:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                steps:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/WorkflowStep"
+                ownerUserId:
+                  type: string
+                status:
+                  type: string
+                validationIssues:
+                  type: array
+                  items:
+                    type: object
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+
+    DraftListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/DraftResponse/properties/data"
+
+    CreateDraftRequest:
+      type: object
+      required: [name, steps]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStep"
+
+    UpdateDraftRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStep"
+
+    ValidationResult:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [valid]
+              properties:
+                valid:
+                  type: boolean
+                issues:
+                  type: array
+                  items:
+                    type: object
+
+    DefinitionResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [workflowId, name, version, steps, ownerUserId, status, createdAt, updatedAt]
+              properties:
+                workflowId:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                version:
+                  type: integer
+                steps:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/WorkflowStep"
+                ownerUserId:
+                  type: string
+                status:
+                  type: string
+                publishedFromDraftId:
+                  type: string
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+
+    DefinitionListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/DefinitionResponse/properties/data"
+
+    RunResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [workflowRunId, definitionId, version, status, currentStepIds, stepRuns]
+              properties:
+                workflowRunId:
+                  type: string
+                definitionId:
+                  type: string
+                version:
+                  type: integer
+                status:
+                  type: string
+                currentStepIds:
+                  type: array
+                  items:
+                    type: string
+                stepRuns:
+                  type: array
+                  items:
+                    type: object
+
+    WorkflowRunListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/RunResponse/properties/data"
+
+    StartRunRequest:
+      type: object
+      required: [definitionId]
+      properties:
+        definitionId:
+          type: string
+        inputData:
+          type: object
+
+    # ---- Triggers ----
+    ScheduleTriggerResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [scheduleId, name, schedulePattern, status, runCount, createdAt, updatedAt]
+              properties:
+                scheduleId:
+                  type: string
+                name:
+                  type: string
+                schedulePattern:
+                  type: string
+                status:
+                  type: string
+                lastRunAt:
+                  type: string
+                  format: date-time
+                nextRunAt:
+                  type: string
+                  format: date-time
+                runCount:
+                  type: integer
+                maxRuns:
+                  type: integer
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+
+    ScheduleListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScheduleTriggerResponse/properties/data"
+
+    CreateScheduleRequest:
+      type: object
+      required: [name, schedulePattern]
+      properties:
+        name:
+          type: string
+        schedulePattern:
+          type: string
+        maxRuns:
+          type: integer
+
+    WebhookTriggerResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [webhookId, name, status, secretLast4, createdAt, updatedAt]
+              properties:
+                webhookId:
+                  type: string
+                name:
+                  type: string
+                status:
+                  type: string
+                secretLast4:
+                  type: string
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+
+    WebhookTriggerCreatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [webhookId, name, status, secretLast4, secret, createdAt, updatedAt]
+              properties:
+                webhookId:
+                  type: string
+                name:
+                  type: string
+                status:
+                  type: string
+                secretLast4:
+                  type: string
+                secret:
+                  type: string
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+
+    WebhookListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/WebhookTriggerResponse/properties/data"
+
+    CreateWebhookRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    UpdateTriggerStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, paused]
+
+    WebhookDeliveryResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                status:
+                  type: string
+                eventId:
+                  type: string
+
+    # ---- Approvals ----
+    ApprovalInfo:
+      type: object
+      required: [id, userId, sessionId, status, actionType, requestedBy, requestedAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        sessionId:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, expired, cancelled]
+        riskLevel:
+          type: string
+        scope:
+          type: string
+        actionType:
+          type: string
+        resource:
+          type: string
+        justification:
+          type: string
+        requestedBy:
+          type: string
+        requestedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        respondedAt:
+          type: string
+          format: date-time
+        responseBy:
+          type: string
+        responseReason:
+          type: string
+        plannerRunId:
+          type: string
+
+    ApprovalsListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                approvals:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ApprovalInfo"
+                total:
+                  type: integer
+
+    ApprovalDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [approval]
+              properties:
+                approval:
+                  $ref: "#/components/schemas/ApprovalInfo"
+
+    ApprovalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approved, rejected]
+        reason:
+          type: string
+
+    ApprovalDecisionResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [success, approvalId, status]
+              properties:
+                success:
+                  type: boolean
+                approvalId:
+                  type: string
+                status:
+                  type: string
+
+    # ---- Memory ----
+    MemoryContent:
+      type: object
+      properties:
+        text:
+          type: string
+
+    Memory:
+      type: object
+      required: [memoryId, userId, memoryType, content, lifecycle, createdAt, updatedAt]
+      properties:
+        memoryId:
+          type: string
+        userId:
+          type: string
+        memoryType:
+          type: string
+          enum: [user_profile, user_preference, user_safety_rule, project_state]
+        content:
+          $ref: "#/components/schemas/MemoryContent"
+        lifecycle:
+          type: object
+          properties:
+            status:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MemoryListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                memories:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Memory"
+                total:
+                  type: integer
+
+    MemoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [memory]
+              properties:
+                memory:
+                  $ref: "#/components/schemas/Memory"
+
+    MemoryDeleteResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [deleted, memoryId]
+              properties:
+                deleted:
+                  type: boolean
+                memoryId:
+                  type: string
+
+    ExtractionRun:
+      type: object
+      properties:
+        runId:
+          type: string
+        userId:
+          type: string
+        sessionId:
+          type: string
+        triggerTurnId:
+          type: string
+        status:
+          type: string
+        attempts:
+          type: integer
+        resultCounts:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+
+    ExtractionRunListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                runs:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ExtractionRun"
+                total:
+                  type: integer
+
+    DebugExtractRequest:
+      type: object
+      required: [sessionId, turnId]
+      properties:
+        sessionId:
+          type: string
+        turnId:
+          type: string
+
+    ExtractionResult:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                resultCounts:
+                  type: object
+                errorCode:
+                  type: string
+
+    # ---- Observability ----
+    RunListEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [planner_run, workflow_run]
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        summary:
+          type: string
+
+    RunListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                runs:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/RunListEntry"
+
+    TimelineEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        description:
+          type: string
+        status:
+          type: string
+        module:
+          type: string
+
+    AuditRecord:
+      type: object
+      properties:
+        auditId:
+          type: string
+        auditType:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        actionSummary:
+          type: string
+        status:
+          type: string
+        riskLevel:
+          type: string
+
+    ConsoleView:
+      type: object
+      properties:
+        runId:
+          type: string
+        runType:
+          type: string
+          enum: [planner_run, workflow_run]
+        timeline:
+          type: object
+          properties:
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/TimelineEvent"
+            startTime:
+              type: string
+              format: date-time
+            endTime:
+              type: string
+              format: date-time
+            durationMs:
+              type: integer
+            status:
+              type: string
+        audit:
+          type: object
+          properties:
+            totalRecords:
+              type: integer
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditRecord"
+        status:
+          type: object
+          properties:
+            runStatus:
+              type: string
+            startedAt:
+              type: string
+              format: date-time
+            completedAt:
+              type: string
+              format: date-time
+            errorMessage:
+              type: string
+
+    ConsoleViewResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ConsoleView"
+
+    BlockedAction:
+      type: object
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+        action:
+          type: string
+        reason:
+          type: string
+        module:
+          type: string
+
+    ReplayPreview:
+      type: object
+      properties:
+        runId:
+          type: string
+        runType:
+          type: string
+          enum: [planner_run, workflow_run]
+        status:
+          type: string
+          enum: [success, partial, blocked, error]
+        timeline:
+          type: object
+          properties:
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/TimelineEvent"
+            startTime:
+              type: string
+              format: date-time
+            endTime:
+              type: string
+              format: date-time
+            durationMs:
+              type: integer
+            rootStatus:
+              type: string
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedAction"
+        stateSnapshot:
+          nullable: true
+        warnings:
+          type: array
+          items:
+            type: string
+
+    ReplayPreviewResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ReplayPreview"
+
+    # ---- Connectors ----
+    ConnectorDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+        connectorId:
+          type: string
+        name:
+          type: string
+        connectorType:
+          type: string
+          enum: [api, messaging, storage, database, custom]
+        version:
+          type: string
+        description:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        configSchema:
+          type: object
+        status:
+          type: string
+          enum: [draft, active, deprecated, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConnectorInstance:
+      type: object
+      properties:
+        id:
+          type: string
+        connectorInstanceId:
+          type: string
+        connectorDefinitionId:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        config:
+          type: object
+        status:
+          type: string
+          enum: [draft, active, deprecated, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConnectorListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ConnectorDefinition"
+
+    InstanceListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ConnectorInstance"
+
+    UpdateInstanceConfigRequest:
+      type: object
+      properties:
+        config:
+          type: object
+
+    # ---- System ----
+    ModuleHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        message:
+          type: string
+
+    HealthResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [status, timestamp]
+              properties:
+                status:
+                  type: string
+                  enum: [healthy, degraded]
+                timestamp:
+                  type: string
+                  format: date-time
+                modules:
+                  type: object
+                  additionalProperties:
+                    $ref: "#/components/schemas/ModuleHealth"
+
+    ReadyResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [status, timestamp]
+              properties:
+                status:
+                  type: string
+                timestamp:
+                  type: string
+                  format: date-time
+                checks:
+                  type: object
+
+    RunInfo:
+      type: object
+      required: [runId, status, createdAt]
+      properties:
+        runId:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        objective:
+          type: string
+        progress:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RunsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                runs:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/RunInfo"
+                total:
+                  type: integer
+
+    UsageSummary:
+      type: object
+      required: [sessionId, messageCount, turnCount, estimatedInputTokens, estimatedOutputTokens, estimatedTotalTokens, updatedAt]
+      properties:
+        sessionId:
+          type: string
+        messageCount:
+          type: integer
+        turnCount:
+          type: integer
+        toolCallCount:
+          type: integer
+        approvalCount:
+          type: integer
+        artifactCount:
+          type: integer
+        runCount:
+          type: integer
+        estimatedInputTokens:
+          type: integer
+        estimatedOutputTokens:
+          type: integer
+        estimatedTotalTokens:
+          type: integer
+        estimatedCostCents:
+          type: number
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+
+    UsageSummaryResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/UsageSummary"
+
+    UsageListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PaginatedResponse"
+
+    LogEntry:
+      type: object
+      required: [eventId, eventType, sourceModule, severity, summary, createdAt]
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+        sourceModule:
+          type: string
+        sessionId:
+          type: string
+        severity:
+          type: string
+          enum: [info, warn, error]
+        summary:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        payloadPreview:
+          type: string
+
+    LogListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PaginatedResponse"
+
+    SettingsConfig:
+      type: object
+      required: [localOnly, providers, retentionDays]
+      properties:
+        localOnly:
+          type: boolean
+        providers:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              configured:
+                type: boolean
+        retentionDays:
+          type: integer
+
+    SettingsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [settings]
+              properties:
+                settings:
+                  $ref: "#/components/schemas/SettingsConfig"
+
+    InstanceSummary:
+      type: object
+      required: [type, status, apiPort, storeStatus]
+      properties:
+        type:
+          type: string
+        status:
+          type: string
+          enum: [healthy, degraded]
+        uptime:
+          type: number
+        apiPort:
+          type: integer
+        storeStatus:
+          type: string
+
+    InstancesResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                instances:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/InstanceSummary"
+
+    ChannelSummary:
+      type: object
+      properties:
+        connectorId:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        configured:
+          type: boolean
+
+    ChannelsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                channels:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ChannelSummary"
+
+    SkillSummary:
+      type: object
+      required: [skillId, name, type, enabled]
+      properties:
+        skillId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        enabled:
+          type: boolean
+
+    SkillsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                skills:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/SkillSummary"
+
+    PlannerRunEventsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                events:
+                  type: array
+                  items:
+                    type: object
+
+    PlannerRunSummaryResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                status:
+                  type: string
+                stepCount:
+                  type: integer
+                currentStep:
+                  type: string
+                planVersion:
+                  type: integer
+
+    DebugReplayResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                eventCount:
+                  type: integer
+                transcriptCount:
+                  type: integer
+                runRefs:
+                  type: array
+                  items:
+                    type: string
+                approvalRefs:
+                  type: array
+                  items:
+                    type: string
+                lastEventId:
+                  type: string
+                redactedPreviews:
+                  type: array
+                  items:
+                    type: object
+
+    # ---- Shared ----
+    PaginatedResponse:
+      type: object
+      required: [items, total, limit, offset, hasMore]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+
+  # ---- Standard Responses ----
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "BAD_REQUEST"
+              message: "Invalid request body"
+            requestId: "abc12345"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "UNAUTHORIZED"
+              message: "Authentication required"
+            requestId: "abc12345"
+
+    Forbidden:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "FORBIDDEN"
+              message: "Access denied"
+            requestId: "abc12345"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "NOT_FOUND"
+              message: "Resource not found"
+            requestId: "abc12345"
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "CONFLICT"
+              message: "Resource already exists"
+            requestId: "abc12345"
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            ok: false
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An unexpected error occurred"
+            requestId: "abc12345"

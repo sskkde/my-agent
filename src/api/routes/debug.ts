@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
 import type { EventRecord } from '../../storage/event-store.js';
 
 interface ReplayParams {
@@ -75,7 +75,6 @@ function createRedactedPreview(event: EventRecord): RedactedPreview {
 export function registerDebugRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get<{
     Params: ReplayParams;
-    Reply: ReplayResponse;
   }>('/api/debug/replay/:sessionId', async (request, reply) => {
     const { sessionId } = request.params;
 
@@ -83,8 +82,7 @@ export function registerDebugRoutes(server: FastifyInstance, context: ApiContext
     const transcripts = context.stores.transcriptStore.findBySession(sessionId);
 
     if (events.length === 0 && transcripts.length === 0) {
-      const error = ApiErrorFactory.notFound('Session not found');
-      return reply.code(404).send(error as unknown as ReplayResponse);
+      return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
     }
 
     const eventCount = events.length;
@@ -137,6 +135,6 @@ export function registerDebugRoutes(server: FastifyInstance, context: ApiContext
       redactedPreviews,
     };
 
-    return reply.code(200).send({ data: response } as unknown as ReplayResponse);
+    return reply.code(200).send(success(response, request.requestId));
   });
 }

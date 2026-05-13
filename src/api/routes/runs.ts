@@ -1,10 +1,11 @@
-import type { FastifyInstance } from 'fastify';
-import type { RunsResponse, RunInfo } from '../types.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { RunInfo } from '../types.js';
 import type { ApiContext } from '../context.js';
 import type { BackgroundSubagentState } from '../../shared/states.js';
+import { success } from '../response-envelope.js';
 
 export function registerRunRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get<{ Reply: RunsResponse }>('/api/runs', async (): Promise<RunsResponse> => {
+  server.get('/api/runs', async (request: FastifyRequest, reply: FastifyReply) => {
     const runs: RunInfo[] = [];
 
     try {
@@ -56,12 +57,13 @@ export function registerRunRoutes(server: FastifyInstance, context: ApiContext):
       console.warn('Failed to fetch kernel runs:', err);
     }
 
-    return {
+    return reply.code(200).send(success({
       runs,
       total: runs.length,
-    };
+    }, request.requestId));
   });
 
+  // SSE endpoint - leave unchanged
   server.get('/api/runs/stream', async (request, reply) => {
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',

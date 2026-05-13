@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
 import type { SetupStatusResponse, AuthSuccessResponse, CreateUserRequest } from '../types.js';
 import { hashPassword, generateSessionToken, hashToken } from '../../storage/auth-crypto.js';
 import { setSessionCookie } from '../middleware/auth.js';
@@ -53,43 +53,39 @@ export function registerSetupRoutes(server: FastifyInstance, context: ApiContext
   const userStore = context.stores.userStore;
   const authTokenStore = context.stores.authTokenStore;
 
-  server.get<{ Reply: { data: SetupStatusResponse } }>(
+  server.get(
     '/api/setup/status',
-    async (_request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest, reply: FastifyReply) => {
       const users = userStore.list();
       const needsSetup = users.length === 0;
 
       const response: SetupStatusResponse = { needsSetup };
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
-  server.post<{ Body: CreateUserRequest; Reply: { data: AuthSuccessResponse } }>(
+  server.post<{ Body: CreateUserRequest }>(
     '/api/setup/user',
     async (request: FastifyRequest<{ Body: CreateUserRequest }>, reply: FastifyReply) => {
       const users = userStore.list();
       if (users.length > 0) {
-        const error = ApiErrorFactory.conflict('Setup has already been completed');
-        return reply.code(409).send(error);
+        return reply.code(409).send(envelopeError('CONFLICT', 'Setup has already been completed', request.requestId));
       }
 
       const { username, password } = request.body || {};
 
       if (!username || typeof username !== 'string' || username.trim().length === 0) {
-        const error = ApiErrorFactory.badRequest('Username is required and cannot be empty');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'Username is required and cannot be empty', request.requestId));
       }
 
       if (!password || typeof password !== 'string' || password.length === 0) {
-        const error = ApiErrorFactory.badRequest('Password is required and cannot be empty');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'Password is required and cannot be empty', request.requestId));
       }
 
       const trimmedUsername = username.trim();
       const existingUser = userStore.getByUsername(trimmedUsername);
       if (existingUser) {
-        const error = ApiErrorFactory.conflict('Username already exists');
-        return reply.code(409).send(error);
+        return reply.code(409).send(envelopeError('CONFLICT', 'Username already exists', request.requestId));
       }
 
       const passwordHash = await hashPassword(password);
@@ -123,7 +119,7 @@ export function registerSetupRoutes(server: FastifyInstance, context: ApiContext
         },
       };
 
-      return reply.code(201).send({ data: response });
+      return reply.code(201).send(success(response, request.requestId));
     }
   );
 }

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import type { ToolResultResponse } from '../types.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
 
 interface ToolResultParams {
   resultId: string;
@@ -18,20 +18,17 @@ export function registerToolResultsRoutes(server: FastifyInstance, context: ApiC
       const userId = request.user?.userId;
 
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const resultBlob = context.stores.toolResultStore.findById(resultId);
 
       if (!resultBlob) {
-        const error = ApiErrorFactory.notFound(`Tool result not found: ${resultId}`);
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', `Tool result not found: ${resultId}`, request.requestId));
       }
 
       if (resultBlob.userId !== userId) {
-        const error = ApiErrorFactory.notFound(`Tool result not found: ${resultId}`);
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', `Tool result not found: ${resultId}`, request.requestId));
       }
 
       const response: ToolResultResponse = {
@@ -49,7 +46,7 @@ export function registerToolResultsRoutes(server: FastifyInstance, context: ApiC
         createdAt: resultBlob.createdAt,
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 }

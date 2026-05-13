@@ -1,9 +1,10 @@
-import type { FastifyInstance } from 'fastify';
-import type { HealthResponse, ModuleHealth } from '../types.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { ModuleHealth } from '../types.js';
 import type { ApiContext } from '../context.js';
+import { success } from '../response-envelope.js';
 
 export function registerStatusRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get<{ Reply: HealthResponse }>('/api/health', async (): Promise<HealthResponse> => {
+  server.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {
     const modules: Record<string, ModuleHealth> = {};
 
     try {
@@ -67,10 +68,45 @@ export function registerStatusRoutes(server: FastifyInstance, context: ApiContex
       }
     }
 
-    return {
+    return reply.code(200).send(success({
       status: overallStatus,
       timestamp: new Date().toISOString(),
       modules,
-    };
+    }, request.requestId));
+  });
+
+  server.get('/api/health/ready', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const stores = context.stores;
+      const dbHealthy = stores.sessionStore !== undefined;
+
+      if (dbHealthy) {
+        return reply.code(200).send(success({
+          status: 'healthy',
+          timestamp: new Date().toISOString(),
+          checks: {
+            database: { status: 'healthy' },
+            stores: { status: 'healthy' },
+          },
+        }, request.requestId));
+      }
+
+      return reply.code(503).send(success({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: { status: 'unhealthy', message: 'Database not available' },
+          stores: { status: 'unhealthy' },
+        },
+      }, request.requestId));
+    } catch (err) {
+      return reply.code(503).send(success({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: { status: 'unhealthy', message: err instanceof Error ? err.message : 'Unknown error' },
+        },
+      }, request.requestId));
+    }
   });
 }

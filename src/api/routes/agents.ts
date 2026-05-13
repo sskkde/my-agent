@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
 import { getToolCatalog } from '../tool-catalog.js';
 import type { AgentConfig } from '../../storage/agent-config-store.js';
 import {
@@ -11,7 +11,6 @@ import {
 } from '../../storage/agent-config-store.js';
 import { resolvePrompt } from '../../agents/prompt-registry.js';
 
-// Built-in skills (must match skills.ts)
 const BUILTIN_SKILL_IDS = [
   'artifact.create',
   'artifact.update',
@@ -24,10 +23,8 @@ const BUILTIN_SKILL_IDS = [
   'web.search',
 ];
 
-// Valid agent IDs (V1 only supports foreground.default)
 const VALID_AGENT_IDS = ['foreground.default'];
 
-// Validation constraints
 const MAX_PROMPT_LENGTH = 10000;
 const MIN_TIMEOUT_MS = 1000;
 const MAX_TIMEOUT_MS = 60000;
@@ -43,10 +40,6 @@ interface ConfigResponse {
   }) | null;
 }
 
-/**
- * Merge user override with global config at field level
- * User override fields take precedence over global fields
- */
 function mergeConfigs(global: AgentConfig | null, userOverride: AgentConfig | null): Partial<AgentConfig> | null {
   if (!global && !userOverride) return null;
   if (!userOverride) return global as Partial<AgentConfig>;
@@ -124,7 +117,6 @@ function getValidSkillIds(): string[] {
 
 function sanitizeConfigForResponse(config: Partial<AgentConfig> | null): Partial<AgentConfig> | null {
   if (!config) return null;
-  // Remove sensitive/internal fields if any (currently none, but future-proof)
   const { ...sanitized } = config;
   if (sanitized.scope === 'user' && sanitized.routingTimeoutMs === INHERIT_ROUTING_TIMEOUT_MS) {
     delete sanitized.routingTimeoutMs;
@@ -146,7 +138,6 @@ function validateConfigInput(
   userId: string | null,
   isGlobal: boolean
 ): { valid: boolean; error?: { code: string; message: string } } {
-  // Validate displayName if provided
   if (input.displayName !== undefined) {
     if (typeof input.displayName !== 'string' || input.displayName.trim().length === 0) {
       return { valid: false, error: { code: 'INVALID_DISPLAY_NAME', message: 'Display name must be a non-empty string' } };
@@ -156,7 +147,6 @@ function validateConfigInput(
     }
   }
 
-  // Validate systemPrompt if provided (null is valid for reset-to-inherit)
   if (input.systemPrompt !== undefined && input.systemPrompt !== null) {
     if (typeof input.systemPrompt !== 'string') {
       return { valid: false, error: { code: 'INVALID_SYSTEM_PROMPT', message: 'System prompt must be a string or null' } };
@@ -166,7 +156,6 @@ function validateConfigInput(
     }
   }
 
-  // Validate routingPrompt if provided
   if (input.routingPrompt !== undefined) {
     if (input.routingPrompt !== null && typeof input.routingPrompt !== 'string') {
       return { valid: false, error: { code: 'INVALID_ROUTING_PROMPT', message: 'Routing prompt must be a string or null' } };
@@ -176,28 +165,24 @@ function validateConfigInput(
     }
   }
 
-  // Validate providerId if provided
   if (input.providerId !== undefined) {
     if (input.providerId !== null) {
       const provider = providerConfigStore.getById(input.providerId);
       if (!provider) {
         return { valid: false, error: { code: 'INVALID_PROVIDER_ID', message: 'Provider not found' } };
       }
-      // For user overrides, verify provider ownership
       if (!isGlobal && userId && provider.userId !== userId) {
         return { valid: false, error: { code: 'PROVIDER_ACCESS_DENIED', message: 'Provider does not belong to the current user' } };
       }
     }
   }
 
-  // Validate model if provided
   if (input.model !== undefined && input.model !== null) {
     if (typeof input.model !== 'string' || input.model.trim().length === 0) {
       return { valid: false, error: { code: 'INVALID_MODEL', message: 'Model must be a non-empty string' } };
     }
   }
 
-  // Validate allowedToolIds if provided (null is valid for reset-to-inherit)
   if (input.allowedToolIds !== undefined && input.allowedToolIds !== null) {
     if (!Array.isArray(input.allowedToolIds)) {
       return { valid: false, error: { code: 'INVALID_TOOL_IDS', message: 'Tool IDs must be an array or null' } };
@@ -209,7 +194,6 @@ function validateConfigInput(
     }
   }
 
-  // Validate allowedSkillIds if provided (null is valid for reset-to-inherit)
   if (input.allowedSkillIds !== undefined && input.allowedSkillIds !== null) {
     if (!Array.isArray(input.allowedSkillIds)) {
       return { valid: false, error: { code: 'INVALID_SKILL_IDS', message: 'Skill IDs must be an array or null' } };
@@ -221,7 +205,6 @@ function validateConfigInput(
     }
   }
 
-  // Validate routingTimeoutMs if provided
   if (input.routingTimeoutMs !== undefined) {
     if (typeof input.routingTimeoutMs !== 'number' || !Number.isInteger(input.routingTimeoutMs)) {
       return { valid: false, error: { code: 'INVALID_TIMEOUT', message: 'Timeout must be an integer' } };
@@ -231,7 +214,6 @@ function validateConfigInput(
     }
   }
 
-  // Validate repairAttempts if provided (V1 only allows 0 or 1)
   if (input.repairAttempts !== undefined) {
     if (typeof input.repairAttempts !== 'number' || !Number.isInteger(input.repairAttempts)) {
       return { valid: false, error: { code: 'INVALID_REPAIR_ATTEMPTS', message: 'Repair attempts must be an integer' } };
@@ -241,26 +223,22 @@ function validateConfigInput(
     }
   }
 
-  // Validate enabled if provided
   if (input.enabled !== undefined && typeof input.enabled !== 'boolean') {
     return { valid: false, error: { code: 'INVALID_ENABLED', message: 'Enabled must be a boolean' } };
   }
 
-  // Validate searchLlmProviderId if provided
   if (input.searchLlmProviderId !== undefined) {
     if (input.searchLlmProviderId !== null) {
       const provider = providerConfigStore.getById(input.searchLlmProviderId);
       if (!provider) {
         return { valid: false, error: { code: 'INVALID_PROVIDER_ID', message: 'Provider not found' } };
       }
-      // Verify provider ownership for both global and user override
       if (userId && provider.userId !== userId) {
         return { valid: false, error: { code: 'PROVIDER_ACCESS_DENIED', message: 'Provider does not belong to the current user' } };
       }
     }
   }
 
-  // Validate searchLlmModel if provided
   if (input.searchLlmModel !== undefined && input.searchLlmModel !== null) {
     if (typeof input.searchLlmModel !== 'string' || input.searchLlmModel.trim().length === 0) {
       return { valid: false, error: { code: 'INVALID_MODEL', message: 'Model must be a non-empty string' } };
@@ -273,32 +251,28 @@ function validateConfigInput(
 export function registerAgentRoutes(server: FastifyInstance, context: ApiContext): void {
   const { agentConfigStore, providerConfigStore } = context;
 
-  // GET /api/agents/:agentId/config - Get config (global, userOverride, effective)
+  // GET /api/agents/:agentId/config
   server.get<{ Params: { agentId: string } }>(
     '/api/agents/:agentId/config',
     async (request: FastifyRequest<{ Params: { agentId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
       const { agentId } = request.params;
 
       if (!validateAgentId(agentId)) {
-        const error = ApiErrorFactory.badRequest(`Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`);
-        error.error.code = 'INVALID_AGENT_ID';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_AGENT_ID',
+          `Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`,
+          request.requestId));
       }
 
       try {
         const global = agentConfigStore.getGlobalDefault();
-        // Get the actual user override (not merged with global)
         const userConfigs = agentConfigStore.listByUser(userId);
         const userOverride = userConfigs.find(c => c.agentId === agentId) || null;
-        // Effective is the field-level merged config
         const effective = mergeConfigs(global, userOverride);
 
-        // Resolve prompt metadata
         const promptResolution = resolvePrompt(
           effective?.promptType ?? 'foreground.router',
           effective?.promptVersion ?? null
@@ -315,42 +289,37 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
           } : null,
         };
 
-        return reply.code(200).send({ data: response });
+        return reply.code(200).send(success(response, request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to get agent config';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // PATCH /api/agents/:agentId/config/global - Update global default config
+  // PATCH /api/agents/:agentId/config/global
   server.patch<{ Params: { agentId: string }; Body: UpdateGlobalConfigRequest }>(
     '/api/agents/:agentId/config/global',
     async (request: FastifyRequest<{ Params: { agentId: string }; Body: UpdateGlobalConfigRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
       if (!isGlobalConfigAdmin(context, userId)) {
-        const error = ApiErrorFactory.forbidden('Only the setup owner can update global agent config');
-        return reply.code(403).send(error);
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Only the setup owner can update global agent config', request.requestId));
       }
 
       const { agentId } = request.params;
 
       if (!validateAgentId(agentId)) {
-        const error = ApiErrorFactory.badRequest(`Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`);
-        error.error.code = 'INVALID_AGENT_ID';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_AGENT_ID',
+          `Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`,
+          request.requestId));
       }
 
       const validation = validateConfigInput(request.body, providerConfigStore, userId, true);
       if (!validation.valid) {
-        const error = ApiErrorFactory.badRequest(validation.error!.message);
-        error.error.code = validation.error!.code;
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError(validation.error!.code, validation.error!.message, request.requestId));
       }
 
       const {
@@ -388,38 +357,34 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
           searchLlmModel: searchLlmModel !== undefined ? searchLlmModel : existingGlobal?.searchLlmModel ?? undefined,
         });
 
-        return reply.code(200).send({ data: sanitizeConfigForResponse(config) });
+        return reply.code(200).send(success(sanitizeConfigForResponse(config), request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to update global config';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // PATCH /api/agents/:agentId/config/override - Update user override config
+  // PATCH /api/agents/:agentId/config/override
   server.patch<{ Params: { agentId: string }; Body: UpdateOverrideConfigRequest }>(
     '/api/agents/:agentId/config/override',
     async (request: FastifyRequest<{ Params: { agentId: string }; Body: UpdateOverrideConfigRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { agentId } = request.params;
 
       if (!validateAgentId(agentId)) {
-        const error = ApiErrorFactory.badRequest(`Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`);
-        error.error.code = 'INVALID_AGENT_ID';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_AGENT_ID',
+          `Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`,
+          request.requestId));
       }
 
       const validation = validateConfigInput(request.body, providerConfigStore, userId, false);
       if (!validation.valid) {
-        const error = ApiErrorFactory.badRequest(validation.error!.message);
-        error.error.code = validation.error!.code;
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError(validation.error!.code, validation.error!.message, request.requestId));
       }
 
       const {
@@ -441,10 +406,6 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         const global = agentConfigStore.getGlobalDefault();
         const existingOverride = agentConfigStore.listByUser(userId).find(c => c.agentId === agentId);
 
-        // For user overrides:
-        // - undefined in request = keep existing value (or inherit from global if no existing)
-        // - null in request = reset to inherit (pass null to upsert)
-        // - value in request = use that value
         const config = agentConfigStore.upsert({
           agentId,
           scope: 'user',
@@ -479,31 +440,29 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
             : existingOverride?.searchLlmModel ?? null,
         });
 
-        return reply.code(200).send({ data: sanitizeConfigForResponse(config) });
+        return reply.code(200).send(success(sanitizeConfigForResponse(config), request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to update user override config';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // DELETE /api/agents/:agentId/config/override - Reset user override config
+  // DELETE /api/agents/:agentId/config/override
   server.delete<{ Params: { agentId: string } }>(
     '/api/agents/:agentId/config/override',
     async (request: FastifyRequest<{ Params: { agentId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { agentId } = request.params;
 
       if (!validateAgentId(agentId)) {
-        const error = ApiErrorFactory.badRequest(`Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`);
-        error.error.code = 'INVALID_AGENT_ID';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_AGENT_ID',
+          `Invalid agent ID. Only ${VALID_AGENT_IDS.join(', ')} is supported.`,
+          request.requestId));
       }
 
       try {
@@ -516,8 +475,7 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         return reply.code(204).send();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to delete user override config';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
-import type { AuthSuccessResponse, UserMetadata, LoginRequest } from '../types.js';
+import { success, envelopeError } from '../response-envelope.js';
+import type { AuthSuccessResponse, LoginRequest } from '../types.js';
 import { verifyPassword, generateSessionToken, hashToken } from '../../storage/auth-crypto.js';
 import { setSessionCookie, clearSessionCookie, getSessionTokenFromRequest } from '../middleware/auth.js';
 
@@ -11,31 +11,31 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
   const userStore = context.stores.userStore;
   const authTokenStore = context.stores.authTokenStore;
 
-  server.post<{ Body: LoginRequest; Reply: { data: AuthSuccessResponse } }>(
+  server.post<{ Body: LoginRequest }>(
     '/api/auth/login',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['username', 'password'],
+          properties: {
+            username: { type: 'string', minLength: 1 },
+            password: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Body: LoginRequest }>, reply: FastifyReply) => {
-      const { username, password } = request.body || {};
-
-      if (!username || typeof username !== 'string') {
-        const error = ApiErrorFactory.badRequest('Username is required');
-        return reply.code(400).send(error);
-      }
-
-      if (!password || typeof password !== 'string') {
-        const error = ApiErrorFactory.badRequest('Password is required');
-        return reply.code(400).send(error);
-      }
+      const { username, password } = request.body;
 
       const user = userStore.getByUsername(username.trim());
       if (!user) {
-        const error = ApiErrorFactory.unauthorized('Invalid username or password');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid username or password', request.requestId));
       }
 
       const isPasswordValid = await verifyPassword(password, user.passwordHash);
       if (!isPasswordValid) {
-        const error = ApiErrorFactory.unauthorized('Invalid username or password');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid username or password', request.requestId));
       }
 
       const sessionToken = generateSessionToken();
@@ -58,7 +58,7 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
         },
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
@@ -74,22 +74,20 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
 
       clearSessionCookie(reply);
 
-      return reply.code(200).send({ data: { success: true } });
+      return reply.code(200).send(success({ success: true }, request.requestId));
     }
   );
 
-  server.get<{ Reply: { data: { user: UserMetadata } } }>(
+  server.get(
     '/api/auth/me',
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!request.user) {
-        const error = ApiErrorFactory.unauthorized('Not authenticated');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Not authenticated', request.requestId));
       }
 
       const user = userStore.getById(request.user.userId);
       if (!user) {
-        const error = ApiErrorFactory.unauthorized('User not found');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'User not found', request.requestId));
       }
 
       const response = {
@@ -100,7 +98,7 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
         },
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 }
