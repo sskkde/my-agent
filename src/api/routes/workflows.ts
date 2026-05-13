@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
+import { workflowDraftIdParamsSchema, workflowDefinitionIdParamsSchema, workflowRunIdParamsSchema } from '../schemas/shared.js';
 import type {
   WorkflowDraft,
   WorkflowDefinition,
@@ -9,7 +10,6 @@ import type {
 } from '../../workflows/types.js';
 import type { WorkflowRun, WorkflowStepRun } from '../../storage/workflow-run-store.js';
 
-// Request types
 interface CreateDraftRequest {
   name: string;
   description?: string;
@@ -26,7 +26,6 @@ interface StartRunRequest {
   inputData?: Record<string, unknown>;
 }
 
-// Response types
 interface DraftResponse {
   draftId: string;
   name: string;
@@ -73,7 +72,6 @@ interface ValidationResult {
   issues: ValidationIssue[];
 }
 
-// Helper functions
 function mapDraftToResponse(draft: WorkflowDraft): DraftResponse {
   return {
     draftId: draft.draftId,
@@ -151,70 +149,81 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
   const { workflowRuntime, stores } = context;
   const { workflowDraftStore, workflowDefinitionStore, workflowRunStore } = stores;
 
-  // GET /api/workflows/drafts - List all drafts for current user
+  // GET /api/workflows/drafts
   server.get(
     '/api/workflows/drafts',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const drafts = workflowDraftStore.getDraftsByOwner(userId);
       const response = drafts.map(mapDraftToResponse);
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
-  // GET /api/workflows/drafts/:draftId - Get a specific draft
+  // GET /api/workflows/drafts/:draftId
   server.get<{ Params: { draftId: string } }>(
     '/api/workflows/drafts/:draftId',
+    {
+      schema: {
+        params: workflowDraftIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { draftId } = request.params;
       const draft = workflowDraftStore.getDraftById(draftId);
 
       if (!draft) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       if (draft.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
-      return reply.code(200).send({ data: mapDraftToResponse(draft) });
+      return reply.code(200).send(success(mapDraftToResponse(draft), request.requestId));
     }
   );
 
-  // POST /api/workflows/drafts - Create a new draft
+  // POST /api/workflows/drafts
   server.post<{ Body: CreateDraftRequest }>(
     '/api/workflows/drafts',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['name', 'steps'],
+          properties: {
+            name: { type: 'string', minLength: 1 },
+            description: { type: 'string' },
+            steps: { type: 'array' },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Body: CreateDraftRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
-      const { name, description, steps } = request.body || {};
+      const { name, description, steps } = request.body;
 
-      if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        const error = ApiErrorFactory.badRequest('name is required and must be a non-empty string');
-        return reply.code(400).send(error);
+      if (name.trim().length === 0) {
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'name is required and must be a non-empty string', request.requestId));
       }
 
       if (!validateSteps(steps)) {
-        const error = ApiErrorFactory.badRequest('steps is required and must be an array of valid workflow steps');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'steps is required and must be an array of valid workflow steps', request.requestId));
       }
 
       try {
@@ -225,48 +234,47 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
           ownerUserId: userId,
         });
 
-        return reply.code(201).send({ data: mapDraftToResponse(draft) });
+        return reply.code(201).send(success(mapDraftToResponse(draft), request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to create draft';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // PATCH /api/workflows/drafts/:draftId - Update a draft
+  // PATCH /api/workflows/drafts/:draftId
   server.patch<{ Params: { draftId: string }; Body: UpdateDraftRequest }>(
     '/api/workflows/drafts/:draftId',
+    {
+      schema: {
+        params: workflowDraftIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { draftId: string }; Body: UpdateDraftRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { draftId } = request.params;
       const existingDraft = workflowDraftStore.getDraftById(draftId);
 
       if (!existingDraft) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       if (existingDraft.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       const { name, description, steps } = request.body || {};
 
       if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
-        const error = ApiErrorFactory.badRequest('name must be a non-empty string');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'name must be a non-empty string', request.requestId));
       }
 
       if (steps !== undefined && !validateSteps(steps)) {
-        const error = ApiErrorFactory.badRequest('steps must be an array of valid workflow steps');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'steps must be an array of valid workflow steps', request.requestId));
       }
 
       const updates: Partial<Pick<WorkflowDraft, 'name' | 'description' | 'steps'>> = {};
@@ -275,46 +283,46 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       if (steps !== undefined) updates.steps = steps;
 
       if (Object.keys(updates).length === 0) {
-        return reply.code(200).send({ data: mapDraftToResponse(existingDraft) });
+        return reply.code(200).send(success(mapDraftToResponse(existingDraft), request.requestId));
       }
 
       try {
         const updated = workflowDraftStore.updateDraft(draftId, updates);
         if (!updated) {
-          const error = ApiErrorFactory.internalError('Failed to update draft');
-          return reply.code(500).send(error);
+          return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Failed to update draft', request.requestId));
         }
 
-        return reply.code(200).send({ data: mapDraftToResponse(updated) });
+        return reply.code(200).send(success(mapDraftToResponse(updated), request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to update draft';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // POST /api/workflows/drafts/:draftId/validate - Validate a draft
+  // POST /api/workflows/drafts/:draftId/validate
   server.post<{ Params: { draftId: string } }>(
     '/api/workflows/drafts/:draftId/validate',
+    {
+      schema: {
+        params: workflowDraftIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { draftId } = request.params;
       const existingDraft = workflowDraftStore.getDraftById(draftId);
 
       if (!existingDraft) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       if (existingDraft.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       try {
@@ -324,163 +332,171 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
           issues,
         };
 
-        return reply.code(200).send({ data: result });
+        return reply.code(200).send(success(result, request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to validate draft';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // POST /api/workflows/drafts/:draftId/publish - Publish a draft
+  // POST /api/workflows/drafts/:draftId/publish
   server.post<{ Params: { draftId: string } }>(
     '/api/workflows/drafts/:draftId/publish',
+    {
+      schema: {
+        params: workflowDraftIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { draftId } = request.params;
       const existingDraft = workflowDraftStore.getDraftById(draftId);
 
       if (!existingDraft) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       if (existingDraft.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       try {
         const definition = workflowRuntime.publishDraft(draftId);
-        return reply.code(201).send({ data: mapDefinitionToResponse(definition) });
+        return reply.code(201).send(success(mapDefinitionToResponse(definition), request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to publish draft';
         if (errorMessage.includes('validation issues')) {
-          const apiError = ApiErrorFactory.badRequest(errorMessage);
-          return reply.code(400).send(apiError);
+          return reply.code(400).send(envelopeError('BAD_REQUEST', errorMessage, request.requestId));
         }
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // DELETE /api/workflows/drafts/:draftId - Delete a draft
+  // DELETE /api/workflows/drafts/:draftId
   server.delete<{ Params: { draftId: string } }>(
     '/api/workflows/drafts/:draftId',
+    {
+      schema: {
+        params: workflowDraftIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { draftId } = request.params;
       const existingDraft = workflowDraftStore.getDraftById(draftId);
 
       if (!existingDraft) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       if (existingDraft.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Draft not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Draft not found', request.requestId));
       }
 
       try {
         const deleted = workflowDraftStore.deleteDraft(draftId);
         if (!deleted) {
-          const error = ApiErrorFactory.internalError('Failed to delete draft');
-          return reply.code(500).send(error);
+          return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Failed to delete draft', request.requestId));
         }
 
         return reply.code(204).send();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to delete draft';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // GET /api/workflows/definitions - List all definitions for current user
+  // GET /api/workflows/definitions
   server.get(
     '/api/workflows/definitions',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const definitions = workflowDefinitionStore.getDefinitionsByOwner(userId);
       const response = definitions.map(mapDefinitionToResponse);
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
-  // GET /api/workflows/definitions/:workflowId - Get a specific definition
+  // GET /api/workflows/definitions/:workflowId
   server.get<{ Params: { workflowId: string } }>(
     '/api/workflows/definitions/:workflowId',
+    {
+      schema: {
+        params: workflowDefinitionIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { workflowId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { workflowId } = request.params;
       const definition = workflowDefinitionStore.getDefinitionById(workflowId);
 
       if (!definition) {
-        const error = ApiErrorFactory.notFound('Workflow definition not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Workflow definition not found', request.requestId));
       }
 
       if (definition.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Workflow definition not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Workflow definition not found', request.requestId));
       }
 
-      return reply.code(200).send({ data: mapDefinitionToResponse(definition) });
+      return reply.code(200).send(success(mapDefinitionToResponse(definition), request.requestId));
     }
   );
 
-  // POST /api/workflows/runs - Start a new workflow run
+  // POST /api/workflows/runs
   server.post<{ Body: StartRunRequest & { definitionId: string } }>(
     '/api/workflows/runs',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['definitionId'],
+          properties: {
+            definitionId: { type: 'string', minLength: 1 },
+            inputData: { type: 'object' },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Body: StartRunRequest & { definitionId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
-      const { definitionId, inputData } = request.body || {};
+      const { definitionId, inputData } = request.body;
 
-      if (!definitionId || typeof definitionId !== 'string') {
-        const error = ApiErrorFactory.badRequest('definitionId is required');
-        return reply.code(400).send(error);
+      if (!definitionId) {
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'definitionId is required', request.requestId));
       }
 
       const definition = workflowDefinitionStore.getDefinitionById(definitionId);
 
       if (!definition) {
-        const error = ApiErrorFactory.notFound('Workflow definition not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Workflow definition not found', request.requestId));
       }
 
       if (definition.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Workflow definition not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Workflow definition not found', request.requestId));
       }
 
       try {
@@ -490,64 +506,61 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
           userId,
         });
 
-        // Get the full run with step runs
         const run = workflowRunStore.getWorkflowRunById(result.workflowRunId);
         const stepRuns = workflowRunStore.getStepsByWorkflowRunId(result.workflowRunId);
 
         if (!run) {
-          const error = ApiErrorFactory.internalError('Failed to retrieve created run');
-          return reply.code(500).send(error);
+          return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Failed to retrieve created run', request.requestId));
         }
 
-        return reply.code(201).send({ data: mapRunToResponse(run, stepRuns) });
+        return reply.code(201).send(success(mapRunToResponse(run, stepRuns), request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to start workflow run';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
 
-  // GET /api/workflows/runs/:workflowRunId - Get a specific run
+  // GET /api/workflows/runs/:workflowRunId
   server.get<{ Params: { workflowRunId: string } }>(
     '/api/workflows/runs/:workflowRunId',
+    {
+      schema: {
+        params: workflowRunIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { workflowRunId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { workflowRunId } = request.params;
       const run = workflowRunStore.getWorkflowRunById(workflowRunId);
 
       if (!run) {
-        const error = ApiErrorFactory.notFound('Workflow run not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Workflow run not found', request.requestId));
       }
 
       if (run.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Workflow run not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Workflow run not found', request.requestId));
       }
 
       const stepRuns = workflowRunStore.getStepsByWorkflowRunId(workflowRunId);
 
-      return reply.code(200).send({ data: mapRunToResponse(run, stepRuns) });
+      return reply.code(200).send(success(mapRunToResponse(run, stepRuns), request.requestId));
     }
   );
 
-  // GET /api/workflows/runs - List runs for current user
+  // GET /api/workflows/runs (list all)
   server.get(
     '/api/workflows/runs',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
-      // Get all definitions for this user, then get runs for each
       const definitions = workflowDefinitionStore.getDefinitionsByOwner(userId);
       const allRuns: Array<{ run: WorkflowRun; stepRuns: WorkflowStepRun[] }> = [];
 
@@ -559,7 +572,6 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
         }
       }
 
-      // Sort by startedAt descending
       allRuns.sort((a, b) => {
         const aTime = a.run.startedAt ? new Date(a.run.startedAt).getTime() : 0;
         const bTime = b.run.startedAt ? new Date(b.run.startedAt).getTime() : 0;
@@ -568,7 +580,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
       const response = allRuns.map(({ run, stepRuns }) => mapRunToResponse(run, stepRuns));
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 }

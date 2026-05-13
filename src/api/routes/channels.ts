@@ -1,10 +1,10 @@
-import type { FastifyInstance } from 'fastify';
-import type { ChannelsResponse } from '../types.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
+import { success } from '../response-envelope.js';
 
 export function registerChannelRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get<{ Reply: { data: ChannelsResponse } }>('/api/channels', async (): Promise<{ data: ChannelsResponse }> => {
+  server.get('/api/channels', async (request: FastifyRequest, reply: FastifyReply) => {
     const channels = context.channelRegistry.list();
-    return { data: { channels } };
+    return reply.code(200).send(success({ channels }, request.requestId));
   });
 }

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ApiContext } from '../context.js';
 import type { LogEntry, PaginatedResponse } from '../types.js';
 import type { EventRecord, SensitivityLevel } from '../../storage/event-store.js';
+import { success } from '../response-envelope.js';
 
 interface LogsQueryParams {
   sessionId?: string;
@@ -93,7 +94,7 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
   server.get<{
     Querystring: LogsQueryParams;
     Reply: { data: PaginatedResponse<LogEntry> };
-  }>('/api/logs', async (request) => {
+  }>('/api/logs', async (request, reply) => {
     const {
       sessionId,
       sourceModule,
@@ -130,9 +131,10 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
       total: totalEvents.length,
       limit,
       offset,
+      hasMore: offset + logs.length < totalEvents.length,
     };
 
-    return { data: response };
+    return reply.code(200).send(success(response, request.requestId));
   });
 
   server.get<{

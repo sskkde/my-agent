@@ -1,7 +1,10 @@
 import '../config/load-env.js';
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
-import { ApiErrorFactory } from './errors.js';
+import compress from '@fastify/compress';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
+import { envelopeError } from './response-envelope.js';
 import type { HealthResponse } from './types.js';
 import { registerSessionsRoutes } from './routes/sessions.js';
 import { registerStatusRoutes } from './routes/status.js';
@@ -29,6 +32,7 @@ import { registerPlannerRunRoutes } from './routes/planner-runs.js';
 import { registerObservabilityRoutes } from './routes/observability.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
 import { registerRequestIdMiddleware } from './middleware/request-id.js';
+import { registerRateLimitMiddleware } from './middleware/rate-limit.js';
 import { createApiContext, type ApiContext } from './context.js';
 
 export async function createApiServer(context?: ApiContext): Promise<FastifyInstance> {
@@ -42,9 +46,45 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     allowedHeaders: ['Content-Type', 'Authorization']
   });
 
+  await server.register(compress, { global: true, threshold: 0 });
+
+  // Register Swagger/OpenAPI documentation
+  await server.register(swagger, {
+    openapi: {
+      info: {
+        title: 'Agent Platform API',
+        description: 'Agent Platform Product Experience API - A multi-agent platform for task orchestration and execution with LLM providers, background task processing, workflows, triggers, and connectors.',
+        version: 'v0.5.0',
+      },
+      servers: [
+        { url: 'http://localhost:3003', description: 'Development' },
+        { url: 'http://localhost:3103', description: 'E2E Testing' },
+      ],
+      components: {
+        securitySchemes: {
+          cookieSession: {
+            type: 'apiKey',
+            in: 'cookie',
+            name: 'agent-platform-session',
+            description: 'Session cookie set after login',
+          },
+        },
+      },
+    },
+  });
+
+  await server.register(swaggerUi, {
+    routePrefix: '/api/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: true,
+    },
+  });
+
   registerRequestIdMiddleware(server);
 
   if (context) {
+    await registerRateLimitMiddleware(server);
     registerSetupRoutes(server, context);
     registerAuthRoutes(server, context);
 
@@ -53,12 +93,15 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
       authTokenStore: context.stores.authTokenStore,
       excludedPaths: [
         '/api/health',
+        '/api/health/ready',
         '/api/setup/status',
         '/api/setup/user',
         '/api/auth/login',
         '/api/auth/logout',
         '/api/tools',
         '/api/webhooks/*',
+        '/api/docs',
+        '/api/docs/*',
       ],
     });
 
@@ -106,20 +149,24 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     }
   });
 
-  server.setErrorHandler(async (error: Error & { statusCode?: number }, _request: FastifyRequest, reply: FastifyReply) => {
+  server.setErrorHandler(async (error: Error & { statusCode?: number; validation?: Array<{ message: string }> }, request: FastifyRequest, reply: FastifyReply) => {
     const errorStatusCode = error.statusCode;
     const errorMsg = error.message || String(error);
-    if (errorStatusCode === 400 || errorMsg.includes('Invalid JSON') || errorMsg.includes('Unexpected token') || errorMsg.includes('JSON')) {
-      const apiError = ApiErrorFactory.badRequest('Invalid JSON in request body');
-      return reply.code(400).send(apiError);
+    if (errorStatusCode === 429) {
+      return reply.code(429).send(envelopeError('RATE_LIMIT_EXCEEDED', errorMsg, request.requestId));
     }
-    const apiError = ApiErrorFactory.internalError(errorMsg || 'Unknown error');
-    return reply.code(500).send(apiError);
+    if (error.validation && error.validation.length > 0) {
+      const messages = error.validation.map(e => e.message).join('; ');
+      return reply.code(400).send(envelopeError('VALIDATION_ERROR', messages, request.requestId));
+    }
+    if (errorStatusCode === 400 || errorMsg.includes('Invalid JSON') || errorMsg.includes('Unexpected token') || errorMsg.includes('JSON')) {
+      return reply.code(400).send(envelopeError('BAD_REQUEST', 'Invalid JSON in request body', request.requestId));
+    }
+    return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMsg || 'Unknown error', request.requestId));
   });
 
   server.setNotFoundHandler(async (request, reply) => {
-    const error = ApiErrorFactory.notFound(`Route ${request.method} ${request.url} not found`);
-    reply.code(404).send(error);
+    return reply.code(404).send(envelopeError('NOT_FOUND', `Route ${request.method} ${request.url} not found`, request.requestId));
   });
 
   return server;
