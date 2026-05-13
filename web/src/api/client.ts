@@ -54,6 +54,20 @@ import type {
 
 const API_BASE = '/api';
 
+export interface ApiEnvelopeSuccess<T> {
+  ok: true;
+  data: T;
+  requestId: string;
+}
+
+export interface ApiEnvelopeError {
+  ok: false;
+  error: { code: string; message: string; details?: unknown };
+  requestId: string;
+}
+
+export type ApiEnvelope<T> = ApiEnvelopeSuccess<T> | ApiEnvelopeError;
+
 class ApiClientError extends Error {
   code: string;
   details?: unknown;
@@ -74,17 +88,20 @@ async function parseResponse<T>(response: Response): Promise<T> {
       message: `HTTP ${response.status}: ${response.statusText}`,
     });
   }
-  // Handle 204 No Content - return empty object
-  if (response.status === 204) {
-    return {} as T;
+  if (response.status === 204) return {} as T;
+  const body = await response.json() as ApiEnvelope<T>;
+  if ('ok' in body) {
+    if (body.ok) {
+      return body.data;
+    }
+    throw new ApiClientError(body.error);
   }
-  return response.json();
+  return (body as { data: T }).data;
 }
 
 export async function getHealth(): Promise<HealthResponse> {
   const response = await fetch(`${API_BASE}/health`, { credentials: 'include' });
-  const result = await parseResponse<{ data: HealthResponse }>(response);
-  return result.data;
+  return parseResponse<HealthResponse>(response);
 }
 
 export async function createSession(): Promise<SessionResponse> {
@@ -94,20 +111,17 @@ export async function createSession(): Promise<SessionResponse> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
   });
-  const result = await parseResponse<{ data: SessionResponse }>(response);
-  return result.data;
+  return parseResponse<SessionResponse>(response);
 }
 
 export async function getSession(sessionId: string): Promise<SessionResponse> {
   const response = await fetch(`${API_BASE}/sessions/${sessionId}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: SessionResponse }>(response);
-  return result.data;
+  return parseResponse<SessionResponse>(response);
 }
 
 export async function getTranscripts(sessionId: string): Promise<TranscriptsResponse> {
   const response = await fetch(`${API_BASE}/sessions/${sessionId}/transcripts`, { credentials: 'include' });
-  const result = await parseResponse<{ data: TranscriptsResponse }>(response);
-  return result.data;
+  return parseResponse<TranscriptsResponse>(response);
 }
 
 export async function sendMessage(
@@ -120,26 +134,22 @@ export async function sendMessage(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text } as SendMessageRequest),
   });
-  const result = await parseResponse<{ data: SendMessageResponse }>(response);
-  return result.data;
+  return parseResponse<SendMessageResponse>(response);
 }
 
 export async function getRuns(): Promise<RunsResponse> {
   const response = await fetch(`${API_BASE}/runs`, { credentials: 'include' });
-  const result = await parseResponse<{ data: RunsResponse }>(response);
-  return result.data;
+  return parseResponse<RunsResponse>(response);
 }
 
 export async function getApprovals(): Promise<ApprovalsResponse> {
   const response = await fetch(`${API_BASE}/approvals`, { credentials: 'include' });
-  const result = await parseResponse<{ data: ApprovalsResponse }>(response);
-  return result.data;
+  return parseResponse<ApprovalsResponse>(response);
 }
 
 export async function getApprovalDetail(approvalId: string): Promise<ApprovalDetailResponse> {
   const response = await fetch(`${API_BASE}/approvals/${approvalId}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: ApprovalDetailResponse }>(response);
-  return result.data;
+  return parseResponse<ApprovalDetailResponse>(response);
 }
 
 export async function respondApproval(
@@ -153,8 +163,7 @@ export async function respondApproval(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision, reason } as ApprovalDecisionRequest),
   });
-  const result = await parseResponse<{ data: ApprovalDecisionResponse }>(response);
-  return result.data;
+  return parseResponse<ApprovalDecisionResponse>(response);
 }
 
 export type RunEventCallback = (event: SseRunEvent) => void;
@@ -196,8 +205,8 @@ export async function getSessions(
   if (offset !== undefined) params.append('offset', String(offset));
   const query = params.toString() ? `?${params.toString()}` : '';
   const response = await fetch(`${API_BASE}/sessions${query}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: { items: SessionsResponse['sessions']; total: number } }>(response);
-  return { sessions: result.data.items, total: result.data.total };
+  const result = await parseResponse<{ items: SessionsResponse['sessions']; total: number; limit: number; offset: number; hasMore: boolean }>(response);
+  return { sessions: result.items, total: result.total };
 }
 
 export async function updateSession(
@@ -210,8 +219,7 @@ export async function updateSession(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   });
-  const result = await parseResponse<{ data: SessionResponse }>(response);
-  return result.data;
+  return parseResponse<SessionResponse>(response);
 }
 
 export async function getUsage(
@@ -225,14 +233,14 @@ export async function getUsage(
   if (offset !== undefined) params.append('offset', String(offset));
   const query = params.toString() ? `?${params.toString()}` : '';
   const response = await fetch(`${API_BASE}/usage${query}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: { items: UsageResponse['usages']; total: number } }>(response);
-  return { usages: result.data.items, total: result.data.total };
+  const result = await parseResponse<{ items: UsageResponse['usages']; total: number }>(response);
+  return { usages: result.items, total: result.total };
 }
 
 export async function getSessionUsage(sessionId: string): Promise<SessionUsageResponse> {
   const response = await fetch(`${API_BASE}/sessions/${sessionId}/usage`, { credentials: 'include' });
-  const result = await parseResponse<{ data: SessionUsageResponse['usage'] }>(response);
-  return { usage: result.data };
+  const usage = await parseResponse<SessionUsageResponse['usage']>(response);
+  return { usage };
 }
 
 export async function getLogs(
@@ -252,14 +260,13 @@ export async function getLogs(
   if (offset !== undefined) params.append('offset', String(offset));
   const query = params.toString() ? `?${params.toString()}` : '';
   const response = await fetch(`${API_BASE}/logs${query}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: { items: LogsResponse['logs']; total: number } }>(response);
-  return { logs: result.data.items, total: result.data.total };
+  const result = await parseResponse<{ items: LogsResponse['logs']; total: number }>(response);
+  return { logs: result.items, total: result.total };
 }
 
 export async function getDebugReplay(sessionId: string): Promise<DebugReplayResponse> {
   const response = await fetch(`${API_BASE}/debug/replay/${sessionId}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: DebugReplayResponse }>(response);
-  return result.data;
+  return parseResponse<DebugReplayResponse>(response);
 }
 
 export async function getSessionTimeline(
@@ -272,32 +279,28 @@ export async function getSessionTimeline(
   if (offset !== undefined) params.append('offset', String(offset));
   const query = params.toString() ? `?${params.toString()}` : '';
   const response = await fetch(`${API_BASE}/sessions/${sessionId}/timeline${query}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: { items: ConsoleTimelineEvent[]; total: number } }>(response);
-  return { events: result.data.items, total: result.data.total };
+  const result = await parseResponse<{ items: ConsoleTimelineEvent[]; total: number }>(response);
+  return { events: result.items, total: result.total };
 }
 
 export async function getInstances(): Promise<InstancesResponse> {
   const response = await fetch(`${API_BASE}/instances`, { credentials: 'include' });
-  const result = await parseResponse<{ data: InstancesResponse }>(response);
-  return result.data;
+  return parseResponse<InstancesResponse>(response);
 }
 
 export async function getChannels(): Promise<ChannelsResponse> {
   const response = await fetch(`${API_BASE}/channels`, { credentials: 'include' });
-  const result = await parseResponse<{ data: ChannelsResponse }>(response);
-  return result.data;
+  return parseResponse<ChannelsResponse>(response);
 }
 
 export async function getSkills(): Promise<SkillsResponse> {
   const response = await fetch(`${API_BASE}/skills`, { credentials: 'include' });
-  const result = await parseResponse<{ data: SkillsResponse }>(response);
-  return result.data;
+  return parseResponse<SkillsResponse>(response);
 }
 
 export async function getSettings(): Promise<SettingsResponse> {
   const response = await fetch(`${API_BASE}/settings`, { credentials: 'include' });
-  const result = await parseResponse<{ data: SettingsResponse }>(response);
-  return result.data;
+  return parseResponse<SettingsResponse>(response);
 }
 
 export type SessionTimelineEventCallback = (event: ConsoleTimelineEvent) => void;
@@ -360,8 +363,7 @@ export function subscribeSessionTimeline(
 
 export async function getSetupStatus(): Promise<SetupStatusResponse> {
   const response = await fetch(`${API_BASE}/setup/status`, { credentials: 'include' });
-  const result = await parseResponse<{ data: SetupStatusResponse }>(response);
-  return result.data;
+  return parseResponse<SetupStatusResponse>(response);
 }
 
 export async function setupUser(username: string, password: string): Promise<AuthSuccessResponse> {
@@ -371,8 +373,7 @@ export async function setupUser(username: string, password: string): Promise<Aut
     credentials: 'include',
     body: JSON.stringify({ username, password } as CreateUserRequest),
   });
-  const result = await parseResponse<{ data: AuthSuccessResponse }>(response);
-  return result.data;
+  return parseResponse<AuthSuccessResponse>(response);
 }
 
 export async function login(username: string, password: string): Promise<AuthSuccessResponse> {
@@ -382,8 +383,7 @@ export async function login(username: string, password: string): Promise<AuthSuc
     credentials: 'include',
     body: JSON.stringify({ username, password } as LoginRequest),
   });
-  const result = await parseResponse<{ data: AuthSuccessResponse }>(response);
-  return result.data;
+  return parseResponse<AuthSuccessResponse>(response);
 }
 
 export async function logout(): Promise<{ success: boolean }> {
@@ -391,20 +391,17 @@ export async function logout(): Promise<{ success: boolean }> {
     method: 'POST',
     credentials: 'include',
   });
-  const result = await parseResponse<{ data: { success: boolean } }>(response);
-  return result.data;
+  return parseResponse<{ success: boolean }>(response);
 }
 
 export async function getMe(): Promise<{ user: UserMetadata }> {
   const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
-  const result = await parseResponse<{ data: { user: UserMetadata } }>(response);
-  return result.data;
+  return parseResponse<{ user: UserMetadata }>(response);
 }
 
 export async function getProviders(): Promise<ProviderSummary[]> {
   const response = await fetch(`${API_BASE}/providers`, { credentials: 'include' });
-  const result = await parseResponse<{ data: ProviderSummary[] }>(response);
-  return result.data;
+  return parseResponse<ProviderSummary[]>(response);
 }
 
 export async function createProvider(request: CreateProviderRequest): Promise<ProviderSummary> {
@@ -414,8 +411,7 @@ export async function createProvider(request: CreateProviderRequest): Promise<Pr
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
-  const result = await parseResponse<{ data: ProviderSummary }>(response);
-  return result.data;
+  return parseResponse<ProviderSummary>(response);
 }
 
 export async function updateProvider(
@@ -428,8 +424,7 @@ export async function updateProvider(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
-  const result = await parseResponse<{ data: ProviderSummary }>(response);
-  return result.data;
+  return parseResponse<ProviderSummary>(response);
 }
 
 export async function deleteProvider(providerId: string): Promise<void> {
@@ -451,14 +446,12 @@ export async function testProvider(providerId: string): Promise<TestProviderResp
     method: 'POST',
     credentials: 'include',
   });
-  const result = await parseResponse<{ data: TestProviderResponse }>(response);
-  return result.data;
+  return parseResponse<TestProviderResponse>(response);
 }
 
 export async function getTools(): Promise<ToolsResponse> {
   const response = await fetch(`${API_BASE}/tools`, { credentials: 'include' });
-  const result = await parseResponse<{ data: ToolsResponse }>(response);
-  return result.data;
+  return parseResponse<ToolsResponse>(response);
 }
 
 // =============================================================================
@@ -469,8 +462,7 @@ export async function getAgentConfig(agentId: string): Promise<AgentConfig> {
   const response = await fetch(`${API_BASE}/agents/${agentId}/config`, {
     credentials: 'include',
   });
-  const result = await parseResponse<{ data: AgentConfig }>(response);
-  return result.data;
+  return parseResponse<AgentConfig>(response);
 }
 
 export async function updateAgentConfig(
@@ -484,8 +476,7 @@ export async function updateAgentConfig(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
-  const result = await parseResponse<{ data: AgentGlobalConfig | AgentUserOverride }>(response);
-  return result.data;
+  return parseResponse<AgentGlobalConfig | AgentUserOverride>(response);
 }
 
 export async function resetAgentConfigOverride(
@@ -495,12 +486,10 @@ export async function resetAgentConfigOverride(
     method: 'DELETE',
     credentials: 'include',
   });
-  // DELETE returns 204 No Content on success
   if (response.status === 204) {
     return { success: true };
   }
-  const result = await parseResponse<{ data: ResetAgentConfigOverrideResponse }>(response);
-  return result.data;
+  return parseResponse<ResetAgentConfigOverrideResponse>(response);
 }
 
 export { ApiClientError };
@@ -511,14 +500,12 @@ export { ApiClientError };
 
 export async function listWorkflowDrafts(): Promise<WorkflowDraftResponse[]> {
   const response = await fetch(`${API_BASE}/workflows/drafts`, { credentials: 'include' });
-  const result = await parseResponse<{ data: WorkflowDraftResponse[] }>(response);
-  return result.data;
+  return parseResponse<WorkflowDraftResponse[]>(response);
 }
 
 export async function getWorkflowDraft(draftId: string): Promise<WorkflowDraftResponse> {
   const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: WorkflowDraftResponse }>(response);
-  return result.data;
+  return parseResponse<WorkflowDraftResponse>(response);
 }
 
 export async function createWorkflowDraft(payload: {
@@ -532,8 +519,7 @@ export async function createWorkflowDraft(payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await parseResponse<{ data: WorkflowDraftResponse }>(response);
-  return result.data;
+  return parseResponse<WorkflowDraftResponse>(response);
 }
 
 export async function updateWorkflowDraft(
@@ -546,8 +532,7 @@ export async function updateWorkflowDraft(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await parseResponse<{ data: WorkflowDraftResponse }>(response);
-  return result.data;
+  return parseResponse<WorkflowDraftResponse>(response);
 }
 
 export async function validateWorkflowDraft(draftId: string): Promise<WorkflowValidationResult> {
@@ -555,8 +540,7 @@ export async function validateWorkflowDraft(draftId: string): Promise<WorkflowVa
     method: 'POST',
     credentials: 'include',
   });
-  const result = await parseResponse<{ data: WorkflowValidationResult }>(response);
-  return result.data;
+  return parseResponse<WorkflowValidationResult>(response);
 }
 
 export async function publishWorkflowDraft(draftId: string): Promise<WorkflowDefinitionResponse> {
@@ -564,8 +548,7 @@ export async function publishWorkflowDraft(draftId: string): Promise<WorkflowDef
     method: 'POST',
     credentials: 'include',
   });
-  const result = await parseResponse<{ data: WorkflowDefinitionResponse }>(response);
-  return result.data;
+  return parseResponse<WorkflowDefinitionResponse>(response);
 }
 
 export async function startWorkflowRun(
@@ -578,14 +561,12 @@ export async function startWorkflowRun(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ definitionId, inputData }),
   });
-  const result = await parseResponse<{ data: WorkflowRunResponse }>(response);
-  return result.data;
+  return parseResponse<WorkflowRunResponse>(response);
 }
 
 export async function listWorkflowDefinitions(): Promise<WorkflowDefinitionResponse[]> {
   const response = await fetch(`${API_BASE}/workflows/definitions`, { credentials: 'include' });
-  const result = await parseResponse<{ data: WorkflowDefinitionResponse[] }>(response);
-  return result.data;
+  return parseResponse<WorkflowDefinitionResponse[]>(response);
 }
 
 // Memory API
@@ -596,14 +577,13 @@ export async function getMemories(params?: { query?: string; type?: string; limi
   if (params?.limit) searchParams.set('limit', String(params.limit));
   const qs = searchParams.toString();
   const response = await fetch(`${API_BASE}/memory${qs ? `?${qs}` : ''}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: MemoriesResponse }>(response);
-  return result.data;
+  return parseResponse<MemoriesResponse>(response);
 }
 
 export async function getMemory(memoryId: string): Promise<MemoryItem> {
   const response = await fetch(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: MemoryDetailResponse }>(response);
-  return result.data.memory;
+  const detail = await parseResponse<MemoryDetailResponse>(response);
+  return detail.memory;
 }
 
 export async function deleteMemory(memoryId: string): Promise<DeleteMemoryResponse> {
@@ -611,18 +591,15 @@ export async function deleteMemory(memoryId: string): Promise<DeleteMemoryRespon
     method: 'DELETE',
     credentials: 'include',
   });
-  const result = await parseResponse<{ data: DeleteMemoryResponse }>(response);
-  return result.data;
+  return parseResponse<DeleteMemoryResponse>(response);
 }
 
 export async function getPlannerRunEvents(plannerRunId: string): Promise<PlannerRunEventsResponse> {
   const response = await fetch(`${API_BASE}/planner-runs/${plannerRunId}/events`, { credentials: 'include' });
-  const result = await parseResponse<{ data: PlannerRunEventsResponse }>(response);
-  return result.data;
+  return parseResponse<PlannerRunEventsResponse>(response);
 }
 
 export async function getPlannerRunSummary(plannerRunId: string): Promise<PlannerRunSummaryResponse> {
   const response = await fetch(`${API_BASE}/planner-runs/${plannerRunId}/summary`, { credentials: 'include' });
-  const result = await parseResponse<{ data: PlannerRunSummaryResponse }>(response);
-  return result.data;
+  return parseResponse<PlannerRunSummaryResponse>(response);
 }
