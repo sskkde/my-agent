@@ -446,6 +446,53 @@ Access the web UI to monitor:
 
 ---
 
+## API Auth Token
+
+The platform supports optional Bearer token authentication for API access. This is useful for programmatic access (scripts, CI/CD, integrations) where cookie-based session auth is not practical.
+
+### Enabling API Token Auth
+
+Set the `API_AUTH_TOKEN` environment variable:
+
+```bash
+# In .env or environment
+API_AUTH_TOKEN=your-secure-token-here
+```
+
+When set, all API requests (except exempt paths) must include the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer your-secure-token-here" http://localhost:3003/api/sessions
+```
+
+### Exempt Paths
+
+The following paths do not require token auth:
+
+- `GET /api/health` — Liveness check
+- `GET /api/health/ready` — Readiness check
+- `GET /api/docs` — Swagger UI
+- `GET /api/docs/json` — OpenAPI JSON spec
+- `POST /api/setup/user` — Initial user setup
+- `GET /api/setup/status` — Setup status
+- `POST /api/auth/login` — Login
+- `POST /api/auth/logout` — Logout
+- `GET /api/tools` — Tool catalog
+- `/api/webhooks/*` — Webhook endpoints
+
+### Disabling API Token Auth
+
+To disable, simply unset `API_AUTH_TOKEN` or set it to an empty string. When not set, the platform behaves as before — all authenticated endpoints require cookie session auth only.
+
+### Security Notes
+
+- API token auth is **optional** and **off by default** — local development is unaffected.
+- Cookie session auth and Bearer token auth can coexist — browser users use cookies, API clients use tokens.
+- This is a simple static token check, not RBAC. For role-based access control, see P6/P7 roadmap.
+- Use a strong, random token in production (e.g., `openssl rand -hex 32`).
+
+---
+
 ## Troubleshooting
 
 See the [Troubleshooting Guide](../troubleshooting.md) for common issues and solutions.
