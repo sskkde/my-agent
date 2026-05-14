@@ -1,6 +1,6 @@
 # Phase 4 Automation Product Beta — Demo Script
 
-This script demonstrates the complete Phase 4 automation capabilities.
+This script demonstrates the complete Phase 4 automation capabilities and Phase 5 product experience.
 
 ## Prerequisites
 
@@ -271,3 +271,78 @@ cd web && npm run build
 4. **Full Visibility**: Observability console for run inspection
 5. **Safe Replay**: Preview past runs with zero side effects
 6. **Failure Handling**: DLQ captures and preserves failed operations
+
+---
+
+## Phase 5 Product Experience Demo
+
+### Demo Path A: Direct Chat
+
+1. Open Web UI at http://localhost:3002
+2. Navigate to **Session Console** tab
+3. Type a message and press Enter
+4. Observe the response streaming via SSE
+5. Try slash commands: `/help`, `/status`, `/cancel`
+
+### Demo Path B: Complex Task + Approval
+
+1. In Session Console, send: "Create a file called test.txt with hello world"
+2. Observe the approval card appearing in the chat
+3. Click **Approve** to allow the write operation
+4. Observe the tool execution result in chat
+
+### Demo Path C: Runs Console
+
+1. Navigate to **Agent Monitor** tab
+2. Observe runs grouped by status (Active, Waiting, Terminal)
+3. Click on a run to view details
+4. For active runs, use the **Cancel** button
+5. Observe status transition from Active → Cancelled
+
+### Demo Path D: Timeline / Observability
+
+1. Navigate to **Observability** tab
+2. View run list with status filters
+3. Click on a run to view timeline events
+4. Use **Replay Preview** button for safe read-only replay
+5. Observe failure reasons for failed runs
+
+### Demo Path E: Settings
+
+1. Navigate to **Settings** tab
+2. View current settings (local mode, retention days)
+3. Use **Provider Manager** to add/edit LLM providers
+4. Test provider connection with the **Test** button
+
+### Demo Path F: Workflows / Triggers / Connectors
+
+1. Navigate to **Workflows** tab
+2. Create a new workflow draft
+3. Add steps to the workflow
+4. Validate and publish the workflow
+5. Navigate to **Triggers** tab to configure schedule/webhook triggers
+6. Navigate to **Connectors** tab to view connector instances
+
+### API Auth Token Demo
+
+Enable API token auth and test with curl:
+
+```bash
+# Start API with token auth
+API_AUTH_TOKEN=local-demo-token npm run start:api
+
+# Health check works without token
+curl http://localhost:3003/api/health
+
+# Protected endpoint requires token
+curl -H "Authorization: Bearer local-demo-token" http://localhost:3003/api/sessions
+
+# Without token returns 401
+curl http://localhost:3003/api/sessions
+```
+
+### P5 Verification
+
+```bash
+npm run test:p5
+```
