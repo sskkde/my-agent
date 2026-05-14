@@ -31,6 +31,7 @@ import { registerConnectorRoutes } from './routes/connectors.js';
 import { registerPlannerRunRoutes } from './routes/planner-runs.js';
 import { registerObservabilityRoutes } from './routes/observability.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
+import { registerAuthToken } from './middleware/auth-token.js';
 import { registerRequestIdMiddleware } from './middleware/request-id.js';
 import { registerRateLimitMiddleware } from './middleware/rate-limit.js';
 import { createApiContext, type ApiContext } from './context.js';
@@ -104,6 +105,8 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
         '/api/docs/*',
       ],
     });
+
+    await registerAuthToken(server, { token: process.env.API_AUTH_TOKEN });
 
     await registerSessionsRoutes(server, context);
     registerStatusRoutes(server, context);

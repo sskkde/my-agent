@@ -1897,6 +1897,10 @@ components:
       in: cookie
       name: agent-platform-session
       description: Session cookie set after login
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: API token for programmatic access (set API_AUTH_TOKEN env var to enable)
 
   parameters:
     sessionId:

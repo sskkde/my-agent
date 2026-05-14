@@ -200,7 +200,12 @@ All test files referenced in this matrix (sorted by directory):
 | `web/src/components/` | `RunDetailDrawer.test.tsx` | 30 |
 | `web/src/components/` | `TimelineView.test.tsx` | 31 |
 | `web/src/components/` | `EventFilter.test.tsx` | 32 |
+| `tests/integration/api/` | `auth-token.test.ts` | 33 |
+| `tests/integration/api/` | `compression.test.ts` | 34 |
+| `tests/integration/api/` | `health-check.test.ts` | 35 |
+| `tests/integration/api/` | `swagger-ui.test.ts` | 36 |
+| `tests/e2e/` | `flow-17-p5-product-journey.test.ts` | 37 |
 
 ---
 
-> **Note**: Matrix updated 2026-05-13 to reflect Phase 5 completion. Phase 5 added 18 new golden paths for API productization and UI components. Total rows expanded from 14 to 32. Total cells: 192 (32 paths × 6 test levels). Integration column at 68.8% (22/32). Web column at 46.9% (15/32). Architecture column at 50.0% (16/32).
+> **Note**: Matrix updated 2026-05-14 to reflect Phase 5 completion fix. Phase 5 added 23 new golden paths for API productization, UI components, and product journey. Total rows expanded from 14 to 37. Integration column at 75.7% (28/37). Web column at 48.6% (18/37). Architecture column at 51.4% (19/37).
