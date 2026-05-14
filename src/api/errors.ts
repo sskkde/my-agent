@@ -1,81 +1,40 @@
 import type { ApiError } from './types.js';
+import { envelopeError, type ApiErrorResponse } from './response-envelope.js';
 
 export class ApiErrorFactory {
-  static notFound(message = 'Resource not found'): ApiError {
-    return {
-      error: {
-        code: 'NOT_FOUND',
-        message
-      }
-    };
+  static notFound(message = 'Resource not found', requestId?: string): ApiErrorResponse {
+    return envelopeError('NOT_FOUND', message, requestId);
   }
 
-  static badRequest(message: string, details?: unknown): ApiError {
-    return {
-      error: {
-        code: 'BAD_REQUEST',
-        message,
-        details
-      }
-    };
+  static badRequest(message: string, details?: unknown, requestId?: string): ApiErrorResponse {
+    return envelopeError('BAD_REQUEST', message, requestId, details);
   }
 
-  static internalError(message = 'Internal server error'): ApiError {
-    return {
-      error: {
-        code: 'INTERNAL_ERROR',
-        message
-      }
-    };
+  static internalError(message = 'Internal server error', requestId?: string): ApiErrorResponse {
+    return envelopeError('INTERNAL_ERROR', message, requestId);
   }
 
-  static unauthorized(message = 'Unauthorized'): ApiError {
-    return {
-      error: {
-        code: 'UNAUTHORIZED',
-        message
-      }
-    };
+  static unauthorized(message = 'Unauthorized', requestId?: string): ApiErrorResponse {
+    return envelopeError('UNAUTHORIZED', message, requestId);
   }
 
-  static forbidden(message = 'Forbidden'): ApiError {
-    return {
-      error: {
-        code: 'FORBIDDEN',
-        message
-      }
-    };
+  static forbidden(message = 'Forbidden', requestId?: string): ApiErrorResponse {
+    return envelopeError('FORBIDDEN', message, requestId);
   }
 
-  static conflict(message = 'Conflict'): ApiError {
-    return {
-      error: {
-        code: 'CONFLICT',
-        message
-      }
-    };
+  static conflict(message = 'Conflict', requestId?: string): ApiErrorResponse {
+    return envelopeError('CONFLICT', message, requestId);
   }
 
-  static serviceUnavailable(message = 'Service unavailable'): ApiError {
-    return {
-      error: {
-        code: 'SERVICE_UNAVAILABLE',
-        message
-      }
-    };
+  static serviceUnavailable(message = 'Service unavailable', requestId?: string): ApiErrorResponse {
+    return envelopeError('SERVICE_UNAVAILABLE', message, requestId);
   }
 }
 
-export function errorToJson(error: ApiError): string {
+export function errorToJson(error: ApiError | ApiErrorResponse): string {
   return JSON.stringify(error);
 }
 
-export function createErrorResponse(code: string, message: string, details?: unknown): ApiError {
-  return {
-    error: {
-      code,
-      message,
-      details
-    }
-  };
+export function createErrorResponse(code: string, message: string, details?: unknown, requestId?: string): ApiErrorResponse {
+  return envelopeError(code, message, requestId, details);
 }

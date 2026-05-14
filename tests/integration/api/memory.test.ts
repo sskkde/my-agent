@@ -476,7 +476,7 @@ describe('Memory Management API', () => {
       });
       expect(response.status).toBe(400);
       const body = await response.json() as { error: { code: string } };
-      expect(body.error.code).toBe('BAD_REQUEST');
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 for missing turnId', async () => {
@@ -487,7 +487,7 @@ describe('Memory Management API', () => {
       });
       expect(response.status).toBe(400);
       const body = await response.json() as { error: { code: string } };
-      expect(body.error.code).toBe('BAD_REQUEST');
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 404 for non-existent session', async () => {

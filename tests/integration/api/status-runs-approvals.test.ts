@@ -21,14 +21,15 @@ describe('Status, Approvals, and Runs API', () => {
       const response = await fetch(`${baseUrl}/api/health`);
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { status: string; modules: Record<string, { status: string; message?: string }>; timestamp: string };
-      expect(body.status).toBeDefined();
-      expect(body.modules).toBeDefined();
-      expect(body.timestamp).toBeDefined();
-      expect(body.modules.approvals).toBeDefined();
-      expect(body.modules.runs).toBeDefined();
-      expect(body.modules.planner).toBeDefined();
-      expect(body.modules.kernel).toBeDefined();
+      const body = await response.json() as { ok: boolean; data: { status: string; modules: Record<string, { status: string; message?: string }>; timestamp: string } };
+      expect(body.ok).toBe(true);
+      expect(body.data.status).toBeDefined();
+      expect(body.data.modules).toBeDefined();
+      expect(body.data.timestamp).toBeDefined();
+      expect(body.data.modules.approvals).toBeDefined();
+      expect(body.data.modules.runs).toBeDefined();
+      expect(body.data.modules.planner).toBeDefined();
+      expect(body.data.modules.kernel).toBeDefined();
     });
   });
 
@@ -84,9 +85,10 @@ describe('Status, Approvals, and Runs API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { runs: unknown[]; total: number };
-      expect(body.runs).toEqual([]);
-      expect(body.total).toBe(0);
+      const body = await response.json() as { ok: boolean; data: { runs: unknown[]; total: number } };
+      expect(body.ok).toBe(true);
+      expect(body.data.runs).toEqual([]);
+      expect(body.data.total).toBe(0);
     });
   });
 

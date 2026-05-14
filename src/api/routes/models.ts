@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
 import type { ModelsResponse, ProviderSummary } from '../types.js';
 import type { ProviderConfigSanitized } from '../../storage/provider-config-store.js';
 
@@ -31,8 +31,7 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
     async (request: FastifyRequest<{ Querystring: { sessionId?: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { sessionId } = request.query;
@@ -112,7 +111,7 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
         }
       }
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 }

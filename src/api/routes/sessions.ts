@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
+import { sessionIdParamsSchema } from '../schemas/shared.js';
 import type {
   SessionResponse,
   TranscriptsResponse,
@@ -90,9 +91,8 @@ function canAccessSession(request: FastifyRequest, session: Session): boolean {
   return !userId || session.userId === userId;
 }
 
-function sendSessionAccessDenied(reply: FastifyReply): FastifyReply {
-  const error = ApiErrorFactory.forbidden('Access denied to this session');
-  return reply.code(403).send(error);
+function sendSessionAccessDenied(request: FastifyRequest, reply: FastifyReply): FastifyReply {
+  return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this session', request.requestId));
 }
 
 export async function registerSessionsRoutes(server: FastifyInstance, context: ApiContext): Promise<void> {
@@ -129,7 +129,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       };
 
       const response: SessionResponse = { session: sessionInfo };
-      return reply.code(201).send({ data: response });
+      return reply.code(201).send(success(response, request.requestId));
     }
   );
 
@@ -141,9 +141,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const offset = parseOffset(request.query.offset);
 
       if (status && !['active', 'archived', 'closed'].includes(status)) {
-        const error = ApiErrorFactory.badRequest('Invalid status filter. Must be one of: active, archived, closed');
-        error.error.code = 'INVALID_STATUS_FILTER';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_STATUS_FILTER', 'Invalid status filter. Must be one of: active, archived, closed', request.requestId));
       }
 
       let sessions: Session[] = [];
@@ -167,9 +165,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         total,
         limit,
         offset,
+        hasMore: offset + items.length < total,
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
@@ -180,11 +179,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
       if (!canAccessSession(request, persistedSession)) {
-        return sendSessionAccessDenied(reply);
+        return sendSessionAccessDenied(request, reply);
       }
 
       const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user';
@@ -219,7 +217,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         };
 
         const response: SessionResponse = { session: sessionInfo };
-        return reply.code(200).send({ data: response });
+        return reply.code(200).send(success(response, request.requestId));
       }
 
       const sessionInfo = {
@@ -234,7 +232,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       };
 
       const response: SessionResponse = { session: sessionInfo };
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
@@ -245,11 +243,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
       if (!canAccessSession(request, persistedSession)) {
-        return sendSessionAccessDenied(reply);
+        return sendSessionAccessDenied(request, reply);
       }
 
       let transcripts: TranscriptTurn[] = [];
@@ -262,34 +259,42 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
 
       const response: TranscriptsResponse = { transcripts, total };
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
   server.post<{ Params: SendMessageParams; Body: SendMessageRequest }>(
     '/api/sessions/:sessionId/messages',
+    {
+      schema: {
+        params: sessionIdParamsSchema,
+        body: {
+          type: 'object',
+          required: ['text'],
+          properties: {
+            text: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Params: SendMessageParams; Body: SendMessageRequest }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
-      const { text } = request.body || {};
+      const { text } = request.body;
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
       if (!canAccessSession(request, persistedSession)) {
-        return sendSessionAccessDenied(reply);
+        return sendSessionAccessDenied(request, reply);
       }
 
-      if (!text || typeof text !== 'string' || text.trim().length === 0) {
-        const error = ApiErrorFactory.badRequest('Message text is required and cannot be empty or whitespace');
-        error.error.code = 'INVALID_MESSAGE_TEXT';
-        return reply.code(400).send(error);
+      if (text.trim().length === 0) {
+        return reply.code(400).send(envelopeError('INVALID_MESSAGE_TEXT', 'Message text is required and cannot be empty or whitespace', request.requestId));
       }
 
       if (!('gateway' in context)) {
-        const error = ApiErrorFactory.internalError('Gateway not available');
-        return reply.code(500).send(error);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Gateway not available', request.requestId));
       }
 
       const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user';
@@ -393,7 +398,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         correlationId: envelope.envelopeId,
         envelopeId: envelope.envelopeId,
       };
-      return reply.code(202).send({ data: response });
+      return reply.code(202).send(success(response, request.requestId));
     }
   );
 
@@ -404,11 +409,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
       if (!canAccessSession(request, persistedSession)) {
-        return sendSessionAccessDenied(reply);
+        return sendSessionAccessDenied(request, reply);
       }
 
       const now = new Date().toISOString();
@@ -428,7 +432,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         timeline: recentTimeline,
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
@@ -440,23 +444,18 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
       if (!canAccessSession(request, persistedSession)) {
-        return sendSessionAccessDenied(reply);
+        return sendSessionAccessDenied(request, reply);
       }
 
       if (status && !['active', 'archived', 'closed'].includes(status)) {
-        const error = ApiErrorFactory.badRequest('Invalid status. Must be one of: active, archived, closed');
-        error.error.code = 'INVALID_STATUS';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_STATUS', 'Invalid status. Must be one of: active, archived, closed', request.requestId));
       }
 
       if (title !== undefined && (typeof title !== 'string' || title.trim().length === 0)) {
-        const error = ApiErrorFactory.badRequest('Title must be a non-empty string');
-        error.error.code = 'INVALID_TITLE';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_TITLE', 'Title must be a non-empty string', request.requestId));
       }
 
       if (status) {
@@ -468,15 +467,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const updatedSession = sessionStore?.getById(sessionId);
       if (!updatedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
 
       const response = {
         session: sessionToConsoleSessionInfo(updatedSession),
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
@@ -490,11 +488,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
       if (!canAccessSession(request, persistedSession)) {
-        return sendSessionAccessDenied(reply);
+        return sendSessionAccessDenied(request, reply);
       }
 
       let eventTypes: ConsoleTimelineEventType[] | undefined;
@@ -520,9 +517,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         total,
         limit,
         offset,
+        hasMore: offset + events.length < total,
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
@@ -535,11 +533,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
       if (!canAccessSession(request, persistedSession)) {
-        return sendSessionAccessDenied(reply);
+        return sendSessionAccessDenied(request, reply);
       }
 
       reply.raw.writeHead(200, {
@@ -620,37 +617,43 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
   server.patch<{ Params: { sessionId: string }; Body: SetModelRequest }>(
     '/api/sessions/:sessionId/model',
+    {
+      schema: {
+        params: sessionIdParamsSchema,
+        body: {
+          type: 'object',
+          required: ['providerId', 'model'],
+          properties: {
+            providerId: { type: 'string', minLength: 1 },
+            model: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: SetModelRequest }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
-      const { providerId, model } = request.body || {};
+      const { providerId, model } = request.body;
 
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const persistedSession = sessionStore?.getById(sessionId);
       if (!persistedSession) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
 
       if (persistedSession.userId !== userId) {
-        const error = ApiErrorFactory.forbidden('Access denied to this session');
-        return reply.code(403).send(error);
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this session', request.requestId));
       }
 
-      if (!providerId || typeof providerId !== 'string' || providerId.trim().length === 0) {
-        const error = ApiErrorFactory.badRequest('providerId is required and must be a non-empty string');
-        error.error.code = 'INVALID_PROVIDER_ID';
-        return reply.code(400).send(error);
+      if (providerId.trim().length === 0) {
+        return reply.code(400).send(envelopeError('INVALID_PROVIDER_ID', 'providerId is required and must be a non-empty string', request.requestId));
       }
 
-      if (!model || typeof model !== 'string' || model.trim().length === 0) {
-        const error = ApiErrorFactory.badRequest('model is required and must be a non-empty string');
-        error.error.code = 'INVALID_MODEL';
-        return reply.code(400).send(error);
+      if (model.trim().length === 0) {
+        return reply.code(400).send(envelopeError('INVALID_MODEL', 'model is required and must be a non-empty string', request.requestId));
       }
 
       const providerConfigStore: ProviderConfigStore | undefined = context.providerConfigStore;
@@ -660,39 +663,33 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       if (!isEnvProvider && providerConfigStore) {
         const provider = providerConfigStore.getById(providerId);
         if (!provider) {
-          const error = ApiErrorFactory.notFound('Provider not found');
-          return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Provider not found', request.requestId));
         }
 
         if (provider.userId !== userId) {
-          const error = ApiErrorFactory.forbidden('Access denied to this provider');
-          return reply.code(403).send(error);
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this provider', request.requestId));
         }
 
         if (!provider.enabled) {
-          const error = ApiErrorFactory.badRequest('Provider is disabled');
-          error.error.code = 'PROVIDER_DISABLED';
-          return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('PROVIDER_DISABLED', 'Provider is disabled', request.requestId));
         }
       }
 
-      const success = sessionStore?.setModel(sessionId, model.trim(), providerId);
-      if (!success) {
-        const error = ApiErrorFactory.internalError('Failed to set model for session');
-        return reply.code(500).send(error);
+      const modelSetSuccess = sessionStore?.setModel(sessionId, model.trim(), providerId);
+      if (!modelSetSuccess) {
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Failed to set model for session', request.requestId));
       }
 
       const updatedSession = sessionStore?.getById(sessionId);
       if (!updatedSession) {
-        const error = ApiErrorFactory.notFound('Session not found after update');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found after update', request.requestId));
       }
 
       const response = {
         session: sessionToConsoleSessionInfo(updatedSession),
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 }

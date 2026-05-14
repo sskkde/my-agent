@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
+import { scheduleIdParamsSchema, webhookIdParamsSchema } from '../schemas/shared.js';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { generateId } from '../../shared/ids.js';
 
@@ -113,27 +114,29 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
   const { stores } = context;
   const { scheduleTriggerStore, webhookTriggerStore, webhookDeliveryStore, eventStore } = stores;
 
-  // POST /api/triggers/schedules - Create a schedule trigger
+  // POST /api/triggers/schedules
   server.post<{ Body: CreateScheduleTriggerRequest }>(
     '/api/triggers/schedules',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['name', 'schedulePattern'],
+          properties: {
+            name: { type: 'string', minLength: 1 },
+            schedulePattern: { type: 'string', minLength: 1 },
+            maxRuns: { type: 'integer', minimum: 1 },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Body: CreateScheduleTriggerRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
-      const { name, schedulePattern, maxRuns } = request.body || {};
-
-      if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        const error = ApiErrorFactory.badRequest('name is required and must be a non-empty string');
-        return reply.code(400).send(error);
-      }
-
-      if (!schedulePattern || typeof schedulePattern !== 'string') {
-        const error = ApiErrorFactory.badRequest('schedulePattern is required');
-        return reply.code(400).send(error);
-      }
+      const { name, schedulePattern, maxRuns } = request.body;
 
       const scheduleId = generateId(SCHEDULE_ID_PREFIX);
       const trigger = scheduleTriggerStore.create({
@@ -144,101 +147,110 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
         maxRuns,
       });
 
-      return reply.code(201).send({ data: mapScheduleTriggerToResponse(trigger) });
+      return reply.code(201).send(success(mapScheduleTriggerToResponse(trigger), request.requestId));
     }
   );
 
-  // GET /api/triggers/schedules - List schedule triggers for current user
+  // GET /api/triggers/schedules
   server.get(
     '/api/triggers/schedules',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const triggers = scheduleTriggerStore.findByOwner(userId);
       const response = triggers.map(mapScheduleTriggerToResponse);
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
-  // GET /api/triggers/schedules/:scheduleId - Get a specific schedule trigger
+  // GET /api/triggers/schedules/:scheduleId
   server.get<{ Params: { scheduleId: string } }>(
     '/api/triggers/schedules/:scheduleId',
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { scheduleId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { scheduleId } = request.params;
       const trigger = scheduleTriggerStore.getById(scheduleId);
 
       if (!trigger || trigger.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Schedule trigger not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Schedule trigger not found', request.requestId));
       }
 
-      return reply.code(200).send({ data: mapScheduleTriggerToResponse(trigger) });
+      return reply.code(200).send(success(mapScheduleTriggerToResponse(trigger), request.requestId));
     }
   );
 
-  // PATCH /api/triggers/schedules/:scheduleId - Update a schedule trigger
+  // PATCH /api/triggers/schedules/:scheduleId
   server.patch<{ Params: { scheduleId: string }; Body: UpdateScheduleTriggerRequest }>(
     '/api/triggers/schedules/:scheduleId',
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+        body: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['active', 'paused'] },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Params: { scheduleId: string }; Body: UpdateScheduleTriggerRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { scheduleId } = request.params;
       const existing = scheduleTriggerStore.getById(scheduleId);
 
       if (!existing || existing.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Schedule trigger not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Schedule trigger not found', request.requestId));
       }
 
-      const { status } = request.body || {};
-
-      if (status !== undefined && !['active', 'paused'].includes(status)) {
-        const error = ApiErrorFactory.badRequest('status must be "active" or "paused"');
-        return reply.code(400).send(error);
-      }
+      const { status } = request.body;
 
       if (status) {
         const updated = scheduleTriggerStore.updateStatus(scheduleId, status);
         if (updated) {
-          return reply.code(200).send({ data: mapScheduleTriggerToResponse(updated) });
+          return reply.code(200).send(success(mapScheduleTriggerToResponse(updated), request.requestId));
         }
       }
 
-      return reply.code(200).send({ data: mapScheduleTriggerToResponse(existing) });
+      return reply.code(200).send(success(mapScheduleTriggerToResponse(existing), request.requestId));
     }
   );
 
-  // DELETE /api/triggers/schedules/:scheduleId - Delete a schedule trigger
+  // DELETE /api/triggers/schedules/:scheduleId
   server.delete<{ Params: { scheduleId: string } }>(
     '/api/triggers/schedules/:scheduleId',
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { scheduleId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { scheduleId } = request.params;
       const existing = scheduleTriggerStore.getById(scheduleId);
 
       if (!existing || existing.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Schedule trigger not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Schedule trigger not found', request.requestId));
       }
 
       scheduleTriggerStore.delete(scheduleId);
@@ -246,22 +258,27 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
     }
   );
 
-  // POST /api/triggers/webhooks - Create a webhook trigger
+  // POST /api/triggers/webhooks
   server.post<{ Body: CreateWebhookTriggerRequest }>(
     '/api/triggers/webhooks',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Body: CreateWebhookTriggerRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
-      const { name } = request.body || {};
-
-      if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        const error = ApiErrorFactory.badRequest('name is required and must be a non-empty string');
-        return reply.code(400).send(error);
-      }
+      const { name } = request.body;
 
       const webhookId = generateId(WEBHOOK_ID_PREFIX);
       const { secret, last4 } = generateWebhookSecret();
@@ -279,101 +296,110 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
         secret,
       };
 
-      return reply.code(201).send({ data: response });
+      return reply.code(201).send(success(response, request.requestId));
     }
   );
 
-  // GET /api/triggers/webhooks - List webhook triggers for current user
+  // GET /api/triggers/webhooks
   server.get(
     '/api/triggers/webhooks',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const triggers = webhookTriggerStore.findByOwner(userId);
       const response = triggers.map(mapWebhookTriggerToResponse);
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
-  // GET /api/triggers/webhooks/:webhookId - Get a specific webhook trigger
+  // GET /api/triggers/webhooks/:webhookId
   server.get<{ Params: { webhookId: string } }>(
     '/api/triggers/webhooks/:webhookId',
+    {
+      schema: {
+        params: webhookIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { webhookId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { webhookId } = request.params;
       const trigger = webhookTriggerStore.getById(webhookId);
 
       if (!trigger || trigger.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Webhook trigger not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Webhook trigger not found', request.requestId));
       }
 
-      return reply.code(200).send({ data: mapWebhookTriggerToResponse(trigger) });
+      return reply.code(200).send(success(mapWebhookTriggerToResponse(trigger), request.requestId));
     }
   );
 
-  // PATCH /api/triggers/webhooks/:webhookId - Update a webhook trigger
+  // PATCH /api/triggers/webhooks/:webhookId
   server.patch<{ Params: { webhookId: string }; Body: UpdateWebhookTriggerRequest }>(
     '/api/triggers/webhooks/:webhookId',
+    {
+      schema: {
+        params: webhookIdParamsSchema,
+        body: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['active', 'paused'] },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Params: { webhookId: string }; Body: UpdateWebhookTriggerRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { webhookId } = request.params;
       const existing = webhookTriggerStore.getById(webhookId);
 
       if (!existing || existing.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Webhook trigger not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Webhook trigger not found', request.requestId));
       }
 
-      const { status } = request.body || {};
-
-      if (status !== undefined && !['active', 'paused'].includes(status)) {
-        const error = ApiErrorFactory.badRequest('status must be "active" or "paused"');
-        return reply.code(400).send(error);
-      }
+      const { status } = request.body;
 
       if (status) {
         const updated = webhookTriggerStore.updateStatus(webhookId, status);
         if (updated) {
-          return reply.code(200).send({ data: mapWebhookTriggerToResponse(updated) });
+          return reply.code(200).send(success(mapWebhookTriggerToResponse(updated), request.requestId));
         }
       }
 
-      return reply.code(200).send({ data: mapWebhookTriggerToResponse(existing) });
+      return reply.code(200).send(success(mapWebhookTriggerToResponse(existing), request.requestId));
     }
   );
 
-  // DELETE /api/triggers/webhooks/:webhookId - Delete a webhook trigger
+  // DELETE /api/triggers/webhooks/:webhookId
   server.delete<{ Params: { webhookId: string } }>(
     '/api/triggers/webhooks/:webhookId',
+    {
+      schema: {
+        params: webhookIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { webhookId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { webhookId } = request.params;
       const existing = webhookTriggerStore.getById(webhookId);
 
       if (!existing || existing.ownerUserId !== userId) {
-        const error = ApiErrorFactory.notFound('Webhook trigger not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Webhook trigger not found', request.requestId));
       }
 
       webhookTriggerStore.delete(webhookId);
@@ -381,42 +407,43 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
     }
   );
 
-  // POST /api/webhooks/:webhookId/deliver - Receive webhook delivery (no session auth, uses HMAC)
+  // POST /api/webhooks/:webhookId/deliver (no session auth, uses HMAC)
   server.post<{ Params: { webhookId: string }; Body: unknown }>(
     '/api/webhooks/:webhookId/deliver',
+    {
+      schema: {
+        params: webhookIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { webhookId: string }; Body: unknown }>, reply: FastifyReply) => {
       const { webhookId } = request.params;
       const trigger = webhookTriggerStore.getById(webhookId);
 
       if (!trigger) {
-        const error = ApiErrorFactory.notFound('Webhook trigger not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Webhook trigger not found', request.requestId));
       }
 
       if (trigger.status !== 'active') {
-        const error = ApiErrorFactory.forbidden('Webhook trigger is not active');
-        return reply.code(403).send(error);
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Webhook trigger is not active', request.requestId));
       }
 
       const signature = request.headers['x-hub-signature-256'] as string | undefined
         || request.headers['x-signature-256'] as string | undefined;
 
       if (!signature) {
-        const error = ApiErrorFactory.unauthorized('Missing signature header');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Missing signature header', request.requestId));
       }
 
       const rawBody = JSON.stringify(request.body);
       const secret = trigger.secretHash;
 
       if (!verifyHmacSignature(secret, rawBody, signature)) {
-        const error = ApiErrorFactory.unauthorized('Invalid signature');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid signature', request.requestId));
       }
 
       const deliveryId = request.headers['x-delivery-id'] as string | undefined;
       if (deliveryId && webhookDeliveryStore.exists(webhookId, deliveryId)) {
-        return reply.code(200).send({ data: { status: 'duplicate', message: 'Delivery already processed' } });
+        return reply.code(200).send(success({ status: 'duplicate', message: 'Delivery already processed' }, request.requestId));
       }
 
       const eventId = generateId('evt_');
@@ -448,7 +475,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
         });
       }
 
-      return reply.code(200).send({ data: { status: 'accepted', eventId } });
+      return reply.code(200).send(success({ status: 'accepted', eventId }, request.requestId));
     }
   );
 }

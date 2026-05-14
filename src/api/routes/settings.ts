@@ -1,9 +1,10 @@
-import type { FastifyInstance } from 'fastify';
-import type { SettingsConfig, SettingsResponse } from '../types.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { SettingsConfig } from '../types.js';
 import type { ApiContext } from '../context.js';
+import { success } from '../response-envelope.js';
 
 export function registerSettingsRoutes(server: FastifyInstance, _context: ApiContext): void {
-  server.get<{ Reply: { data: SettingsResponse } }>('/api/settings', async (): Promise<{ data: SettingsResponse }> => {
+  server.get('/api/settings', async (request: FastifyRequest, reply: FastifyReply) => {
     const settings: SettingsConfig = {
       localOnly: true,
       providers: {
@@ -17,6 +18,6 @@ export function registerSettingsRoutes(server: FastifyInstance, _context: ApiCon
       retentionDays: 30,
     };
 
-    return { data: { settings } };
+    return reply.code(200).send(success({ settings }, request.requestId));
   });
 }

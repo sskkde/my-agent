@@ -104,12 +104,13 @@ describe('Planner Run Timeline / Summary API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { events: Array<Record<string, unknown>> };
-      expect(body.events).toBeDefined();
-      expect(Array.isArray(body.events)).toBe(true);
-      expect(body.events.length).toBe(3);
+      const body = await response.json() as { ok: boolean; data: { events: Array<Record<string, unknown>> } };
+      expect(body.ok).toBe(true);
+      expect(body.data.events).toBeDefined();
+      expect(Array.isArray(body.data.events)).toBe(true);
+      expect(body.data.events.length).toBe(3);
 
-      const timestamps = body.events.map((e: Record<string, unknown>) => e.createdAt as string);
+      const timestamps = body.data.events.map((e: Record<string, unknown>) => e.createdAt as string);
       for (let i = 1; i < timestamps.length; i++) {
         expect(timestamps[i]! >= timestamps[i - 1]!).toBe(true);
       }
@@ -121,8 +122,9 @@ describe('Planner Run Timeline / Summary API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { events: Array<{ payload: Record<string, unknown> }> };
-      const sensitiveEvent = body.events[1];
+      const body = await response.json() as { ok: boolean; data: { events: Array<{ payload: Record<string, unknown> }> } };
+      expect(body.ok).toBe(true);
+      const sensitiveEvent = body.data.events[1];
       expect(sensitiveEvent).toBeDefined();
 
       const payload = sensitiveEvent!.payload;
@@ -161,16 +163,20 @@ describe('Planner Run Timeline / Summary API', () => {
       expect(response.status).toBe(200);
 
       const body = await response.json() as {
-        status: string;
-        stepCount: number;
-        currentStep: string | null;
-        planVersion: number;
+        ok: boolean;
+        data: {
+          status: string;
+          stepCount: number;
+          currentStep: string | null;
+          planVersion: number;
+        };
       };
 
-      expect(body.status).toBe('planning');
-      expect(body.stepCount).toBe(3);
-      expect(body.currentStep).toBe('step-2');
-      expect(body.planVersion).toBe(2);
+      expect(body.ok).toBe(true);
+      expect(body.data.status).toBe('planning');
+      expect(body.data.stepCount).toBe(3);
+      expect(body.data.currentStep).toBe('step-2');
+      expect(body.data.planVersion).toBe(2);
     });
 
     it('should return 404 for non-existent plannerRunId', async () => {
@@ -220,10 +226,11 @@ describe('Planner Run Timeline / Summary API', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = await response.json() as { currentStep: string | null; stepCount: number; planVersion: number };
-      expect(body.currentStep).toBeNull();
-      expect(body.stepCount).toBe(0);
-      expect(body.planVersion).toBe(1);
+      const body = await response.json() as { ok: boolean; data: { currentStep: string | null; stepCount: number; planVersion: number } };
+      expect(body.ok).toBe(true);
+      expect(body.data.currentStep).toBeNull();
+      expect(body.data.stepCount).toBe(0);
+      expect(body.data.planVersion).toBe(1);
     });
   });
 });

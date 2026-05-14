@@ -1,6 +1,7 @@
-import type { FastifyInstance } from 'fastify';
-import type { SkillSummary, SkillsResponse } from '../types.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { SkillSummary } from '../types.js';
 import type { ApiContext } from '../context.js';
+import { success } from '../response-envelope.js';
 
 const BUILTIN_SKILLS: SkillSummary[] = [
   {
@@ -60,7 +61,7 @@ const BUILTIN_SKILLS: SkillSummary[] = [
 ];
 
 export function registerSkillRoutes(server: FastifyInstance, _context: ApiContext): void {
-  server.get<{ Reply: { data: SkillsResponse } }>('/api/skills', async (): Promise<{ data: SkillsResponse }> => {
-    return { data: { skills: BUILTIN_SKILLS } };
+  server.get('/api/skills', async (request: FastifyRequest, reply: FastifyReply) => {
+    return reply.code(200).send(success({ skills: BUILTIN_SKILLS }, request.requestId));
   });
 }

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
 import type { UsageSummary, PaginatedResponse } from '../types.js';
 import type { TurnTranscript } from '../../storage/transcript-store.js';
 
@@ -127,7 +127,7 @@ export function registerUsageRoutes(server: FastifyInstance, context: ApiContext
    */
   server.get<{ Querystring: GetUsageQuery }>(
     '/api/usage',
-    async (request, _reply): Promise<{ data: PaginatedResponse<UsageSummary> }> => {
+    async (request, reply): Promise<{ data: PaginatedResponse<UsageSummary> }> => {
       const { sessionId, limit = 50, offset = 0 } = request.query;
       const now = new Date().toISOString();
 
@@ -176,14 +176,15 @@ export function registerUsageRoutes(server: FastifyInstance, context: ApiContext
       const total = usageSummaries.length;
       const paginatedItems = usageSummaries.slice(effectiveOffset, effectiveOffset + effectiveLimit);
 
-      return {
-        data: {
-          items: paginatedItems,
-          total,
-          limit: effectiveLimit,
-          offset: effectiveOffset,
-        }
+      const response: PaginatedResponse<UsageSummary> = {
+        items: paginatedItems,
+        total,
+        limit: effectiveLimit,
+        offset: effectiveOffset,
+        hasMore: effectiveOffset + paginatedItems.length < total,
       };
+
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 
@@ -200,8 +201,7 @@ export function registerUsageRoutes(server: FastifyInstance, context: ApiContext
       // Verify session exists
       const session = sessionStore.getById(sessionId);
       if (!session) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
 
       // Get transcripts for this session

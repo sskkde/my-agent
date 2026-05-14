@@ -183,7 +183,7 @@ describe('Auth Routes', () => {
       expect(response.status).toBe(400);
 
       const body = await response.json() as { error: { code: string } };
-      expect(body.error.code).toBe('BAD_REQUEST');
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 

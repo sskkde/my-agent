@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import type { EventRecord } from '../../storage/event-store.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
 
 const SENSITIVE_KEY_PATTERNS = /^(apiKey|secret|password|token|key)$/i;
 
@@ -54,8 +54,7 @@ export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiCo
 
       const run = context.stores.plannerRunStore.getById(plannerRunId);
       if (!run) {
-        const error = ApiErrorFactory.notFound('Planner run not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Planner run not found', request.requestId));
       }
 
       const events = context.stores.eventStore.query({ plannerRunId });
@@ -65,7 +64,7 @@ export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiCo
         payload: redactSensitiveFields(event.payload) as Record<string, unknown>,
       }));
 
-      return reply.code(200).send({ events: redactedEvents });
+      return reply.code(200).send(success({ events: redactedEvents }, request.requestId));
     }
   );
 
@@ -76,8 +75,7 @@ export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiCo
 
       const run = context.stores.plannerRunStore.getById(plannerRunId);
       if (!run) {
-        const error = ApiErrorFactory.notFound('Planner run not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Planner run not found', request.requestId));
       }
 
       const plan = context.stores.planStore.getPlan(run.planId);
@@ -85,12 +83,12 @@ export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiCo
       const currentStep = plan ? deriveCurrentStep(plan.steps) : null;
       const planVersion = plan?.currentVersion ?? 1;
 
-      return reply.code(200).send({
+      return reply.code(200).send(success({
         status: run.status,
         stepCount,
         currentStep,
         planVersion,
-      });
+      }, request.requestId));
     }
   );
 }
