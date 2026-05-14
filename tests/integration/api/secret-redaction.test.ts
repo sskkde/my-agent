@@ -435,7 +435,7 @@ describe('API Secret Redaction', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('BAD_REQUEST');
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 for missing password', async () => {
@@ -449,7 +449,7 @@ describe('API Secret Redaction', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('BAD_REQUEST');
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 

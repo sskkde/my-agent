@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import type { ApprovalsResponse, ApprovalDecisionRequest, ApprovalInfo } from '../types.js';
-import { ApiErrorFactory } from '../errors.js';
+import type { ApprovalDecisionRequest, ApprovalInfo } from '../types.js';
+import { success, envelopeError } from '../response-envelope.js';
 import type { ApiContext } from '../context.js';
 import { APPROVAL_STATES, type ApprovalRequest } from '../../storage/approval-store.js';
 import { generateId, GRANT_ID_PREFIX, ACTION_ID_PREFIX } from '../../shared/ids.js';
@@ -87,7 +87,7 @@ async function dispatchPendingAction(
 }
 
 export function registerApprovalRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get<{ Reply: ApprovalsResponse }>('/api/approvals', async (request, reply): Promise<ApprovalsResponse> => {
+  server.get('/api/approvals', async (request, reply) => {
     const userId = request.user?.userId ?? 'local-user';
     const userApprovals = context.stores.approvalStore.findByUser(userId);
 
@@ -110,12 +110,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
       plannerRunId: extractPlannerRunId(approval, context),
     }));
 
-    return reply.code(200).send({
-      data: {
-        approvals,
-        total: approvals.length,
-      },
-    });
+    return reply.code(200).send(success({ approvals, total: approvals.length }, request.requestId));
   });
 
   server.get<{ Params: { approvalId: string } }>(
@@ -126,13 +121,11 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
 
       const approval = context.stores.approvalStore.getById(approvalId);
       if (!approval) {
-        const error = ApiErrorFactory.notFound(`Approval ${approvalId} not found`);
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', `Approval ${approvalId} not found`, request.requestId));
       }
 
       if (approval.userId !== userId) {
-        const error = ApiErrorFactory.notFound(`Approval ${approvalId} not found`);
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', `Approval ${approvalId} not found`, request.requestId));
       }
 
       const approvalInfo: ApprovalInfo = {
@@ -154,7 +147,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         plannerRunId: extractPlannerRunId(approval, context),
       };
 
-      return reply.send({ data: { approval: approvalInfo } });
+      return reply.code(200).send(success({ approval: approvalInfo }, request.requestId));
     }
   );
 
@@ -165,19 +158,16 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
       const { decision, reason } = request.body;
 
       if (!decision || (decision !== 'approved' && decision !== 'rejected')) {
-        const error = ApiErrorFactory.badRequest('Invalid decision. Must be "approved" or "rejected"');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'Invalid decision. Must be "approved" or "rejected"', request.requestId));
       }
 
       const existing = context.stores.approvalStore.getById(approvalId);
       if (!existing) {
-        const error = ApiErrorFactory.notFound(`Approval ${approvalId} not found`);
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', `Approval ${approvalId} not found`, request.requestId));
       }
 
       if (existing.status !== APPROVAL_STATES.PENDING) {
-        const error = ApiErrorFactory.conflict(`Approval ${approvalId} already resolved with status: ${existing.status}`);
-        return reply.code(409).send(error);
+        return reply.code(409).send(envelopeError('CONFLICT', `Approval ${approvalId} already resolved with status: ${existing.status}`, request.requestId));
       }
 
       const newStatus = decision === 'approved' ? APPROVAL_STATES.APPROVED : APPROVAL_STATES.REJECTED;
@@ -250,13 +240,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         }
       }
 
-      return reply.send({
-        data: {
-          success: true,
-          approvalId,
-          status: newStatus,
-        },
-      });
+      return reply.code(200).send(success({ success: true, approvalId, status: newStatus }, request.requestId));
     }
   );
 }

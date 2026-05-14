@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
+import { providerIdParamsSchema } from '../schemas/shared.js';
 import type {
   ProviderSummary,
   CreateProviderRequest,
@@ -161,7 +162,6 @@ async function testOpenRouterConnection(apiKey: string, baseUrl?: string | null)
 async function testOllamaConnection(baseUrl: string): Promise<TestResult> {
   const startTime = Date.now();
   
-  // Parse base URL to determine if http or https
   let url: URL;
   try {
     url = new URL(baseUrl);
@@ -390,70 +390,72 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       if (!providerConfigStore) {
-        const error = ApiErrorFactory.serviceUnavailable('Provider configuration store not available');
-        return reply.code(503).send(error);
+        return reply.code(503).send(envelopeError('SERVICE_UNAVAILABLE', 'Provider configuration store not available', request.requestId));
       }
 
       const providers = providerConfigStore.listByUser(userId);
       const summaries = providers.map(sanitizeProviderForResponse);
 
-      return reply.code(200).send({ data: summaries });
+      return reply.code(200).send(success(summaries, request.requestId));
     }
   );
 
   // POST /api/providers - Create a new provider
   server.post<{ Body: CreateProviderRequest }>(
     '/api/providers',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['providerType'],
+          properties: {
+            providerType: { type: 'string', minLength: 1 },
+            displayName: { type: 'string' },
+            apiKey: { type: 'string' },
+            baseUrl: { type: 'string' },
+            selectedModel: { type: 'string' },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Body: CreateProviderRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       if (!providerConfigStore) {
-        const error = ApiErrorFactory.serviceUnavailable('Provider configuration store not available');
-        return reply.code(503).send(error);
+        return reply.code(503).send(envelopeError('SERVICE_UNAVAILABLE', 'Provider configuration store not available', request.requestId));
       }
 
       const { providerType, displayName, apiKey, baseUrl, selectedModel } = request.body || {};
 
-      // Validate providerType
       if (!validateProviderType(providerType)) {
-        const error = ApiErrorFactory.badRequest(
-          `Invalid provider type. Must be one of: ${VALID_PROVIDER_TYPES.join(', ')}`
-        );
-        error.error.code = 'INVALID_PROVIDER_TYPE';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_PROVIDER_TYPE',
+          `Invalid provider type. Must be one of: ${VALID_PROVIDER_TYPES.join(', ')}`,
+          request.requestId));
       }
 
-      // Validate required fields based on provider type
       if ((providerType === 'openai' || providerType === 'openrouter' || providerType === 'custom') && !apiKey) {
-        const error = ApiErrorFactory.badRequest(
-          `API key is required for ${providerType} provider`
-        );
-        error.error.code = 'API_KEY_REQUIRED';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('API_KEY_REQUIRED',
+          `API key is required for ${providerType} provider`,
+          request.requestId));
       }
 
       if ((providerType === 'ollama' || providerType === 'custom') && !baseUrl) {
-        const error = ApiErrorFactory.badRequest(
-          `Base URL is required for ${providerType} provider`
-        );
-        error.error.code = 'BASE_URL_REQUIRED';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BASE_URL_REQUIRED',
+          `Base URL is required for ${providerType} provider`,
+          request.requestId));
       }
 
-      // Validate displayName if provided
       if (displayName !== undefined && (typeof displayName !== 'string' || displayName.trim().length === 0)) {
-        const error = ApiErrorFactory.badRequest('Display name must be a non-empty string');
-        error.error.code = 'INVALID_DISPLAY_NAME';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_DISPLAY_NAME',
+          'Display name must be a non-empty string',
+          request.requestId));
       }
 
       const providerId = randomUUID();
@@ -473,11 +475,10 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
         context.refreshProvidersForUser(userId);
 
         const summary = sanitizeProviderForResponse(provider);
-        return reply.code(201).send({ data: summary });
+        return reply.code(201).send(success(summary, request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to create provider';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
@@ -485,42 +486,50 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
   // PATCH /api/providers/:providerId - Update a provider
   server.patch<{ Params: { providerId: string }; Body: UpdateProviderRequest }>(
     '/api/providers/:providerId',
+    {
+      schema: {
+        params: providerIdParamsSchema,
+        body: {
+          type: 'object',
+          properties: {
+            displayName: { type: 'string' },
+            apiKey: { type: 'string' },
+            baseUrl: { type: 'string' },
+            selectedModel: { type: 'string' },
+            enabled: { type: 'boolean' },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Params: { providerId: string }; Body: UpdateProviderRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       if (!providerConfigStore) {
-        const error = ApiErrorFactory.serviceUnavailable('Provider configuration store not available');
-        return reply.code(503).send(error);
+        return reply.code(503).send(envelopeError('SERVICE_UNAVAILABLE', 'Provider configuration store not available', request.requestId));
       }
 
       const { providerId } = request.params;
       const existingProvider = providerConfigStore.getById(providerId);
 
       if (!existingProvider) {
-        const error = ApiErrorFactory.notFound('Provider not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Provider not found', request.requestId));
       }
 
-      // Verify the provider belongs to the current user
       if (existingProvider.userId !== userId) {
-        const error = ApiErrorFactory.forbidden('Access denied to this provider');
-        return reply.code(403).send(error);
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this provider', request.requestId));
       }
 
       const { displayName, apiKey, baseUrl, selectedModel, enabled } = request.body || {};
 
-      // Validate displayName if provided
       if (displayName !== undefined && (typeof displayName !== 'string' || displayName.trim().length === 0)) {
-        const error = ApiErrorFactory.badRequest('Display name must be a non-empty string');
-        error.error.code = 'INVALID_DISPLAY_NAME';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('INVALID_DISPLAY_NAME',
+          'Display name must be a non-empty string',
+          request.requestId));
       }
 
-      // Build updates object
       const updates: Record<string, unknown> = {};
       if (displayName !== undefined) updates.displayName = displayName.trim();
       if (apiKey !== undefined) updates.apiKey = apiKey;
@@ -529,31 +538,26 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
       if (enabled !== undefined) updates.enabled = enabled;
 
       if (Object.keys(updates).length === 0) {
-        const error = ApiErrorFactory.badRequest('No valid fields to update');
-        error.error.code = 'NO_UPDATES';
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('NO_UPDATES', 'No valid fields to update', request.requestId));
       }
 
       try {
         const updated = providerConfigStore.update(providerId, updates);
         if (!updated) {
-          const error = ApiErrorFactory.internalError('Failed to update provider');
-          return reply.code(500).send(error);
+          return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Failed to update provider', request.requestId));
         }
 
         const provider = providerConfigStore.getById(providerId);
         if (!provider) {
-          const error = ApiErrorFactory.notFound('Provider not found after update');
-          return reply.code(404).send(error);
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'Provider not found after update', request.requestId));
         }
         context.refreshProvidersForUser(userId);
 
         const summary = sanitizeProviderForResponse(provider);
-        return reply.code(200).send({ data: summary });
+        return reply.code(200).send(success(summary, request.requestId));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to update provider';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
@@ -561,45 +565,43 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
   // DELETE /api/providers/:providerId - Delete a provider
   server.delete<{ Params: { providerId: string } }>(
     '/api/providers/:providerId',
+    {
+      schema: {
+        params: providerIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { providerId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       if (!providerConfigStore) {
-        const error = ApiErrorFactory.serviceUnavailable('Provider configuration store not available');
-        return reply.code(503).send(error);
+        return reply.code(503).send(envelopeError('SERVICE_UNAVAILABLE', 'Provider configuration store not available', request.requestId));
       }
 
       const { providerId } = request.params;
       const existingProvider = providerConfigStore.getById(providerId);
 
       if (!existingProvider) {
-        const error = ApiErrorFactory.notFound('Provider not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Provider not found', request.requestId));
       }
 
-      // Verify the provider belongs to the current user
       if (existingProvider.userId !== userId) {
-        const error = ApiErrorFactory.forbidden('Access denied to this provider');
-        return reply.code(403).send(error);
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this provider', request.requestId));
       }
 
       try {
         const deleted = providerConfigStore.remove(providerId);
         if (!deleted) {
-          const error = ApiErrorFactory.internalError('Failed to delete provider');
-          return reply.code(500).send(error);
+          return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Failed to delete provider', request.requestId));
         }
         context.refreshProvidersForUser(userId);
 
         return reply.code(204).send();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to delete provider';
-        const apiError = ApiErrorFactory.internalError(errorMessage);
-        return reply.code(500).send(apiError);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMessage, request.requestId));
       }
     }
   );
@@ -607,16 +609,19 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
   // POST /api/providers/:providerId/test - Test provider connection
   server.post<{ Params: { providerId: string } }>(
     '/api/providers/:providerId/test',
+    {
+      schema: {
+        params: providerIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: { providerId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
-        const error = ApiErrorFactory.unauthorized('Authentication required');
-        return reply.code(401).send(error);
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
 
       const { providerId } = request.params;
 
-      // Check if this is an env-backed provider
       const envProviderResult = await testEnvProvider(providerId);
       if (envProviderResult) {
         const response: TestProviderResponse = {
@@ -625,44 +630,35 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
           modelCount: envProviderResult.modelCount,
           error: envProviderResult.error,
         };
-        return reply.code(200).send({ data: response });
+        return reply.code(200).send(success(response, request.requestId));
       }
 
       if (!providerConfigStore) {
-        const error = ApiErrorFactory.serviceUnavailable('Provider configuration store not available');
-        return reply.code(503).send(error);
+        return reply.code(503).send(envelopeError('SERVICE_UNAVAILABLE', 'Provider configuration store not available', request.requestId));
       }
 
       const existingProvider = providerConfigStore.getById(providerId);
 
       if (!existingProvider) {
-        const error = ApiErrorFactory.notFound('Provider not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Provider not found', request.requestId));
       }
 
-      // Verify the provider belongs to the current user
       if (existingProvider.userId !== userId) {
-        const error = ApiErrorFactory.forbidden('Access denied to this provider');
-        return reply.code(403).send(error);
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this provider', request.requestId));
       }
 
-      // Get provider with decrypted secret
       const providerWithSecret = providerConfigStore.getByIdWithSecret(providerId);
       if (!providerWithSecret) {
-        const error = ApiErrorFactory.notFound('Provider configuration not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Provider configuration not found', request.requestId));
       }
 
-      // Test the connection
       const testResult = await testProviderConnection(
         providerWithSecret.providerType,
         providerWithSecret.apiKey,
         providerWithSecret.baseUrl
       );
 
-      // Update test status in store
-      const status = testResult.success ? 'success' : 'failed';
-      providerConfigStore.updateTestStatus(providerId, status);
+      providerConfigStore.updateTestStatus(providerId, testResult.success ? 'success' : 'failed');
 
       const response: TestProviderResponse = {
         success: testResult.success,
@@ -671,7 +667,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
         error: testResult.error,
       };
 
-      return reply.code(200).send({ data: response });
+      return reply.code(200).send(success(response, request.requestId));
     }
   );
 }

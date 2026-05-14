@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
-import { ApiErrorFactory } from '../errors.js';
+import { success, envelopeError } from '../response-envelope.js';
+import { memoryIdParamsSchema } from '../schemas/shared.js';
 import type { MemoryType } from '../../storage/long-term-memory-store.js';
 import { createLongTermMemoryRecallService } from '../../memory/long-term-memory-recall.js';
 
@@ -58,8 +59,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       try {
         limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
       } catch {
-        const error = ApiErrorFactory.badRequest('Invalid limit value');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'Invalid limit value', request.requestId));
       }
 
       let runs = memoryExtractionRunStore.listByUser(userId);
@@ -68,66 +68,61 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       if (sessionId) {
         const session = sessionStore.getById(sessionId);
         if (!session || session.userId !== userId) {
-          const error = ApiErrorFactory.notFound('Session not found');
-          return reply.code(404).send(error);
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
         }
       }
 
       runs = runs.slice(0, limit);
 
-      const response = {
-        data: {
-          runs: runs.map(run => ({
-            runId: run.runId,
-            userId: run.userId,
-            sessionId: run.sessionId,
-            triggerTurnId: run.triggerTurnId,
-            windowHash: run.windowHash,
-            includedTurnIds: run.includedTurnIds,
-            status: run.status,
-            attempts: run.attempts,
-            resultCounts: run.resultCounts,
-            failureCode: run.failureCode,
-            failureMessage: run.failureMessage,
-            createdAt: run.createdAt,
-            startedAt: run.startedAt,
-            completedAt: run.completedAt,
-          })),
-          total: runs.length,
-        },
-      };
-
-      return reply.code(200).send(response);
+      return reply.code(200).send(success({
+        runs: runs.map(run => ({
+          runId: run.runId,
+          userId: run.userId,
+          sessionId: run.sessionId,
+          triggerTurnId: run.triggerTurnId,
+          windowHash: run.windowHash,
+          includedTurnIds: run.includedTurnIds,
+          status: run.status,
+          attempts: run.attempts,
+          resultCounts: run.resultCounts,
+          failureCode: run.failureCode,
+          failureMessage: run.failureMessage,
+          createdAt: run.createdAt,
+          startedAt: run.startedAt,
+          completedAt: run.completedAt,
+        })),
+        total: runs.length,
+      }, request.requestId));
     }
   );
 
   // POST /api/memory/debug/extract
   server.post<{ Body: DebugExtractBody }>(
     '/api/memory/debug/extract',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['sessionId', 'turnId'],
+          properties: {
+            sessionId: { type: 'string', minLength: 1 },
+            turnId: { type: 'string', minLength: 1 },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest<{ Body: DebugExtractBody }>, reply: FastifyReply) => {
       const userId = request.user?.userId ?? 'local-user';
       const { sessionId, turnId } = request.body;
 
-      if (!sessionId) {
-        const error = ApiErrorFactory.badRequest('Missing sessionId');
-        return reply.code(400).send(error);
-      }
-
-      if (!turnId) {
-        const error = ApiErrorFactory.badRequest('Missing turnId');
-        return reply.code(400).send(error);
-      }
-
       const session = sessionStore.getById(sessionId);
       if (!session || session.userId !== userId) {
-        const error = ApiErrorFactory.notFound('Session not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId));
       }
 
       const scheduler = context.memoryExtractionScheduler;
       if (!scheduler) {
-        const error = ApiErrorFactory.internalError('Memory extraction scheduler not available');
-        return reply.code(500).send(error);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Memory extraction scheduler not available', request.requestId));
       }
 
       try {
@@ -137,22 +132,19 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
           triggerTurnId: turnId,
         });
 
-        return reply.code(200).send({
-          data: {
-            status: result.status,
-            ...(result.status === 'succeeded' && {
-              resultCounts: result.resultCounts,
-            }),
-            ...(result.status === 'failed' && {
-              errorCode: result.errorCode,
-            }),
-          },
-        });
+        return reply.code(200).send(success({
+          status: result.status,
+          ...(result.status === 'succeeded' && {
+            resultCounts: result.resultCounts,
+          }),
+          ...(result.status === 'failed' && {
+            errorCode: result.errorCode,
+          }),
+        }, request.requestId));
       } catch (err) {
-        const error = ApiErrorFactory.internalError(
-          err instanceof Error ? err.message : 'Extraction failed'
-        );
-        return reply.code(500).send(error);
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR',
+          err instanceof Error ? err.message : 'Extraction failed',
+          request.requestId));
       }
     }
   );
@@ -168,17 +160,15 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       try {
         limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
       } catch {
-        const error = ApiErrorFactory.badRequest('Invalid limit value');
-        return reply.code(400).send(error);
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'Invalid limit value', request.requestId));
       }
 
       let memoryTypes: MemoryType[] | undefined;
       if (type) {
         if (!VALID_MEMORY_TYPES.includes(type as MemoryType)) {
-          const error = ApiErrorFactory.badRequest(
-            `Invalid memory type. Must be one of: ${VALID_MEMORY_TYPES.join(', ')}`
-          );
-          return reply.code(400).send(error);
+          return reply.code(400).send(envelopeError('BAD_REQUEST',
+            `Invalid memory type. Must be one of: ${VALID_MEMORY_TYPES.join(', ')}`,
+            request.requestId));
         }
         memoryTypes = [type as MemoryType];
       }
@@ -190,18 +180,21 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
         memoryTypes,
       });
 
-      return reply.code(200).send({
-        data: {
-          memories: result.memories,
-          total: result.total,
-        },
-      });
+      return reply.code(200).send(success({
+        memories: result.memories,
+        total: result.total,
+      }, request.requestId));
     }
   );
 
   // GET /api/memory/:memoryId
   server.get<{ Params: MemoryParams }>(
     '/api/memory/:memoryId',
+    {
+      schema: {
+        params: memoryIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: MemoryParams }>, reply: FastifyReply) => {
       const userId = request.user?.userId ?? 'local-user';
       const { memoryId } = request.params;
@@ -209,21 +202,23 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       const memory = longTermMemoryStore.getByMemoryId(memoryId);
 
       if (!memory || memory.userId !== userId || memory.lifecycle.status === 'deleted') {
-        const error = ApiErrorFactory.notFound('Memory not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Memory not found', request.requestId));
       }
 
-      return reply.code(200).send({
-        data: {
-          memory,
-        },
-      });
+      return reply.code(200).send(success({
+        memory,
+      }, request.requestId));
     }
   );
 
   // DELETE /api/memory/:memoryId
   server.delete<{ Params: MemoryParams }>(
     '/api/memory/:memoryId',
+    {
+      schema: {
+        params: memoryIdParamsSchema,
+      },
+    },
     async (request: FastifyRequest<{ Params: MemoryParams }>, reply: FastifyReply) => {
       const userId = request.user?.userId ?? 'local-user';
       const { memoryId } = request.params;
@@ -231,8 +226,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       const memory = longTermMemoryStore.getByMemoryId(memoryId);
 
       if (!memory || memory.userId !== userId) {
-        const error = ApiErrorFactory.notFound('Memory not found');
-        return reply.code(404).send(error);
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Memory not found', request.requestId));
       }
 
       longTermMemoryStore.delete(memoryId);
@@ -244,12 +238,10 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
         contentSummary: memory.content.text.substring(0, 200),
       });
 
-      return reply.code(200).send({
-        data: {
-          deleted: true,
-          memoryId,
-        },
-      });
+      return reply.code(200).send(success({
+        deleted: true,
+        memoryId,
+      }, request.requestId));
     }
   );
 }
