@@ -15,6 +15,7 @@
     "test:p0": "vitest run tests/e2e/full-flow-suite.test.ts --reporter=verbose",
     "test:api": "vitest run tests/integration/api",
     "test:phase4": "vitest run tests/unit/dead-letter/ tests/integration/dead-letter/ tests/integration/api/connectors-api.test.ts tests/integration/observability/ tests/architecture/workflow-trigger-connector-contract.test.ts tests/architecture/replay-preview-safety-contract.test.ts tests/e2e/flow-16-automation-beta-demo.test.ts",
+    "test:p5": "tsx scripts/check-p5.ts",
     "typecheck": "tsc --noEmit",
     "start:dev": "tsx src/index.ts",
     "start:api": "tsx src/api/server.ts",
