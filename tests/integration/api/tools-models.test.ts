@@ -74,7 +74,7 @@ describe('Tools and Models API Integration', () => {
     it('should return all built-in tools without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tools',
+        url: '/api/v1/tools',
       });
 
       expect(response.statusCode).toBe(200);
@@ -88,7 +88,7 @@ describe('Tools and Models API Integration', () => {
     it('should return tools with correct structure', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tools',
+        url: '/api/v1/tools',
       });
 
       expect(response.statusCode).toBe(200);
@@ -111,7 +111,7 @@ describe('Tools and Models API Integration', () => {
     it('should not expose handler or schema in response', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tools',
+        url: '/api/v1/tools',
       });
 
       expect(response.statusCode).toBe(200);
@@ -127,7 +127,7 @@ describe('Tools and Models API Integration', () => {
     it('should include all 15 built-in tools', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tools',
+        url: '/api/v1/tools',
       });
 
       expect(response.statusCode).toBe(200);
@@ -154,7 +154,7 @@ describe('Tools and Models API Integration', () => {
     it('should return correct metadata for web.search', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tools',
+        url: '/api/v1/tools',
       });
 
       expect(response.statusCode).toBe(200);
@@ -170,7 +170,7 @@ describe('Tools and Models API Integration', () => {
     it('should return correct metadata for artifact.create', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tools',
+        url: '/api/v1/tools',
       });
 
       expect(response.statusCode).toBe(200);
@@ -188,7 +188,7 @@ describe('Tools and Models API Integration', () => {
     it('should require authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
       });
 
       expect(response.statusCode).toBe(401);
@@ -201,7 +201,7 @@ describe('Tools and Models API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -237,7 +237,7 @@ describe('Tools and Models API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -270,7 +270,7 @@ describe('Tools and Models API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -299,7 +299,7 @@ describe('Tools and Models API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },

@@ -6,7 +6,7 @@ const TEST_USERNAME = 'testuser';
 const TEST_PASSWORD = 'testpassword123';
 
 setup('authenticate', async ({ page, request }) => {
-  const setupStatusResponse = await request.get('/api/setup/status');
+  const setupStatusResponse = await request.get('/api/v1/setup/status');
   const setupStatus = await setupStatusResponse.json();
 
   await page.goto('/');

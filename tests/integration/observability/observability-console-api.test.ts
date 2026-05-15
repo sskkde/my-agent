@@ -78,7 +78,7 @@ describe('Observability Console API', () => {
 
   describe('GET /api/observability/runs', () => {
     it('should return merged list of planner and workflow runs', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs`, {
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -98,7 +98,7 @@ describe('Observability Console API', () => {
     });
 
     it('should sort runs by createdAt descending', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs`, {
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -114,7 +114,7 @@ describe('Observability Console API', () => {
     });
 
     it('should filter runs by status query param', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs?status=completed`, {
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs?status=completed`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -127,7 +127,7 @@ describe('Observability Console API', () => {
     });
 
     it('should return empty list for non-matching status', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs?status=nonexistentstatus`, {
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs?status=nonexistentstatus`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -139,7 +139,7 @@ describe('Observability Console API', () => {
 
   describe('GET /api/observability/runs/:runId/console', () => {
     it('should return console view for planner run', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs/${plannerRunId}/console`, {
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs/${plannerRunId}/console`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -162,7 +162,7 @@ describe('Observability Console API', () => {
     });
 
     it('should return console view for workflow run', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs/${workflowRunId}/console`, {
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs/${workflowRunId}/console`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -173,7 +173,7 @@ describe('Observability Console API', () => {
     });
 
     it('should return 404 for unknown runId', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs/unknown-run-id/console`, {
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs/unknown-run-id/console`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -183,7 +183,7 @@ describe('Observability Console API', () => {
     });
 
     it('should return 401 for unauthenticated request', async () => {
-      const response = await fetch(`${baseUrl}/api/observability/runs/${plannerRunId}/console`);
+      const response = await fetch(`${baseUrl}/api/v1/observability/runs/${plannerRunId}/console`);
       expect(response.status).toBe(401);
     });
   });
@@ -191,7 +191,7 @@ describe('Observability Console API', () => {
   describe('GET /api/observability/runs/:runId/replay-preview', () => {
     it('should return replay preview for planner run', async () => {
       const response = await fetch(
-        `${baseUrl}/api/observability/runs/${plannerRunId}/replay-preview`,
+        `${baseUrl}/api/v1/observability/runs/${plannerRunId}/replay-preview`,
         { headers: { 'Cookie': authCookie } },
       );
       expect(response.status).toBe(200);
@@ -209,7 +209,7 @@ describe('Observability Console API', () => {
 
     it('should return replay preview for workflow run', async () => {
       const response = await fetch(
-        `${baseUrl}/api/observability/runs/${workflowRunId}/replay-preview`,
+        `${baseUrl}/api/v1/observability/runs/${workflowRunId}/replay-preview`,
         { headers: { 'Cookie': authCookie } },
       );
       expect(response.status).toBe(200);
@@ -221,7 +221,7 @@ describe('Observability Console API', () => {
 
     it('should return 404 for unknown runId', async () => {
       const response = await fetch(
-        `${baseUrl}/api/observability/runs/unknown-run/replay-preview`,
+        `${baseUrl}/api/v1/observability/runs/unknown-run/replay-preview`,
         { headers: { 'Cookie': authCookie } },
       );
       expect(response.status).toBe(404);

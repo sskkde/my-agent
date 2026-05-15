@@ -9,7 +9,7 @@ interface ToolResultParams {
 
 export function registerToolResultsRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get(
-    '/api/tool-results/:resultId',
+    '/api/v1/tool-results/:resultId',
     async (
       request: FastifyRequest<{ Params: ToolResultParams }>,
       reply: FastifyReply

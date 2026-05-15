@@ -5,7 +5,7 @@ test.describe('Slash Commands', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
 
-    await page.route('**/api/setup/status', async (route) => {
+    await page.route('**/api/v1/setup/status', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -13,7 +13,7 @@ test.describe('Slash Commands', () => {
       });
     });
 
-    await page.route('**/api/auth/me', async (route) => {
+    await page.route('**/api/v1/auth/me', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -30,7 +30,7 @@ test.describe('Slash Commands', () => {
       });
     });
 
-    await page.route('**/api/auth/logout', async (route) => {
+    await page.route('**/api/v1/auth/logout', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -38,7 +38,7 @@ test.describe('Slash Commands', () => {
       });
     });
 
-    await page.route('**/api/sessions', async (route) => {
+    await page.route('**/api/v1/sessions', async (route) => {
       const method = route.request().method();
       if (method === 'GET') {
         await route.fulfill({
@@ -71,7 +71,7 @@ test.describe('Slash Commands', () => {
       }
     });
 
-    await page.route('**/api/sessions/**/timeline', async (route) => {
+    await page.route('**/api/v1/sessions/**/timeline', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -84,7 +84,7 @@ test.describe('Slash Commands', () => {
       });
     });
 
-    await page.route('**/api/sessions/**/messages', async (route) => {
+    await page.route('**/api/v1/sessions/**/messages', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

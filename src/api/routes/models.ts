@@ -27,7 +27,7 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
   const sessionStore = context.stores.sessionStore;
 
   server.get<{ Querystring: { sessionId?: string } }>(
-    '/api/models',
+    '/api/v1/models',
     async (request: FastifyRequest<{ Querystring: { sessionId?: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {

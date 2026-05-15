@@ -34,7 +34,7 @@ describe('Request Validation', () => {
 
   describe('POST /api/auth/login', () => {
     it('returns 400 when username is missing', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: 'test' }),
@@ -45,7 +45,7 @@ describe('Request Validation', () => {
     });
 
     it('returns 400 when password is missing', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'test' }),
@@ -56,7 +56,7 @@ describe('Request Validation', () => {
     });
 
     it('returns 400 when body is empty object', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -67,7 +67,7 @@ describe('Request Validation', () => {
     });
 
     it('returns 401 when credentials are invalid', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'nonexistent', password: 'wrong' }),
@@ -80,7 +80,7 @@ describe('Request Validation', () => {
 
   describe('POST /api/providers', () => {
     it('returns 400 when providerType is missing', async () => {
-      const response = await fetch(`${baseUrl}/api/providers`, {
+      const response = await fetch(`${baseUrl}/api/v1/providers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ describe('Request Validation', () => {
     });
 
     it('should create provider when required fields are present', async () => {
-      const response = await fetch(`${baseUrl}/api/providers`, {
+      const response = await fetch(`${baseUrl}/api/v1/providers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ describe('Request Validation', () => {
 
   describe('POST /api/sessions/:sessionId/messages', () => {
     it('returns 400 when text is missing', async () => {
-      const sessionRes = await fetch(`${baseUrl}/api/sessions`, {
+      const sessionRes = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -120,7 +120,7 @@ describe('Request Validation', () => {
       const sessionBody = await sessionRes.json() as { data: { session: { sessionId: string } } };
       const sessionId = sessionBody.data.session.sessionId;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ describe('Request Validation', () => {
     });
 
     it('returns 400 when text is empty string', async () => {
-      const sessionRes = await fetch(`${baseUrl}/api/sessions`, {
+      const sessionRes = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -142,7 +142,7 @@ describe('Request Validation', () => {
       const sessionBody = await sessionRes.json() as { data: { session: { sessionId: string } } };
       const sessionId = sessionBody.data.session.sessionId;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ describe('Request Validation', () => {
 
   describe('PATCH /api/sessions/:sessionId/model', () => {
     it('returns 400 when providerId is missing', async () => {
-      const sessionRes = await fetch(`${baseUrl}/api/sessions`, {
+      const sessionRes = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -166,7 +166,7 @@ describe('Request Validation', () => {
       const sessionBody = await sessionRes.json() as { data: { session: { sessionId: string } } };
       const sessionId = sessionBody.data.session.sessionId;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/model`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/model`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ describe('Request Validation', () => {
     });
 
     it('returns 400 when model is missing', async () => {
-      const sessionRes = await fetch(`${baseUrl}/api/sessions`, {
+      const sessionRes = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -188,7 +188,7 @@ describe('Request Validation', () => {
       const sessionBody = await sessionRes.json() as { data: { session: { sessionId: string } } };
       const sessionId = sessionBody.data.session.sessionId;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/model`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/model`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -204,7 +204,7 @@ describe('Request Validation', () => {
 
   describe('POST /api/workflows/drafts', () => {
     it('returns 400 when name is missing', async () => {
-      const response = await fetch(`${baseUrl}/api/workflows/drafts`, {
+      const response = await fetch(`${baseUrl}/api/v1/workflows/drafts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,7 +220,7 @@ describe('Request Validation', () => {
 
   describe('POST /api/triggers/schedules', () => {
     it('returns 400 when name is missing', async () => {
-      const response = await fetch(`${baseUrl}/api/triggers/schedules`, {
+      const response = await fetch(`${baseUrl}/api/v1/triggers/schedules`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -236,7 +236,7 @@ describe('Request Validation', () => {
 
   describe('POST /api/triggers/webhooks', () => {
     it('returns 400 when name is missing', async () => {
-      const response = await fetch(`${baseUrl}/api/triggers/webhooks`, {
+      const response = await fetch(`${baseUrl}/api/v1/triggers/webhooks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -252,7 +252,7 @@ describe('Request Validation', () => {
 
   describe('POST /api/memory/debug/extract', () => {
     it('returns 400 when sessionId is missing', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -109,7 +109,7 @@ describe('Debug API', () => {
   describe('GET /api/debug/replay/:sessionId', () => {
     it('should return replay summary for existing session', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`, {
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -132,7 +132,7 @@ describe('Debug API', () => {
 
     it('should aggregate run references from events', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`, {
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -150,7 +150,7 @@ describe('Debug API', () => {
 
     it('should aggregate approval references from events', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`, {
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -163,7 +163,7 @@ describe('Debug API', () => {
 
     it('should return 404 for non-existent session', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/non-existent-session`, {
+        `${baseUrl}/api/v1/debug/replay/non-existent-session`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -192,7 +192,7 @@ describe('Debug API', () => {
       ctx.apiContext.stores.transcriptStore.saveTurn(transcript);
 
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${emptySessionId}`, {
+        `${baseUrl}/api/v1/debug/replay/${emptySessionId}`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -251,7 +251,7 @@ describe('Debug API', () => {
       ctx.apiContext.stores.eventStore.append(events);
 
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${dedupeSessionId}`, {
+        `${baseUrl}/api/v1/debug/replay/${dedupeSessionId}`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -265,7 +265,7 @@ describe('Debug API', () => {
 
     it('should collect plannerRunIds from transcript runtimeSummary', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`, {
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -278,7 +278,7 @@ describe('Debug API', () => {
 
     it('should return metadata only without raw content', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`, {
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       }
       );

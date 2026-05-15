@@ -75,7 +75,7 @@ function createRedactedPreview(event: EventRecord): RedactedPreview {
 export function registerDebugRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get<{
     Params: ReplayParams;
-  }>('/api/debug/replay/:sessionId', async (request, reply) => {
+  }>('/api/v1/debug/replay/:sessionId', async (request, reply) => {
     const { sessionId } = request.params;
 
     const events = context.stores.eventStore.query({ sessionId });

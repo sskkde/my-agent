@@ -67,7 +67,7 @@ describe('AgentConfig API', () => {
       const result = await getAgentConfig('foreground.default');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/agents/foreground.default/config',
+        '/api/v1/agents/foreground.default/config',
         { credentials: 'include' }
       );
       expect(result).toEqual(mockConfig);
@@ -157,7 +157,7 @@ describe('AgentConfig API', () => {
       const result = await updateAgentConfig('foreground.default', 'global', updateRequest);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/agents/foreground.default/config/global',
+        '/api/v1/agents/foreground.default/config/global',
         {
           method: 'PATCH',
           credentials: 'include',
@@ -197,7 +197,7 @@ describe('AgentConfig API', () => {
       const result = await updateAgentConfig('foreground.default', 'override', updateRequest);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/agents/foreground.default/config/override',
+        '/api/v1/agents/foreground.default/config/override',
         {
           method: 'PATCH',
           credentials: 'include',
@@ -267,7 +267,7 @@ describe('AgentConfig API', () => {
       const result = await resetAgentConfigOverride('foreground.default');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/api/agents/foreground.default/config/override',
+        '/api/v1/agents/foreground.default/config/override',
         {
           method: 'DELETE',
           credentials: 'include',

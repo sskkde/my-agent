@@ -14,7 +14,7 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
 
   // GET /api/connectors — list all connector definitions
   server.get(
-    '/api/connectors',
+    '/api/v1/connectors',
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!request.user?.userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -30,7 +30,7 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
 
   // GET /api/connectors/:id — get connector definition detail
   server.get<{ Params: { id: string } }>(
-    '/api/connectors/:id',
+    '/api/v1/connectors/:id',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       if (!request.user?.userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -49,7 +49,7 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
 
   // GET /api/connectors/:id/instances — list instances for a connector
   server.get<{ Params: { id: string } }>(
-    '/api/connectors/:id/instances',
+    '/api/v1/connectors/:id/instances',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -71,7 +71,7 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
 
   // PATCH /api/connectors/:id/instances/:iid/config — update instance config
   server.patch<{ Params: { id: string; iid: string }; Body: UpdateInstanceConfigRequest }>(
-    '/api/connectors/:id/instances/:iid/config',
+    '/api/v1/connectors/:id/instances/:iid/config',
     async (request: FastifyRequest<{ Params: { id: string; iid: string }; Body: UpdateInstanceConfigRequest }>, reply: FastifyReply) => {
       if (!request.user?.userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));

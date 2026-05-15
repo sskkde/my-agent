@@ -3,7 +3,12 @@ import type { ApiContext } from '../context.js';
 import { success, envelopeError } from '../response-envelope.js';
 import { createTimelineBuilder, type TimelineBuilder } from '../../observability/timeline.js';
 import { createTraceStore } from '../../observability/trace-store.js';
+import { createMetricStore } from '../../observability/metric-store.js';
+import { createPrometheusExporter } from '../../observability/prometheus-exporter.js';
+import { createAlertStore } from '../../storage/alert-store.js';
+import { createAlertingEngine } from '../../observability/alerting.js';
 import type { TraceStore } from '../../observability/types.js';
+import type { AlertRule } from '../../storage/alert-store.js';
 import {
   createReplayService,
   type ReplayService,
@@ -110,7 +115,7 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   // GET /api/observability/runs
   // --------------------------------------------------------------------------
   server.get<{ Querystring: { status?: string } }>(
-    '/api/observability/runs',
+    '/api/v1/observability/runs',
     async (request: FastifyRequest<{ Querystring: { status?: string } }>, reply: FastifyReply) => {
       const { status: statusFilter } = request.query;
 
@@ -174,7 +179,7 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   // GET /api/observability/runs/:runId/console
   // --------------------------------------------------------------------------
   server.get<{ Params: { runId: string } }>(
-    '/api/observability/runs/:runId/console',
+    '/api/v1/observability/runs/:runId/console',
     async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
       const { runId } = request.params;
 
@@ -247,7 +252,7 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   // GET /api/observability/runs/:runId/replay-preview
   // --------------------------------------------------------------------------
   server.get<{ Params: { runId: string } }>(
-    '/api/observability/runs/:runId/replay-preview',
+    '/api/v1/observability/runs/:runId/replay-preview',
     async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
       const { runId } = request.params;
 
@@ -298,6 +303,169 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
         }, request.requestId));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Replay preview failed';
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', message, request.requestId));
+      }
+    },
+  );
+
+  // --------------------------------------------------------------------------
+  // GET /api/v1/metrics (Prometheus scraping endpoint - unauthenticated)
+  // --------------------------------------------------------------------------
+  server.get(
+    '/api/v1/metrics',
+    async (_request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const metricStore = createMetricStore(context.connection);
+        const exporter = createPrometheusExporter({
+          metricStore,
+          config: {
+            defaultLabels: {
+              service_name: 'agent-platform',
+              version: process.env.npm_package_version || '0.6.0',
+              instance: process.env.HOSTNAME || 'local-1',
+            },
+            metricPrefix: 'agent_platform_',
+            includeTimestamp: false,
+          },
+        });
+
+        const output = exporter.export();
+
+        return reply
+          .code(200)
+          .header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+          .send(output);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to export metrics';
+        return reply.code(500).send(message);
+      }
+    },
+  );
+
+  // --------------------------------------------------------------------------
+  // Alert Routes
+  // --------------------------------------------------------------------------
+
+  // GET /api/v1/alerts/rules
+  server.get(
+    '/api/v1/alerts/rules',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const alertStore = createAlertStore(context.connection);
+        const rules = alertStore.listRules();
+        return reply.code(200).send(success({ rules }, request.requestId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to list alert rules';
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', message, request.requestId));
+      }
+    },
+  );
+
+  // GET /api/v1/alerts/rules/:ruleId
+  server.get<{ Params: { ruleId: string } }>(
+    '/api/v1/alerts/rules/:ruleId',
+    async (request: FastifyRequest<{ Params: { ruleId: string } }>, reply: FastifyReply) => {
+      const { ruleId } = request.params;
+      try {
+        const alertStore = createAlertStore(context.connection);
+        const rule = alertStore.getRule(ruleId);
+        if (!rule) {
+          return reply.code(404).send(envelopeError('NOT_FOUND', `Rule not found: ${ruleId}`, request.requestId));
+        }
+        return reply.code(200).send(success({ rule }, request.requestId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to get alert rule';
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', message, request.requestId));
+      }
+    },
+  );
+
+  // POST /api/v1/alerts/rules
+  server.post<{ Body: Partial<AlertRule> }>(
+    '/api/v1/alerts/rules',
+    async (request: FastifyRequest<{ Body: Partial<AlertRule> }>, reply: FastifyReply) => {
+      try {
+        const body = request.body;
+        if (!body.id || !body.name || !body.metricName || !body.conditionType || body.threshold === undefined || !body.windowSeconds || !body.severity) {
+          return reply.code(400).send(envelopeError('VALIDATION_ERROR', 'Missing required fields', request.requestId));
+        }
+
+        const rule: AlertRule = {
+          id: body.id,
+          name: body.name,
+          description: body.description,
+          metricName: body.metricName,
+          metricModule: body.metricModule,
+          conditionType: body.conditionType,
+          operator: body.operator,
+          threshold: body.threshold,
+          windowSeconds: body.windowSeconds,
+          severity: body.severity,
+          webhookUrl: body.webhookUrl,
+          labels: body.labels ?? {},
+          enabled: body.enabled ?? true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        const alertStore = createAlertStore(context.connection);
+        alertStore.createRule(rule);
+
+        return reply.code(201).send(success({ rule }, request.requestId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to create alert rule';
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', message, request.requestId));
+      }
+    },
+  );
+
+  // DELETE /api/v1/alerts/rules/:ruleId
+  server.delete<{ Params: { ruleId: string } }>(
+    '/api/v1/alerts/rules/:ruleId',
+    async (request: FastifyRequest<{ Params: { ruleId: string } }>, reply: FastifyReply) => {
+      const { ruleId } = request.params;
+      try {
+        const alertStore = createAlertStore(context.connection);
+        const rule = alertStore.getRule(ruleId);
+        if (!rule) {
+          return reply.code(404).send(envelopeError('NOT_FOUND', `Rule not found: ${ruleId}`, request.requestId));
+        }
+        alertStore.deleteRule(ruleId);
+        return reply.code(200).send(success({ deleted: true }, request.requestId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to delete alert rule';
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', message, request.requestId));
+      }
+    },
+  );
+
+  // GET /api/v1/alerts/state
+  server.get(
+    '/api/v1/alerts/state',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const alertStore = createAlertStore(context.connection);
+        const states = alertStore.getAllStates();
+        return reply.code(200).send(success({ states }, request.requestId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to get alert states';
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', message, request.requestId));
+      }
+    },
+  );
+
+  // POST /api/v1/alerts/evaluate
+  server.post(
+    '/api/v1/alerts/evaluate',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const alertStore = createAlertStore(context.connection);
+        const metricStore = createMetricStore(context.connection);
+        const engine = createAlertingEngine({ alertStore, metricStore });
+        const notifications = engine.evaluateAllRules();
+        return reply.code(200).send(success({ notifications, count: notifications.length }, request.requestId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to evaluate alerts';
         return reply.code(500).send(envelopeError('INTERNAL_ERROR', message, request.requestId));
       }
     },

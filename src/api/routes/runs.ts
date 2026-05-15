@@ -5,7 +5,7 @@ import type { BackgroundSubagentState } from '../../shared/states.js';
 import { success } from '../response-envelope.js';
 
 export function registerRunRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get('/api/runs', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/api/v1/runs', async (request: FastifyRequest, reply: FastifyReply) => {
     const runs: RunInfo[] = [];
 
     try {
@@ -64,7 +64,7 @@ export function registerRunRoutes(server: FastifyInstance, context: ApiContext):
   });
 
   // SSE endpoint - leave unchanged
-  server.get('/api/runs/stream', async (request, reply) => {
+  server.get('/api/v1/runs/stream', async (request, reply) => {
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

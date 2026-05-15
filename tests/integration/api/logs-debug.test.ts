@@ -84,7 +84,7 @@ describe('Logs & Debug API - Extended', () => {
   describe('GET /api/debug/replay/:sessionId - redactedPreviews', () => {
     it('should return redactedPreviews array in replay response', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`,
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`,
         { headers: { 'Cookie': authCookie } }
       );
       expect(response.status).toBe(200);
@@ -106,7 +106,7 @@ describe('Logs & Debug API - Extended', () => {
 
     it('should redact sensitive fields in low sensitivity previews', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`,
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`,
         { headers: { 'Cookie': authCookie } }
       );
       const body = await response.json() as {
@@ -129,7 +129,7 @@ describe('Logs & Debug API - Extended', () => {
 
     it('should fully redact high sensitivity previews', async () => {
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${testSessionId}`,
+        `${baseUrl}/api/v1/debug/replay/${testSessionId}`,
         { headers: { 'Cookie': authCookie } }
       );
       const body = await response.json() as {
@@ -168,7 +168,7 @@ describe('Logs & Debug API - Extended', () => {
       ctx.apiContext.stores.eventStore.append(events);
 
       const response = await fetch(
-        `${baseUrl}/api/debug/replay/${manyEventsSessionId}`,
+        `${baseUrl}/api/v1/debug/replay/${manyEventsSessionId}`,
         { headers: { 'Cookie': authCookie } }
       );
       const body = await response.json() as {
@@ -184,7 +184,7 @@ describe('Logs & Debug API - Extended', () => {
   describe('GET /api/logs - runRef filter', () => {
     it('should filter logs by runRef', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&runRef=run-ld-001`,
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&runRef=run-ld-001`,
         { headers: { 'Cookie': authCookie } }
       );
       expect(response.status).toBe(200);
@@ -204,7 +204,7 @@ describe('Logs & Debug API - Extended', () => {
 
     it('should return empty when runRef matches no events', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&runRef=non-existent-run`,
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&runRef=non-existent-run`,
         { headers: { 'Cookie': authCookie } }
       );
       expect(response.status).toBe(200);
@@ -222,7 +222,7 @@ describe('Logs & Debug API - Extended', () => {
 
     it('should combine runRef with other filters', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&runRef=run-ld-001&eventType=run_started`,
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&runRef=run-ld-001&eventType=run_started`,
         { headers: { 'Cookie': authCookie } }
       );
       expect(response.status).toBe(200);

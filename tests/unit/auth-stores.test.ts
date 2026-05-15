@@ -21,6 +21,7 @@ describe('auth-stores', () => {
         user_id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

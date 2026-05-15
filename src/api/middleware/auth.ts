@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthTokenStore } from '../../storage/auth-token-store.js';
 import type { UserStore } from '../../storage/user-store.js';
+import type { UserRole } from '../../storage/user-store.js';
 import { hashToken } from '../../storage/auth-crypto.js';
 import { ApiErrorFactory } from '../errors.js';
 
@@ -9,6 +10,7 @@ const SESSION_COOKIE_NAME = 'agent-platform-session';
 export interface AuthenticatedUser {
   userId: string;
   username: string;
+  role: UserRole;
 }
 
 declare module 'fastify' {
@@ -94,6 +96,7 @@ export async function authenticateRequest(
   return {
     userId: user.userId,
     username: user.username,
+    role: user.role,
   };
 }
 
@@ -112,6 +115,12 @@ export function registerAuthMiddleware(
 ): void {
   server.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
     if (isPathExcluded(request.url, options.excludedPaths)) {
+      return;
+    }
+
+    // Skip session auth for API key auth (Bearer ak_* tokens)
+    const authHeader = request.headers.authorization;
+    if (authHeader?.startsWith('Bearer ak_')) {
       return;
     }
 

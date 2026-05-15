@@ -22,7 +22,7 @@ function isSseEndpoint(url: string): boolean {
 }
 
 function isAuthEndpoint(url: string): boolean {
-  return url.startsWith('/api/auth/login');
+  return url.startsWith('/api/v1/auth/login') || url.startsWith('/api/auth/login');
 }
 
 /**

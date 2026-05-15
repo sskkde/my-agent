@@ -126,7 +126,7 @@ export function registerUsageRoutes(server: FastifyInstance, context: ApiContext
    *   - offset: pagination offset (default 0)
    */
   server.get<{ Querystring: GetUsageQuery }>(
-    '/api/usage',
+    '/api/v1/usage',
     async (request, reply): Promise<{ data: PaginatedResponse<UsageSummary> }> => {
       const { sessionId, limit = 50, offset = 0 } = request.query;
       const now = new Date().toISOString();
@@ -193,7 +193,7 @@ export function registerUsageRoutes(server: FastifyInstance, context: ApiContext
    * Returns usage summary for a specific session.
    */
   server.get<{ Params: GetSessionUsageParams }>(
-    '/api/sessions/:sessionId/usage',
+    '/api/v1/sessions/:sessionId/usage',
     async (request, reply): Promise<{ data: UsageSummary }> => {
       const { sessionId } = request.params;
       const now = new Date().toISOString();

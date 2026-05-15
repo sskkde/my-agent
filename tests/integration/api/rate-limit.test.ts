@@ -70,13 +70,13 @@ describe('Rate Limit Middleware', () => {
         max: 2,
         allowList: (request) => {
           const url = request.url;
-          return url.includes('/timeline/stream') || url === '/api/runs/stream';
+          return url.includes('/timeline/stream') || url === '/api/v1/runs/stream';
         },
       });
 
-      server.get('/api/sessions/test/timeline/stream', async () => ({ type: 'sse-timeline' }));
-      server.get('/api/runs/stream', async () => ({ type: 'sse-runs' }));
-      server.get('/api/normal', async () => ({ type: 'normal' }));
+      server.get('/api/v1/sessions/test/timeline/stream', async () => ({ type: 'sse-timeline' }));
+      server.get('/api/v1/runs/stream', async () => ({ type: 'sse-runs' }));
+      server.get('/api/v1/normal', async () => ({ type: 'normal' }));
 
       await server.ready();
     });
@@ -89,7 +89,7 @@ describe('Rate Limit Middleware', () => {
       for (let i = 0; i < 10; i++) {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/sessions/test/timeline/stream',
+          url: '/api/v1/sessions/test/timeline/stream',
         });
         expect(response.statusCode).toBe(200);
       }
@@ -99,7 +99,7 @@ describe('Rate Limit Middleware', () => {
       for (let i = 0; i < 10; i++) {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/runs/stream',
+          url: '/api/v1/runs/stream',
         });
         expect(response.statusCode).toBe(200);
       }
@@ -107,11 +107,11 @@ describe('Rate Limit Middleware', () => {
 
     it('should still rate-limit normal endpoints', async () => {
       for (let i = 0; i < 2; i++) {
-        const r = await server.inject({ method: 'GET', url: '/api/normal' });
+        const r = await server.inject({ method: 'GET', url: '/api/v1/normal' });
         expect(r.statusCode).toBe(200);
       }
 
-      const exceeded = await server.inject({ method: 'GET', url: '/api/normal' });
+      const exceeded = await server.inject({ method: 'GET', url: '/api/v1/normal' });
       expect(exceeded.statusCode).toBe(429);
     });
   });
@@ -119,22 +119,22 @@ describe('Rate Limit Middleware', () => {
   describe('auth endpoint stricter limits', () => {
     it('should apply stricter limit of 2 to auth endpoints', async () => {
       const server = await setupBasicServer({
-        max: (request) => (request.url.startsWith('/api/auth/') ? 2 : 10),
+        max: (request) => (request.url.startsWith('/api/v1/auth/') ? 2 : 10),
       });
 
-      server.post('/api/auth/login', async () => ({ token: 'test' }));
+      server.post('/api/v1/auth/login', async () => ({ token: 'test' }));
       await server.ready();
 
       for (let i = 0; i < 2; i++) {
         const r = await server.inject({
-          method: 'POST', url: '/api/auth/login',
+          method: 'POST', url: '/api/v1/auth/login',
           payload: { username: 'test', password: 'test' },
         });
         expect(r.statusCode).toBe(200);
       }
 
       const exceeded = await server.inject({
-        method: 'POST', url: '/api/auth/login',
+        method: 'POST', url: '/api/v1/auth/login',
         payload: { username: 'test', password: 'test' },
       });
       expect(exceeded.statusCode).toBe(429);
@@ -144,14 +144,14 @@ describe('Rate Limit Middleware', () => {
 
     it('should use higher limit for non-auth endpoints', async () => {
       const server = await setupBasicServer({
-        max: (request) => (request.url.startsWith('/api/auth/') ? 2 : 10),
+        max: (request) => (request.url.startsWith('/api/v1/auth/') ? 2 : 10),
       });
 
-      server.get('/api/other', async () => ({ data: 'ok' }));
+      server.get('/api/v1/other', async () => ({ data: 'ok' }));
       await server.ready();
 
       for (let i = 0; i < 10; i++) {
-        const r = await server.inject({ method: 'GET', url: '/api/other' });
+        const r = await server.inject({ method: 'GET', url: '/api/v1/other' });
         expect(r.statusCode).toBe(200);
       }
 
@@ -180,14 +180,14 @@ describe('Rate Limit Middleware', () => {
     it('should apply stricter auth limit', async () => {
       const server = Fastify({ logger: false });
       await registerRateLimitMiddleware(server, { globalMax: 10, authMax: 1, timeWindow: '1 minute' });
-      server.post('/api/auth/login', async () => ({ token: 'test' }));
+      server.post('/api/v1/auth/login', async () => ({ token: 'test' }));
       await server.ready();
 
       const remoteAddress = '10.0.0.201';
-      const first = await server.inject({ method: 'POST', url: '/api/auth/login', payload: {}, remoteAddress });
+      const first = await server.inject({ method: 'POST', url: '/api/v1/auth/login', payload: {}, remoteAddress });
       expect(first.statusCode).toBe(200);
 
-      const second = await server.inject({ method: 'POST', url: '/api/auth/login', payload: {}, remoteAddress });
+      const second = await server.inject({ method: 'POST', url: '/api/v1/auth/login', payload: {}, remoteAddress });
       expect(second.statusCode).toBe(429);
 
       await server.close();
@@ -196,16 +196,16 @@ describe('Rate Limit Middleware', () => {
     it('should exempt SSE endpoints', async () => {
       const server = Fastify({ logger: false });
       await registerRateLimitMiddleware(server, { globalMax: 2, authMax: 1 });
-      server.get('/api/sessions/test/timeline/stream', async () => ({ type: 'sse' }));
-      server.get('/api/runs/stream', async () => ({ type: 'sse' }));
+      server.get('/api/v1/sessions/test/timeline/stream', async () => ({ type: 'sse' }));
+      server.get('/api/v1/runs/stream', async () => ({ type: 'sse' }));
       await server.ready();
 
       for (let i = 0; i < 10; i++) {
-        const r = await server.inject({ method: 'GET', url: '/api/sessions/test/timeline/stream' });
+        const r = await server.inject({ method: 'GET', url: '/api/v1/sessions/test/timeline/stream' });
         expect(r.statusCode).toBe(200);
       }
       for (let i = 0; i < 10; i++) {
-        const r = await server.inject({ method: 'GET', url: '/api/runs/stream' });
+        const r = await server.inject({ method: 'GET', url: '/api/v1/runs/stream' });
         expect(r.statusCode).toBe(200);
       }
 
@@ -279,7 +279,7 @@ describe('Rate Limit Middleware', () => {
     it('should pass health check with rate limit headers', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/health',
+        url: '/api/v1/health',
         remoteAddress: '10.0.0.1',
       });
       expect(response.statusCode).toBe(200);

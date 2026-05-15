@@ -81,7 +81,7 @@ describe('Logs API', () => {
 
   describe('GET /api/logs', () => {
     it('should return logs with default pagination', async () => {
-      const response = await fetch(`${baseUrl}/api/logs?sessionId=${testSessionId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/logs?sessionId=${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -112,7 +112,7 @@ describe('Logs API', () => {
 
     it('should filter logs by sourceModule', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&sourceModule=tool`, {
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&sourceModule=tool`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -133,7 +133,7 @@ describe('Logs API', () => {
 
     it('should filter logs by eventType', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&eventType=run_progress`, {
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&eventType=run_progress`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -152,7 +152,7 @@ describe('Logs API', () => {
 
     it('should respect limit parameter', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&limit=2`, {
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&limit=2`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -173,7 +173,7 @@ describe('Logs API', () => {
 
     it('should enforce max limit of 200', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&limit=500`, {
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&limit=500`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -191,7 +191,7 @@ describe('Logs API', () => {
 
     it('should respect offset parameter', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=${testSessionId}&limit=2&offset=2`, {
+        `${baseUrl}/api/v1/logs?sessionId=${testSessionId}&limit=2&offset=2`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -210,7 +210,7 @@ describe('Logs API', () => {
     });
 
     it('should derive severity from event types', async () => {
-      const response = await fetch(`${baseUrl}/api/logs?sessionId=${testSessionId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/logs?sessionId=${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       });
       const body = await response.json() as {
@@ -227,7 +227,7 @@ describe('Logs API', () => {
     });
 
     it('should include payloadPreview for low sensitivity events', async () => {
-      const response = await fetch(`${baseUrl}/api/logs?sessionId=${testSessionId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/logs?sessionId=${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       });
       const body = await response.json() as {
@@ -242,7 +242,7 @@ describe('Logs API', () => {
     });
 
     it('should redact payloadPreview for medium+ sensitivity events', async () => {
-      const response = await fetch(`${baseUrl}/api/logs?sessionId=${testSessionId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/logs?sessionId=${testSessionId}`, {
         headers: { 'Cookie': authCookie },
       });
       const body = await response.json() as {
@@ -260,7 +260,7 @@ describe('Logs API', () => {
 
     it('should return empty array for non-existent session', async () => {
       const response = await fetch(
-        `${baseUrl}/api/logs?sessionId=non-existent-session`, {
+        `${baseUrl}/api/v1/logs?sessionId=non-existent-session`, {
         headers: { 'Cookie': authCookie },
       }
       );
@@ -292,7 +292,7 @@ describe('Logs API', () => {
       };
       ctx.apiContext.stores.eventStore.append(otherEvent);
 
-      const response = await fetch(`${baseUrl}/api/logs`, {
+      const response = await fetch(`${baseUrl}/api/v1/logs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -315,7 +315,7 @@ describe('Logs API', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/logs/stream?sessionId=${testSessionId}`, {
+          `${baseUrl}/api/v1/logs/stream?sessionId=${testSessionId}`, {
           signal: controller.signal,
           headers: { 'Cookie': authCookie },
         }
@@ -335,7 +335,7 @@ describe('Logs API', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/logs/stream?sessionId=${testSessionId}`,
+          `${baseUrl}/api/v1/logs/stream?sessionId=${testSessionId}`,
           { signal: controller.signal }
         );
         const reader = response.body?.getReader();
@@ -367,7 +367,7 @@ describe('Logs API', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/logs/stream?sessionId=${testSessionId}&after=evt-002`, {
+          `${baseUrl}/api/v1/logs/stream?sessionId=${testSessionId}&after=evt-002`, {
           signal: controller.signal,
           headers: { 'Cookie': authCookie },
         }
@@ -399,7 +399,7 @@ describe('Logs API', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/logs/stream?sessionId=${testSessionId}`, {
+          `${baseUrl}/api/v1/logs/stream?sessionId=${testSessionId}`, {
           signal: controller.signal,
           headers: { 'Cookie': authCookie },
         }

@@ -18,7 +18,7 @@ describe('Error Format Contract', () => {
 
   describe('GET /api/approvals/:approvalId (non-existent)', () => {
     it('should return 404 with error envelope', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -39,7 +39,7 @@ describe('Error Format Contract', () => {
     });
 
     it('should not have data field in error response', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -51,7 +51,7 @@ describe('Error Format Contract', () => {
 
   describe('Error envelope structure', () => {
     it('should have ok: false in all error responses', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -61,7 +61,7 @@ describe('Error Format Contract', () => {
     });
 
     it('should have error.code as a non-empty string', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -77,7 +77,7 @@ describe('Error Format Contract', () => {
     });
 
     it('should include requestId in error responses', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);

@@ -27,7 +27,7 @@ describe('Auth Routes', () => {
   });
 
   async function createUserAndLogin(username: string, password: string): Promise<string> {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+    const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -43,7 +43,7 @@ describe('Auth Routes', () => {
 
   describe('GET /api/setup/status', () => {
     it('should return needsSetup=true when no users exist', async () => {
-      const response = await fetch(`${baseUrl}/api/setup/status`);
+      const response = await fetch(`${baseUrl}/api/v1/setup/status`);
       expect(response.status).toBe(200);
 
       const body = await response.json() as { data: { needsSetup: boolean } };
@@ -53,7 +53,7 @@ describe('Auth Routes', () => {
     it('should return needsSetup=false after user is created', async () => {
       await createUserAndLogin('admin', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/setup/status`);
+      const response = await fetch(`${baseUrl}/api/v1/setup/status`);
       expect(response.status).toBe(200);
 
       const body = await response.json() as { data: { needsSetup: boolean } };
@@ -63,7 +63,7 @@ describe('Auth Routes', () => {
 
   describe('POST /api/setup/user', () => {
     it('should create first user successfully', async () => {
-      const response = await fetch(`${baseUrl}/api/setup/user`, {
+      const response = await fetch(`${baseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'newuser', password: 'password123' }),
@@ -84,7 +84,7 @@ describe('Auth Routes', () => {
     it('should return 409 if users already exist', async () => {
       await createUserAndLogin('firstuser', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/setup/user`, {
+      const response = await fetch(`${baseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'seconduser', password: 'password123' }),
@@ -97,7 +97,7 @@ describe('Auth Routes', () => {
     });
 
     it('should return 400 for empty username', async () => {
-      const response = await fetch(`${baseUrl}/api/setup/user`, {
+      const response = await fetch(`${baseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: '', password: 'password123' }),
@@ -110,7 +110,7 @@ describe('Auth Routes', () => {
     });
 
     it('should return 400 for empty password', async () => {
-      const response = await fetch(`${baseUrl}/api/setup/user`, {
+      const response = await fetch(`${baseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'user', password: '' }),
@@ -127,7 +127,7 @@ describe('Auth Routes', () => {
     it('should login with valid credentials', async () => {
       await createUserAndLogin('admin', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'admin', password: 'password123' }),
@@ -146,7 +146,7 @@ describe('Auth Routes', () => {
     it('should return 401 for invalid username', async () => {
       await createUserAndLogin('admin', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'nonexistent', password: 'password123' }),
@@ -161,7 +161,7 @@ describe('Auth Routes', () => {
     it('should return 401 for invalid password', async () => {
       await createUserAndLogin('admin', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'admin', password: 'wrongpassword' }),
@@ -174,7 +174,7 @@ describe('Auth Routes', () => {
     });
 
     it('should return 400 for missing username', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: 'password123' }),
@@ -191,7 +191,7 @@ describe('Auth Routes', () => {
     it('should logout and clear cookie', async () => {
       const cookie = await createUserAndLogin('admin', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/auth/logout`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/logout`, {
         method: 'POST',
         headers: { 'Cookie': cookie },
       });
@@ -207,7 +207,7 @@ describe('Auth Routes', () => {
     });
 
     it('should return 200 even without a cookie', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/logout`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/logout`, {
         method: 'POST',
       });
 
@@ -222,7 +222,7 @@ describe('Auth Routes', () => {
     it('should return current user when authenticated', async () => {
       const cookie = await createUserAndLogin('admin', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/auth/me`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/me`, {
         headers: { 'Cookie': cookie },
       });
 
@@ -234,7 +234,7 @@ describe('Auth Routes', () => {
     });
 
     it('should return 401 when not authenticated', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/me`);
+      const response = await fetch(`${baseUrl}/api/v1/auth/me`);
 
       expect(response.status).toBe(401);
 
@@ -243,7 +243,7 @@ describe('Auth Routes', () => {
     });
 
     it('should return 401 with invalid session cookie', async () => {
-      const response = await fetch(`${baseUrl}/api/auth/me`, {
+      const response = await fetch(`${baseUrl}/api/v1/auth/me`, {
         headers: { 'Cookie': 'agent-platform-session=invalid-token' },
       });
 
@@ -256,17 +256,17 @@ describe('Auth Routes', () => {
 
   describe('Auth Middleware - Protected Routes', () => {
     it('should allow access to /api/health without auth', async () => {
-      const response = await fetch(`${baseUrl}/api/health`);
+      const response = await fetch(`${baseUrl}/api/v1/health`);
       expect(response.status).toBe(200);
     });
 
     it('should allow access to /api/setup/status without auth', async () => {
-      const response = await fetch(`${baseUrl}/api/setup/status`);
+      const response = await fetch(`${baseUrl}/api/v1/setup/status`);
       expect(response.status).toBe(200);
     });
 
     it('should reject /api/sessions without auth', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions`);
+      const response = await fetch(`${baseUrl}/api/v1/sessions`);
       expect(response.status).toBe(401);
 
       const body = await response.json() as { error: { code: string } };
@@ -276,7 +276,7 @@ describe('Auth Routes', () => {
     it('should allow /api/sessions with valid session', async () => {
       const cookie = await createUserAndLogin('admin', 'password123');
 
-      const response = await fetch(`${baseUrl}/api/sessions`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Cookie': cookie },
       });
 
@@ -297,7 +297,7 @@ describe('Auth Routes', () => {
         messageCount: 0,
       });
 
-      const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'operator', password: 'password123' }),
@@ -311,7 +311,7 @@ describe('Auth Routes', () => {
       const cookie = setupResponse.headers.get('set-cookie');
       expect(cookie).toBeDefined();
 
-      const listResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const listResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Cookie': cookie! },
       });
 
@@ -321,7 +321,7 @@ describe('Auth Routes', () => {
       expect(listBody.data.items[0].sessionId).toBe(TEST_SESSION_ID);
       expect(listBody.data.items[0].userId).toBe(newUserId);
 
-      const getResponse = await fetch(`${baseUrl}/api/sessions/${TEST_SESSION_ID}`, {
+      const getResponse = await fetch(`${baseUrl}/api/v1/sessions/${TEST_SESSION_ID}`, {
         headers: { 'Cookie': cookie! },
       });
 
@@ -331,7 +331,7 @@ describe('Auth Routes', () => {
     });
 
     it('should create new sessions under authenticated user after setup', async () => {
-      const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'admin2', password: 'password123' }),
@@ -344,7 +344,7 @@ describe('Auth Routes', () => {
       const cookie = setupResponse.headers.get('set-cookie');
       expect(cookie).toBeDefined();
 
-      const sessionResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const sessionResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': cookie! },
         body: JSON.stringify({}),

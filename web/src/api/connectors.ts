@@ -1,6 +1,6 @@
 import type { ApiError } from './types';
 
-const API_BASE = '/api';
+const API_BASE = '/api/v1';
 
 class ApiClientError extends Error {
   code: string;

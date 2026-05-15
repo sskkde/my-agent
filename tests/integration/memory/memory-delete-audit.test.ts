@@ -27,7 +27,7 @@ describe('Memory Delete Audit Trail', () => {
     }
     baseUrl = `http://localhost:${address.port}`;
 
-    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+    const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'audittest', password: 'password123' }),
@@ -36,7 +36,7 @@ describe('Memory Delete Audit Trail', () => {
     expect(setupResponse.status).toBe(201);
     authCookie = setupResponse.headers.get('set-cookie')!;
 
-    const meResponse = await fetch(`${baseUrl}/api/auth/me`, {
+    const meResponse = await fetch(`${baseUrl}/api/v1/auth/me`, {
       headers: { 'Cookie': authCookie },
     });
     const meBody = await meResponse.json() as { data: { user: { userId: string } } };
@@ -90,7 +90,7 @@ describe('Memory Delete Audit Trail', () => {
       });
       apiContext.stores.longTermMemoryStore.save(memory);
 
-      const deleteResp = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const deleteResp = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });
@@ -126,7 +126,7 @@ describe('Memory Delete Audit Trail', () => {
       apiContext.stores.longTermMemoryStore.save(memory);
 
       const beforeDelete = new Date().toISOString();
-      const deleteResp = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const deleteResp = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });
@@ -152,20 +152,20 @@ describe('Memory Delete Audit Trail', () => {
       apiContext.stores.longTermMemoryStore.save(memory);
 
       // Verify it exists before delete
-      const getBefore = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const getBefore = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(getBefore.status).toBe(200);
 
       // Delete
-      const deleteResp = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const deleteResp = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });
       expect(deleteResp.status).toBe(200);
 
       // GET after delete should 404
-      const getAfter = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const getAfter = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(getAfter.status).toBe(404);
@@ -178,7 +178,7 @@ describe('Memory Delete Audit Trail', () => {
       });
       apiContext.stores.longTermMemoryStore.save(memory);
 
-      const deleteResp = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const deleteResp = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });

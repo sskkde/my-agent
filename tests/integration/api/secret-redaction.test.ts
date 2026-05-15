@@ -70,7 +70,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -100,7 +100,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -124,7 +124,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -146,7 +146,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -174,7 +174,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -200,7 +200,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -222,7 +222,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/settings',
+        url: '/api/v1/settings',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -245,7 +245,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/settings',
+        url: '/api/v1/settings',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -265,7 +265,7 @@ describe('API Secret Redaction', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/settings',
+        url: '/api/v1/settings',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -290,7 +290,7 @@ describe('API Secret Redaction', () => {
 
       const response = await setupServer.inject({
         method: 'POST',
-        url: '/api/setup/user',
+        url: '/api/v1/setup/user',
         payload: {
           username: 'operator',
           password: SENTINEL_PASSWORD,
@@ -325,7 +325,7 @@ describe('API Secret Redaction', () => {
 
       const response = await setupServer.inject({
         method: 'POST',
-        url: '/api/setup/user',
+        url: '/api/v1/setup/user',
         payload: {
           username: 'admin',
           password: 'admin123',
@@ -346,7 +346,7 @@ describe('API Secret Redaction', () => {
     it('should reject setup when users already exist', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/setup/user',
+        url: '/api/v1/setup/user',
         payload: {
           username: 'another',
           password: 'pass123',
@@ -363,7 +363,7 @@ describe('API Secret Redaction', () => {
     it('should reject invalid username with 401', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/auth/login',
+        url: '/api/v1/auth/login',
         payload: {
           username: 'nonexistentuser',
           password: 'anypassword',
@@ -378,7 +378,7 @@ describe('API Secret Redaction', () => {
     it('should reject invalid password with 401', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/auth/login',
+        url: '/api/v1/auth/login',
         payload: {
           username: 'testuser',
           password: 'wrongpassword',
@@ -393,7 +393,7 @@ describe('API Secret Redaction', () => {
     it('should return session cookie on valid login', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/auth/login',
+        url: '/api/v1/auth/login',
         payload: {
           username: 'testuser',
           password: 'testpassword',
@@ -413,7 +413,7 @@ describe('API Secret Redaction', () => {
     it('should NOT expose password in error messages', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/auth/login',
+        url: '/api/v1/auth/login',
         payload: {
           username: 'testuser',
           password: SENTINEL_PASSWORD,
@@ -427,7 +427,7 @@ describe('API Secret Redaction', () => {
     it('should return 400 for missing username', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/auth/login',
+        url: '/api/v1/auth/login',
         payload: {
           password: 'somepassword',
         },
@@ -441,7 +441,7 @@ describe('API Secret Redaction', () => {
     it('should return 400 for missing password', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/auth/login',
+        url: '/api/v1/auth/login',
         payload: {
           username: 'testuser',
         },
@@ -457,7 +457,7 @@ describe('API Secret Redaction', () => {
     it('should return 401 for /api/providers without cookie', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
       });
 
       expect(response.statusCode).toBe(401);
@@ -468,7 +468,7 @@ describe('API Secret Redaction', () => {
     it('should return 401 for /api/models without cookie', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
       });
 
       expect(response.statusCode).toBe(401);
@@ -479,7 +479,7 @@ describe('API Secret Redaction', () => {
     it('should return 401 for /api/sessions without cookie', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/sessions',
+        url: '/api/v1/sessions',
       });
 
       expect(response.statusCode).toBe(401);
@@ -490,7 +490,7 @@ describe('API Secret Redaction', () => {
     it('should return 401 for /api/auth/me without cookie', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/auth/me',
+        url: '/api/v1/auth/me',
       });
 
       expect(response.statusCode).toBe(401);
@@ -501,7 +501,7 @@ describe('API Secret Redaction', () => {
     it('should return 401 with invalid session cookie', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: 'agent-platform-session=invalid-token-value',
         },
@@ -515,7 +515,7 @@ describe('API Secret Redaction', () => {
     it('should return 401 for POST /api/providers without cookie', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         payload: {
           providerType: 'openai',
           apiKey: 'test-key',
@@ -528,7 +528,7 @@ describe('API Secret Redaction', () => {
     it('should return 401 for protected routes with malformed auth header', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/models',
+        url: '/api/v1/models',
         headers: {
           authorization: 'Bearer invalid-token',
         },
@@ -542,7 +542,7 @@ describe('API Secret Redaction', () => {
     it('should allow /api/health without auth', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/health',
+        url: '/api/v1/health',
       });
 
       expect(response.statusCode).toBe(200);
@@ -551,7 +551,7 @@ describe('API Secret Redaction', () => {
     it('should allow /api/setup/status without auth', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/setup/status',
+        url: '/api/v1/setup/status',
       });
 
       expect(response.statusCode).toBe(200);
@@ -560,7 +560,7 @@ describe('API Secret Redaction', () => {
     it('should allow /api/tools without auth', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tools',
+        url: '/api/v1/tools',
       });
 
       expect(response.statusCode).toBe(200);
@@ -581,10 +581,10 @@ describe('API Secret Redaction', () => {
       process.env.OPENROUTER_API_KEY = SENTINEL_API_KEY;
 
       const endpoints: Array<{ method: 'GET'; url: string; auth: boolean }> = [
-        { method: 'GET', url: '/api/providers', auth: true },
-        { method: 'GET', url: '/api/models', auth: true },
-        { method: 'GET', url: '/api/settings', auth: true },
-        { method: 'GET', url: '/api/tools', auth: false },
+        { method: 'GET', url: '/api/v1/providers', auth: true },
+        { method: 'GET', url: '/api/v1/models', auth: true },
+        { method: 'GET', url: '/api/v1/settings', auth: true },
+        { method: 'GET', url: '/api/v1/tools', auth: false },
       ];
 
       for (const endpoint of endpoints) {

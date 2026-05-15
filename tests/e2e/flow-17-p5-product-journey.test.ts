@@ -37,7 +37,7 @@ describe('P5 Product Journey', () => {
     const username = `${prefix}user${++userCounter}`;
     const setupResponse = await server.inject({
       method: 'POST',
-      url: '/api/setup/user',
+      url: '/api/v1/setup/user',
       payload: { username, password: 'testpassword123' },
     });
     expect(setupResponse.statusCode).toBe(201);
@@ -49,7 +49,7 @@ describe('P5 Product Journey', () => {
   async function createSession(cookie: string): Promise<string> {
     const response = await server.inject({
       method: 'POST',
-      url: '/api/sessions',
+      url: '/api/v1/sessions',
       payload: {},
       headers: { cookie },
     });
@@ -77,7 +77,7 @@ describe('P5 Product Journey', () => {
     it('should send a message and get accepted', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: `/api/sessions/${sessionId}/messages`,
+        url: `/api/v1/sessions/${sessionId}/messages`,
         payload: { text: 'Hello, this is a P5 product journey test message' },
         headers: { cookie: authCookie },
       });
@@ -87,7 +87,7 @@ describe('P5 Product Journey', () => {
     it('should have the message in session transcript', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: `/api/sessions/${sessionId}/transcripts`,
+        url: `/api/v1/sessions/${sessionId}/transcripts`,
         headers: { cookie: authCookie },
       });
       expect(response.statusCode).toBe(200);
@@ -100,7 +100,7 @@ describe('P5 Product Journey', () => {
     it('should list approvals', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/approvals',
+        url: '/api/v1/approvals',
         headers: { cookie: authCookie },
       });
       expect(response.statusCode).toBe(200);
@@ -113,7 +113,7 @@ describe('P5 Product Journey', () => {
     it('should handle approval API with status filter', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/approvals?status=pending',
+        url: '/api/v1/approvals?status=pending',
         headers: { cookie: authCookie },
       });
       expect(response.statusCode).toBe(200);
@@ -126,7 +126,7 @@ describe('P5 Product Journey', () => {
     it('should list observability runs', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/observability/runs',
+        url: '/api/v1/observability/runs',
         headers: { cookie: authCookie },
       });
       expect(response.statusCode).toBe(200);
@@ -138,7 +138,7 @@ describe('P5 Product Journey', () => {
     it('should support run filtering by status', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/observability/runs?status=completed',
+        url: '/api/v1/observability/runs?status=completed',
         headers: { cookie: authCookie },
       });
       expect(response.statusCode).toBe(200);
@@ -158,7 +158,7 @@ describe('P5 Product Journey', () => {
     it('should get session detail', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: `/api/sessions/${sessionId}`,
+        url: `/api/v1/sessions/${sessionId}`,
         headers: { cookie: authCookie },
       });
       expect(response.statusCode).toBe(200);
@@ -172,7 +172,7 @@ describe('P5 Product Journey', () => {
     it('should return health status', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/health',
+        url: '/api/v1/health',
       });
       expect(response.statusCode).toBe(200);
       const body = response.json() as { ok: boolean; data: { status: string } };
@@ -183,7 +183,7 @@ describe('P5 Product Journey', () => {
     it('should return readiness status', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/health/ready',
+        url: '/api/v1/health/ready',
       });
       expect(response.statusCode).toBe(200);
       const body = response.json() as { ok: boolean; data: { status: string } };
@@ -193,7 +193,7 @@ describe('P5 Product Journey', () => {
     it('should include request id in response headers', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/health',
+        url: '/api/v1/health',
       });
       const requestId = response.headers['x-request-id'];
       expect(requestId).toBeDefined();
@@ -204,7 +204,7 @@ describe('P5 Product Journey', () => {
     it('should return 401 for unauthenticated requests to protected endpoints', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/sessions',
+        url: '/api/v1/sessions',
       });
       expect(response.statusCode).toBe(401);
     });
@@ -212,7 +212,7 @@ describe('P5 Product Journey', () => {
     it('should return standard error envelope for auth failures', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/sessions',
+        url: '/api/v1/sessions',
       });
       const body = response.json() as { ok: boolean; error: { code: string; message: string } };
       expect(body.ok).toBe(false);

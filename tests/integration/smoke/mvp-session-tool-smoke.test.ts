@@ -18,7 +18,7 @@ describe('MVP smoke: session foreground tool dispatch', () => {
 
     try {
       const sessionId = await createSession(harness);
-      const messageResponse = await fetch(`${harness.baseUrl}/api/sessions/${sessionId}/messages`, {
+      const messageResponse = await fetch(`${harness.baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: harness.authCookie },
         body: JSON.stringify({ text: 'search deterministic smoke docs' }),
@@ -32,14 +32,14 @@ describe('MVP smoke: session foreground tool dispatch', () => {
         expect(actions.some(action => action.actionType === 'execute_tool')).toBe(true);
       });
 
-      const transcriptResponse = await fetch(`${harness.baseUrl}/api/sessions/${sessionId}/transcripts`, {
+      const transcriptResponse = await fetch(`${harness.baseUrl}/api/v1/sessions/${sessionId}/transcripts`, {
         headers: { Cookie: harness.authCookie },
       });
       expect(transcriptResponse.status).toBe(200);
       const transcriptBody = await transcriptResponse.json() as { data: { transcripts: Array<{ turnId: string }> } };
       expect(transcriptBody.data.transcripts.some(turn => turn.turnId === messageBody.data.correlationId)).toBe(true);
 
-      const timelineResponse = await fetch(`${harness.baseUrl}/api/sessions/${sessionId}/timeline`, {
+      const timelineResponse = await fetch(`${harness.baseUrl}/api/v1/sessions/${sessionId}/timeline`, {
         headers: { Cookie: harness.authCookie },
       });
       expect(timelineResponse.status).toBe(200);

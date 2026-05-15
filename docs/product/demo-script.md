@@ -1,6 +1,6 @@
-# Phase 4 Automation Product Beta — Demo Script
+# Phase 6 Automation Product — Demo Script
 
-This script demonstrates the complete Phase 4 automation capabilities and Phase 5 product experience.
+This script demonstrates the complete Phase 6 automation capabilities including RBAC, API Keys, Triggers, DLQ, Connectors, Memory Budget, and Metrics.
 
 ## Prerequisites
 
@@ -345,4 +345,276 @@ curl http://localhost:3003/api/sessions
 
 ```bash
 npm run test:p5
+```
+
+---
+
+## Phase 6 Demo Paths
+
+### Demo Path G: RBAC — Role-Based Access Control
+
+**Goal**: Demonstrate 3-tier role system
+
+1. Create first user (auto-admin):
+   ```bash
+   curl -X POST http://localhost:3003/api/v1/setup/user \
+     -H "Content-Type: application/json" \
+     -d '{"username":"admin","password":"admin123"}'
+   ```
+
+2. Login as admin and create API keys with different roles:
+   ```bash
+   # Create service role key
+   curl -X POST http://localhost:3003/api/v1/api-keys \
+     -H "Authorization: Bearer <session-cookie>" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"CI Service","role":"service"}'
+   
+   # Create user role key
+   curl -X POST http://localhost:3003/api/v1/api-keys \
+     -H "Authorization: Bearer <session-cookie>" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Dev User","role":"user"}'
+   ```
+
+3. Test RBAC restrictions:
+   ```bash
+   # User role cannot access settings
+   curl -H "Authorization: Bearer ak_user_key" \
+     http://localhost:3003/api/v1/agents/foreground.default/config
+   # Returns 403 FORBIDDEN
+   
+   # Admin role can access settings
+   curl -H "Authorization: Bearer ak_admin_key" \
+     http://localhost:3003/api/v1/agents/foreground.default/config
+   # Returns 200 OK
+   ```
+
+**What to show**:
+- 3-tier role hierarchy (admin > user > service)
+- Permission enforcement on all endpoints
+- Clear error messages for denied access
+
+---
+
+### Demo Path H: API Key Management
+
+**Goal**: Create, use, and revoke API keys
+
+1. Navigate to **Settings** tab
+2. Find **API Keys** section
+3. Click **Create API Key**
+4. Configure:
+   - Name: "Demo Integration"
+   - Role: "service"
+   - Expiration: Optional
+5. Copy the generated key (shown once!)
+6. Test the key:
+   ```bash
+   curl -H "Authorization: Bearer ak_xxx..." \
+     http://localhost:3003/api/v1/sessions
+   ```
+7. List keys to verify creation
+8. Revoke the key
+9. Verify revoked key returns 401
+
+**What to show**:
+- Key creation with role selection
+- One-time key display (security best practice)
+- Key identification via prefix
+- Immediate revocation
+
+---
+
+### Demo Path I: Trigger Creation
+
+**Goal**: Create schedule and webhook triggers
+
+1. **Schedule Trigger**:
+   - Navigate to **Triggers** tab
+   - Click **Create Trigger**
+   - Select **Schedule** type
+   - Configure:
+     - Name: "Daily Summary"
+     - Workflow: Select published workflow
+     - Cron: `0 9 * * *` (daily at 9 AM)
+   - Verify next execution preview
+   - Click **Create**
+
+2. **Webhook Trigger**:
+   - Click **Create Trigger**
+   - Select **Webhook** type
+   - Configure:
+     - Name: "GitHub Webhook"
+     - Workflow: Select published workflow
+   - Click **Create**
+   - Note the generated webhook URL and HMAC secret
+
+3. Test webhook trigger:
+   ```bash
+   curl -X POST http://localhost:3003/api/webhooks/<trigger-id> \
+     -H "Content-Type: application/json" \
+     -H "X-Hub-Signature-256: sha256=<hmac>" \
+     -d '{"action":"opened","issue":{"title":"Test"}}'
+   ```
+
+**What to show**:
+- Cron validation with preview
+- Webhook URL generation
+- HMAC signature verification
+- Trigger toggle (enable/disable)
+
+---
+
+### Demo Path J: DLQ Management
+
+**Goal**: Handle failed operations
+
+1. Navigate to **DLQ** tab
+2. If empty, trigger a failure:
+   - Create a workflow with invalid connector
+   - Or simulate timeout
+3. View failed entries:
+   - Event ID
+   - Failure reason
+   - Timestamp
+   - Retry count
+4. Select entries and:
+   - **Retry**: Attempt reprocessing
+   - **Discard**: Remove permanently
+5. Expand entry for full details:
+   - Error stack trace
+   - Original payload
+   - Metadata
+
+**What to show**:
+- Failed event capture
+- Retry mechanism
+- Discard with audit trail
+- Batch operations
+
+---
+
+### Demo Path K: Connectors
+
+**Goal**: Configure and use external connectors
+
+1. Navigate to **Connectors** tab
+2. View available connector types:
+   - GitHub
+   - Slack
+   - Calendar (Google)
+   - Contacts (Google)
+   - Docs (Notion/Google Docs)
+   - Web Search
+3. Click on a connector to see:
+   - Available tools (actions)
+   - Available events (triggers)
+4. Create connector instance:
+   - Click **Add Instance**
+   - Configure authentication
+   - Save
+5. Test connector:
+   - Use connector tool in workflow
+   - Verify external system response
+
+**What to show**:
+- Multiple connector types
+- Tool and event discovery
+- OAuth/API key authentication
+- Mock mode for development
+
+---
+
+### Demo Path L: Memory Budget
+
+**Goal**: Monitor and manage resource usage
+
+1. Navigate to **Settings** tab
+2. Find **Budget Status** section
+3. View current usage:
+   - Tokens: used/limit
+   - Requests: used/limit
+   - Storage: used/limit
+   - Percent utilization
+   - Reset time
+4. Trigger budget usage:
+   - Have a conversation
+   - Run a workflow
+5. Refresh to see updated usage
+6. Test budget exceeded:
+   - Set low limit temporarily
+   - Trigger usage
+   - Verify BUDGET_EXCEEDED error
+
+**What to show**:
+- Real-time budget tracking
+- Period-based reset
+- Clear exceeded error
+- Usage breakdown
+
+---
+
+### Demo Path M: Metrics & Alerting
+
+**Goal**: Monitor platform health
+
+1. **Prometheus Metrics**:
+   ```bash
+   curl http://localhost:3003/api/v1/metrics
+   ```
+   View metrics:
+   - `agent_platform_request_total`
+   - `agent_platform_request_duration_seconds`
+   - `agent_platform_active_sessions`
+   - `agent_platform_workflow_runs_total`
+   - `agent_platform_memory_usage_bytes`
+
+2. **Alert Rules**:
+   - Navigate to **Observability** tab
+   - Find **Alert Rules** section
+   - Create alert:
+     - Name: "High Error Rate"
+     - Metric: `request_errors_total`
+     - Condition: threshold > 100
+     - Window: 5 minutes
+     - Severity: warning
+     - Webhook: optional notification URL
+
+3. **Alert States**:
+   - View current alert states
+   - Trigger condition to fire alert
+   - Verify notification sent
+   - Clear condition to resolve alert
+
+**What to show**:
+- Prometheus-compatible metrics
+- Alert rule creation
+- State transitions (idle → firing → resolved)
+- Webhook notifications
+
+---
+
+### P6 Verification
+
+```bash
+npm run test:p6
+```
+
+Or run individual test suites:
+```bash
+# RBAC tests
+npm run test:api -- tests/integration/api/rbac
+
+# API Key tests
+npm run test:api -- tests/integration/api/api-key
+
+# Trigger tests
+npm run test:api -- tests/integration/api/triggers
+
+# DLQ tests
+npm run test:api -- tests/integration/api/dlq
+
+# Alert tests
+npm run test:api -- tests/integration/api/alerts
 ```

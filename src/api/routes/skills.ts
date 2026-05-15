@@ -61,7 +61,7 @@ const BUILTIN_SKILLS: SkillSummary[] = [
 ];
 
 export function registerSkillRoutes(server: FastifyInstance, _context: ApiContext): void {
-  server.get('/api/skills', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/api/v1/skills', async (request: FastifyRequest, reply: FastifyReply) => {
     return reply.code(200).send(success({ skills: BUILTIN_SKILLS }, request.requestId));
   });
 }
