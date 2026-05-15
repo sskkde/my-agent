@@ -401,6 +401,7 @@ export interface SetupStatusResponse {
 export interface UserMetadata {
   userId: string;
   username: string;
+  role?: UserRole;
   createdAt: string;
 }
 
@@ -728,4 +729,149 @@ export interface TriggersResponse {
 export interface TriggerLogsResponse {
   logs: TriggerLogEntry[];
   total: number;
+}
+
+// =============================================================================
+// DLQ (Dead Letter Queue) Types - DLQTab UI
+// =============================================================================
+
+export type DeadLetterStatus = 'pending' | 'retrying' | 'discarded' | 'resolved';
+
+export interface DeadLetterEntry {
+  eventId: string;
+  sourceModule: string;
+  sourceId: string;
+  reason: string;
+  payload?: Record<string, unknown>;
+  status: DeadLetterStatus;
+  failureCount: number;
+  lastError?: string;
+  enqueuedAt: string;
+  updatedAt: string;
+  discardedAt?: string;
+  resolvedAt?: string;
+}
+
+export interface DlqListResponse {
+  entries: DeadLetterEntry[];
+  total: number;
+}
+
+export interface DlqRetryResponse {
+  success: boolean;
+  eventId: string;
+  error?: string;
+}
+
+export interface DlqDiscardResponse {
+  success: boolean;
+  eventId: string;
+}
+
+export interface DlqBatchRetryResponse {
+  results: Array<{
+    eventId: string;
+    success: boolean;
+    error?: string;
+  }>;
+  successCount: number;
+  failedCount: number;
+}
+
+export interface DlqBatchDiscardResponse {
+  results: Array<{
+    eventId: string;
+    success: boolean;
+  }>;
+  successCount: number;
+}
+
+// =============================================================================
+// Admin Types - AdminTab UI
+// =============================================================================
+
+export type UserRole = 'admin' | 'user' | 'service';
+export type UserStatus = 'active' | 'disabled';
+
+export interface AdminUser {
+  userId: string;
+  username: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUsersResponse {
+  users: AdminUser[];
+  total: number;
+}
+
+export interface UpdateUserRoleRequest {
+  role: UserRole;
+}
+
+export interface UpdateUserStatusRequest {
+  status: UserStatus;
+}
+
+export interface AdminApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  role: UserRole;
+  status: 'active' | 'revoked';
+  userId: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface AdminApiKeysResponse {
+  keys: AdminApiKey[];
+  total: number;
+}
+
+export interface CreateApiKeyRequest {
+  name: string;
+  role: UserRole;
+  expiresAt?: string;
+}
+
+export interface CreateApiKeyResponse {
+  id: string;
+  name: string;
+  key: string;
+  prefix: string;
+  role: UserRole;
+  createdAt: string;
+}
+
+export interface ConnectorHealthStatus {
+  connectorId: string;
+  connectorType: string;
+  displayName: string;
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  message?: string;
+  lastCheckedAt: string | null;
+}
+
+export interface ConnectorHealthResponse {
+  connectors: ConnectorHealthStatus[];
+}
+
+export interface SystemSettings {
+  rateLimitPerMinute: number;
+  rateLimitPerHour: number;
+  sessionTokenTtlHours: number;
+}
+
+export interface SystemSettingsResponse {
+  settings: SystemSettings;
+}
+
+export interface UpdateSystemSettingsRequest {
+  rateLimitPerMinute?: number;
+  rateLimitPerHour?: number;
+  sessionTokenTtlHours?: number;
 }

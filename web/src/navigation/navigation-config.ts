@@ -16,7 +16,9 @@ export type TabId =
   | 'triggers'
   | 'memory'
   | 'observability'
-  | 'connectors';
+  | 'connectors'
+  | 'dlq'
+  | 'admin';
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings';
 
@@ -174,6 +176,13 @@ export const NAV_GROUPS: NavGroup[] = [
         testId: 'tab-connectors',
         iconKey: 'plug',
       },
+      {
+        id: 'dlq',
+        label: '死信队列',
+        description: 'Dead Letter Queue management',
+        testId: 'tab-dlq',
+        iconKey: 'alertTriangle',
+      },
     ],
   },
   {
@@ -187,6 +196,13 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'System settings',
         testId: 'tab-settings',
         iconKey: 'settings',
+      },
+      {
+        id: 'admin',
+        label: '管理',
+        description: 'Admin dashboard',
+        testId: 'tab-admin',
+        iconKey: 'shield',
       },
     ],
   },

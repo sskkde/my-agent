@@ -18,6 +18,8 @@ import TriggersTab from './features/triggers/TriggersTab';
 import MemoryTab from './features/memory/MemoryTab';
 import ConnectorsTab from './features/connectors/ConnectorsTab';
 import ObservabilityTab from './features/observability/ObservabilityTab';
+import DLQTab from './features/dlq/DLQTab';
+import AdminTab from './features/admin/AdminTab';
 import LoginPage from './features/auth/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import type { TabId } from './components/TabNav';
@@ -83,6 +85,10 @@ function AppContent() {
         return <ObservabilityTab />;
       case 'connectors':
         return <ConnectorsTab />;
+      case 'dlq':
+        return <DLQTab />;
+      case 'admin':
+        return <AdminTab />;
     }
   };
 

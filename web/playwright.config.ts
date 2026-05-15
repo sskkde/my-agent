@@ -40,7 +40,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'npm --prefix .. run reset:e2e-db && npm --prefix .. run start:api:e2e',
-      url: `http://localhost:${apiPort}/api/health`,
+      url: `http://localhost:${apiPort}/api/v1/health`,
       reuseExistingServer: false,
       timeout: 120000,
     },

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import * as triggersApi from '../../api/triggers';
 import type { TriggerResponse, TriggerLogEntry } from '../../api/types';
+import TriggerCreateDialog from './TriggerCreateDialog';
 
 const TriggersTab: React.FC = () => {
   const [triggers, setTriggers] = useState<TriggerResponse[]>([]);
@@ -10,6 +11,7 @@ const TriggersTab: React.FC = () => {
   const [logs, setLogs] = useState<TriggerLogEntry[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const loadTriggers = useCallback(async () => {
     setLoading(true);
@@ -106,7 +108,16 @@ const TriggersTab: React.FC = () => {
     <div data-testid="triggers-panel" className="triggers-panel">
       <div className="triggers-content">
         <section className="triggers-list-section">
-          <h4>定时触发器</h4>
+          <div className="triggers-section-header">
+            <h4>定时触发器</h4>
+            <button
+              className="primary-button"
+              data-testid="create-trigger-btn"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              创建触发器
+            </button>
+          </div>
           {scheduleTriggers.length === 0 ? (
             <p className="empty-state">暂无定时触发器</p>
           ) : (
@@ -215,6 +226,12 @@ const TriggersTab: React.FC = () => {
           </section>
         )}
       </div>
+
+      <TriggerCreateDialog
+        isOpen={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSuccess={loadTriggers}
+      />
     </div>
   );
 };
