@@ -191,7 +191,7 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
       expect(body.data.correlationId).toMatch(/^\d+-[a-z0-9]+$/);
     });
 
-    it('should handle processor errors without blocking response', { timeout: 15_000 }, async () => {
+    it('should handle processor errors without blocking response', async () => {
       const errorProcessor: MessageProcessor = {
         process: async (): Promise<MessageProcessorOutput> => {
           throw new Error('Simulated processor error');
