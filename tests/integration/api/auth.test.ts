@@ -8,7 +8,8 @@ describe('Auth Routes', () => {
   let context: ApiContext;
   let baseUrl: string;
 
-  beforeEach(async () => {
+  beforeEach(async ({ expect }) => {
+    // CI environments may need more time for server startup under parallel load
     const ctxResult = createApiContext({ dbPath: ':memory:' });
     if (isApiContextError(ctxResult)) {
       throw new Error(`Failed to create context: ${ctxResult.message}`);
@@ -19,7 +20,7 @@ describe('Auth Routes', () => {
     await server.listen();
     const address = server.server.address();
     baseUrl = `http://localhost:${(address as any).port}`;
-  });
+  }, 30_000);
 
   afterEach(async () => {
     await server.close();
