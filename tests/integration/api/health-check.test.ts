@@ -15,7 +15,7 @@ describe('Health Check', () => {
   }, 30000);
 
   it('GET /api/health should return liveness status', async () => {
-    const response = await fetch(`${baseUrl}/api/health`);
+    const response = await fetch(`${baseUrl}/api/v1/health`);
     expect(response.status).toBe(200);
     const body = await response.json() as { ok: boolean; data: { status: string; timestamp: string } };
     expect(body.ok).toBe(true);
@@ -24,7 +24,7 @@ describe('Health Check', () => {
   });
 
   it('GET /api/health/ready should return readiness status', async () => {
-    const response = await fetch(`${baseUrl}/api/health/ready`);
+    const response = await fetch(`${baseUrl}/api/v1/health/ready`);
     expect(response.status).toBe(200);
     const body = await response.json() as { ok: boolean; data: { status: string; checks: { database: { status: string } } } };
     expect(body.ok).toBe(true);

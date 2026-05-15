@@ -1110,7 +1110,7 @@ describe('Replay Service Integration', () => {
         sourceModule: 'connector',
         sessionId,
         payload: {
-          endpoint: '/api/users',
+          endpoint: '/api/v1/users',
           apiKey: 'super_secret_key',
           token: 'bearer_token_123',
           userId: 'user_123',
@@ -1139,7 +1139,7 @@ describe('Replay Service Integration', () => {
 
       expect(payload?.apiKey).toBe('[REDACTED]');
       expect(payload?.token).toBe('[REDACTED]');
-      expect(payload?.endpoint).toBe('/api/users');
+      expect(payload?.endpoint).toBe('/api/v1/users');
       expect(payload?.userId).toBe('user_123');
     });
 

@@ -51,7 +51,7 @@ describe('Tool Results API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/tool-results/test-result-id',
+        url: '/api/v1/tool-results/test-result-id',
       });
 
       expect(response.statusCode).toBe(401);
@@ -74,7 +74,7 @@ describe('Tool Results API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/tool-results/${blob.id}`,
+        url: `/api/v1/tool-results/${blob.id}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -112,7 +112,7 @@ describe('Tool Results API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/tool-results/${blob.id}`,
+        url: `/api/v1/tool-results/${blob.id}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -124,7 +124,7 @@ describe('Tool Results API Integration', () => {
     it('should return 404 for non-existent result', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: `/api/tool-results/${randomUUID()}`,
+        url: `/api/v1/tool-results/${randomUUID()}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -150,7 +150,7 @@ describe('Tool Results API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/tool-results/${blob.id}`,
+        url: `/api/v1/tool-results/${blob.id}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -178,7 +178,7 @@ describe('Tool Results API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/tool-results/${blob.id}`,
+        url: `/api/v1/tool-results/${blob.id}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },

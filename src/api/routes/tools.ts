@@ -5,7 +5,7 @@ import { success } from '../response-envelope.js';
 
 export function registerToolsRoutes(server: FastifyInstance, _context: ApiContext): void {
   server.get(
-    '/api/tools',
+    '/api/v1/tools',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tools = getToolCatalog();
 

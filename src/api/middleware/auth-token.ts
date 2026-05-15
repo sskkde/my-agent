@@ -8,16 +8,16 @@ export interface AuthTokenOptions {
 }
 
 const DEFAULT_EXEMPT_PATHS = [
-  '/api/health',
-  '/api/health/ready',
-  '/api/docs',
-  '/api/docs/json',
-  '/api/setup/status',
-  '/api/setup/user',
-  '/api/auth/login',
-  '/api/auth/logout',
-  '/api/tools',
-  '/api/webhooks/*',
+  '/api/v1/health',
+  '/api/v1/health/ready',
+  '/api/v1/docs',
+  '/api/v1/docs/json',
+  '/api/v1/setup/status',
+  '/api/v1/setup/user',
+  '/api/v1/auth/login',
+  '/api/v1/auth/logout',
+  '/api/v1/tools',
+  '/api/v1/webhooks/*',
 ];
 
 export function isAuthRequired(options: AuthTokenOptions): boolean {

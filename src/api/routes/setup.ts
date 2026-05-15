@@ -54,7 +54,7 @@ export function registerSetupRoutes(server: FastifyInstance, context: ApiContext
   const authTokenStore = context.stores.authTokenStore;
 
   server.get(
-    '/api/setup/status',
+    '/api/v1/setup/status',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const users = userStore.list();
       const needsSetup = users.length === 0;
@@ -65,7 +65,7 @@ export function registerSetupRoutes(server: FastifyInstance, context: ApiContext
   );
 
   server.post<{ Body: CreateUserRequest }>(
-    '/api/setup/user',
+    '/api/v1/setup/user',
     async (request: FastifyRequest<{ Body: CreateUserRequest }>, reply: FastifyReply) => {
       const users = userStore.list();
       if (users.length > 0) {

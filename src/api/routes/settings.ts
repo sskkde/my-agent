@@ -4,7 +4,7 @@ import type { ApiContext } from '../context.js';
 import { success } from '../response-envelope.js';
 
 export function registerSettingsRoutes(server: FastifyInstance, _context: ApiContext): void {
-  server.get('/api/settings', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/api/v1/settings', async (request: FastifyRequest, reply: FastifyReply) => {
     const settings: SettingsConfig = {
       localOnly: true,
       providers: {

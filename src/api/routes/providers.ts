@@ -179,7 +179,7 @@ async function testOllamaConnection(baseUrl: string): Promise<TestResult> {
     const req = requestFn({
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
-      path: '/api/tags',
+      path: '/api/v1/tags',
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -386,7 +386,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
 
   // GET /api/providers - List all providers for current user
   server.get(
-    '/api/providers',
+    '/api/v1/providers',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -406,7 +406,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
 
   // POST /api/providers - Create a new provider
   server.post<{ Body: CreateProviderRequest }>(
-    '/api/providers',
+    '/api/v1/providers',
     {
       schema: {
         body: {
@@ -485,7 +485,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
 
   // PATCH /api/providers/:providerId - Update a provider
   server.patch<{ Params: { providerId: string }; Body: UpdateProviderRequest }>(
-    '/api/providers/:providerId',
+    '/api/v1/providers/:providerId',
     {
       schema: {
         params: providerIdParamsSchema,
@@ -564,7 +564,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
 
   // DELETE /api/providers/:providerId - Delete a provider
   server.delete<{ Params: { providerId: string } }>(
-    '/api/providers/:providerId',
+    '/api/v1/providers/:providerId',
     {
       schema: {
         params: providerIdParamsSchema,
@@ -608,7 +608,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
 
   // POST /api/providers/:providerId/test - Test provider connection
   server.post<{ Params: { providerId: string } }>(
-    '/api/providers/:providerId/test',
+    '/api/v1/providers/:providerId/test',
     {
       schema: {
         params: providerIdParamsSchema,

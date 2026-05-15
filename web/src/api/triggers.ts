@@ -4,7 +4,34 @@ import type {
   TriggerLogsResponse,
 } from './types';
 
-const API_BASE = '/api';
+// Response types for create operations
+export interface ScheduleTriggerResponse {
+  scheduleId: string;
+  name: string;
+  schedulePattern: string;
+  status: string;
+  lastRunAt?: string | null;
+  nextRunAt?: string | null;
+  runCount: number;
+  maxRuns?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookTriggerResponse {
+  webhookId: string;
+  name: string;
+  status: string;
+  secretLast4: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookTriggerCreatedResponse extends WebhookTriggerResponse {
+  secret: string;
+}
+
+const API_BASE = '/api/v1';
 
 class ApiClientError extends Error {
   code: string;
@@ -66,6 +93,39 @@ export async function getTriggerLogs(
     credentials: 'include',
   });
   const result = await parseResponse<{ data: TriggerLogsResponse }>(response);
+  return result.data;
+}
+
+export async function createScheduleTrigger(
+  name: string,
+  schedulePattern: string,
+  maxRuns?: number
+): Promise<ScheduleTriggerResponse> {
+  const body: { name: string; schedulePattern: string; maxRuns?: number } = {
+    name: name.trim(),
+    schedulePattern,
+  };
+  if (maxRuns !== undefined) body.maxRuns = maxRuns;
+  const response = await fetch(`${API_BASE}/triggers/schedules`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const result = await parseResponse<{ data: ScheduleTriggerResponse }>(response);
+  return result.data;
+}
+
+export async function createWebhookTrigger(
+  name: string
+): Promise<WebhookTriggerCreatedResponse> {
+  const response = await fetch(`${API_BASE}/triggers/webhooks`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name.trim() }),
+  });
+  const result = await parseResponse<{ data: WebhookTriggerCreatedResponse }>(response);
   return result.data;
 }
 

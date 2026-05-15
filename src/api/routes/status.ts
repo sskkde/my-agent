@@ -4,7 +4,7 @@ import type { ApiContext } from '../context.js';
 import { success } from '../response-envelope.js';
 
 export function registerStatusRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/api/v1/health', async (request: FastifyRequest, reply: FastifyReply) => {
     const modules: Record<string, ModuleHealth> = {};
 
     try {
@@ -75,7 +75,7 @@ export function registerStatusRoutes(server: FastifyInstance, context: ApiContex
     }, request.requestId));
   });
 
-  server.get('/api/health/ready', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/api/v1/health/ready', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const stores = context.stores;
       const dbHealthy = stores.sessionStore !== undefined;

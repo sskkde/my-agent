@@ -48,7 +48,7 @@ function deriveCurrentStep(steps: Array<{ stepId: string; status: string }>): st
 
 export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get<{ Params: { plannerRunId: string } }>(
-    '/api/planner-runs/:plannerRunId/events',
+    '/api/v1/planner-runs/:plannerRunId/events',
     async (request: FastifyRequest<{ Params: { plannerRunId: string } }>, reply: FastifyReply) => {
       const { plannerRunId } = request.params;
 
@@ -69,7 +69,7 @@ export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiCo
   );
 
   server.get<{ Params: { plannerRunId: string } }>(
-    '/api/planner-runs/:plannerRunId/summary',
+    '/api/v1/planner-runs/:plannerRunId/summary',
     async (request: FastifyRequest<{ Params: { plannerRunId: string } }>, reply: FastifyReply) => {
       const { plannerRunId } = request.params;
 

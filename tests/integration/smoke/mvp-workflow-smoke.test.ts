@@ -24,7 +24,7 @@ describe('MVP smoke: workflow lifecycle', () => {
         },
       ];
 
-      const draftResponse = await fetch(`${harness.baseUrl}/api/workflows/drafts`, {
+      const draftResponse = await fetch(`${harness.baseUrl}/api/v1/workflows/drafts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: harness.authCookie },
         body: JSON.stringify({
@@ -37,7 +37,7 @@ describe('MVP smoke: workflow lifecycle', () => {
       const draftBody = await draftResponse.json() as { data: { draftId: string; steps: WorkflowStep[] } };
       expect(draftBody.data.steps).toHaveLength(2);
 
-      const validationResponse = await fetch(`${harness.baseUrl}/api/workflows/drafts/${draftBody.data.draftId}/validate`, {
+      const validationResponse = await fetch(`${harness.baseUrl}/api/v1/workflows/drafts/${draftBody.data.draftId}/validate`, {
         method: 'POST',
         headers: { Cookie: harness.authCookie },
       });
@@ -46,7 +46,7 @@ describe('MVP smoke: workflow lifecycle', () => {
       expect(validationBody.data.valid).toBe(true);
       expect(validationBody.data.issues).toHaveLength(0);
 
-      const publishResponse = await fetch(`${harness.baseUrl}/api/workflows/drafts/${draftBody.data.draftId}/publish`, {
+      const publishResponse = await fetch(`${harness.baseUrl}/api/v1/workflows/drafts/${draftBody.data.draftId}/publish`, {
         method: 'POST',
         headers: { Cookie: harness.authCookie },
       });
@@ -54,7 +54,7 @@ describe('MVP smoke: workflow lifecycle', () => {
       const publishBody = await publishResponse.json() as { data: { workflowId: string; status: string } };
       expect(publishBody.data.status).toBe('published');
 
-      const runResponse = await fetch(`${harness.baseUrl}/api/workflows/runs`, {
+      const runResponse = await fetch(`${harness.baseUrl}/api/v1/workflows/runs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: harness.authCookie },
         body: JSON.stringify({ definitionId: publishBody.data.workflowId, inputData: { smoke: true } }),

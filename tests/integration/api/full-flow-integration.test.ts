@@ -99,14 +99,14 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const address = testServer.server.address();
       const testBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${testBaseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${testBaseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'fullflowuser', password: 'password123' }),
       });
       const testAuthCookie = setupResponse.headers.get('set-cookie')!;
 
-      const createResponse = await fetch(`${testBaseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${testBaseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
         body: JSON.stringify({}),
@@ -122,7 +122,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
 
       try {
         const sseResponse = await fetch(
-          `${testBaseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${testBaseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': testAuthCookie }, signal: controller.signal }
         );
 
@@ -148,7 +148,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
         })();
 
         // POST message - should return 202 with correlationId
-        const postResponse = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/messages`, {
+        const postResponse = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
           body: JSON.stringify({ text: 'Full flow test message' }),
@@ -187,7 +187,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
         reader.releaseLock();
 
         // Verify transcript contains user + assistant
-        const transcriptsResponse = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/transcripts`, {
+        const transcriptsResponse = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/transcripts`, {
           headers: { 'Cookie': testAuthCookie },
         });
         const transcriptsBody = await transcriptsResponse.json() as { data: { transcripts: TranscriptTurn[] } };
@@ -201,7 +201,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
         expect(turn!.output.visibleMessages[0].content).toContain('Assistant response to');
 
         // Verify timeline contains user + assistant events
-        const timelineResponse = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/timeline`, {
+        const timelineResponse = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/timeline`, {
           headers: { 'Cookie': testAuthCookie },
         });
         const timelineBody = await timelineResponse.json() as {
@@ -265,14 +265,14 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const address = testServer.server.address();
       const testBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${testBaseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${testBaseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'rapiduser', password: 'password123' }),
       });
       const testAuthCookie = setupResponse.headers.get('set-cookie')!;
 
-      const createResponse = await fetch(`${testBaseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${testBaseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
         body: JSON.stringify({}),
@@ -284,7 +284,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const correlationIds: string[] = [];
 
       const postPromises = messages.map((text) =>
-        fetch(`${testBaseUrl}/api/sessions/${sessionId}/messages`, {
+        fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
           body: JSON.stringify({ text }),
@@ -321,7 +321,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       });
 
       // Verify timeline has all 6 events (3 user + 3 assistant)
-      const timelineResponse = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/timeline`, {
+      const timelineResponse = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/timeline`, {
         headers: { 'Cookie': testAuthCookie },
       });
       const timelineBody = await timelineResponse.json() as {
@@ -385,14 +385,14 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const address = testServer.server.address();
       const testBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${testBaseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${testBaseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'failuser', password: 'password123' }),
       });
       const testAuthCookie = setupResponse.headers.get('set-cookie')!;
 
-      const createResponse = await fetch(`${testBaseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${testBaseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
         body: JSON.stringify({}),
@@ -400,7 +400,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       // Send first message (will fail)
-      const failResponse = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/messages`, {
+      const failResponse = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
         body: JSON.stringify({ text: 'This will fail' }),
@@ -425,7 +425,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       expect(failTurn!.output.visibleMessages[0].content).toContain('PROCESSING_ERROR');
 
       // Verify timeline contains user_message and error for failed turn
-      const timelineResponse1 = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/timeline`, {
+      const timelineResponse1 = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/timeline`, {
         headers: { 'Cookie': testAuthCookie },
       });
       const timelineBody1 = await timelineResponse1.json() as {
@@ -442,7 +442,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       shouldFail = false;
 
       // Send second message (will succeed)
-      const successResponse = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/messages`, {
+      const successResponse = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
         body: JSON.stringify({ text: 'This will succeed' }),
@@ -463,7 +463,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       });
 
       // Verify timeline has assistant_message for successful response
-      const timelineResponse2 = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/timeline`, {
+      const timelineResponse2 = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/timeline`, {
         headers: { 'Cookie': testAuthCookie },
       });
       const timelineBody2 = await timelineResponse2.json() as {
@@ -501,7 +501,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const address = server.server.address();
       baseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'testuser', password: 'password123' }),
@@ -519,7 +519,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
     });
 
     it('should reject invalid messages with 400 before enqueue', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -527,7 +527,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       // Test empty text
-      const emptyResponse = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const emptyResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: '' }),
@@ -535,7 +535,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       expect(emptyResponse.status).toBe(400);
 
       // Test whitespace-only text
-      const whitespaceResponse = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const whitespaceResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: '   ' }),
@@ -543,7 +543,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       expect(whitespaceResponse.status).toBe(400);
 
       // Test missing text field
-      const missingResponse = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const missingResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -552,7 +552,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
     });
 
     it('should return 404 for non-existent session', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions/non-existent-session-id/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/non-existent-session-id/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Test message' }),
@@ -603,21 +603,21 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
       const address = testServer.server.address();
       const testBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${testBaseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${testBaseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'correlationuser', password: 'password123' }),
       });
       const testAuthCookie = setupResponse.headers.get('set-cookie')!;
 
-      const createResponse = await fetch(`${testBaseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${testBaseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
         body: JSON.stringify({}),
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${testBaseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': testAuthCookie },
         body: JSON.stringify({ text: 'Correlation determinism test' }),

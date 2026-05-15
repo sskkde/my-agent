@@ -94,7 +94,7 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
   server.get<{
     Querystring: LogsQueryParams;
     Reply: { data: PaginatedResponse<LogEntry> };
-  }>('/api/logs', async (request, reply) => {
+  }>('/api/v1/logs', async (request, reply) => {
     const {
       sessionId,
       sourceModule,
@@ -139,7 +139,7 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
 
   server.get<{
     Querystring: LogStreamQueryParams;
-  }>('/api/logs/stream', async (request, reply) => {
+  }>('/api/v1/logs/stream', async (request, reply) => {
     const { sessionId, after } = request.query;
 
     reply.raw.writeHead(200, {

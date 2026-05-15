@@ -18,7 +18,7 @@ describe('Response Envelope Contract', () => {
 
   describe('GET /api/health (unauthenticated)', () => {
     it('should return success envelope with ok, data, and requestId', async () => {
-      const response = await fetch(`${baseUrl}/api/health`);
+      const response = await fetch(`${baseUrl}/api/v1/health`);
       expect(response.status).toBe(200);
 
       const body = await response.json() as {
@@ -39,7 +39,7 @@ describe('Response Envelope Contract', () => {
 
   describe('GET /api/sessions (authenticated)', () => {
     it('should return success envelope with ok, data, and requestId', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -60,8 +60,8 @@ describe('Response Envelope Contract', () => {
   describe('Envelope requirements across endpoints', () => {
     it('should have ok: true for successful responses', async () => {
       const responses = await Promise.all([
-        fetch(`${baseUrl}/api/health`),
-        fetch(`${baseUrl}/api/sessions`, { headers: { 'Cookie': authCookie } }),
+        fetch(`${baseUrl}/api/v1/health`),
+        fetch(`${baseUrl}/api/v1/sessions`, { headers: { 'Cookie': authCookie } }),
       ]);
 
       for (const response of responses) {
@@ -73,8 +73,8 @@ describe('Response Envelope Contract', () => {
 
     it('should have non-empty requestId for all responses', async () => {
       const responses = await Promise.all([
-        fetch(`${baseUrl}/api/health`),
-        fetch(`${baseUrl}/api/sessions`, { headers: { 'Cookie': authCookie } }),
+        fetch(`${baseUrl}/api/v1/health`),
+        fetch(`${baseUrl}/api/v1/sessions`, { headers: { 'Cookie': authCookie } }),
       ]);
 
       for (const response of responses) {

@@ -48,7 +48,7 @@ describe('Timeline Stream API', () => {
     baseUrl = ctx.baseUrl;
     authCookie = ctx.authCookie;
 
-    const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+    const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
       body: JSON.stringify({})
@@ -63,14 +63,14 @@ describe('Timeline Stream API', () => {
 
   describe('GET /api/sessions/:sessionId/timeline/stream', () => {
     it('should return 404 for non-existent session', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions/non-existent-id/timeline/stream`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/non-existent-id/timeline/stream`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
     });
 
     it('should connect and receive snapshot event with empty events for new session', async () => {
-      const result = await readSnapshotFromStream(`${baseUrl}/api/sessions/${sessionId}/timeline/stream`, authCookie);
+      const result = await readSnapshotFromStream(`${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`, authCookie);
 
       expect(result.response.status).toBe(200);
       expect(result.response.headers.get('content-type')).toBe('text/event-stream');
@@ -100,7 +100,7 @@ describe('Timeline Stream API', () => {
       };
       ctx.apiContext.stores.transcriptStore.saveTurn(turn);
 
-      const result = await readSnapshotFromStream(`${baseUrl}/api/sessions/${sessionId}/timeline/stream`, authCookie);
+      const result = await readSnapshotFromStream(`${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`, authCookie);
 
       expect(result.response.status).toBe(200);
       expect(result.snapshotData.type).toBe('snapshot');
@@ -110,7 +110,7 @@ describe('Timeline Stream API', () => {
     });
 
     it('should skip events with after parameter', async () => {
-      const newSessionResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const newSessionResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -136,19 +136,19 @@ describe('Timeline Stream API', () => {
       };
       ctx.apiContext.stores.transcriptStore.saveTurn(turn);
 
-      const resultWithoutAfter = await readSnapshotFromStream(`${baseUrl}/api/sessions/${newSessionId}/timeline/stream`, authCookie);
+      const resultWithoutAfter = await readSnapshotFromStream(`${baseUrl}/api/v1/sessions/${newSessionId}/timeline/stream`, authCookie);
       expect(resultWithoutAfter.snapshotData.events).toHaveLength(3);
 
       const firstEventId = resultWithoutAfter.snapshotData.events[0].eventId;
 
-      const resultWithAfter = await readSnapshotFromStream(`${baseUrl}/api/sessions/${newSessionId}/timeline/stream?after=${firstEventId}`, authCookie);
+      const resultWithAfter = await readSnapshotFromStream(`${baseUrl}/api/v1/sessions/${newSessionId}/timeline/stream?after=${firstEventId}`, authCookie);
       expect(resultWithAfter.snapshotData.events).toHaveLength(2);
       expect(resultWithAfter.snapshotData.events[0].eventType).toBe('assistant_message');
       expect(resultWithAfter.snapshotData.events[1].eventType).toBe('assistant_message');
     });
 
     it('should return all events when after cursor not found', async () => {
-      const newSessionResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const newSessionResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -173,7 +173,7 @@ describe('Timeline Stream API', () => {
       };
       ctx.apiContext.stores.transcriptStore.saveTurn(turn);
 
-      const result = await readSnapshotFromStream(`${baseUrl}/api/sessions/${newSessionId}/timeline/stream?after=non-existent-event-id`, authCookie);
+      const result = await readSnapshotFromStream(`${baseUrl}/api/v1/sessions/${newSessionId}/timeline/stream?after=non-existent-event-id`, authCookie);
       expect(result.snapshotData.events).toHaveLength(2);
     });
   });

@@ -1,6 +1,6 @@
 import { ApiClientError } from './client';
 
-const API_BASE = '/api';
+const API_BASE = '/api/v1';
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {

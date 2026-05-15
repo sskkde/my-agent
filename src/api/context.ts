@@ -63,6 +63,7 @@ import { createAuditRecorder } from '../observability/audit-recorder.js';
 import { createAuditStore } from '../observability/audit-store.js';
 import type { AuditRecorder } from '../observability/audit-types.js';
 import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead-letter-store.js';
+import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -105,6 +106,7 @@ export interface ApiContext {
     artifactStore: ArtifactStore;
     connectorStore: ConnectorStore;
     deadLetterStore: DeadLetterStore;
+    apiKeyStore: ApiKeyStore;
   };
   providerConfigStore: ProviderConfigStore;
   agentConfigStore: AgentConfigStore;
@@ -261,6 +263,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let waitConditionStore: WaitConditionStore;
   let artifactStore: ArtifactStore;
   let deadLetterStore: DeadLetterStore;
+  let apiKeyStore: ApiKeyStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -293,6 +296,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     waitConditionStore = (existingStores as Record<string, unknown>)?.waitConditionStore as WaitConditionStore ?? createWaitConditionStore(connection);
     artifactStore = (existingStores as Record<string, unknown>)?.artifactStore as ArtifactStore ?? createArtifactStore(connection);
     deadLetterStore = (existingStores as Record<string, unknown>)?.deadLetterStore as DeadLetterStore ?? createDeadLetterStore(connection);
+    apiKeyStore = (existingStores as Record<string, unknown>)?.apiKeyStore as ApiKeyStore ?? createApiKeyStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -600,6 +604,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       artifactStore,
       connectorStore,
       deadLetterStore,
+      apiKeyStore,
     },
     providerConfigStore,
     agentConfigStore,

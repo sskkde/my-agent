@@ -53,7 +53,7 @@ describe('Trigger API Integration', () => {
       it('should return 401 without authentication', async () => {
         const response = await server.inject({
           method: 'POST',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           payload: {
             name: 'Test Schedule',
             schedulePattern: '0 * * * *',
@@ -66,7 +66,7 @@ describe('Trigger API Integration', () => {
       it('should create a schedule trigger', async () => {
         const response = await server.inject({
           method: 'POST',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -90,7 +90,7 @@ describe('Trigger API Integration', () => {
       it('should return 400 when name is missing', async () => {
         const response = await server.inject({
           method: 'POST',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -105,7 +105,7 @@ describe('Trigger API Integration', () => {
       it('should return 400 when schedulePattern is missing', async () => {
         const response = await server.inject({
           method: 'POST',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -122,7 +122,7 @@ describe('Trigger API Integration', () => {
       it('should return 401 without authentication', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
         });
 
         expect(response.statusCode).toBe(401);
@@ -131,7 +131,7 @@ describe('Trigger API Integration', () => {
       it('should return list of schedule triggers for authenticated user', async () => {
         await server.inject({
           method: 'POST',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -143,7 +143,7 @@ describe('Trigger API Integration', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -160,7 +160,7 @@ describe('Trigger API Integration', () => {
       it('should update schedule trigger status', async () => {
         const createResponse = await server.inject({
           method: 'POST',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -175,7 +175,7 @@ describe('Trigger API Integration', () => {
 
         const response = await server.inject({
           method: 'PATCH',
-          url: `/api/triggers/schedules/${scheduleId}`,
+          url: `/api/v1/triggers/schedules/${scheduleId}`,
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -192,7 +192,7 @@ describe('Trigger API Integration', () => {
       it('should return 404 for non-existent schedule', async () => {
         const response = await server.inject({
           method: 'PATCH',
-          url: '/api/triggers/schedules/non-existent-id',
+          url: '/api/v1/triggers/schedules/non-existent-id',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -209,7 +209,7 @@ describe('Trigger API Integration', () => {
       it('should delete schedule trigger', async () => {
         const createResponse = await server.inject({
           method: 'POST',
-          url: '/api/triggers/schedules',
+          url: '/api/v1/triggers/schedules',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -224,7 +224,7 @@ describe('Trigger API Integration', () => {
 
         const response = await server.inject({
           method: 'DELETE',
-          url: `/api/triggers/schedules/${scheduleId}`,
+          url: `/api/v1/triggers/schedules/${scheduleId}`,
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -234,7 +234,7 @@ describe('Trigger API Integration', () => {
 
         const getResponse = await server.inject({
           method: 'GET',
-          url: `/api/triggers/schedules/${scheduleId}`,
+          url: `/api/v1/triggers/schedules/${scheduleId}`,
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -250,7 +250,7 @@ describe('Trigger API Integration', () => {
       it('should return 401 without authentication', async () => {
         const response = await server.inject({
           method: 'POST',
-          url: '/api/triggers/webhooks',
+          url: '/api/v1/triggers/webhooks',
           payload: {
             name: 'Test Webhook',
           },
@@ -262,7 +262,7 @@ describe('Trigger API Integration', () => {
       it('should create a webhook trigger with secret', async () => {
         const response = await server.inject({
           method: 'POST',
-          url: '/api/triggers/webhooks',
+          url: '/api/v1/triggers/webhooks',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -286,7 +286,7 @@ describe('Trigger API Integration', () => {
       it('should return 400 when name is missing', async () => {
         const response = await server.inject({
           method: 'POST',
-          url: '/api/triggers/webhooks',
+          url: '/api/v1/triggers/webhooks',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -301,7 +301,7 @@ describe('Trigger API Integration', () => {
       it('should return list of webhook triggers without secrets', async () => {
         await server.inject({
           method: 'POST',
-          url: '/api/triggers/webhooks',
+          url: '/api/v1/triggers/webhooks',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -312,7 +312,7 @@ describe('Trigger API Integration', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/triggers/webhooks',
+          url: '/api/v1/triggers/webhooks',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -331,7 +331,7 @@ describe('Trigger API Integration', () => {
       it('should update webhook trigger status', async () => {
         const createResponse = await server.inject({
           method: 'POST',
-          url: '/api/triggers/webhooks',
+          url: '/api/v1/triggers/webhooks',
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -345,7 +345,7 @@ describe('Trigger API Integration', () => {
 
         const response = await server.inject({
           method: 'PATCH',
-          url: `/api/triggers/webhooks/${webhookId}`,
+          url: `/api/v1/triggers/webhooks/${webhookId}`,
           headers: {
             cookie: `agent-platform-session=${authToken}`,
           },
@@ -368,7 +368,7 @@ describe('Trigger API Integration', () => {
     beforeAll(async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/triggers/webhooks',
+        url: '/api/v1/triggers/webhooks',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -385,7 +385,7 @@ describe('Trigger API Integration', () => {
     it('should return 401 when signature is missing', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: `/api/webhooks/${webhookId}/deliver`,
+        url: `/api/v1/webhooks/${webhookId}/deliver`,
         payload: { test: 'data' },
       });
 
@@ -395,7 +395,7 @@ describe('Trigger API Integration', () => {
     it('should return 401 when signature is invalid', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: `/api/webhooks/${webhookId}/deliver`,
+        url: `/api/v1/webhooks/${webhookId}/deliver`,
         headers: {
           'x-hub-signature-256': 'sha256=invalidsignature',
         },
@@ -411,7 +411,7 @@ describe('Trigger API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/webhooks/${webhookId}/deliver`,
+        url: `/api/v1/webhooks/${webhookId}/deliver`,
         headers: {
           'x-hub-signature-256': signature,
           'content-type': 'application/json',
@@ -431,7 +431,7 @@ describe('Trigger API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/webhooks/${webhookId}/deliver`,
+        url: `/api/v1/webhooks/${webhookId}/deliver`,
         headers: {
           'x-signature-256': signature,
           'content-type': 'application/json',
@@ -451,7 +451,7 @@ describe('Trigger API Integration', () => {
 
       const firstResponse = await server.inject({
         method: 'POST',
-        url: `/api/webhooks/${webhookId}/deliver`,
+        url: `/api/v1/webhooks/${webhookId}/deliver`,
         headers: {
           'x-hub-signature-256': signature,
           'x-delivery-id': deliveryId,
@@ -465,7 +465,7 @@ describe('Trigger API Integration', () => {
 
       const secondResponse = await server.inject({
         method: 'POST',
-        url: `/api/webhooks/${webhookId}/deliver`,
+        url: `/api/v1/webhooks/${webhookId}/deliver`,
         headers: {
           'x-hub-signature-256': signature,
           'x-delivery-id': deliveryId,
@@ -481,7 +481,7 @@ describe('Trigger API Integration', () => {
     it('should return 403 when webhook is paused', async () => {
       await server.inject({
         method: 'PATCH',
-        url: `/api/triggers/webhooks/${webhookId}`,
+        url: `/api/v1/triggers/webhooks/${webhookId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -495,7 +495,7 @@ describe('Trigger API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/webhooks/${webhookId}/deliver`,
+        url: `/api/v1/webhooks/${webhookId}/deliver`,
         headers: {
           'x-hub-signature-256': signature,
         },
@@ -511,7 +511,7 @@ describe('Trigger API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: '/api/webhooks/non-existent-id/deliver',
+        url: '/api/v1/webhooks/non-existent-id/deliver',
         headers: {
           'x-hub-signature-256': signature,
         },
@@ -547,7 +547,7 @@ describe('Trigger API Integration', () => {
     it('rejects cross-user schedule trigger access', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/triggers/schedules',
+        url: '/api/v1/triggers/schedules',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -562,7 +562,7 @@ describe('Trigger API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/triggers/schedules/${scheduleId}`,
+        url: `/api/v1/triggers/schedules/${scheduleId}`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -574,7 +574,7 @@ describe('Trigger API Integration', () => {
     it('rejects cross-user webhook trigger access', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/triggers/webhooks',
+        url: '/api/v1/triggers/webhooks',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -588,7 +588,7 @@ describe('Trigger API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/triggers/webhooks/${webhookId}`,
+        url: `/api/v1/triggers/webhooks/${webhookId}`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },

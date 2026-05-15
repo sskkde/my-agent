@@ -18,7 +18,7 @@ describe('Pagination Contract', () => {
 
   describe('GET /api/sessions', () => {
     it('should return paginated response with hasMore in envelope', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -52,7 +52,7 @@ describe('Pagination Contract', () => {
     });
 
     it('should set hasMore to false when no sessions exist (empty result)', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions?limit=5`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions?limit=5`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -76,7 +76,7 @@ describe('Pagination Contract', () => {
     });
 
     it('should return correct limit and offset values', async () => {
-      const response = await fetch(`${baseUrl}/api/sessions?limit=10&offset=5`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions?limit=10&offset=5`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);

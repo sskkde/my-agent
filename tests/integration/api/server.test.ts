@@ -19,7 +19,7 @@ describe('API Server', () => {
 
   describe('GET /api/health', () => {
     it('should return 200 with health status', async () => {
-      const response = await fetch(`${baseUrl}/api/health`);
+      const response = await fetch(`${baseUrl}/api/v1/health`);
       expect(response.status).toBe(200);
       
       const body = await response.json() as { status: string; modules: Record<string, unknown>; timestamp: string };
@@ -31,7 +31,7 @@ describe('API Server', () => {
 
   describe('404 handling', () => {
     it('should return 404 with structured error for unknown routes', async () => {
-      const response = await fetch(`${baseUrl}/api/unknown`);
+      const response = await fetch(`${baseUrl}/api/v1/unknown`);
       expect(response.status).toBe(404);
       
       const body = await response.json() as { error: { code: string; message: string } };
@@ -44,7 +44,7 @@ describe('API Server', () => {
   describe('CORS', () => {
     it('should include CORS headers', async () => {
       const origin = 'http://localhost:5173';
-      const response = await fetch(`${baseUrl}/api/health`, {
+      const response = await fetch(`${baseUrl}/api/v1/health`, {
         method: 'OPTIONS',
         headers: {
           'Origin': origin,

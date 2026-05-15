@@ -18,7 +18,7 @@ describe('Status, Approvals, and Runs API', () => {
 
   describe('GET /api/health', () => {
     it('should return health status with module information', async () => {
-      const response = await fetch(`${baseUrl}/api/health`);
+      const response = await fetch(`${baseUrl}/api/v1/health`);
       expect(response.status).toBe(200);
 
       const body = await response.json() as { ok: boolean; data: { status: string; modules: Record<string, { status: string; message?: string }>; timestamp: string } };
@@ -35,7 +35,7 @@ describe('Status, Approvals, and Runs API', () => {
 
   describe('GET /api/approvals', () => {
     it('should return empty approvals list when no approvals exist', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -48,7 +48,7 @@ describe('Status, Approvals, and Runs API', () => {
 
   describe('PATCH /api/approvals/:approvalId', () => {
     it('should return 404 for non-existent approval', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'approved' }),
@@ -60,7 +60,7 @@ describe('Status, Approvals, and Runs API', () => {
     });
 
     it('should return 400 for invalid decision', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/test-id`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'invalid' }),
@@ -69,7 +69,7 @@ describe('Status, Approvals, and Runs API', () => {
     });
 
     it('should return 400 for missing decision field', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/test-id`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ reason: 'some reason' }),
@@ -80,7 +80,7 @@ describe('Status, Approvals, and Runs API', () => {
 
   describe('GET /api/runs', () => {
     it('should return empty runs list initially', async () => {
-      const response = await fetch(`${baseUrl}/api/runs`, {
+      const response = await fetch(`${baseUrl}/api/v1/runs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -98,7 +98,7 @@ describe('Status, Approvals, and Runs API', () => {
       const timeout = setTimeout(() => controller.abort(), 3000);
 
       try {
-        const response = await fetch(`${baseUrl}/api/runs/stream`, {
+        const response = await fetch(`${baseUrl}/api/v1/runs/stream`, {
           signal: controller.signal,
           headers: { 'Cookie': authCookie },
         });
@@ -116,7 +116,7 @@ describe('Status, Approvals, and Runs API', () => {
       const timeout = setTimeout(() => controller.abort(), 3000);
 
       try {
-        const response = await fetch(`${baseUrl}/api/runs/stream`, {
+        const response = await fetch(`${baseUrl}/api/v1/runs/stream`, {
           signal: controller.signal,
           headers: { 'Cookie': authCookie },
         });

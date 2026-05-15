@@ -92,7 +92,7 @@ export async function createSmokeHarness(options: {
   const address = server.server.address();
   const baseUrl = `http://localhost:${(address as { port: number }).port}`;
 
-  const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+  const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: options.username, password: 'password123' }),
@@ -131,7 +131,7 @@ export async function closeSmokeHarness(harness: SmokeHarness): Promise<void> {
 }
 
 export async function createSession(harness: SmokeHarness): Promise<string> {
-  const response = await fetch(`${harness.baseUrl}/api/sessions`, {
+  const response = await fetch(`${harness.baseUrl}/api/v1/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: harness.authCookie },
     body: JSON.stringify({}),

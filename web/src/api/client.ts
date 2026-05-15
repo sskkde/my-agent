@@ -52,7 +52,7 @@ import type {
   PlannerRunSummaryResponse,
 } from './types';
 
-const API_BASE = '/api';
+const API_BASE = '/api/v1';
 
 export interface ApiEnvelopeSuccess<T> {
   ok: true;

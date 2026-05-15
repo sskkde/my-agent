@@ -20,7 +20,7 @@ describe('MVP smoke: complex task planner flow', () => {
 
     try {
       const sessionId = await createSession(harness);
-      const messageResponse = await fetch(`${harness.baseUrl}/api/sessions/${sessionId}/messages`, {
+      const messageResponse = await fetch(`${harness.baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: harness.authCookie },
         body: JSON.stringify({ text: 'Please plan this complex task in steps' }),
