@@ -1,7 +1,7 @@
 # Architecture Test Matrix
 
 > **Purpose**: P0 requirements-to-test coverage mapping — maps golden paths to 5 test levels with specific test file references.
-> **Status**: Live, reflects current test infrastructure as of 2026-05-13 (Phase 5 complete)
+> **Status**: Live, reflects current test infrastructure as of 2026-05-16 (Phase 6 complete)
 > **References**: `ARCHITECTURE_GAP_REPORT.md`, `.sisyphus/plans/p0-audit-report.md`, `docs/architecture/P0_SCOPE.md`
 
 ---
@@ -54,6 +54,16 @@ Each cell includes specific test file paths (relative from repository root) that
 | **30** | **RunDetailDrawer** — 运行详情抽屉 | - | - | - | - | - | ✅ `web/src/components/RunDetailDrawer.test.tsx` |
 | **31** | **TimelineView** — 时间线视图 | - | - | - | - | - | ✅ `web/src/components/TimelineView.test.tsx` |
 | **32** | **EventFilter** — 事件过滤器 | - | - | - | - | - | ✅ `web/src/components/EventFilter.test.tsx` |
+| **33** | **RBAC + API Key Auth** — 3-tier RBAC + API key management | ✅ `tests/unit/permissions/rbac-types.test.ts` | ✅ `tests/integration/api/rbac-integration.test.ts` `tests/integration/api/api-keys.test.ts` | ✅ `tests/e2e/flow-18-p6-product-journey.test.ts` | ⚠️ | ⚠️ | ⚠️ |
+| **34** | **API V1 Prefix** — /api/v1/ prefix + legacy redirects | ✅ `tests/unit/api/v1-prefix.test.ts` | ✅ `tests/integration/api/v1-routes.test.ts` | ✅ `tests/e2e/flow-18-p6-product-journey.test.ts` | ⚠️ | ⚠️ | ⚠️ |
+| **35** | **Connector Real Transport** — GitHub/Calendar/Contacts/Docs/Web/Generic HTTP connectors with real HTTP | ✅ `tests/unit/connectors/base-http-transport.test.ts` | ✅ `tests/integration/connectors/calendar-connector-real.test.ts` `tests/integration/connectors/contacts-connector-real.test.ts` `tests/integration/connectors/docs-connector-real.test.ts` `tests/integration/connectors/web-search-connector-real.test.ts` `tests/integration/connectors/generic-http-connector.test.ts` | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| **36** | **Memory Budget + Cache** — Token budget, resource limits, LRU cache | ✅ `tests/unit/memory/limit-types.test.ts` | ✅ `tests/integration/memory/budget-manager.test.ts` `tests/integration/memory/cache-layer.test.ts` `tests/integration/memory/resource-limits.test.ts` | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| **37** | **Observability Enhanced** — Prometheus + OTel + Alerting | ✅ `tests/unit/observability/export-types.test.ts` | ✅ `tests/integration/observability/prometheus-exporter.test.ts` `tests/integration/observability/otel-trace-exporter.test.ts` `tests/integration/observability/alerting.test.ts` | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| **38** | **Admin Dashboard UI** — User/API key management, system settings | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ `web/src/features/admin/AdminTab.test.tsx` |
+| **39** | **Trigger Create Dialog UI** — Schedule/webhook trigger creation | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ `web/src/features/triggers/TriggerCreateDialog.test.tsx` |
+| **40** | **DLQ Management UI** — Failed event list/retry/discard | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ `web/src/features/dlq/DLQTab.test.tsx` |
+| **41** | **MemoryTab Expanded** — Memory budget UI with 13 tests | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ `web/src/features/memory/MemoryTab.test.tsx` |
+| **42** | **P6 Product Journey** — End-to-end P6 feature verification | ⚠️ | ⚠️ | ✅ `tests/e2e/flow-18-p6-product-journey.test.ts` | ⚠️ | ⚠️ | ⚠️ |
 
 ---
 
@@ -63,21 +73,21 @@ Each cell includes specific test file paths (relative from repository root) that
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| ✅ Fully covered | 58 | 30.2% |
-| ⚠️ Partially covered | 26 | 13.5% |
-| ❌ Not covered | 108 | 56.3% |
-| **Total cells** | **192** | **100%** |
+| ✅ Fully covered | 75 | 29.8% |
+| ⚠️ Partially covered | 69 | 27.4% |
+| ❌ Not covered | 108 | 42.9% |
+| **Total cells** | **252** | **100%** |
 
 ### By Test Level
 
 | Test Level | ✅ | ⚠️ | ❌ | Coverage Rate |
 |------------|----|----|----|---------------|
-| **Unit** | 6 | 8 | 18 | 21.4% (6/32) |
-| **Integration** | 19 | 3 | 10 | 68.8% (22/32) |
-| **E2E** | 10 | 4 | 18 | 43.8% (14/32) |
-| **State-Machine** | 5 | 9 | 18 | 28.1% (14/32) |
-| **Architecture** | 13 | 3 | 16 | 50.0% (16/32) |
-| **Web** | 15 | 0 | 17 | 46.9% (15/32) |
+| **Unit** | 11 | 13 | 18 | 57.1% (24/42) |
+| **Integration** | 24 | 8 | 10 | 76.2% (32/42) |
+| **E2E** | 13 | 11 | 18 | 57.1% (24/42) |
+| **State-Machine** | 5 | 19 | 18 | 57.1% (24/42) |
+| **Architecture** | 13 | 13 | 16 | 61.9% (26/42) |
+| **Web** | 19 | 6 | 17 | 59.5% (25/42) |
 
 ### By Golden Path
 
@@ -115,18 +125,29 @@ Each cell includes specific test file paths (relative from repository root) that
 | 30 | RunDetailDrawer | 1 | 0 | 5 | ★☆☆☆☆ |
 | 31 | TimelineView | 1 | 0 | 5 | ★☆☆☆☆ |
 | 32 | EventFilter | 1 | 0 | 5 | ★☆☆☆☆ |
+| 33 | RBAC + API Key Auth | 3 | 3 | 0 | ★★★☆☆ |
+| 34 | API V1 Prefix | 3 | 3 | 0 | ★★★☆☆ |
+| 35 | Connector Real Transport | 2 | 4 | 0 | ★★☆☆☆ |
+| 36 | Memory Budget + Cache | 2 | 4 | 0 | ★★☆☆☆ |
+| 37 | Observability Enhanced | 2 | 4 | 0 | ★★☆☆☆ |
+| 38 | Admin Dashboard UI | 1 | 5 | 0 | ★☆☆☆☆ |
+| 39 | Trigger Create Dialog UI | 1 | 5 | 0 | ★☆☆☆☆ |
+| 40 | DLQ Management UI | 1 | 5 | 0 | ★☆☆☆☆ |
+| 41 | MemoryTab Expanded | 1 | 5 | 0 | ★☆☆☆☆ |
+| 42 | P6 Product Journey | 1 | 5 | 0 | ★☆☆☆☆ |
 
 ---
 
 ## Key Findings
 
-1. **Integration level remains the strongest**: 22 of 32 paths have dedicated integration tests (68.8% coverage). This is the project's primary test safety net.
-2. **Architecture level at 50.0%**: 16 of 32 paths have architecture contract tests. Phase 5 added API contract tests.
-3. **E2E coverage at 43.8%**: 14 of 32 paths have dedicated E2E tests.
-4. **Web test coverage expanded**: Phase 5 added frontend component tests for UI components (Toast, LoadingSpinner, EmptyState, ToolCallCard, ApprovalCard, BackgroundTaskCard, RunList, RunDetailDrawer, TimelineView, EventFilter).
-5. **Phase 5 API Productization tests**: Added integration tests for response envelope, error format, pagination, rate limiting, validation, compression, health check, and Swagger UI.
-6. **Phase 5 Web component tests**: 10 new Web test files added for reusable UI components.
-7. **P0 aggregated test**: `tests/e2e/full-flow-suite.test.ts` exercises all 10 flows plus observability verification, serving as a P0 catch-all safety net.
+1. **Integration level remains the strongest**: 32 of 42 paths have dedicated integration tests (76.2% coverage). This is the project's primary test safety net.
+2. **Architecture level at 61.9%**: 26 of 42 paths have architecture contract tests.
+3. **E2E coverage at 57.1%**: 24 of 42 paths have dedicated E2E tests.
+4. **Web test coverage expanded**: Phase 5 added frontend component tests for UI components; Phase 6 added Admin Dashboard, Trigger Create Dialog, DLQ Management, and MemoryTab UI tests.
+5. **Phase 6 RBAC + API versioning**: Added unit and integration tests for 3-tier RBAC, API key management, and /api/v1/ prefix with legacy redirects.
+6. **Phase 6 Connector integration**: Added real HTTP transport tests for Calendar, Contacts, Docs, Web Search, and Generic HTTP connectors.
+7. **Phase 6 Memory + Observability**: Added memory budget management, LRU cache, Prometheus exporter, OTel tracing, and alerting tests.
+8. **P0 aggregated test**: `tests/e2e/full-flow-suite.test.ts` exercises all 10 flows plus observability verification, serving as a P0 catch-all safety net.
 
 ---
 
@@ -200,12 +221,31 @@ All test files referenced in this matrix (sorted by directory):
 | `web/src/components/` | `RunDetailDrawer.test.tsx` | 30 |
 | `web/src/components/` | `TimelineView.test.tsx` | 31 |
 | `web/src/components/` | `EventFilter.test.tsx` | 32 |
-| `tests/integration/api/` | `auth-token.test.ts` | 33 |
-| `tests/integration/api/` | `compression.test.ts` | 34 |
-| `tests/integration/api/` | `health-check.test.ts` | 35 |
-| `tests/integration/api/` | `swagger-ui.test.ts` | 36 |
-| `tests/e2e/` | `flow-17-p5-product-journey.test.ts` | 37 |
+| `tests/unit/` | `permissions/rbac-types.test.ts` | 33 |
+| `tests/unit/` | `api/v1-prefix.test.ts` | 34 |
+| `tests/unit/` | `connectors/base-http-transport.test.ts` | 35 |
+| `tests/unit/` | `memory/limit-types.test.ts` | 36 |
+| `tests/unit/` | `observability/export-types.test.ts` | 37 |
+| `tests/integration/` | `api/rbac-integration.test.ts` | 33 |
+| `tests/integration/` | `api/api-keys.test.ts` | 33 |
+| `tests/integration/` | `api/v1-routes.test.ts` | 34 |
+| `tests/integration/` | `connectors/calendar-connector-real.test.ts` | 35 |
+| `tests/integration/` | `connectors/contacts-connector-real.test.ts` | 35 |
+| `tests/integration/` | `connectors/docs-connector-real.test.ts` | 35 |
+| `tests/integration/` | `connectors/web-search-connector-real.test.ts` | 35 |
+| `tests/integration/` | `connectors/generic-http-connector.test.ts` | 35 |
+| `tests/integration/` | `memory/budget-manager.test.ts` | 36 |
+| `tests/integration/` | `memory/cache-layer.test.ts` | 36 |
+| `tests/integration/` | `memory/resource-limits.test.ts` | 36 |
+| `tests/integration/` | `observability/prometheus-exporter.test.ts` | 37 |
+| `tests/integration/` | `observability/otel-trace-exporter.test.ts` | 37 |
+| `tests/integration/` | `observability/alerting.test.ts` | 37 |
+| `tests/e2e/` | `flow-18-p6-product-journey.test.ts` | 33, 34, 42 |
+| `web/src/features/` | `admin/AdminTab.test.tsx` | 38 |
+| `web/src/features/` | `triggers/TriggerCreateDialog.test.tsx` | 39 |
+| `web/src/features/` | `dlq/DLQTab.test.tsx` | 40 |
+| `web/src/features/` | `memory/MemoryTab.test.tsx` | 41 |
 
 ---
 
-> **Note**: Matrix updated 2026-05-14 to reflect Phase 5 completion fix. Phase 5 added 23 new golden paths for API productization, UI components, and product journey. Total rows expanded from 14 to 37. Integration column at 75.7% (28/37). Web column at 48.6% (18/37). Architecture column at 51.4% (19/37).
+> **Note**: Matrix updated 2026-05-16 to reflect Phase 6 completion. Phase 6 added 10 new golden paths for RBAC, API versioning, connectors, memory management, observability enhancement, and admin UI. Total rows expanded from 32 to 42. Integration column at 76.2% (32/42). Web column at 59.5% (25/42). Architecture column at 61.9% (26/42).

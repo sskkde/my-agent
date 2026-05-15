@@ -5,31 +5,35 @@
 | Area | Status | Evidence |
 |---|---|---|
 | RBAC Types | ✅ Complete | src/permissions/rbac-types.ts |
+| RBAC Engine | ✅ Complete | src/permissions/rbac-engine.ts |
 | RBAC Middleware | ✅ Complete | src/api/middleware/rbac.ts |
 | API Key Store | ✅ Complete | src/storage/api-key-store.ts |
 | API Key Routes | ✅ Complete | src/api/routes/api-keys.ts |
 | API Key Auth Middleware | ✅ Complete | src/api/middleware/api-key-auth.ts |
 | V1 Prefix Utility | ✅ Complete | src/api/v1-prefix.ts |
 | V1 Route Redirects | ✅ Complete | All routes with /api/v1/ prefix |
-| HTTP Transport Types | ✅ Complete | src/connectors/types/http-transport-types.ts |
-| Base HTTP Transport | ✅ Complete | src/connectors/transports/base-http-transport.ts |
-| Memory Limit Types | ✅ Complete | src/memory/types.ts |
+| HTTP Transport Types | ✅ Complete | src/connectors/base-http-transport-types.ts |
+| Base HTTP Transport | ✅ Complete | src/connectors/base-http-transport.ts |
+| Memory Limit Types | ✅ Complete | src/memory/limit-types.ts |
 | Budget Manager | ✅ Complete | src/memory/budget-manager.ts |
 | Budget Store | ✅ Complete | src/storage/budget-store.ts |
-| Prometheus Exporter | ✅ Complete | src/observability/exporters/prometheus-exporter.ts |
-| OTel Trace Exporter | ✅ Complete | src/observability/exporters/otel-trace-exporter.ts |
-| Alerting System | ✅ Complete | src/observability/alerting/*.ts |
+| Prometheus Exporter | ✅ Complete | src/observability/prometheus-exporter.ts |
+| OTel Trace Exporter | ✅ Complete | src/observability/otel-trace-exporter.ts |
+| Alerting System | ✅ Complete | src/observability/alerting.ts |
 | Alert Store | ✅ Complete | src/storage/alert-store.ts |
-| GitHub Connector | ✅ Complete | src/connectors/adapters/github/*.ts |
-| Calendar Connector | ✅ Complete | src/connectors/adapters/calendar/*.ts |
-| Contacts Connector | ✅ Complete | src/connectors/adapters/contacts/*.ts |
-| Docs Connector | ✅ Complete | src/connectors/adapters/docs/*.ts |
-| Web/Search Connector | ✅ Complete | src/connectors/adapters/web/*.ts |
-| Memory Cache Layer | ✅ Complete | src/memory/cache/*.ts |
-| Trigger Create Dialog UI | ✅ Complete | web/src/components/TriggerCreateDialog.tsx |
-| DLQ Management UI | ✅ Complete | web/src/components/DlqTab.tsx |
+| GitHub Connector | ✅ Complete | src/connectors/github/github-connector.ts |
+| Calendar Connector | ✅ Complete | src/connectors/calendar/calendar-connector.ts |
+| Contacts Connector | ✅ Complete | src/connectors/contacts/contacts-connector.ts |
+| Docs Connector | ✅ Complete | src/connectors/docs/docs-connector.ts |
+| Web/Search Connector | ✅ Complete | src/connectors/web/web-connector.ts + src/connectors/search/search-connector.ts |
+| Generic HTTP Connector | ✅ Complete | src/connectors/generic-http/generic-http-connector.ts |
+| OpenAPI Parser | ✅ Complete | src/connectors/generic-http/openapi-parser.ts |
+| Memory Cache Layer | ✅ Complete | src/memory/cache-layer.ts |
+| Trigger Create Dialog UI | ✅ Complete | web/src/features/triggers/TriggerCreateDialog.tsx |
+| DLQ Management UI | ✅ Complete | web/src/features/dlq/DLQTab.tsx |
+| Admin Dashboard UI | ✅ Complete | web/src/features/admin/AdminTab.tsx |
 | Frontend API V1 Prefix | ✅ Complete | All web/src/api/*.ts files |
-| P6 Verification Script | ✅ Complete | scripts/verify-p6.ts |
+| P6 Verification Script | ✅ Complete | scripts/check-p6.ts |
 | Admin Guide | ✅ Complete | docs/product/admin-guide.md |
 | User Guide | ✅ Complete | docs/product/user-guide.md |
 | Demo Script | ✅ Complete | docs/product/demo-script.md |
