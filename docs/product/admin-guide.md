@@ -1,11 +1,11 @@
 # Agent Platform Admin Guide
 
-> Version: 1.0 (Phase 5)
-> Last Updated: 2026-05-13
+> Version: 1.1 (Phase 6)
+> Last Updated: 2026-05-15
 
 ## Overview
 
-This guide covers administrative tasks for the Agent Platform, including LLM provider configuration, agent settings, security policies, and database management.
+This guide covers administrative tasks for the Agent Platform, including LLM provider configuration, agent settings, security policies, RBAC, API key management, and database management.
 
 ---
 
@@ -490,6 +490,531 @@ To disable, simply unset `API_AUTH_TOKEN` or set it to an empty string. When not
 - Cookie session auth and Bearer token auth can coexist — browser users use cookies, API clients use tokens.
 - This is a simple static token check, not RBAC. For role-based access control, see P6/P7 roadmap.
 - Use a strong, random token in production (e.g., `openssl rand -hex 32`).
+
+---
+
+## Role-Based Access Control (RBAC)
+
+The platform implements a 3-tier role system for access control.
+
+### Role Hierarchy
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| `admin` | Full system access | All resources, all actions |
+| `user` | Standard user | Own resources CRUD, public resources Read |
+| `service` | Programmatic access | Execute on specific resources only |
+
+### Permission Model
+
+Permissions follow the pattern: `resource:action`
+
+**Resource Types:**
+- `session` — Chat sessions
+- `run` — Workflow and planner runs
+- `workflow` — Workflow definitions
+- `trigger` — Trigger configurations
+- `connector` — Connector instances
+- `approval` — Approval requests
+- `memory` — Memory entries
+- `settings` — System settings
+- `api_key` — API keys (admin only)
+
+**Actions:**
+- `create` — Create new resources
+- `read` — View resources
+- `update` — Modify resources
+- `delete` — Remove resources
+- `execute` — Run workflows/triggers
+- `manage` — Administrative actions
+
+### Role Permissions
+
+**Admin Role:**
+- All permissions on all resources
+- Can manage other users' resources
+- Can create/manage API keys
+- Can modify system settings
+
+**User Role:**
+- Full CRUD on own resources
+- Read access to public resources
+- Execute workflows and triggers
+- No access to settings or API key management
+
+**Service Role:**
+- Execute-only on specific permitted resources
+- Used for programmatic integrations
+- Limited to explicitly granted permissions
+
+### Configuring User Roles
+
+User roles are assigned during account creation. The first user created via `/api/v1/setup/user` automatically receives the `admin` role.
+
+For subsequent users, roles must be assigned by an existing admin through the user management interface (future feature) or directly via database modification.
+
+### RBAC API Endpoints
+
+RBAC is enforced transparently on all API endpoints. Denied requests return:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Role 'user' cannot perform 'manage' on 'settings'"
+  },
+  "requestId": "..."
+}
+```
+
+---
+
+## API Key Management
+
+API keys enable programmatic access to the platform without browser sessions.
+
+### Key Format
+
+- Prefix: `ak_` (identifies as API key Bearer token)
+- Length: 32 characters total
+- Storage: SHA-256 hashed (only first 8 chars visible for identification)
+
+### Creating API Keys
+
+```bash
+POST /api/v1/api-keys
+{
+  "name": "CI/CD Integration",
+  "role": "service",
+  "expiresAt": "2027-01-01T00:00:00Z"  // Optional
+}
+```
+
+Response includes the full key (shown once):
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "key_abc123",
+    "name": "CI/CD Integration",
+    "role": "service",
+    "key": "ak_xxxxxxxxxxxxxxxxxxxxxxxx",  // Save this!
+    "prefix": "ak_xxxxxx",
+    "expiresAt": "2027-01-01T00:00:00Z"
+  }
+}
+```
+
+**Warning:** The full key is only returned once. Store it securely.
+
+### Listing API Keys
+
+```bash
+GET /api/v1/api-keys
+```
+
+Returns keys with prefix (for identification), not the full key.
+
+### Revoking API Keys
+
+```bash
+DELETE /api/v1/api-keys/:keyId
+```
+
+Revoked keys immediately lose access.
+
+### Using API Keys
+
+Include in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer ak_xxxxxxxxxxxxxxxxxxxxxxxx" \
+  http://localhost:3003/api/v1/sessions
+```
+
+### Key Security Best Practices
+
+1. **Rotate regularly** — Create new keys before old ones expire
+2. **Use minimal role** — Grant only necessary permissions
+3. **Set expiration** — Prevent indefinite access
+4. **Revoke immediately** — Delete compromised keys without delay
+5. **Never log keys** — Avoid exposing in logs or error messages
+
+### Service Role Keys
+
+Service role API keys are designed for integrations:
+
+- Can have no associated user (pure programmatic access)
+- Limited to specific resource types
+- Audit trail shows `service` role in run history
+
+---
+
+## API Version Migration (/api/v1/)
+
+Phase 6 introduces the `/api/v1/` prefix for all API endpoints.
+
+### Migration Path
+
+**Legacy endpoints (deprecated):**
+- `/api/sessions` → `/api/v1/sessions`
+- `/api/workflows` → `/api/v1/workflows`
+- `/api/triggers` → `/api/v1/triggers`
+- etc.
+
+**Automatic redirects:** Legacy endpoints redirect to `/api/v1/` equivalents with HTTP 307 (preserves POST/PUT body).
+
+### Endpoint Mapping
+
+| Legacy | V1 |
+|--------|----|
+| `/api/sessions` | `/api/v1/sessions` |
+| `/api/workflows` | `/api/v1/workflows` |
+| `/api/triggers` | `/api/v1/triggers` |
+| `/api/connectors` | `/api/v1/connectors` |
+| `/api/approvals` | `/api/v1/approvals` |
+| `/api/agents/:id/config` | `/api/v1/agents/:id/config` |
+| `/api/providers` | `/api/v1/providers` |
+| `/api/metrics` | `/api/v1/metrics` |
+| `/api/dlq` | `/api/v1/dlq` |
+
+### Timeline
+
+- **Phase 6:** `/api/v1/` is the canonical path, legacy redirects active
+- **Phase 7:** Legacy paths deprecated with warning headers
+- **Phase 8+:** Legacy paths may be removed
+
+### Client Migration
+
+Update API clients to use `/api/v1/` prefix:
+
+```javascript
+// Before
+const API_BASE = '/api';
+
+// After
+const API_BASE = '/api/v1';
+```
+
+The web frontend and E2E tests already use `/api/v1/` paths.
+
+---
+
+## Connector Configuration
+
+Connectors enable integration with external systems.
+
+### Available Connector Types
+
+| Type | Description | Auth Method |
+|------|-------------|-------------|
+| `github` | GitHub API | API Key / OAuth |
+| `slack` | Slack API | OAuth2 |
+| `calendar` | Google Calendar | OAuth2 |
+| `contacts` | Google Contacts | OAuth2 |
+| `docs` | Google Docs / Notion | OAuth2 / API Key |
+| `web` | Web Search | None / API Key |
+
+### Connector Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `mock` | Simulated responses | Development, testing |
+| `live` | Real API calls | Production |
+
+Set via environment:
+```bash
+CONNECTOR_MODE=mock  # Development
+CONNECTOR_MODE=live   # Production
+```
+
+Or per-connector:
+```bash
+CALENDAR_MOCK_MODE=true
+CONTACTS_MOCK_MODE=true
+DOCS_MOCK_MODE=true
+```
+
+### Creating Connector Instances
+
+1. Navigate to **Connectors** tab in web UI
+2. Click "Add Instance"
+3. Configure:
+   - Name (human-readable)
+   - Connector type
+   - Authentication credentials
+4. Save instance
+
+### Authentication Types
+
+| Type | Description | Storage |
+|------|-------------|---------|
+| `api_key` | Static API key | Encrypted at rest |
+| `oauth2` | OAuth 2.0 flow | Token encrypted, refresh token stored |
+| `basic` | Username/password | Encrypted at rest |
+
+### Connector Security
+
+- Credentials are encrypted using `APP_SECRET_KEY`
+- OAuth tokens are refreshed automatically
+- Network access controlled via environment variables
+- Private IP addresses blocked for HTTP transports
+
+### Mock Connectors
+
+For development without external service access:
+
+```bash
+# Enable mock mode globally
+CONNECTOR_MODE=mock
+
+# Or per connector type
+GITHUB_MOCK_MODE=true
+SLACK_MOCK_MODE=true
+```
+
+Mock connectors return realistic responses without making real API calls.
+
+---
+
+## Alerting Configuration
+
+The alerting system monitors metrics and sends notifications when conditions are met.
+
+### Alert Rules
+
+Alert rules define conditions that trigger notifications.
+
+**Condition Types:**
+- `threshold` — Fire when metric exceeds a value
+- `rate` — Fire when metric rate of change exceeds threshold
+- `absence` — Fire when no metrics received in window
+
+**Operators:**
+- `>` — Greater than
+- `<` — Less than
+- `>=` — Greater than or equal
+- `<=` — Less than or equal
+- `==` — Equal to
+
+### Creating Alert Rules
+
+```bash
+POST /api/v1/alerts/rules
+{
+  "name": "High Error Rate",
+  "metricModule": "gateway",
+  "metricName": "request_errors_total",
+  "conditionType": "threshold",
+  "operator": ">",
+  "threshold": 100,
+  "windowSeconds": 300,
+  "severity": "warning",
+  "webhookUrl": "https://hooks.example.com/alert"
+}
+```
+
+### Alert Severity Levels
+
+| Level | Description |
+|-------|-------------|
+| `critical` | Requires immediate attention |
+| `warning` | Needs investigation soon |
+| `info` | Informational notification |
+
+### Alert States
+
+| State | Description |
+|-------|-------------|
+| `idle` | Condition not met |
+| `firing` | Condition currently met |
+| `resolved` | Condition was met, now cleared |
+
+### Notification Webhooks
+
+When an alert fires or resolves, POST to configured webhook:
+
+```json
+{
+  "ruleId": "rule_abc123",
+  "ruleName": "High Error Rate",
+  "state": "firing",
+  "severity": "warning",
+  "value": 150,
+  "threshold": 100,
+  "timestamp": "2026-05-15T10:30:00Z",
+  "labels": {
+    "module": "gateway"
+  }
+}
+```
+
+### Evaluating Alerts
+
+Alerts are evaluated:
+- On schedule (configurable per rule)
+- On-demand via API: `POST /api/v1/alerts/rules/:ruleId/evaluate`
+
+### Monitoring Alert Status
+
+```bash
+# List all alert states
+GET /api/v1/alerts/states
+
+# Get specific alert state
+GET /api/v1/alerts/states/:ruleId
+```
+
+### Alert Best Practices
+
+1. **Set appropriate windows** — Avoid alert flapping with longer windows
+2. **Use severity appropriately** — Reserve `critical` for true incidents
+3. **Configure webhooks** — Ensure notifications reach the right team
+4. **Review regularly** — Remove or update stale alert rules
+5. **Test alerts** — Verify webhook delivery before relying on alerts
+
+---
+
+## Memory Budget Management
+
+Memory budgets control resource consumption per user.
+
+### Budget Periods
+
+| Period | Reset Behavior |
+|--------|----------------|
+| `daily` | Resets at midnight UTC |
+| `monthly` | Resets on the 1st of each month |
+| `per_session` | Never resets (session lifetime) |
+
+### Budget Types
+
+- **Token Budget** — LLM token consumption limit
+- **Request Budget** — API request count limit
+- **Storage Budget** — Memory storage size limit (MB)
+
+### Setting Budgets
+
+Budgets are configured via agent settings or environment defaults:
+
+```bash
+# Environment defaults
+DEFAULT_TOKEN_BUDGET_DAILY=100000
+DEFAULT_REQUEST_BUDGET_DAILY=1000
+DEFAULT_STORAGE_BUDGET_MB=256
+```
+
+### Budget Monitoring
+
+```bash
+# Get current budget usage
+GET /api/v1/budget/usage
+
+# Response
+{
+  "ok": true,
+  "data": {
+    "period": "daily",
+    "used": {
+      "tokens": 45000,
+      "requests": 120,
+      "storageMb": 128
+    },
+    "limits": {
+      "tokens": 100000,
+      "requests": 1000,
+      "storageMb": 256
+    },
+    "percentUsed": 45,
+    "resetAt": "2026-05-16T00:00:00Z"
+  }
+}
+```
+
+### Budget Exceeded Behavior
+
+When a budget is exceeded:
+1. Request returns `BUDGET_EXCEEDED` error
+2. Budget usage details included in response
+3. Request is logged but not executed
+4. Alert fires if configured
+
+---
+
+## Prometheus Metrics
+
+The platform exposes Prometheus-compatible metrics for monitoring.
+
+### Metrics Endpoint
+
+```bash
+GET /api/v1/metrics
+```
+
+Unauthenticated endpoint for Prometheus scraping.
+
+### Available Metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `agent_platform_request_total` | Counter | Total API requests |
+| `agent_platform_request_duration_seconds` | Histogram | Request latency distribution |
+| `agent_platform_active_sessions` | Gauge | Currently active sessions |
+| `agent_platform_workflow_runs_total` | Counter | Workflow executions |
+| `agent_platform_connector_requests_total` | Counter | Connector API calls |
+| `agent_platform_memory_usage_bytes` | Gauge | Memory cache size |
+| `agent_platform_budget_usage_percent` | Gauge | Budget utilization |
+
+### Metric Labels
+
+Default labels on all metrics:
+- `service_name` — Platform identifier
+- `version` — Platform version
+- `instance` — Instance identifier
+
+### Prometheus Configuration
+
+```yaml
+scrape_configs:
+  - job_name: 'agent-platform'
+    static_configs:
+      - targets: ['localhost:3003']
+    metrics_path: '/api/v1/metrics'
+```
+
+---
+
+## OpenTelemetry Tracing
+
+The platform supports OTLP HTTP JSON export for distributed tracing.
+
+### Trace Export
+
+```bash
+POST /api/v1/traces/export
+{
+  "exporterUrl": "https://otel-collector:4318/v1/traces"
+}
+```
+
+### Trace Attributes
+
+Spans include:
+- `session.id` — Session identifier
+- `run.id` — Run identifier
+- `user.id` — User identifier
+- `agent.name` — Agent name
+- `tool.id` — Tool identifier
+- `connector.type` — Connector type
+
+### Span Status
+
+| Status | Description |
+|--------|-------------|
+| `STATUS_CODE_OK` | Successful operation |
+| `STATUS_CODE_ERROR` | Failed operation |
+| `STATUS_CODE_UNSET` | In progress or unknown |
 
 ---
 

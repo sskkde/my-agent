@@ -1,7 +1,7 @@
 # Agent Platform User Guide
 
-> Version: 1.0 (Phase 5)
-> Last Updated: 2026-05-13
+> Version: 1.1 (Phase 6)
+> Last Updated: 2026-05-15
 
 ## Quick Start
 
@@ -96,12 +96,45 @@ Triggers automate workflow execution based on schedules or external events.
 - **Webhook Trigger** — Run workflows when an HTTP request is received
 - **Connector Trigger** — Run workflows based on external system events
 
-**Creating a schedule trigger:**
+#### Creating a Schedule Trigger
+
 1. Navigate to **Triggers** tab
-2. Click **Create Schedule Trigger**
-3. Select the workflow to run
-4. Set the cron schedule (e.g., `0 9 * * *` for daily at 9 AM)
+2. Click **Create Trigger** button
+3. Select **Schedule** trigger type
+4. Configure the trigger:
+   - **Name**: Descriptive name (e.g., "Daily Report Schedule")
+   - **Workflow**: Select from published workflows
+   - **Cron Schedule**: Use standard 5-field cron format
+     - `0 9 * * *` — Every day at 9:00 AM
+     - `*/15 * * * *` — Every 15 minutes
+     - `0 9 * * 1-5` — Weekdays at 9:00 AM
+   - **Max Runs**: Optional limit on total executions
 5. Click **Create**
+
+The platform validates your cron expression and shows a preview of the next execution time.
+
+#### Creating a Webhook Trigger
+
+1. Navigate to **Triggers** tab
+2. Click **Create Trigger** button
+3. Select **Webhook** trigger type
+4. Configure:
+   - **Name**: Descriptive name
+   - **Workflow**: Select from published workflows
+5. Click **Create**
+
+After creation, you'll receive:
+- **Webhook URL**: Unique endpoint URL
+- **HMAC Secret**: Secret for request signature verification
+
+Use these to configure external systems to trigger your workflow.
+
+#### Managing Triggers
+
+- **Toggle**: Enable/disable trigger without deleting
+- **Edit**: Modify schedule or associated workflow
+- **Delete**: Permanently remove trigger
+- **View History**: See all executions from this trigger
 
 ### Memory
 
@@ -118,6 +151,44 @@ The platform maintains long-term memory of important information extracted from 
 3. Delete outdated or incorrect entries
 
 Memory helps the assistant provide more contextual and personalized responses over time.
+
+### Memory Budget
+
+Memory budgets control resource consumption to ensure fair platform usage.
+
+**Budget types:**
+- **Token Budget** — LLM token consumption per period
+- **Request Budget** — API request count per period
+- **Storage Budget** — Memory storage size limit
+
+**Budget periods:**
+- **Daily** — Resets at midnight UTC
+- **Monthly** — Resets on the 1st of each month
+- **Per Session** — Session lifetime (never resets)
+
+#### Monitoring Budget Usage
+
+1. Navigate to **Settings** tab
+2. View **Budget Status** section
+3. See current usage and limits:
+   - Tokens used vs. limit
+   - Requests made vs. limit
+   - Storage used vs. limit
+   - Percent utilization
+   - Reset time
+
+#### When Budget is Exceeded
+
+If you exceed your budget:
+1. You'll see a `BUDGET_EXCEEDED` error
+2. The request will not be processed
+3. Budget resets automatically at the end of the period
+
+**Tips for budget management:**
+- Monitor usage regularly in Settings
+- Use shorter conversations for simple tasks
+- Close unused sessions to free storage
+- Contact your admin for budget adjustments
 
 ### Observability
 
@@ -136,6 +207,49 @@ The Observability Console provides visibility into all platform operations.
 4. Review step details, inputs, outputs, and agent reasoning
 
 Replay Preview is read-only and has no side effects, making it safe for auditing.
+
+#### Dead Letter Queue (DLQ)
+
+The DLQ captures failed operations that couldn't be processed normally.
+
+**What appears in DLQ:**
+- Failed workflow step executions
+- Connector request failures
+- Timeout events
+- Processing errors
+
+**Managing DLQ entries:**
+
+1. Navigate to **DLQ** tab (or find DLQ section in Observability)
+2. View failed entries with details:
+   - Event ID
+   - Module that failed
+   - Failure reason
+   - Timestamp
+   - Retry count
+
+**Actions on DLQ entries:**
+
+- **Retry**: Attempt to reprocess the failed event
+  - Click the **Retry** button on individual entries
+  - Or select multiple entries and use **Retry Selected**
+  - Retried entries are removed from DLQ on success
+
+- **Discard**: Permanently remove without retry
+  - Click **Discard** on individual entries
+  - Or select multiple and use **Discard Selected**
+  - Discarded entries are logged for audit
+
+- **View Details**: Expand entry to see:
+  - Full error stack trace
+  - Original payload
+  - Failure metadata
+
+**DLQ best practices:**
+- Review DLQ regularly to catch systemic issues
+- Retry transient failures (network timeouts, rate limits)
+- Discard permanent failures after investigation
+- Contact admin if DLQ grows unexpectedly
 
 ### Connectors
 

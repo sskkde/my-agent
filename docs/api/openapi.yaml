@@ -8,7 +8,7 @@ info:
     All endpoints use a standard API response envelope:
     - Success: `{ ok: true, data: ..., requestId: "..." }`
     - Error: `{ ok: false, error: { code: "...", message: "..." }, requestId: "..." }`
-  version: "v0.5.0"
+  version: "0.6.0"
   contact:
     name: Agent Platform Team
 
@@ -21,6 +21,8 @@ servers:
 tags:
   - name: Auth & Setup
     description: Authentication and initial setup endpoints
+  - name: RBAC
+    description: Role-based access control, API keys, and permissions management
   - name: Sessions
     description: Session management and messaging
   - name: Agents & Providers
@@ -44,7 +46,7 @@ paths:
   # ==========================================================================
   # Auth & Setup
   # ==========================================================================
-  /api/setup/status:
+  /api/v1/setup/status:
     get:
       tags: [Auth & Setup]
       summary: Get setup status
@@ -58,7 +60,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/SetupStatusResponse"
 
-  /api/setup/user:
+  /api/v1/setup/user:
     post:
       tags: [Auth & Setup]
       summary: Create initial user
@@ -80,7 +82,7 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/auth/login:
+  /api/v1/auth/login:
     post:
       tags: [Auth & Setup]
       summary: Login
@@ -102,14 +104,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/auth/logout:
+  /api/v1/auth/logout:
     post:
       tags: [Auth & Setup]
       summary: Logout
       description: End the current session
       operationId: logout
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: Logout successful
@@ -118,14 +120,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
-  /api/auth/me:
+  /api/v1/auth/me:
     get:
       tags: [Auth & Setup]
       summary: Get current user
       description: Returns the currently authenticated user
       operationId: getCurrentUser
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: Current user info
@@ -137,16 +139,87 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   # ==========================================================================
+  # RBAC - API Keys
+  # ==========================================================================
+  /api/v1/api-keys:
+    get:
+      tags: [RBAC]
+      summary: List API keys
+      description: Returns all API keys for the current user
+      operationId: listApiKeys
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [RBAC]
+      summary: Create API key
+      description: Creates a new API key for programmatic access
+      operationId: createApiKey
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+      responses:
+        "201":
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateApiKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/api-keys/{keyId}:
+    delete:
+      tags: [RBAC]
+      summary: Revoke API key
+      description: Revokes (deletes) an API key
+      operationId: revokeApiKey
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: API key revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokeApiKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
   # Sessions
   # ==========================================================================
-  /api/sessions:
+  /api/v1/sessions:
     get:
       tags: [Sessions]
       summary: List sessions
       description: Returns paginated list of sessions for the current user
       operationId: listSessions
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: status
           in: query
@@ -178,7 +251,7 @@ paths:
       description: Creates a new session
       operationId: createSession
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "201":
           description: Session created
@@ -187,14 +260,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/SessionResponse"
 
-  /api/sessions/{sessionId}:
+  /api/v1/sessions/{sessionId}:
     get:
       tags: [Sessions]
       summary: Get session
       description: Returns session details
       operationId: getSession
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       responses:
@@ -216,7 +289,7 @@ paths:
       description: Updates session title or status
       operationId: updateSession
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       requestBody:
@@ -238,14 +311,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/sessions/{sessionId}/messages:
+  /api/v1/sessions/{sessionId}/messages:
     post:
       tags: [Sessions]
       summary: Send message
       description: Sends a message to the session (processed asynchronously)
       operationId: sendMessage
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       requestBody:
@@ -268,14 +341,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/sessions/{sessionId}/transcripts:
+  /api/v1/sessions/{sessionId}/transcripts:
     get:
       tags: [Sessions]
       summary: Get transcripts
       description: Returns all transcripts for a session
       operationId: getTranscripts
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       responses:
@@ -292,14 +365,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/sessions/{sessionId}/resume:
+  /api/v1/sessions/{sessionId}/resume:
     post:
       tags: [Sessions]
       summary: Resume session
       description: Resumes a session and returns recent timeline
       operationId: resumeSession
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       responses:
@@ -316,14 +389,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/sessions/{sessionId}/timeline:
+  /api/v1/sessions/{sessionId}/timeline:
     get:
       tags: [Sessions]
       summary: Get timeline
       description: Returns paginated timeline events for a session
       operationId: getTimeline
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
         - name: limit
@@ -355,14 +428,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/sessions/{sessionId}/timeline/stream:
+  /api/v1/sessions/{sessionId}/timeline/stream:
     get:
       tags: [Sessions]
       summary: Stream timeline (SSE)
       description: Server-Sent Events endpoint for real-time timeline updates
       operationId: streamTimeline
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
         - name: after
@@ -378,14 +451,14 @@ paths:
               schema:
                 type: string
 
-  /api/sessions/{sessionId}/model:
+  /api/v1/sessions/{sessionId}/model:
     patch:
       tags: [Sessions]
       summary: Set session model
       description: Sets the model and provider for a session
       operationId: setSessionModel
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       requestBody:
@@ -408,14 +481,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/sessions/{sessionId}/usage:
+  /api/v1/sessions/{sessionId}/usage:
     get:
       tags: [Sessions]
       summary: Get session usage
       description: Returns usage statistics for a session
       operationId: getSessionUsage
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       responses:
@@ -433,14 +506,14 @@ paths:
   # ==========================================================================
   # Agents & Providers
   # ==========================================================================
-  /api/agents/{agentId}/config:
+  /api/v1/agents/{agentId}/config:
     get:
       tags: [Agents & Providers]
       summary: Get agent config
       description: Returns global, user override, and effective config for an agent
       operationId: getAgentConfig
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/agentId"
       responses:
@@ -453,14 +526,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/agents/{agentId}/config/global:
+  /api/v1/agents/{agentId}/config/global:
     patch:
       tags: [Agents & Providers]
       summary: Update global agent config
       description: Updates the global default configuration (admin only)
       operationId: updateGlobalAgentConfig
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/agentId"
       requestBody:
@@ -480,14 +553,14 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/agents/{agentId}/config/override:
+  /api/v1/agents/{agentId}/config/override:
     patch:
       tags: [Agents & Providers]
       summary: Update user override config
       description: Updates the user-specific override configuration
       operationId: updateUserOverrideConfig
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/agentId"
       requestBody:
@@ -510,7 +583,7 @@ paths:
       description: Resets user override to global defaults
       operationId: deleteUserOverrideConfig
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/agentId"
       responses:
@@ -519,14 +592,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/providers:
+  /api/v1/providers:
     get:
       tags: [Agents & Providers]
       summary: List providers
       description: Returns all configured providers for the current user
       operationId: listProviders
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of providers
@@ -542,7 +615,7 @@ paths:
       description: Creates a new provider configuration
       operationId: createProvider
       security:
-        - cookieSession: []
+        - sessionAuth: []
       requestBody:
         required: true
         content:
@@ -561,14 +634,14 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /api/providers/{providerId}:
+  /api/v1/providers/{providerId}:
     patch:
       tags: [Agents & Providers]
       summary: Update provider
       description: Updates a provider configuration
       operationId: updateProvider
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/providerId"
       requestBody:
@@ -595,7 +668,7 @@ paths:
       description: Deletes a provider configuration
       operationId: deleteProvider
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/providerId"
       responses:
@@ -608,14 +681,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/providers/{providerId}/test:
+  /api/v1/providers/{providerId}/test:
     post:
       tags: [Agents & Providers]
       summary: Test provider connection
       description: Tests the provider connection
       operationId: testProvider
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/providerId"
       responses:
@@ -630,14 +703,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/models:
+  /api/v1/models:
     get:
       tags: [Agents & Providers]
       summary: List models and providers
       description: Returns available providers and optionally session's selected model
       operationId: listModels
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: sessionId
           in: query
@@ -653,7 +726,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/tools:
+  /api/v1/tools:
     get:
       tags: [Agents & Providers]
       summary: List tools
@@ -667,14 +740,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ToolsResponse"
 
-  /api/tool-results/{resultId}:
+  /api/v1/tool-results/{resultId}:
     get:
       tags: [Agents & Providers]
       summary: Get tool result
       description: Returns a stored tool result by ID
       operationId: getToolResult
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: resultId
           in: path
@@ -696,14 +769,14 @@ paths:
   # ==========================================================================
   # Workflows
   # ==========================================================================
-  /api/workflows/drafts:
+  /api/v1/workflows/drafts:
     get:
       tags: [Workflows]
       summary: List workflow drafts
       description: Returns all workflow drafts for the current user
       operationId: listWorkflowDrafts
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of drafts
@@ -719,7 +792,7 @@ paths:
       description: Creates a new workflow draft
       operationId: createWorkflowDraft
       security:
-        - cookieSession: []
+        - sessionAuth: []
       requestBody:
         required: true
         content:
@@ -738,14 +811,14 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /api/workflows/drafts/{draftId}:
+  /api/v1/workflows/drafts/{draftId}:
     get:
       tags: [Workflows]
       summary: Get workflow draft
       description: Returns a specific workflow draft
       operationId: getWorkflowDraft
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/draftId"
       responses:
@@ -765,7 +838,7 @@ paths:
       description: Updates a workflow draft
       operationId: updateWorkflowDraft
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/draftId"
       requestBody:
@@ -790,7 +863,7 @@ paths:
       description: Deletes a workflow draft
       operationId: deleteWorkflowDraft
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/draftId"
       responses:
@@ -801,14 +874,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/workflows/drafts/{draftId}/validate:
+  /api/v1/workflows/drafts/{draftId}/validate:
     post:
       tags: [Workflows]
       summary: Validate workflow draft
       description: Validates a workflow draft and returns issues
       operationId: validateWorkflowDraft
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/draftId"
       responses:
@@ -823,14 +896,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/workflows/drafts/{draftId}/publish:
+  /api/v1/workflows/drafts/{draftId}/publish:
     post:
       tags: [Workflows]
       summary: Publish workflow draft
       description: Publishes a draft as a workflow definition
       operationId: publishWorkflowDraft
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/draftId"
       responses:
@@ -847,14 +920,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/workflows/definitions:
+  /api/v1/workflows/definitions:
     get:
       tags: [Workflows]
       summary: List workflow definitions
       description: Returns all published workflow definitions
       operationId: listWorkflowDefinitions
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of definitions
@@ -865,14 +938,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/workflows/definitions/{workflowId}:
+  /api/v1/workflows/definitions/{workflowId}:
     get:
       tags: [Workflows]
       summary: Get workflow definition
       description: Returns a specific workflow definition
       operationId: getWorkflowDefinition
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/workflowId"
       responses:
@@ -887,14 +960,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/workflows/runs:
+  /api/v1/workflows/runs:
     get:
       tags: [Workflows]
       summary: List workflow runs
       description: Returns all workflow runs for the current user
       operationId: listWorkflowRuns
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of runs
@@ -910,7 +983,7 @@ paths:
       description: Starts a new workflow run from a definition
       operationId: startWorkflowRun
       security:
-        - cookieSession: []
+        - sessionAuth: []
       requestBody:
         required: true
         content:
@@ -929,14 +1002,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/workflows/runs/{workflowRunId}:
+  /api/v1/workflows/runs/{workflowRunId}:
     get:
       tags: [Workflows]
       summary: Get workflow run
       description: Returns details of a specific workflow run
       operationId: getWorkflowRun
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/workflowRunId"
       responses:
@@ -954,14 +1027,14 @@ paths:
   # ==========================================================================
   # Triggers
   # ==========================================================================
-  /api/triggers/schedules:
+  /api/v1/triggers/schedules:
     get:
       tags: [Triggers]
       summary: List schedule triggers
       description: Returns all schedule triggers for the current user
       operationId: listScheduleTriggers
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of schedules
@@ -977,7 +1050,7 @@ paths:
       description: Creates a new schedule trigger
       operationId: createScheduleTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       requestBody:
         required: true
         content:
@@ -994,14 +1067,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/triggers/schedules/{scheduleId}:
+  /api/v1/triggers/schedules/{scheduleId}:
     get:
       tags: [Triggers]
       summary: Get schedule trigger
       description: Returns a specific schedule trigger
       operationId: getScheduleTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/scheduleId"
       responses:
@@ -1021,7 +1094,7 @@ paths:
       description: Updates a schedule trigger status
       operationId: updateScheduleTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/scheduleId"
       requestBody:
@@ -1046,7 +1119,7 @@ paths:
       description: Deletes a schedule trigger
       operationId: deleteScheduleTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/scheduleId"
       responses:
@@ -1057,14 +1130,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/triggers/webhooks:
+  /api/v1/triggers/webhooks:
     get:
       tags: [Triggers]
       summary: List webhook triggers
       description: Returns all webhook triggers for the current user
       operationId: listWebhookTriggers
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of webhooks
@@ -1080,7 +1153,7 @@ paths:
       description: Creates a new webhook trigger
       operationId: createWebhookTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       requestBody:
         required: true
         content:
@@ -1097,14 +1170,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/triggers/webhooks/{webhookId}:
+  /api/v1/triggers/webhooks/{webhookId}:
     get:
       tags: [Triggers]
       summary: Get webhook trigger
       description: Returns a specific webhook trigger
       operationId: getWebhookTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/webhookId"
       responses:
@@ -1124,7 +1197,7 @@ paths:
       description: Updates a webhook trigger status
       operationId: updateWebhookTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/webhookId"
       requestBody:
@@ -1149,7 +1222,7 @@ paths:
       description: Deletes a webhook trigger
       operationId: deleteWebhookTrigger
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/webhookId"
       responses:
@@ -1160,7 +1233,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/webhooks/{webhookId}/deliver:
+  /api/v1/webhooks/{webhookId}/deliver:
     post:
       tags: [Triggers]
       summary: Deliver webhook payload
@@ -1199,14 +1272,14 @@ paths:
   # ==========================================================================
   # Approvals
   # ==========================================================================
-  /api/approvals:
+  /api/v1/approvals:
     get:
       tags: [Approvals]
       summary: List approvals
       description: Returns all approvals for the current user
       operationId: listApprovals
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of approvals
@@ -1217,14 +1290,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/approvals/{approvalId}:
+  /api/v1/approvals/{approvalId}:
     get:
       tags: [Approvals]
       summary: Get approval
       description: Returns a specific approval
       operationId: getApproval
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/approvalId"
       responses:
@@ -1244,7 +1317,7 @@ paths:
       description: Approve or reject an approval request
       operationId: decideApproval
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/approvalId"
       requestBody:
@@ -1270,14 +1343,14 @@ paths:
   # ==========================================================================
   # Memory
   # ==========================================================================
-  /api/memory:
+  /api/v1/memory:
     get:
       tags: [Memory]
       summary: List memories
       description: Returns memories for the current user with optional search
       operationId: listMemories
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: query
           in: query
@@ -1303,14 +1376,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/memory/{memoryId}:
+  /api/v1/memory/{memoryId}:
     get:
       tags: [Memory]
       summary: Get memory
       description: Returns a specific memory
       operationId: getMemory
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/memoryId"
       responses:
@@ -1330,7 +1403,7 @@ paths:
       description: Deletes a specific memory
       operationId: deleteMemory
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/memoryId"
       responses:
@@ -1345,14 +1418,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/memory/debug/extraction-runs:
+  /api/v1/memory/debug/extraction-runs:
     get:
       tags: [Memory]
       summary: List extraction runs (debug)
       description: Returns memory extraction run history
       operationId: listExtractionRuns
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: sessionId
           in: query
@@ -1373,14 +1446,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/memory/debug/extract:
+  /api/v1/memory/debug/extract:
     post:
       tags: [Memory]
       summary: Trigger extraction (debug)
       description: Manually triggers memory extraction for a turn
       operationId: triggerExtraction
       security:
-        - cookieSession: []
+        - sessionAuth: []
       requestBody:
         required: true
         content:
@@ -1402,7 +1475,7 @@ paths:
   # ==========================================================================
   # Observability
   # ==========================================================================
-  /api/observability/runs:
+  /api/v1/observability/runs:
     get:
       tags: [Observability]
       summary: List observable runs
@@ -1424,7 +1497,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/observability/runs/{runId}/console:
+  /api/v1/observability/runs/{runId}/console:
     get:
       tags: [Observability]
       summary: Get console view
@@ -1444,7 +1517,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/observability/runs/{runId}/replay-preview:
+  /api/v1/observability/runs/{runId}/replay-preview:
     get:
       tags: [Observability]
       summary: Preview replay
@@ -1467,14 +1540,14 @@ paths:
   # ==========================================================================
   # Connectors
   # ==========================================================================
-  /api/connectors:
+  /api/v1/connectors:
     get:
       tags: [Connectors]
       summary: List connectors
       description: Returns all registered connector definitions
       operationId: listConnectors
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of connectors
@@ -1485,14 +1558,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/connectors/{id}:
+  /api/v1/connectors/{id}:
     get:
       tags: [Connectors]
       summary: Get connector
       description: Returns a specific connector definition
       operationId: getConnector
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: id
           in: path
@@ -1511,14 +1584,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/connectors/{id}/instances:
+  /api/v1/connectors/{id}/instances:
     get:
       tags: [Connectors]
       summary: List connector instances
       description: Returns instances for a connector definition
       operationId: listConnectorInstances
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: id
           in: path
@@ -1537,14 +1610,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/connectors/{id}/instances/{iid}/config:
+  /api/v1/connectors/{id}/instances/{iid}/config:
     patch:
       tags: [Connectors]
       summary: Update instance config
       description: Updates configuration of a connector instance
       operationId: updateInstanceConfig
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: id
           in: path
@@ -1578,7 +1651,7 @@ paths:
   # ==========================================================================
   # System
   # ==========================================================================
-  /api/health:
+  /api/v1/health:
     get:
       tags: [System]
       summary: Health check
@@ -1592,7 +1665,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
-  /api/health/ready:
+  /api/v1/health/ready:
     get:
       tags: [System]
       summary: Readiness check
@@ -1612,14 +1685,139 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReadyResponse"
 
-  /api/runs:
+  /api/v1/metrics:
+    get:
+      tags: [System]
+      summary: Prometheus metrics
+      description: Returns metrics in Prometheus exposition format for scraping
+      operationId: getMetrics
+      responses:
+        "200":
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Prometheus exposition format text
+
+  /api/v1/alerts/rules:
+    get:
+      tags: [System]
+      summary: List alert rules
+      description: Returns all configured alert rules
+      operationId: listAlertRules
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: List of alert rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertRuleListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [System]
+      summary: Create alert rule
+      description: Creates a new alert rule
+      operationId: createAlertRule
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAlertRuleRequest"
+      responses:
+        "201":
+          description: Alert rule created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertRuleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/alerts/rules/{ruleId}:
+    get:
+      tags: [System]
+      summary: Get alert rule
+      description: Returns a specific alert rule
+      operationId: getAlertRule
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alert rule details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertRuleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [System]
+      summary: Delete alert rule
+      description: Deletes an alert rule
+      operationId: deleteAlertRule
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alert rule deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteAlertRuleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/alerts/state:
+    get:
+      tags: [System]
+      summary: Get alert states
+      description: Returns current alert states for all rules
+      operationId: getAlertStates
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: Alert states
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertStateListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/runs:
     get:
       tags: [System]
       summary: List runs
       description: Returns list of all runs (planner, background, kernel)
       operationId: listRuns
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: List of runs
@@ -1630,14 +1828,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/runs/stream:
+  /api/v1/runs/stream:
     get:
       tags: [System]
       summary: Stream runs (SSE)
       description: Server-Sent Events endpoint for run updates
       operationId: streamRuns
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: SSE stream
@@ -1646,14 +1844,14 @@ paths:
               schema:
                 type: string
 
-  /api/usage:
+  /api/v1/usage:
     get:
       tags: [System]
       summary: List usage
       description: Returns paginated usage summaries
       operationId: listUsage
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: sessionId
           in: query
@@ -1679,14 +1877,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/logs:
+  /api/v1/logs:
     get:
       tags: [System]
       summary: List logs
       description: Returns paginated log entries
       operationId: listLogs
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: sessionId
           in: query
@@ -1724,14 +1922,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/logs/stream:
+  /api/v1/logs/stream:
     get:
       tags: [System]
       summary: Stream logs (SSE)
       description: Server-Sent Events endpoint for log updates
       operationId: streamLogs
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - name: sessionId
           in: query
@@ -1749,14 +1947,14 @@ paths:
               schema:
                 type: string
 
-  /api/settings:
+  /api/v1/settings:
     get:
       tags: [System]
       summary: Get settings
       description: Returns system settings
       operationId: getSettings
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: Settings
@@ -1767,14 +1965,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/instances:
+  /api/v1/instances:
     get:
       tags: [System]
       summary: List instances
       description: Returns instance status
       operationId: listInstances
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: Instance status
@@ -1785,14 +1983,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/channels:
+  /api/v1/channels:
     get:
       tags: [System]
       summary: List channels
       description: Returns registered channels
       operationId: listChannels
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: Channels
@@ -1803,14 +2001,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/skills:
+  /api/v1/skills:
     get:
       tags: [System]
       summary: List skills
       description: Returns available skills
       operationId: listSkills
       security:
-        - cookieSession: []
+        - sessionAuth: []
       responses:
         "200":
           description: Skills
@@ -1821,14 +2019,14 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/planner-runs/{plannerRunId}/events:
+  /api/v1/planner-runs/{plannerRunId}/events:
     get:
       tags: [System]
       summary: Get planner run events
       description: Returns events for a planner run
       operationId: getPlannerRunEvents
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/plannerRunId"
       responses:
@@ -1843,14 +2041,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/planner-runs/{plannerRunId}/summary:
+  /api/v1/planner-runs/{plannerRunId}/summary:
     get:
       tags: [System]
       summary: Get planner run summary
       description: Returns summary for a planner run
       operationId: getPlannerRunSummary
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/plannerRunId"
       responses:
@@ -1865,14 +2063,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/debug/replay/{sessionId}:
+  /api/v1/debug/replay/{sessionId}:
     get:
       tags: [System]
       summary: Debug replay
       description: Returns debug replay information for a session
       operationId: debugReplay
       security:
-        - cookieSession: []
+        - sessionAuth: []
       parameters:
         - $ref: "#/components/parameters/sessionId"
       responses:
@@ -1892,7 +2090,7 @@ paths:
 # ============================================================================
 components:
   securitySchemes:
-    cookieSession:
+    sessionAuth:
       type: apiKey
       in: cookie
       name: agent-platform-session
@@ -2088,6 +2286,266 @@ components:
               properties:
                 user:
                   $ref: "#/components/schemas/UserMetadata"
+
+    # ---- RBAC - API Keys ----
+    ApiKeyListEntry:
+      type: object
+      required: [id, name, prefix, role, userId, createdAt, isActive]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          description: First 8 characters of the key for identification
+        role:
+          type: string
+          enum: [admin, user, service]
+        userId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+
+    ApiKeyListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ApiKeyListEntry"
+
+    CreateApiKeyRequest:
+      type: object
+      required: [name, role]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [admin, user, service]
+        expiresAt:
+          type: string
+          format: date-time
+
+    CreateApiKeyResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [id, name, key, prefix, role, createdAt]
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                key:
+                  type: string
+                  description: The full API key (only shown once on creation)
+                prefix:
+                  type: string
+                role:
+                  type: string
+                createdAt:
+                  type: string
+                  format: date-time
+
+    RevokeApiKeyResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [id, isActive]
+              properties:
+                id:
+                  type: string
+                isActive:
+                  type: boolean
+
+    # ---- Alerting ----
+    AlertRule:
+      type: object
+      required: [id, name, metricName, conditionType, threshold, windowSeconds, severity, enabled, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        metricName:
+          type: string
+        metricModule:
+          type: string
+          nullable: true
+        conditionType:
+          type: string
+          enum: [threshold, rate, absence]
+        operator:
+          type: string
+          enum: ['>', '<', '>=', '<=', '==']
+          nullable: true
+        threshold:
+          type: number
+        windowSeconds:
+          type: integer
+        severity:
+          type: string
+          enum: [critical, warning, info]
+        webhookUrl:
+          type: string
+          nullable: true
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AlertState:
+      type: object
+      required: [ruleId, state, lastEvaluatedAt]
+      properties:
+        ruleId:
+          type: string
+        state:
+          type: string
+          enum: [idle, firing, resolved]
+        lastEvaluatedAt:
+          type: string
+          format: date-time
+        lastFiredAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastResolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        currentValue:
+          type: number
+          nullable: true
+
+    AlertRuleListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [rules]
+              properties:
+                rules:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AlertRule"
+
+    AlertRuleResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [rule]
+              properties:
+                rule:
+                  $ref: "#/components/schemas/AlertRule"
+
+    CreateAlertRuleRequest:
+      type: object
+      required: [id, name, metricName, conditionType, threshold, windowSeconds, severity]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        metricName:
+          type: string
+        metricModule:
+          type: string
+        conditionType:
+          type: string
+          enum: [threshold, rate, absence]
+        operator:
+          type: string
+          enum: ['>', '<', '>=', '<=', '==']
+        threshold:
+          type: number
+        windowSeconds:
+          type: integer
+        severity:
+          type: string
+          enum: [critical, warning, info]
+        webhookUrl:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        enabled:
+          type: boolean
+
+    DeleteAlertRuleResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [deleted]
+              properties:
+                deleted:
+                  type: boolean
+
+    AlertStateListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [states]
+              properties:
+                states:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AlertState"
 
     # ---- Sessions ----
     SessionInfo:

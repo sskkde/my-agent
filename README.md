@@ -198,6 +198,54 @@ npm run test:web
 - 丢弃和审计追踪
 - 幂等性保证
 
+## P6 功能 (Phase 6 Features)
+
+### RBAC 权限控制
+
+- 3 层角色体系（admin > user > service）
+- 资源级别权限控制
+- 基于权限的 API 访问限制
+- 角色继承和权限计算
+
+### API Key 管理
+
+- API Key 创建和管理
+- 角色绑定（admin/user/service）
+- Key 前缀识别（ak_）
+- SHA-256 哈希存储
+- 即时撤销机制
+
+### API 版本控制 (/api/v1/)
+
+- 所有 API 端点使用 `/api/v1/` 前缀
+- 旧版 `/api/` 自动重定向到 `/api/v1/`
+- HTTP 307 重定向保留请求体
+
+### 连接器集成
+
+- GitHub 连接器（API Key / OAuth）
+- Google Calendar 连接器（OAuth2）
+- Google Contacts 连接器（OAuth2）
+- Google Docs / Notion 连接器
+- Web Search 连接器
+- Mock 模式支持开发测试
+
+### 内存预算管理
+
+- 令牌消耗预算
+- API 请求计数预算
+- 存储空间预算
+- 周期性重置（日/月/会话）
+- 预算超限错误处理
+
+### 可观测性增强
+
+- Prometheus 指标导出
+- OpenTelemetry 分布式追踪
+- 告警规则配置
+- Webhook 通知
+- 阈值/速率/缺失条件告警
+
 ## 开发指南
 
 ### 本地开发
@@ -482,6 +530,28 @@ if (!this.llmAdapter) {
   return { route: 'answer_directly', userVisibleResponse: 'No AI provider configured.' };
 }
 ```
+
+### API Versioning
+
+Phase 6 introduces the `/api/v1/` prefix for all API endpoints:
+
+- **Canonical path**: All endpoints use `/api/v1/` prefix
+- **Legacy redirect**: `/api/` paths redirect to `/api/v1/` with HTTP 307
+- **Migration timeline**: 
+  - Phase 6: `/api/v1/` is canonical, redirects active
+  - Phase 7: Legacy paths deprecated with warning headers
+  - Phase 8+: Legacy paths may be removed
+
+**Client migration example:**
+```javascript
+// Before
+const API_BASE = '/api';
+
+// After
+const API_BASE = '/api/v1';
+```
+
+The web frontend and E2E tests already use `/api/v1/` paths.
 
 ### V1 API Endpoints
 
