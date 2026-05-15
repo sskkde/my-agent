@@ -20,7 +20,7 @@ describe('Channels API', () => {
     const address = server.server.address();
     baseUrl = `http://localhost:${(address as any).port}`;
 
-    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+    const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'testuser', password: 'password123' }),
@@ -39,7 +39,7 @@ describe('Channels API', () => {
 
   describe('GET /api/channels', () => {
     it('should return registered channels including webui', async () => {
-      const response = await fetch(`${baseUrl}/api/channels`, {
+      const response = await fetch(`${baseUrl}/api/v1/channels`, {
         headers: { 'Cookie': authCookie },
       });
 
@@ -57,12 +57,12 @@ describe('Channels API', () => {
     });
 
     it('should require authentication', async () => {
-      const response = await fetch(`${baseUrl}/api/channels`);
+      const response = await fetch(`${baseUrl}/api/v1/channels`);
       expect(response.status).toBe(401);
     });
 
     it('should not include fake external connectors', async () => {
-      const response = await fetch(`${baseUrl}/api/channels`, {
+      const response = await fetch(`${baseUrl}/api/v1/channels`, {
         headers: { 'Cookie': authCookie },
       });
 

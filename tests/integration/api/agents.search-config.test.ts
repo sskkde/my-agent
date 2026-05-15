@@ -80,7 +80,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const globalResponse = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -97,7 +97,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const userResponse = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -114,7 +114,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const effectiveResponse = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -131,7 +131,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const clearResponse = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -145,7 +145,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const inheritedResponse = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -176,7 +176,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const userOverrideResponse = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -191,7 +191,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const globalResponse = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -222,7 +222,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -250,7 +250,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -277,7 +277,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -311,7 +311,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -343,7 +343,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -373,7 +373,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -406,7 +406,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -439,7 +439,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -465,7 +465,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -484,7 +484,7 @@ describe('Agent Config Search LLM Fields API', () => {
     it('rejects nonexistent searchLlmProviderId for global config', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -501,7 +501,7 @@ describe('Agent Config Search LLM Fields API', () => {
     it('rejects nonexistent searchLlmProviderId for user override', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -518,7 +518,7 @@ describe('Agent Config Search LLM Fields API', () => {
     it('validates searchLlmModel is a string when provided', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -551,7 +551,7 @@ describe('Agent Config Search LLM Fields API', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },

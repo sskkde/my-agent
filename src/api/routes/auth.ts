@@ -12,7 +12,7 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
   const authTokenStore = context.stores.authTokenStore;
 
   server.post<{ Body: LoginRequest }>(
-    '/api/auth/login',
+    '/api/v1/auth/login',
     {
       schema: {
         body: {
@@ -63,7 +63,7 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
   );
 
   server.post(
-    '/api/auth/logout',
+    '/api/v1/auth/logout',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const token = getSessionTokenFromRequest(request);
 
@@ -79,7 +79,7 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
   );
 
   server.get(
-    '/api/auth/me',
+    '/api/v1/auth/me',
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!request.user) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Not authenticated', request.requestId));

@@ -3,8 +3,17 @@ import type {
   SessionMemory,
   SessionMemoryPatch
 } from './types.js';
+import type { CacheLayer, CacheStats } from './cache-layer.js';
+import type { CacheConfig } from './limit-types.js';
+import { createCacheLayer } from './cache-layer.js';
 
 export type { SessionMemoryManager } from './types.js';
+
+const DEFAULT_CACHE_CONFIG: CacheConfig = {
+  maxSizeMb: 64,
+  ttlSeconds: 300,
+  evictionPolicy: 'lru'
+};
 
 const SYSTEM_OWNED_FIELDS = ['summaryId', 'sessionId', 'userId', 'createdAt', 'sourceRefs'] as const;
 
@@ -14,15 +23,26 @@ type SessionMemoryManagerType = {
   createSessionMemory(sessionId: string, userId: string, sourceRefs: SourceRefs): SessionMemory;
   getSessionMemory(sessionId: string): SessionMemory | null;
   patchSessionMemory(sessionId: string, patch: SessionMemoryPatch): SessionMemory;
+  invalidateCache(sessionId: string): void;
+  getCacheStats(): CacheStats;
 };
 
 export function createSessionMemoryManager(
-  summaryStore: SummaryStore
+  summaryStore: SummaryStore,
+  cacheConfig?: CacheConfig
 ): SessionMemoryManagerType {
+  const cache: CacheLayer = createCacheLayer(cacheConfig ?? DEFAULT_CACHE_CONFIG);
+
+  function sessionKey(sessionId: string): string {
+    return `memory:${sessionId}:memory`;
+  }
+
   return {
     createSessionMemory,
     getSessionMemory,
-    patchSessionMemory
+    patchSessionMemory,
+    invalidateCache,
+    getCacheStats
   };
 
   function createSessionMemory(
@@ -55,17 +75,26 @@ export function createSessionMemoryManager(
       createdAt: memory.createdAt
     });
 
+    cache.set(sessionKey(sessionId), memory);
+
     return memory;
   }
 
   function getSessionMemory(sessionId: string): SessionMemory | null {
+    const cached = cache.get<SessionMemory>(sessionKey(sessionId));
+    if (cached) {
+      return cached;
+    }
+
     const record = summaryStore.getSessionMemory(sessionId);
 
     if (!record) {
       return null;
     }
 
-    return recordToSessionMemory(record);
+    const memory = recordToSessionMemory(record);
+    cache.set(sessionKey(sessionId), memory);
+    return memory;
   }
 
   function patchSessionMemory(
@@ -87,7 +116,17 @@ export function createSessionMemoryManager(
 
     const updated = summaryStore.applyPatch(existing.summaryId, summaryPatch);
 
-    return recordToSessionMemory(updated);
+    const memory = recordToSessionMemory(updated);
+    cache.set(sessionKey(sessionId), memory);
+    return memory;
+  }
+
+  function invalidateCache(sessionId: string): void {
+    cache.delete(sessionKey(sessionId));
+  }
+
+  function getCacheStats(): CacheStats {
+    return cache.stats();
   }
 
   function sanitizePatch(patch: SessionMemoryPatch): SummaryPatch {

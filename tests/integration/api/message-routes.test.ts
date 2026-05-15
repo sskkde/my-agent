@@ -43,7 +43,7 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
     const address = server.server.address();
     baseUrl = `http://localhost:${(address as any).port}`;
 
-    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+    const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'testuser', password: 'password123' }),
@@ -64,14 +64,14 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
     it('should call processor exactly once with converted envelope input', async () => {
       processorCalls = [];
 
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Test message' })
@@ -92,14 +92,14 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
     it('should pass sourceChannel webui via envelope to processor metadata', async () => {
       processorCalls = [];
 
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Channel test' })
@@ -122,14 +122,14 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
     it('should not call processor for invalid messages', async () => {
       processorCalls = [];
 
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: '' })
@@ -143,14 +143,14 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
     });
 
     it('should return 202 without assistant content in response', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'No content test' })
@@ -171,14 +171,14 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
     });
 
     it('should preserve correlationId matching envelopeId', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Correlation test' })
@@ -211,14 +211,14 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
       const address = errorServer.server.address();
       const errorBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${errorBaseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${errorBaseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'erroruser', password: 'password123' }),
       });
       const errorAuthCookie = setupResponse.headers.get('set-cookie')!;
 
-      const createResponse = await fetch(`${errorBaseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${errorBaseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
         body: JSON.stringify({})
@@ -226,7 +226,7 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
       const startTime = Date.now();
-      const response = await fetch(`${errorBaseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${errorBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
         body: JSON.stringify({ text: 'Error test' })

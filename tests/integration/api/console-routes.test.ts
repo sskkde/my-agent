@@ -23,7 +23,7 @@ describe('Console Routes API', () => {
 
   describe('GET /api/instances', () => {
     it('should return instance summary with correct structure', async () => {
-      const response = await fetch(`${baseUrl}/api/instances`, {
+      const response = await fetch(`${baseUrl}/api/v1/instances`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -55,7 +55,7 @@ describe('Console Routes API', () => {
 
   describe('GET /api/channels', () => {
     it('should return registered channels including webui', async () => {
-      const response = await fetch(`${baseUrl}/api/channels`, {
+      const response = await fetch(`${baseUrl}/api/v1/channels`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -83,7 +83,7 @@ describe('Console Routes API', () => {
 
   describe('GET /api/skills', () => {
     it('should return builtin skills list', async () => {
-      const response = await fetch(`${baseUrl}/api/skills`, {
+      const response = await fetch(`${baseUrl}/api/v1/skills`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -118,7 +118,7 @@ describe('Console Routes API', () => {
 
   describe('GET /api/settings', () => {
     it('should return settings without exposing API keys', async () => {
-      const response = await fetch(`${baseUrl}/api/settings`, {
+      const response = await fetch(`${baseUrl}/api/v1/settings`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -142,7 +142,7 @@ describe('Console Routes API', () => {
     });
 
     it('should not include raw API key values', async () => {
-      const response = await fetch(`${baseUrl}/api/settings`, {
+      const response = await fetch(`${baseUrl}/api/v1/settings`, {
         headers: { 'Cookie': authCookie },
       });
       const body = await response.json() as { data: {
@@ -161,7 +161,7 @@ describe('Console Routes API', () => {
       delete process.env.OPENROUTER_API_KEY;
       delete process.env.OLLAMA_BASE_URL;
 
-      const response = await fetch(`${baseUrl}/api/settings`, {
+      const response = await fetch(`${baseUrl}/api/v1/settings`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);

@@ -61,7 +61,7 @@ describe('Provider API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
       });
 
       expect(response.statusCode).toBe(401);
@@ -70,7 +70,7 @@ describe('Provider API Integration', () => {
     it('should return empty array when no providers exist', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -94,7 +94,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -119,7 +119,7 @@ describe('Provider API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         payload: {
           providerType: 'openai',
           apiKey: 'sk-test1234567890',
@@ -132,7 +132,7 @@ describe('Provider API Integration', () => {
     it('should create a new OpenAI provider', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -159,7 +159,7 @@ describe('Provider API Integration', () => {
     it('should create a new Ollama provider', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -183,7 +183,7 @@ describe('Provider API Integration', () => {
     it('should create a new custom provider', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -213,7 +213,7 @@ describe('Provider API Integration', () => {
     it('should return 400 for invalid provider type', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -231,7 +231,7 @@ describe('Provider API Integration', () => {
     it('should return 400 when OpenAI provider missing apiKey', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -249,7 +249,7 @@ describe('Provider API Integration', () => {
     it('should return 400 when Ollama provider missing baseUrl', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -267,7 +267,7 @@ describe('Provider API Integration', () => {
     it('should return 400 when custom provider missing apiKey', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -286,7 +286,7 @@ describe('Provider API Integration', () => {
     it('should return 400 when custom provider missing baseUrl', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers',
+        url: '/api/v1/providers',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -307,7 +307,7 @@ describe('Provider API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/providers/test-id',
+        url: '/api/v1/providers/test-id',
         payload: {
           displayName: 'Updated',
         },
@@ -328,7 +328,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/providers/${provider.providerId}`,
+        url: `/api/v1/providers/${provider.providerId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -345,7 +345,7 @@ describe('Provider API Integration', () => {
     it('should return 404 for non-existent provider', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/providers/non-existent-id',
+        url: '/api/v1/providers/non-existent-id',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -376,7 +376,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/providers/${otherProvider.providerId}`,
+        url: `/api/v1/providers/${otherProvider.providerId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -393,7 +393,7 @@ describe('Provider API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/providers/test-id',
+        url: '/api/v1/providers/test-id',
       });
 
       expect(response.statusCode).toBe(401);
@@ -411,7 +411,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'DELETE',
-        url: `/api/providers/${provider.providerId}`,
+        url: `/api/v1/providers/${provider.providerId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -421,7 +421,7 @@ describe('Provider API Integration', () => {
 
       const getResponse = await server.inject({
         method: 'GET',
-        url: `/api/providers`,
+        url: `/api/v1/providers`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -433,7 +433,7 @@ describe('Provider API Integration', () => {
     it('should return 404 for non-existent provider', async () => {
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/providers/non-existent-id',
+        url: '/api/v1/providers/non-existent-id',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -461,7 +461,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'DELETE',
-        url: `/api/providers/${otherProvider.providerId}`,
+        url: `/api/v1/providers/${otherProvider.providerId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -475,7 +475,7 @@ describe('Provider API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers/test-id/test',
+        url: '/api/v1/providers/test-id/test',
       });
 
       expect(response.statusCode).toBe(401);
@@ -493,7 +493,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${provider.providerId}/test`,
+        url: `/api/v1/providers/${provider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -519,7 +519,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${provider.providerId}/test`,
+        url: `/api/v1/providers/${provider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -547,7 +547,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${provider.providerId}/test`,
+        url: `/api/v1/providers/${provider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -574,7 +574,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${provider.providerId}/test`,
+        url: `/api/v1/providers/${provider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -600,7 +600,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${provider.providerId}/test`,
+        url: `/api/v1/providers/${provider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -626,7 +626,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${provider.providerId}/test`,
+        url: `/api/v1/providers/${provider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -636,13 +636,13 @@ describe('Provider API Integration', () => {
       const body = JSON.parse(response.body);
       expect(body.data.success).toBe(false);
       expect(body.data.error).toContain('http://127.0.0.1:1/api/coding/v3/models');
-      expect(body.data.error).not.toContain('/api/coding/v3/v1/models');
+      expect(body.data.error).not.toContain('/api/v1/coding/v3/v1/models');
     });
 
     it('should return 404 for non-existent provider', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/providers/non-existent-id/test',
+        url: '/api/v1/providers/non-existent-id/test',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -670,7 +670,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${otherProvider.providerId}/test`,
+        url: `/api/v1/providers/${otherProvider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -691,7 +691,7 @@ describe('Provider API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/providers/${provider.providerId}/test`,
+        url: `/api/v1/providers/${provider.providerId}/test`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },

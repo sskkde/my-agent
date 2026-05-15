@@ -966,7 +966,7 @@ describe('Observability Timeline Integration', () => {
         source: { sourceModule: 'kernel' },
         targetRuntime: 'tool',
         targetAction: 'api_call',
-        payload: { endpoint: '/api/data' },
+        payload: { endpoint: '/api/v1/data' },
         sessionId,
         status: 'completed',
         createdAt: new Date().toISOString(),

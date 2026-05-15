@@ -51,7 +51,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
   // Debug routes MUST be registered BEFORE :memoryId routes
   // GET /api/memory/debug/extraction-runs
   server.get<{ Querystring: ExtractionRunsQuery }>(
-    '/api/memory/debug/extraction-runs',
+    '/api/v1/memory/debug/extraction-runs',
     async (request: FastifyRequest<{ Querystring: ExtractionRunsQuery }>, reply: FastifyReply) => {
       const userId = request.user?.userId ?? 'local-user';
       let limit: number;
@@ -98,7 +98,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
 
   // POST /api/memory/debug/extract
   server.post<{ Body: DebugExtractBody }>(
-    '/api/memory/debug/extract',
+    '/api/v1/memory/debug/extract',
     {
       schema: {
         body: {
@@ -151,7 +151,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
 
   // GET /api/memory
   server.get<{ Querystring: ListMemoriesQuery }>(
-    '/api/memory',
+    '/api/v1/memory',
     async (request: FastifyRequest<{ Querystring: ListMemoriesQuery }>, reply: FastifyReply) => {
       const userId = request.user?.userId ?? 'local-user';
       const { query, type } = request.query;
@@ -189,7 +189,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
 
   // GET /api/memory/:memoryId
   server.get<{ Params: MemoryParams }>(
-    '/api/memory/:memoryId',
+    '/api/v1/memory/:memoryId',
     {
       schema: {
         params: memoryIdParamsSchema,
@@ -213,7 +213,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
 
   // DELETE /api/memory/:memoryId
   server.delete<{ Params: MemoryParams }>(
-    '/api/memory/:memoryId',
+    '/api/v1/memory/:memoryId',
     {
       schema: {
         params: memoryIdParamsSchema,

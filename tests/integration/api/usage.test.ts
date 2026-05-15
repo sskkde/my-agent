@@ -20,7 +20,7 @@ describe('Usage API', () => {
     it('should return 200 with empty items and total=0 when no sessions exist', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/usage',
+        url: '/api/v1/usage',
         headers: {
           cookie: authCookie,
         },
@@ -45,7 +45,7 @@ describe('Usage API', () => {
 
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/usage?sessionId=test-session-empty',
+        url: '/api/v1/usage?sessionId=test-session-empty',
         headers: {
           cookie: authCookie,
         },
@@ -116,7 +116,7 @@ describe('Usage API', () => {
     it('should return usage summary with correct counts', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: `/api/usage?sessionId=${sessionWithData}`,
+        url: `/api/v1/usage?sessionId=${sessionWithData}`,
         headers: {
           cookie: authCookie,
         },
@@ -139,7 +139,7 @@ describe('Usage API', () => {
     it('should return estimated token counts based on content length', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: `/api/usage?sessionId=${sessionWithData}`,
+        url: `/api/v1/usage?sessionId=${sessionWithData}`,
         headers: {
           cookie: authCookie,
         },
@@ -158,7 +158,7 @@ describe('Usage API', () => {
     it('should always have estimatedCostCents as null', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: `/api/usage?sessionId=${sessionWithData}`,
+        url: `/api/v1/usage?sessionId=${sessionWithData}`,
         headers: {
           cookie: authCookie,
         },
@@ -172,7 +172,7 @@ describe('Usage API', () => {
     it('should include updatedAt timestamp', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: `/api/usage?sessionId=${sessionWithData}`,
+        url: `/api/v1/usage?sessionId=${sessionWithData}`,
         headers: {
           cookie: authCookie,
         },
@@ -200,7 +200,7 @@ describe('Usage API', () => {
     it('should respect limit parameter', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/usage?limit=3',
+        url: '/api/v1/usage?limit=3',
         headers: {
           cookie: authCookie,
         },
@@ -215,7 +215,7 @@ describe('Usage API', () => {
     it('should respect offset parameter', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/usage?limit=2&offset=2',
+        url: '/api/v1/usage?limit=2&offset=2',
         headers: {
           cookie: authCookie,
         },
@@ -230,7 +230,7 @@ describe('Usage API', () => {
     it('should enforce max limit of 200', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/usage?limit=500',
+        url: '/api/v1/usage?limit=500',
         headers: {
           cookie: authCookie,
         },
@@ -244,7 +244,7 @@ describe('Usage API', () => {
     it('should handle offset beyond total gracefully', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/usage?offset=1000',
+        url: '/api/v1/usage?offset=1000',
         headers: {
           cookie: authCookie,
         },
@@ -287,7 +287,7 @@ describe('Usage API', () => {
     it('should return single usage summary for session', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: `/api/sessions/${sessionForEndpoint}/usage`,
+        url: `/api/v1/sessions/${sessionForEndpoint}/usage`,
         headers: {
           cookie: authCookie,
         },
@@ -303,7 +303,7 @@ describe('Usage API', () => {
     it('should return 404 for non-existent session', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/sessions/non-existent-session/usage',
+        url: '/api/v1/sessions/non-existent-session/usage',
         headers: {
           cookie: authCookie,
         },
@@ -324,7 +324,7 @@ describe('Usage API', () => {
 
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/sessions/empty-session/usage',
+        url: '/api/v1/sessions/empty-session/usage',
         headers: {
           cookie: authCookie,
         },
@@ -342,7 +342,7 @@ describe('Usage API', () => {
     it('should return usage for all sessions when no sessionId filter', async () => {
       const response = await ctx.server.inject({
         method: 'GET',
-        url: '/api/usage',
+        url: '/api/v1/usage',
         headers: {
           cookie: authCookie,
         },

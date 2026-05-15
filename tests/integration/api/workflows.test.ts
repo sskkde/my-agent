@@ -63,7 +63,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
       });
 
       expect(response.statusCode).toBe(401);
@@ -72,7 +72,7 @@ describe('Workflow API Integration', () => {
     it('should return empty array when no drafts exist', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -86,7 +86,7 @@ describe('Workflow API Integration', () => {
     it('should return list of drafts for authenticated user', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -100,7 +100,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -121,7 +121,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         payload: {
           name: 'Test',
           steps: validSteps,
@@ -134,7 +134,7 @@ describe('Workflow API Integration', () => {
     it('should create a new workflow draft', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -161,7 +161,7 @@ describe('Workflow API Integration', () => {
     it('should return 400 when name is missing', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -176,7 +176,7 @@ describe('Workflow API Integration', () => {
     it('should return 400 when steps is missing', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -191,7 +191,7 @@ describe('Workflow API Integration', () => {
     it('should return 400 when steps have invalid structure', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -209,7 +209,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/drafts/some-id',
+        url: '/api/v1/workflows/drafts/some-id',
       });
 
       expect(response.statusCode).toBe(401);
@@ -218,7 +218,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent draft', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/drafts/non-existent-id',
+        url: '/api/v1/workflows/drafts/non-existent-id',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -230,7 +230,7 @@ describe('Workflow API Integration', () => {
     it('should return draft for authenticated owner', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -245,7 +245,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -262,7 +262,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/workflows/drafts/some-id',
+        url: '/api/v1/workflows/drafts/some-id',
         payload: { name: 'Updated' },
       });
 
@@ -272,7 +272,7 @@ describe('Workflow API Integration', () => {
     it('should update draft name', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -287,7 +287,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -304,7 +304,7 @@ describe('Workflow API Integration', () => {
     it('should update draft steps', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -335,7 +335,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -352,7 +352,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent draft', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/workflows/drafts/non-existent-id',
+        url: '/api/v1/workflows/drafts/non-existent-id',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -369,7 +369,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts/some-id/validate',
+        url: '/api/v1/workflows/drafts/some-id/validate',
       });
 
       expect(response.statusCode).toBe(401);
@@ -378,7 +378,7 @@ describe('Workflow API Integration', () => {
     it('creates and validates workflow draft', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -394,7 +394,7 @@ describe('Workflow API Integration', () => {
 
       const validateResponse = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/validate`,
+        url: `/api/v1/workflows/drafts/${draftId}/validate`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -409,7 +409,7 @@ describe('Workflow API Integration', () => {
     it('should return validation issues for invalid draft', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -424,7 +424,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/validate`,
+        url: `/api/v1/workflows/drafts/${draftId}/validate`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -439,7 +439,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent draft', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts/non-existent-id/validate',
+        url: '/api/v1/workflows/drafts/non-existent-id/validate',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -453,7 +453,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts/some-id/publish',
+        url: '/api/v1/workflows/drafts/some-id/publish',
       });
 
       expect(response.statusCode).toBe(401);
@@ -462,7 +462,7 @@ describe('Workflow API Integration', () => {
     it('should publish a valid draft', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -477,7 +477,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -497,7 +497,7 @@ describe('Workflow API Integration', () => {
     it('should return 400 for invalid draft', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -512,7 +512,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -524,7 +524,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent draft', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts/non-existent-id/publish',
+        url: '/api/v1/workflows/drafts/non-existent-id/publish',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -538,7 +538,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/workflows/drafts/some-id',
+        url: '/api/v1/workflows/drafts/some-id',
       });
 
       expect(response.statusCode).toBe(401);
@@ -547,7 +547,7 @@ describe('Workflow API Integration', () => {
     it('should delete draft', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -562,7 +562,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'DELETE',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -572,7 +572,7 @@ describe('Workflow API Integration', () => {
 
       const getResponse = await server.inject({
         method: 'GET',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -584,7 +584,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent draft', async () => {
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/workflows/drafts/non-existent-id',
+        url: '/api/v1/workflows/drafts/non-existent-id',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -598,7 +598,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/definitions',
+        url: '/api/v1/workflows/definitions',
       });
 
       expect(response.statusCode).toBe(401);
@@ -607,7 +607,7 @@ describe('Workflow API Integration', () => {
     it('should return definitions list for authenticated user', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/definitions',
+        url: '/api/v1/workflows/definitions',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -621,7 +621,7 @@ describe('Workflow API Integration', () => {
     it('should return list of definitions for authenticated user', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -636,7 +636,7 @@ describe('Workflow API Integration', () => {
 
       await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -644,7 +644,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/definitions',
+        url: '/api/v1/workflows/definitions',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -664,7 +664,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/definitions/some-id',
+        url: '/api/v1/workflows/definitions/some-id',
       });
 
       expect(response.statusCode).toBe(401);
@@ -673,7 +673,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent definition', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/definitions/non-existent-id',
+        url: '/api/v1/workflows/definitions/non-existent-id',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -685,7 +685,7 @@ describe('Workflow API Integration', () => {
     it('should return definition for authenticated owner', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -700,7 +700,7 @@ describe('Workflow API Integration', () => {
 
       const publishResponse = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -711,7 +711,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/workflows/definitions/${workflowId}`,
+        url: `/api/v1/workflows/definitions/${workflowId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -727,7 +727,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/runs',
+        url: '/api/v1/workflows/runs',
         payload: { definitionId: 'some-id' },
       });
 
@@ -737,7 +737,7 @@ describe('Workflow API Integration', () => {
     it('should start a workflow run', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -752,7 +752,7 @@ describe('Workflow API Integration', () => {
 
       const publishResponse = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -763,7 +763,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/runs',
+        url: '/api/v1/workflows/runs',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -787,7 +787,7 @@ describe('Workflow API Integration', () => {
     it('should return 400 when definitionId is missing', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/runs',
+        url: '/api/v1/workflows/runs',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -800,7 +800,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent definition', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/runs',
+        url: '/api/v1/workflows/runs',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -817,7 +817,7 @@ describe('Workflow API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/runs/some-id',
+        url: '/api/v1/workflows/runs/some-id',
       });
 
       expect(response.statusCode).toBe(401);
@@ -826,7 +826,7 @@ describe('Workflow API Integration', () => {
     it('should return 404 for non-existent run', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/workflows/runs/non-existent-id',
+        url: '/api/v1/workflows/runs/non-existent-id',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -838,7 +838,7 @@ describe('Workflow API Integration', () => {
     it('should return run for authenticated owner', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -853,7 +853,7 @@ describe('Workflow API Integration', () => {
 
       const publishResponse = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -864,7 +864,7 @@ describe('Workflow API Integration', () => {
 
       const runResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/runs',
+        url: '/api/v1/workflows/runs',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -878,7 +878,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/workflows/runs/${workflowRunId}`,
+        url: `/api/v1/workflows/runs/${workflowRunId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -915,7 +915,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for draft', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -930,7 +930,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -942,7 +942,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for definition', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -957,7 +957,7 @@ describe('Workflow API Integration', () => {
 
       const publishResponse = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -968,7 +968,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/workflows/definitions/${workflowId}`,
+        url: `/api/v1/workflows/definitions/${workflowId}`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -980,7 +980,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for run', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -995,7 +995,7 @@ describe('Workflow API Integration', () => {
 
       const publishResponse = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1006,7 +1006,7 @@ describe('Workflow API Integration', () => {
 
       const runResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/runs',
+        url: '/api/v1/workflows/runs',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1020,7 +1020,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/workflows/runs/${workflowRunId}`,
+        url: `/api/v1/workflows/runs/${workflowRunId}`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -1032,7 +1032,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for update', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1047,7 +1047,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -1062,7 +1062,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for delete', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1077,7 +1077,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'DELETE',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -1087,7 +1087,7 @@ describe('Workflow API Integration', () => {
 
       const getResponse = await server.inject({
         method: 'GET',
-        url: `/api/workflows/drafts/${draftId}`,
+        url: `/api/v1/workflows/drafts/${draftId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1099,7 +1099,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for validate', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1114,7 +1114,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/validate`,
+        url: `/api/v1/workflows/drafts/${draftId}/validate`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -1126,7 +1126,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for publish', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1141,7 +1141,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },
@@ -1153,7 +1153,7 @@ describe('Workflow API Integration', () => {
     it('rejects cross-user workflow access for start run', async () => {
       const createResponse = await server.inject({
         method: 'POST',
-        url: '/api/workflows/drafts',
+        url: '/api/v1/workflows/drafts',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1168,7 +1168,7 @@ describe('Workflow API Integration', () => {
 
       const publishResponse = await server.inject({
         method: 'POST',
-        url: `/api/workflows/drafts/${draftId}/publish`,
+        url: `/api/v1/workflows/drafts/${draftId}/publish`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -1179,7 +1179,7 @@ describe('Workflow API Integration', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: '/api/workflows/runs',
+        url: '/api/v1/workflows/runs',
         headers: {
           cookie: `agent-platform-session=${otherAuthToken}`,
         },

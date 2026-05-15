@@ -75,7 +75,7 @@ describe('Connectors API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/connectors',
+        url: '/api/v1/connectors',
       });
 
       expect(response.statusCode).toBe(401);
@@ -84,7 +84,7 @@ describe('Connectors API Integration', () => {
     it('should return all connector definitions', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/connectors',
+        url: '/api/v1/connectors',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -100,7 +100,7 @@ describe('Connectors API Integration', () => {
     it('should return definitions with manifest info', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/connectors',
+        url: '/api/v1/connectors',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -124,7 +124,7 @@ describe('Connectors API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: `/api/connectors/${connectorDefIds[0]}`,
+        url: `/api/v1/connectors/${connectorDefIds[0]}`,
       });
 
       expect(response.statusCode).toBe(401);
@@ -134,7 +134,7 @@ describe('Connectors API Integration', () => {
       const fakeId = randomUUID();
       const response = await server.inject({
         method: 'GET',
-        url: `/api/connectors/${fakeId}`,
+        url: `/api/v1/connectors/${fakeId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -147,7 +147,7 @@ describe('Connectors API Integration', () => {
       const gmailDefId = connectorDefIds[0]!; // gmail is first
       const response = await server.inject({
         method: 'GET',
-        url: `/api/connectors/${gmailDefId}`,
+        url: `/api/v1/connectors/${gmailDefId}`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -167,7 +167,7 @@ describe('Connectors API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: `/api/connectors/${connectorDefIds[0]}/instances`,
+        url: `/api/v1/connectors/${connectorDefIds[0]}/instances`,
       });
 
       expect(response.statusCode).toBe(401);
@@ -177,7 +177,7 @@ describe('Connectors API Integration', () => {
       const fakeId = randomUUID();
       const response = await server.inject({
         method: 'GET',
-        url: `/api/connectors/${fakeId}/instances`,
+        url: `/api/v1/connectors/${fakeId}/instances`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -189,7 +189,7 @@ describe('Connectors API Integration', () => {
     it('should return empty array when no instances exist', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: `/api/connectors/${connectorDefIds[0]}/instances`,
+        url: `/api/v1/connectors/${connectorDefIds[0]}/instances`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -214,7 +214,7 @@ describe('Connectors API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: `/api/connectors/${connectorDefIds[0]}/instances`,
+        url: `/api/v1/connectors/${connectorDefIds[0]}/instances`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -249,7 +249,7 @@ describe('Connectors API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/connectors/${connectorDefIds[0]}/instances/${instanceId}/config`,
+        url: `/api/v1/connectors/${connectorDefIds[0]}/instances/${instanceId}/config`,
         payload: { config: { label: 'updated' } },
       });
 
@@ -260,7 +260,7 @@ describe('Connectors API Integration', () => {
       const fakeIid = randomUUID();
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/connectors/${connectorDefIds[0]}/instances/${fakeIid}/config`,
+        url: `/api/v1/connectors/${connectorDefIds[0]}/instances/${fakeIid}/config`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -273,7 +273,7 @@ describe('Connectors API Integration', () => {
     it('should update instance config and return updated instance', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: `/api/connectors/${connectorDefIds[0]}/instances/${instanceId}/config`,
+        url: `/api/v1/connectors/${connectorDefIds[0]}/instances/${instanceId}/config`,
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },

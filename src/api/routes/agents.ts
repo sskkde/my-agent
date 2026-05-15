@@ -10,6 +10,7 @@ import {
   INHERIT_ROUTING_TIMEOUT_MS,
 } from '../../storage/agent-config-store.js';
 import { resolvePrompt } from '../../agents/prompt-registry.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const BUILTIN_SKILL_IDS = [
   'artifact.create',
@@ -125,11 +126,6 @@ function sanitizeConfigForResponse(config: Partial<AgentConfig> | null): Partial
     delete sanitized.repairAttempts;
   }
   return sanitized;
-}
-
-function isGlobalConfigAdmin(context: ApiContext, userId: string): boolean {
-  const firstUser = context.stores.userStore.getFirstCreated();
-  return firstUser?.userId === userId;
 }
 
 function validateConfigInput(
@@ -253,7 +249,7 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
 
   // GET /api/agents/:agentId/config
   server.get<{ Params: { agentId: string } }>(
-    '/api/agents/:agentId/config',
+    '/api/v1/agents/:agentId/config',
     async (request: FastifyRequest<{ Params: { agentId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -299,14 +295,15 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
 
   // PATCH /api/agents/:agentId/config/global
   server.patch<{ Params: { agentId: string }; Body: UpdateGlobalConfigRequest }>(
-    '/api/agents/:agentId/config/global',
+    '/api/v1/agents/:agentId/config/global',
     async (request: FastifyRequest<{ Params: { agentId: string }; Body: UpdateGlobalConfigRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
-      if (!isGlobalConfigAdmin(context, userId)) {
-        return reply.code(403).send(envelopeError('FORBIDDEN', 'Only the setup owner can update global agent config', request.requestId));
+
+      if (!request.requirePermission(ResourceType.settings, Action.manage)) {
+        return reply;
       }
 
       const { agentId } = request.params;
@@ -367,7 +364,7 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
 
   // PATCH /api/agents/:agentId/config/override
   server.patch<{ Params: { agentId: string }; Body: UpdateOverrideConfigRequest }>(
-    '/api/agents/:agentId/config/override',
+    '/api/v1/agents/:agentId/config/override',
     async (request: FastifyRequest<{ Params: { agentId: string }; Body: UpdateOverrideConfigRequest }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -450,7 +447,7 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
 
   // DELETE /api/agents/:agentId/config/override
   server.delete<{ Params: { agentId: string } }>(
-    '/api/agents/:agentId/config/override',
+    '/api/v1/agents/:agentId/config/override',
     async (request: FastifyRequest<{ Params: { agentId: string } }>, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {

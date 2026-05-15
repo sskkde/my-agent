@@ -22,7 +22,7 @@ describe('Timeline SSE Route Integration', () => {
     const address = server.server.address() as AddressInfo | null;
     baseUrl = `http://localhost:${address?.port ?? 0}`;
 
-    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+    const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'testuser', password: 'password123' }),
@@ -41,7 +41,7 @@ describe('Timeline SSE Route Integration', () => {
     it('should return 404 for non-existent session', async () => {
       const controller = new AbortController();
       const response = await fetch(
-        `${baseUrl}/api/sessions/non-existent-session/timeline/stream`,
+        `${baseUrl}/api/v1/sessions/non-existent-session/timeline/stream`,
         { headers: { 'Cookie': authCookie }, signal: controller.signal }
       );
 
@@ -50,7 +50,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should open SSE stream and emit snapshot for existing session', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -64,7 +64,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 
@@ -92,7 +92,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should receive live timeline_event via broadcaster while stream is open', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -107,7 +107,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 
@@ -160,7 +160,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should not deliver different-session events to the stream', async () => {
-      const createResponse1 = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse1 = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -169,7 +169,7 @@ describe('Timeline SSE Route Integration', () => {
       const body1 = await createResponse1.json() as { data: { session: { sessionId: string } } };
       const sessionIdA = body1.data.session.sessionId;
 
-      const createResponse2 = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse2 = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -183,7 +183,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionIdA}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionIdA}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 
@@ -247,7 +247,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should handle Last-Event-ID header for catch-up at route level', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -281,7 +281,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           {
             headers: {
               'Cookie': authCookie,
@@ -316,7 +316,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should handle ?after= query parameter for catch-up', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -350,7 +350,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream?after=turn-turn-003-input`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream?after=turn-turn-003-input`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 
@@ -379,7 +379,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should prefer Last-Event-ID over ?after= when both provided', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -404,7 +404,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream?after=non-existent-id`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream?after=non-existent-id`,
           {
             headers: {
               'Cookie': authCookie,
@@ -438,7 +438,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should deliver processing_status via broadcaster to SSE subscribers', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -452,7 +452,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 
@@ -509,7 +509,7 @@ describe('Timeline SSE Route Integration', () => {
     });
 
     it('should not deliver processing_status for a different session', async () => {
-      const createResponse1 = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse1 = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -518,7 +518,7 @@ describe('Timeline SSE Route Integration', () => {
       const body1 = await createResponse1.json() as { data: { session: { sessionId: string } } };
       const sessionIdA = body1.data.session.sessionId;
 
-      const createResponse2 = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse2 = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({})
@@ -532,7 +532,7 @@ describe('Timeline SSE Route Integration', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionIdA}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionIdA}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 

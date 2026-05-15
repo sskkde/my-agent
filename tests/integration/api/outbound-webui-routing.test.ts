@@ -75,7 +75,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
     const address = server.server.address();
     baseUrl = `http://localhost:${(address as any).port}`;
 
-    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+    const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'testuser', password: 'password123' }),
@@ -96,14 +96,14 @@ describe('Outbound WebUI Routing - Task 8', () => {
     it('should deliver outbound envelope through webui channel', async () => {
       deliveredEnvelopes = [];
 
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Test message' }),
@@ -126,14 +126,14 @@ describe('Outbound WebUI Routing - Task 8', () => {
     it('should use gateway.formatOutbound() for replies', async () => {
       deliveredEnvelopes = [];
 
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Hello' }),
@@ -156,14 +156,14 @@ describe('Outbound WebUI Routing - Task 8', () => {
     it('should set recipient channel from original sourceChannel', async () => {
       deliveredEnvelopes = [];
 
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Channel test' }),
@@ -214,21 +214,21 @@ describe('Outbound WebUI Routing - Task 8', () => {
       const address = successServer.server.address();
       const successBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${successBaseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${successBaseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'successuser', password: 'password123' }),
       });
       const successAuthCookie = setupResponse.headers.get('set-cookie')!;
 
-      const createResponse = await fetch(`${successBaseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${successBaseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': successAuthCookie },
         body: JSON.stringify({}),
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      await fetch(`${successBaseUrl}/api/sessions/${sessionId}/messages`, {
+      await fetch(`${successBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': successAuthCookie },
         body: JSON.stringify({ text: 'Success test' }),
@@ -248,7 +248,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
   describe('Live SSE event delivery', () => {
     it('should receive error timeline event via SSE when processing fails', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -262,7 +262,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 
@@ -284,7 +284,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
           }
         })();
 
-        await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+        await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
           body: JSON.stringify({ text: 'Error trigger message' }),
@@ -370,14 +370,14 @@ describe('Outbound WebUI Routing - Task 8', () => {
       const address = successServer.server.address();
       const successBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${successBaseUrl}/api/setup/user`, {
+      const setupResponse = await fetch(`${successBaseUrl}/api/v1/setup/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'assistantuser', password: 'password123' }),
       });
       const successAuthCookie = setupResponse.headers.get('set-cookie')!;
 
-      const createResponse = await fetch(`${successBaseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${successBaseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': successAuthCookie },
         body: JSON.stringify({}),
@@ -391,7 +391,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
       try {
         const response = await fetch(
-          `${successBaseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${successBaseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': successAuthCookie }, signal: controller.signal }
         );
 
@@ -413,7 +413,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
         })();
 
         // Send message - this triggers Gateway -> Processor -> Transcript -> Channel -> SSE flow
-        await fetch(`${successBaseUrl}/api/sessions/${sessionId}/messages`, {
+        await fetch(`${successBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cookie': successAuthCookie },
           body: JSON.stringify({ text: 'Trigger assistant response' }),
@@ -441,7 +441,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
     });
 
     it('should receive user_message via SSE for sent messages', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -455,7 +455,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: controller.signal }
         );
 
@@ -476,7 +476,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
           }
         })();
 
-        await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+        await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
           body: JSON.stringify({ text: 'User message content' }),
@@ -500,7 +500,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
     });
 
     it('should catch up missed events on reconnect with Last-Event-ID', async () => {
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -514,14 +514,14 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream`,
           { headers: { 'Cookie': authCookie }, signal: firstController.signal }
         );
 
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
 
-        await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+        await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
           body: JSON.stringify({ text: 'First message' }),
@@ -548,7 +548,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
       expect(lastEventId).toBeTruthy();
 
-      await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Second message while disconnected' }),
@@ -562,7 +562,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
       try {
         const response = await fetch(
-          `${baseUrl}/api/sessions/${sessionId}/timeline/stream?after=${lastEventId}`,
+          `${baseUrl}/api/v1/sessions/${sessionId}/timeline/stream?after=${lastEventId}`,
           {
             headers: {
               'Cookie': authCookie,
@@ -599,14 +599,14 @@ describe('Outbound WebUI Routing - Task 8', () => {
     it('should preserve correlationId from envelope through to outbound', async () => {
       deliveredEnvelopes = [];
 
-      const createResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
       });
       const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ text: 'Correlation test' }),

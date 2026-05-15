@@ -15,7 +15,7 @@ describe('Response Compression', () => {
   }, 30000);
 
   it('should return gzip compressed response when Accept-Encoding: gzip', async () => {
-    const response = await fetch(`${baseUrl}/api/health`, {
+    const response = await fetch(`${baseUrl}/api/v1/health`, {
       headers: { 'Accept-Encoding': 'gzip' },
     });
     expect(response.status).toBe(200);
@@ -24,7 +24,7 @@ describe('Response Compression', () => {
   });
 
   it('should return uncompressed response without Accept-Encoding', async () => {
-    const response = await fetch(`${baseUrl}/api/health`, {
+    const response = await fetch(`${baseUrl}/api/v1/health`, {
       headers: { 'Accept-Encoding': 'identity' },
     });
     expect(response.status).toBe(200);

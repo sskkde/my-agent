@@ -65,7 +65,7 @@ describe('Agent Config API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
       });
 
       expect(response.statusCode).toBe(401);
@@ -74,7 +74,7 @@ describe('Agent Config API Integration', () => {
     it('should return null configs when no configs exist', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -99,7 +99,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -140,7 +140,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -173,7 +173,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -191,7 +191,7 @@ describe('Agent Config API Integration', () => {
     it('should return 400 for invalid agent ID', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/invalid.agent/config',
+        url: '/api/v1/agents/invalid.agent/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -205,7 +205,7 @@ describe('Agent Config API Integration', () => {
     it('should return 400 for planner.executor agent ID (spec-only)', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/planner.executor/config',
+        url: '/api/v1/agents/planner.executor/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -219,7 +219,7 @@ describe('Agent Config API Integration', () => {
     it('should return 400 for subagent.executor agent ID (spec-only)', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/agents/subagent.executor/config',
+        url: '/api/v1/agents/subagent.executor/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -235,7 +235,7 @@ describe('Agent Config API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         payload: {
           displayName: 'Updated Global',
         },
@@ -247,7 +247,7 @@ describe('Agent Config API Integration', () => {
     it('should create global config when none exists', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -284,7 +284,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${otherToken}`,
         },
@@ -308,7 +308,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -328,7 +328,7 @@ describe('Agent Config API Integration', () => {
     it('should validate displayName length', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -345,7 +345,7 @@ describe('Agent Config API Integration', () => {
     it('should validate systemPrompt length', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -362,7 +362,7 @@ describe('Agent Config API Integration', () => {
     it('should validate timeout range', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -379,7 +379,7 @@ describe('Agent Config API Integration', () => {
     it('should validate repairAttempts is 0 or 1', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -396,7 +396,7 @@ describe('Agent Config API Integration', () => {
     it('should validate providerId exists', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -422,7 +422,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -439,7 +439,7 @@ describe('Agent Config API Integration', () => {
     it('should validate tool IDs', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -456,7 +456,7 @@ describe('Agent Config API Integration', () => {
     it('should accept valid tool IDs', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -473,7 +473,7 @@ describe('Agent Config API Integration', () => {
     it('should validate skill IDs', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -490,7 +490,7 @@ describe('Agent Config API Integration', () => {
     it('should accept valid skill IDs', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/global',
+        url: '/api/v1/agents/foreground.default/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -507,7 +507,7 @@ describe('Agent Config API Integration', () => {
     it('should return 400 for invalid agent ID', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/invalid.agent/config/global',
+        url: '/api/v1/agents/invalid.agent/config/global',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -526,7 +526,7 @@ describe('Agent Config API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         payload: {
           displayName: 'User Override',
         },
@@ -545,7 +545,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -577,7 +577,7 @@ describe('Agent Config API Integration', () => {
 
       const createResponse = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -603,7 +603,7 @@ describe('Agent Config API Integration', () => {
 
       const getResponse = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -620,7 +620,7 @@ describe('Agent Config API Integration', () => {
     it('should preserve explicit timeout and repair values equal to defaults', async () => {
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -649,7 +649,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -685,7 +685,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -711,7 +711,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'PATCH',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -730,7 +730,7 @@ describe('Agent Config API Integration', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
       });
 
       expect(response.statusCode).toBe(401);
@@ -747,7 +747,7 @@ describe('Agent Config API Integration', () => {
 
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -758,7 +758,7 @@ describe('Agent Config API Integration', () => {
       // Verify it's deleted
       const getResponse = await server.inject({
         method: 'GET',
-        url: '/api/agents/foreground.default/config',
+        url: '/api/v1/agents/foreground.default/config',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -770,7 +770,7 @@ describe('Agent Config API Integration', () => {
     it('should return 204 when no override exists', async () => {
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/agents/foreground.default/config/override',
+        url: '/api/v1/agents/foreground.default/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
@@ -782,7 +782,7 @@ describe('Agent Config API Integration', () => {
     it('should return 400 for invalid agent ID', async () => {
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/agents/invalid.agent/config/override',
+        url: '/api/v1/agents/invalid.agent/config/override',
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },

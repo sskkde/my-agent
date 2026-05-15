@@ -116,7 +116,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // POST /api/triggers/schedules
   server.post<{ Body: CreateScheduleTriggerRequest }>(
-    '/api/triggers/schedules',
+    '/api/v1/triggers/schedules',
     {
       schema: {
         body: {
@@ -153,7 +153,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // GET /api/triggers/schedules
   server.get(
-    '/api/triggers/schedules',
+    '/api/v1/triggers/schedules',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -169,7 +169,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // GET /api/triggers/schedules/:scheduleId
   server.get<{ Params: { scheduleId: string } }>(
-    '/api/triggers/schedules/:scheduleId',
+    '/api/v1/triggers/schedules/:scheduleId',
     {
       schema: {
         params: scheduleIdParamsSchema,
@@ -194,7 +194,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // PATCH /api/triggers/schedules/:scheduleId
   server.patch<{ Params: { scheduleId: string }; Body: UpdateScheduleTriggerRequest }>(
-    '/api/triggers/schedules/:scheduleId',
+    '/api/v1/triggers/schedules/:scheduleId',
     {
       schema: {
         params: scheduleIdParamsSchema,
@@ -234,7 +234,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // DELETE /api/triggers/schedules/:scheduleId
   server.delete<{ Params: { scheduleId: string } }>(
-    '/api/triggers/schedules/:scheduleId',
+    '/api/v1/triggers/schedules/:scheduleId',
     {
       schema: {
         params: scheduleIdParamsSchema,
@@ -260,7 +260,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // POST /api/triggers/webhooks
   server.post<{ Body: CreateWebhookTriggerRequest }>(
-    '/api/triggers/webhooks',
+    '/api/v1/triggers/webhooks',
     {
       schema: {
         body: {
@@ -302,7 +302,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // GET /api/triggers/webhooks
   server.get(
-    '/api/triggers/webhooks',
+    '/api/v1/triggers/webhooks',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -318,7 +318,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // GET /api/triggers/webhooks/:webhookId
   server.get<{ Params: { webhookId: string } }>(
-    '/api/triggers/webhooks/:webhookId',
+    '/api/v1/triggers/webhooks/:webhookId',
     {
       schema: {
         params: webhookIdParamsSchema,
@@ -343,7 +343,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // PATCH /api/triggers/webhooks/:webhookId
   server.patch<{ Params: { webhookId: string }; Body: UpdateWebhookTriggerRequest }>(
-    '/api/triggers/webhooks/:webhookId',
+    '/api/v1/triggers/webhooks/:webhookId',
     {
       schema: {
         params: webhookIdParamsSchema,
@@ -383,7 +383,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // DELETE /api/triggers/webhooks/:webhookId
   server.delete<{ Params: { webhookId: string } }>(
-    '/api/triggers/webhooks/:webhookId',
+    '/api/v1/triggers/webhooks/:webhookId',
     {
       schema: {
         params: webhookIdParamsSchema,
@@ -409,7 +409,7 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
 
   // POST /api/webhooks/:webhookId/deliver (no session auth, uses HMAC)
   server.post<{ Params: { webhookId: string }; Body: unknown }>(
-    '/api/webhooks/:webhookId/deliver',
+    '/api/v1/webhooks/:webhookId/deliver',
     {
       schema: {
         params: webhookIdParamsSchema,

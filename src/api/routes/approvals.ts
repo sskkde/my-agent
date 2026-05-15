@@ -87,7 +87,7 @@ async function dispatchPendingAction(
 }
 
 export function registerApprovalRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get('/api/approvals', async (request, reply) => {
+  server.get('/api/v1/approvals', async (request, reply) => {
     const userId = request.user?.userId ?? 'local-user';
     const userApprovals = context.stores.approvalStore.findByUser(userId);
 
@@ -114,7 +114,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
   });
 
   server.get<{ Params: { approvalId: string } }>(
-    '/api/approvals/:approvalId',
+    '/api/v1/approvals/:approvalId',
     async (request, reply) => {
       const { approvalId } = request.params;
       const userId = request.user?.userId ?? 'local-user';
@@ -152,7 +152,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
   );
 
   server.patch<{ Params: { approvalId: string }; Body: ApprovalDecisionRequest }>(
-    '/api/approvals/:approvalId',
+    '/api/v1/approvals/:approvalId',
     async (request, reply) => {
       const { approvalId } = request.params;
       const { decision, reason } = request.body;

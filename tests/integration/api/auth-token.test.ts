@@ -54,7 +54,7 @@ describe('API Auth Token Middleware', () => {
       it('should allow requests without Authorization header', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/health',
+          url: '/api/v1/health',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -69,13 +69,13 @@ describe('API Auth Token Middleware', () => {
 
         await registerAuthToken(server, { token: 'test-secret-token', enabled: true });
 
-        server.get('/api/health', async () => ({ ok: true, data: { status: 'alive' }, requestId: 'test' }));
-        server.get('/api/health/ready', async () => ({ ok: true, data: { status: 'ready' }, requestId: 'test' }));
-        server.get('/api/docs', async () => ({ ok: true, data: {}, requestId: 'test' }));
-        server.get('/api/docs/json', async () => ({ ok: true, data: {}, requestId: 'test' }));
-        server.get('/api/tools', async () => ({ ok: true, data: [], requestId: 'test' }));
-        server.get('/api/protected', async () => ({ ok: true, data: { secret: 'data' }, requestId: 'test' }));
-        server.get('/api/webhooks/test', async () => ({ ok: true, data: {}, requestId: 'test' }));
+        server.get('/api/v1/health', async () => ({ ok: true, data: { status: 'alive' }, requestId: 'test' }));
+        server.get('/api/v1/health/ready', async () => ({ ok: true, data: { status: 'ready' }, requestId: 'test' }));
+        server.get('/api/v1/docs', async () => ({ ok: true, data: {}, requestId: 'test' }));
+        server.get('/api/v1/docs/json', async () => ({ ok: true, data: {}, requestId: 'test' }));
+        server.get('/api/v1/tools', async () => ({ ok: true, data: [], requestId: 'test' }));
+        server.get('/api/v1/protected', async () => ({ ok: true, data: { secret: 'data' }, requestId: 'test' }));
+        server.get('/api/v1/webhooks/test', async () => ({ ok: true, data: {}, requestId: 'test' }));
 
         await server.ready();
       });
@@ -87,7 +87,7 @@ describe('API Auth Token Middleware', () => {
       it('should return 401 when no Authorization header is provided', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/protected',
+          url: '/api/v1/protected',
         });
         expect(response.statusCode).toBe(401);
         const body = JSON.parse(response.body) as { ok: boolean; error: { code: string; message: string }; requestId: string };
@@ -99,7 +99,7 @@ describe('API Auth Token Middleware', () => {
       it('should return 401 when wrong token is provided', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/protected',
+          url: '/api/v1/protected',
           headers: { authorization: 'Bearer wrong-token' },
         });
         expect(response.statusCode).toBe(401);
@@ -111,7 +111,7 @@ describe('API Auth Token Middleware', () => {
       it('should return 401 when Authorization header has wrong format', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/protected',
+          url: '/api/v1/protected',
           headers: { authorization: 'Basic dXNlcjpwYXNz' },
         });
         expect(response.statusCode).toBe(401);
@@ -120,7 +120,7 @@ describe('API Auth Token Middleware', () => {
       it('should allow request with correct Bearer token', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/protected',
+          url: '/api/v1/protected',
           headers: { authorization: 'Bearer test-secret-token' },
         });
         expect(response.statusCode).toBe(200);
@@ -132,7 +132,7 @@ describe('API Auth Token Middleware', () => {
       it('should exempt /api/health from auth', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/health',
+          url: '/api/v1/health',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -140,7 +140,7 @@ describe('API Auth Token Middleware', () => {
       it('should exempt /api/health/ready from auth', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/health/ready',
+          url: '/api/v1/health/ready',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -148,7 +148,7 @@ describe('API Auth Token Middleware', () => {
       it('should exempt /api/docs from auth', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/docs',
+          url: '/api/v1/docs',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -156,7 +156,7 @@ describe('API Auth Token Middleware', () => {
       it('should exempt /api/docs/json from auth', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/docs/json',
+          url: '/api/v1/docs/json',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -164,7 +164,7 @@ describe('API Auth Token Middleware', () => {
       it('should exempt /api/tools from auth', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/tools',
+          url: '/api/v1/tools',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -172,7 +172,7 @@ describe('API Auth Token Middleware', () => {
       it('should exempt /api/webhooks/* from auth', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/webhooks/test',
+          url: '/api/v1/webhooks/test',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -187,7 +187,7 @@ describe('API Auth Token Middleware', () => {
 
         await registerAuthToken(server, { enabled: false });
 
-        server.get('/api/protected', async () => ({ ok: true, data: { secret: 'data' }, requestId: 'test' }));
+        server.get('/api/v1/protected', async () => ({ ok: true, data: { secret: 'data' }, requestId: 'test' }));
 
         await server.ready();
       });
@@ -199,7 +199,7 @@ describe('API Auth Token Middleware', () => {
       it('should allow requests without Authorization header when disabled', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/protected',
+          url: '/api/v1/protected',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -215,12 +215,12 @@ describe('API Auth Token Middleware', () => {
         await registerAuthToken(server, {
           token: 'custom-token',
           enabled: true,
-          exemptPaths: ['/api/health', '/api/custom-public'],
+          exemptPaths: ['/api/v1/health', '/api/v1/custom-public'],
         });
 
-        server.get('/api/health', async () => ({ ok: true, data: { status: 'alive' }, requestId: 'test' }));
-        server.get('/api/custom-public', async () => ({ ok: true, data: {}, requestId: 'test' }));
-        server.get('/api/protected', async () => ({ ok: true, data: { secret: 'data' }, requestId: 'test' }));
+        server.get('/api/v1/health', async () => ({ ok: true, data: { status: 'alive' }, requestId: 'test' }));
+        server.get('/api/v1/custom-public', async () => ({ ok: true, data: {}, requestId: 'test' }));
+        server.get('/api/v1/protected', async () => ({ ok: true, data: { secret: 'data' }, requestId: 'test' }));
 
         await server.ready();
       });
@@ -232,7 +232,7 @@ describe('API Auth Token Middleware', () => {
       it('should use custom exempt paths', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/custom-public',
+          url: '/api/v1/custom-public',
         });
         expect(response.statusCode).toBe(200);
       });
@@ -240,7 +240,7 @@ describe('API Auth Token Middleware', () => {
       it('should still protect non-exempt paths', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/protected',
+          url: '/api/v1/protected',
         });
         expect(response.statusCode).toBe(401);
       });

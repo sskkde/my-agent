@@ -29,7 +29,7 @@ describe('Memory Management API', () => {
     }
     baseUrl = `http://localhost:${address.port}`;
 
-    const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+    const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'testuser', password: 'password123' }),
@@ -38,7 +38,7 @@ describe('Memory Management API', () => {
     expect(setupResponse.status).toBe(201);
     authCookie = setupResponse.headers.get('set-cookie')!;
 
-    const meResponse = await fetch(`${baseUrl}/api/auth/me`, {
+    const meResponse = await fetch(`${baseUrl}/api/v1/auth/me`, {
       headers: { 'Cookie': authCookie },
     });
     const meBody = await meResponse.json() as { data: { user: { userId: string } } };
@@ -107,12 +107,12 @@ describe('Memory Management API', () => {
 
   describe('GET /api/memory', () => {
     it('should require authentication', async () => {
-      const response = await fetch(`${baseUrl}/api/memory`);
+      const response = await fetch(`${baseUrl}/api/v1/memory`);
       expect(response.status).toBe(401);
     });
 
     it('should return empty list when no memories exist', async () => {
-      const response = await fetch(`${baseUrl}/api/memory`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -130,7 +130,7 @@ describe('Memory Management API', () => {
       apiContext.stores.longTermMemoryStore.save(lowPriorityMemory);
       apiContext.stores.longTermMemoryStore.save(archivedMemory);
 
-      const response = await fetch(`${baseUrl}/api/memory`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -147,7 +147,7 @@ describe('Memory Management API', () => {
       apiContext.stores.longTermMemoryStore.save(memory1);
       apiContext.stores.longTermMemoryStore.save(memory2);
 
-      const response = await fetch(`${baseUrl}/api/memory?query=dark`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory?query=dark`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -162,7 +162,7 @@ describe('Memory Management API', () => {
       apiContext.stores.longTermMemoryStore.save(preferenceMemory);
       apiContext.stores.longTermMemoryStore.save(profileMemory);
 
-      const response = await fetch(`${baseUrl}/api/memory?type=user_preference`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory?type=user_preference`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -181,7 +181,7 @@ describe('Memory Management API', () => {
         testMemoryIds.push(memory.memoryId);
       }
 
-      const response = await fetch(`${baseUrl}/api/memory?limit=2`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory?limit=2`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -192,7 +192,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 400 for invalid type', async () => {
-      const response = await fetch(`${baseUrl}/api/memory?type=invalid_type`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory?type=invalid_type`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(400);
@@ -201,7 +201,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 400 for invalid limit', async () => {
-      const response = await fetch(`${baseUrl}/api/memory?limit=abc`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory?limit=abc`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(400);
@@ -213,7 +213,7 @@ describe('Memory Management API', () => {
       const otherUserMemory = createTestMemory({ userId: 'other-user', memoryId: 'mem-other' });
       apiContext.stores.longTermMemoryStore.save(otherUserMemory);
 
-      const response = await fetch(`${baseUrl}/api/memory`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -224,7 +224,7 @@ describe('Memory Management API', () => {
 
   describe('GET /api/memory/:memoryId', () => {
     it('should require authentication', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/mem-123`);
+      const response = await fetch(`${baseUrl}/api/v1/memory/mem-123`);
       expect(response.status).toBe(401);
     });
 
@@ -232,7 +232,7 @@ describe('Memory Management API', () => {
       const memory = createTestMemory();
       apiContext.stores.longTermMemoryStore.save(memory);
 
-      const response = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -243,7 +243,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 404 for non-existent memory', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/nonexistent-mem`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/nonexistent-mem`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -255,7 +255,7 @@ describe('Memory Management API', () => {
       const otherUserMemory = createTestMemory({ userId: 'other-user', memoryId: 'mem-other-user' });
       apiContext.stores.longTermMemoryStore.save(otherUserMemory);
 
-      const response = await fetch(`${baseUrl}/api/memory/mem-other-user`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/mem-other-user`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -268,7 +268,7 @@ describe('Memory Management API', () => {
       memory.lifecycle.status = 'deleted';
       apiContext.stores.longTermMemoryStore.save(memory);
 
-      const response = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -277,7 +277,7 @@ describe('Memory Management API', () => {
 
   describe('DELETE /api/memory/:memoryId', () => {
     it('should require authentication', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/mem-123`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/mem-123`, {
         method: 'DELETE',
       });
       expect(response.status).toBe(401);
@@ -287,7 +287,7 @@ describe('Memory Management API', () => {
       const memory = createTestMemory({ fingerprint: 'fp-test', sourceWindowHash: 'hash-test' });
       apiContext.stores.longTermMemoryStore.save(memory);
 
-      const response = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });
@@ -302,7 +302,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 404 for non-existent memory', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/nonexistent-mem`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/nonexistent-mem`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });
@@ -313,7 +313,7 @@ describe('Memory Management API', () => {
       const otherUserMemory = createTestMemory({ userId: 'other-user', memoryId: 'mem-other-user' });
       apiContext.stores.longTermMemoryStore.save(otherUserMemory);
 
-      const response = await fetch(`${baseUrl}/api/memory/mem-other-user`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/mem-other-user`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });
@@ -324,7 +324,7 @@ describe('Memory Management API', () => {
       const memory = createTestMemory({ fingerprint: 'fp-tombstone', sourceWindowHash: 'hash-tombstone' });
       apiContext.stores.longTermMemoryStore.save(memory);
 
-      const response = await fetch(`${baseUrl}/api/memory/${memory.memoryId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
         method: 'DELETE',
         headers: { 'Cookie': authCookie },
       });
@@ -338,7 +338,7 @@ describe('Memory Management API', () => {
 
   describe('GET /api/memory/debug/extraction-runs', () => {
     it('should require authentication', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`);
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs`);
       expect(response.status).toBe(401);
     });
 
@@ -352,7 +352,7 @@ describe('Memory Management API', () => {
         includedTurnIds: run.includedTurnIds,
       });
 
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -363,7 +363,7 @@ describe('Memory Management API', () => {
 
     it('should filter by sessionId', async () => {
       // Create a session first
-      const sessionResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const sessionResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -380,7 +380,7 @@ describe('Memory Management API', () => {
         includedTurnIds: ['turn-1'],
       });
 
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs?sessionId=${sessionId}`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs?sessionId=${sessionId}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -398,7 +398,7 @@ describe('Memory Management API', () => {
         });
       }
 
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs?limit=2`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs?limit=2`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -407,7 +407,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 400 for invalid limit', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs?limit=abc`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs?limit=abc`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(400);
@@ -423,7 +423,7 @@ describe('Memory Management API', () => {
         includedTurnIds: otherUserRun.includedTurnIds,
       });
 
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -441,7 +441,7 @@ describe('Memory Management API', () => {
         includedTurnIds: run.includedTurnIds,
       });
 
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -460,7 +460,7 @@ describe('Memory Management API', () => {
 
   describe('POST /api/memory/debug/extract', () => {
     it('should require authentication', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: 'session-1', turnId: 'turn-1' }),
@@ -469,7 +469,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 400 for missing sessionId', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ turnId: 'turn-1' }),
@@ -480,7 +480,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 400 for missing turnId', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ sessionId: 'session-1' }),
@@ -491,7 +491,7 @@ describe('Memory Management API', () => {
     });
 
     it('should return 404 for non-existent session', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ sessionId: 'nonexistent-session', turnId: 'turn-1' }),
@@ -509,7 +509,7 @@ describe('Memory Management API', () => {
         status: 'active',
       });
 
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ sessionId: otherSessionId, turnId: 'turn-1' }),
@@ -518,7 +518,7 @@ describe('Memory Management API', () => {
     });
 
 it('should trigger extraction for valid session', async () => {
-      const sessionResponse = await fetch(`${baseUrl}/api/sessions`, {
+      const sessionResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({}),
@@ -541,7 +541,7 @@ it('should trigger extraction for valid session', async () => {
         createdAt: new Date().toISOString(),
       });
 
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ sessionId, turnId }),
@@ -558,14 +558,14 @@ it('should trigger extraction for valid session', async () => {
 
   describe('Route ordering: debug routes before :memoryId', () => {
     it('should not treat "debug" as memoryId', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extraction-runs`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extraction-runs`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
     });
 
     it('should not treat "extract" as memoryId under debug', async () => {
-      const response = await fetch(`${baseUrl}/api/memory/debug/extract`, {
+      const response = await fetch(`${baseUrl}/api/v1/memory/debug/extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ sessionId: 'test', turnId: 'test' }),

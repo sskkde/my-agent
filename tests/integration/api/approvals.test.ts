@@ -12,7 +12,7 @@ describe('Approvals API', () => {
     baseUrl = ctx.baseUrl;
     authCookie = ctx.authCookie;
     
-    const meResponse = await fetch(`${baseUrl}/api/auth/me`, {
+    const meResponse = await fetch(`${baseUrl}/api/v1/auth/me`, {
       headers: { 'Cookie': authCookie },
     });
     const meBody = await meResponse.json() as { data: { user: { userId: string } } };
@@ -25,7 +25,7 @@ describe('Approvals API', () => {
 
   describe('GET /api/approvals', () => {
     it('should return empty approvals list when no approvals exist for user', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -58,7 +58,7 @@ describe('Approvals API', () => {
         requestedAt: new Date().toISOString(),
       });
 
-      const response = await fetch(`${baseUrl}/api/approvals`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -97,7 +97,7 @@ describe('Approvals API', () => {
         responseBy: 'admin',
       });
 
-      const response = await fetch(`${baseUrl}/api/approvals`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -116,7 +116,7 @@ describe('Approvals API', () => {
 
   describe('GET /api/approvals/:approvalId', () => {
     it('should return 404 for non-existent approval', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -138,7 +138,7 @@ describe('Approvals API', () => {
         requestedAt: new Date().toISOString(),
       });
 
-      const response = await fetch(`${baseUrl}/api/approvals/${otherUserApproval.id}`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/${otherUserApproval.id}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -161,7 +161,7 @@ describe('Approvals API', () => {
         requestedAt: new Date().toISOString(),
       });
 
-      const response = await fetch(`${baseUrl}/api/approvals/${approval.id}`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/${approval.id}`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -178,7 +178,7 @@ describe('Approvals API', () => {
 
   describe('PATCH /api/approvals/:approvalId', () => {
     it('should return 404 for non-existent approval', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/non-existent-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/non-existent-id`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'approved' }),
@@ -190,7 +190,7 @@ describe('Approvals API', () => {
     });
 
     it('should return 400 for invalid decision', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/test-id`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'invalid' }),
@@ -199,7 +199,7 @@ describe('Approvals API', () => {
     });
 
     it('should return 400 for missing decision field', async () => {
-      const response = await fetch(`${baseUrl}/api/approvals/test-id`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/test-id`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ reason: 'some reason' }),
@@ -222,7 +222,7 @@ describe('Approvals API', () => {
         responseBy: 'admin',
       });
 
-      const response = await fetch(`${baseUrl}/api/approvals/${approval.id}`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/${approval.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'approved' }),
@@ -248,7 +248,7 @@ describe('Approvals API', () => {
         requestedAt: new Date().toISOString(),
       });
 
-      const response = await fetch(`${baseUrl}/api/approvals/${approval.id}`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/${approval.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'approved', reason: 'looks good' }),
@@ -280,7 +280,7 @@ describe('Approvals API', () => {
         requestedAt: new Date().toISOString(),
       });
 
-      const response = await fetch(`${baseUrl}/api/approvals/${approval.id}`, {
+      const response = await fetch(`${baseUrl}/api/v1/approvals/${approval.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
         body: JSON.stringify({ decision: 'rejected', reason: 'not authorized' }),

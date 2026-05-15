@@ -99,7 +99,7 @@ describe('Planner Run Timeline / Summary API', () => {
 
   describe('GET /api/planner-runs/:plannerRunId/events', () => {
     it('should return events sorted by timestamp for valid plannerRunId', async () => {
-      const response = await fetch(`${baseUrl}/api/planner-runs/${plannerRunId}/events`, {
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/events`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -117,7 +117,7 @@ describe('Planner Run Timeline / Summary API', () => {
     });
 
     it('should redact sensitive fields in event payloads', async () => {
-      const response = await fetch(`${baseUrl}/api/planner-runs/${plannerRunId}/events`, {
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/events`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -140,7 +140,7 @@ describe('Planner Run Timeline / Summary API', () => {
     });
 
     it('should return 404 for non-existent plannerRunId', async () => {
-      const response = await fetch(`${baseUrl}/api/planner-runs/nonexistent-run/events`, {
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/nonexistent-run/events`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -150,14 +150,14 @@ describe('Planner Run Timeline / Summary API', () => {
     });
 
     it('should return 401 for unauthenticated request', async () => {
-      const response = await fetch(`${baseUrl}/api/planner-runs/${plannerRunId}/events`);
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/events`);
       expect(response.status).toBe(401);
     });
   });
 
   describe('GET /api/planner-runs/:plannerRunId/summary', () => {
     it('should return status, stepCount, currentStep, and planVersion', async () => {
-      const response = await fetch(`${baseUrl}/api/planner-runs/${plannerRunId}/summary`, {
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/summary`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);
@@ -180,7 +180,7 @@ describe('Planner Run Timeline / Summary API', () => {
     });
 
     it('should return 404 for non-existent plannerRunId', async () => {
-      const response = await fetch(`${baseUrl}/api/planner-runs/nonexistent-run/summary`, {
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/nonexistent-run/summary`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(404);
@@ -190,7 +190,7 @@ describe('Planner Run Timeline / Summary API', () => {
     });
 
     it('should return 401 for unauthenticated request', async () => {
-      const response = await fetch(`${baseUrl}/api/planner-runs/${plannerRunId}/summary`);
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/summary`);
       expect(response.status).toBe(401);
     });
 
@@ -221,7 +221,7 @@ describe('Planner Run Timeline / Summary API', () => {
         updatedAt: now,
       });
 
-      const response = await fetch(`${baseUrl}/api/planner-runs/${emptyRunId}/summary`, {
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${emptyRunId}/summary`, {
         headers: { 'Cookie': authCookie },
       });
       expect(response.status).toBe(200);

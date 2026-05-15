@@ -21,7 +21,7 @@ export async function createAuthenticatedTestContext(dbPath: string = ':memory:'
   const address = server.server.address();
   const baseUrl = `http://localhost:${(address as any).port}`;
 
-  const setupResponse = await fetch(`${baseUrl}/api/setup/user`, {
+  const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'testuser', password: 'testpassword123' }),

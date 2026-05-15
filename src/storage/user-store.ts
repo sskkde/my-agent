@@ -1,9 +1,12 @@
 import type { ConnectionManager } from './connection.js';
 
+export type UserRole = 'admin' | 'user' | 'service';
+
 export interface User {
   userId: string;
   username: string;
   passwordHash: string;
+  role: UserRole;
   createdAt: string;
   updatedAt: string;
 }
@@ -12,6 +15,7 @@ export interface CreateUserInput {
   userId: string;
   username: string;
   passwordHash: string;
+  role?: UserRole;
 }
 
 export interface UserStore {
@@ -27,6 +31,7 @@ interface UserRow {
   user_id: string;
   username: string;
   password_hash: string;
+  role: UserRole;
   created_at: string;
   updated_at: string;
 }
@@ -39,25 +44,29 @@ class UserStoreImpl implements UserStore {
   }
 
   create(input: CreateUserInput): User {
+    const isFirstUser = this.getFirstCreated() === null;
+    const role = input.role ?? (isFirstUser ? 'admin' : 'user');
     const now = new Date().toISOString();
     const user: User = {
       userId: input.userId,
       username: input.username,
       passwordHash: input.passwordHash,
+      role,
       createdAt: now,
       updatedAt: now
     };
 
     const sql = `
       INSERT INTO users (
-        user_id, username, password_hash, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?)
+        user_id, username, password_hash, role, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       user.userId,
       user.username,
       user.passwordHash,
+      user.role,
       user.createdAt,
       user.updatedAt
     ];
@@ -127,6 +136,7 @@ class UserStoreImpl implements UserStore {
       userId: row.user_id,
       username: row.username,
       passwordHash: row.password_hash,
+      role: row.role,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

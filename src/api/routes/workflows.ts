@@ -151,7 +151,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // GET /api/workflows/drafts
   server.get(
-    '/api/workflows/drafts',
+    '/api/v1/workflows/drafts',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -167,7 +167,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // GET /api/workflows/drafts/:draftId
   server.get<{ Params: { draftId: string } }>(
-    '/api/workflows/drafts/:draftId',
+    '/api/v1/workflows/drafts/:draftId',
     {
       schema: {
         params: workflowDraftIdParamsSchema,
@@ -196,7 +196,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // POST /api/workflows/drafts
   server.post<{ Body: CreateDraftRequest }>(
-    '/api/workflows/drafts',
+    '/api/v1/workflows/drafts',
     {
       schema: {
         body: {
@@ -244,7 +244,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // PATCH /api/workflows/drafts/:draftId
   server.patch<{ Params: { draftId: string }; Body: UpdateDraftRequest }>(
-    '/api/workflows/drafts/:draftId',
+    '/api/v1/workflows/drafts/:draftId',
     {
       schema: {
         params: workflowDraftIdParamsSchema,
@@ -302,7 +302,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // POST /api/workflows/drafts/:draftId/validate
   server.post<{ Params: { draftId: string } }>(
-    '/api/workflows/drafts/:draftId/validate',
+    '/api/v1/workflows/drafts/:draftId/validate',
     {
       schema: {
         params: workflowDraftIdParamsSchema,
@@ -342,7 +342,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // POST /api/workflows/drafts/:draftId/publish
   server.post<{ Params: { draftId: string } }>(
-    '/api/workflows/drafts/:draftId/publish',
+    '/api/v1/workflows/drafts/:draftId/publish',
     {
       schema: {
         params: workflowDraftIdParamsSchema,
@@ -380,7 +380,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // DELETE /api/workflows/drafts/:draftId
   server.delete<{ Params: { draftId: string } }>(
-    '/api/workflows/drafts/:draftId',
+    '/api/v1/workflows/drafts/:draftId',
     {
       schema: {
         params: workflowDraftIdParamsSchema,
@@ -419,7 +419,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // GET /api/workflows/definitions
   server.get(
-    '/api/workflows/definitions',
+    '/api/v1/workflows/definitions',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {
@@ -435,7 +435,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // GET /api/workflows/definitions/:workflowId
   server.get<{ Params: { workflowId: string } }>(
-    '/api/workflows/definitions/:workflowId',
+    '/api/v1/workflows/definitions/:workflowId',
     {
       schema: {
         params: workflowDefinitionIdParamsSchema,
@@ -464,7 +464,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // POST /api/workflows/runs
   server.post<{ Body: StartRunRequest & { definitionId: string } }>(
-    '/api/workflows/runs',
+    '/api/v1/workflows/runs',
     {
       schema: {
         body: {
@@ -523,7 +523,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // GET /api/workflows/runs/:workflowRunId
   server.get<{ Params: { workflowRunId: string } }>(
-    '/api/workflows/runs/:workflowRunId',
+    '/api/v1/workflows/runs/:workflowRunId',
     {
       schema: {
         params: workflowRunIdParamsSchema,
@@ -554,7 +554,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
 
   // GET /api/workflows/runs (list all)
   server.get(
-    '/api/workflows/runs',
+    '/api/v1/workflows/runs',
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.userId;
       if (!userId) {

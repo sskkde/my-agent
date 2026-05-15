@@ -102,7 +102,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
     : undefined;
 
   server.post<{ Body: CreateSessionBody }>(
-    '/api/sessions',
+    '/api/v1/sessions',
     async (request: FastifyRequest<{ Body: CreateSessionBody }>, reply: FastifyReply) => {
       const userId = request.user?.userId ?? 'local-user';
       const sessionId = generateSessionId();
@@ -134,7 +134,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.get<{ Querystring: ListSessionsQuery }>(
-    '/api/sessions',
+    '/api/v1/sessions',
     async (request: FastifyRequest<{ Querystring: ListSessionsQuery }>, reply: FastifyReply) => {
       const status = request.query.status;
       const limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
@@ -173,7 +173,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.get<{ Params: { sessionId: string } }>(
-    '/api/sessions/:sessionId',
+    '/api/v1/sessions/:sessionId',
     async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
 
@@ -237,7 +237,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.get<{ Params: { sessionId: string } }>(
-    '/api/sessions/:sessionId/transcripts',
+    '/api/v1/sessions/:sessionId/transcripts',
     async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
 
@@ -264,7 +264,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.post<{ Params: SendMessageParams; Body: SendMessageRequest }>(
-    '/api/sessions/:sessionId/messages',
+    '/api/v1/sessions/:sessionId/messages',
     {
       schema: {
         params: sessionIdParamsSchema,
@@ -403,7 +403,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.post<{ Params: { sessionId: string } }>(
-    '/api/sessions/:sessionId/resume',
+    '/api/v1/sessions/:sessionId/resume',
     async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
 
@@ -437,7 +437,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.patch<{ Params: { sessionId: string }; Body: PatchSessionBody }>(
-    '/api/sessions/:sessionId',
+    '/api/v1/sessions/:sessionId',
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: PatchSessionBody }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
       const { title, status } = request.body || {};
@@ -479,7 +479,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.get<{ Params: { sessionId: string }; Querystring: TimelineQuery }>(
-    '/api/sessions/:sessionId/timeline',
+    '/api/v1/sessions/:sessionId/timeline',
     async (request: FastifyRequest<{ Params: { sessionId: string }; Querystring: TimelineQuery }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
       const limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
@@ -525,7 +525,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.get<{ Params: { sessionId: string }; Querystring: { after?: string } }>(
-    '/api/sessions/:sessionId/timeline/stream',
+    '/api/v1/sessions/:sessionId/timeline/stream',
     async (request: FastifyRequest<{ Params: { sessionId: string }; Querystring: { after?: string } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
       const { after } = request.query;
@@ -616,7 +616,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   );
 
   server.patch<{ Params: { sessionId: string }; Body: SetModelRequest }>(
-    '/api/sessions/:sessionId/model',
+    '/api/v1/sessions/:sessionId/model',
     {
       schema: {
         params: sessionIdParamsSchema,
