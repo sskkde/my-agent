@@ -8,7 +8,7 @@ describe('Auth Routes', () => {
   let context: ApiContext;
   let baseUrl: string;
 
-  beforeEach(async ({ expect }) => {
+  beforeEach(async () => {
     // CI environments may need more time for server startup under parallel load
     const ctxResult = createApiContext({ dbPath: ':memory:' });
     if (isApiContextError(ctxResult)) {
