@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --include=dev
+      
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: true
+
+  security-tests:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --include=dev
+      
+      - name: Run security tests
+        run: npx vitest run tests/security/
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --include=dev
+      
+      - name: Run performance tests
+        run: npx vitest run tests/performance/
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+      NODE_ENV: test
+      NPM_CONFIG_INCLUDE: dev
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --include=dev
+      
+      - name: Install frontend dependencies
+        run: npm --prefix web ci --include=dev
+      
+      - name: Run P7 verification suite
+        run: npm run test:p7
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test]
+    # Conditional: only run if Docker is available
+    if: ${{ vars.DOCKER_ENABLED == 'true' || github.event_name == 'push' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check Docker availability
+        id: docker-check
+        run: |
+          if command -v docker &> /dev/null && docker info &> /dev/null; then
+            echo "docker-available=true" >> $GITHUB_OUTPUT
+          else
+            echo "docker-available=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Build Docker images
+        if: steps.docker-check.outputs.docker-available == 'true'
+        run: docker compose build
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+      NODE_ENV: test
+      NPM_CONFIG_INCLUDE: dev
+      DATABASE_PATH: ./data/e2e.db
+      PORT: 3103
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --include=dev
+      
+      - name: Install frontend dependencies
+        run: npm --prefix web ci --include=dev
+      
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+      
+      - name: Reset E2E database
+        run: npm run reset:e2e-db
+      
+      - name: Run E2E tests
+        run: npm run test:e2e
