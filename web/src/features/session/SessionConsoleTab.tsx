@@ -3,6 +3,7 @@ import * as api from '../../api/client';
 import { TimelineList } from '../../components/timeline/TimelineList';
 import type { ConsoleSessionInfo, ConsoleTimelineEvent, CreateProviderRequest, UpdateProviderRequest } from '../../api/types';
 import type { TabId } from '../../components/TabNav';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 import { executeCommand } from '../../commands/executor';
 import { parseInput, isCommand } from '../../commands/parser';
@@ -959,7 +960,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
         </div>
 
         {sessionsLoading && (
-          <div className="sessions-loading">加载中...</div>
+          <LoadingSpinner size="small" label="加载会话列表..." />
         )}
 
         {sessionsError && (

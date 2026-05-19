@@ -13,8 +13,7 @@ describe('DLQTab', () => {
   it('renders loading state initially', () => {
     vi.mocked(dlqApi.getDlqEntries).mockImplementation(() => new Promise(() => {}));
     render(<DLQTab />);
-    expect(screen.getByTestId('dlq-loading')).toBeInTheDocument();
-    expect(screen.getByText('加载中...')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('renders DLQ list with event type, source, error, and time', async () => {

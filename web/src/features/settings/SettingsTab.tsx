@@ -3,6 +3,7 @@ import { getSettings } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import ProviderManager from './ProviderManager';
 import type { SettingsConfig } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface SettingsData {
   settings: SettingsConfig | null;
@@ -50,7 +51,7 @@ const SettingsTab: React.FC = () => {
       <div className="content-body">
         {loading && (
           <div className="settings-loading" data-testid="settings-loading">
-            加载中...
+            <LoadingSpinner label="加载设置..." />
           </div>
         )}
 

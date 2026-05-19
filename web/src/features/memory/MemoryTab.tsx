@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import * as client from '../../api/client';
 import type { MemoryItem } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 const MemoryTab: React.FC = () => {
   const [memories, setMemories] = useState<MemoryItem[]>([]);
@@ -101,7 +102,9 @@ const MemoryTab: React.FC = () => {
       </div>
 
       {loading && (
-        <div data-testid="memory-loading" className="memory-loading">加载中...</div>
+        <div data-testid="memory-loading" className="memory-loading">
+          <LoadingSpinner label="加载记忆..." />
+        </div>
       )}
 
       {error && (

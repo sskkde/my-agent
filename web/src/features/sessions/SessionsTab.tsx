@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getSessions, updateSession } from '../../api/client';
 import type { ConsoleSessionInfo, SessionsResponse } from '../../api/types';
+import ErrorMessage from '../../components/ErrorMessage';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 type SessionStatus = 'active' | 'archived' | 'closed';
 
@@ -8,7 +10,7 @@ interface SessionsState {
   sessions: ConsoleSessionInfo[];
   total: number;
   loading: boolean;
-  error: string | null;
+  error: Error | null;
 }
 
 const SessionsTab: React.FC = () => {
@@ -44,7 +46,7 @@ const SessionsTab: React.FC = () => {
         sessions: [],
         total: 0,
         loading: false,
-        error: err instanceof Error ? err.message : 'Failed to load sessions',
+        error: err instanceof Error ? err : new Error('Failed to load sessions'),
       });
     }
   }, [statusFilter, currentPage]);
@@ -74,7 +76,7 @@ const SessionsTab: React.FC = () => {
     } catch (err) {
       setSessionsState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : 'Failed to archive session',
+        error: err instanceof Error ? err : new Error('Failed to archive session'),
       }));
     }
   };
@@ -91,7 +93,7 @@ const SessionsTab: React.FC = () => {
     } catch (err) {
       setSessionsState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : 'Failed to close session',
+        error: err instanceof Error ? err : new Error('Failed to close session'),
       }));
     }
   };
@@ -117,7 +119,7 @@ const SessionsTab: React.FC = () => {
     } catch (err) {
       setSessionsState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : 'Failed to update title',
+        error: err instanceof Error ? err : new Error('Failed to update title'),
       }));
     }
   };
@@ -188,13 +190,17 @@ const SessionsTab: React.FC = () => {
           </div>
 
           {sessionsState.error && (
-            <div className="sessions-error" role="alert">
-              {sessionsState.error}
-            </div>
+            <ErrorMessage
+              error={sessionsState.error}
+              retry={{ onClick: fetchSessions }}
+              size="small"
+            />
           )}
 
           {sessionsState.loading ? (
-            <div className="sessions-loading">加载中...</div>
+            <div className="sessions-loading">
+              <LoadingSpinner label="加载会话列表..." />
+            </div>
           ) : sessionsState.sessions.length === 0 ? (
             <div className="sessions-empty-state">
               <p>No sessions found</p>

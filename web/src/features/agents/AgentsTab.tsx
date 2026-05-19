@@ -16,6 +16,7 @@ import type {
   UpdateAgentGlobalConfigRequest,
   UpdateAgentUserOverrideRequest,
 } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface FormData {
   providerId: string;
@@ -317,9 +318,7 @@ const AgentsTab: React.FC = () => {
           <h2>代理配置</h2>
         </div>
         <div className="content-body">
-          <div className="agents-loading" data-testid="agents-loading">
-            加载中...
-          </div>
+          <LoadingSpinner label="加载代理配置..." />
         </div>
       </div>
     );

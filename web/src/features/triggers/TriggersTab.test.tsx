@@ -13,8 +13,7 @@ describe('TriggersTab', () => {
   it('renders loading state initially', () => {
     vi.mocked(triggersApi.getTriggers).mockImplementation(() => new Promise(() => {}));
     render(<TriggersTab />);
-    expect(screen.getByTestId('triggers-loading')).toBeInTheDocument();
-    expect(screen.getByText('加载中...')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('renders schedule triggers list from mock API', async () => {

@@ -405,7 +405,7 @@ describe('SessionsTab', () => {
 
     render(<SessionsTab />);
 
-    expect(screen.getByText('加载中...')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('displays error state on API failure', async () => {
@@ -728,7 +728,7 @@ describe('SessionsTab - Mobile Responsive', () => {
 
     render(<SessionsTab />);
 
-    expect(screen.getByText('加载中...')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('displays error state on mobile viewport', async () => {

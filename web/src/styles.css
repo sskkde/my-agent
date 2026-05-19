@@ -7811,3 +7811,127 @@ body {
   color: #166534;
 }
 
+/* ==========================================================================
+   ErrorMessage Component Styles
+   ========================================================================== */
+
+.error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  border-left: 3px solid #ef4444;
+}
+
+.error-message__icon {
+  font-size: 20px;
+  line-height: 1;
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.error-message__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-message__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #991b1b;
+  margin: 0 0 4px 0;
+}
+
+.error-message__description {
+  font-size: 13px;
+  color: #7f1d1d;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.error-message__retry {
+  padding: 6px 14px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.error-message__retry:hover {
+  background: #dc2626;
+}
+
+/* Size variants */
+.error-message--small {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.error-message--small .error-message__icon {
+  font-size: 16px;
+}
+
+.error-message--small .error-message__title {
+  font-size: 13px;
+}
+
+.error-message--small .error-message__description {
+  font-size: 12px;
+}
+
+.error-message--large {
+  padding: 20px 24px;
+  gap: 16px;
+}
+
+.error-message--large .error-message__icon {
+  font-size: 24px;
+}
+
+.error-message--large .error-message__title {
+  font-size: 16px;
+}
+
+.error-message--large .error-message__description {
+  font-size: 14px;
+}
+
+/* Variant styles */
+.error-message--inline {
+  padding: 8px 12px;
+  gap: 8px;
+  border-left: none;
+  background: #fee2e2;
+}
+
+.error-message--inline .error-message__title {
+  font-size: 13px;
+}
+
+.error-message--inline .error-message__description {
+  display: none;
+}
+
+.error-message--card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-left: 3px solid #ef4444;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.error-message--card .error-message__title {
+  color: var(--text-strong);
+}
+
+.error-message--card .error-message__description {
+  color: var(--text);
+}
+

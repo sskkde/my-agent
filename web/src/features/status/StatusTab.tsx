@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import * as client from '../../api/client';
 import type { HealthResponse, ApprovalsResponse, ApprovalInfo } from '../../api/types';
 import type { TabId } from '../../components/TabNav';
+import ErrorMessage from '../../components/ErrorMessage';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface StatusTabProps {
   onTabChange: (tab: TabId) => void;
@@ -9,9 +11,9 @@ interface StatusTabProps {
 
 const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [healthError, setHealthError] = useState(false);
+  const [healthError, setHealthError] = useState<Error | null>(null);
   const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null);
-  const [approvalsError, setApprovalsError] = useState(false);
+  const [approvalsError, setApprovalsError] = useState<Error | null>(null);
   const [selectedApproval, setSelectedApproval] = useState<ApprovalInfo | null>(null);
   const [reason, setReason] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -21,8 +23,8 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
       try {
         const healthData = await client.getHealth();
         setHealth(healthData);
-      } catch {
-        setHealthError(true);
+      } catch (err) {
+        setHealthError(err instanceof Error ? err : new Error('无法加载健康状态'));
       }
     };
     fetchData();
@@ -32,9 +34,9 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
     try {
       const approvalsData = await client.getApprovals();
       setApprovals(approvalsData);
-      setApprovalsError(false);
-    } catch {
-      setApprovalsError(true);
+      setApprovalsError(null);
+    } catch (err) {
+      setApprovalsError(err instanceof Error ? err : new Error('无法加载审批列表'));
     }
   };
 
@@ -89,7 +91,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
       <section data-testid="status-health-summary" className="status-health">
         <h4>系统健康状态</h4>
         {healthError ? (
-          <p className="empty-state">无法加载健康状态</p>
+          <ErrorMessage error={healthError} size="small" />
         ) : health ? (
           <div className="health-info">
             <div className={`health-status ${health.status}`}>
@@ -110,14 +112,14 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
             </div>
           </div>
         ) : (
-          <div className="loading">加载中...</div>
+          <LoadingSpinner size="small" label="加载健康状态..." />
         )}
       </section>
 
       <section data-testid="approvals-summary" className="status-approvals">
         <h4>审批中心</h4>
         {approvalsError ? (
-          <p className="empty-state">无法加载审批列表</p>
+          <ErrorMessage error={approvalsError} retry={{ onClick: fetchApprovals }} />
         ) : approvals ? (
           <div className="approvals-info">
             <div className="pending-count">
@@ -211,7 +213,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
             )}
           </div>
         ) : (
-          <div className="loading">加载中...</div>
+          <LoadingSpinner size="small" label="加载审批列表..." />
         )}
       </section>
 

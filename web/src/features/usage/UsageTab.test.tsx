@@ -36,8 +36,7 @@ describe('UsageTab', () => {
     render(<UsageTab />);
 
     expect(screen.getByTestId('usage-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('usage-loading')).toBeInTheDocument();
-    expect(screen.getByTestId('usage-loading')).toHaveTextContent('加载中...');
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('displays empty state when no usage data', async () => {

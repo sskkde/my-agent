@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import * as client from '../../api/client';
 import type { ApprovalsResponse, ApprovalInfo } from '../../api/types';
 import type { TabId } from '../../navigation/navigation-config';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface ApprovalsTabProps {
   onTabChange: (tab: TabId) => void;
@@ -184,7 +185,7 @@ const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
             )}
           </div>
         ) : (
-          <div className="loading">加载中...</div>
+          <LoadingSpinner label="加载审批列表..." />
         )}
       </section>
     </div>

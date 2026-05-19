@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getChannels } from '../../api/client';
 import type { ChannelSummary } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface ChannelsData {
   channels: ChannelSummary[];
@@ -60,7 +61,7 @@ const ChannelsTab: React.FC = () => {
       <div className="content-body">
         {loading && (
           <div className="channels-loading" data-testid="channels-loading">
-            加载中...
+            <LoadingSpinner label="加载通道数据..." />
           </div>
         )}
 

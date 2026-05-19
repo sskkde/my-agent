@@ -259,8 +259,7 @@ describe('ObservabilityTab', () => {
 
     render(<ObservabilityTab />);
 
-    expect(screen.getByTestId('observability-loading')).toBeInTheDocument();
-    expect(screen.getByText('加载中...')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('shows empty state when no runs', async () => {

@@ -1,5 +1,6 @@
 import React, { useState, FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import ErrorMessage from '../../components/ErrorMessage';
 import './Auth.css';
 
 interface LoginPageProps {
@@ -10,7 +11,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ mode }) => {
   const { login, setupUser } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -18,12 +19,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ mode }) => {
     setError(null);
 
     if (!username.trim()) {
-      setError('用户名不能为空');
+      setError(new Error('用户名不能为空'));
       return;
     }
 
     if (!password) {
-      setError('密码不能为空');
+      setError(new Error('密码不能为空'));
       return;
     }
 
@@ -36,8 +37,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ mode }) => {
         await login(username.trim(), password);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '操作失败，请重试';
-      setError(message);
+      setError(err instanceof Error ? err : new Error('操作失败，请重试'));
     } finally {
       setIsSubmitting(false);
     }
@@ -64,9 +64,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ mode }) => {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             {error && (
-              <div className="auth-error" data-testid={errorTestId}>
-                {error}
-              </div>
+              <ErrorMessage error={error} size="small" data-testid={errorTestId} />
             )}
 
             <div className="auth-field">
