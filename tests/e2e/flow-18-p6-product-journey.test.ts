@@ -263,8 +263,8 @@ describe('P6 Product Journey', () => {
         method: 'GET',
         url: '/api/health',
       });
-      // Should be 301 redirect
-      expect(response.statusCode).toBe(301);
+      // Should be 307 redirect
+      expect(response.statusCode).toBe(307);
       expect(response.headers.location).toBe('/api/v1/health');
     });
   });
