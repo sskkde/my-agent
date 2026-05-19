@@ -1,10 +1,11 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApprovalDecisionRequest, ApprovalInfo } from '../types.js';
 import { success, envelopeError } from '../response-envelope.js';
 import type { ApiContext } from '../context.js';
 import { APPROVAL_STATES, type ApprovalRequest } from '../../storage/approval-store.js';
 import { generateId, GRANT_ID_PREFIX, ACTION_ID_PREFIX } from '../../shared/ids.js';
 import type { RuntimeAction as DispatcherRuntimeAction, TargetRuntime } from '../../dispatcher/types.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 function extractPlannerRunId(approval: ApprovalRequest, context: ApiContext): string | undefined {
   if (!approval.metadata) return undefined;
@@ -87,7 +88,10 @@ async function dispatchPendingAction(
 }
 
 export function registerApprovalRoutes(server: FastifyInstance, context: ApiContext): void {
-  server.get('/api/v1/approvals', async (request, reply) => {
+  server.get('/api/v1/approvals', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission('approval' as ResourceType, Action.read)) {
+      return reply;
+    }
     const userId = request.user?.userId ?? 'local-user';
     const userApprovals = context.stores.approvalStore.findByUser(userId);
 
@@ -115,7 +119,10 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
 
   server.get<{ Params: { approvalId: string } }>(
     '/api/v1/approvals/:approvalId',
-    async (request, reply) => {
+    async (request: FastifyRequest<{ Params: { approvalId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission('approval' as ResourceType, Action.read)) {
+        return reply;
+      }
       const { approvalId } = request.params;
       const userId = request.user?.userId ?? 'local-user';
 
@@ -153,7 +160,10 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
 
   server.patch<{ Params: { approvalId: string }; Body: ApprovalDecisionRequest }>(
     '/api/v1/approvals/:approvalId',
-    async (request, reply) => {
+    async (request: FastifyRequest<{ Params: { approvalId: string }; Body: ApprovalDecisionRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission('approval' as ResourceType, Action.update)) {
+        return reply;
+      }
       const { approvalId } = request.params;
       const { decision, reason } = request.body;
 

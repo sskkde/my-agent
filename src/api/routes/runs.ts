@@ -3,9 +3,13 @@ import type { RunInfo } from '../types.js';
 import type { ApiContext } from '../context.js';
 import type { BackgroundSubagentState } from '../../shared/states.js';
 import { success } from '../response-envelope.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 export function registerRunRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get('/api/v1/runs', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission('run' as ResourceType, Action.read)) {
+      return reply;
+    }
     const runs: RunInfo[] = [];
 
     try {
@@ -64,7 +68,10 @@ export function registerRunRoutes(server: FastifyInstance, context: ApiContext):
   });
 
   // SSE endpoint - leave unchanged
-  server.get('/api/v1/runs/stream', async (request, reply) => {
+  server.get('/api/v1/runs/stream', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission('run' as ResourceType, Action.read)) {
+      return reply;
+    }
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

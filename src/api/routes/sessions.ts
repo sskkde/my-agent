@@ -21,6 +21,7 @@ import type { ConsoleTimelineService, TimelineOptions } from '../console-timelin
 import { createConsoleTimelineService } from '../console-timeline.js';
 import type { TimelineBroadcaster, TimelineConnection } from '../timeline-broadcaster.js';
 import { convertInboundEnvelopeToProcessorInput } from '../../processing/message-processor.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 interface CreateSessionBody {
   userId?: string;
@@ -104,6 +105,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.post<{ Body: CreateSessionBody }>(
     '/api/v1/sessions',
     async (request: FastifyRequest<{ Body: CreateSessionBody }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.create)) {
+        return reply;
+      }
       const userId = request.user?.userId ?? 'local-user';
       const sessionId = generateSessionId();
 
@@ -136,6 +140,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.get<{ Querystring: ListSessionsQuery }>(
     '/api/v1/sessions',
     async (request: FastifyRequest<{ Querystring: ListSessionsQuery }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply;
+      }
       const status = request.query.status;
       const limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
       const offset = parseOffset(request.query.offset);
@@ -175,6 +182,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.get<{ Params: { sessionId: string } }>(
     '/api/v1/sessions/:sessionId',
     async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply;
+      }
       const { sessionId } = request.params;
 
       const persistedSession = sessionStore?.getById(sessionId);
@@ -239,6 +249,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.get<{ Params: { sessionId: string } }>(
     '/api/v1/sessions/:sessionId/transcripts',
     async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply;
+      }
       const { sessionId } = request.params;
 
       const persistedSession = sessionStore?.getById(sessionId);
@@ -278,6 +291,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       },
     },
     async (request: FastifyRequest<{ Params: SendMessageParams; Body: SendMessageRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.execute)) {
+        return reply;
+      }
       const { sessionId } = request.params;
       const { text } = request.body;
 
@@ -405,6 +421,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.post<{ Params: { sessionId: string } }>(
     '/api/v1/sessions/:sessionId/resume',
     async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply;
+      }
       const { sessionId } = request.params;
 
       const persistedSession = sessionStore?.getById(sessionId);
@@ -439,6 +458,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.patch<{ Params: { sessionId: string }; Body: PatchSessionBody }>(
     '/api/v1/sessions/:sessionId',
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: PatchSessionBody }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.update)) {
+        return reply;
+      }
       const { sessionId } = request.params;
       const { title, status } = request.body || {};
 
@@ -481,6 +503,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.get<{ Params: { sessionId: string }; Querystring: TimelineQuery }>(
     '/api/v1/sessions/:sessionId/timeline',
     async (request: FastifyRequest<{ Params: { sessionId: string }; Querystring: TimelineQuery }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply;
+      }
       const { sessionId } = request.params;
       const limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
       const offset = parseOffset(request.query.offset);
@@ -527,6 +552,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
   server.get<{ Params: { sessionId: string }; Querystring: { after?: string } }>(
     '/api/v1/sessions/:sessionId/timeline/stream',
     async (request: FastifyRequest<{ Params: { sessionId: string }; Querystring: { after?: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply;
+      }
       const { sessionId } = request.params;
       const { after } = request.query;
       const lastEventId = request.headers['last-event-id'] as string | undefined;
@@ -631,6 +659,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       },
     },
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: SetModelRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.update)) {
+        return reply;
+      }
       const { sessionId } = request.params;
       const { providerId, model } = request.body;
 

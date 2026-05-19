@@ -2,9 +2,13 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ModuleHealth } from '../types.js';
 import type { ApiContext } from '../context.js';
 import { success } from '../response-envelope.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 export function registerStatusRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get('/api/v1/health', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.observability, Action.read)) {
+      return reply;
+    }
     const modules: Record<string, ModuleHealth> = {};
 
     try {
@@ -76,6 +80,9 @@ export function registerStatusRoutes(server: FastifyInstance, context: ApiContex
   });
 
   server.get('/api/v1/health/ready', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.observability, Action.read)) {
+      return reply;
+    }
     try {
       const stores = context.stores;
       const dbHealthy = stores.sessionStore !== undefined;
