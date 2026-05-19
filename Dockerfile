@@ -1,17 +1,17 @@
 # API Server Dockerfile
 FROM node:20-alpine
 
-# Install build dependencies for better-sqlite3
-RUN apk add --no-cache python3 make g++
+# Install build dependencies for better-sqlite3 and curl for healthcheck
+RUN apk add --no-cache python3 make g++ curl
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better layer caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install production dependencies only
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY . .
@@ -30,7 +30,17 @@ EXPOSE 3003
 ENV HOST=0.0.0.0
 ENV PORT=3003
 ENV DATABASE_PATH=/data/agent-platform.db
-ENV NODE_ENV=development
+ENV NODE_ENV=production
+
+# OCI image labels
+LABEL org.opencontainers.image.version="0.7.0-rc.1"
+LABEL org.opencontainers.image.description="Agent Platform API"
+LABEL org.opencontainers.image.title="Agent Platform API"
+LABEL org.opencontainers.image.source="https://github.com/ohmyopencode/agent-platform"
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://127.0.0.1:3003/api/v1/health || exit 1
 
 # Start API server
 ENTRYPOINT ["docker-entrypoint.sh"]
