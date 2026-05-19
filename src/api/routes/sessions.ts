@@ -14,6 +14,8 @@ import type {
   ConsoleTimelineEventType,
   SetModelRequest,
 } from '../types.js';
+import type { CursorPaginatedResponse } from '../pagination/cursor-types.js';
+import { decodeCursor, applyCursorPagination } from '../pagination/cursor-pagination.js';
 import type { Stores } from '../../gateway/types.js';
 import type { SessionStore, Session } from '../../storage/session-store.js';
 import type { ProviderConfigStore } from '../../storage/provider-config-store.js';
@@ -35,6 +37,7 @@ interface ListSessionsQuery {
   status?: 'active' | 'archived' | 'closed';
   limit?: string;
   offset?: string;
+  cursor?: string;
 }
 
 interface PatchSessionBody {
@@ -144,11 +147,19 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply;
       }
       const status = request.query.status;
+      const cursorParam = request.query.cursor;
       const limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT);
-      const offset = parseOffset(request.query.offset);
 
       if (status && !['active', 'archived', 'closed'].includes(status)) {
         return reply.code(400).send(envelopeError('INVALID_STATUS_FILTER', 'Invalid status filter. Must be one of: active, archived, closed', request.requestId));
+      }
+
+      if (cursorParam) {
+        try {
+          decodeCursor(cursorParam);
+        } catch {
+          return reply.code(400).send(envelopeError('INVALID_CURSOR', 'Invalid cursor: unable to decode', request.requestId));
+        }
       }
 
       let sessions: Session[] = [];
@@ -157,16 +168,33 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const userId = request.user?.userId ?? 'local-user';
 
       if (sessionStore) {
-        sessions = sessionStore.list({
-          userId,
-          status,
-          limit,
-          offset,
-        });
+        if (cursorParam) {
+          sessions = sessionStore.list({ userId, status, limit: limit + 1 });
+        } else {
+          const offset = parseOffset(request.query.offset);
+          sessions = sessionStore.list({ userId, status, limit, offset });
+        }
         total = sessionStore.getCount({ userId, status });
       }
 
       const items = sessions.map(sessionToConsoleSessionInfo);
+
+      if (cursorParam) {
+        const cursorPage = applyCursorPagination(
+          items,
+          { cursor: cursorParam, limit },
+          (item: ConsoleSessionInfo) => ({ sessionId: item.sessionId }),
+        );
+        const response: CursorPaginatedResponse<ConsoleSessionInfo> = {
+          items: cursorPage.items,
+          nextCursor: cursorPage.nextCursor,
+          hasMore: cursorPage.hasMore,
+          total,
+        };
+        return reply.code(200).send(success(response, request.requestId));
+      }
+
+      const offset = parseOffset(request.query.offset);
       const response: PaginatedResponse<ConsoleSessionInfo> = {
         items,
         total,
