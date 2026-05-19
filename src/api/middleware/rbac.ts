@@ -106,6 +106,9 @@ export async function registerRbacMiddleware(
     };
 
     request.requirePermission = (resource: ResourceType, action: Action, context?: OwnershipContext): boolean => {
+      if (reply.sent) {
+        return false;
+      }
       if (!role) {
         reply.code(403).send(
           envelopeError('FORBIDDEN', `No role found for request`, request.requestId)

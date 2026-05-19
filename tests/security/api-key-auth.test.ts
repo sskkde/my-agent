@@ -306,11 +306,11 @@ describe('API Key Authentication', () => {
       const afterRevoke = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Authorization': `Bearer ${userApiKey.key}` },
       });
-      // Revoked key results in no role, so RBAC returns 403 FORBIDDEN
-      expect(afterRevoke.status).toBe(403);
+      // Revoked key is invalid, return 401 UNAUTHORIZED
+      expect(afterRevoke.status).toBe(401);
       const body = await afterRevoke.json() as { ok: boolean; error: { code: string } };
       expect(body.ok).toBe(false);
-      expect(body.error.code).toBe('FORBIDDEN');
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
 
     it('should return 404 when revoking non-existent key', async () => {
@@ -355,15 +355,15 @@ describe('API Key Authentication', () => {
       expect(body.requestId).toBeDefined();
     });
 
-    it('should return 403 for non-existent API key (no role found)', async () => {
+    it('should return 401 for non-existent API key', async () => {
       const response = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Authorization': 'Bearer ak_nonexistentkey123456789' },
       });
-      // Non-existent key results in no role, so RBAC returns 403 FORBIDDEN
-      expect(response.status).toBe(403);
+      // Non-existent key is invalid, return 401 UNAUTHORIZED
+      expect(response.status).toBe(401);
       const body = await response.json() as { ok: boolean; error: { code: string } };
       expect(body.ok).toBe(false);
-      expect(body.error.code).toBe('FORBIDDEN');
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
 
     it('should return 401 for malformed Bearer header', async () => {
@@ -381,7 +381,7 @@ describe('API Key Authentication', () => {
       expect(body.error.code).toBe('UNAUTHORIZED');
     });
 
-    it('should return 403 for expired API key (no role found)', async () => {
+    it('should return 401 for expired API key', async () => {
       // Create user and get cookie
       const { cookie } = await createUserAndLogin('testuser', 'password123');
 
@@ -393,11 +393,11 @@ describe('API Key Authentication', () => {
       const response = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Authorization': `Bearer ${apiKey.key}` },
       });
-      // Expired key results in no role, so RBAC returns 403 FORBIDDEN
-      expect(response.status).toBe(403);
+      // Expired key is invalid, return 401 UNAUTHORIZED
+      expect(response.status).toBe(401);
       const body = await response.json() as { ok: boolean; error: { code: string } };
       expect(body.ok).toBe(false);
-      expect(body.error.code).toBe('FORBIDDEN');
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
 
     it('should return 401 for empty Bearer token', async () => {
@@ -411,8 +411,8 @@ describe('API Key Authentication', () => {
       const response = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { 'Authorization': 'Bearer ak_invalid' },
       });
-      // Invalid key results in no role, so RBAC returns 403 FORBIDDEN
-      expect(response.status).toBe(403);
+      // Invalid key returns 401 UNAUTHORIZED
+      expect(response.status).toBe(401);
       const body = await response.json() as { ok: boolean; error: { code: string; message: string }; requestId: string };
       
       // Verify error envelope structure
@@ -422,6 +422,7 @@ describe('API Key Authentication', () => {
       expect(body.ok).toBe(false);
       expect(body.error).toHaveProperty('code');
       expect(body.error).toHaveProperty('message');
+      expect(body.error.code).toBe('UNAUTHORIZED');
       expect(typeof body.requestId).toBe('string');
       expect(body.requestId.length).toBeGreaterThan(0);
     });
