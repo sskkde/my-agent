@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import { success, envelopeError } from '../response-envelope.js';
 import type { ConnectorType } from '../../storage/connector-store.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const ALL_CONNECTOR_TYPES: ConnectorType[] = ['api', 'messaging', 'storage', 'database', 'custom'];
 
@@ -16,6 +17,9 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
   server.get(
     '/api/v1/connectors',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.connectors, Action.read)) {
+        return reply;
+      }
       if (!request.user?.userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
@@ -32,6 +36,9 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
   server.get<{ Params: { id: string } }>(
     '/api/v1/connectors/:id',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.connectors, Action.read)) {
+        return reply;
+      }
       if (!request.user?.userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }
@@ -51,6 +58,9 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
   server.get<{ Params: { id: string } }>(
     '/api/v1/connectors/:id/instances',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.connectors, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -73,6 +83,9 @@ export function registerConnectorRoutes(server: FastifyInstance, context: ApiCon
   server.patch<{ Params: { id: string; iid: string }; Body: UpdateInstanceConfigRequest }>(
     '/api/v1/connectors/:id/instances/:iid/config',
     async (request: FastifyRequest<{ Params: { id: string; iid: string }; Body: UpdateInstanceConfigRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.connectors, Action.update)) {
+        return reply;
+      }
       if (!request.user?.userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
       }

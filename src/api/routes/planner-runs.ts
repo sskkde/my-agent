@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import type { EventRecord } from '../../storage/event-store.js';
 import { success, envelopeError } from '../response-envelope.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const SENSITIVE_KEY_PATTERNS = /^(apiKey|secret|password|token|key)$/i;
 
@@ -50,6 +51,9 @@ export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiCo
   server.get<{ Params: { plannerRunId: string } }>(
     '/api/v1/planner-runs/:plannerRunId/events',
     async (request: FastifyRequest<{ Params: { plannerRunId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission('run' as ResourceType, Action.read)) {
+        return reply;
+      }
       const { plannerRunId } = request.params;
 
       const run = context.stores.plannerRunStore.getById(plannerRunId);
@@ -71,6 +75,9 @@ export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiCo
   server.get<{ Params: { plannerRunId: string } }>(
     '/api/v1/planner-runs/:plannerRunId/summary',
     async (request: FastifyRequest<{ Params: { plannerRunId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission('run' as ResourceType, Action.read)) {
+        return reply;
+      }
       const { plannerRunId } = request.params;
 
       const run = context.stores.plannerRunStore.getById(plannerRunId);

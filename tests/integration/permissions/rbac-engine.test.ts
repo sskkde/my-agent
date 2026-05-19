@@ -208,8 +208,8 @@ describe('RBAC Engine', () => {
 
     it('should return user permissions', () => {
       const permissions = getRolePermissions('user');
-      // sessions(4) + workflows(4) + triggers(4) + memory(4) + connectors(read) + observability(read) + apiKeys(read,create,delete) = 21
-      expect(permissions).toHaveLength(21);
+      // sessions(4) + workflows(4) + triggers(4) + memory(4) + connectors(read) + observability(read) + apiKeys(read,create,delete) + approval(read,update) + run(read) + provider(read) + toolResult(read) = 26
+      expect(permissions).toHaveLength(26);
     });
 
     it('should return service permissions', () => {

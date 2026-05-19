@@ -4,6 +4,7 @@ import { success, envelopeError } from '../response-envelope.js';
 import { memoryIdParamsSchema } from '../schemas/shared.js';
 import type { MemoryType } from '../../storage/long-term-memory-store.js';
 import { createLongTermMemoryRecallService } from '../../memory/long-term-memory-recall.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 interface ListMemoriesQuery {
   query?: string;
@@ -53,6 +54,9 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
   server.get<{ Querystring: ExtractionRunsQuery }>(
     '/api/v1/memory/debug/extraction-runs',
     async (request: FastifyRequest<{ Querystring: ExtractionRunsQuery }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.memory, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId ?? 'local-user';
       let limit: number;
       
@@ -112,6 +116,9 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       },
     },
     async (request: FastifyRequest<{ Body: DebugExtractBody }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.memory, Action.execute)) {
+        return reply;
+      }
       const userId = request.user?.userId ?? 'local-user';
       const { sessionId, turnId } = request.body;
 
@@ -153,6 +160,9 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
   server.get<{ Querystring: ListMemoriesQuery }>(
     '/api/v1/memory',
     async (request: FastifyRequest<{ Querystring: ListMemoriesQuery }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.memory, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId ?? 'local-user';
       const { query, type } = request.query;
 
@@ -196,6 +206,9 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       },
     },
     async (request: FastifyRequest<{ Params: MemoryParams }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.memory, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId ?? 'local-user';
       const { memoryId } = request.params;
 
@@ -220,6 +233,9 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       },
     },
     async (request: FastifyRequest<{ Params: MemoryParams }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.memory, Action.delete)) {
+        return reply;
+      }
       const userId = request.user?.userId ?? 'local-user';
       const { memoryId } = request.params;
 

@@ -9,6 +9,7 @@ import type {
   ValidationIssue,
 } from '../../workflows/types.js';
 import type { WorkflowRun, WorkflowStepRun } from '../../storage/workflow-run-store.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 interface CreateDraftRequest {
   name: string;
@@ -153,6 +154,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
   server.get(
     '/api/v1/workflows/drafts',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -174,6 +178,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -211,6 +218,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Body: CreateDraftRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.create)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -251,6 +261,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { draftId: string }; Body: UpdateDraftRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.update)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -309,6 +322,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -349,6 +365,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.update)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -387,6 +406,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { draftId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.delete)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -421,6 +443,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
   server.get(
     '/api/v1/workflows/definitions',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -442,6 +467,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { workflowId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -478,6 +506,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Body: StartRunRequest & { definitionId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.execute)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -530,6 +561,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { workflowRunId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -556,6 +590,9 @@ export function registerWorkflowRoutes(server: FastifyInstance, context: ApiCont
   server.get(
     '/api/v1/workflows/runs',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.workflows, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));

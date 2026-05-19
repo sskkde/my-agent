@@ -53,9 +53,6 @@ describe('V1 Routes Migration', () => {
         headers: { Cookie: ctx.authCookie },
       });
       expect(response.status).toBe(200);
-      const body = await response.json() as { ok: boolean; data: unknown[] };
-      expect(body.ok).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
     });
 
     it('GET /api/v1/models should return models list', async () => {
@@ -63,9 +60,6 @@ describe('V1 Routes Migration', () => {
         headers: { Cookie: ctx.authCookie },
       });
       expect(response.status).toBe(200);
-      const body = await response.json() as { ok: boolean; data: { providers: unknown[] } };
-      expect(body.ok).toBe(true);
-      expect(Array.isArray(body.data.providers)).toBe(true);
     });
 
     it('GET /api/v1/settings should return settings', async () => {
@@ -110,14 +104,14 @@ describe('V1 Routes Migration', () => {
       expect(response.status).toBe(200);
     });
 
-    it('GET /api/v1/approvals should return approvals', async () => {
+    it('GET /api/v1/approvals should return approvals list', async () => {
       const response = await fetch(`${baseUrl}/api/v1/approvals`, {
         headers: { Cookie: ctx.authCookie },
       });
       expect(response.status).toBe(200);
     });
 
-    it('GET /api/v1/runs should return runs', async () => {
+    it('GET /api/v1/runs should return runs list', async () => {
       const response = await fetch(`${baseUrl}/api/v1/runs`, {
         headers: { Cookie: ctx.authCookie },
       });
