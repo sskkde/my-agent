@@ -17,6 +17,7 @@
     "test:phase4": "vitest run tests/unit/dead-letter/ tests/integration/dead-letter/ tests/integration/api/connectors-api.test.ts tests/integration/observability/ tests/architecture/workflow-trigger-connector-contract.test.ts tests/architecture/replay-preview-safety-contract.test.ts tests/e2e/flow-16-automation-beta-demo.test.ts",
     "test:p5": "tsx scripts/check-p5.ts",
     "test:p6": "tsx scripts/check-p6.ts",
+    "test:p7": "tsx scripts/check-p7.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
