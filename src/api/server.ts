@@ -37,6 +37,7 @@ import { registerAuthToken } from './middleware/auth-token.js';
 import { registerRequestIdMiddleware } from './middleware/request-id.js';
 import { registerRateLimitMiddleware } from './middleware/rate-limit.js';
 import { registerRbacMiddleware } from './middleware/rbac.js';
+import { registerSecurityHeaders } from './middleware/security-headers.js';
 import { createApiContext, type ApiContext } from './context.js';
 import { createLegacyRedirect, ROUTE_MAP } from './v1-prefix.js';
 
@@ -53,13 +54,15 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
 
   await server.register(compress, { global: true, threshold: 0 });
 
+  await registerSecurityHeaders(server);
+
   // Register Swagger/OpenAPI documentation
   await server.register(swagger, {
     openapi: {
       info: {
         title: 'Agent Platform API',
         description: 'Agent Platform Product Experience API - A multi-agent platform for task orchestration and execution with LLM providers, background task processing, workflows, triggers, and connectors.',
-        version: 'v0.5.0',
+        version: '0.7.0-rc.1',
       },
       servers: [
         { url: 'http://localhost:3003', description: 'Development' },
