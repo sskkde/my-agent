@@ -51,7 +51,7 @@ console.log('\n✅ Integration tests PASSED');
 
 console.log('\n[6/8] Security Tests');
 console.log('-'.repeat(60));
-const securityResult = spawnSync('npm', ['test', '--', 'tests/security/'], { stdio: 'inherit', shell: true });
+const securityResult = spawnSync('npm', ['run', 'test:unit', '--', 'tests/security/'], { stdio: 'inherit', shell: true });
 if (securityResult.status !== 0) {
   console.error('\n❌ Security tests FAILED');
   process.exit(securityResult.status ?? 1);
@@ -60,7 +60,7 @@ console.log('\n✅ Security tests PASSED');
 
 console.log('\n[7/8] Performance Tests');
 console.log('-'.repeat(60));
-const perfResult = spawnSync('npm', ['test', '--', 'tests/performance/'], { stdio: 'inherit', shell: true });
+const perfResult = spawnSync('npm', ['run', 'test:unit', '--', 'tests/performance/'], { stdio: 'inherit', shell: true });
 if (perfResult.status !== 0) {
   console.error('\n❌ Performance tests FAILED');
   process.exit(perfResult.status ?? 1);

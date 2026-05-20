@@ -43,10 +43,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --include=dev
       
       - name: Run security tests
-        run: node_modules/.bin/vitest run tests/security/
+        run: npm run test:unit -- tests/security/
 
   performance-tests:
     runs-on: ubuntu-latest
@@ -63,10 +63,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --include=dev
       
       - name: Run performance tests
-        run: node_modules/.bin/vitest run tests/performance/
+        run: npm run test:unit -- tests/performance/
 
   test:
     runs-on: ubuntu-latest
@@ -83,13 +83,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci
-      
-      - name: Debug - check tsx and vitest
-        run: ls node_modules/.bin/tsx node_modules/.bin/vitest 2>&1 || true
+        run: npm ci --include=dev
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci
+        run: npm --prefix web ci --include=dev
       
       - name: Run P7 verification suite
         run: npm run test:p7
@@ -97,7 +94,6 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     needs: [test]
-    # Conditional: only run if Docker is available
     if: ${{ vars.DOCKER_ENABLED == 'true' || github.event_name == 'push' }}
     steps:
       - uses: actions/checkout@v4
@@ -132,10 +128,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --include=dev
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci
+        run: npm --prefix web ci --include=dev
       
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
