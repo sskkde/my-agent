@@ -44,16 +44,18 @@ function parseCookies(cookieHeader: string | undefined): Record<string, string> 
 
 export function setSessionCookie(reply: FastifyReply, token: string): void {
   const maxAge = 24 * 60 * 60;
+  const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   reply.header(
     'Set-Cookie',
-    `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`
+    `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secureFlag}`
   );
 }
 
 export function clearSessionCookie(reply: FastifyReply): void {
+  const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   reply.header(
     'Set-Cookie',
-    `${SESSION_COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`
+    `${SESSION_COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`
   );
 }
 

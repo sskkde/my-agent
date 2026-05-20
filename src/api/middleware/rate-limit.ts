@@ -12,17 +12,57 @@ export interface RateLimitMiddlewareOptions {
 
 const SSE_TIMELINE_STREAM = '/timeline/stream';
 const SSE_RUNS_STREAM = '/api/runs/stream';
+const SSE_RUNS_STREAM_V1 = '/api/v1/runs/stream';
 const SSE_SESSIONS_PREFIX = '/api/sessions/';
+const SSE_SESSIONS_PREFIX_V1 = '/api/v1/sessions/';
 
 function isSseEndpoint(url: string): boolean {
-  if (url === SSE_RUNS_STREAM || url.startsWith(SSE_RUNS_STREAM)) {
+  if (url === SSE_RUNS_STREAM || url.startsWith(SSE_RUNS_STREAM) ||
+      url === SSE_RUNS_STREAM_V1 || url.startsWith(SSE_RUNS_STREAM_V1)) {
     return true;
   }
-  return url.startsWith(SSE_SESSIONS_PREFIX) && url.includes(SSE_TIMELINE_STREAM);
+  if ((url.startsWith(SSE_SESSIONS_PREFIX) || url.startsWith(SSE_SESSIONS_PREFIX_V1)) &&
+      url.includes(SSE_TIMELINE_STREAM)) {
+    return true;
+  }
+  return false;
 }
 
 function isAuthEndpoint(url: string): boolean {
   return url.startsWith('/api/v1/auth/login') || url.startsWith('/api/auth/login');
+}
+
+/**
+ * Check if TRUST_PROXY is enabled.
+ * When enabled, the rate limiter will use X-Forwarded-For header for client IP.
+ */
+function isTrustProxyEnabled(): boolean {
+  const trustProxy = process.env.TRUST_PROXY;
+  if (!trustProxy) return false;
+  // Accept 'true', '1', 'yes' (case-insensitive) as truthy values
+  const normalized = trustProxy.toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes';
+}
+
+/**
+ * Extract client IP for rate limiting.
+ * - If TRUST_PROXY is set, use X-Forwarded-For header (first IP in chain)
+ * - Otherwise, use the socket's remote address
+ */
+function getClientIp(request: FastifyRequest): string {
+  if (isTrustProxyEnabled()) {
+    const forwardedFor = request.headers['x-forwarded-for'];
+    if (typeof forwardedFor === 'string' && forwardedFor.length > 0) {
+      // X-Forwarded-For may contain multiple IPs: client, proxy1, proxy2, ...
+      // The first IP is the original client
+      const ips = forwardedFor.split(',').map(ip => ip.trim());
+      if (ips.length > 0 && ips[0].length > 0) {
+        return ips[0];
+      }
+    }
+  }
+  // Fallback to socket remote address
+  return request.ip || request.socket.remoteAddress || 'unknown';
 }
 
 /**
@@ -31,6 +71,10 @@ function isAuthEndpoint(url: string): boolean {
  * Global limit: 100 requests/minute per IP.
  * Auth login endpoint: 5 requests/minute per IP.
  * SSE endpoints (/api/sessions/* /timeline/stream, /api/runs/stream): exempt.
+ *
+ * Production behavior:
+ * - Localhost (127.0.0.1, ::1) is NOT exempt in production
+ * - TRUST_PROXY env var enables X-Forwarded-For support for client IP detection
  */
 export async function registerRateLimitMiddleware(
   server: FastifyInstance,
@@ -39,6 +83,7 @@ export async function registerRateLimitMiddleware(
   const globalMax = options?.globalMax ?? 100;
   const authMax = options?.authMax ?? 5;
   const timeWindow = options?.timeWindow ?? '1 minute';
+  const isProduction = process.env.NODE_ENV === 'production';
 
   await server.register(rateLimit, {
     global: true,
@@ -49,12 +94,18 @@ export async function registerRateLimitMiddleware(
       }
       return globalMax;
     },
+    // Custom key generator for TRUST_PROXY support
+    keyGenerator: (request: FastifyRequest) => getClientIp(request),
     allowList: (request: FastifyRequest, key: string | number) => {
+      // SSE endpoints are always exempt
       if (isSseEndpoint(request.url)) {
         return true;
       }
-      if (key === '127.0.0.1' || key === '::1') {
-        return true;
+      // Localhost exemption only in non-production environments
+      if (!isProduction) {
+        if (key === '127.0.0.1' || key === '::1') {
+          return true;
+        }
       }
       return false;
     },

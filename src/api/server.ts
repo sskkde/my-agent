@@ -38,19 +38,17 @@ import { registerRequestIdMiddleware } from './middleware/request-id.js';
 import { registerRateLimitMiddleware } from './middleware/rate-limit.js';
 import { registerRbacMiddleware } from './middleware/rbac.js';
 import { registerSecurityHeaders } from './middleware/security-headers.js';
+import { getCorsOrigin } from './middleware/cors-production.js';
 import { createApiContext, type ApiContext } from './context.js';
 import { createLegacyRedirect, ROUTE_MAP } from './v1-prefix.js';
+import { checkProductionConfig } from '../config/production-guard.js';
 
 export async function createApiServer(context?: ApiContext): Promise<FastifyInstance> {
   const server = Fastify({
     logger: true
   });
 
-  await server.register(cors, {
-    origin: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  });
+  await server.register(cors, getCorsOrigin());
 
   await server.register(compress, { global: true, threshold: 0 });
 
@@ -102,57 +100,25 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
       excludedPaths: [
         '/api/health',
         '/api/health/ready',
+        '/api/docs',
+        '/api/docs/json',
         '/api/setup/status',
         '/api/setup/user',
         '/api/auth/login',
         '/api/auth/logout',
         '/api/tools',
         '/api/webhooks/*',
-        '/api/docs',
-        '/api/docs/*',
-        '/api/sessions',
-        '/api/sessions/*',
-        '/api/approvals',
-        '/api/approvals/*',
-        '/api/runs',
-        '/api/runs/*',
-        '/api/usage',
-        '/api/logs',
-        '/api/logs/*',
-        '/api/debug/*',
-        '/api/instances',
-        '/api/instances/*',
-        '/api/channels',
-        '/api/skills',
-        '/api/skills/*',
-        '/api/settings',
-        '/api/providers',
-        '/api/providers/*',
-        '/api/models',
-        '/api/agents/*',
-        '/api/memory',
-        '/api/memory/*',
-        '/api/workflows/*',
-        '/api/tool-results/*',
-        '/api/triggers/*',
-        '/api/webhooks/*',
-        '/api/connectors',
-        '/api/connectors/*',
-        '/api/planner-runs',
-        '/api/planner-runs/*',
-        '/api/observability/*',
-        '/api/tags',
         '/api/metrics',
         '/api/v1/health',
         '/api/v1/health/ready',
+        '/api/v1/docs',
+        '/api/v1/docs/json',
         '/api/v1/setup/status',
         '/api/v1/setup/user',
         '/api/v1/auth/login',
         '/api/v1/auth/logout',
         '/api/v1/tools',
         '/api/v1/webhooks/*',
-        '/api/v1/docs',
-        '/api/v1/docs/*',
         '/api/v1/metrics',
       ],
     });
@@ -313,6 +279,15 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}` ||
 if (isMainModule) {
   const start = async () => {
     try {
+      const productionGuard = checkProductionConfig();
+      if (!productionGuard.ok) {
+        console.error('Production configuration check FAILED:');
+        for (const err of productionGuard.errors) {
+          console.error(`  - ${err}`);
+        }
+        process.exit(1);
+      }
+
       const dbPath = process.env.DATABASE_PATH || './data/agent-platform.db';
       const contextResult = createApiContext({ dbPath });
       if ('code' in contextResult) {

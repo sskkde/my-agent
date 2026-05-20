@@ -19,6 +19,7 @@
     "test:p6": "tsx scripts/check-p6.ts",
     "test:p7": "tsx scripts/check-p7.ts",
     "test:security": "vitest run tests/security",
+    "test:prod-config": "vitest run tests/security/production-config-guard.test.ts --reporter=verbose",
     "test:performance": "vitest run tests/performance",
     "test:docker": "tsx scripts/check-docker-smoke.ts",
     "typecheck": "tsc --noEmit",
