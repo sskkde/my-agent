@@ -1,7 +1,7 @@
 # Architecture Test Matrix
 
 > **Purpose**: P0 requirements-to-test coverage mapping — maps golden paths to 5 test levels with specific test file references.
-> **Status**: Live, reflects current test infrastructure as of 2026-05-16 (Phase 6 complete)
+> **Status**: Live, reflects current test infrastructure as of 2026-05-20 (Phase 7 RC complete)
 > **References**: `ARCHITECTURE_GAP_REPORT.md`, `.sisyphus/plans/p0-audit-report.md`, `docs/architecture/P0_SCOPE.md`
 
 ---
@@ -245,6 +245,22 @@ All test files referenced in this matrix (sorted by directory):
 | `web/src/features/` | `triggers/TriggerCreateDialog.test.tsx` | 39 |
 | `web/src/features/` | `dlq/DLQTab.test.tsx` | 40 |
 | `web/src/features/` | `memory/MemoryTab.test.tsx` | 41 |
+
+## P7 Release Gate Coverage
+
+| # | P7 Gate | Unit | Integration | E2E | Status |
+|---|---------|------|-------------|-----|--------|
+| 1 | Security Headers | - | ✅ tests/integration/api/security-headers.test.ts | - | ✅ |
+| 2 | API Key Auth | - | ✅ tests/security/api-key-auth.test.ts | - | ✅ |
+| 3 | SSRF Protection | ✅ tests/unit/tools/web-safety.test.ts | - | - | ✅ |
+| 4 | RBAC Full Coverage | - | ✅ tests/integration/api/rbac-integration.test.ts | - | ✅ |
+| 5 | Response Envelope | - | ✅ tests/integration/api/response-envelope-contract.test.ts | - | ✅ |
+| 6 | Error Format | - | ✅ tests/integration/api/error-format-contract.test.ts | - | ✅ |
+| 7 | Pagination | - | ✅ tests/integration/api/api-contract.test.ts | - | ✅ |
+| 8 | Rate Limiting | - | ✅ tests/integration/api/rate-limit.test.ts | - | ✅ |
+| 9 | Performance Baseline | - | ✅ tests/performance/api-latency-smoke.test.ts | - | ✅ |
+| 10 | Docker Production | - | ✅ scripts/check-docker-smoke.ts | - | ⚠️ Manual |
+| 11 | Backup/Restore | - | ✅ scripts/check-backup-restore.ts | - | ⚠️ Manual |
 
 ---
 
