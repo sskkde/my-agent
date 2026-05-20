@@ -19,6 +19,7 @@
     "test:p6": "tsx scripts/check-p6.ts",
     "test:p7": "tsx scripts/check-p7.ts",
     "test:security": "vitest run tests/security",
+    "test:tenancy": "vitest run tests/integration/tenancy/",
     "test:postgres": "vitest run tests/integration/postgres/",
     "test:prod-config": "vitest run tests/security/production-config-guard.test.ts --reporter=verbose",
     "test:performance": "vitest run tests/performance",

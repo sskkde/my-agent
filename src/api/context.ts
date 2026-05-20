@@ -65,6 +65,7 @@ import type { AuditRecorder } from '../observability/audit-types.js';
 import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead-letter-store.js';
 import type { DatabaseAdapter } from '../storage/database-adapter.js';
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js';
+import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -108,6 +109,7 @@ export interface ApiContext {
     connectorStore: ConnectorStore;
     deadLetterStore: DeadLetterStore;
     apiKeyStore: ApiKeyStore;
+    organizationStore: OrganizationStore;
   };
   providerConfigStore: ProviderConfigStore;
   agentConfigStore: AgentConfigStore;
@@ -267,6 +269,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let artifactStore: ArtifactStore;
   let deadLetterStore: DeadLetterStore;
   let apiKeyStore: ApiKeyStore;
+  let organizationStore: OrganizationStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -300,6 +303,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     artifactStore = (existingStores as Record<string, unknown>)?.artifactStore as ArtifactStore ?? createArtifactStore(connection);
     deadLetterStore = (existingStores as Record<string, unknown>)?.deadLetterStore as DeadLetterStore ?? createDeadLetterStore(connection);
     apiKeyStore = (existingStores as Record<string, unknown>)?.apiKeyStore as ApiKeyStore ?? createApiKeyStore(connection);
+    organizationStore = (existingStores as Record<string, unknown>)?.organizationStore as OrganizationStore ?? createOrganizationStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -608,6 +612,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       connectorStore,
       deadLetterStore,
       apiKeyStore,
+      organizationStore,
     },
     providerConfigStore,
     agentConfigStore,

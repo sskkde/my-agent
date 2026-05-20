@@ -103,18 +103,46 @@ class MigrationRunnerImpl implements MigrationRunner {
     for (const statement of statements) {
       try {
         this.connection.exec(statement);
+
+        // After a CREATE TABLE, ensure tenant_id column exists
+        const upperStatement = statement.trim().toUpperCase();
+        if (upperStatement.startsWith('CREATE TABLE')) {
+          const tableMatch = statement.trim().match(
+            /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?['"]?(\w+)['"]?/i
+          );
+          if (tableMatch) {
+            const tableName = tableMatch[1]!;
+            this.ensureTenantIdColumn(tableName);
+          }
+        }
       } catch (err) {
-        // Gracefully handle "duplicate column name" errors for ALTER TABLE ADD COLUMN.
-        // This allows idempotent migrations where a column may already exist
-        // (e.g., from a modified CREATE TABLE in an earlier migration).
         const message = err instanceof Error ? err.message : String(err);
         if (
           statement.trim().toUpperCase().startsWith('ALTER TABLE') &&
           statement.trim().toUpperCase().includes('ADD COLUMN') &&
           (message.includes('duplicate column name') || message.includes('already exists'))
         ) {
-          // Skip - column already exists, this is fine
           continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  private ensureTenantIdColumn(tableName: string): void {
+    const columns = this.connection.query<{ name: string }>(
+      `PRAGMA table_info('${tableName}')`
+    );
+    const hasTenantId = columns.some(c => c.name === 'tenant_id');
+    if (!hasTenantId) {
+      try {
+        this.connection.exec(
+          `ALTER TABLE "${tableName}" ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default'`
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('duplicate column name') || message.includes('already exists')) {
+          return;
         }
         throw err;
       }

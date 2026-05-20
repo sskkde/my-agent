@@ -14,6 +14,7 @@ export enum ResourceType {
   run = 'run',
   provider = 'provider',
   toolResult = 'tool-result',
+  organizations = 'organizations',
 }
 
 export enum Action {
@@ -75,6 +76,8 @@ function generateUserPermissions(): Permission[] {
   permissions.push({ resource: ResourceType.run, action: Action.read });
   permissions.push({ resource: ResourceType.provider, action: Action.read });
   permissions.push({ resource: ResourceType.toolResult, action: Action.read });
+  
+  permissions.push({ resource: ResourceType.organizations, action: Action.read });
   
   return permissions;
 }

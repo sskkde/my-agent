@@ -116,8 +116,8 @@ describe('Mock Connectors Integration', () => {
             payload TEXT NOT NULL,
             sensitivity TEXT NOT NULL,
             retention_class TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-          tenant_id TEXT NOT NULL DEFAULT 'org_default'
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
+            created_at TEXT NOT NULL
           );
         `,
         down: `DROP TABLE IF EXISTS events;`,
@@ -148,6 +148,7 @@ describe('Mock Connectors Integration', () => {
             idempotency_key TEXT UNIQUE,
             metadata TEXT,
             source_context TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );
@@ -170,6 +171,7 @@ describe('Mock Connectors Integration', () => {
             source_context TEXT,
             revoked_at TEXT,
             revoked_reason TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );

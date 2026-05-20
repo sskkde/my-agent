@@ -172,6 +172,7 @@ const asyncIntegrationMigrations: Migration[] = [
         satisfied_by TEXT,
         result_data TEXT,
         metadata TEXT,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
