@@ -46,7 +46,7 @@ jobs:
         run: npm ci
       
       - name: Run security tests
-        run: npx vitest run tests/security/
+        run: npm test -- tests/security/
 
   performance-tests:
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
         run: npm ci
       
       - name: Run performance tests
-        run: npx vitest run tests/performance/
+        run: npm test -- tests/performance/
 
   test:
     runs-on: ubuntu-latest
