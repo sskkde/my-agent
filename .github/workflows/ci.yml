@@ -43,10 +43,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm ci
       
       - name: Run security tests
-        run: npx --no-install vitest run tests/security/
+        run: npx vitest run tests/security/
 
   performance-tests:
     runs-on: ubuntu-latest
@@ -63,17 +63,16 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm ci
       
       - name: Run performance tests
-        run: npx --no-install vitest run tests/performance/
+        run: npx vitest run tests/performance/
 
   test:
     runs-on: ubuntu-latest
     env:
       WEB_SEARCH_BACKEND: none
       NODE_ENV: test
-      NPM_CONFIG_INCLUDE: dev
     steps:
       - uses: actions/checkout@v4
       
@@ -84,10 +83,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm ci
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci --include=dev
+        run: npm --prefix web ci
       
       - name: Run P7 verification suite
         run: npm run test:p7
@@ -118,7 +117,6 @@ jobs:
     env:
       WEB_SEARCH_BACKEND: none
       NODE_ENV: test
-      NPM_CONFIG_INCLUDE: dev
       DATABASE_PATH: ./data/e2e.db
       PORT: 3103
     steps:
@@ -131,10 +129,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm ci
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci --include=dev
+        run: npm --prefix web ci
       
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
