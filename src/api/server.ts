@@ -32,6 +32,7 @@ import { registerPlannerRunRoutes } from './routes/planner-runs.js';
 import { registerObservabilityRoutes } from './routes/observability.js';
 import { registerApiKeyRoutes } from './routes/api-keys.js';
 import { registerOrganizationRoutes } from './routes/organizations.js';
+import { registerOAuthRoutes } from './routes/oauth.js';
 import { registerApiKeyAuth } from './middleware/api-key-auth.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
 import { registerAuthToken } from './middleware/auth-token.js';
@@ -155,6 +156,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerObservabilityRoutes(server, context);
     registerApiKeyRoutes(server, context);
     registerOrganizationRoutes(server, context);
+    registerOAuthRoutes(server, context);
 
     // Register legacy 301 redirects for all old /api/ paths → /api/v1/
     for (const [legacyPath, v1Path] of Object.entries(ROUTE_MAP)) {
