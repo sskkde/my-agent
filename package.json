@@ -19,6 +19,7 @@
     "test:p6": "tsx scripts/check-p6.ts",
     "test:p7": "tsx scripts/check-p7.ts",
     "test:security": "vitest run tests/security",
+    "test:postgres": "vitest run tests/integration/postgres/",
     "test:prod-config": "vitest run tests/security/production-config-guard.test.ts --reporter=verbose",
     "test:performance": "vitest run tests/performance",
     "test:docker": "tsx scripts/check-docker-smoke.ts",
@@ -51,6 +52,7 @@
     "@playwright/test": "^1.59.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.19.39",
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.59.4",
     "@typescript-eslint/parser": "^8.59.4",
     "eslint": "^9.39.4",
@@ -72,6 +74,7 @@
     "fastify": "^5.8.5"
   },
   "optionalDependencies": {
+    "pg": "^8.21.0",
     "playwright": "^1.59.1"
   }
 }

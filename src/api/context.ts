@@ -63,6 +63,7 @@ import { createAuditRecorder } from '../observability/audit-recorder.js';
 import { createAuditStore } from '../observability/audit-store.js';
 import type { AuditRecorder } from '../observability/audit-types.js';
 import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead-letter-store.js';
+import type { DatabaseAdapter } from '../storage/database-adapter.js';
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js';
 
 export interface ApiContext {
@@ -113,6 +114,8 @@ export interface ApiContext {
   refreshProvidersForUser: (userId: string) => void;
   runWithProvidersForUser: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>;
   connection: ConnectionManager;
+  /** Optional PostgreSQL adapter — only set when using PostgreSQL mode */
+  postgresAdapter?: DatabaseAdapter;
   consoleTimelineService: ConsoleTimelineService;
   timelineBroadcaster: TimelineBroadcaster;
   memoryExtractionScheduler?: LongTermMemoryScheduler;
