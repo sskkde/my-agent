@@ -32,7 +32,7 @@ export function createLegacyRedirect(
         redirectPath = redirectPath.replace(`:${key}`, value);
       }
       
-      return reply.redirect(redirectPath, 301);
+      return reply.redirect(redirectPath, 307);
     },
   };
 }

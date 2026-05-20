@@ -81,8 +81,7 @@ describe('ConnectorsTab', () => {
     );
 
     render(<ConnectorsTab />);
-    expect(screen.getByTestId('connectors-loading')).toBeInTheDocument();
-    expect(screen.getByText('加载中...')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('shows error state on API failure', async () => {

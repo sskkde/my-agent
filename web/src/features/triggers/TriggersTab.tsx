@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import * as triggersApi from '../../api/triggers';
 import type { TriggerResponse, TriggerLogEntry } from '../../api/types';
 import TriggerCreateDialog from './TriggerCreateDialog';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 const TriggersTab: React.FC = () => {
   const [triggers, setTriggers] = useState<TriggerResponse[]>([]);
@@ -80,7 +81,7 @@ const TriggersTab: React.FC = () => {
   if (loading) {
     return (
       <div data-testid="triggers-panel" className="triggers-panel">
-        <div className="loading" data-testid="triggers-loading">加载中...</div>
+        <LoadingSpinner label="加载触发器列表..." />
       </div>
     );
   }
@@ -198,7 +199,7 @@ const TriggersTab: React.FC = () => {
           <section className="trigger-logs-section">
             <h4>最近执行日志</h4>
             {logsLoading ? (
-              <div className="loading">加载日志中...</div>
+              <LoadingSpinner size="small" label="加载日志..." />
             ) : logs.length === 0 ? (
               <p className="empty-state">暂无执行日志</p>
             ) : (

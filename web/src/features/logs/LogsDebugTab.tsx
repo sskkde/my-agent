@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { LogEntry, DebugReplayResponse } from '../../api/types';
 import { getLogs, getDebugReplay } from '../../api/client';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface FiltersState {
   sessionId: string;
@@ -257,7 +258,7 @@ const fetchLogs = useCallback(async () => {
 
       <div className="logs-debug-list" data-testid="logs-list">
         {isLoading && logs.length === 0 ? (
-          <div className="logs-debug-loading">加载中...</div>
+          <LoadingSpinner size="small" label="加载日志..." />
         ) : logs.length === 0 ? (
           <div className="logs-debug-empty">暂无日志记录</div>
         ) : (

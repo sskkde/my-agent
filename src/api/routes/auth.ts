@@ -4,6 +4,7 @@ import { success, envelopeError } from '../response-envelope.js';
 import type { AuthSuccessResponse, LoginRequest } from '../types.js';
 import { verifyPassword, generateSessionToken, hashToken } from '../../storage/auth-crypto.js';
 import { setSessionCookie, clearSessionCookie, getSessionTokenFromRequest } from '../middleware/auth.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const SESSION_TTL_HOURS = 24;
 
@@ -26,6 +27,9 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
       },
     },
     async (request: FastifyRequest<{ Body: LoginRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.users, Action.read)) {
+        return reply;
+      }
       const { username, password } = request.body;
 
       const user = userStore.getByUsername(username.trim());
@@ -65,6 +69,9 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
   server.post(
     '/api/v1/auth/logout',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.users, Action.read)) {
+        return reply;
+      }
       const token = getSessionTokenFromRequest(request);
 
       if (token) {
@@ -81,6 +88,9 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
   server.get(
     '/api/v1/auth/me',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.users, Action.read)) {
+        return reply;
+      }
       if (!request.user) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Not authenticated', request.requestId));
       }

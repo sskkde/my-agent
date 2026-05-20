@@ -128,7 +128,7 @@ describe('ApprovalsTab', () => {
 
     render(<ApprovalsTab onTabChange={mockOnTabChange} />);
 
-    expect(screen.getByText('加载中...')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('shows pending count correctly', async () => {

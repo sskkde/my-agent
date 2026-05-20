@@ -383,7 +383,7 @@ describe('LogsDebugTab', () => {
 
     render(<LogsDebugTab />);
 
-    expect(screen.getByTestId('logs-list').querySelector('.logs-debug-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 
   it('displays error message when fetch fails', async () => {

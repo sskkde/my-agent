@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import * as connectorsApi from '../../api/connectors';
 import type { ConnectorDefinition, ConnectorInstance } from '../../api/connectors';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 const ConnectorsTab: React.FC = () => {
   const [connectors, setConnectors] = useState<ConnectorDefinition[]>([]);
@@ -200,7 +201,7 @@ const ConnectorsTab: React.FC = () => {
           </div>
 
           {instancesLoading ? (
-            <div className="loading" data-testid="instances-loading">加载中...</div>
+            <LoadingSpinner size="small" label="加载实例..." />
           ) : error ? (
             <div className="connectors-error" data-testid="instances-error">{error}</div>
           ) : instances.length === 0 ? (
@@ -267,7 +268,7 @@ const ConnectorsTab: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="loading" data-testid="connectors-loading">加载中...</div>
+          <LoadingSpinner label="加载连接器..." />
         ) : error ? (
           <div className="connectors-error" data-testid="connectors-error">{error}</div>
         ) : connectors.length === 0 ? (

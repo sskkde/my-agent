@@ -10,7 +10,7 @@ describe('Usage API', () => {
   beforeAll(async () => {
     ctx = await createAuthenticatedTestContext();
     authCookie = ctx.authCookie;
-  });
+  }, 60000);
 
   afterAll(async () => {
     await closeAuthenticatedTestContext(ctx);

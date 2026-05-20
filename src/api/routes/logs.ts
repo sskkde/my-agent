@@ -1,8 +1,9 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import type { LogEntry, PaginatedResponse } from '../types.js';
 import type { EventRecord, SensitivityLevel } from '../../storage/event-store.js';
 import { success } from '../response-envelope.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 interface LogsQueryParams {
   sessionId?: string;
@@ -94,7 +95,10 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
   server.get<{
     Querystring: LogsQueryParams;
     Reply: { data: PaginatedResponse<LogEntry> };
-  }>('/api/v1/logs', async (request, reply) => {
+  }>('/api/v1/logs', async (request: FastifyRequest<{ Querystring: LogsQueryParams }>, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.observability, Action.read)) {
+      return reply;
+    }
     const {
       sessionId,
       sourceModule,
@@ -139,7 +143,10 @@ export function registerLogRoutes(server: FastifyInstance, context: ApiContext):
 
   server.get<{
     Querystring: LogStreamQueryParams;
-  }>('/api/v1/logs/stream', async (request, reply) => {
+  }>('/api/v1/logs/stream', async (request: FastifyRequest<{ Querystring: LogStreamQueryParams }>, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.observability, Action.read)) {
+      return reply;
+    }
     const { sessionId, after } = request.query;
 
     reply.raw.writeHead(200, {

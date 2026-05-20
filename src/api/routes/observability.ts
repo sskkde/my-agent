@@ -16,6 +16,7 @@ import {
   type ReplayRequest,
 } from '../../observability/replay.js';
 import type { AuditStore } from '../../observability/audit-types.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 // ============================================================================
 // Types
@@ -117,6 +118,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.get<{ Querystring: { status?: string } }>(
     '/api/v1/observability/runs',
     async (request: FastifyRequest<{ Querystring: { status?: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.read)) {
+        return reply;
+      }
       const { status: statusFilter } = request.query;
 
       try {
@@ -181,6 +185,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.get<{ Params: { runId: string } }>(
     '/api/v1/observability/runs/:runId/console',
     async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.read)) {
+        return reply;
+      }
       const { runId } = request.params;
 
       // Determine run type by checking both stores
@@ -254,6 +261,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.get<{ Params: { runId: string } }>(
     '/api/v1/observability/runs/:runId/replay-preview',
     async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.read)) {
+        return reply;
+      }
       const { runId } = request.params;
 
       // Determine run type by checking both stores
@@ -350,6 +360,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.get(
     '/api/v1/alerts/rules',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.read)) {
+        return reply;
+      }
       try {
         const alertStore = createAlertStore(context.connection);
         const rules = alertStore.listRules();
@@ -365,6 +378,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.get<{ Params: { ruleId: string } }>(
     '/api/v1/alerts/rules/:ruleId',
     async (request: FastifyRequest<{ Params: { ruleId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.read)) {
+        return reply;
+      }
       const { ruleId } = request.params;
       try {
         const alertStore = createAlertStore(context.connection);
@@ -384,6 +400,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.post<{ Body: Partial<AlertRule> }>(
     '/api/v1/alerts/rules',
     async (request: FastifyRequest<{ Body: Partial<AlertRule> }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.create)) {
+        return reply;
+      }
       try {
         const body = request.body;
         if (!body.id || !body.name || !body.metricName || !body.conditionType || body.threshold === undefined || !body.windowSeconds || !body.severity) {
@@ -423,6 +442,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.delete<{ Params: { ruleId: string } }>(
     '/api/v1/alerts/rules/:ruleId',
     async (request: FastifyRequest<{ Params: { ruleId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.delete)) {
+        return reply;
+      }
       const { ruleId } = request.params;
       try {
         const alertStore = createAlertStore(context.connection);
@@ -443,6 +465,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.get(
     '/api/v1/alerts/state',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.read)) {
+        return reply;
+      }
       try {
         const alertStore = createAlertStore(context.connection);
         const states = alertStore.getAllStates();
@@ -458,6 +483,9 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
   server.post(
     '/api/v1/alerts/evaluate',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.execute)) {
+        return reply;
+      }
       try {
         const alertStore = createAlertStore(context.connection);
         const metricStore = createMetricStore(context.connection);

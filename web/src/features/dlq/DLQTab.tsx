@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import * as dlqApi from '../../api/dlq';
 import type { DeadLetterEntry } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 type FilterStatus = 'all' | 'pending' | 'retrying' | 'discarded' | 'resolved';
 
@@ -163,7 +164,7 @@ const DLQTab: React.FC = () => {
   if (loading) {
     return (
       <div className="dlq-tab" data-testid="dlq-panel">
-        <div className="loading" data-testid="dlq-loading">加载中...</div>
+        <LoadingSpinner label="加载死信队列..." />
       </div>
     );
   }

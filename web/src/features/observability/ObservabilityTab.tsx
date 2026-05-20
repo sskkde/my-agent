@@ -8,6 +8,7 @@ import {
   type ConsoleResponse,
   type ReplayPreviewResponse,
 } from '../../api/observability';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 type FilterStatus = 'all' | 'running' | 'completed' | 'failed';
 
@@ -206,9 +207,7 @@ const ObservabilityTab: React.FC = () => {
           </div>
           <div className="observability-modal-body">
             {previewRun.loading && (
-              <div className="observability-loading" data-testid="replay-preview-loading">
-                加载中...
-              </div>
+              <LoadingSpinner size="small" label="加载回放预览..." />
             )}
             {previewRun.error && (
               <div className="observability-error" data-testid="replay-preview-error">
@@ -256,9 +255,7 @@ const ObservabilityTab: React.FC = () => {
   if (runsLoading) {
     return (
       <div className="observability-tab" data-testid="observability-tab">
-        <div className="observability-loading" data-testid="observability-loading">
-          加载中...
-        </div>
+        <LoadingSpinner label="加载运行列表..." />
       </div>
     );
   }
@@ -327,7 +324,7 @@ const ObservabilityTab: React.FC = () => {
                 {isExpanded && (
                   <div className="observability-run-expanded">
                     {expanded.loading && (
-                      <div className="observability-loading">加载中...</div>
+                      <LoadingSpinner size="small" label="加载控制台数据..." />
                     )}
                     {expanded.error && (
                       <div className="observability-error">{expanded.error}</div>

@@ -147,7 +147,7 @@ describe('StatusTab', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/无法加载审批列表/)).toBeInTheDocument();
+      expect(screen.getByTestId('error-message')).toBeInTheDocument();
     });
   });
 

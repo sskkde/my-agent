@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getRuns, subscribeRuns, RunEventCallback } from '../../api/client';
 import type { RunInfo, RunsResponse, SseRunEvent } from '../../api/types';
 import RunDetailView from './RunDetailView';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -39,6 +40,7 @@ function updateRunFromEvent(runs: RunInfo[], event: SseRunEvent): RunInfo[] {
 const AgentMonitorTab: React.FC = () => {
   const [runs, setRuns] = useState<RunInfo[]>([]);
   const [runsError, setRunsError] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [retryKey, setRetryKey] = useState(0);
   const [selectedRun, setSelectedRun] = useState<RunInfo | null>(null);
@@ -56,10 +58,16 @@ const AgentMonitorTab: React.FC = () => {
 
     getRuns()
       .then((response: RunsResponse) => {
-        if (mounted) setRuns(response.runs);
+        if (mounted) {
+          setRuns(response.runs);
+          setInitialLoading(false);
+        }
       })
       .catch(() => {
-        if (mounted) setRunsError(true);
+        if (mounted) {
+          setRunsError(true);
+          setInitialLoading(false);
+        }
       });
 
     const unsubscribe = subscribeRuns(handleEvent, handleError);
@@ -82,6 +90,14 @@ const AgentMonitorTab: React.FC = () => {
 
   const statusText = connectionStatus === 'connected' ? '已连接' : connectionStatus === 'connecting' ? '连接中...' : '已断开';
   const statusClass = connectionStatus === 'connected' ? 'status-connected' : 'status-disconnected';
+
+  if (initialLoading) {
+    return (
+      <div data-testid="agent-monitor-stream" className="agent-monitor">
+        <LoadingSpinner label="加载运行监控..." />
+      </div>
+    );
+  }
 
   const renderRunList = (runList: RunInfo[], emptyMessage: string) => {
     if (runList.length === 0) {

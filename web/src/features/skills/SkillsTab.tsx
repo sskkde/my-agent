@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getSkills } from '../../api/client';
 import type { SkillSummary } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface SkillsData {
   skills: SkillSummary[];
@@ -60,7 +61,7 @@ const SkillsTab: React.FC = () => {
       <div className="content-body">
         {loading && (
           <div className="skills-loading" data-testid="skills-loading">
-            加载中...
+            <LoadingSpinner label="加载技能数据..." />
           </div>
         )}
 
