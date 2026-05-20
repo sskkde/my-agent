@@ -22,7 +22,7 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm install
       
       - name: Run ESLint
         run: npm run lint
@@ -43,7 +43,7 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm install
       
       - name: Run security tests
         run: npm run test:unit -- tests/security/
@@ -63,7 +63,7 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm install
       
       - name: Run performance tests
         run: npm run test:unit -- tests/performance/
@@ -83,10 +83,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm install
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci --include=dev
+        run: npm --prefix web install
       
       - name: Run P7 verification suite
         run: npm run test:p7
@@ -128,10 +128,10 @@ jobs:
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm ci --include=dev
+        run: npm install
       
       - name: Install frontend dependencies
-        run: npm --prefix web ci --include=dev
+        run: npm --prefix web install
       
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
