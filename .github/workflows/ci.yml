@@ -46,7 +46,7 @@ jobs:
         run: npm ci
       
       - name: Run security tests
-        run: npm test -- tests/security/
+        run: node_modules/.bin/vitest run tests/security/
 
   performance-tests:
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
         run: npm ci
       
       - name: Run performance tests
-        run: npm test -- tests/performance/
+        run: node_modules/.bin/vitest run tests/performance/
 
   test:
     runs-on: ubuntu-latest
@@ -84,6 +84,9 @@ jobs:
       
       - name: Install root dependencies
         run: npm ci
+      
+      - name: Debug - check tsx and vitest
+        run: ls node_modules/.bin/tsx node_modules/.bin/vitest 2>&1 || true
       
       - name: Install frontend dependencies
         run: npm --prefix web ci
