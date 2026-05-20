@@ -67,7 +67,8 @@ export function registerApiKeyAuth(
       return;
     }
 
-    if (!request.headers.authorization) {
+    const authHeader = request.headers.authorization;
+    if (!authHeader) {
       done();
       return;
     }
@@ -87,7 +88,6 @@ export function registerApiKeyAuth(
 
         // If Authorization header starts with "Bearer ak_", it was an API key attempt
         // that failed validation - return 401 instead of letting RBAC return 403
-        const authHeader = request.headers.authorization;
         if (authHeader.startsWith('Bearer ak_')) {
           reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid or expired API key'));
           return;
