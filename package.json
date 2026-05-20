@@ -10,7 +10,7 @@
   "scripts": {
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run tests/integration --maxWorkers=1",
     "test:e2e": "vitest run tests/e2e",
     "test:p0": "vitest run tests/e2e/full-flow-suite.test.ts --reporter=verbose",
     "test:api": "vitest run tests/integration/api",
