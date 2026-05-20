@@ -11,19 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_SEARCH_BACKEND: none
-      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm install
-      
+        run: npm ci --no-audit --no-fund
+
       - name: Run ESLint
         run: npm run lint
         continue-on-error: true
@@ -32,18 +31,17 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_SEARCH_BACKEND: none
-      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm install
+        run: npm ci --no-audit --no-fund
       
       - name: Run security tests
         run: npm run test:unit -- tests/security/
@@ -52,18 +50,17 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_SEARCH_BACKEND: none
-      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm install
+        run: npm ci --no-audit --no-fund
       
       - name: Run performance tests
         run: npm run test:unit -- tests/performance/
@@ -72,21 +69,20 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_SEARCH_BACKEND: none
-      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm install
+        run: npm ci --no-audit --no-fund
       
       - name: Install frontend dependencies
-        run: npm --prefix web install
+        run: npm --prefix web ci --no-audit --no-fund
       
       - name: Run P7 verification suite
         run: npm run test:p7
@@ -115,7 +111,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEB_SEARCH_BACKEND: none
-      NODE_ENV: test
       DATABASE_PATH: ./data/e2e.db
       PORT: 3103
     steps:
@@ -124,14 +119,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       
       - name: Install root dependencies
-        run: npm install
+        run: npm ci --no-audit --no-fund
       
       - name: Install frontend dependencies
-        run: npm --prefix web install
+        run: npm --prefix web ci --no-audit --no-fund
       
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
