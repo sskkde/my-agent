@@ -61,30 +61,40 @@ export function registerApiKeyAuth(
   server: FastifyInstance,
   apiKeyStore: ApiKeyStore
 ): void {
-  server.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.addHook('preHandler', (request: FastifyRequest, reply: FastifyReply, done) => {
     if (request.user) {
+      done();
       return;
     }
 
     if (!request.headers.authorization) {
+      done();
       return;
     }
 
-    const identity = await authenticateApiKey(request, apiKeyStore);
-    if (identity) {
-      request.apiKey = identity;
-      request.user = {
-        userId: identity.userId ?? identity.id,
-        username: `api-key:${identity.id}`,
-        role: identity.role as import('../../storage/user-store.js').UserRole,
-      };
-    } else {
-      // If Authorization header starts with "Bearer ak_", it was an API key attempt
-      // that failed validation - return 401 instead of letting RBAC return 403
-      const authHeader = request.headers.authorization;
-      if (authHeader.startsWith('Bearer ak_')) {
-        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid or expired API key'));
-      }
-    }
+    authenticateApiKey(request, apiKeyStore)
+      .then(identity => {
+        if (identity) {
+          request.apiKey = identity;
+          request.user = {
+            userId: identity.userId ?? identity.id,
+            username: `api-key:${identity.id}`,
+            role: identity.role as import('../../storage/user-store.js').UserRole,
+          };
+          done();
+          return;
+        }
+
+        // If Authorization header starts with "Bearer ak_", it was an API key attempt
+        // that failed validation - return 401 instead of letting RBAC return 403
+        const authHeader = request.headers.authorization;
+        if (authHeader.startsWith('Bearer ak_')) {
+          reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid or expired API key'));
+          return;
+        }
+
+        done();
+      })
+      .catch(done);
   });
 }

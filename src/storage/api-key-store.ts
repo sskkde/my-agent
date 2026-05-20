@@ -117,7 +117,7 @@ class ApiKeyStoreImpl implements ApiKeyStore {
     const sql = `
       SELECT * FROM api_keys
       WHERE user_id = ?
-      ORDER BY created_at DESC
+      ORDER BY created_at DESC, id ASC
     `;
     const rows = this.connection.query<ApiKeyRow>(sql, [userId]);
     return rows.map(row => this.rowToApiKey(row));
