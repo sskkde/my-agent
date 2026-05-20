@@ -32,7 +32,8 @@ const eventsMigration = {
       payload TEXT NOT NULL,
       sensitivity TEXT NOT NULL DEFAULT 'low',
       retention_class TEXT NOT NULL DEFAULT 'standard',
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
     CREATE INDEX idx_events_session_created ON events(session_id, created_at);
     CREATE INDEX idx_events_user_created ON events(user_id, created_at);

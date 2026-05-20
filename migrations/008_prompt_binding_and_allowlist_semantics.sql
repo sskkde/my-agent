@@ -29,6 +29,7 @@ CREATE TABLE agent_configs (
   repair_attempts INTEGER NOT NULL DEFAULT 1,
   prompt_type TEXT,
   prompt_version TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -38,7 +39,7 @@ INSERT INTO agent_configs (
   system_prompt, routing_prompt, provider_id, model,
   allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
   prompt_type, prompt_version,
-  created_at, updated_at
+  tenant_id, created_at, updated_at
 )
 SELECT
   agent_config_id, agent_id, scope, user_id, display_name, enabled,
@@ -47,7 +48,7 @@ SELECT
   CASE WHEN allowed_skill_ids = '[]' THEN '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]' ELSE allowed_skill_ids END,
   routing_timeout_ms, repair_attempts,
   NULL, NULL,
-  created_at, updated_at
+  tenant_id, created_at, updated_at
 FROM agent_configs_old;
 
 DROP TABLE agent_configs_old;

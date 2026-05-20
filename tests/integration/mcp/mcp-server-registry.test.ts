@@ -16,6 +16,7 @@ const createMcpTables = (connection: ConnectionManager): void => {
     trust_level TEXT NOT NULL DEFAULT 'untrusted' CHECK(trust_level IN ('trusted', 'verified', 'untrusted')),
     sandbox_policy TEXT,
     status TEXT NOT NULL DEFAULT 'inactive' CHECK(status IN ('active', 'inactive', 'error')),
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`);

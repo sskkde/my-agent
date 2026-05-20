@@ -1,6 +1,7 @@
 import type { ConnectionManager } from './connection.js';
 import type { ToolExecutionState } from '../shared/states.js';
 import { TOOL_EXECUTION_STATES } from '../shared/states.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export type SensitivityLevel = 'low' | 'medium' | 'high' | 'restricted';
 
@@ -23,19 +24,19 @@ export interface ToolExecution {
 }
 
 export interface ToolExecutionStore {
-  create(exec: Omit<ToolExecution, 'startedAt' | 'completedAt' | 'terminalStateReached'>): void;
-  getById(toolCallId: string): ToolExecution | null;
-  updateStatus(toolCallId: string, status: ToolExecutionState): void;
+  create(exec: Omit<ToolExecution, 'startedAt' | 'completedAt' | 'terminalStateReached'>, tenantId?: string): void;
+  getById(toolCallId: string, tenantId?: string): ToolExecution | null;
+  updateStatus(toolCallId: string, status: ToolExecutionState, tenantId?: string): void;
   saveResult(toolCallId: string, result: {
     preview?: string;
     resultRef?: string;
     structuredContent?: Record<string, unknown>;
-  }): void;
-  getByToolName(toolName: string): ToolExecution[];
-  getBySession(sessionId: string): ToolExecution[];
-  getBySensitivity(sensitivity: SensitivityLevel): ToolExecution[];
-  getPendingByKernelRunId(kernelRunId: string): ToolExecution[];
-  getByStatus(status: ToolExecutionState): ToolExecution[];
+  }, tenantId?: string): void;
+  getByToolName(toolName: string, tenantId?: string): ToolExecution[];
+  getBySession(sessionId: string, tenantId?: string): ToolExecution[];
+  getBySensitivity(sensitivity: SensitivityLevel, tenantId?: string): ToolExecution[];
+  getPendingByKernelRunId(kernelRunId: string, tenantId?: string): ToolExecution[];
+  getByStatus(status: ToolExecutionState, tenantId?: string): ToolExecution[];
 }
 
 const TERMINAL_TOOL_STATES: ToolExecutionState[] = [
@@ -59,7 +60,7 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
     this.connection = connection;
   }
 
-  create(exec: Omit<ToolExecution, 'startedAt' | 'completedAt' | 'terminalStateReached'>): void {
+  create(exec: Omit<ToolExecution, 'startedAt' | 'completedAt' | 'terminalStateReached'>, tenantId: string = DEFAULT_TENANT_ID): void {
     const now = new Date().toISOString();
     const terminalReached = isTerminalState(exec.status) ? 1 : 0;
 
@@ -67,8 +68,8 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
       `INSERT INTO tool_executions (
         tool_call_id, tool_name, user_id, session_id, kernel_run_id,
         status, params, result_preview, result_ref, structured_content,
-        sensitivity, error_message, started_at, completed_at, terminal_state_reached
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sensitivity, error_message, started_at, completed_at, terminal_state_reached, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         exec.toolCallId,
         exec.toolName,
@@ -85,11 +86,12 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
         now,
         terminalReached === 1 ? now : null,
         terminalReached,
+        tenantId,
       ]
     );
   }
 
-  getById(toolCallId: string): ToolExecution | null {
+  getById(toolCallId: string, tenantId: string = DEFAULT_TENANT_ID): ToolExecution | null {
     const results = this.connection.query<{
       tool_call_id: string;
       tool_name: string;
@@ -107,8 +109,8 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
       completed_at: string | null;
       terminal_state_reached: number;
     }>(
-      `SELECT * FROM tool_executions WHERE tool_call_id = ?`,
-      [toolCallId]
+      `SELECT * FROM tool_executions WHERE tool_call_id = ? AND tenant_id = ?`,
+      [toolCallId, tenantId]
     );
 
     if (results.length === 0) {
@@ -118,15 +120,15 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
     return this.mapRowToToolExecution(results[0]);
   }
 
-  updateStatus(toolCallId: string, status: ToolExecutionState): void {
+  updateStatus(toolCallId: string, status: ToolExecutionState, tenantId: string = DEFAULT_TENANT_ID): void {
     const terminalReached = isTerminalState(status) ? 1 : 0;
     const completedAt = terminalReached === 1 ? new Date().toISOString() : null;
 
     this.connection.exec(
       `UPDATE tool_executions 
        SET status = ?, terminal_state_reached = ?, completed_at = COALESCE(?, completed_at)
-       WHERE tool_call_id = ?`,
-      [status, terminalReached, completedAt, toolCallId]
+       WHERE tool_call_id = ? AND tenant_id = ?`,
+      [status, terminalReached, completedAt, toolCallId, tenantId]
     );
   }
 
@@ -134,21 +136,22 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
     preview?: string;
     resultRef?: string;
     structuredContent?: Record<string, unknown>;
-  }): void {
+  }, tenantId: string = DEFAULT_TENANT_ID): void {
     this.connection.exec(
       `UPDATE tool_executions 
        SET result_preview = ?, result_ref = ?, structured_content = ?
-       WHERE tool_call_id = ?`,
+       WHERE tool_call_id = ? AND tenant_id = ?`,
       [
         result.preview ?? null,
         result.resultRef ?? null,
         result.structuredContent ? JSON.stringify(result.structuredContent) : null,
         toolCallId,
+        tenantId,
       ]
     );
   }
 
-  getByToolName(toolName: string): ToolExecution[] {
+  getByToolName(toolName: string, tenantId: string = DEFAULT_TENANT_ID): ToolExecution[] {
     const results = this.connection.query<{
       tool_call_id: string;
       tool_name: string;
@@ -166,14 +169,14 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
       completed_at: string | null;
       terminal_state_reached: number;
     }>(
-      `SELECT * FROM tool_executions WHERE tool_name = ? ORDER BY started_at DESC`,
-      [toolName]
+      `SELECT * FROM tool_executions WHERE tool_name = ? AND tenant_id = ? ORDER BY started_at DESC`,
+      [toolName, tenantId]
     );
 
     return results.map(r => this.mapRowToToolExecution(r));
   }
 
-  getBySession(sessionId: string): ToolExecution[] {
+  getBySession(sessionId: string, tenantId: string = DEFAULT_TENANT_ID): ToolExecution[] {
     const results = this.connection.query<{
       tool_call_id: string;
       tool_name: string;
@@ -191,14 +194,14 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
       completed_at: string | null;
       terminal_state_reached: number;
     }>(
-      `SELECT * FROM tool_executions WHERE session_id = ? ORDER BY started_at DESC`,
-      [sessionId]
+      `SELECT * FROM tool_executions WHERE session_id = ? AND tenant_id = ? ORDER BY started_at DESC`,
+      [sessionId, tenantId]
     );
 
     return results.map(r => this.mapRowToToolExecution(r));
   }
 
-  getBySensitivity(sensitivity: SensitivityLevel): ToolExecution[] {
+  getBySensitivity(sensitivity: SensitivityLevel, tenantId: string = DEFAULT_TENANT_ID): ToolExecution[] {
     const results = this.connection.query<{
       tool_call_id: string;
       tool_name: string;
@@ -216,14 +219,14 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
       completed_at: string | null;
       terminal_state_reached: number;
     }>(
-      `SELECT * FROM tool_executions WHERE sensitivity = ? ORDER BY started_at DESC`,
-      [sensitivity]
+      `SELECT * FROM tool_executions WHERE sensitivity = ? AND tenant_id = ? ORDER BY started_at DESC`,
+      [sensitivity, tenantId]
     );
 
     return results.map(r => this.mapRowToToolExecution(r));
   }
 
-  getPendingByKernelRunId(kernelRunId: string): ToolExecution[] {
+  getPendingByKernelRunId(kernelRunId: string, tenantId: string = DEFAULT_TENANT_ID): ToolExecution[] {
     const results = this.connection.query<{
       tool_call_id: string;
       tool_name: string;
@@ -242,15 +245,15 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
       terminal_state_reached: number;
     }>(
       `SELECT * FROM tool_executions 
-       WHERE kernel_run_id = ? AND terminal_state_reached = 0
+       WHERE kernel_run_id = ? AND terminal_state_reached = 0 AND tenant_id = ?
        ORDER BY started_at DESC`,
-      [kernelRunId]
+      [kernelRunId, tenantId]
     );
 
     return results.map(r => this.mapRowToToolExecution(r));
   }
 
-  getByStatus(status: ToolExecutionState): ToolExecution[] {
+  getByStatus(status: ToolExecutionState, tenantId: string = DEFAULT_TENANT_ID): ToolExecution[] {
     const results = this.connection.query<{
       tool_call_id: string;
       tool_name: string;
@@ -268,8 +271,8 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
       completed_at: string | null;
       terminal_state_reached: number;
     }>(
-      `SELECT * FROM tool_executions WHERE status = ? ORDER BY started_at DESC`,
-      [status]
+      `SELECT * FROM tool_executions WHERE status = ? AND tenant_id = ? ORDER BY started_at DESC`,
+      [status, tenantId]
     );
 
     return results.map(r => this.mapRowToToolExecution(r));

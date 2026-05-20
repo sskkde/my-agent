@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export type Visibility = 'public' | 'internal' | 'confidential';
 
@@ -55,13 +56,13 @@ export interface SearchOptions {
 }
 
 export interface TranscriptStore {
-  saveTurn(transcript: TurnTranscript): boolean;
-  getTurn(turnId: string): TurnTranscript | null;
-  findBySession(sessionId: string, options?: FindOptions): TurnTranscript[];
-  search(query: string, options?: SearchOptions): TurnTranscript[];
-  findByArtifactRef(artifactRef: string): TurnTranscript[];
-  findByPlannerRunId(plannerRunId: string): TurnTranscript[];
-  updateUserIdForSession(sessionId: string, newUserId: string): number;
+  saveTurn(transcript: TurnTranscript, tenantId?: string): boolean;
+  getTurn(turnId: string, tenantId?: string): TurnTranscript | null;
+  findBySession(sessionId: string, options?: FindOptions, tenantId?: string): TurnTranscript[];
+  search(query: string, options?: SearchOptions, tenantId?: string): TurnTranscript[];
+  findByArtifactRef(artifactRef: string, tenantId?: string): TurnTranscript[];
+  findByPlannerRunId(plannerRunId: string, tenantId?: string): TurnTranscript[];
+  updateUserIdForSession(sessionId: string, newUserId: string, tenantId?: string): number;
 }
 
 interface TranscriptRow {
@@ -124,7 +125,7 @@ class TranscriptStoreImpl implements TranscriptStore {
     this.connection = connection;
   }
 
-  saveTurn(transcript: TurnTranscript): boolean {
+  saveTurn(transcript: TurnTranscript, tenantId: string = DEFAULT_TENANT_ID): boolean {
     const sql = `
       INSERT INTO transcripts (
         turnId, sessionId, userId,
@@ -133,8 +134,8 @@ class TranscriptStoreImpl implements TranscriptStore {
         foregroundDecisionId, plannerRunIds, runtimeActionIds,
         toolCallSummaries, approvalSummaries,
         startEventId, endEventId,
-        visibility, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        visibility, createdAt, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -154,7 +155,8 @@ class TranscriptStoreImpl implements TranscriptStore {
       transcript.eventRange?.startEventId ?? null,
       transcript.eventRange?.endEventId ?? null,
       transcript.visibility,
-      transcript.createdAt
+      transcript.createdAt,
+      tenantId
     ];
 
     try {
@@ -165,9 +167,9 @@ class TranscriptStoreImpl implements TranscriptStore {
     }
   }
 
-  getTurn(turnId: string): TurnTranscript | null {
-    const sql = 'SELECT * FROM transcripts WHERE turnId = ?';
-    const rows = this.connection.query<TranscriptRow>(sql, [turnId]);
+  getTurn(turnId: string, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript | null {
+    const sql = 'SELECT * FROM transcripts WHERE turnId = ? AND tenant_id = ?';
+    const rows = this.connection.query<TranscriptRow>(sql, [turnId, tenantId]);
 
     if (rows.length === 0) {
       return null;
@@ -176,21 +178,21 @@ class TranscriptStoreImpl implements TranscriptStore {
     return this.rowToTranscript(rows[0]);
   }
 
-  findBySession(sessionId: string, options: FindOptions = {}): TurnTranscript[] {
+  findBySession(sessionId: string, options: FindOptions = {}, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript[] {
     const { limit = 1000, offset = 0 } = options;
 
     const sql = `
       SELECT * FROM transcripts
-      WHERE sessionId = ?
+      WHERE sessionId = ? AND tenant_id = ?
       ORDER BY createdAt ASC
       LIMIT ? OFFSET ?
     `;
 
-    const rows = this.connection.query<TranscriptRow>(sql, [sessionId, limit, offset]);
+    const rows = this.connection.query<TranscriptRow>(sql, [sessionId, tenantId, limit, offset]);
     return rows.map(row => this.rowToTranscript(row));
   }
 
-  search(query: string, options: SearchOptions = {}): TurnTranscript[] {
+  search(query: string, options: SearchOptions = {}, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript[] {
     const { sessionId, limit = 100, offset = 0 } = options;
 
     const searchPattern = `%${query}%`;
@@ -201,6 +203,7 @@ class TranscriptStoreImpl implements TranscriptStore {
       sql = `
         SELECT * FROM transcripts
         WHERE sessionId = ?
+          AND tenant_id = ?
           AND (
             userMessageSummary LIKE ?
             OR EXISTS (
@@ -211,19 +214,22 @@ class TranscriptStoreImpl implements TranscriptStore {
         ORDER BY createdAt ASC
         LIMIT ? OFFSET ?
       `;
-      params = [sessionId, searchPattern, searchPattern, limit, offset];
+      params = [sessionId, tenantId, searchPattern, searchPattern, limit, offset];
     } else {
       sql = `
         SELECT * FROM transcripts
-        WHERE userMessageSummary LIKE ?
-          OR EXISTS (
-            SELECT 1 FROM json_each(visibleMessages)
-            WHERE json_extract(json_each.value, '$.content') LIKE ?
+        WHERE tenant_id = ?
+          AND (
+            userMessageSummary LIKE ?
+            OR EXISTS (
+              SELECT 1 FROM json_each(visibleMessages)
+              WHERE json_extract(json_each.value, '$.content') LIKE ?
+            )
           )
         ORDER BY createdAt ASC
         LIMIT ? OFFSET ?
       `;
-      params = [searchPattern, searchPattern, limit, offset];
+      params = [tenantId, searchPattern, searchPattern, limit, offset];
     }
 
     try {
@@ -234,45 +240,47 @@ class TranscriptStoreImpl implements TranscriptStore {
     }
   }
 
-  findByArtifactRef(artifactRef: string): TurnTranscript[] {
+  findByArtifactRef(artifactRef: string, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript[] {
     const sql = `
       SELECT * FROM transcripts
       WHERE artifactRefs IS NOT NULL
+        AND tenant_id = ?
         AND EXISTS (
           SELECT 1 FROM json_each(artifactRefs)
           WHERE json_each.value = ?
         )
     `;
 
-    const rows = this.connection.query<TranscriptRow>(sql, [artifactRef]);
+    const rows = this.connection.query<TranscriptRow>(sql, [tenantId, artifactRef]);
     return rows.map(row => this.rowToTranscript(row));
   }
 
-  findByPlannerRunId(plannerRunId: string): TurnTranscript[] {
+  findByPlannerRunId(plannerRunId: string, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript[] {
     const sql = `
       SELECT * FROM transcripts
       WHERE plannerRunIds IS NOT NULL
+        AND tenant_id = ?
         AND EXISTS (
           SELECT 1 FROM json_each(plannerRunIds)
           WHERE json_each.value = ?
         )
     `;
 
-    const rows = this.connection.query<TranscriptRow>(sql, [plannerRunId]);
+    const rows = this.connection.query<TranscriptRow>(sql, [tenantId, plannerRunId]);
     return rows.map(row => this.rowToTranscript(row));
   }
 
-  updateUserIdForSession(sessionId: string, newUserId: string): number {
+  updateUserIdForSession(sessionId: string, newUserId: string, tenantId: string = DEFAULT_TENANT_ID): number {
     const sql = `
       UPDATE transcripts
       SET userId = ?
-      WHERE sessionId = ?
+      WHERE sessionId = ? AND tenant_id = ?
     `;
 
     try {
-      this.connection.exec(sql, [newUserId, sessionId]);
-      const countSql = 'SELECT COUNT(*) as count FROM transcripts WHERE sessionId = ? AND userId = ?';
-      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId]);
+      this.connection.exec(sql, [newUserId, sessionId, tenantId]);
+      const countSql = 'SELECT COUNT(*) as count FROM transcripts WHERE sessionId = ? AND userId = ? AND tenant_id = ?';
+      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId, tenantId]);
       return rows[0]?.count ?? 0;
     } catch {
       return 0;

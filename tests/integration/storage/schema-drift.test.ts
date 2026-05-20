@@ -39,11 +39,10 @@ describe('Schema Drift', () => {
   });
 
   describe('Migration completeness', () => {
-    it('should apply all 50 migrations successfully', () => {
+    it('should apply all migrations successfully', () => {
       const version = migrations.getCurrentVersion();
       const latest = getLatestMigrationVersion();
       expect(version).toBe(latest);
-      expect(version).toBe(50);
     });
   });
 

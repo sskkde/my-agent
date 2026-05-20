@@ -55,6 +55,7 @@ const alertMigrations: Migration[] = [
         webhook_url TEXT,
         labels TEXT,
         enabled INTEGER NOT NULL DEFAULT 1,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

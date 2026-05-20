@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthTokenStore } from '../../storage/auth-token-store.js';
 import type { UserStore } from '../../storage/user-store.js';
 import type { UserRole } from '../../storage/user-store.js';
+import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js';
 import { hashToken } from '../../storage/auth-crypto.js';
 import { ApiErrorFactory } from '../errors.js';
 
@@ -11,6 +12,7 @@ export interface AuthenticatedUser {
   userId: string;
   username: string;
   role: UserRole;
+  tenantId: string;
 }
 
 declare module 'fastify' {
@@ -99,6 +101,7 @@ export async function authenticateRequest(
     userId: user.userId,
     username: user.username,
     role: user.role,
+    tenantId: DEFAULT_TENANT_ID,
   };
 }
 

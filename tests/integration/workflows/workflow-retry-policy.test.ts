@@ -51,7 +51,8 @@ const workflowRuntimeMigrations: Migration[] = [
         status TEXT NOT NULL CHECK(status IN ('published', 'deprecated')),
         published_from_draft_id TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_workflow_defs_owner ON workflow_definitions(owner_user_id);
       CREATE INDEX idx_workflow_defs_status ON workflow_definitions(status);
@@ -76,7 +77,8 @@ const workflowRuntimeMigrations: Migration[] = [
         started_at TEXT NOT NULL,
         completed_at TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_workflow_runs_workflow ON workflow_runs(workflow_id, started_at);
       CREATE INDEX idx_workflow_runs_owner_status ON workflow_runs(owner_user_id, status);
@@ -103,7 +105,8 @@ const workflowRuntimeMigrations: Migration[] = [
         started_at TEXT,
         completed_at TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_workflow_step_runs_workflow_status ON workflow_step_runs(workflow_run_id, status);
     `,
@@ -173,7 +176,8 @@ const workflowRuntimeMigrations: Migration[] = [
         payload TEXT NOT NULL,
         sensitivity TEXT NOT NULL,
         retention_class TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_events_type ON events(event_type);
       CREATE INDEX idx_events_correlation ON events(correlation_id);

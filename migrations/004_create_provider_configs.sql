@@ -18,6 +18,7 @@ CREATE TABLE provider_configs (
   source TEXT NOT NULL DEFAULT 'database',
   last_test_status TEXT,
   last_tested_at TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export interface AuthToken {
   tokenHash: string;
@@ -15,10 +16,10 @@ export interface CreateAuthTokenInput {
 }
 
 export interface AuthTokenStore {
-  create(input: CreateAuthTokenInput): AuthToken;
-  findByHash(tokenHash: string): AuthToken | null;
-  revoke(tokenHash: string): boolean;
-  purgeExpired(now: string): number;
+  create(input: CreateAuthTokenInput, tenantId?: string): AuthToken;
+  findByHash(tokenHash: string, tenantId?: string): AuthToken | null;
+  revoke(tokenHash: string, tenantId?: string): boolean;
+  purgeExpired(now: string, tenantId?: string): number;
 }
 
 interface AuthTokenRow {
@@ -36,7 +37,7 @@ class AuthTokenStoreImpl implements AuthTokenStore {
     this.connection = connection;
   }
 
-  create(input: CreateAuthTokenInput): AuthToken {
+  create(input: CreateAuthTokenInput, tenantId: string = DEFAULT_TENANT_ID): AuthToken {
     const now = new Date().toISOString();
     const token: AuthToken = {
       tokenHash: input.tokenHash,
@@ -48,8 +49,8 @@ class AuthTokenStoreImpl implements AuthTokenStore {
 
     const sql = `
       INSERT INTO auth_tokens (
-        token_hash, user_id, created_at, expires_at, revoked_at
-      ) VALUES (?, ?, ?, ?, ?)
+        token_hash, user_id, created_at, expires_at, revoked_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -57,16 +58,17 @@ class AuthTokenStoreImpl implements AuthTokenStore {
       token.userId,
       token.createdAt,
       token.expiresAt,
-      token.revokedAt
+      token.revokedAt,
+      tenantId
     ];
 
     this.connection.exec(sql, params);
     return token;
   }
 
-  findByHash(tokenHash: string): AuthToken | null {
-    const sql = 'SELECT * FROM auth_tokens WHERE token_hash = ?';
-    const rows = this.connection.query<AuthTokenRow>(sql, [tokenHash]);
+  findByHash(tokenHash: string, tenantId: string = DEFAULT_TENANT_ID): AuthToken | null {
+    const sql = 'SELECT * FROM auth_tokens WHERE tenant_id = ? AND token_hash = ?';
+    const rows = this.connection.query<AuthTokenRow>(sql, [tenantId, tokenHash]);
 
     if (rows.length === 0) {
       return null;
@@ -75,28 +77,28 @@ class AuthTokenStoreImpl implements AuthTokenStore {
     return this.rowToAuthToken(rows[0]);
   }
 
-  revoke(tokenHash: string): boolean {
+  revoke(tokenHash: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
     const sql = `
       UPDATE auth_tokens
       SET revoked_at = ?
-      WHERE token_hash = ? AND revoked_at IS NULL
+      WHERE tenant_id = ? AND token_hash = ? AND revoked_at IS NULL
     `;
 
     const now = new Date().toISOString();
 
     try {
-      this.connection.exec(sql, [now, tokenHash]);
+      this.connection.exec(sql, [now, tenantId, tokenHash]);
       return true;
     } catch {
       return false;
     }
   }
 
-  purgeExpired(now: string): number {
-    const sql = 'DELETE FROM auth_tokens WHERE expires_at < ?';
+  purgeExpired(now: string, tenantId: string = DEFAULT_TENANT_ID): number {
+    const sql = 'DELETE FROM auth_tokens WHERE tenant_id = ? AND expires_at < ?';
 
     try {
-      this.connection.exec(sql, [now]);
+      this.connection.exec(sql, [tenantId, now]);
       const result = this.connection.query<{ changes: number }>('SELECT changes() as changes');
       return result[0]?.changes ?? 0;
     } catch {

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS tool_result_blobs (
   storage_ref TEXT NOT NULL,
   sensitivity TEXT NOT NULL DEFAULT 'normal' CHECK(sensitivity IN ('normal', 'sensitive', 'confidential')),
   size_bytes INTEGER NOT NULL,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL
 );
 

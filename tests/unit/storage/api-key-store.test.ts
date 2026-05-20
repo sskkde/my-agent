@@ -19,7 +19,8 @@ function createTestSchema(connection: ConnectionManager): void {
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     )
   `);
   
@@ -35,7 +36,8 @@ function createTestSchema(connection: ConnectionManager): void {
       created_at TEXT NOT NULL,
       expires_at TEXT,
       last_used_at TEXT,
-      is_active INTEGER NOT NULL DEFAULT 1
+      is_active INTEGER NOT NULL DEFAULT 1,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     )
   `);
   

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS recovery_checkpoints (
   checkpoint_data TEXT NOT NULL,
   event_range_start TEXT,
   event_range_end TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL
 );
 

@@ -7,6 +7,7 @@
 -- Trigger Subscriptions table for event-driven trigger subscriptions
 CREATE TABLE IF NOT EXISTS trigger_subscriptions (
   subscription_id TEXT PRIMARY KEY,
+  owner_user_id TEXT NOT NULL DEFAULT '',
   trigger_type TEXT NOT NULL,
   source_type TEXT NOT NULL,
   source_ref TEXT NOT NULL,
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS trigger_subscriptions (
   target_ref TEXT NOT NULL,
   conditions TEXT,
   status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'paused', 'disabled')),
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

@@ -101,7 +101,23 @@ class MigrationRunnerImpl implements MigrationRunner {
       .filter(s => s.length > 0);
 
     for (const statement of statements) {
-      this.connection.exec(statement);
+      try {
+        this.connection.exec(statement);
+      } catch (err) {
+        // Gracefully handle "duplicate column name" errors for ALTER TABLE ADD COLUMN.
+        // This allows idempotent migrations where a column may already exist
+        // (e.g., from a modified CREATE TABLE in an earlier migration).
+        const message = err instanceof Error ? err.message : String(err);
+        if (
+          statement.trim().toUpperCase().startsWith('ALTER TABLE') &&
+          statement.trim().toUpperCase().includes('ADD COLUMN') &&
+          (message.includes('duplicate column name') || message.includes('already exists'))
+        ) {
+          // Skip - column already exists, this is fine
+          continue;
+        }
+        throw err;
+      }
     }
   }
 

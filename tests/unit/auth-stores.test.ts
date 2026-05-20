@@ -23,7 +23,8 @@ describe('auth-stores', () => {
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       )
     `);
 
@@ -33,7 +34,8 @@ describe('auth-stores', () => {
         user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
         created_at TEXT NOT NULL,
         expires_at TEXT NOT NULL,
-        revoked_at TEXT
+        revoked_at TEXT,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       )
     `);
 

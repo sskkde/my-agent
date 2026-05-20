@@ -45,7 +45,8 @@ describe('Mock Connectors Integration', () => {
             config_schema TEXT,
             status TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
           );
         `,
         down: `DROP TABLE IF EXISTS connector_definitions;`,
@@ -64,7 +65,8 @@ describe('Mock Connectors Integration', () => {
             config TEXT,
             status TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
           );
         `,
         down: `DROP TABLE IF EXISTS connector_instances;`,
@@ -80,7 +82,8 @@ describe('Mock Connectors Integration', () => {
             event_type TEXT NOT NULL,
             payload TEXT,
             processed INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
           );
         `,
         down: `DROP TABLE IF EXISTS connector_events;`,
@@ -113,7 +116,8 @@ describe('Mock Connectors Integration', () => {
             payload TEXT NOT NULL,
             sensitivity TEXT NOT NULL,
             retention_class TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+          tenant_id TEXT NOT NULL DEFAULT 'org_default'
           );
         `,
         down: `DROP TABLE IF EXISTS events;`,

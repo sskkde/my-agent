@@ -131,6 +131,7 @@ const migrationsList: Migration[] = [
         raw_blob_ref TEXT,
         structured_content TEXT,
         sensitivity TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL
       );
     `,
@@ -145,6 +146,7 @@ const migrationsList: Migration[] = [
         entity_type TEXT NOT NULL,
         ttl_days INTEGER NOT NULL,
         policy TEXT NOT NULL DEFAULT 'soft_delete',
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
