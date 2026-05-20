@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getUsage } from '../../api/client';
 import type { UsageResponse, UsageSummary } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface UsageState {
   data: UsageResponse | null;
@@ -76,9 +77,7 @@ const UsageTab: React.FC = () => {
   if (state.loading) {
     return (
       <div className="usage-tab" data-testid="usage-panel">
-        <div className="usage-loading" data-testid="usage-loading">
-          加载中...
-        </div>
+        <LoadingSpinner label="加载用量数据..." />
       </div>
     );
   }

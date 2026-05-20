@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getInstances } from '../../api/client';
 import type { InstanceSummary } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface InstancesData {
   instances: InstanceSummary[];
@@ -84,7 +85,7 @@ const InstancesTab: React.FC = () => {
       <div className="content-body">
         {loading && (
           <div className="instances-loading" data-testid="instances-loading">
-            加载中...
+            <LoadingSpinner label="加载实例数据..." />
           </div>
         )}
 

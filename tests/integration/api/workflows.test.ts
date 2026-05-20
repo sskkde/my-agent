@@ -1188,7 +1188,7 @@ describe('Workflow API Integration', () => {
         },
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(403);
     });
   });
 });

@@ -40,7 +40,7 @@ describe('v1-prefix utilities', () => {
   });
 
   describe('createLegacyRedirect', () => {
-    it('should return Fastify route options with 301 redirect', () => {
+    it('should return Fastify route options with 307 redirect', () => {
       const routeOptions = createLegacyRedirect('/api/health', '/api/v1/health');
 
       expect(routeOptions.method).toBe('GET');
@@ -60,7 +60,7 @@ describe('v1-prefix utilities', () => {
       expect(routeOptions.url).toBe('/api/sessions/:sessionId');
     });
 
-    it('should return redirect handler that sets 301 status and Location header', async () => {
+    it('should return redirect handler that sets 307 status and Location header', async () => {
       const routeOptions = createLegacyRedirect('/api/health', '/api/v1/health');
 
       // Mock Fastify request and reply
@@ -78,7 +78,7 @@ describe('v1-prefix utilities', () => {
       // Call the handler
       await routeOptions.handler.call(null as any, mockRequest as any, mockReply as any);
 
-      expect(mockReply.redirect).toHaveBeenCalledWith('/api/v1/health', 301);
+      expect(mockReply.redirect).toHaveBeenCalledWith('/api/v1/health', 307);
     });
 
     it('should interpolate params in redirect URL', async () => {
@@ -97,7 +97,7 @@ describe('v1-prefix utilities', () => {
 
       await routeOptions.handler.call(null as any, mockRequest as any, mockReply as any);
 
-      expect(mockReply.redirect).toHaveBeenCalledWith('/api/v1/sessions/session-123', 301);
+      expect(mockReply.redirect).toHaveBeenCalledWith('/api/v1/sessions/session-123', 307);
     });
   });
 

@@ -1,7 +1,8 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import { success, envelopeError } from '../response-envelope.js';
 import type { EventRecord } from '../../storage/event-store.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 interface ReplayParams {
   sessionId: string;
@@ -75,7 +76,10 @@ function createRedactedPreview(event: EventRecord): RedactedPreview {
 export function registerDebugRoutes(server: FastifyInstance, context: ApiContext): void {
   server.get<{
     Params: ReplayParams;
-  }>('/api/v1/debug/replay/:sessionId', async (request, reply) => {
+  }>('/api/v1/debug/replay/:sessionId', async (request: FastifyRequest<{ Params: ReplayParams }>, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+      return reply;
+    }
     const { sessionId } = request.params;
 
     const events = context.stores.eventStore.query({ sessionId });

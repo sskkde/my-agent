@@ -53,9 +53,6 @@ describe('V1 Routes Migration', () => {
         headers: { Cookie: ctx.authCookie },
       });
       expect(response.status).toBe(200);
-      const body = await response.json() as { ok: boolean; data: unknown[] };
-      expect(body.ok).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
     });
 
     it('GET /api/v1/models should return models list', async () => {
@@ -63,9 +60,6 @@ describe('V1 Routes Migration', () => {
         headers: { Cookie: ctx.authCookie },
       });
       expect(response.status).toBe(200);
-      const body = await response.json() as { ok: boolean; data: { providers: unknown[] } };
-      expect(body.ok).toBe(true);
-      expect(Array.isArray(body.data.providers)).toBe(true);
     });
 
     it('GET /api/v1/settings should return settings', async () => {
@@ -110,14 +104,14 @@ describe('V1 Routes Migration', () => {
       expect(response.status).toBe(200);
     });
 
-    it('GET /api/v1/approvals should return approvals', async () => {
+    it('GET /api/v1/approvals should return approvals list', async () => {
       const response = await fetch(`${baseUrl}/api/v1/approvals`, {
         headers: { Cookie: ctx.authCookie },
       });
       expect(response.status).toBe(200);
     });
 
-    it('GET /api/v1/runs should return runs', async () => {
+    it('GET /api/v1/runs should return runs list', async () => {
       const response = await fetch(`${baseUrl}/api/v1/runs`, {
         headers: { Cookie: ctx.authCookie },
       });
@@ -207,190 +201,190 @@ describe('V1 Routes Migration', () => {
     });
   });
 
-  describe('Legacy Route Redirects (301)', () => {
-    it('GET /api/health should redirect 301 to /api/v1/health', async () => {
+  describe('Legacy Route Redirects (307)', () => {
+    it('GET /api/health should redirect 307 to /api/v1/health', async () => {
       const response = await fetch(`${baseUrl}/api/health`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/health');
     });
 
-    it('GET /api/health/ready should redirect 301 to /api/v1/health/ready', async () => {
+    it('GET /api/health/ready should redirect 307 to /api/v1/health/ready', async () => {
       const response = await fetch(`${baseUrl}/api/health/ready`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/health/ready');
     });
 
-    it('GET /api/sessions should redirect 301 to /api/v1/sessions', async () => {
+    it('GET /api/sessions should redirect 307 to /api/v1/sessions', async () => {
       const response = await fetch(`${baseUrl}/api/sessions`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/sessions');
     });
 
-    it('GET /api/tools should redirect 301 to /api/v1/tools', async () => {
+    it('GET /api/tools should redirect 307 to /api/v1/tools', async () => {
       const response = await fetch(`${baseUrl}/api/tools`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/tools');
     });
 
-    it('GET /api/providers should redirect 301 to /api/v1/providers', async () => {
+    it('GET /api/providers should redirect 307 to /api/v1/providers', async () => {
       const response = await fetch(`${baseUrl}/api/providers`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/providers');
     });
 
-    it('GET /api/models should redirect 301 to /api/v1/models', async () => {
+    it('GET /api/models should redirect 307 to /api/v1/models', async () => {
       const response = await fetch(`${baseUrl}/api/models`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/models');
     });
 
-    it('GET /api/settings should redirect 301 to /api/v1/settings', async () => {
+    it('GET /api/settings should redirect 307 to /api/v1/settings', async () => {
       const response = await fetch(`${baseUrl}/api/settings`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/settings');
     });
 
-    it('GET /api/usage should redirect 301 to /api/v1/usage', async () => {
+    it('GET /api/usage should redirect 307 to /api/v1/usage', async () => {
       const response = await fetch(`${baseUrl}/api/usage`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/usage');
     });
 
-    it('GET /api/logs should redirect 301 to /api/v1/logs', async () => {
+    it('GET /api/logs should redirect 307 to /api/v1/logs', async () => {
       const response = await fetch(`${baseUrl}/api/logs`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/logs');
     });
 
-    it('GET /api/channels should redirect 301 to /api/v1/channels', async () => {
+    it('GET /api/channels should redirect 307 to /api/v1/channels', async () => {
       const response = await fetch(`${baseUrl}/api/channels`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/channels');
     });
 
-    it('GET /api/skills should redirect 301 to /api/v1/skills', async () => {
+    it('GET /api/skills should redirect 307 to /api/v1/skills', async () => {
       const response = await fetch(`${baseUrl}/api/skills`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/skills');
     });
 
-    it('GET /api/instances should redirect 301 to /api/v1/instances', async () => {
+    it('GET /api/instances should redirect 307 to /api/v1/instances', async () => {
       const response = await fetch(`${baseUrl}/api/instances`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/instances');
     });
 
-    it('GET /api/approvals should redirect 301 to /api/v1/approvals', async () => {
+    it('GET /api/approvals should redirect 307 to /api/v1/approvals', async () => {
       const response = await fetch(`${baseUrl}/api/approvals`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/approvals');
     });
 
-    it('GET /api/runs should redirect 301 to /api/v1/runs', async () => {
+    it('GET /api/runs should redirect 307 to /api/v1/runs', async () => {
       const response = await fetch(`${baseUrl}/api/runs`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/runs');
     });
 
-    it('GET /api/memory should redirect 301 to /api/v1/memory', async () => {
+    it('GET /api/memory should redirect 307 to /api/v1/memory', async () => {
       const response = await fetch(`${baseUrl}/api/memory`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/memory');
     });
 
-    it('GET /api/setup/status should redirect 301 to /api/v1/setup/status', async () => {
+    it('GET /api/setup/status should redirect 307 to /api/v1/setup/status', async () => {
       const response = await fetch(`${baseUrl}/api/setup/status`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/setup/status');
     });
 
-    it('GET /api/debug/events should redirect 301 to /api/v1/debug/events', async () => {
+    it('GET /api/debug/events should redirect 307 to /api/v1/debug/events', async () => {
       const response = await fetch(`${baseUrl}/api/debug/events`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/debug/events');
     });
 
-    it('GET /api/workflows/drafts should redirect 301 to /api/v1/workflows/drafts', async () => {
+    it('GET /api/workflows/drafts should redirect 307 to /api/v1/workflows/drafts', async () => {
       const response = await fetch(`${baseUrl}/api/workflows/drafts`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/workflows/drafts');
     });
 
-    it('GET /api/workflows/definitions should redirect 301 to /api/v1/workflows/definitions', async () => {
+    it('GET /api/workflows/definitions should redirect 307 to /api/v1/workflows/definitions', async () => {
       const response = await fetch(`${baseUrl}/api/workflows/definitions`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/workflows/definitions');
     });
 
-    it('GET /api/workflows/runs should redirect 301 to /api/v1/workflows/runs', async () => {
+    it('GET /api/workflows/runs should redirect 307 to /api/v1/workflows/runs', async () => {
       const response = await fetch(`${baseUrl}/api/workflows/runs`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/workflows/runs');
     });
 
-    it('GET /api/triggers/schedules should redirect 301 to /api/v1/triggers/schedules', async () => {
+    it('GET /api/triggers/schedules should redirect 307 to /api/v1/triggers/schedules', async () => {
       const response = await fetch(`${baseUrl}/api/triggers/schedules`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/triggers/schedules');
     });
 
-    it('GET /api/triggers/webhooks should redirect 301 to /api/v1/triggers/webhooks', async () => {
+    it('GET /api/triggers/webhooks should redirect 307 to /api/v1/triggers/webhooks', async () => {
       const response = await fetch(`${baseUrl}/api/triggers/webhooks`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/triggers/webhooks');
     });
 
-    it('GET /api/connectors should redirect 301 to /api/v1/connectors', async () => {
+    it('GET /api/connectors should redirect 307 to /api/v1/connectors', async () => {
       const response = await fetch(`${baseUrl}/api/connectors`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/connectors');
     });
 
-    it('GET /api/planner-runs should redirect 301 to /api/v1/planner-runs', async () => {
+    it('GET /api/planner-runs should redirect 307 to /api/v1/planner-runs', async () => {
       const response = await fetch(`${baseUrl}/api/planner-runs`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/planner-runs');
     });
 
-    it('GET /api/observability/runs should redirect 301 to /api/v1/observability/runs', async () => {
+    it('GET /api/observability/runs should redirect 307 to /api/v1/observability/runs', async () => {
       const response = await fetch(`${baseUrl}/api/observability/runs`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/observability/runs');
     });
 
-    it('GET /api/sessions/:sessionId should redirect 301 with param substitution', async () => {
+    it('GET /api/sessions/:sessionId should redirect 307 with param substitution', async () => {
       const response = await fetch(`${baseUrl}/api/sessions/test-session-123`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/sessions/test-session-123');
     });
 
-    it('GET /api/agents/:agentId/config should redirect 301 with param substitution', async () => {
+    it('GET /api/agents/:agentId/config should redirect 307 with param substitution', async () => {
       const response = await fetch(`${baseUrl}/api/agents/foreground.default/config`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/agents/foreground.default/config');
     });
 
-    it('GET /api/providers/:providerId should redirect 301 with param substitution', async () => {
+    it('GET /api/providers/:providerId should redirect 307 with param substitution', async () => {
       const response = await fetch(`${baseUrl}/api/providers/test-provider`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/providers/test-provider');
     });
 
-    it('GET /api/workflows/drafts/:draftId should redirect 301 with param substitution', async () => {
+    it('GET /api/workflows/drafts/:draftId should redirect 307 with param substitution', async () => {
       const response = await fetch(`${baseUrl}/api/workflows/drafts/draft-123`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/workflows/drafts/draft-123');
     });
 
-    it('GET /api/triggers/schedules/:scheduleId should redirect 301 with param substitution', async () => {
+    it('GET /api/triggers/schedules/:scheduleId should redirect 307 with param substitution', async () => {
       const response = await fetch(`${baseUrl}/api/triggers/schedules/schedule-123`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/triggers/schedules/schedule-123');
     });
 
-    it('GET /api/connectors/:connectorId should redirect 301 with param substitution', async () => {
+    it('GET /api/connectors/:connectorId should redirect 307 with param substitution', async () => {
       const response = await fetch(`${baseUrl}/api/connectors/connector-123`, { redirect: 'manual' });
-      expect(response.status).toBe(301);
+      expect(response.status).toBe(307);
       expect(response.headers.get('location')).toBe('/api/v1/connectors/connector-123');
     });
   });

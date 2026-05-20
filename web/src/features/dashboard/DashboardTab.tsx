@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { getHealth, getRuns } from '../../api/client';
 import type { HealthResponse, RunsResponse } from '../../api/types';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface DashboardData {
   health: HealthResponse | null;
   runs: RunsResponse | null;
   healthError: boolean;
+  loading: boolean;
 }
 
 const DashboardTab: React.FC = () => {
@@ -13,6 +15,7 @@ const DashboardTab: React.FC = () => {
     health: null,
     runs: null,
     healthError: false,
+    loading: true,
   });
 
   useEffect(() => {
@@ -26,16 +29,16 @@ const DashboardTab: React.FC = () => {
 
       try {
         const runs = await getRuns();
-        setData((prev) => ({ ...prev, runs }));
+        setData((prev) => ({ ...prev, runs, loading: false }));
       } catch {
-        setData((prev) => ({ ...prev, runs: { runs: [], total: 0 } }));
+        setData((prev) => ({ ...prev, runs: { runs: [], total: 0 }, loading: false }));
       }
     };
 
     fetchData();
   }, []);
 
-  const { health, runs, healthError } = data;
+  const { health, runs, healthError, loading } = data;
   const activeRunsCount = runs?.runs.filter((r) => r.status === 'running').length ?? 0;
 
   const getStatusText = () => {
@@ -49,6 +52,14 @@ const DashboardTab: React.FC = () => {
     if (!health) return 'status-loading';
     return health.status === 'healthy' ? 'status-healthy' : 'status-degraded';
   };
+
+  if (loading) {
+    return (
+      <div className="dashboard-tab">
+        <LoadingSpinner label="加载仪表盘..." />
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-tab">

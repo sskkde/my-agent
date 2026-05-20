@@ -442,4 +442,86 @@ describe('Schema Drift', () => {
       expect(tableExists(connection, 'connector_policies')).toBe(true);
     });
   });
+
+  describe('P6 key tables', () => {
+    it('should have api_keys table (migration v48)', () => {
+      expect(tableExists(connection, 'api_keys')).toBe(true);
+    });
+
+    it('should have provider_configs table (migration v31)', () => {
+      expect(tableExists(connection, 'provider_configs')).toBe(true);
+    });
+
+    it('should have auth_tokens table (migration v30)', () => {
+      expect(tableExists(connection, 'auth_tokens')).toBe(true);
+    });
+
+    it('should have workflow_drafts table (migration v22)', () => {
+      expect(tableExists(connection, 'workflow_drafts')).toBe(true);
+    });
+
+    it('should have workflow_definitions table (migration v23)', () => {
+      expect(tableExists(connection, 'workflow_definitions')).toBe(true);
+    });
+
+    it('should have connector_definitions table (migration v19)', () => {
+      expect(tableExists(connection, 'connector_definitions')).toBe(true);
+    });
+
+    it('should have connector_instances table (migration v20)', () => {
+      expect(tableExists(connection, 'connector_instances')).toBe(true);
+    });
+
+    it('should have connector_events table (migration v21)', () => {
+      expect(tableExists(connection, 'connector_events')).toBe(true);
+    });
+
+    it('should have trace_contexts table (migration v24)', () => {
+      expect(tableExists(connection, 'trace_contexts')).toBe(true);
+    });
+
+    it('should have trace_spans table (migration v25)', () => {
+      expect(tableExists(connection, 'trace_spans')).toBe(true);
+    });
+
+    it('should have metrics table (migration v26)', () => {
+      expect(tableExists(connection, 'metrics')).toBe(true);
+    });
+
+    it('should have audit_records table (migration v27)', () => {
+      expect(tableExists(connection, 'audit_records')).toBe(true);
+    });
+
+    it('should have long_term_memories table (migration v37)', () => {
+      expect(tableExists(connection, 'long_term_memories')).toBe(true);
+    });
+
+    it('should have webhook_triggers table (migration v40)', () => {
+      expect(tableExists(connection, 'webhook_triggers')).toBe(true);
+    });
+
+    it('should have webhook_deliveries table (migration v41)', () => {
+      expect(tableExists(connection, 'webhook_deliveries')).toBe(true);
+    });
+
+    it('should have schedule_triggers table (migration v42)', () => {
+      expect(tableExists(connection, 'schedule_triggers')).toBe(true);
+    });
+
+    it('should have dead_letter table (migration v47)', () => {
+      expect(tableExists(connection, 'dead_letter')).toBe(true);
+    });
+
+    it('should have transcripts table (migration v3)', () => {
+      expect(tableExists(connection, 'transcripts')).toBe(true);
+    });
+
+    it('should have summaries table (migration v4)', () => {
+      expect(tableExists(connection, 'summaries')).toBe(true);
+    });
+
+    it('should have plan_patches table (migration v6)', () => {
+      expect(tableExists(connection, 'plan_patches')).toBe(true);
+    });
+  });
 });

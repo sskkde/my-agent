@@ -4,6 +4,7 @@ import { success, envelopeError } from '../response-envelope.js';
 import { scheduleIdParamsSchema, webhookIdParamsSchema } from '../schemas/shared.js';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { generateId } from '../../shared/ids.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const WEBHOOK_ID_PREFIX = 'wh_';
 const SCHEDULE_ID_PREFIX = 'sched_';
@@ -131,6 +132,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Body: CreateScheduleTriggerRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.create)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -155,6 +159,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
   server.get(
     '/api/v1/triggers/schedules',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -176,6 +183,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Params: { scheduleId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -207,6 +217,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Params: { scheduleId: string }; Body: UpdateScheduleTriggerRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.update)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -241,6 +254,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Params: { scheduleId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.delete)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -273,6 +289,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Body: CreateWebhookTriggerRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.create)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -304,6 +323,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
   server.get(
     '/api/v1/triggers/webhooks',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -325,6 +347,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Params: { webhookId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -356,6 +381,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Params: { webhookId: string }; Body: UpdateWebhookTriggerRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.update)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -390,6 +418,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Params: { webhookId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.delete)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -416,6 +447,9 @@ export function registerTriggerRoutes(server: FastifyInstance, context: ApiConte
       },
     },
     async (request: FastifyRequest<{ Params: { webhookId: string }; Body: unknown }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.execute)) {
+        return reply;
+      }
       const { webhookId } = request.params;
       const trigger = webhookTriggerStore.getById(webhookId);
 

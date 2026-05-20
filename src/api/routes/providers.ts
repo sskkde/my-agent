@@ -12,6 +12,7 @@ import type { ProviderType, ProviderConfigSanitized } from '../../storage/provid
 import { randomUUID } from 'crypto';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const VALID_PROVIDER_TYPES: ProviderType[] = ['openai', 'openrouter', 'ollama', 'custom'];
 const TEST_TIMEOUT_MS = 10000;
@@ -388,6 +389,9 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
   server.get(
     '/api/v1/providers',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission('provider' as ResourceType, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -423,6 +427,9 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Body: CreateProviderRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission('provider' as ResourceType, Action.create)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -502,6 +509,9 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { providerId: string }; Body: UpdateProviderRequest }>, reply: FastifyReply) => {
+      if (!request.requirePermission('provider' as ResourceType, Action.update)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -571,6 +581,9 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { providerId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission('provider' as ResourceType, Action.delete)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -615,6 +628,9 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
       },
     },
     async (request: FastifyRequest<{ Params: { providerId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission('provider' as ResourceType, Action.execute)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));

@@ -14,6 +14,8 @@ import type {
   UpdateProviderRequest,
   TestProviderResponse,
 } from '../../api/types';
+import ErrorMessage from '../../components/ErrorMessage';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface ProviderManagerProps {
   isAuthenticated: boolean;
@@ -53,7 +55,7 @@ const requiresBaseUrl = (providerType: ProviderType): boolean => providerType ==
 const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) => {
   const [providers, setProviders] = useState<ProviderSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<ProviderSummary | null>(null);
   const [formData, setFormData] = useState<ProviderFormData>(initialFormData);
@@ -75,8 +77,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
       const data = await getProviders();
       setProviders(data);
     } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '加载提供商列表失败';
-      setError(message);
+      setError(err instanceof Error ? err : new Error('加载提供商列表失败'));
     } finally {
       setLoading(false);
     }
@@ -177,8 +178,8 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
       handleCloseModal();
       await fetchProviders();
     } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '保存失败';
-      setFormErrors({ submit: message });
+      const error = err instanceof Error ? err : new Error('保存失败');
+      setFormErrors({ submit: error.message });
     }
   };
 
@@ -215,8 +216,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
       await deleteProvider(providerId);
       await fetchProviders();
     } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '删除失败';
-      setError(message);
+      setError(err instanceof Error ? err : new Error('删除失败'));
     } finally {
       setDeletingProviderId(null);
     }
@@ -231,8 +231,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
       });
       await fetchProviders();
     } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '更新状态失败';
-      setError(message);
+      setError(err instanceof Error ? err : new Error('更新状态失败'));
     } finally {
       setTogglingProviderId(null);
     }
@@ -287,15 +286,15 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
       </div>
 
       {error && (
-        <div className="provider-error" data-testid="provider-error">
-          {error}
-        </div>
+        <ErrorMessage
+          error={error}
+          retry={{ onClick: fetchProviders }}
+          data-testid="provider-error"
+        />
       )}
 
       {loading && providers.length === 0 ? (
-        <div className="providers-loading" data-testid="providers-loading">
-          加载中...
-        </div>
+        <LoadingSpinner label="加载提供商列表..." />
       ) : (
         <>
           {/* Custom Providers */}

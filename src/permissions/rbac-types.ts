@@ -10,6 +10,10 @@ export enum ResourceType {
   users = 'users',
   settings = 'settings',
   observability = 'observability',
+  approval = 'approval',
+  run = 'run',
+  provider = 'provider',
+  toolResult = 'tool-result',
 }
 
 export enum Action {
@@ -65,6 +69,12 @@ function generateUserPermissions(): Permission[] {
   permissions.push({ resource: ResourceType.apiKeys, action: Action.read });
   permissions.push({ resource: ResourceType.apiKeys, action: Action.create });
   permissions.push({ resource: ResourceType.apiKeys, action: Action.delete });
+  
+  permissions.push({ resource: ResourceType.approval, action: Action.read });
+  permissions.push({ resource: ResourceType.approval, action: Action.update });
+  permissions.push({ resource: ResourceType.run, action: Action.read });
+  permissions.push({ resource: ResourceType.provider, action: Action.read });
+  permissions.push({ resource: ResourceType.toolResult, action: Action.read });
   
   return permissions;
 }

@@ -1,6 +1,6 @@
 {
   "name": "agent-platform",
-  "version": "0.1.0",
+  "version": "0.7.0-rc.1",
   "description": "Multi-agent platform for task orchestration and execution",
   "type": "module",
   "engines": {
@@ -10,14 +10,18 @@
   "scripts": {
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run tests/integration --maxWorkers=1 --minWorkers=1",
     "test:e2e": "vitest run tests/e2e",
     "test:p0": "vitest run tests/e2e/full-flow-suite.test.ts --reporter=verbose",
     "test:api": "vitest run tests/integration/api",
     "test:phase4": "vitest run tests/unit/dead-letter/ tests/integration/dead-letter/ tests/integration/api/connectors-api.test.ts tests/integration/observability/ tests/architecture/workflow-trigger-connector-contract.test.ts tests/architecture/replay-preview-safety-contract.test.ts tests/e2e/flow-16-automation-beta-demo.test.ts",
     "test:p5": "tsx scripts/check-p5.ts",
     "test:p6": "tsx scripts/check-p6.ts",
+    "test:p7": "tsx scripts/check-p7.ts",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "start:dev": "tsx src/index.ts",
     "start:api": "tsx src/api/server.ts",
     "start:api:e2e": "DATABASE_PATH=./data/e2e.db PORT=3103 HOST=localhost tsx src/api/server.ts",
@@ -39,9 +43,16 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.59.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.19.39",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "globals": "^15.15.0",
+    "prettier": "^3.8.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^1.6.1"
@@ -49,6 +60,7 @@
   "dependencies": {
     "@fastify/compress": "^8.3.1",
     "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.6",

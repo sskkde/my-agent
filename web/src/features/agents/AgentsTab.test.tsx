@@ -100,7 +100,7 @@ describe('AgentsTab', () => {
   describe('Loading State', () => {
     it('should show loading state initially', () => {
       render(<AgentsTab />);
-      expect(screen.getByTestId('agents-loading')).toBeInTheDocument();
+      expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
     });
   });
 

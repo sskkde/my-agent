@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from 'crypto';
 import type { ApiContext } from '../context.js';
 import { success, envelopeError } from '../response-envelope.js';
 import type { ApiKeyRole } from '../../storage/api-key-store.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const VALID_ROLES: ApiKeyRole[] = ['admin', 'user', 'service'];
 const KEY_BYTES = 32;
@@ -57,6 +58,9 @@ export function registerApiKeyRoutes(server: FastifyInstance, context: ApiContex
       },
     },
     async (request: FastifyRequest<{ Body: CreateApiKeyBody }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.apiKeys, Action.create)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -92,6 +96,9 @@ export function registerApiKeyRoutes(server: FastifyInstance, context: ApiContex
   server.get(
     '/api/v1/api-keys',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.apiKeys, Action.read)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
@@ -129,6 +136,9 @@ export function registerApiKeyRoutes(server: FastifyInstance, context: ApiContex
       },
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.apiKeys, Action.delete)) {
+        return reply;
+      }
       const userId = request.user?.userId;
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));

@@ -1,8 +1,9 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import { success, envelopeError } from '../response-envelope.js';
 import type { UsageSummary, PaginatedResponse } from '../types.js';
 import type { TurnTranscript } from '../../storage/transcript-store.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 /**
  * Estimates token count from text content.
@@ -127,7 +128,10 @@ export function registerUsageRoutes(server: FastifyInstance, context: ApiContext
    */
   server.get<{ Querystring: GetUsageQuery }>(
     '/api/v1/usage',
-    async (request, reply): Promise<{ data: PaginatedResponse<UsageSummary> }> => {
+    async (request: FastifyRequest<{ Querystring: GetUsageQuery }>, reply: FastifyReply): Promise<{ data: PaginatedResponse<UsageSummary> }> => {
+      if (!request.requirePermission(ResourceType.observability, Action.read)) {
+        return reply;
+      }
       const { sessionId, limit = 50, offset = 0 } = request.query;
       const now = new Date().toISOString();
 
@@ -194,7 +198,10 @@ export function registerUsageRoutes(server: FastifyInstance, context: ApiContext
    */
   server.get<{ Params: GetSessionUsageParams }>(
     '/api/v1/sessions/:sessionId/usage',
-    async (request, reply): Promise<{ data: UsageSummary }> => {
+    async (request: FastifyRequest<{ Params: GetSessionUsageParams }>, reply: FastifyReply): Promise<{ data: UsageSummary }> => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply;
+      }
       const { sessionId } = request.params;
       const now = new Date().toISOString();
 

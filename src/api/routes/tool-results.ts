@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ApiContext } from '../context.js';
 import type { ToolResultResponse } from '../types.js';
 import { success, envelopeError } from '../response-envelope.js';
+import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 interface ToolResultParams {
   resultId: string;
@@ -14,6 +15,9 @@ export function registerToolResultsRoutes(server: FastifyInstance, context: ApiC
       request: FastifyRequest<{ Params: ToolResultParams }>,
       reply: FastifyReply
     ) => {
+      if (!request.requirePermission('tool-result' as ResourceType, Action.read)) {
+        return reply;
+      }
       const { resultId } = request.params;
       const userId = request.user?.userId;
 
