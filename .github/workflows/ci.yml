@@ -27,6 +27,25 @@ jobs:
         run: npm run lint
         continue-on-error: true
 
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Run npm audit (root)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+      
+      - name: Run npm audit (web)
+        run: npm --prefix web audit --audit-level=high
+        continue-on-error: true
+
   security-tests:
     runs-on: ubuntu-latest
     env:
@@ -86,6 +105,185 @@ jobs:
       
       - name: Run P7 verification suite
         run: npm run test:p7
+
+  # P8 Test Suites
+  test-prod-config:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Run production config tests
+        run: npm run test:prod-config
+
+  test-tenancy:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Run multi-tenancy tests
+        run: npm run test:tenancy
+
+  test-postgres:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DATABASE_URL != '' }}
+    env:
+      WEB_SEARCH_BACKEND: none
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Run PostgreSQL adapter tests
+        run: npm run test:postgres
+
+  test-backup-restore:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Run backup/restore tests
+        run: npm run test:backup-restore
+
+  test-load:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Run load smoke tests
+        run: npm run test:load
+
+  test-dlq:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Run DLQ reliability tests
+        run: npm run test:phase4
+
+  api-contract:
+    runs-on: ubuntu-latest
+    env:
+      WEB_SEARCH_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Run API contract lock tests
+        run: npm run test:unit -- tests/integration/api/api-contract-lock.test.ts
+
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Install frontend dependencies
+        run: npm --prefix web ci --no-audit --no-fund
+      
+      - name: Build web frontend
+        run: npm run build:web
+
+  test-p8:
+    runs-on: ubuntu-latest
+    needs: [test, test-prod-config, test-tenancy, security-tests, performance-tests, test-backup-restore, test-load, test-dlq, api-contract, web-build]
+    env:
+      WEB_SEARCH_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
+      
+      - name: Install frontend dependencies
+        run: npm --prefix web ci --no-audit --no-fund
+      
+      - name: Run P8 GA readiness verification
+        run: npm run test:p8
 
   docker-build:
     runs-on: ubuntu-latest

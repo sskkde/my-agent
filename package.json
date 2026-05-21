@@ -1,6 +1,6 @@
 {
   "name": "agent-platform",
-  "version": "0.7.0-rc.1",
+  "version": "0.8.0-ga-candidate",
   "description": "Multi-agent platform for task orchestration and execution",
   "type": "module",
   "engines": {
@@ -18,11 +18,14 @@
     "test:p5": "tsx scripts/check-p5.ts",
     "test:p6": "tsx scripts/check-p6.ts",
     "test:p7": "tsx scripts/check-p7.ts",
+    "test:p8": "tsx scripts/check-p8.ts",
+    "test:ga": "tsx scripts/check-p8.ts",
     "test:security": "vitest run tests/security",
     "test:tenancy": "vitest run tests/integration/tenancy/",
     "test:postgres": "vitest run tests/integration/postgres/",
     "test:prod-config": "vitest run tests/security/production-config-guard.test.ts --reporter=verbose",
     "test:performance": "vitest run tests/performance",
+    "test:load": "tsx scripts/check-load-smoke.ts",
     "test:docker": "tsx scripts/check-docker-smoke.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
@@ -38,6 +41,8 @@
     "db:migrate": "tsx src/cli/migrate.ts",
     "db:health": "tsx src/cli/db-health.ts",
     "db:backup": "tsx src/cli/db-backup.ts",
+    "db:restore": "tsx scripts/check-backup-restore.ts",
+    "test:backup-restore": "vitest run tests/integration/storage/backup-restore-ga.test.ts",
     "install:playwright": "npx playwright install chromium"
   },
   "keywords": [
@@ -48,22 +53,6 @@
   ],
   "author": "",
   "license": "MIT",
-  "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@playwright/test": "^1.59.1",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^20.19.39",
-    "@types/pg": "^8.20.0",
-    "@typescript-eslint/eslint-plugin": "^8.59.4",
-    "@typescript-eslint/parser": "^8.59.4",
-    "eslint": "^9.39.4",
-    "eslint-config-prettier": "^9.1.2",
-    "globals": "^15.15.0",
-    "prettier": "^3.8.3",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "vitest": "^1.6.1"
-  },
   "dependencies": {
     "@fastify/compress": "^8.3.1",
     "@fastify/cors": "^11.2.0",
@@ -72,7 +61,8 @@
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.6",
     "better-sqlite3": "^12.9.0",
-    "fastify": "^5.8.5"
+    "fastify": "^5.8.5",
+    "tsx": "^4.21.0"
   },
   "optionalDependencies": {
     "pg": "^8.21.0",

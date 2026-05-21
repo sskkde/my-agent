@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
 import Database from 'better-sqlite3';
 
 interface TestResult {
@@ -19,12 +20,86 @@ function logStep(step: string, passed: boolean, message: string): void {
   results.push({ step, passed, message });
 }
 
+function hashKey(key: string): string {
+  return crypto.createHash('sha256').update(key).digest('hex');
+}
+
+function createAppSchema(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE sessions (
+      session_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      message_count INTEGER DEFAULT 0,
+      last_activity_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
+    )
+  `);
+  
+  db.exec(`
+    CREATE TABLE api_keys (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      key_hash TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      role TEXT NOT NULL,
+      user_id TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT,
+      last_used_at TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
+    )
+  `);
+  
+  db.exec(`
+    CREATE TABLE provider_configs (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL,
+      display_name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+  
+  db.exec(`
+    CREATE TABLE users (
+      user_id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      applied_at TEXT NOT NULL,
+      checksum TEXT NOT NULL
+    )
+  `);
+}
+
 async function main(): Promise<void> {
   console.log('='.repeat(60));
-  console.log('Backup/Restore Verification Script');
+  console.log('Backup/Restore GA Verification Script');
   console.log('='.repeat(60));
 
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'backup-restore-test-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'backup-restore-ga-'));
   const testDbPath = path.join(tempDir, 'test.db');
   const backupDir = path.join(tempDir, 'backups');
   const backupPath = path.join(backupDir, 'backup-test.db');
@@ -35,46 +110,45 @@ async function main(): Promise<void> {
   let db: Database.Database | null = null;
 
   try {
-    console.log('\n[1/7] Create test database with sample data');
+    console.log('\n[1/8] Create test database with app schema');
     console.log('-'.repeat(60));
     
     db = new Database(testDbPath);
+    createAppSchema(db);
     
-    db.exec(`CREATE TABLE users (
-      id INTEGER PRIMARY KEY,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )`);
+    const now = new Date().toISOString();
+    const plainApiKey = 'ak_test_secret_key_for_backup_test_12345';
+    const keyHash = hashKey(plainApiKey);
     
-    db.exec(`CREATE TABLE messages (
-      id INTEGER PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      content TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )`);
+    db.prepare(`INSERT INTO sessions (session_id, user_id, title, last_activity_at, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, ?)`).run('sess-001', 'user-001', 'Test Session', now, now, now);
     
-    db.exec(`INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com')`);
-    db.exec(`INSERT INTO users (name, email) VALUES ('Bob', 'bob@example.com')`);
-    db.exec(`INSERT INTO users (name, email) VALUES ('Charlie', 'charlie@example.com')`);
+    db.prepare(`INSERT INTO api_keys (id, name, key_hash, key_prefix, role, user_id, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)`).run('key-001', 'Test API Key', keyHash, 'ak_test_', 'user', 'user-001', now);
     
-    db.exec(`INSERT INTO messages (user_id, content) VALUES (1, 'Hello from Alice')`);
-    db.exec(`INSERT INTO messages (user_id, content) VALUES (2, 'Hello from Bob')`);
-    db.exec(`INSERT INTO messages (user_id, content) VALUES (1, 'Another message from Alice')`);
+    db.prepare(`INSERT INTO provider_configs (provider_id, user_id, provider_type, display_name, encrypted_api_key, api_key_last4, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run('prov-001', 'user-001', 'openrouter', 'Test Provider', 'aes-256-gcm:iv:tag:encrypted', '1234', now, now);
     
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-    const messageCount = db.prepare('SELECT COUNT(*) as count FROM messages').get() as { count: number };
+    db.prepare(`INSERT INTO users (user_id, username, password_hash, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?)`).run('user-001', 'testuser', 'hashed_password_value', now, now);
+
+    db.prepare(`INSERT INTO migrations (version, name, applied_at, checksum) 
+                VALUES (?, ?, ?, ?)`).run(100, 'test_migration', now, 'abc123');
+    
+    const sessionCount = db.prepare('SELECT COUNT(*) as count FROM sessions').get() as { count: number };
+    const apiKeyCount = db.prepare('SELECT COUNT(*) as count FROM api_keys').get() as { count: number };
+    const providerCount = db.prepare('SELECT COUNT(*) as count FROM provider_configs').get() as { count: number };
     
     logStep(
       'Create database',
-      userCount.count === 3 && messageCount.count === 3,
-      `Created database with ${userCount.count} users and ${messageCount.count} messages`
+      sessionCount.count === 1 && apiKeyCount.count === 1 && providerCount.count === 1,
+      `Created database with sessions=${sessionCount.count}, api_keys=${apiKeyCount.count}, providers=${providerCount.count}`
     );
     
     db.close();
     db = null;
 
-    console.log('\n[2/7] Run db:backup');
+    console.log('\n[2/8] Run db:backup');
     console.log('-'.repeat(60));
     
     fs.mkdirSync(backupDir, { recursive: true });
@@ -92,7 +166,7 @@ async function main(): Promise<void> {
     const backupCreated = backupResult.status === 0 && fs.existsSync(backupPath);
     logStep('Run backup', backupCreated, backupCreated ? 'Backup command completed' : `Backup failed: ${backupResult.stderr}`);
 
-    console.log('\n[3/7] Verify backup file');
+    console.log('\n[3/8] Verify backup file');
     console.log('-'.repeat(60));
     
     if (fs.existsSync(backupPath)) {
@@ -103,7 +177,7 @@ async function main(): Promise<void> {
       logStep('Backup file', false, 'Backup file does not exist');
     }
 
-    console.log('\n[4/7] SQLite integrity check on backup');
+    console.log('\n[4/8] SQLite integrity check on backup');
     console.log('-'.repeat(60));
     
     const backupDb = new Database(backupPath, { readonly: true });
@@ -112,7 +186,7 @@ async function main(): Promise<void> {
     const integrityPassed = integrityResult[0]?.integrity_check === 'ok';
     logStep('Integrity check', integrityPassed, `Result: ${integrityResult[0]?.integrity_check}`);
 
-    console.log('\n[5/7] Compare table counts');
+    console.log('\n[5/8] Compare table counts');
     console.log('-'.repeat(60));
     
     const sourceDb = new Database(testDbPath, { readonly: true });
@@ -126,47 +200,68 @@ async function main(): Promise<void> {
     const tableCountMatch = sourceTableCount.count === backupTableCount.count;
     logStep('Table count', tableCountMatch, `Source: ${sourceTableCount.count}, Backup: ${backupTableCount.count}`);
 
-    console.log('\n[6/7] Test restore flow');
+    console.log('\n[6/8] Test restore flow');
     console.log('-'.repeat(60));
     
     const modifyDb = new Database(testDbPath);
-    modifyDb.exec("INSERT INTO users (name, email) VALUES ('Dave', 'dave@example.com')");
-    const beforeRestoreCount = modifyDb.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+    modifyDb.exec("INSERT INTO sessions (session_id, user_id, title, last_activity_at, created_at, updated_at) VALUES ('sess-002', 'user-001', 'Extra Session', datetime('now'), datetime('now'), datetime('now'))");
+    const beforeRestoreCount = modifyDb.prepare('SELECT COUNT(*) as count FROM sessions').get() as { count: number };
     modifyDb.close();
     
-    console.log(`  Users before restore: ${beforeRestoreCount.count} (added Dave)`);
+    console.log(`  Sessions before restore: ${beforeRestoreCount.count} (added extra session)`);
     
     fs.copyFileSync(backupPath, testDbPath);
     
     const restoreDb = new Database(testDbPath);
-    const afterRestoreCount = restoreDb.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+    const afterRestoreCount = restoreDb.prepare('SELECT COUNT(*) as count FROM sessions').get() as { count: number };
     restoreDb.close();
     
-    console.log(`  Users after restore: ${afterRestoreCount.count}`);
+    console.log(`  Sessions after restore: ${afterRestoreCount.count}`);
     
-    const restoreSuccess = afterRestoreCount.count === 3 && beforeRestoreCount.count === 4;
-    logStep('Restore flow', restoreSuccess, `Restored from ${beforeRestoreCount.count} to ${afterRestoreCount.count} users`);
+    const restoreSuccess = afterRestoreCount.count === 1 && beforeRestoreCount.count === 2;
+    logStep('Restore flow', restoreSuccess, `Restored from ${beforeRestoreCount.count} to ${afterRestoreCount.count} sessions`);
 
-    console.log('\n[7/7] Verify data integrity after restore');
+    console.log('\n[7/8] Verify data integrity after restore');
     console.log('-'.repeat(60));
     
     const verifyDb = new Database(testDbPath, { readonly: true });
     
-    const alice = verifyDb.prepare("SELECT name FROM users WHERE email='alice@example.com'").get() as { name: string } | undefined;
-    const bob = verifyDb.prepare("SELECT name FROM users WHERE email='bob@example.com'").get() as { name: string } | undefined;
-    const charlie = verifyDb.prepare("SELECT name FROM users WHERE email='charlie@example.com'").get() as { name: string } | undefined;
-    const messageCountAfter = verifyDb.prepare('SELECT COUNT(*) as count FROM messages').get() as { count: number };
+    const session = verifyDb.prepare("SELECT title FROM sessions WHERE session_id='sess-001'").get() as { title: string } | undefined;
+    const apiKeyRow = verifyDb.prepare("SELECT key_hash, key_prefix FROM api_keys WHERE id='key-001'").get() as { key_hash: string; key_prefix: string } | undefined;
+    const providerRow = verifyDb.prepare("SELECT encrypted_api_key, api_key_last4 FROM provider_configs WHERE provider_id='prov-001'").get() as { encrypted_api_key: string; api_key_last4: string } | undefined;
+    const userRow = verifyDb.prepare("SELECT username FROM users WHERE user_id='user-001'").get() as { username: string } | undefined;
+    const migrationRow = verifyDb.prepare("SELECT version FROM migrations WHERE version=100").get() as { version: number } | undefined;
     
     verifyDb.close();
     
-    const aliceExists = alice?.name === 'Alice';
-    const bobExists = bob?.name === 'Bob';
-    const charlieExists = charlie?.name === 'Charlie';
-    const messagesCorrect = messageCountAfter.count === 3;
+    const sessionValid = session?.title === 'Test Session';
+    const apiKeyHashValid = apiKeyRow?.key_hash === keyHash;
+    const providerEncryptedValid = providerRow?.encrypted_api_key?.startsWith('aes-256-gcm:') ?? false;
+    const userValid = userRow?.username === 'testuser';
+    const migrationValid = migrationRow?.version === 100;
     
-    const dataIntegrity = aliceExists && bobExists && charlieExists && messagesCorrect;
+    const dataIntegrity = sessionValid && apiKeyHashValid && providerEncryptedValid && userValid && migrationValid;
+    
     logStep('Data integrity', dataIntegrity, 
-      `Users: Alice=${aliceExists}, Bob=${bobExists}, Charlie=${charlieExists}; Messages: ${messageCountAfter.count}`);
+      `Session=${sessionValid}, APIKeyHash=${apiKeyHashValid}, ProviderEncrypted=${providerEncryptedValid}, User=${userValid}, Migration=${migrationValid}`);
+
+    console.log('\n[8/8] Verify secrets remain hashed/encrypted');
+    console.log('-'.repeat(60));
+    
+    const secretVerifyDb = new Database(testDbPath, { readonly: true });
+    
+    const allApiKeys = secretVerifyDb.prepare("SELECT key_hash FROM api_keys").all() as Array<{ key_hash: string }>;
+    const noPlaintextApiKeys = !allApiKeys.some(k => k.key_hash === plainApiKey);
+    
+    const allProviders = secretVerifyDb.prepare("SELECT encrypted_api_key FROM provider_configs WHERE encrypted_api_key IS NOT NULL").all() as Array<{ encrypted_api_key: string }>;
+    const allProvidersEncrypted = allProviders.every(p => p.encrypted_api_key.startsWith('aes-256-gcm:'));
+    
+    secretVerifyDb.close();
+    
+    const secretsPreserved = noPlaintextApiKeys && allProvidersEncrypted;
+    
+    logStep('Secrets preserved', secretsPreserved, 
+      `API keys hashed (not plaintext)=${noPlaintextApiKeys}, Provider keys encrypted=${allProvidersEncrypted}`);
 
   } finally {
     if (db) {

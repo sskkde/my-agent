@@ -1,0 +1,109 @@
+# Production Docker Compose Configuration
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file overlays production-specific settings on top of the base docker-compose.yml
+# It should NOT be used alone - always combine with the base configuration.
+
+services:
+  api:
+    environment:
+      - NODE_ENV=production
+      # Use Docker secrets for sensitive values (see secrets section below)
+      - APP_SECRET_KEY_FILE=/run/secrets/app_secret_key
+      # Production security settings
+      - COOKIE_SECURE=true
+      - TRUST_PROXY=1
+      # Logging
+      - LOG_LEVEL=info
+      # Override default database path for volume separation
+      - DATABASE_PATH=/app/data/app.db
+    secrets:
+      - app_secret_key
+      # Uncomment as needed for OAuth providers:
+      # - google_client_id
+      # - google_client_secret
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+    # Run as non-root user for security
+    user: '1000:1000'
+    volumes:
+      # Use separate volumes for data and backups
+      - agent_data:/app/data
+      - agent_backups:/app/backups
+
+  web:
+    environment:
+      - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Optional: PostgreSQL database (uncomment to use instead of SQLite)
+  # Requires: DATABASE_URL environment variable and postgres_password secret
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_DB: agentplatform
+  #     POSTGRES_USER: agentplatform
+  #     POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ['CMD-SHELL', 'pg_isready -U agentplatform']
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 512M
+  #   restart: unless-stopped
+
+volumes:
+  # Named volumes for data persistence
+  agent_data:
+    driver: local
+  agent_backups:
+    driver: local
+  # postgres_data:
+  #   driver: local
+
+secrets:
+  # Primary application secret key (required)
+  # Generate with: openssl rand -hex 32 > secrets/app_secret_key.txt
+  app_secret_key:
+    file: ./secrets/app_secret_key.txt
+
+  # Optional OAuth provider secrets (uncomment as needed)
+  # google_client_id:
+  #   file: ./secrets/google_client_id.txt
+  # google_client_secret:
+  #   file: ./secrets/google_client_secret.txt
+
+  # Optional PostgreSQL password (if using PostgreSQL)
+  # postgres_password:
+  #   file: ./secrets/postgres_password.txt

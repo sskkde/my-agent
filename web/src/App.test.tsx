@@ -21,7 +21,7 @@ describe('App', () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('auth-subtitle')).toHaveTextContent('创建管理员账户');
+      expect(screen.getByTestId('production-setup-page')).toBeInTheDocument();
     });
   });
 

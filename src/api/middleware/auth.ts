@@ -106,6 +106,12 @@ export async function authenticateRequest(
 }
 
 function isPathExcluded(path: string, excludedPaths: string[]): boolean {
+  // All legacy /api/* paths (excluding /api/v1/*) are excluded so auth does not
+  // intercept 307 redirects. Auth will be checked when the client follows the
+  // redirect to the /api/v1/* target.
+  if (path.startsWith('/api/') && !path.startsWith('/api/v1/')) {
+    return true;
+  }
   return excludedPaths.some(excludedPath => {
     if (excludedPath.endsWith('*')) {
       return path.startsWith(excludedPath.slice(0, -1));

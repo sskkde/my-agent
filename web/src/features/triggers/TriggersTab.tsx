@@ -3,6 +3,8 @@ import * as triggersApi from '../../api/triggers';
 import type { TriggerResponse, TriggerLogEntry } from '../../api/types';
 import TriggerCreateDialog from './TriggerCreateDialog';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
+import EmptyState from '../../components/EmptyState';
 
 const TriggersTab: React.FC = () => {
   const [triggers, setTriggers] = useState<TriggerResponse[]>([]);
@@ -81,7 +83,7 @@ const TriggersTab: React.FC = () => {
   if (loading) {
     return (
       <div data-testid="triggers-panel" className="triggers-panel">
-        <LoadingSpinner label="加载触发器列表..." />
+        <LoadingSpinner size="large" label="加载触发器列表..." />
       </div>
     );
   }
@@ -89,10 +91,11 @@ const TriggersTab: React.FC = () => {
   if (error) {
     return (
       <div data-testid="triggers-panel" className="triggers-panel">
-        <div className="triggers-error" data-testid="triggers-error">
-          <p>{error}</p>
-          <button className="secondary-button" onClick={loadTriggers}>重试</button>
-        </div>
+        <ErrorMessage
+          error={{ code: 'LOAD_ERROR', message: error } as Error & { code: string }}
+          retry={{ onClick: loadTriggers }}
+          size="large"
+        />
       </div>
     );
   }
@@ -100,7 +103,17 @@ const TriggersTab: React.FC = () => {
   if (triggers.length === 0) {
     return (
       <div data-testid="triggers-panel" className="triggers-panel">
-        <p className="empty-state" data-testid="triggers-empty">暂无触发器</p>
+        <EmptyState
+          icon="⚡"
+          title="暂无触发器"
+          description="创建触发器以自动化工作流"
+          action={{ label: '创建触发器', onClick: () => setCreateDialogOpen(true) }}
+        />
+        <TriggerCreateDialog
+          isOpen={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onSuccess={loadTriggers}
+        />
       </div>
     );
   }
@@ -120,7 +133,11 @@ const TriggersTab: React.FC = () => {
             </button>
           </div>
           {scheduleTriggers.length === 0 ? (
-            <p className="empty-state">暂无定时触发器</p>
+            <EmptyState
+              icon="⏰"
+              title="暂无定时触发器"
+              description="创建定时触发器以按计划执行任务"
+            />
           ) : (
             <div className="triggers-list">
               {scheduleTriggers.map((trigger) => (
@@ -158,7 +175,11 @@ const TriggersTab: React.FC = () => {
 
           <h4 style={{ marginTop: '24px' }}>Webhook 触发器</h4>
           {webhookTriggers.length === 0 ? (
-            <p className="empty-state">暂无 Webhook 触发器</p>
+            <EmptyState
+              icon="🔗"
+              title="暂无 Webhook 触发器"
+              description="创建 Webhook 触发器以响应外部事件"
+            />
           ) : (
             <div className="triggers-list">
               {webhookTriggers.map((trigger) => (
@@ -201,7 +222,11 @@ const TriggersTab: React.FC = () => {
             {logsLoading ? (
               <LoadingSpinner size="small" label="加载日志..." />
             ) : logs.length === 0 ? (
-              <p className="empty-state">暂无执行日志</p>
+              <EmptyState
+                icon="📋"
+                title="暂无执行日志"
+                description="此触发器还没有执行记录"
+              />
             ) : (
               <table className="logs-table" data-testid="trigger-logs-table">
                 <thead>

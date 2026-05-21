@@ -8,6 +8,9 @@ import type {
   SystemSettings,
   UserRole,
 } from '../../api/types';
+import ErrorMessage from '../../components/ErrorMessage';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import EmptyState from '../../components/EmptyState';
 
 const AdminTab: React.FC = () => {
   const { user } = useAuth();
@@ -131,10 +134,12 @@ const AdminTab: React.FC = () => {
   if (!user || user.role !== 'admin') {
     return (
       <div className="admin-tab" data-testid="admin-access-denied">
-        <div className="admin-denied-content">
-          <h2>需要管理员权限</h2>
-          <p>您没有权限访问此页面。</p>
-        </div>
+        <ErrorMessage
+          error={{ code: 'FORBIDDEN', message: '需要管理员权限' } as Error & { code: string }}
+          title="没有权限"
+          description="您没有权限访问此页面"
+          size="large"
+        />
       </div>
     );
   }
@@ -142,7 +147,7 @@ const AdminTab: React.FC = () => {
   if (loading) {
     return (
       <div className="admin-tab" data-testid="admin-loading">
-        <div className="loading">加载中...</div>
+        <LoadingSpinner size="large" label="加载管理控制台..." />
       </div>
     );
   }
@@ -150,10 +155,11 @@ const AdminTab: React.FC = () => {
   if (error && users.length === 0 && apiKeys.length === 0) {
     return (
       <div className="admin-tab" data-testid="admin-error">
-        <div className="admin-error-content">
-          <p>{error}</p>
-          <button className="secondary-button" onClick={loadData}>重试</button>
-        </div>
+        <ErrorMessage
+          error={{ code: 'LOAD_ERROR', message: error } as Error & { code: string }}
+          retry={{ onClick: loadData }}
+          size="large"
+        />
       </div>
     );
   }
@@ -175,7 +181,11 @@ const AdminTab: React.FC = () => {
         <section className="admin-section" data-testid="user-management-panel">
           <h3>用户管理</h3>
           {users.length === 0 ? (
-            <p className="empty-state">暂无用户</p>
+            <EmptyState
+              icon="👥"
+              title="暂无用户"
+              description="系统中还没有用户"
+            />
           ) : (
             <table className="admin-table">
               <thead>
@@ -239,7 +249,12 @@ const AdminTab: React.FC = () => {
             </button>
           </div>
           {apiKeys.length === 0 ? (
-            <p className="empty-state">暂无 API 密钥</p>
+            <EmptyState
+              icon="🔑"
+              title="暂无 API 密钥"
+              description="创建 API 密钥以便程序化访问"
+              action={{ label: '创建密钥', onClick: () => setCreateKeyDialogOpen(true) }}
+            />
           ) : (
             <table className="admin-table">
               <thead>
@@ -417,7 +432,11 @@ const AdminTab: React.FC = () => {
         <section className="admin-section" data-testid="connector-status-panel">
           <h3>连接器状态</h3>
           {connectors.length === 0 ? (
-            <p className="empty-state">暂无连接器</p>
+            <EmptyState
+              icon="🔌"
+              title="暂无连接器"
+              description="系统中还没有配置连接器"
+            />
           ) : (
             <div className="connector-grid">
               {connectors.map((c) => (

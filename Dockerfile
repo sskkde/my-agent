@@ -33,7 +33,7 @@ ENV DATABASE_PATH=/data/agent-platform.db
 ENV NODE_ENV=production
 
 # OCI image labels
-LABEL org.opencontainers.image.version="0.7.0-rc.1"
+LABEL org.opencontainers.image.version="0.8.0-ga-candidate"
 LABEL org.opencontainers.image.description="Agent Platform API"
 LABEL org.opencontainers.image.title="Agent Platform API"
 LABEL org.opencontainers.image.source="https://github.com/ohmyopencode/agent-platform"

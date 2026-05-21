@@ -40,6 +40,7 @@ import { registerRequestIdMiddleware } from './middleware/request-id.js';
 import { registerRateLimitMiddleware } from './middleware/rate-limit.js';
 import { registerRbacMiddleware } from './middleware/rbac.js';
 import { registerSecurityHeaders } from './middleware/security-headers.js';
+import { registerTenantResolution } from '../tenancy/tenant-resolution.js';
 import { getCorsOrigin } from './middleware/cors-production.js';
 import { createApiContext, type ApiContext } from './context.js';
 import { createLegacyRedirect, ROUTE_MAP } from './v1-prefix.js';
@@ -62,7 +63,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
       info: {
         title: 'Agent Platform API',
         description: 'Agent Platform Product Experience API - A multi-agent platform for task orchestration and execution with LLM providers, background task processing, workflows, triggers, and connectors.',
-        version: '0.7.0-rc.1',
+        version: '0.8.0-ga-candidate',
       },
       servers: [
         { url: 'http://localhost:3003', description: 'Development' },
@@ -131,6 +132,8 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
 
     // Register RBAC middleware after auth and api-key-auth
     await registerRbacMiddleware(server);
+
+    registerTenantResolution(server, { organizationStore: context.stores.organizationStore });
 
     await registerSessionsRoutes(server, context);
     registerStatusRoutes(server, context);

@@ -82,11 +82,63 @@ class PgMigrationRunnerImpl implements PgMigrationRunner {
     }
   }
 
+  /**
+   * Split SQL into individual statements, respecting PostgreSQL dollar quoting ($$...$$)
+   * and single-quoted strings. This prevents naive splitting on semicolons inside
+   * DO blocks, function bodies, and other dollar-quoted contexts.
+   */
+  private splitSqlStatements(sql: string): string[] {
+    const statements: string[] = [];
+    let current = '';
+    let inDollarQuote = false;
+    let inSingleQuote = false;
+    let i = 0;
+
+    while (i < sql.length) {
+      const char = sql[i];
+      const remaining = sql.slice(i);
+
+      // Handle single-quoted strings (outside dollar quotes)
+      if (char === "'" && !inDollarQuote) {
+        inSingleQuote = !inSingleQuote;
+        current += char;
+        i++;
+        continue;
+      }
+
+      // Handle dollar quoting ($$)
+      if (remaining.startsWith('$$') && !inSingleQuote) {
+        inDollarQuote = !inDollarQuote;
+        current += '$$';
+        i += 2;
+        continue;
+      }
+
+      // Handle semicolons — split only when outside any quoting context
+      if (char === ';' && !inSingleQuote && !inDollarQuote) {
+        const trimmed = current.trim();
+        if (trimmed.length > 0) {
+          statements.push(trimmed);
+        }
+        current = '';
+        i++;
+        continue;
+      }
+
+      current += char;
+      i++;
+    }
+
+    const trimmed = current.trim();
+    if (trimmed.length > 0) {
+      statements.push(trimmed);
+    }
+
+    return statements;
+  }
+
   private async executeMigrationSql(sql: string): Promise<void> {
-    const statements = sql
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+    const statements = this.splitSqlStatements(sql);
 
     for (const statement of statements) {
       await this.connection.exec(statement);

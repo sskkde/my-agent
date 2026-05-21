@@ -85,7 +85,7 @@ describe('MemoryTab', () => {
     render(<MemoryTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('memory-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-message')).toBeInTheDocument();
     });
 
     expect(screen.getByText('加载记忆失败')).toBeInTheDocument();

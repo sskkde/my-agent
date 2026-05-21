@@ -26,6 +26,12 @@ export function isAuthRequired(options: AuthTokenOptions): boolean {
 }
 
 function isPathExempt(path: string, exemptPaths: string[]): boolean {
+  // All legacy /api/* paths (excluding /api/v1/*) are excluded so auth-token does not
+  // intercept 307 redirects. Auth will be checked when the client follows the
+  // redirect to the /api/v1/* target.
+  if (path.startsWith('/api/') && !path.startsWith('/api/v1/')) {
+    return true;
+  }
   return exemptPaths.some(exemptPath => {
     if (exemptPath.endsWith('*')) {
       return path.startsWith(exemptPath.slice(0, -1));

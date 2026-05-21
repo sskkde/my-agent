@@ -5,10 +5,53 @@ info:
     Agent Platform Product Experience API - A multi-agent platform for task orchestration 
     and execution with LLM providers, background task processing, workflows, triggers, and connectors.
     
+    ## Response Envelope
     All endpoints use a standard API response envelope:
     - Success: `{ ok: true, data: ..., requestId: "..." }`
     - Error: `{ ok: false, error: { code: "...", message: "..." }, requestId: "..." }`
-  version: "0.7.0-rc.1"
+    
+    ## Authentication Schemes
+    
+    The API supports three authentication methods:
+    
+    | Scheme | Description | Use Case |
+    |--------|-------------|----------|
+    | **Cookie Session** | Session cookie (`agent-platform-session`) set after login | Web UI users |
+    | **API Key** | Header `X-API-Key: ak_<key>` with `ak_` prefix | Service-to-service, CLI tools |
+    | **Bearer Token** | Header `Authorization: Bearer <token>` | OIDC integration |
+    
+    ## Pagination
+    
+    List endpoints support cursor-based pagination:
+    - `limit`: Maximum items per page (default: 50, max: 100)
+    - `offset`: Number of items to skip
+    - Response includes `hasMore` boolean for pagination continuation
+    
+    ## Rate Limiting
+    
+    Rate limit headers are returned on all requests:
+    - `X-RateLimit-Limit`: Maximum requests per window
+    - `X-RateLimit-Remaining`: Remaining requests in current window
+    - `X-RateLimit-Reset`: Unix timestamp when the window resets
+    
+    SSE endpoints (e.g., `/runs/stream`, `/timeline/stream`) are exempt from rate limiting.
+    
+    ## Error Codes
+    
+    Standard error codes include:
+    - `BAD_REQUEST` (400) - Invalid request body or parameters
+    - `UNAUTHORIZED` (401) - Authentication required
+    - `FORBIDDEN` (403) - Access denied
+    - `NOT_FOUND` (404) - Resource not found
+    - `CONFLICT` (409) - Resource conflict
+    - `INTERNAL_ERROR` (500) - Unexpected server error
+    - `SERVICE_UNAVAILABLE` (503) - Feature not configured
+    
+    ## Deprecation Policy
+    
+    API versioning follows semantic versioning. Breaking changes result in a new API version prefix.
+    See: https://example.com/deprecation-policy
+  version: "0.8.0-ga-candidate"
   contact:
     name: Agent Platform Team
 
@@ -21,6 +64,8 @@ servers:
 tags:
   - name: Auth & Setup
     description: Authentication and initial setup endpoints
+  - name: Organizations
+    description: Multi-tenancy organization and membership management
   - name: RBAC
     description: Role-based access control, API keys, and permissions management
   - name: Sessions
@@ -38,7 +83,7 @@ tags:
   - name: Observability
     description: Run execution visibility, console views, and replay previews
   - name: Connectors
-    description: Connector definition and instance management
+    description: Connector definition, instance management, and OAuth integration
   - name: System
     description: Health, status, usage, logs, and system configuration
 
@@ -135,8 +180,232 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthSuccessResponse"
+         "401":
+           $ref: "#/components/responses/Unauthorized"
+
+  # ==========================================================================
+  # Organizations (Multi-tenancy)
+  # ==========================================================================
+  /api/v1/organizations:
+    get:
+      tags: [Organizations]
+      summary: List organizations
+      description: Returns organizations the current user belongs to (or all for admins)
+      operationId: listOrganizations
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationListResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Organizations]
+      summary: Create organization
+      description: Creates a new organization
+      operationId: createOrganization
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/organizations/{orgId}:
+    get:
+      tags: [Organizations]
+      summary: Get organization
+      description: Returns organization details
+      operationId: getOrganization
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Organizations]
+      summary: Update organization
+      description: Updates organization name or slug
+      operationId: updateOrganization
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationRequest"
+      responses:
+        "200":
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Organizations]
+      summary: Delete organization
+      description: Deletes an organization (cannot delete default org)
+      operationId: deleteOrganization
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Organization deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteOrganizationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/organizations/{orgId}/members:
+    get:
+      tags: [Organizations]
+      summary: List organization members
+      description: Returns all members of an organization
+      operationId: listOrganizationMembers
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationMemberListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Organizations]
+      summary: Add member to organization
+      description: Adds a user to the organization with specified role
+      operationId: addOrganizationMember
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddOrganizationMemberRequest"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationMembershipResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/organizations/{orgId}/members/{userId}:
+    delete:
+      tags: [Organizations]
+      summary: Remove member from organization
+      description: Removes a user from the organization
+      operationId: removeOrganizationMember
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoveMemberResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/organizations/{orgId}/members/{userId}/role:
+    patch:
+      tags: [Organizations]
+      summary: Update member role
+      description: Updates a member's role in the organization
+      operationId: updateOrganizationMemberRole
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemberRoleRequest"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateMemberRoleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # ==========================================================================
   # RBAC - API Keys
@@ -183,7 +452,7 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /api/v1/api-keys/{keyId}:
+  /api/v1/api-keys/{id}:
     delete:
       tags: [RBAC]
       summary: Revoke API key
@@ -192,7 +461,7 @@ paths:
       security:
         - sessionAuth: []
       parameters:
-        - name: keyId
+        - name: id
           in: path
           required: true
           schema:
@@ -1645,8 +1914,103 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
+         "500":
+           $ref: "#/components/responses/InternalError"
+
+  /api/v1/connectors/{type}/oauth/authorize:
+    get:
+      tags: [Connectors]
+      summary: Get OAuth authorization URL
+      description: Generates OAuth authorization URL for connector setup (Google Calendar, Contacts, Docs)
+      operationId: getOAuthAuthorizeUrl
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [calendar, contacts, docs]
+          description: Connector type for OAuth
+      responses:
+        "200":
+          description: Authorization URL generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthAuthorizeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: OAuth not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/connectors/{type}/oauth/callback:
+    post:
+      tags: [Connectors]
+      summary: Handle OAuth callback
+      description: Exchanges OAuth authorization code for tokens and creates connector instance
+      operationId: handleOAuthCallback
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [calendar, contacts, docs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthCallbackRequest"
+      responses:
+        "200":
+          description: OAuth completed, instance created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthCallbackResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/connectors/{instanceId}/oauth/revoke:
+    post:
+      tags: [Connectors]
+      summary: Revoke OAuth tokens
+      description: Revokes OAuth tokens for a connector instance
+      operationId: revokeOAuthTokens
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: instanceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tokens revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthRevokeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # ==========================================================================
   # System
@@ -1807,6 +2171,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AlertStateListResponse"
+         "401":
+           $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/alerts/evaluate:
+    post:
+      tags: [System]
+      summary: Evaluate alert rules
+      description: Manually triggers evaluation of all alert rules
+      operationId: evaluateAlerts
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: Evaluation completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertEvaluationResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -2099,6 +2481,11 @@ components:
       type: http
       scheme: bearer
       description: API token for programmatic access (set API_AUTH_TOKEN env var to enable)
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key with ak_ prefix for service-to-service authentication
 
   parameters:
     sessionId:
@@ -2171,6 +2558,13 @@ components:
       schema:
         type: string
       description: Webhook trigger ID
+    orgId:
+      name: orgId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Organization ID
     runId:
       name: runId
       in: path
@@ -2286,6 +2680,169 @@ components:
               properties:
                 user:
                   $ref: "#/components/schemas/UserMetadata"
+
+    # ---- Organizations ----
+    Organization:
+      type: object
+      required: [orgId, name, slug, createdAt, updatedAt]
+      properties:
+        orgId:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrganizationResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/Organization"
+
+    OrganizationListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Organization"
+
+    CreateOrganizationRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          minLength: 1
+
+    UpdateOrganizationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          minLength: 1
+
+    DeleteOrganizationResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [orgId, deleted]
+              properties:
+                orgId:
+                  type: string
+                deleted:
+                  type: boolean
+
+    OrganizationMember:
+      type: object
+      required: [userId, orgId, role, joinedAt]
+      properties:
+        userId:
+          type: string
+        orgId:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member]
+        joinedAt:
+          type: string
+          format: date-time
+
+    OrganizationMemberListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/OrganizationMember"
+
+    AddOrganizationMemberRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [owner, admin, member]
+          default: member
+
+    OrganizationMembershipResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/OrganizationMember"
+
+    RemoveMemberResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [userId, orgId, removed]
+              properties:
+                userId:
+                  type: string
+                orgId:
+                  type: string
+                removed:
+                  type: boolean
+
+    UpdateMemberRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [owner, admin, member]
+
+    UpdateMemberRoleResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [userId, orgId, role]
+              properties:
+                userId:
+                  type: string
+                orgId:
+                  type: string
+                role:
+                  type: string
 
     # ---- RBAC - API Keys ----
     ApiKeyListEntry:
@@ -2546,6 +3103,26 @@ components:
                   type: array
                   items:
                     $ref: "#/components/schemas/AlertState"
+
+    AlertEvaluationResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [evaluatedAt, rulesEvaluated]
+              properties:
+                evaluatedAt:
+                  type: string
+                  format: date-time
+                rulesEvaluated:
+                  type: integer
+                alertsTriggered:
+                  type: integer
+                alertsResolved:
+                  type: integer
 
     # ---- Sessions ----
     SessionInfo:
@@ -3876,6 +4453,70 @@ components:
       properties:
         config:
           type: object
+
+    OAuthAuthorizeResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [authorizeUrl, stateId, codeVerifier, expiresAt]
+              properties:
+                authorizeUrl:
+                  type: string
+                  format: uri
+                stateId:
+                  type: string
+                codeVerifier:
+                  type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+
+    OAuthCallbackRequest:
+      type: object
+      required: [code, state, codeVerifier]
+      properties:
+        code:
+          type: string
+        state:
+          type: string
+        codeVerifier:
+          type: string
+
+    OAuthCallbackResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [instanceId, connectorType, providerId]
+              properties:
+                instanceId:
+                  type: string
+                connectorType:
+                  type: string
+                providerId:
+                  type: string
+
+    OAuthRevokeResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [revoked, instanceId]
+              properties:
+                revoked:
+                  type: boolean
+                instanceId:
+                  type: string
 
     # ---- System ----
     ModuleHealth:
