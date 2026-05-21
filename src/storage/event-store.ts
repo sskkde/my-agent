@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export type SourceModule =
   | 'gateway'
@@ -63,11 +64,11 @@ export interface EventQuery {
 }
 
 export interface EventStore {
-  append(event: EventRecord | EventRecord[]): void;
-  query(filters: EventQuery): EventRecord[];
-  findByCorrelationId(correlationId: string): EventRecord[];
-  findByCausationId(causationId: string): EventRecord[];
-  updateUserIdForSession(sessionId: string, newUserId: string): number;
+  append(event: EventRecord | EventRecord[], tenantId?: string): void;
+  query(filters: EventQuery, tenantId?: string): EventRecord[];
+  findByCorrelationId(correlationId: string, tenantId?: string): EventRecord[];
+  findByCausationId(causationId: string, tenantId?: string): EventRecord[];
+  updateUserIdForSession(sessionId: string, newUserId: string, tenantId?: string): number;
 }
 
 interface EventRow {
@@ -136,7 +137,7 @@ class EventStoreImpl implements EventStore {
     this.connection = connection;
   }
 
-  append(event: EventRecord | EventRecord[]): void {
+  append(event: EventRecord | EventRecord[], tenantId: string = DEFAULT_TENANT_ID): void {
     const events = Array.isArray(event) ? event : [event];
 
     const sql = `
@@ -146,8 +147,8 @@ class EventStoreImpl implements EventStore {
         planner_run_id, plan_id, run_id, workflow_run_id, workflow_step_run_id,
         background_run_id, subagent_run_id, tool_call_id, approval_id,
         wait_condition_id, artifact_id, memory_id,
-        payload, sensitivity, retention_class, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        payload, sensitivity, retention_class, created_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     for (const evt of events) {
@@ -175,16 +176,17 @@ class EventStoreImpl implements EventStore {
         JSON.stringify(evt.payload),
         evt.sensitivity,
         evt.retentionClass,
-        evt.createdAt
+        evt.createdAt,
+        tenantId
       ];
 
       this.connection.exec(sql, params);
     }
   }
 
-  query(filters: EventQuery): EventRecord[] {
-    const conditions: string[] = [];
-    const params: (string | number)[] = [];
+  query(filters: EventQuery, tenantId: string = DEFAULT_TENANT_ID): EventRecord[] {
+    const conditions: string[] = ['tenant_id = ?'];
+    const params: (string | number)[] = [tenantId];
 
     if (filters.sessionId !== undefined) {
       conditions.push('session_id = ?');
@@ -246,29 +248,29 @@ class EventStoreImpl implements EventStore {
     return rows.map(rowToEventRecord);
   }
 
-  findByCorrelationId(correlationId: string): EventRecord[] {
-    const sql = 'SELECT * FROM events WHERE correlation_id = ? ORDER BY created_at ASC';
-    const rows = this.connection.query<EventRow>(sql, [correlationId]);
+  findByCorrelationId(correlationId: string, tenantId: string = DEFAULT_TENANT_ID): EventRecord[] {
+    const sql = 'SELECT * FROM events WHERE correlation_id = ? AND tenant_id = ? ORDER BY created_at ASC';
+    const rows = this.connection.query<EventRow>(sql, [correlationId, tenantId]);
     return rows.map(rowToEventRecord);
   }
 
-  findByCausationId(causationId: string): EventRecord[] {
-    const sql = 'SELECT * FROM events WHERE causation_id = ? ORDER BY created_at ASC';
-    const rows = this.connection.query<EventRow>(sql, [causationId]);
+  findByCausationId(causationId: string, tenantId: string = DEFAULT_TENANT_ID): EventRecord[] {
+    const sql = 'SELECT * FROM events WHERE causation_id = ? AND tenant_id = ? ORDER BY created_at ASC';
+    const rows = this.connection.query<EventRow>(sql, [causationId, tenantId]);
     return rows.map(rowToEventRecord);
   }
 
-  updateUserIdForSession(sessionId: string, newUserId: string): number {
+  updateUserIdForSession(sessionId: string, newUserId: string, tenantId: string = DEFAULT_TENANT_ID): number {
     const sql = `
       UPDATE events
       SET user_id = ?
-      WHERE session_id = ?
+      WHERE session_id = ? AND tenant_id = ?
     `;
 
     try {
-      this.connection.exec(sql, [newUserId, sessionId]);
-      const countSql = 'SELECT COUNT(*) as count FROM events WHERE session_id = ? AND user_id = ?';
-      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId]);
+      this.connection.exec(sql, [newUserId, sessionId, tenantId]);
+      const countSql = 'SELECT COUNT(*) as count FROM events WHERE session_id = ? AND user_id = ? AND tenant_id = ?';
+      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId, tenantId]);
       return rows[0]?.count ?? 0;
     } catch {
       return 0;

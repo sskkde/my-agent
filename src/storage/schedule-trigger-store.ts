@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export const SCHEDULE_TRIGGER_STATUSES = {
   ACTIVE: 'active',
@@ -36,13 +37,13 @@ export interface CreateScheduleTrigger {
 }
 
 export interface ScheduleTriggerStore {
-  create(trigger: CreateScheduleTrigger): ScheduleTrigger;
-  getById(scheduleId: string): ScheduleTrigger | null;
-  findByOwner(ownerUserId: string): ScheduleTrigger[];
-  findByStatus(status: ScheduleTriggerStatus): ScheduleTrigger[];
-  updateStatus(scheduleId: string, status: ScheduleTriggerStatus): ScheduleTrigger | null;
-  incrementRunCount(scheduleId: string, lastRunAt: string, nextRunAt?: string): ScheduleTrigger | null;
-  delete(scheduleId: string): void;
+  create(trigger: CreateScheduleTrigger, tenantId?: string): ScheduleTrigger;
+  getById(scheduleId: string, tenantId?: string): ScheduleTrigger | null;
+  findByOwner(ownerUserId: string, tenantId?: string): ScheduleTrigger[];
+  findByStatus(status: ScheduleTriggerStatus, tenantId?: string): ScheduleTrigger[];
+  updateStatus(scheduleId: string, status: ScheduleTriggerStatus, tenantId?: string): ScheduleTrigger | null;
+  incrementRunCount(scheduleId: string, lastRunAt: string, nextRunAt?: string, tenantId?: string): ScheduleTrigger | null;
+  delete(scheduleId: string, tenantId?: string): void;
 }
 
 interface ScheduleTriggerRow {
@@ -67,7 +68,7 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
     this.connection = connection;
   }
 
-  create(trigger: CreateScheduleTrigger): ScheduleTrigger {
+  create(trigger: CreateScheduleTrigger, tenantId: string = DEFAULT_TENANT_ID): ScheduleTrigger {
     const now = new Date().toISOString();
     const record: ScheduleTrigger = {
       scheduleId: trigger.scheduleId,
@@ -88,8 +89,8 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
       `INSERT INTO schedule_triggers (
         schedule_id, owner_user_id, name, schedule_pattern, status,
         trigger_registration_id, last_run_at, next_run_at, run_count, max_runs,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         record.scheduleId,
         record.ownerUserId,
@@ -103,16 +104,17 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
         record.maxRuns,
         record.createdAt,
         record.updatedAt,
+        tenantId,
       ]
     );
 
     return record;
   }
 
-  getById(scheduleId: string): ScheduleTrigger | null {
+  getById(scheduleId: string, tenantId: string = DEFAULT_TENANT_ID): ScheduleTrigger | null {
     const results = this.connection.query<ScheduleTriggerRow>(
-      'SELECT * FROM schedule_triggers WHERE schedule_id = ?',
-      [scheduleId]
+      'SELECT * FROM schedule_triggers WHERE schedule_id = ? AND tenant_id = ?',
+      [scheduleId, tenantId]
     );
 
     if (results.length === 0) {
@@ -122,24 +124,24 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
     return this.rowToTrigger(results[0]!);
   }
 
-  findByOwner(ownerUserId: string): ScheduleTrigger[] {
+  findByOwner(ownerUserId: string, tenantId: string = DEFAULT_TENANT_ID): ScheduleTrigger[] {
     const results = this.connection.query<ScheduleTriggerRow>(
-      'SELECT * FROM schedule_triggers WHERE owner_user_id = ? ORDER BY created_at DESC',
-      [ownerUserId]
+      'SELECT * FROM schedule_triggers WHERE owner_user_id = ? AND tenant_id = ? ORDER BY created_at DESC',
+      [ownerUserId, tenantId]
     );
     return results.map(row => this.rowToTrigger(row));
   }
 
-  findByStatus(status: ScheduleTriggerStatus): ScheduleTrigger[] {
+  findByStatus(status: ScheduleTriggerStatus, tenantId: string = DEFAULT_TENANT_ID): ScheduleTrigger[] {
     const results = this.connection.query<ScheduleTriggerRow>(
-      'SELECT * FROM schedule_triggers WHERE status = ?',
-      [status]
+      'SELECT * FROM schedule_triggers WHERE status = ? AND tenant_id = ?',
+      [status, tenantId]
     );
     return results.map(row => this.rowToTrigger(row));
   }
 
-  updateStatus(scheduleId: string, status: ScheduleTriggerStatus): ScheduleTrigger | null {
-    const existing = this.getById(scheduleId);
+  updateStatus(scheduleId: string, status: ScheduleTriggerStatus, tenantId: string = DEFAULT_TENANT_ID): ScheduleTrigger | null {
+    const existing = this.getById(scheduleId, tenantId);
     if (!existing) {
       return null;
     }
@@ -147,8 +149,8 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
     const now = new Date().toISOString();
 
     this.connection.exec(
-      'UPDATE schedule_triggers SET status = ?, updated_at = ? WHERE schedule_id = ?',
-      [status, now, scheduleId]
+      'UPDATE schedule_triggers SET status = ?, updated_at = ? WHERE schedule_id = ? AND tenant_id = ?',
+      [status, now, scheduleId, tenantId]
     );
 
     return {
@@ -158,8 +160,8 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
     };
   }
 
-  incrementRunCount(scheduleId: string, lastRunAt: string, nextRunAt?: string): ScheduleTrigger | null {
-    const existing = this.getById(scheduleId);
+  incrementRunCount(scheduleId: string, lastRunAt: string, nextRunAt?: string, tenantId: string = DEFAULT_TENANT_ID): ScheduleTrigger | null {
+    const existing = this.getById(scheduleId, tenantId);
     if (!existing) {
       return null;
     }
@@ -177,8 +179,8 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
         next_run_at = ?,
         status = ?,
         updated_at = ?
-      WHERE schedule_id = ?`,
-      [newRunCount, lastRunAt, nextRunAt ?? null, newStatus, now, scheduleId]
+      WHERE schedule_id = ? AND tenant_id = ?`,
+      [newRunCount, lastRunAt, nextRunAt ?? null, newStatus, now, scheduleId, tenantId]
     );
 
     return {
@@ -191,8 +193,8 @@ class ScheduleTriggerStoreImpl implements ScheduleTriggerStore {
     };
   }
 
-  delete(scheduleId: string): void {
-    this.connection.exec('DELETE FROM schedule_triggers WHERE schedule_id = ?', [scheduleId]);
+  delete(scheduleId: string, tenantId: string = DEFAULT_TENANT_ID): void {
+    this.connection.exec('DELETE FROM schedule_triggers WHERE schedule_id = ? AND tenant_id = ?', [scheduleId, tenantId]);
   }
 
   private rowToTrigger(row: ScheduleTriggerRow): ScheduleTrigger {

@@ -34,7 +34,8 @@ CREATE TABLE transcripts (
   visibility TEXT NOT NULL DEFAULT 'public' CHECK(visibility IN ('public', 'internal', 'confidential')),
 
   -- Timestamps
-  createdAt TEXT NOT NULL
+  createdAt TEXT NOT NULL,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default'
 );
 
 -- Index: by sessionId + createdAt for chronological retrieval

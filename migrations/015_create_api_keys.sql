@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
   created_at TEXT NOT NULL,
   expires_at TEXT,
   last_used_at TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   is_active INTEGER NOT NULL DEFAULT 1
 );
 

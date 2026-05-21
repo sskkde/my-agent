@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export const WEBHOOK_TRIGGER_STATUSES = {
   ACTIVE: 'active',
@@ -31,11 +32,11 @@ export interface CreateWebhookTrigger {
 }
 
 export interface WebhookTriggerStore {
-  create(trigger: CreateWebhookTrigger): WebhookTrigger;
-  getById(webhookId: string): WebhookTrigger | null;
-  findByOwner(ownerUserId: string): WebhookTrigger[];
-  updateStatus(webhookId: string, status: WebhookTriggerStatus): WebhookTrigger | null;
-  delete(webhookId: string): void;
+  create(trigger: CreateWebhookTrigger, tenantId?: string): WebhookTrigger;
+  getById(webhookId: string, tenantId?: string): WebhookTrigger | null;
+  findByOwner(ownerUserId: string, tenantId?: string): WebhookTrigger[];
+  updateStatus(webhookId: string, status: WebhookTriggerStatus, tenantId?: string): WebhookTrigger | null;
+  delete(webhookId: string, tenantId?: string): void;
 }
 
 interface WebhookTriggerRow {
@@ -57,7 +58,7 @@ class WebhookTriggerStoreImpl implements WebhookTriggerStore {
     this.connection = connection;
   }
 
-  create(trigger: CreateWebhookTrigger): WebhookTrigger {
+  create(trigger: CreateWebhookTrigger, tenantId: string = DEFAULT_TENANT_ID): WebhookTrigger {
     const now = new Date().toISOString();
     const record: WebhookTrigger = {
       webhookId: trigger.webhookId,
@@ -74,8 +75,8 @@ class WebhookTriggerStoreImpl implements WebhookTriggerStore {
     this.connection.exec(
       `INSERT INTO webhook_triggers (
         webhook_id, owner_user_id, name, secret_hash, secret_last4,
-        status, trigger_registration_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        status, trigger_registration_id, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         record.webhookId,
         record.ownerUserId,
@@ -86,16 +87,17 @@ class WebhookTriggerStoreImpl implements WebhookTriggerStore {
         record.triggerRegistrationId,
         record.createdAt,
         record.updatedAt,
+        tenantId,
       ]
     );
 
     return record;
   }
 
-  getById(webhookId: string): WebhookTrigger | null {
+  getById(webhookId: string, tenantId: string = DEFAULT_TENANT_ID): WebhookTrigger | null {
     const results = this.connection.query<WebhookTriggerRow>(
-      'SELECT * FROM webhook_triggers WHERE webhook_id = ?',
-      [webhookId]
+      'SELECT * FROM webhook_triggers WHERE webhook_id = ? AND tenant_id = ?',
+      [webhookId, tenantId]
     );
 
     if (results.length === 0) {
@@ -105,16 +107,16 @@ class WebhookTriggerStoreImpl implements WebhookTriggerStore {
     return this.rowToTrigger(results[0]!);
   }
 
-  findByOwner(ownerUserId: string): WebhookTrigger[] {
+  findByOwner(ownerUserId: string, tenantId: string = DEFAULT_TENANT_ID): WebhookTrigger[] {
     const results = this.connection.query<WebhookTriggerRow>(
-      'SELECT * FROM webhook_triggers WHERE owner_user_id = ? ORDER BY created_at DESC',
-      [ownerUserId]
+      'SELECT * FROM webhook_triggers WHERE owner_user_id = ? AND tenant_id = ? ORDER BY created_at DESC',
+      [ownerUserId, tenantId]
     );
     return results.map(row => this.rowToTrigger(row));
   }
 
-  updateStatus(webhookId: string, status: WebhookTriggerStatus): WebhookTrigger | null {
-    const existing = this.getById(webhookId);
+  updateStatus(webhookId: string, status: WebhookTriggerStatus, tenantId: string = DEFAULT_TENANT_ID): WebhookTrigger | null {
+    const existing = this.getById(webhookId, tenantId);
     if (!existing) {
       return null;
     }
@@ -122,8 +124,8 @@ class WebhookTriggerStoreImpl implements WebhookTriggerStore {
     const now = new Date().toISOString();
 
     this.connection.exec(
-      'UPDATE webhook_triggers SET status = ?, updated_at = ? WHERE webhook_id = ?',
-      [status, now, webhookId]
+      'UPDATE webhook_triggers SET status = ?, updated_at = ? WHERE webhook_id = ? AND tenant_id = ?',
+      [status, now, webhookId, tenantId]
     );
 
     return {
@@ -133,8 +135,8 @@ class WebhookTriggerStoreImpl implements WebhookTriggerStore {
     };
   }
 
-  delete(webhookId: string): void {
-    this.connection.exec('DELETE FROM webhook_triggers WHERE webhook_id = ?', [webhookId]);
+  delete(webhookId: string, tenantId: string = DEFAULT_TENANT_ID): void {
+    this.connection.exec('DELETE FROM webhook_triggers WHERE webhook_id = ? AND tenant_id = ?', [webhookId, tenantId]);
   }
 
   private rowToTrigger(row: WebhookTriggerRow): WebhookTrigger {

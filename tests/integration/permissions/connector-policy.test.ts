@@ -117,6 +117,7 @@ describe('Connector Policy', () => {
             payload TEXT NOT NULL,
             sensitivity TEXT NOT NULL,
             retention_class TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL
           );
           CREATE INDEX idx_events_session ON events(session_id);

@@ -21,6 +21,7 @@ import ObservabilityTab from './features/observability/ObservabilityTab';
 import DLQTab from './features/dlq/DLQTab';
 import AdminTab from './features/admin/AdminTab';
 import LoginPage from './features/auth/LoginPage';
+import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import type { TabId } from './components/TabNav';
 import './styles.css';
@@ -43,8 +44,12 @@ function AppContent() {
     );
   }
 
+  if (needsSetup) {
+    return <ProductionSetupChecklist />;
+  }
+
   if (!isAuthenticated) {
-    return <LoginPage mode={needsSetup ? 'setup' : 'login'} />;
+    return <LoginPage mode="login" />;
   }
 
   const renderContent = () => {

@@ -170,10 +170,8 @@ describe('TriggersTab', () => {
     render(<TriggersTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('triggers-empty')).toBeInTheDocument();
+      expect(screen.getByText('暂无触发器')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('暂无触发器')).toBeInTheDocument();
   });
 
   it('shows error state with retry button', async () => {
@@ -182,13 +180,13 @@ describe('TriggersTab', () => {
     render(<TriggersTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('triggers-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-message')).toBeInTheDocument();
     });
 
     expect(screen.getByText('API error')).toBeInTheDocument();
 
     vi.mocked(triggersApi.getTriggers).mockResolvedValue([]);
-    fireEvent.click(screen.getByText('重试'));
+    fireEvent.click(screen.getByTestId('error-message-retry'));
 
     await waitFor(() => {
       expect(triggersApi.getTriggers).toHaveBeenCalledTimes(2);

@@ -20,7 +20,8 @@ const migrations: Migration[] = [
         planner_run_id TEXT, plan_id TEXT, run_id TEXT, workflow_run_id TEXT, workflow_step_run_id TEXT,
         background_run_id TEXT, subagent_run_id TEXT, tool_call_id TEXT, approval_id TEXT,
         wait_condition_id TEXT, artifact_id TEXT, memory_id TEXT, payload TEXT NOT NULL,
-        sensitivity TEXT NOT NULL, retention_class TEXT NOT NULL, created_at TEXT NOT NULL
+        sensitivity TEXT NOT NULL, retention_class TEXT NOT NULL, created_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE TABLE audit_records (
         audit_id TEXT PRIMARY KEY, audit_type TEXT NOT NULL, timestamp TEXT NOT NULL, user_id TEXT NOT NULL,

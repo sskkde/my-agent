@@ -32,6 +32,10 @@ export function createLegacyRedirect(
         redirectPath = redirectPath.replace(`:${key}`, value);
       }
       
+      // Add deprecation headers for legacy API routes
+      reply.header('Deprecation', 'true');
+      reply.header('Link', `<${redirectPath}>; rel="successor-version"`);
+      
       return reply.redirect(redirectPath, 307);
     },
   };

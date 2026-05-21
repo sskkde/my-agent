@@ -54,7 +54,7 @@ describe('ConnectorsTab', () => {
   it('shows empty state when no connectors exist', async () => {
     render(<ConnectorsTab />);
     await waitFor(() => {
-      expect(screen.getByTestId('connectors-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('empty-state')).toBeInTheDocument();
     });
     expect(screen.getByText('暂无连接器')).toBeInTheDocument();
   });
@@ -89,7 +89,7 @@ describe('ConnectorsTab', () => {
 
     render(<ConnectorsTab />);
     await waitFor(() => {
-      expect(screen.getByTestId('connectors-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-message')).toBeInTheDocument();
     });
     expect(screen.getByText('Network error')).toBeInTheDocument();
   });
@@ -288,9 +288,8 @@ describe('ConnectorsTab', () => {
     fireEvent.click(screen.getByTestId('connector-conn-1'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('instances-empty')).toBeInTheDocument();
+      expect(screen.getByText('暂无实例')).toBeInTheDocument();
     });
-    expect(screen.getByText('暂无实例')).toBeInTheDocument();
   });
 
   it('displays different connector types correctly', async () => {

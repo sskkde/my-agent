@@ -9,6 +9,8 @@ import {
   type ReplayPreviewResponse,
 } from '../../api/observability';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
+import EmptyState from '../../components/EmptyState';
 
 type FilterStatus = 'all' | 'running' | 'completed' | 'failed';
 
@@ -159,7 +161,7 @@ const ObservabilityTab: React.FC = () => {
 
   const renderTimeline = (timeline: TimelineEvent[]) => {
     if (timeline.length === 0) {
-      return <div className="observability-empty-timeline">暂无时间线事件</div>;
+      return <EmptyState icon="📊" title="暂无时间线事件" description="此运行还没有记录事件" />;
     }
 
     const sortedTimeline = [...timeline].sort((a, b) => 
@@ -255,7 +257,7 @@ const ObservabilityTab: React.FC = () => {
   if (runsLoading) {
     return (
       <div className="observability-tab" data-testid="observability-tab">
-        <LoadingSpinner label="加载运行列表..." />
+        <LoadingSpinner size="large" label="加载运行列表..." />
       </div>
     );
   }
@@ -263,9 +265,14 @@ const ObservabilityTab: React.FC = () => {
   if (runsError) {
     return (
       <div className="observability-tab" data-testid="observability-tab">
-        <div className="observability-error" data-testid="observability-error">
-          {runsError}
-        </div>
+        <ErrorMessage
+          error={{ code: 'LOAD_ERROR', message: runsError } as Error & { code: string }}
+          retry={{ onClick: () => {
+            setRunsLoading(true);
+            setRunsError(null);
+          }}}
+          size="large"
+        />
       </div>
     );
   }
@@ -291,10 +298,11 @@ const ObservabilityTab: React.FC = () => {
       </div>
 
       {runs.length === 0 ? (
-        <div className="observability-empty" data-testid="observability-empty">
-          <div className="observability-empty-icon">📋</div>
-          <p>暂无运行记录</p>
-        </div>
+        <EmptyState
+          icon="📋"
+          title="暂无运行记录"
+          description="还没有任何工作流或计划运行"
+        />
       ) : (
         <div className="observability-runs-list" data-testid="observability-runs-list">
           {runs.map((run) => {

@@ -28,7 +28,8 @@ const asyncIntegrationMigrations: Migration[] = [
         config_schema TEXT,
         status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_connector_defs_type ON connector_definitions(connector_type);
       CREATE INDEX idx_connector_defs_status ON connector_definitions(status);
@@ -53,7 +54,8 @@ const asyncIntegrationMigrations: Migration[] = [
         config TEXT,
         status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_connector_instances_user_def ON connector_instances(user_id, connector_definition_id);
       CREATE INDEX idx_connector_instances_status ON connector_instances(status);
@@ -94,6 +96,7 @@ const asyncIntegrationMigrations: Migration[] = [
         payload TEXT NOT NULL,
         sensitivity TEXT NOT NULL DEFAULT 'low',
         retention_class TEXT NOT NULL DEFAULT 'standard',
+        tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL
       );
       CREATE INDEX idx_events_correlation ON events(correlation_id);
@@ -137,6 +140,7 @@ const asyncIntegrationMigrations: Migration[] = [
         status TEXT NOT NULL DEFAULT 'created',
         status_message TEXT,
         result TEXT,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -168,6 +172,7 @@ const asyncIntegrationMigrations: Migration[] = [
         satisfied_by TEXT,
         result_data TEXT,
         metadata TEXT,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

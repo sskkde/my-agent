@@ -1,5 +1,6 @@
 import type { ConnectionManager } from './connection.js';
 import type { MigrationRunner, Migration } from './migrations.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export type ConnectorType = 'api' | 'messaging' | 'storage' | 'database' | 'custom';
 export type ConnectorStatus = 'draft' | 'active' | 'deprecated' | 'inactive';
@@ -44,23 +45,23 @@ export interface ConnectorEvent {
 export interface ConnectorStore {
   applyMigrations(runner: MigrationRunner): void;
 
-  createDefinition(data: Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>): ConnectorDefinition;
-  findDefinitionById(id: string): ConnectorDefinition | undefined;
-  findDefinitionByConnectorId(connectorId: string): ConnectorDefinition | undefined;
-  findDefinitionsByType(connectorType: ConnectorType): ConnectorDefinition[];
-  updateDefinition(id: string, data: Partial<Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>>): ConnectorDefinition | undefined;
+  createDefinition(data: Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>, tenantId?: string): ConnectorDefinition;
+  findDefinitionById(id: string, tenantId?: string): ConnectorDefinition | undefined;
+  findDefinitionByConnectorId(connectorId: string, tenantId?: string): ConnectorDefinition | undefined;
+  findDefinitionsByType(connectorType: ConnectorType, tenantId?: string): ConnectorDefinition[];
+  updateDefinition(id: string, data: Partial<Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>>, tenantId?: string): ConnectorDefinition | undefined;
 
-  createInstance(data: Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>): ConnectorInstance;
-  findInstanceById(id: string): ConnectorInstance | undefined;
-  findInstancesByUserAndConnector(userId: string, connectorDefinitionId: string): ConnectorInstance[];
-  findInstancesByStatus(status: ConnectorStatus): ConnectorInstance[];
-  updateInstance(id: string, data: Partial<Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>>): ConnectorInstance | undefined;
-  deleteInstance(id: string): boolean;
+  createInstance(data: Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>, tenantId?: string): ConnectorInstance;
+  findInstanceById(id: string, tenantId?: string): ConnectorInstance | undefined;
+  findInstancesByUserAndConnector(userId: string, connectorDefinitionId: string, tenantId?: string): ConnectorInstance[];
+  findInstancesByStatus(status: ConnectorStatus, tenantId?: string): ConnectorInstance[];
+  updateInstance(id: string, data: Partial<Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>>, tenantId?: string): ConnectorInstance | undefined;
+  deleteInstance(id: string, tenantId?: string): boolean;
 
-  createEvent(data: Omit<ConnectorEvent, 'id' | 'createdAt'>): ConnectorEvent;
-  findEventsByInstanceId(connectorInstanceId: string): ConnectorEvent[];
-  findEventsByProcessedStatus(processed: boolean): ConnectorEvent[];
-  markEventProcessed(id: string): ConnectorEvent | undefined;
+  createEvent(data: Omit<ConnectorEvent, 'id' | 'createdAt'>, tenantId?: string): ConnectorEvent;
+  findEventsByInstanceId(connectorInstanceId: string, tenantId?: string): ConnectorEvent[];
+  findEventsByProcessedStatus(processed: boolean, tenantId?: string): ConnectorEvent[];
+  markEventProcessed(id: string, tenantId?: string): ConnectorEvent | undefined;
 }
 
 class ConnectorStoreImpl implements ConnectorStore {
@@ -87,7 +88,8 @@ class ConnectorStoreImpl implements ConnectorStore {
             config_schema TEXT,
             status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default'
           );
           CREATE INDEX idx_connector_defs_type ON connector_definitions(connector_type);
           CREATE INDEX idx_connector_defs_status ON connector_definitions(status);
@@ -112,7 +114,8 @@ class ConnectorStoreImpl implements ConnectorStore {
             config TEXT,
             status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default'
           );
           CREATE INDEX idx_connector_instances_user_def ON connector_instances(user_id, connector_definition_id);
           CREATE INDEX idx_connector_instances_status ON connector_instances(status);
@@ -136,7 +139,8 @@ class ConnectorStoreImpl implements ConnectorStore {
             event_type TEXT NOT NULL,
             payload TEXT,
             processed INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default'
           );
           CREATE INDEX idx_connector_events_instance ON connector_events(connector_instance_id);
           CREATE INDEX idx_connector_events_processed ON connector_events(processed);
@@ -153,15 +157,15 @@ class ConnectorStoreImpl implements ConnectorStore {
     runner.apply(migrations);
   }
 
-  createDefinition(data: Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>): ConnectorDefinition {
+  createDefinition(data: Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>, tenantId: string = DEFAULT_TENANT_ID): ConnectorDefinition {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
 
     this.connection.exec(
       `INSERT INTO connector_definitions (
         id, connector_id, name, connector_type, version, description,
-        capabilities, config_schema, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        capabilities, config_schema, status, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.connectorId,
@@ -173,7 +177,8 @@ class ConnectorStoreImpl implements ConnectorStore {
         data.configSchema ? JSON.stringify(data.configSchema) : null,
         data.status,
         now,
-        now
+        now,
+        tenantId
       ]
     );
 
@@ -185,7 +190,7 @@ class ConnectorStoreImpl implements ConnectorStore {
     };
   }
 
-  findDefinitionById(id: string): ConnectorDefinition | undefined {
+  findDefinitionById(id: string, tenantId: string = DEFAULT_TENANT_ID): ConnectorDefinition | undefined {
     const rows = this.connection.query<{
       id: string;
       connector_id: string;
@@ -198,7 +203,7 @@ class ConnectorStoreImpl implements ConnectorStore {
       status: ConnectorStatus;
       created_at: string;
       updated_at: string;
-    }>('SELECT * FROM connector_definitions WHERE id = ?', [id]);
+    }>('SELECT * FROM connector_definitions WHERE tenant_id = ? AND id = ?', [tenantId, id]);
 
     if (rows.length === 0) {
       return undefined;
@@ -207,7 +212,7 @@ class ConnectorStoreImpl implements ConnectorStore {
     return this.mapDefinitionRow(rows[0]);
   }
 
-  findDefinitionByConnectorId(connectorId: string): ConnectorDefinition | undefined {
+  findDefinitionByConnectorId(connectorId: string, tenantId: string = DEFAULT_TENANT_ID): ConnectorDefinition | undefined {
     const rows = this.connection.query<{
       id: string;
       connector_id: string;
@@ -220,7 +225,7 @@ class ConnectorStoreImpl implements ConnectorStore {
       status: ConnectorStatus;
       created_at: string;
       updated_at: string;
-    }>('SELECT * FROM connector_definitions WHERE connector_id = ?', [connectorId]);
+    }>('SELECT * FROM connector_definitions WHERE tenant_id = ? AND connector_id = ?', [tenantId, connectorId]);
 
     if (rows.length === 0) {
       return undefined;
@@ -229,7 +234,7 @@ class ConnectorStoreImpl implements ConnectorStore {
     return this.mapDefinitionRow(rows[0]);
   }
 
-  findDefinitionsByType(connectorType: ConnectorType): ConnectorDefinition[] {
+  findDefinitionsByType(connectorType: ConnectorType, tenantId: string = DEFAULT_TENANT_ID): ConnectorDefinition[] {
     const rows = this.connection.query<{
       id: string;
       connector_id: string;
@@ -242,13 +247,13 @@ class ConnectorStoreImpl implements ConnectorStore {
       status: ConnectorStatus;
       created_at: string;
       updated_at: string;
-    }>('SELECT * FROM connector_definitions WHERE connector_type = ?', [connectorType]);
+    }>('SELECT * FROM connector_definitions WHERE tenant_id = ? AND connector_type = ?', [tenantId, connectorType]);
 
     return rows.map(row => this.mapDefinitionRow(row));
   }
 
-  updateDefinition(id: string, data: Partial<Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>>): ConnectorDefinition | undefined {
-    const existing = this.findDefinitionById(id);
+  updateDefinition(id: string, data: Partial<Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>>, tenantId: string = DEFAULT_TENANT_ID): ConnectorDefinition | undefined {
+    const existing = this.findDefinitionById(id, tenantId);
     if (!existing) {
       return undefined;
     }
@@ -296,25 +301,26 @@ class ConnectorStoreImpl implements ConnectorStore {
     const updatedAt = new Date().toISOString();
     updates.push('updated_at = ?');
     values.push(updatedAt);
+    values.push(tenantId);
     values.push(id);
 
     this.connection.exec(
-      `UPDATE connector_definitions SET ${updates.join(', ')} WHERE id = ?`,
+      `UPDATE connector_definitions SET ${updates.join(', ')} WHERE tenant_id = ? AND id = ?`,
       values
     );
 
-    return this.findDefinitionById(id);
+    return this.findDefinitionById(id, tenantId);
   }
 
-  createInstance(data: Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>): ConnectorInstance {
+  createInstance(data: Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>, tenantId: string = DEFAULT_TENANT_ID): ConnectorInstance {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
 
     this.connection.exec(
       `INSERT INTO connector_instances (
         id, connector_instance_id, connector_definition_id, user_id, name,
-        auth_state_ref, config, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        auth_state_ref, config, status, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.connectorInstanceId,
@@ -325,7 +331,8 @@ class ConnectorStoreImpl implements ConnectorStore {
         data.config ? JSON.stringify(data.config) : null,
         data.status,
         now,
-        now
+        now,
+        tenantId
       ]
     );
 
@@ -337,7 +344,7 @@ class ConnectorStoreImpl implements ConnectorStore {
     };
   }
 
-  findInstanceById(id: string): ConnectorInstance | undefined {
+  findInstanceById(id: string, tenantId: string = DEFAULT_TENANT_ID): ConnectorInstance | undefined {
     const rows = this.connection.query<{
       id: string;
       connector_instance_id: string;
@@ -349,7 +356,7 @@ class ConnectorStoreImpl implements ConnectorStore {
       status: ConnectorStatus;
       created_at: string;
       updated_at: string;
-    }>('SELECT * FROM connector_instances WHERE id = ?', [id]);
+    }>('SELECT * FROM connector_instances WHERE tenant_id = ? AND id = ?', [tenantId, id]);
 
     if (rows.length === 0) {
       return undefined;
@@ -358,7 +365,7 @@ class ConnectorStoreImpl implements ConnectorStore {
     return this.mapInstanceRow(rows[0]);
   }
 
-  findInstancesByUserAndConnector(userId: string, connectorDefinitionId: string): ConnectorInstance[] {
+  findInstancesByUserAndConnector(userId: string, connectorDefinitionId: string, tenantId: string = DEFAULT_TENANT_ID): ConnectorInstance[] {
     const rows = this.connection.query<{
       id: string;
       connector_instance_id: string;
@@ -370,12 +377,12 @@ class ConnectorStoreImpl implements ConnectorStore {
       status: ConnectorStatus;
       created_at: string;
       updated_at: string;
-    }>('SELECT * FROM connector_instances WHERE user_id = ? AND connector_definition_id = ?', [userId, connectorDefinitionId]);
+    }>('SELECT * FROM connector_instances WHERE tenant_id = ? AND user_id = ? AND connector_definition_id = ?', [tenantId, userId, connectorDefinitionId]);
 
     return rows.map(row => this.mapInstanceRow(row));
   }
 
-  findInstancesByStatus(status: ConnectorStatus): ConnectorInstance[] {
+  findInstancesByStatus(status: ConnectorStatus, tenantId: string = DEFAULT_TENANT_ID): ConnectorInstance[] {
     const rows = this.connection.query<{
       id: string;
       connector_instance_id: string;
@@ -387,13 +394,13 @@ class ConnectorStoreImpl implements ConnectorStore {
       status: ConnectorStatus;
       created_at: string;
       updated_at: string;
-    }>('SELECT * FROM connector_instances WHERE status = ?', [status]);
+    }>('SELECT * FROM connector_instances WHERE tenant_id = ? AND status = ?', [tenantId, status]);
 
     return rows.map(row => this.mapInstanceRow(row));
   }
 
-  updateInstance(id: string, data: Partial<Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>>): ConnectorInstance | undefined {
-    const existing = this.findInstanceById(id);
+  updateInstance(id: string, data: Partial<Omit<ConnectorInstance, 'id' | 'createdAt' | 'updatedAt'>>, tenantId: string = DEFAULT_TENANT_ID): ConnectorInstance | undefined {
+    const existing = this.findInstanceById(id, tenantId);
     if (!existing) {
       return undefined;
     }
@@ -437,33 +444,34 @@ class ConnectorStoreImpl implements ConnectorStore {
     const updatedAt = new Date().toISOString();
     updates.push('updated_at = ?');
     values.push(updatedAt);
+    values.push(tenantId);
     values.push(id);
 
     this.connection.exec(
-      `UPDATE connector_instances SET ${updates.join(', ')} WHERE id = ?`,
+      `UPDATE connector_instances SET ${updates.join(', ')} WHERE tenant_id = ? AND id = ?`,
       values
     );
 
-    return this.findInstanceById(id);
+    return this.findInstanceById(id, tenantId);
   }
 
-  deleteInstance(id: string): boolean {
-    const before = this.findInstanceById(id);
+  deleteInstance(id: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
+    const before = this.findInstanceById(id, tenantId);
     if (!before) {
       return false;
     }
-    this.connection.exec('DELETE FROM connector_instances WHERE id = ?', [id]);
-    return this.findInstanceById(id) === undefined;
+    this.connection.exec('DELETE FROM connector_instances WHERE tenant_id = ? AND id = ?', [tenantId, id]);
+    return this.findInstanceById(id, tenantId) === undefined;
   }
 
-  createEvent(data: Omit<ConnectorEvent, 'id' | 'createdAt'>): ConnectorEvent {
+  createEvent(data: Omit<ConnectorEvent, 'id' | 'createdAt'>, tenantId: string = DEFAULT_TENANT_ID): ConnectorEvent {
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
 
     this.connection.exec(
       `INSERT INTO connector_events (
-        id, event_id, connector_instance_id, event_type, payload, processed, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        id, event_id, connector_instance_id, event_type, payload, processed, created_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.eventId,
@@ -471,7 +479,8 @@ class ConnectorStoreImpl implements ConnectorStore {
         data.eventType,
         data.payload ? JSON.stringify(data.payload) : null,
         data.processed ? 1 : 0,
-        createdAt
+        createdAt,
+        tenantId
       ]
     );
 
@@ -482,7 +491,7 @@ class ConnectorStoreImpl implements ConnectorStore {
     };
   }
 
-  findEventsByInstanceId(connectorInstanceId: string): ConnectorEvent[] {
+  findEventsByInstanceId(connectorInstanceId: string, tenantId: string = DEFAULT_TENANT_ID): ConnectorEvent[] {
     const rows = this.connection.query<{
       id: string;
       event_id: string;
@@ -491,12 +500,12 @@ class ConnectorStoreImpl implements ConnectorStore {
       payload: string | null;
       processed: number;
       created_at: string;
-    }>('SELECT * FROM connector_events WHERE connector_instance_id = ?', [connectorInstanceId]);
+    }>('SELECT * FROM connector_events WHERE tenant_id = ? AND connector_instance_id = ?', [tenantId, connectorInstanceId]);
 
     return rows.map(row => this.mapEventRow(row));
   }
 
-  findEventsByProcessedStatus(processed: boolean): ConnectorEvent[] {
+  findEventsByProcessedStatus(processed: boolean, tenantId: string = DEFAULT_TENANT_ID): ConnectorEvent[] {
     const rows = this.connection.query<{
       id: string;
       event_id: string;
@@ -505,15 +514,15 @@ class ConnectorStoreImpl implements ConnectorStore {
       payload: string | null;
       processed: number;
       created_at: string;
-    }>('SELECT * FROM connector_events WHERE processed = ?', [processed ? 1 : 0]);
+    }>('SELECT * FROM connector_events WHERE tenant_id = ? AND processed = ?', [tenantId, processed ? 1 : 0]);
 
     return rows.map(row => this.mapEventRow(row));
   }
 
-  markEventProcessed(id: string): ConnectorEvent | undefined {
+  markEventProcessed(id: string, tenantId: string = DEFAULT_TENANT_ID): ConnectorEvent | undefined {
     this.connection.exec(
-      'UPDATE connector_events SET processed = 1 WHERE id = ?',
-      [id]
+      'UPDATE connector_events SET processed = 1 WHERE tenant_id = ? AND id = ?',
+      [tenantId, id]
     );
 
     const rows = this.connection.query<{
@@ -524,7 +533,7 @@ class ConnectorStoreImpl implements ConnectorStore {
       payload: string | null;
       processed: number;
       created_at: string;
-    }>('SELECT * FROM connector_events WHERE id = ?', [id]);
+    }>('SELECT * FROM connector_events WHERE tenant_id = ? AND id = ?', [tenantId, id]);
 
     if (rows.length === 0) {
       return undefined;

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import * as connectorsApi from '../../api/connectors';
 import type { ConnectorDefinition, ConnectorInstance } from '../../api/connectors';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
+import EmptyState from '../../components/EmptyState';
 
 const ConnectorsTab: React.FC = () => {
   const [connectors, setConnectors] = useState<ConnectorDefinition[]>([]);
@@ -203,9 +205,17 @@ const ConnectorsTab: React.FC = () => {
           {instancesLoading ? (
             <LoadingSpinner size="small" label="加载实例..." />
           ) : error ? (
-            <div className="connectors-error" data-testid="instances-error">{error}</div>
+            <ErrorMessage
+              error={{ code: 'LOAD_ERROR', message: error } as Error & { code: string }}
+              retry={{ onClick: () => selectedConnector && loadInstances(selectedConnector.id) }}
+              size="medium"
+            />
           ) : instances.length === 0 ? (
-            <div className="empty-state" data-testid="instances-empty">暂无实例</div>
+            <EmptyState
+              icon="📦"
+              title="暂无实例"
+              description="此连接器还没有配置实例"
+            />
           ) : (
             <div className="connectors-instances-list">
               {instances.map(instance => (
@@ -270,9 +280,17 @@ const ConnectorsTab: React.FC = () => {
         {loading ? (
           <LoadingSpinner label="加载连接器..." />
         ) : error ? (
-          <div className="connectors-error" data-testid="connectors-error">{error}</div>
+          <ErrorMessage
+            error={{ code: 'LOAD_ERROR', message: error } as Error & { code: string }}
+            retry={{ onClick: loadConnectors }}
+            size="large"
+          />
         ) : connectors.length === 0 ? (
-          <div className="empty-state" data-testid="connectors-empty">暂无连接器</div>
+          <EmptyState
+            icon="🔌"
+            title="暂无连接器"
+            description="系统中还没有配置连接器"
+          />
         ) : (
           <div className="connectors-list">
             {connectors.map(connector => (

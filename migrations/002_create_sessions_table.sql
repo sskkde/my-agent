@@ -13,7 +13,8 @@ CREATE TABLE sessions (
   last_activity_at TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  metadata TEXT
+  metadata TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default'
 );
 
 CREATE INDEX idx_sessions_user_activity ON sessions(user_id, last_activity_at);

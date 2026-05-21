@@ -47,7 +47,8 @@ const workflowRuntimeMigrations: Migration[] = [
         status TEXT NOT NULL CHECK(status IN ('published', 'deprecated')),
         published_from_draft_id TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
     down: `DROP TABLE IF EXISTS workflow_definitions;`
@@ -70,7 +71,8 @@ const workflowRuntimeMigrations: Migration[] = [
         started_at TEXT NOT NULL,
         completed_at TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
     down: `DROP TABLE IF EXISTS workflow_runs;`
@@ -95,7 +97,8 @@ const workflowRuntimeMigrations: Migration[] = [
         started_at TEXT,
         completed_at TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
     down: `DROP TABLE IF EXISTS workflow_step_runs;`
@@ -162,7 +165,8 @@ const workflowRuntimeMigrations: Migration[] = [
         payload TEXT NOT NULL,
         sensitivity TEXT NOT NULL,
         retention_class TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
     down: `DROP TABLE IF EXISTS events;`

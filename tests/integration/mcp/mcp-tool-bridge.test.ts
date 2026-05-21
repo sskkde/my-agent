@@ -19,6 +19,7 @@ const createMcpSessionTable = (connection: ConnectionManager): void => {
     connected_at TEXT,
     last_activity_at TEXT,
     disconnected_at TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`);

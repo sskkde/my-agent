@@ -17,6 +17,7 @@ CREATE TABLE provider_configs_new (
   source TEXT NOT NULL DEFAULT 'database',
   last_test_status TEXT,
   last_tested_at TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -24,11 +25,11 @@ CREATE TABLE provider_configs_new (
 INSERT INTO provider_configs_new (
   provider_id, user_id, provider_type, display_name, enabled,
   base_url, selected_model, encrypted_api_key, api_key_last4,
-  source, last_test_status, last_tested_at, created_at, updated_at
+  source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
 ) SELECT
   provider_id, user_id, provider_type, display_name, enabled,
   base_url, selected_model, encrypted_api_key, api_key_last4,
-  source, last_test_status, last_tested_at, created_at, updated_at
+  source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
 FROM provider_configs;
 
 DROP INDEX IF EXISTS idx_provider_configs_user;
@@ -51,6 +52,7 @@ CREATE TABLE provider_configs_old (
   source TEXT NOT NULL DEFAULT 'database',
   last_test_status TEXT,
   last_tested_at TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -58,11 +60,11 @@ CREATE TABLE provider_configs_old (
 INSERT INTO provider_configs_old (
   provider_id, user_id, provider_type, display_name, enabled,
   base_url, selected_model, encrypted_api_key, api_key_last4,
-  source, last_test_status, last_tested_at, created_at, updated_at
+  source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
 ) SELECT
   provider_id, user_id, provider_type, display_name, enabled,
   base_url, selected_model, encrypted_api_key, api_key_last4,
-  source, last_test_status, last_tested_at, created_at, updated_at
+  source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
 FROM provider_configs
 WHERE provider_type IN ('openai','openrouter','ollama');
 

@@ -127,6 +127,7 @@ describe('Approval Resume Flow Integration', () => {
             payload TEXT,
             sensitivity TEXT NOT NULL,
             retention_class TEXT NOT NULL,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL
           );
           CREATE INDEX idx_events_session ON events(session_id);
@@ -163,6 +164,7 @@ describe('Approval Resume Flow Integration', () => {
             status TEXT NOT NULL,
             status_message TEXT,
             result TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );

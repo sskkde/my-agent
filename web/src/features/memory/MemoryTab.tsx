@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import * as client from '../../api/client';
 import type { MemoryItem } from '../../api/types';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
+import EmptyState from '../../components/EmptyState';
 
 const MemoryTab: React.FC = () => {
   const [memories, setMemories] = useState<MemoryItem[]>([]);
@@ -103,12 +105,16 @@ const MemoryTab: React.FC = () => {
 
       {loading && (
         <div data-testid="memory-loading" className="memory-loading">
-          <LoadingSpinner label="加载记忆..." />
+          <LoadingSpinner size="large" label="加载记忆..." />
         </div>
       )}
 
       {error && (
-        <div data-testid="memory-error" className="memory-error">加载记忆失败</div>
+        <ErrorMessage
+          error={{ code: 'LOAD_ERROR', message: '加载记忆失败' } as Error & { code: string }}
+          retry={{ onClick: () => fetchMemories() }}
+          size="medium"
+        />
       )}
 
       {toast && (
@@ -153,7 +159,11 @@ const MemoryTab: React.FC = () => {
                 </div>
               ))}
               {memories.length === 0 && (
-                <div className="memory-empty">暂无记忆</div>
+                <EmptyState
+                  icon="🧠"
+                  title="暂无记忆"
+                  description="系统还没有存储任何记忆"
+                />
               )}
             </div>
 

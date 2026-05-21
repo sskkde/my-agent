@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import * as dlqApi from '../../api/dlq';
 import type { DeadLetterEntry } from '../../api/types';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
+import EmptyState from '../../components/EmptyState';
 
 type FilterStatus = 'all' | 'pending' | 'retrying' | 'discarded' | 'resolved';
 
@@ -164,7 +166,7 @@ const DLQTab: React.FC = () => {
   if (loading) {
     return (
       <div className="dlq-tab" data-testid="dlq-panel">
-        <LoadingSpinner label="加载死信队列..." />
+        <LoadingSpinner size="large" label="加载死信队列..." />
       </div>
     );
   }
@@ -172,10 +174,11 @@ const DLQTab: React.FC = () => {
   if (error && entries.length === 0) {
     return (
       <div className="dlq-tab" data-testid="dlq-panel">
-        <div className="dlq-error" data-testid="dlq-error">
-          <p>{error}</p>
-          <button className="secondary-button" onClick={() => loadEntries()}>重试</button>
-        </div>
+        <ErrorMessage
+          error={{ code: 'LOAD_ERROR', message: error } as Error & { code: string }}
+          retry={{ onClick: () => loadEntries() }}
+          size="large"
+        />
       </div>
     );
   }
@@ -201,10 +204,11 @@ const DLQTab: React.FC = () => {
             </select>
           </div>
         </div>
-        <div className="dlq-empty" data-testid="dlq-empty">
-          <div className="dlq-empty-icon">📭</div>
-          <p>暂无死信事件</p>
-        </div>
+        <EmptyState
+          icon="📭"
+          title="暂无死信事件"
+          description="所有事件处理正常，没有失败的事件"
+        />
       </div>
     );
   }

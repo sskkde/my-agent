@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export type UserRole = 'admin' | 'user' | 'service';
 
@@ -19,12 +20,12 @@ export interface CreateUserInput {
 }
 
 export interface UserStore {
-  create(input: CreateUserInput): User;
-  getById(userId: string): User | null;
-  getByUsername(username: string): User | null;
-  getFirstCreated(): User | null;
-  list(): User[];
-  updatePassword(userId: string, passwordHash: string): boolean;
+  create(input: CreateUserInput, tenantId?: string): User;
+  getById(userId: string, tenantId?: string): User | null;
+  getByUsername(username: string, tenantId?: string): User | null;
+  getFirstCreated(tenantId?: string): User | null;
+  list(tenantId?: string): User[];
+  updatePassword(userId: string, passwordHash: string, tenantId?: string): boolean;
 }
 
 interface UserRow {
@@ -43,8 +44,8 @@ class UserStoreImpl implements UserStore {
     this.connection = connection;
   }
 
-  create(input: CreateUserInput): User {
-    const isFirstUser = this.getFirstCreated() === null;
+  create(input: CreateUserInput, tenantId: string = DEFAULT_TENANT_ID): User {
+    const isFirstUser = this.getFirstCreated(tenantId) === null;
     const role = input.role ?? (isFirstUser ? 'admin' : 'user');
     const now = new Date().toISOString();
     const user: User = {
@@ -58,8 +59,8 @@ class UserStoreImpl implements UserStore {
 
     const sql = `
       INSERT INTO users (
-        user_id, username, password_hash, role, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        user_id, username, password_hash, role, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -68,16 +69,17 @@ class UserStoreImpl implements UserStore {
       user.passwordHash,
       user.role,
       user.createdAt,
-      user.updatedAt
+      user.updatedAt,
+      tenantId
     ];
 
     this.connection.exec(sql, params);
     return user;
   }
 
-  getById(userId: string): User | null {
-    const sql = 'SELECT * FROM users WHERE user_id = ?';
-    const rows = this.connection.query<UserRow>(sql, [userId]);
+  getById(userId: string, tenantId: string = DEFAULT_TENANT_ID): User | null {
+    const sql = 'SELECT * FROM users WHERE tenant_id = ? AND user_id = ?';
+    const rows = this.connection.query<UserRow>(sql, [tenantId, userId]);
 
     if (rows.length === 0) {
       return null;
@@ -86,9 +88,9 @@ class UserStoreImpl implements UserStore {
     return this.rowToUser(rows[0]);
   }
 
-  getByUsername(username: string): User | null {
-    const sql = 'SELECT * FROM users WHERE username = ?';
-    const rows = this.connection.query<UserRow>(sql, [username]);
+  getByUsername(username: string, tenantId: string = DEFAULT_TENANT_ID): User | null {
+    const sql = 'SELECT * FROM users WHERE tenant_id = ? AND username = ?';
+    const rows = this.connection.query<UserRow>(sql, [tenantId, username]);
 
     if (rows.length === 0) {
       return null;
@@ -97,9 +99,9 @@ class UserStoreImpl implements UserStore {
     return this.rowToUser(rows[0]);
   }
 
-  getFirstCreated(): User | null {
-    const sql = 'SELECT * FROM users ORDER BY created_at ASC, rowid ASC LIMIT 1';
-    const rows = this.connection.query<UserRow>(sql);
+  getFirstCreated(tenantId: string = DEFAULT_TENANT_ID): User | null {
+    const sql = 'SELECT * FROM users WHERE tenant_id = ? ORDER BY created_at ASC, rowid ASC LIMIT 1';
+    const rows = this.connection.query<UserRow>(sql, [tenantId]);
 
     if (rows.length === 0) {
       return null;
@@ -108,23 +110,23 @@ class UserStoreImpl implements UserStore {
     return this.rowToUser(rows[0]);
   }
 
-  list(): User[] {
-    const sql = 'SELECT * FROM users ORDER BY created_at DESC';
-    const rows = this.connection.query<UserRow>(sql);
+  list(tenantId: string = DEFAULT_TENANT_ID): User[] {
+    const sql = 'SELECT * FROM users WHERE tenant_id = ? ORDER BY created_at DESC';
+    const rows = this.connection.query<UserRow>(sql, [tenantId]);
     return rows.map(row => this.rowToUser(row));
   }
 
-  updatePassword(userId: string, passwordHash: string): boolean {
+  updatePassword(userId: string, passwordHash: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
     const sql = `
       UPDATE users
       SET password_hash = ?, updated_at = ?
-      WHERE user_id = ?
+      WHERE tenant_id = ? AND user_id = ?
     `;
 
     const now = new Date().toISOString();
 
     try {
-      this.connection.exec(sql, [passwordHash, now, userId]);
+      this.connection.exec(sql, [passwordHash, now, tenantId, userId]);
       return true;
     } catch {
       return false;
