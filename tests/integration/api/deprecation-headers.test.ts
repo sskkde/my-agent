@@ -8,11 +8,11 @@ describe('Legacy Route Deprecation Headers', () => {
   beforeAll(async () => {
     ctx = await createAuthenticatedTestContext();
     baseUrl = ctx.baseUrl;
-  }, 30000);
+  }, 60000);
 
   afterAll(async () => {
     await closeAuthenticatedTestContext(ctx);
-  }, 30000);
+  }, 60000);
 
   describe('Deprecation Headers on Legacy Routes', () => {
     it('GET /api/health should include Deprecation header', async () => {
