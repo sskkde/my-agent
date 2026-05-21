@@ -67,6 +67,7 @@ describe('Approval and Trigger Stores', () => {
             idempotency_key TEXT UNIQUE,
             metadata TEXT,
             source_context TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );
@@ -99,6 +100,7 @@ describe('Approval and Trigger Stores', () => {
             source_context TEXT,
             revoked_at TEXT,
             revoked_reason TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );
@@ -130,6 +132,7 @@ describe('Approval and Trigger Stores', () => {
             trigger_count INTEGER DEFAULT 0,
             expires_at TEXT,
             metadata TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );
@@ -161,6 +164,7 @@ describe('Approval and Trigger Stores', () => {
             satisfied_by TEXT,
             result_data TEXT,
             metadata TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );

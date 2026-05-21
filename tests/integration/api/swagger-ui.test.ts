@@ -38,7 +38,7 @@ describe('Swagger UI', () => {
     const body = await response.json() as Record<string, unknown>;
     const info = body.info as Record<string, unknown>;
     expect(info.title).toBe('Agent Platform API');
-    expect(info.version).toBe('0.7.0-rc.1');
+    expect(info.version).toBe('0.8.0-ga-candidate');
   });
 
   it('GET /api/docs/json should include security schemes', async () => {

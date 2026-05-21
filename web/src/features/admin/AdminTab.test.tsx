@@ -29,7 +29,8 @@ describe('AdminTab', () => {
       render(<AdminTab />);
 
       expect(screen.getByTestId('admin-access-denied')).toBeInTheDocument();
-      expect(screen.getByText('需要管理员权限')).toBeInTheDocument();
+      expect(screen.getByText('没有权限')).toBeInTheDocument();
+      expect(screen.getByText('您没有权限访问此页面')).toBeInTheDocument();
     });
 
     it('renders admin panel for admin users', async () => {

@@ -41,7 +41,8 @@ const runtimeMigrations: Migration[] = [
         parent_run_id TEXT,
         root_run_id TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_kernel_runs_session_created ON kernel_runs(session_id, created_at);
       CREATE INDEX idx_kernel_runs_agent ON kernel_runs(agent_id);
@@ -79,7 +80,8 @@ const runtimeMigrations: Migration[] = [
         error_message TEXT,
         started_at TEXT NOT NULL,
         completed_at TEXT,
-        terminal_state_reached INTEGER NOT NULL DEFAULT 0
+        terminal_state_reached INTEGER NOT NULL DEFAULT 0,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_tool_exec_name_time ON tool_executions(tool_name, started_at);
       CREATE INDEX idx_tool_exec_session_time ON tool_executions(session_id, started_at);
@@ -119,7 +121,8 @@ const runtimeMigrations: Migration[] = [
         expires_at TEXT,
         retry_count INTEGER DEFAULT 0,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_bg_runs_user_status ON background_runs(user_id, status);
       CREATE INDEX idx_bg_runs_session_status ON background_runs(session_id, status);
@@ -154,7 +157,8 @@ const runtimeMigrations: Migration[] = [
         started_at TEXT,
         completed_at TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_wf_runs_workflow_time ON workflow_runs(workflow_id, started_at);
       CREATE INDEX idx_wf_runs_owner_status ON workflow_runs(owner_user_id, status);
@@ -188,6 +192,7 @@ const runtimeMigrations: Migration[] = [
         completed_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default',
         FOREIGN KEY (workflow_run_id) REFERENCES workflow_runs(workflow_run_id)
       );
       CREATE INDEX idx_wf_step_run_wf_status ON workflow_step_runs(workflow_run_id, status);

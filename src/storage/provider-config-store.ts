@@ -5,6 +5,7 @@ import {
   serializeEncryptedSecret,
   deserializeEncryptedSecret
 } from './provider-crypto.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'custom';
 
@@ -52,13 +53,13 @@ export interface UpdateProviderConfigInput {
 }
 
 export interface ProviderConfigStore {
-  create(input: CreateProviderConfigInput): ProviderConfigSanitized;
-  getById(providerId: string): ProviderConfigSanitized | null;
-  getByIdWithSecret(providerId: string): ProviderConfigWithSecret | null;
-  listByUser(userId: string): ProviderConfigSanitized[];
-  update(providerId: string, updates: UpdateProviderConfigInput): boolean;
-  remove(providerId: string): boolean;
-  updateTestStatus(providerId: string, status: string): boolean;
+  create(input: CreateProviderConfigInput, tenantId?: string): ProviderConfigSanitized;
+  getById(providerId: string, tenantId?: string): ProviderConfigSanitized | null;
+  getByIdWithSecret(providerId: string, tenantId?: string): ProviderConfigWithSecret | null;
+  listByUser(userId: string, tenantId?: string): ProviderConfigSanitized[];
+  update(providerId: string, updates: UpdateProviderConfigInput, tenantId?: string): boolean;
+  remove(providerId: string, tenantId?: string): boolean;
+  updateTestStatus(providerId: string, status: string, tenantId?: string): boolean;
 }
 
 interface ProviderConfigRow {
@@ -93,7 +94,7 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
     this.connection = connection;
   }
 
-  create(input: CreateProviderConfigInput): ProviderConfigSanitized {
+  create(input: CreateProviderConfigInput, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigSanitized {
     const now = new Date().toISOString();
     let encryptedApiKey: string | null = null;
     let apiKeyLast4: string | null = null;
@@ -108,8 +109,8 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       INSERT INTO provider_configs (
         provider_id, user_id, provider_type, display_name, enabled,
         base_url, selected_model, encrypted_api_key, api_key_last4,
-        source, last_test_status, last_tested_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        source, last_test_status, last_tested_at, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -126,7 +127,8 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       null,
       null,
       now,
-      now
+      now,
+      tenantId,
     ];
 
     this.connection.exec(sql, params);
@@ -149,9 +151,9 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
     };
   }
 
-  getById(providerId: string): ProviderConfigSanitized | null {
-    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ?';
-    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId]);
+  getById(providerId: string, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigSanitized | null {
+    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ? AND tenant_id = ?';
+    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId, tenantId]);
 
     if (rows.length === 0) {
       return null;
@@ -160,9 +162,9 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
     return this.rowToSanitized(rows[0]);
   }
 
-  getByIdWithSecret(providerId: string): ProviderConfigWithSecret | null {
-    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ?';
-    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId]);
+  getByIdWithSecret(providerId: string, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigWithSecret | null {
+    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ? AND tenant_id = ?';
+    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId, tenantId]);
 
     if (rows.length === 0) {
       return null;
@@ -193,17 +195,17 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
     };
   }
 
-  listByUser(userId: string): ProviderConfigSanitized[] {
+  listByUser(userId: string, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigSanitized[] {
     const sql = `
       SELECT * FROM provider_configs
-      WHERE user_id = ?
+      WHERE user_id = ? AND tenant_id = ?
       ORDER BY created_at DESC
     `;
-    const rows = this.connection.query<ProviderConfigRow>(sql, [userId]);
+    const rows = this.connection.query<ProviderConfigRow>(sql, [userId, tenantId]);
     return rows.map(row => this.rowToSanitized(row));
   }
 
-  update(providerId: string, updates: UpdateProviderConfigInput): boolean {
+  update(providerId: string, updates: UpdateProviderConfigInput, tenantId: string = DEFAULT_TENANT_ID): boolean {
     const sets: string[] = [];
     const params: unknown[] = [];
 
@@ -243,8 +245,9 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
     const now = new Date().toISOString();
     params.push(now);
     params.push(providerId);
+    params.push(tenantId);
 
-    const sql = `UPDATE provider_configs SET ${sets.join(', ')} WHERE provider_id = ?`;
+    const sql = `UPDATE provider_configs SET ${sets.join(', ')} WHERE provider_id = ? AND tenant_id = ?`;
 
     try {
       this.connection.exec(sql, params);
@@ -254,28 +257,28 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
     }
   }
 
-  remove(providerId: string): boolean {
-    const sql = 'DELETE FROM provider_configs WHERE provider_id = ?';
+  remove(providerId: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
+    const sql = 'DELETE FROM provider_configs WHERE provider_id = ? AND tenant_id = ?';
 
     try {
-      this.connection.exec(sql, [providerId]);
+      this.connection.exec(sql, [providerId, tenantId]);
       return true;
     } catch {
       return false;
     }
   }
 
-  updateTestStatus(providerId: string, status: string): boolean {
+  updateTestStatus(providerId: string, status: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
     const sql = `
       UPDATE provider_configs
       SET last_test_status = ?, last_tested_at = ?, updated_at = ?
-      WHERE provider_id = ?
+      WHERE provider_id = ? AND tenant_id = ?
     `;
 
     const now = new Date().toISOString();
 
     try {
-      this.connection.exec(sql, [status, now, now, providerId]);
+      this.connection.exec(sql, [status, now, now, providerId, tenantId]);
       return true;
     } catch {
       return false;

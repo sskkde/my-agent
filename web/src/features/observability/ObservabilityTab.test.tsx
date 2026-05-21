@@ -268,10 +268,8 @@ describe('ObservabilityTab', () => {
     render(<ObservabilityTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('observability-empty')).toBeInTheDocument();
+      expect(screen.getByText('暂无运行记录')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('暂无运行记录')).toBeInTheDocument();
   });
 
   it('shows error state on fetch failure', async () => {
@@ -280,7 +278,7 @@ describe('ObservabilityTab', () => {
     render(<ObservabilityTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('observability-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-message')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Network error')).toBeInTheDocument();

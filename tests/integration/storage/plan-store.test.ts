@@ -706,6 +706,7 @@ function getPlanMigrations() {
           steps TEXT NOT NULL,
           constraints TEXT,
           assumptions TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
@@ -734,6 +735,7 @@ function getPlanMigrations() {
           patch TEXT NOT NULL,
           source_planner_run_id TEXT,
           reason TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
           created_at TEXT NOT NULL,
           FOREIGN KEY (plan_id) REFERENCES plans(plan_id) ON DELETE CASCADE
         );
@@ -759,6 +761,7 @@ function getPlanMigrations() {
           checkpoint TEXT,
           background_run_id TEXT,
           workflow_run_id TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (plan_id) REFERENCES plans(plan_id) ON DELETE CASCADE

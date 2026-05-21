@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { createHash } from 'crypto';
 import type { ApiKeyStore } from '../../storage/api-key-store.js';
+import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js';
 import { envelopeError } from '../response-envelope.js';
 
 export interface ApiKeyIdentity {
@@ -81,6 +82,7 @@ export function registerApiKeyAuth(
             userId: identity.userId ?? identity.id,
             username: `api-key:${identity.id}`,
             role: identity.role as import('../../storage/user-store.js').UserRole,
+            tenantId: DEFAULT_TENANT_ID,
           };
           done();
           return;

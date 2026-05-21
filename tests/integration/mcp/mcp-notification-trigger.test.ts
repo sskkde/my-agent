@@ -58,7 +58,8 @@ const migrationsForNotificationBridge: Migration[] = [
       payload TEXT NOT NULL,
       sensitivity TEXT NOT NULL DEFAULT 'low',
       retention_class TEXT NOT NULL DEFAULT 'standard',
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     )`,
     down: 'DROP TABLE IF EXISTS events',
   },

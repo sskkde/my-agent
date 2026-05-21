@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export const TRIGGER_STATUSES = {
   ACTIVE: 'active',
@@ -42,15 +43,15 @@ export interface CreateTriggerRegistration {
 }
 
 export interface TriggerStore {
-  create(trigger: CreateTriggerRegistration): TriggerRegistration;
-  getById(id: string): TriggerRegistration | null;
-  findByTarget(targetType: string, targetRef: string): TriggerRegistration[];
-  findByStatus(status: TriggerStatus): TriggerRegistration[];
-  incrementTriggerCount(id: string): TriggerRegistration;
-  updateStatus(id: string, status: TriggerStatus): TriggerRegistration;
-  updateMetadata(id: string, metadata: string): TriggerRegistration;
-  findExpired(before: string): TriggerRegistration[];
-  delete(id: string): void;
+  create(trigger: CreateTriggerRegistration, tenantId?: string): TriggerRegistration;
+  getById(id: string, tenantId?: string): TriggerRegistration | null;
+  findByTarget(targetType: string, targetRef: string, tenantId?: string): TriggerRegistration[];
+  findByStatus(status: TriggerStatus, tenantId?: string): TriggerRegistration[];
+  incrementTriggerCount(id: string, tenantId?: string): TriggerRegistration;
+  updateStatus(id: string, status: TriggerStatus, tenantId?: string): TriggerRegistration;
+  updateMetadata(id: string, metadata: string, tenantId?: string): TriggerRegistration;
+  findExpired(before: string, tenantId?: string): TriggerRegistration[];
+  delete(id: string, tenantId?: string): void;
 }
 
 class TriggerStoreImpl implements TriggerStore {
@@ -60,7 +61,7 @@ class TriggerStoreImpl implements TriggerStore {
     this.connection = connection;
   }
 
-  create(trigger: CreateTriggerRegistration): TriggerRegistration {
+  create(trigger: CreateTriggerRegistration, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration {
     const now = new Date().toISOString();
     const registration: TriggerRegistration = {
       id: trigger.id,
@@ -82,8 +83,8 @@ class TriggerStoreImpl implements TriggerStore {
     this.connection.exec(
       `INSERT INTO trigger_registrations (
         id, trigger_type, condition_type, condition_pattern, target_type, target_ref,
-        status, priority, max_triggers, trigger_count, expires_at, metadata, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        status, priority, max_triggers, trigger_count, expires_at, metadata, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         registration.id,
         registration.triggerType,
@@ -99,16 +100,17 @@ class TriggerStoreImpl implements TriggerStore {
         registration.metadata,
         registration.createdAt,
         registration.updatedAt,
+        tenantId,
       ]
     );
 
     return registration;
   }
 
-  getById(id: string): TriggerRegistration | null {
+  getById(id: string, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration | null {
     const results = this.connection.query<TriggerRegistrationRow>(
-      'SELECT * FROM trigger_registrations WHERE id = ?',
-      [id]
+      'SELECT * FROM trigger_registrations WHERE id = ? AND tenant_id = ?',
+      [id, tenantId]
     );
 
     if (results.length === 0) {
@@ -118,24 +120,24 @@ class TriggerStoreImpl implements TriggerStore {
     return this.rowToRegistration(results[0]);
   }
 
-  findByTarget(targetType: string, targetRef: string): TriggerRegistration[] {
+  findByTarget(targetType: string, targetRef: string, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration[] {
     const results = this.connection.query<TriggerRegistrationRow>(
-      'SELECT * FROM trigger_registrations WHERE target_type = ? AND target_ref = ?',
-      [targetType, targetRef]
+      'SELECT * FROM trigger_registrations WHERE target_type = ? AND target_ref = ? AND tenant_id = ?',
+      [targetType, targetRef, tenantId]
     );
     return results.map(row => this.rowToRegistration(row));
   }
 
-  findByStatus(status: TriggerStatus): TriggerRegistration[] {
+  findByStatus(status: TriggerStatus, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration[] {
     const results = this.connection.query<TriggerRegistrationRow>(
-      'SELECT * FROM trigger_registrations WHERE status = ?',
-      [status]
+      'SELECT * FROM trigger_registrations WHERE status = ? AND tenant_id = ?',
+      [status, tenantId]
     );
     return results.map(row => this.rowToRegistration(row));
   }
 
-  incrementTriggerCount(id: string): TriggerRegistration {
-    const existing = this.getById(id);
+  incrementTriggerCount(id: string, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration {
+    const existing = this.getById(id, tenantId);
     if (!existing) {
       throw new Error(`Trigger registration not found: ${id}`);
     }
@@ -151,8 +153,8 @@ class TriggerStoreImpl implements TriggerStore {
         trigger_count = ?,
         status = ?,
         updated_at = ?
-      WHERE id = ?`,
-      [newCount, status, now, id]
+      WHERE id = ? AND tenant_id = ?`,
+      [newCount, status, now, id, tenantId]
     );
 
     return {
@@ -163,8 +165,8 @@ class TriggerStoreImpl implements TriggerStore {
     };
   }
 
-  updateStatus(id: string, status: TriggerStatus): TriggerRegistration {
-    const existing = this.getById(id);
+  updateStatus(id: string, status: TriggerStatus, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration {
+    const existing = this.getById(id, tenantId);
     if (!existing) {
       throw new Error(`Trigger registration not found: ${id}`);
     }
@@ -172,8 +174,8 @@ class TriggerStoreImpl implements TriggerStore {
     const now = new Date().toISOString();
 
     this.connection.exec(
-      'UPDATE trigger_registrations SET status = ?, updated_at = ? WHERE id = ?',
-      [status, now, id]
+      'UPDATE trigger_registrations SET status = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
+      [status, now, id, tenantId]
     );
 
     return {
@@ -183,16 +185,16 @@ class TriggerStoreImpl implements TriggerStore {
     };
   }
 
-  updateMetadata(id: string, metadata: string): TriggerRegistration {
-    const existing = this.getById(id);
+  updateMetadata(id: string, metadata: string, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration {
+    const existing = this.getById(id, tenantId);
     if (!existing) {
       throw new Error(`Trigger registration not found: ${id}`);
     }
 
     const now = new Date().toISOString();
     this.connection.exec(
-      'UPDATE trigger_registrations SET metadata = ?, updated_at = ? WHERE id = ?',
-      [metadata, now, id]
+      'UPDATE trigger_registrations SET metadata = ?, updated_at = ? WHERE id = ? AND tenant_id = ?',
+      [metadata, now, id, tenantId]
     );
 
     return {
@@ -202,16 +204,16 @@ class TriggerStoreImpl implements TriggerStore {
     };
   }
 
-  findExpired(before: string): TriggerRegistration[] {
+  findExpired(before: string, tenantId: string = DEFAULT_TENANT_ID): TriggerRegistration[] {
     const results = this.connection.query<TriggerRegistrationRow>(
-      'SELECT * FROM trigger_registrations WHERE expires_at IS NOT NULL AND expires_at < ?',
-      [before]
+      'SELECT * FROM trigger_registrations WHERE expires_at IS NOT NULL AND expires_at < ? AND tenant_id = ?',
+      [before, tenantId]
     );
     return results.map(row => this.rowToRegistration(row));
   }
 
-  delete(id: string): void {
-    this.connection.exec('DELETE FROM trigger_registrations WHERE id = ?', [id]);
+  delete(id: string, tenantId: string = DEFAULT_TENANT_ID): void {
+    this.connection.exec('DELETE FROM trigger_registrations WHERE id = ? AND tenant_id = ?', [id, tenantId]);
   }
 
   private rowToRegistration(row: TriggerRegistrationRow): TriggerRegistration {

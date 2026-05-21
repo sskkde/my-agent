@@ -73,7 +73,7 @@ describe('SettingsTab', () => {
     renderWithAuth(<SettingsTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('settings-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-message')).toBeInTheDocument();
     });
   });
 

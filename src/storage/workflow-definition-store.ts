@@ -1,16 +1,17 @@
 import type { ConnectionManager } from './connection.js';
 import type { WorkflowDefinition, WorkflowStep, WorkflowDefinitionStatus } from '../workflows/types.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export interface WorkflowDefinitionStore {
-  createDefinition(definition: Omit<WorkflowDefinition, 'createdAt' | 'updatedAt'>): WorkflowDefinition;
-  getDefinitionById(workflowId: string): WorkflowDefinition | null;
-  getDefinitionByNameAndVersion(name: string, version: number): WorkflowDefinition | null;
-  getLatestDefinitionByName(name: string): WorkflowDefinition | null;
-  getDefinitionsByOwner(ownerUserId: string): WorkflowDefinition[];
-  getDefinitionsByStatus(status: WorkflowDefinitionStatus): WorkflowDefinition[];
-  getNextVersionNumber(name: string): number;
-  deprecateDefinition(workflowId: string): void;
-  updateDefinition(workflowId: string, updates: Partial<Omit<WorkflowDefinition, 'workflowId' | 'createdAt' | 'updatedAt'>>): WorkflowDefinition | null;
+  createDefinition(definition: Omit<WorkflowDefinition, 'createdAt' | 'updatedAt'>, tenantId?: string): WorkflowDefinition;
+  getDefinitionById(workflowId: string, tenantId?: string): WorkflowDefinition | null;
+  getDefinitionByNameAndVersion(name: string, version: number, tenantId?: string): WorkflowDefinition | null;
+  getLatestDefinitionByName(name: string, tenantId?: string): WorkflowDefinition | null;
+  getDefinitionsByOwner(ownerUserId: string, tenantId?: string): WorkflowDefinition[];
+  getDefinitionsByStatus(status: WorkflowDefinitionStatus, tenantId?: string): WorkflowDefinition[];
+  getNextVersionNumber(name: string, tenantId?: string): number;
+  deprecateDefinition(workflowId: string, tenantId?: string): void;
+  updateDefinition(workflowId: string, updates: Partial<Omit<WorkflowDefinition, 'workflowId' | 'createdAt' | 'updatedAt'>>, tenantId?: string): WorkflowDefinition | null;
 }
 
 class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
@@ -20,14 +21,14 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
     this.connection = connection;
   }
 
-  createDefinition(definition: Omit<WorkflowDefinition, 'createdAt' | 'updatedAt'>): WorkflowDefinition {
+  createDefinition(definition: Omit<WorkflowDefinition, 'createdAt' | 'updatedAt'>, tenantId: string = DEFAULT_TENANT_ID): WorkflowDefinition {
     const now = new Date().toISOString();
 
     this.connection.exec(
       `INSERT INTO workflow_definitions (
         workflow_id, name, description, version, steps,
-        owner_user_id, status, published_from_draft_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        owner_user_id, status, published_from_draft_id, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         definition.workflowId,
         definition.name,
@@ -39,6 +40,7 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
         definition.publishedFromDraftId ?? null,
         now,
         now,
+        tenantId,
       ]
     );
 
@@ -49,7 +51,7 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
     };
   }
 
-  getDefinitionById(workflowId: string): WorkflowDefinition | null {
+  getDefinitionById(workflowId: string, tenantId: string = DEFAULT_TENANT_ID): WorkflowDefinition | null {
     const results = this.connection.query<{
       workflow_id: string;
       name: string;
@@ -62,8 +64,8 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
       created_at: string;
       updated_at: string;
     }>(
-      `SELECT * FROM workflow_definitions WHERE workflow_id = ?`,
-      [workflowId]
+      `SELECT * FROM workflow_definitions WHERE tenant_id = ? AND workflow_id = ?`,
+      [tenantId, workflowId]
     );
 
     if (results.length === 0) {
@@ -73,7 +75,7 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
     return this.mapRowToDefinition(results[0]);
   }
 
-  getDefinitionByNameAndVersion(name: string, version: number): WorkflowDefinition | null {
+  getDefinitionByNameAndVersion(name: string, version: number, tenantId: string = DEFAULT_TENANT_ID): WorkflowDefinition | null {
     const results = this.connection.query<{
       workflow_id: string;
       name: string;
@@ -86,8 +88,8 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
       created_at: string;
       updated_at: string;
     }>(
-      `SELECT * FROM workflow_definitions WHERE name = ? AND version = ?`,
-      [name, version]
+      `SELECT * FROM workflow_definitions WHERE tenant_id = ? AND name = ? AND version = ?`,
+      [tenantId, name, version]
     );
 
     if (results.length === 0) {
@@ -97,7 +99,7 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
     return this.mapRowToDefinition(results[0]);
   }
 
-  getLatestDefinitionByName(name: string): WorkflowDefinition | null {
+  getLatestDefinitionByName(name: string, tenantId: string = DEFAULT_TENANT_ID): WorkflowDefinition | null {
     const results = this.connection.query<{
       workflow_id: string;
       name: string;
@@ -110,8 +112,8 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
       created_at: string;
       updated_at: string;
     }>(
-      `SELECT * FROM workflow_definitions WHERE name = ? ORDER BY version DESC LIMIT 1`,
-      [name]
+      `SELECT * FROM workflow_definitions WHERE tenant_id = ? AND name = ? ORDER BY version DESC LIMIT 1`,
+      [tenantId, name]
     );
 
     if (results.length === 0) {
@@ -121,7 +123,7 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
     return this.mapRowToDefinition(results[0]);
   }
 
-  getDefinitionsByOwner(ownerUserId: string): WorkflowDefinition[] {
+  getDefinitionsByOwner(ownerUserId: string, tenantId: string = DEFAULT_TENANT_ID): WorkflowDefinition[] {
     const results = this.connection.query<{
       workflow_id: string;
       name: string;
@@ -134,14 +136,14 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
       created_at: string;
       updated_at: string;
     }>(
-      `SELECT * FROM workflow_definitions WHERE owner_user_id = ? ORDER BY updated_at DESC`,
-      [ownerUserId]
+      `SELECT * FROM workflow_definitions WHERE tenant_id = ? AND owner_user_id = ? ORDER BY updated_at DESC`,
+      [tenantId, ownerUserId]
     );
 
     return results.map(row => this.mapRowToDefinition(row));
   }
 
-  getDefinitionsByStatus(status: WorkflowDefinitionStatus): WorkflowDefinition[] {
+  getDefinitionsByStatus(status: WorkflowDefinitionStatus, tenantId: string = DEFAULT_TENANT_ID): WorkflowDefinition[] {
     const results = this.connection.query<{
       workflow_id: string;
       name: string;
@@ -154,37 +156,38 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
       created_at: string;
       updated_at: string;
     }>(
-      `SELECT * FROM workflow_definitions WHERE status = ? ORDER BY updated_at DESC`,
-      [status]
+      `SELECT * FROM workflow_definitions WHERE tenant_id = ? AND status = ? ORDER BY updated_at DESC`,
+      [tenantId, status]
     );
 
     return results.map(row => this.mapRowToDefinition(row));
   }
 
-  getNextVersionNumber(name: string): number {
+  getNextVersionNumber(name: string, tenantId: string = DEFAULT_TENANT_ID): number {
     const results = this.connection.query<{ max_version: number | null }>(
-      `SELECT MAX(version) as max_version FROM workflow_definitions WHERE name = ?`,
-      [name]
+      `SELECT MAX(version) as max_version FROM workflow_definitions WHERE tenant_id = ? AND name = ?`,
+      [tenantId, name]
     );
 
     const maxVersion = results[0]?.max_version ?? 0;
     return maxVersion + 1;
   }
 
-  deprecateDefinition(workflowId: string): void {
+  deprecateDefinition(workflowId: string, tenantId: string = DEFAULT_TENANT_ID): void {
     const now = new Date().toISOString();
 
     this.connection.exec(
-      `UPDATE workflow_definitions SET status = ?, updated_at = ? WHERE workflow_id = ?`,
-      ['deprecated', now, workflowId]
+      `UPDATE workflow_definitions SET status = ?, updated_at = ? WHERE tenant_id = ? AND workflow_id = ?`,
+      ['deprecated', now, tenantId, workflowId]
     );
   }
 
   updateDefinition(
     workflowId: string,
-    updates: Partial<Omit<WorkflowDefinition, 'workflowId' | 'createdAt' | 'updatedAt'>>
+    updates: Partial<Omit<WorkflowDefinition, 'workflowId' | 'createdAt' | 'updatedAt'>>,
+    tenantId: string = DEFAULT_TENANT_ID
   ): WorkflowDefinition | null {
-    const existing = this.getDefinitionById(workflowId);
+    const existing = this.getDefinitionById(workflowId, tenantId);
     if (!existing) {
       return null;
     }
@@ -224,14 +227,15 @@ class WorkflowDefinitionStoreImpl implements WorkflowDefinitionStore {
     const now = new Date().toISOString();
     updateFields.push('updated_at = ?');
     values.push(now);
+    values.push(tenantId);
     values.push(workflowId);
 
     this.connection.exec(
-      `UPDATE workflow_definitions SET ${updateFields.join(', ')} WHERE workflow_id = ?`,
+      `UPDATE workflow_definitions SET ${updateFields.join(', ')} WHERE tenant_id = ? AND workflow_id = ?`,
       values
     );
 
-    return this.getDefinitionById(workflowId);
+    return this.getDefinitionById(workflowId, tenantId);
   }
 
   private mapRowToDefinition(row: {

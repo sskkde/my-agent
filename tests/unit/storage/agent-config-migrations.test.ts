@@ -49,6 +49,7 @@ function createOldSqlMigrationSchema(connection: ConnectionManager): void {
       allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
       routing_timeout_ms INTEGER NOT NULL DEFAULT 10000,
       repair_attempts INTEGER NOT NULL DEFAULT 1,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -76,6 +77,7 @@ function createOldAllStoresSchema(connection: ConnectionManager): void {
       allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
       routing_timeout_ms INTEGER NOT NULL DEFAULT 10000,
       repair_attempts INTEGER NOT NULL DEFAULT 1,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

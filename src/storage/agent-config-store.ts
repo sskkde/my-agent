@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export const DEFAULT_ROUTING_TIMEOUT_MS = 60000;
 export const DEFAULT_REPAIR_ATTEMPTS = 1;
@@ -51,11 +52,11 @@ export interface UpsertAgentConfigInput {
 }
 
 export interface AgentConfigStore {
-  getGlobalDefault(): AgentConfig | null;
-  getByUser(userId: string): AgentConfig | null;
-  listByUser(userId: string): AgentConfig[];
-  upsert(input: UpsertAgentConfigInput): AgentConfig;
-  remove(agentConfigId: string): boolean;
+  getGlobalDefault(tenantId?: string): AgentConfig | null;
+  getByUser(userId: string, tenantId?: string): AgentConfig | null;
+  listByUser(userId: string, tenantId?: string): AgentConfig[];
+  upsert(input: UpsertAgentConfigInput, tenantId?: string): AgentConfig;
+  remove(agentConfigId: string, tenantId?: string): boolean;
 }
 
 interface AgentConfigRow {
@@ -110,13 +111,13 @@ class AgentConfigStoreImpl implements AgentConfigStore {
     this.connection = connection;
   }
 
-  getGlobalDefault(): AgentConfig | null {
+  getGlobalDefault(tenantId: string = DEFAULT_TENANT_ID): AgentConfig | null {
     const sql = `
       SELECT * FROM agent_configs
-      WHERE agent_id = ? AND scope = 'global'
+      WHERE agent_id = ? AND scope = 'global' AND tenant_id = ?
       LIMIT 1
     `;
-    const rows = this.connection.query<AgentConfigRow>(sql, ['foreground.default']);
+    const rows = this.connection.query<AgentConfigRow>(sql, ['foreground.default', tenantId]);
 
     if (rows.length === 0) {
       return null;
@@ -125,41 +126,41 @@ class AgentConfigStoreImpl implements AgentConfigStore {
     return this.rowToConfig(rows[0]);
   }
 
-  getByUser(userId: string): AgentConfig | null {
+  getByUser(userId: string, tenantId: string = DEFAULT_TENANT_ID): AgentConfig | null {
     const userSql = `
       SELECT * FROM agent_configs
-      WHERE agent_id = ? AND scope = 'user' AND user_id = ?
+      WHERE agent_id = ? AND scope = 'user' AND user_id = ? AND tenant_id = ?
       LIMIT 1
     `;
-    const userRows = this.connection.query<AgentConfigRow>(userSql, ['foreground.default', userId]);
+    const userRows = this.connection.query<AgentConfigRow>(userSql, ['foreground.default', userId, tenantId]);
 
     if (userRows.length > 0) {
       const userConfig = this.rowToConfig(userRows[0]);
       const globalSql = `
         SELECT * FROM agent_configs
-        WHERE agent_id = ? AND scope = 'global'
+        WHERE agent_id = ? AND scope = 'global' AND tenant_id = ?
         LIMIT 1
       `;
-      const globalRows = this.connection.query<AgentConfigRow>(globalSql, ['foreground.default']);
+      const globalRows = this.connection.query<AgentConfigRow>(globalSql, ['foreground.default', tenantId]);
 
       const globalConfig = globalRows.length > 0 ? this.rowToConfig(globalRows[0]) : null;
       return this.mergeConfigs(globalConfig, userConfig);
     }
 
-    return this.getGlobalDefault();
+    return this.getGlobalDefault(tenantId);
   }
 
-  listByUser(userId: string): AgentConfig[] {
+  listByUser(userId: string, tenantId: string = DEFAULT_TENANT_ID): AgentConfig[] {
     const sql = `
       SELECT * FROM agent_configs
-      WHERE user_id = ? AND scope = 'user'
+      WHERE user_id = ? AND scope = 'user' AND tenant_id = ?
       ORDER BY created_at DESC
     `;
-    const rows = this.connection.query<AgentConfigRow>(sql, [userId]);
+    const rows = this.connection.query<AgentConfigRow>(sql, [userId, tenantId]);
     return rows.map(row => this.rowToConfig(row));
   }
 
-  upsert(input: UpsertAgentConfigInput): AgentConfig {
+  upsert(input: UpsertAgentConfigInput, tenantId: string = DEFAULT_TENANT_ID): AgentConfig {
     validateAgentId(input.agentId);
 
     const now = new Date().toISOString();
@@ -190,8 +191,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
         system_prompt, routing_prompt, provider_id, model,
         allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
         prompt_type, prompt_version, search_llm_provider_id, search_llm_model,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT DO UPDATE SET
         display_name = excluded.display_name,
         enabled = excluded.enabled,
@@ -207,7 +208,8 @@ class AgentConfigStoreImpl implements AgentConfigStore {
         prompt_version = excluded.prompt_version,
         search_llm_provider_id = excluded.search_llm_provider_id,
         search_llm_model = excluded.search_llm_model,
-        updated_at = excluded.updated_at
+        updated_at = excluded.updated_at,
+        tenant_id = excluded.tenant_id
     `;
 
     const params = [
@@ -231,29 +233,30 @@ class AgentConfigStoreImpl implements AgentConfigStore {
       input.searchLlmModel ?? null,
       now,
       now,
+      tenantId,
     ];
 
     this.connection.exec(insertSql, params);
 
     const selectSql = `
       SELECT * FROM agent_configs
-      WHERE agent_id = ? AND scope = ? AND user_id = ?
+      WHERE agent_id = ? AND scope = ? AND user_id = ? AND tenant_id = ?
       LIMIT 1
     `;
-    const rows = this.connection.query<AgentConfigRow>(selectSql, [input.agentId, input.scope, userId]);
+    const rows = this.connection.query<AgentConfigRow>(selectSql, [input.agentId, input.scope, userId, tenantId]);
     return this.rowToConfig(rows[0]);
   }
 
-  remove(agentConfigId: string): boolean {
-    const selectSql = 'SELECT 1 FROM agent_configs WHERE agent_config_id = ? LIMIT 1';
-    const existing = this.connection.query<Record<string, unknown>>(selectSql, [agentConfigId]);
+  remove(agentConfigId: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
+    const selectSql = 'SELECT 1 FROM agent_configs WHERE agent_config_id = ? AND tenant_id = ? LIMIT 1';
+    const existing = this.connection.query<Record<string, unknown>>(selectSql, [agentConfigId, tenantId]);
 
     if (existing.length === 0) {
       return false;
     }
 
-    const deleteSql = 'DELETE FROM agent_configs WHERE agent_config_id = ?';
-    this.connection.exec(deleteSql, [agentConfigId]);
+    const deleteSql = 'DELETE FROM agent_configs WHERE agent_config_id = ? AND tenant_id = ?';
+    this.connection.exec(deleteSql, [agentConfigId, tenantId]);
     return true;
   }
 

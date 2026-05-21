@@ -62,7 +62,8 @@ const STORE_MIGRATIONS = [
         tool_call_id TEXT, approval_id TEXT, wait_condition_id TEXT,
         artifact_id TEXT, memory_id TEXT, payload TEXT NOT NULL,
         sensitivity TEXT NOT NULL, retention_class TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_events_session ON events(session_id);
     `,

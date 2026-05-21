@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS retention_config (
   entity_type TEXT NOT NULL,
   ttl_days INTEGER NOT NULL,
   policy TEXT NOT NULL DEFAULT 'soft_delete' CHECK(policy IN ('soft_delete', 'archive', 'hard_delete')),
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS memory_lifecycle (
   archived_at TEXT,
   deleted_at TEXT,
   tombstone_data TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -42,6 +44,7 @@ CREATE TABLE IF NOT EXISTS audit_retention (
   entity_type TEXT NOT NULL,
   ttl_days INTEGER NOT NULL,
   policy TEXT NOT NULL DEFAULT 'archive' CHECK(policy IN ('soft_delete', 'archive', 'hard_delete')),
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

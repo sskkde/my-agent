@@ -25,6 +25,7 @@ CREATE TABLE agent_configs (
   allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
   routing_timeout_ms INTEGER NOT NULL DEFAULT 60000,
   repair_attempts INTEGER NOT NULL DEFAULT 1,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -33,13 +34,13 @@ INSERT INTO agent_configs (
   agent_config_id, agent_id, scope, user_id, display_name, enabled,
   system_prompt, routing_prompt, provider_id, model,
   allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-  created_at, updated_at
+  tenant_id, created_at, updated_at
 )
 SELECT
   agent_config_id, agent_id, scope, user_id, display_name, enabled,
   system_prompt, routing_prompt, provider_id, model,
   allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-  created_at, updated_at
+  tenant_id, created_at, updated_at
 FROM agent_configs_old;
 
 UPDATE agent_configs
@@ -91,6 +92,7 @@ CREATE TABLE agent_configs (
   allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
   routing_timeout_ms INTEGER NOT NULL DEFAULT 10000,
   repair_attempts INTEGER NOT NULL DEFAULT 1,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -99,13 +101,13 @@ INSERT INTO agent_configs (
   agent_config_id, agent_id, scope, user_id, display_name, enabled,
   system_prompt, routing_prompt, provider_id, model,
   allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-  created_at, updated_at
+  tenant_id, created_at, updated_at
 )
 SELECT
   agent_config_id, agent_id, scope, user_id, display_name, enabled,
   system_prompt, routing_prompt, provider_id, model,
   allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-  created_at, updated_at
+  tenant_id, created_at, updated_at
 FROM agent_configs_new;
 
 DROP TABLE agent_configs_new;

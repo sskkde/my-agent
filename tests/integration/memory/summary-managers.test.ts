@@ -684,6 +684,7 @@ function createSummaryMigration() {
         structured_state TEXT,
         status TEXT NOT NULL,
         retrieval TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
         created_at TEXT NOT NULL,
         updated_at TEXT
       );

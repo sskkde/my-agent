@@ -342,10 +342,8 @@ describe('DLQTab', () => {
     render(<DLQTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('dlq-empty')).toBeInTheDocument();
+      expect(screen.getByText('暂无死信事件')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('暂无死信事件')).toBeInTheDocument();
   });
 
   it('shows error state with retry button', async () => {
@@ -354,13 +352,13 @@ describe('DLQTab', () => {
     render(<DLQTab />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('dlq-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-message')).toBeInTheDocument();
     });
 
     expect(screen.getByText('API error')).toBeInTheDocument();
 
     vi.mocked(dlqApi.getDlqEntries).mockResolvedValue({ entries: [], total: 0 });
-    fireEvent.click(screen.getByText('重试'));
+    fireEvent.click(screen.getByTestId('error-message-retry'));
 
     await waitFor(() => {
       expect(dlqApi.getDlqEntries).toHaveBeenCalledTimes(2);

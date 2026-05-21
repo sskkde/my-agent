@@ -64,6 +64,21 @@ export function registerStatusRoutes(server: FastifyInstance, context: ApiContex
       };
     }
 
+    if (context.postgresAdapter) {
+      try {
+        const pgHealthy = await context.postgresAdapter.healthCheck();
+        modules.postgres = {
+          status: pgHealthy ? 'healthy' : 'unhealthy',
+          message: pgHealthy ? 'PostgreSQL connected' : 'PostgreSQL connection failed',
+        };
+      } catch {
+        modules.postgres = {
+          status: 'unhealthy',
+          message: 'PostgreSQL health check failed',
+        };
+      }
+    }
+
     let overallStatus: 'healthy' | 'degraded' = 'healthy';
     for (const mod of Object.values(modules)) {
       if (mod.status === 'unhealthy') {

@@ -37,7 +37,8 @@ const connectorRuntimeMigrations: Migration[] = [
         config_schema TEXT,
         status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_connector_defs_type ON connector_definitions(connector_type);
       CREATE INDEX idx_connector_defs_status ON connector_definitions(status);
@@ -62,7 +63,8 @@ const connectorRuntimeMigrations: Migration[] = [
         config TEXT,
         status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_connector_instances_user_def ON connector_instances(user_id, connector_definition_id);
       CREATE INDEX idx_connector_instances_status ON connector_instances(status);
@@ -86,7 +88,8 @@ const connectorRuntimeMigrations: Migration[] = [
         event_type TEXT NOT NULL,
         payload TEXT,
         processed INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_connector_events_instance ON connector_events(connector_instance_id);
       CREATE INDEX idx_connector_events_processed ON connector_events(processed);
@@ -127,7 +130,8 @@ const connectorRuntimeMigrations: Migration[] = [
         payload TEXT NOT NULL,
         sensitivity TEXT NOT NULL,
         retention_class TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
       CREATE INDEX idx_events_session ON events(session_id);
       CREATE INDEX idx_events_user ON events(user_id);

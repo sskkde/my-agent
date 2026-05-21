@@ -55,6 +55,7 @@ export const eventsTableMigration: Migration = {
       payload TEXT NOT NULL,
       sensitivity TEXT NOT NULL DEFAULT 'low',
       retention_class TEXT NOT NULL DEFAULT 'standard',
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL
     );
     CREATE INDEX idx_events_session_created ON events(session_id, created_at);
@@ -124,6 +125,7 @@ export const runtimeActionsTableMigration: Migration = {
       status TEXT NOT NULL DEFAULT 'created',
       status_message TEXT,
       result TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -171,6 +173,7 @@ export const transcriptsTableMigration: Migration = {
       startEventId TEXT,
       endEventId TEXT,
       visibility TEXT NOT NULL DEFAULT 'public',
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       createdAt TEXT NOT NULL
     );
     CREATE INDEX idx_transcripts_session ON transcripts(sessionId, createdAt);
@@ -206,6 +209,7 @@ export const summariesTableMigration: Migration = {
       structured_state TEXT,
       status TEXT NOT NULL,
       retrieval TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT
     );
@@ -250,6 +254,7 @@ export const plansTableMigration: Migration = {
       steps TEXT NOT NULL,
       constraints TEXT,
       assumptions TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -282,6 +287,7 @@ export const planPatchesTableMigration: Migration = {
       patch TEXT NOT NULL,
       source_planner_run_id TEXT,
       reason TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL
     );
     CREATE INDEX idx_plan_patches_plan_id ON plan_patches(plan_id);
@@ -310,6 +316,7 @@ export const plannerRunsTableMigration: Migration = {
       checkpoint TEXT,
       background_run_id TEXT,
       workflow_run_id TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -349,6 +356,7 @@ export const kernelRunsTableMigration: Migration = {
       event_end INTEGER,
       parent_run_id TEXT,
       root_run_id TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -391,6 +399,7 @@ export const toolExecutionsTableMigration: Migration = {
       sensitivity TEXT NOT NULL DEFAULT 'low',
       error_message TEXT,
       started_at TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       completed_at TEXT,
       terminal_state_reached INTEGER NOT NULL DEFAULT 0
     );
@@ -435,6 +444,7 @@ export const backgroundRunsTableMigration: Migration = {
       completed_at TEXT,
       expires_at TEXT,
       retry_count INTEGER NOT NULL DEFAULT 0,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -472,6 +482,7 @@ export const workflowRunsTableMigration: Migration = {
       input_data TEXT,
       output_data TEXT,
       context_data TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       started_at TEXT NOT NULL,
       completed_at TEXT,
       created_at TEXT NOT NULL,
@@ -509,6 +520,7 @@ export const workflowStepRunsTableMigration: Migration = {
       input_data TEXT,
       output_data TEXT,
       error_message TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       started_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL,
@@ -558,6 +570,7 @@ export const approvalRequestsTableMigration: Migration = {
       idempotency_key TEXT,
       metadata TEXT,
       source_context TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -594,6 +607,7 @@ export const permissionGrantsTableMigration: Migration = {
       source_context TEXT,
       revoked_at TEXT,
       revoked_reason TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -629,6 +643,7 @@ export const triggerRegistrationsTableMigration: Migration = {
       trigger_count INTEGER NOT NULL DEFAULT 0,
       expires_at TEXT,
       metadata TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -664,6 +679,7 @@ export const waitConditionsTableMigration: Migration = {
       satisfied_by TEXT,
       result_data TEXT,
       metadata TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -697,6 +713,7 @@ export const artifactsTableMigration: Migration = {
       session_id TEXT,
       status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'archived', 'deleted')),
       metadata TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -734,6 +751,7 @@ export const toolResultsTableMigration: Migration = {
       raw_blob_ref TEXT,
       structured_content TEXT,
       sensitivity TEXT NOT NULL CHECK(sensitivity IN ('low', 'medium', 'high', 'restricted')),
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL
     );
     CREATE INDEX idx_tool_results_tool_call_id ON tool_results(tool_call_id);
@@ -767,6 +785,7 @@ export const connectorDefinitionsTableMigration: Migration = {
       capabilities TEXT NOT NULL,
       config_schema TEXT,
       status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -793,6 +812,7 @@ export const connectorInstancesTableMigration: Migration = {
       auth_state_ref TEXT NOT NULL,
       config TEXT,
       status TEXT NOT NULL CHECK(status IN ('draft', 'active', 'deprecated', 'inactive')),
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -819,6 +839,7 @@ export const connectorEventsTableMigration: Migration = {
       event_type TEXT NOT NULL,
       payload TEXT,
       processed INTEGER NOT NULL DEFAULT 0,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL
     );
     CREATE INDEX idx_connector_events_instance ON connector_events(connector_instance_id);
@@ -848,6 +869,7 @@ export const workflowDraftsTableMigration: Migration = {
       owner_user_id TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('draft', 'validating', 'invalid')),
       validation_issues TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -879,6 +901,7 @@ export const workflowDefinitionsTableMigration: Migration = {
       owner_user_id TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('published', 'deprecated')),
       published_from_draft_id TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -916,7 +939,8 @@ export const traceContextsTableMigration: Migration = {
       user_id TEXT,
       session_id TEXT,
       started_at TEXT NOT NULL,
-      status TEXT NOT NULL CHECK(status IN ('active', 'completed', 'failed', 'cancelled'))
+      status TEXT NOT NULL CHECK(status IN ('active', 'completed', 'failed', 'cancelled')),
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
     CREATE INDEX idx_trace_contexts_correlation ON trace_contexts(correlation_id);
     CREATE INDEX idx_trace_contexts_user ON trace_contexts(user_id);
@@ -950,7 +974,8 @@ export const traceSpansTableMigration: Migration = {
       end_time TEXT,
       duration_ms INTEGER,
       error TEXT,
-      metadata TEXT
+      metadata TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
     CREATE INDEX idx_trace_spans_trace ON trace_spans(trace_id);
     CREATE INDEX idx_trace_spans_parent ON trace_spans(parent_span_id);
@@ -984,7 +1009,8 @@ export const metricsTableMigration: Migration = {
       value REAL NOT NULL,
       unit TEXT,
       timestamp TEXT NOT NULL,
-      labels TEXT
+      labels TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
     CREATE INDEX idx_metrics_trace ON metrics(trace_id);
     CREATE INDEX idx_metrics_span ON metrics(span_id);
@@ -1033,7 +1059,8 @@ export const auditRecordsTableMigration: Migration = {
       tool_call_id TEXT,
       permission_decision_id TEXT,
       risk_level TEXT NOT NULL CHECK(risk_level IN ('low', 'medium', 'high', 'critical')),
-      sensitivity TEXT NOT NULL CHECK(sensitivity IN ('low', 'medium', 'high', 'restricted'))
+      sensitivity TEXT NOT NULL CHECK(sensitivity IN ('low', 'medium', 'high', 'restricted')),
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
     CREATE INDEX idx_audit_records_user_timestamp ON audit_records(user_id, timestamp DESC);
     CREATE INDEX idx_audit_records_session_timestamp ON audit_records(session_id, timestamp DESC);
@@ -1079,7 +1106,8 @@ export const sessionsTableMigration: Migration = {
       last_activity_at TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      metadata TEXT
+      metadata TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
     CREATE INDEX idx_sessions_user_activity ON sessions(user_id, last_activity_at);
     CREATE INDEX idx_sessions_status ON sessions(status)
@@ -1102,6 +1130,7 @@ export const usersTableMigration: Migration = {
       user_id TEXT PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
@@ -1123,7 +1152,8 @@ export const authTokensTableMigration: Migration = {
       user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
       created_at TEXT NOT NULL,
       expires_at TEXT NOT NULL,
-      revoked_at TEXT
+      revoked_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
     CREATE INDEX idx_auth_tokens_user ON auth_tokens(user_id);
     CREATE INDEX idx_auth_tokens_expires ON auth_tokens(expires_at)
@@ -1155,6 +1185,7 @@ export const providerConfigsTableMigration: Migration = {
       source TEXT NOT NULL DEFAULT 'database',
       last_test_status TEXT,
       last_tested_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1202,17 +1233,18 @@ export const customProviderTypeMigration: Migration = {
       source TEXT NOT NULL DEFAULT 'database',
       last_test_status TEXT,
       last_tested_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
     INSERT INTO provider_configs_new (
       provider_id, user_id, provider_type, display_name, enabled,
       base_url, selected_model, encrypted_api_key, api_key_last4,
-      source, last_test_status, last_tested_at, created_at, updated_at
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
     ) SELECT
       provider_id, user_id, provider_type, display_name, enabled,
       base_url, selected_model, encrypted_api_key, api_key_last4,
-      source, last_test_status, last_tested_at, created_at, updated_at
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
     FROM provider_configs;
     DROP INDEX IF EXISTS idx_provider_configs_user;
     DROP TABLE provider_configs;
@@ -1233,17 +1265,18 @@ export const customProviderTypeMigration: Migration = {
       source TEXT NOT NULL DEFAULT 'database',
       last_test_status TEXT,
       last_tested_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
     INSERT INTO provider_configs_old (
       provider_id, user_id, provider_type, display_name, enabled,
       base_url, selected_model, encrypted_api_key, api_key_last4,
-      source, last_test_status, last_tested_at, created_at, updated_at
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
     ) SELECT
       provider_id, user_id, provider_type, display_name, enabled,
       base_url, selected_model, encrypted_api_key, api_key_last4,
-      source, last_test_status, last_tested_at, created_at, updated_at
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
     FROM provider_configs
     WHERE provider_type IN ('openai','openrouter','ollama');
     DROP INDEX IF EXISTS idx_provider_configs_user;
@@ -1275,6 +1308,7 @@ export const agentConfigsTableMigration: Migration = {
       allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
       routing_timeout_ms INTEGER NOT NULL DEFAULT 60000,
       repair_attempts INTEGER NOT NULL DEFAULT 1,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1319,6 +1353,7 @@ export const agentConfigRuntimeDefaultsMigration: Migration = {
       allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
       routing_timeout_ms INTEGER NOT NULL DEFAULT 60000,
       repair_attempts INTEGER NOT NULL DEFAULT 1,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1326,12 +1361,12 @@ export const agentConfigRuntimeDefaultsMigration: Migration = {
       agent_config_id, agent_id, scope, user_id, display_name, enabled,
       system_prompt, routing_prompt, provider_id, model,
       allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-      created_at, updated_at
+      tenant_id, created_at, updated_at
     ) SELECT
       agent_config_id, agent_id, scope, user_id, display_name, enabled,
       system_prompt, routing_prompt, provider_id, model,
       allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-      created_at, updated_at
+      tenant_id, created_at, updated_at
     FROM agent_configs_old;
     UPDATE agent_configs
     SET routing_timeout_ms = 60000,
@@ -1378,6 +1413,7 @@ export const agentConfigRuntimeDefaultsMigration: Migration = {
       allowed_skill_ids TEXT NOT NULL DEFAULT '[]',
       routing_timeout_ms INTEGER NOT NULL DEFAULT 10000,
       repair_attempts INTEGER NOT NULL DEFAULT 1,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1385,12 +1421,12 @@ export const agentConfigRuntimeDefaultsMigration: Migration = {
       agent_config_id, agent_id, scope, user_id, display_name, enabled,
       system_prompt, routing_prompt, provider_id, model,
       allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-      created_at, updated_at
+      tenant_id, created_at, updated_at
     ) SELECT
       agent_config_id, agent_id, scope, user_id, display_name, enabled,
       system_prompt, routing_prompt, provider_id, model,
       allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
-      created_at, updated_at
+      tenant_id, created_at, updated_at
     FROM agent_configs_new;
     DROP TABLE agent_configs_new;
     CREATE UNIQUE INDEX idx_agent_configs_global ON agent_configs(agent_id, scope) WHERE scope = 'global';
@@ -1426,6 +1462,7 @@ export const agentConfigPromptBindingMigration: Migration = {
       repair_attempts INTEGER NOT NULL DEFAULT 1,
       prompt_type TEXT,
       prompt_version TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1434,7 +1471,7 @@ export const agentConfigPromptBindingMigration: Migration = {
       system_prompt, routing_prompt, provider_id, model,
       allowed_tool_ids, allowed_skill_ids, routing_timeout_ms, repair_attempts,
       prompt_type, prompt_version,
-      created_at, updated_at
+      tenant_id, created_at, updated_at
     )
     SELECT
       agent_config_id, agent_id, scope, user_id, display_name, enabled,
@@ -1443,7 +1480,7 @@ export const agentConfigPromptBindingMigration: Migration = {
       CASE WHEN allowed_skill_ids = '[]' THEN '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]' ELSE allowed_skill_ids END,
       routing_timeout_ms, repair_attempts,
       NULL, NULL,
-      created_at, updated_at
+      tenant_id, created_at, updated_at
     FROM agent_configs_old;
     DROP TABLE agent_configs_old;
     CREATE UNIQUE INDEX idx_agent_configs_unique ON agent_configs(agent_id, scope, user_id);
@@ -1479,7 +1516,8 @@ export const longTermMemoriesTableMigration: Migration = {
       importance TEXT NOT NULL,
       sensitivity TEXT NOT NULL,
       lifecycle TEXT NOT NULL,
-      retrieval TEXT NOT NULL
+      retrieval TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default'
     );
 
     CREATE INDEX IF NOT EXISTS idx_long_term_memories_user_status
@@ -1528,6 +1566,7 @@ export const longTermMemoriesInvariantsMigration: Migration = {
       completed_at TEXT,
       result_counts TEXT,
       error_message TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1543,6 +1582,7 @@ export const longTermMemoriesInvariantsMigration: Migration = {
       user_id TEXT NOT NULL,
       fingerprint TEXT NOT NULL,
       source_window_hash TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL
     );
 
@@ -1589,16 +1629,17 @@ export const memoryExtractionRunsFullSchemaMigration: Migration = {
       failure_code TEXT,
       failure_message TEXT,
       source_refs TEXT NOT NULL DEFAULT '{}',
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
     
     INSERT INTO memory_extraction_runs (
       run_id, user_id, window_hash, status, started_at, completed_at,
-      result_counts, created_at, updated_at
+      result_counts, tenant_id, created_at, updated_at
     ) SELECT
       run_id, user_id, window_hash, status, started_at, completed_at,
-      result_counts, created_at, updated_at
+      result_counts, tenant_id, created_at, updated_at
     FROM memory_extraction_runs_old;
     
     DROP TABLE memory_extraction_runs_old;
@@ -1643,16 +1684,17 @@ export const memoryExtractionRunsFullSchemaMigration: Migration = {
       completed_at TEXT,
       result_counts TEXT,
       error_message TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
     
     INSERT INTO memory_extraction_runs (
       run_id, user_id, window_hash, status, started_at, completed_at,
-      result_counts, created_at, updated_at
+      result_counts, tenant_id, created_at, updated_at
     ) SELECT
       run_id, user_id, window_hash, status, started_at, completed_at,
-      result_counts, created_at, updated_at
+      result_counts, tenant_id, created_at, updated_at
     FROM memory_extraction_runs_new;
     
     DROP TABLE memory_extraction_runs_new;
@@ -1680,6 +1722,7 @@ export const webhookTriggersTableMigration: Migration = {
       secret_last4 TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('active', 'paused', 'deleted')),
       trigger_registration_id TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1708,6 +1751,7 @@ export const webhookDeliveriesTableMigration: Migration = {
       event_id TEXT,
       received_at TEXT NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('accepted', 'duplicate', 'rejected')),
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       CONSTRAINT unique_delivery_per_webhook UNIQUE (webhook_id, delivery_id)
     );
     CREATE INDEX idx_webhook_deliveries_webhook ON webhook_deliveries(webhook_id, received_at DESC);
@@ -1738,6 +1782,7 @@ export const scheduleTriggersTableMigration: Migration = {
       next_run_at TEXT,
       run_count INTEGER NOT NULL DEFAULT 0,
       max_runs INTEGER,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -1783,6 +1828,7 @@ export const toolResultBlobsTableMigration: Migration = {
       storage_ref TEXT NOT NULL,
       sensitivity TEXT NOT NULL DEFAULT 'low' CHECK(sensitivity IN ('low', 'medium', 'high', 'restricted')),
       size_bytes INTEGER NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL
     );
     CREATE INDEX idx_tool_result_blobs_tool_call ON tool_result_blobs(tool_call_id);
@@ -1826,6 +1872,7 @@ export const connectorPoliciesTableMigration: Migration = {
       risk_cap TEXT,
       audit_label TEXT,
       user_id TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       created_at TEXT NOT NULL,
       updated_at TEXT
     );
@@ -1855,6 +1902,7 @@ export const deadLetterTableMigration: Migration = {
       enqueued_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       discarded_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       resolved_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_dead_letter_status ON dead_letter(status);
@@ -1881,6 +1929,7 @@ export const apiKeysTableMigration: Migration = {
       created_at TEXT NOT NULL,
       expires_at TEXT,
       last_used_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
       is_active INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
@@ -1905,6 +1954,191 @@ export const usersRoleColumnMigration: Migration = {
   down: `
     ALTER TABLE users DROP COLUMN role
   `
+};
+
+export const organizationsTableMigration: Migration = {
+  version: 51,
+  name: 'create_organizations_table',
+  up: `
+    CREATE TABLE organizations (
+      org_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_organizations_slug ON organizations(slug);
+    INSERT INTO organizations (org_id, name, slug, created_at, updated_at)
+    VALUES ('org_default', 'Default Organization', 'default', datetime('now'), datetime('now'))
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_organizations_slug;
+    DROP TABLE IF EXISTS organizations
+  `
+};
+
+export const userOrganizationsTableMigration: Migration = {
+  version: 52,
+  name: 'create_user_organizations_table',
+  up: `
+    CREATE TABLE user_organizations (
+      user_id TEXT NOT NULL,
+      org_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('owner', 'admin', 'member')),
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      joined_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, org_id),
+      FOREIGN KEY (user_id) REFERENCES users(user_id),
+      FOREIGN KEY (org_id) REFERENCES organizations(org_id)
+    );
+    CREATE INDEX idx_user_org_user ON user_organizations(user_id);
+    CREATE INDEX idx_user_org_org ON user_organizations(org_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_user_org_org;
+    DROP INDEX IF EXISTS idx_user_org_user;
+    DROP TABLE IF EXISTS user_organizations
+  `
+};
+
+export const addTenantIdMigration: Migration = {
+  version: 53,
+  name: 'add_tenant_id_to_all_tables',
+  up: `
+    ALTER TABLE events ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_events_tenant ON events(tenant_id);
+
+    ALTER TABLE runtime_actions ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_runtime_actions_tenant ON runtime_actions(tenant_id);
+
+    ALTER TABLE transcripts ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_transcripts_tenant ON transcripts(tenant_id);
+
+    ALTER TABLE summaries ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_summaries_tenant ON summaries(tenant_id);
+
+    ALTER TABLE plans ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_plans_tenant ON plans(tenant_id);
+
+    ALTER TABLE plan_patches ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_plan_patches_tenant ON plan_patches(tenant_id);
+
+    ALTER TABLE planner_runs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_planner_runs_tenant ON planner_runs(tenant_id);
+
+    ALTER TABLE kernel_runs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_kernel_runs_tenant ON kernel_runs(tenant_id);
+
+    ALTER TABLE tool_executions ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_tool_executions_tenant ON tool_executions(tenant_id);
+
+    ALTER TABLE background_runs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_background_runs_tenant ON background_runs(tenant_id);
+
+    ALTER TABLE workflow_runs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_workflow_runs_tenant ON workflow_runs(tenant_id);
+
+    ALTER TABLE workflow_step_runs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_workflow_step_runs_tenant ON workflow_step_runs(tenant_id);
+
+    ALTER TABLE approval_requests ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_approval_requests_tenant ON approval_requests(tenant_id);
+
+    ALTER TABLE permission_grants ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_permission_grants_tenant ON permission_grants(tenant_id);
+
+    ALTER TABLE trigger_registrations ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_trigger_registrations_tenant ON trigger_registrations(tenant_id);
+
+    ALTER TABLE wait_conditions ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_wait_conditions_tenant ON wait_conditions(tenant_id);
+
+    ALTER TABLE artifacts ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_artifacts_tenant ON artifacts(tenant_id);
+
+    ALTER TABLE tool_results ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_tool_results_tenant ON tool_results(tenant_id);
+
+    ALTER TABLE tool_result_blobs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_tool_result_blobs_tenant ON tool_result_blobs(tenant_id);
+
+    ALTER TABLE connector_definitions ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_connector_definitions_tenant ON connector_definitions(tenant_id);
+
+    ALTER TABLE connector_instances ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_connector_instances_tenant ON connector_instances(tenant_id);
+
+    ALTER TABLE connector_events ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_connector_events_tenant ON connector_events(tenant_id);
+
+    ALTER TABLE connector_policies ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_connector_policies_tenant ON connector_policies(tenant_id);
+
+    ALTER TABLE workflow_drafts ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_workflow_drafts_tenant ON workflow_drafts(tenant_id);
+
+    ALTER TABLE workflow_definitions ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_workflow_definitions_tenant ON workflow_definitions(tenant_id);
+
+    ALTER TABLE trace_contexts ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_trace_contexts_tenant ON trace_contexts(tenant_id);
+
+    ALTER TABLE trace_spans ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_trace_spans_tenant ON trace_spans(tenant_id);
+
+    ALTER TABLE metrics ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_metrics_tenant ON metrics(tenant_id);
+
+    ALTER TABLE audit_records ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_audit_records_tenant ON audit_records(tenant_id);
+
+    ALTER TABLE sessions ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_sessions_tenant ON sessions(tenant_id);
+
+    ALTER TABLE users ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
+
+    ALTER TABLE auth_tokens ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_auth_tokens_tenant ON auth_tokens(tenant_id);
+
+    ALTER TABLE provider_configs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_provider_configs_tenant ON provider_configs(tenant_id);
+
+    ALTER TABLE agent_configs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_agent_configs_tenant ON agent_configs(tenant_id);
+
+    ALTER TABLE long_term_memories ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_long_term_memories_tenant ON long_term_memories(tenant_id);
+
+    ALTER TABLE memory_extraction_runs ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_tenant ON memory_extraction_runs(tenant_id);
+
+    ALTER TABLE memory_tombstones ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_memory_tombstones_tenant ON memory_tombstones(tenant_id);
+
+    ALTER TABLE webhook_triggers ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_webhook_triggers_tenant ON webhook_triggers(tenant_id);
+
+    ALTER TABLE webhook_deliveries ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_tenant ON webhook_deliveries(tenant_id);
+
+    ALTER TABLE schedule_triggers ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_schedule_triggers_tenant ON schedule_triggers(tenant_id);
+
+    ALTER TABLE dead_letter ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_dead_letter_tenant ON dead_letter(tenant_id);
+
+    ALTER TABLE api_keys ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_api_keys_tenant ON api_keys(tenant_id);
+
+    ALTER TABLE alert_rules ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_alert_rules_tenant ON alert_rules(tenant_id);
+
+    ALTER TABLE alert_states ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
+    CREATE INDEX IF NOT EXISTS idx_alert_states_tenant ON alert_states(tenant_id)
+  `,
+  down: ``
 };
 
 export const allStoreMigrations: Migration[] = [
@@ -2009,6 +2243,11 @@ export const allStoreMigrations: Migration[] = [
 
   // Alert tables
   alertTablesMigration,                       // v50
+
+  // Organizations and tenancy
+  organizationsTableMigration,                // v51
+  userOrganizationsTableMigration,            // v52
+  addTenantIdMigration,                       // v53
 ];
 
 /**

@@ -9,6 +9,7 @@ CREATE TABLE users (
   user_id TEXT PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -19,7 +20,8 @@ CREATE TABLE auth_tokens (
   user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
-  revoked_at TEXT
+  revoked_at TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default'
 );
 
 -- Index: by user_id for token lookups

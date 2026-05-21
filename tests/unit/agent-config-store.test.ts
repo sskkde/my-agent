@@ -25,6 +25,7 @@ const CREATE_TABLE_SQL = `
     prompt_version TEXT,
     search_llm_provider_id TEXT,
     search_llm_model TEXT,
+            tenant_id TEXT NOT NULL DEFAULT 'org_default',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )

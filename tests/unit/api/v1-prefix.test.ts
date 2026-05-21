@@ -93,6 +93,7 @@ describe('v1-prefix utilities', () => {
 
       const mockReply = {
         redirect: vi.fn().mockReturnThis(),
+        header: vi.fn().mockReturnThis(),
       };
 
       await routeOptions.handler.call(null as any, mockRequest as any, mockReply as any);

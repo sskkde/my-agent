@@ -60,14 +60,14 @@ describe('API Latency Smoke Tests', () => {
     await server.listen({ port: 0 });
     const address = server.server.address();
     baseUrl = `http://localhost:${(address as any).port}`;
-  }, 30000);
+  }, 60000);
 
   afterAll(async () => {
     await server.close();
     if (apiContext && 'connection' in apiContext) {
       (apiContext as any).connection.close();
     }
-  }, 30000);
+  }, 60000);
 
   describe('GET /api/v1/health', () => {
     it('p95 latency should be < 200ms (20 runs)', async () => {

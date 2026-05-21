@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS connector_policies (
   risk_cap TEXT,
   audit_label TEXT,
   user_id TEXT,
+  tenant_id TEXT NOT NULL DEFAULT 'org_default',
   created_at TEXT NOT NULL,
   updated_at TEXT
 );

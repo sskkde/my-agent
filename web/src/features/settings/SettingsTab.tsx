@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getSettings } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import ProviderManager from './ProviderManager';
 import type { SettingsConfig } from '../../api/types';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import ErrorMessage from '../../components/ErrorMessage';
 
 interface SettingsData {
   settings: SettingsConfig | null;
   loading: boolean;
-  error: boolean;
+  error: Error | null;
 }
 
 const SettingsTab: React.FC = () => {
@@ -16,29 +17,30 @@ const SettingsTab: React.FC = () => {
   const [data, setData] = useState<SettingsData>({
     settings: null,
     loading: true,
-    error: false,
+    error: null,
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await getSettings();
-        setData({
-          settings: response.settings,
-          loading: false,
-          error: false,
-        });
-      } catch {
-        setData({
-          settings: null,
-          loading: false,
-          error: true,
-        });
-      }
-    };
-
-    fetchData();
+  const fetchData = useCallback(async () => {
+    setData(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await getSettings();
+      setData({
+        settings: response.settings,
+        loading: false,
+        error: null,
+      });
+    } catch (err) {
+      setData({
+        settings: null,
+        loading: false,
+        error: err instanceof Error ? err : new Error('加载设置失败'),
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const { settings, loading, error } = data;
 
@@ -51,14 +53,16 @@ const SettingsTab: React.FC = () => {
       <div className="content-body">
         {loading && (
           <div className="settings-loading" data-testid="settings-loading">
-            <LoadingSpinner label="加载设置..." />
+            <LoadingSpinner size="large" label="加载设置..." />
           </div>
         )}
 
         {error && (
-          <div className="settings-error" data-testid="settings-error">
-            无法加载设置数据
-          </div>
+          <ErrorMessage
+            error={error}
+            retry={{ onClick: fetchData }}
+            size="large"
+          />
         )}
 
         {!loading && !error && settings && (
