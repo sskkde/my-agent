@@ -54,11 +54,11 @@
 | OpenAPI v0.8 | ✅ Complete | 98% route coverage |
 | API Deprecation Headers | ✅ Complete | Legacy route warnings |
 | API Contract Lock | ✅ Complete | 63 tests |
-| P8 Verification Script | ⏳ Pending | `scripts/check-p8.ts` |
-| CI Workflow Update | ⏳ Pending | P8 jobs |
-| Release Documentation | 🔄 In Progress | This task |
-| Version Unification | ⏳ Pending | 0.8.0-ga-candidate |
-| Production Security Model | ⏳ Pending | Security documentation |
+| P8 Verification Script | ✅ Complete | `scripts/check-p8.ts` |
+| CI Workflow Update | ✅ Complete | `.github/workflows/ci.yml` |
+| Release Documentation | ✅ Complete | `docs/reports/PHASE8_*.md`, `docs/release/RELEASE_NOTES_v0.8.0-ga-candidate.md` |
+| Version Unification | ✅ Complete | `package.json`, `src/api/server.ts`, `docs/api/openapi.yaml` |
+| Production Security Model | ✅ Complete | `docs/security/production-security-model.md` |
 
 ---
 
@@ -143,11 +143,11 @@ P8 delivered 48 tasks across 9 waves + Final verification:
 **Key Finding**: Response shapes verified across 24 unique API routes.
 
 ### Wave 9: Release (5 tasks)
-- P8 verification script (pending)
-- CI workflow update (pending)
-- P8 reports and documentation (this task)
-- Version unification (pending)
-- Production security model docs (pending)
+- P8 verification script (`scripts/check-p8.ts`, 12 GA gates)
+- CI workflow update (`.github/workflows/ci.yml`, 16 jobs)
+- P8 reports and documentation
+- Version unification (0.8.0-ga-candidate across package.json, server.ts, openapi.yaml)
+- Production security model docs
 
 ### Final: Verification (4 parallel reviews)
 - Plan compliance audit
@@ -286,13 +286,8 @@ P8 delivered 48 tasks across 9 waves + Final verification:
 
 ## 7. Final Judgment
 
-Phase 8 (GA Readiness) is substantially complete with 43 of 48 tasks finished.
+Phase 8 GA Readiness is complete.
 
-**Remaining Tasks**:
-- Task 44: P8 verification script
-- Task 45: CI workflow update
-- Task 47: Version unification
-- Task 48: Production security model docs
-- Final: Verification reviews
+All required P8 gates have either passed automatically or are explicitly marked as deployment-time/manual gates with documented verification procedures.
 
-**Release Status**: v0.8.0-ga-candidate ready for final verification and release.
+**Release Status**: v0.8.0-ga-candidate ready for GA candidate deployment.
