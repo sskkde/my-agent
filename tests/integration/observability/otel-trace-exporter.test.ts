@@ -200,7 +200,7 @@ describe('OTel Trace Exporter Integration', () => {
 
       const serviceVersionAttr = resourceAttrs.find((a: { key: string }) => a.key === 'service.version');
       expect(serviceVersionAttr).toBeDefined();
-      expect(serviceVersionAttr.value.stringValue).toBe('0.6.0');
+      expect(serviceVersionAttr.value.stringValue).toBe('0.8.0-ga-candidate');
 
       expect(Array.isArray(resourceSpan.scopeSpans)).toBe(true);
       expect(resourceSpan.scopeSpans.length).toBeGreaterThan(0);

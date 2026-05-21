@@ -43,7 +43,7 @@ describe('Prometheus Exporter Integration', () => {
   const defaultConfig: PrometheusConfig = {
     defaultLabels: {
       service_name: 'agent-platform',
-      version: '0.6.0',
+      version: '0.8.0-ga-candidate',
       instance: 'local-1',
     },
     metricPrefix: 'agent_platform_',
@@ -99,7 +99,7 @@ describe('Prometheus Exporter Integration', () => {
 
       // Should include default labels
       expect(output).toContain('service_name="agent-platform"');
-      expect(output).toContain('version="0.6.0"');
+      expect(output).toContain('version="0.8.0-ga-candidate"');
       expect(output).toContain('instance="local-1"');
 
       // Should include metric labels
@@ -382,7 +382,7 @@ describe('Prometheus Exporter Integration', () => {
       const output = exporter.export();
 
       expect(output).toContain('service_name="agent-platform"');
-      expect(output).toContain('version="0.6.0"');
+      expect(output).toContain('version="0.8.0-ga-candidate"');
       expect(output).toContain('instance="local-1"');
     });
 
@@ -401,7 +401,7 @@ describe('Prometheus Exporter Integration', () => {
 
       // Default labels should be present
       expect(output).toContain('service_name="agent-platform"');
-      expect(output).toContain('version="0.6.0"');
+      expect(output).toContain('version="0.8.0-ga-candidate"');
       expect(output).toContain('instance="local-1"');
       // Metric labels should be present
       expect(output).toContain('method="POST"');

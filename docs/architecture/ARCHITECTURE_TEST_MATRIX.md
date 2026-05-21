@@ -1,7 +1,7 @@
 # Architecture Test Matrix
 
 > **Purpose**: P0 requirements-to-test coverage mapping — maps golden paths to 5 test levels with specific test file references.
-> **Status**: Live, reflects current test infrastructure as of 2026-05-20 (Phase 7 RC complete)
+> **Status**: Live, reflects current test infrastructure as of 2026-05-21 (Phase 8 GA Candidate complete)
 > **References**: `ARCHITECTURE_GAP_REPORT.md`, `.sisyphus/plans/p0-audit-report.md`, `docs/architecture/P0_SCOPE.md`
 
 ---
