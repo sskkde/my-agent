@@ -130,9 +130,9 @@ export function registerAuthMiddleware(
       return;
     }
 
-    // Skip session auth for API key auth (Bearer ak_* tokens)
+    // Skip session auth for Bearer token auth (API keys and API_AUTH_TOKEN)
     const authHeader = request.headers.authorization;
-    if (authHeader?.startsWith('Bearer ak_')) {
+    if (authHeader?.startsWith('Bearer ')) {
       done();
       return;
     }

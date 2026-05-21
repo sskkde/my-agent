@@ -58,6 +58,11 @@ export async function registerAuthToken(
       return;
     }
 
+    // Skip if already authenticated by session or API key middleware
+    if (request.user) {
+      return;
+    }
+
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return reply.code(401).send(
@@ -65,7 +70,12 @@ export async function registerAuthToken(
       );
     }
 
+    // Skip API key tokens (ak_*) — handled by api-key-auth middleware
     const providedToken = authHeader.slice(7);
+    if (providedToken.startsWith('ak_')) {
+      return;
+    }
+
     if (providedToken !== token) {
       return reply.code(401).send(
         envelopeError('UNAUTHORIZED', 'Invalid API token', request.requestId)

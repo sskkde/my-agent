@@ -182,7 +182,7 @@ describe('Production Configuration Guard', () => {
   });
 
   describe('COOKIE_SECURE validation', () => {
-    it('should return error when COOKIE_SECURE is not "true"', () => {
+    it('should return error when COOKIE_SECURE is not "true" and PUBLIC_BASE_URL is HTTPS', () => {
       const env = validProductionEnv();
       env.COOKIE_SECURE = 'false';
       const result = checkProductionConfig(env);
@@ -194,7 +194,20 @@ describe('Production Configuration Guard', () => {
       );
     });
 
-    it('should return error when COOKIE_SECURE is not set', () => {
+    it('should not return error when COOKIE_SECURE is not "true" and PUBLIC_BASE_URL is HTTP', () => {
+      const env = validProductionEnv();
+      env.COOKIE_SECURE = 'false';
+      env.PUBLIC_BASE_URL = 'http://app.example.com';
+      const result = checkProductionConfig(env);
+      expect(result.ok).toBe(true);
+      expect(result.errors).not.toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('COOKIE_SECURE'),
+        ])
+      );
+    });
+
+    it('should return error when COOKIE_SECURE is not set and PUBLIC_BASE_URL is HTTPS', () => {
       const env = validProductionEnv();
       delete env.COOKIE_SECURE;
       const result = checkProductionConfig(env);

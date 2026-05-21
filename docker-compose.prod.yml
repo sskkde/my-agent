@@ -37,7 +37,7 @@ services:
         max-size: '10m'
         max-file: '3'
     # Run as non-root user for security
-    user: '1000:1000'
+    # user: '1000:1000'
     volumes:
       # Use separate volumes for data and backups
       - agent_data:/app/data
