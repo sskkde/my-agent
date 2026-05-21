@@ -14,7 +14,7 @@ export interface PrometheusExporterOptions {
 const DEFAULT_CONFIG: PrometheusConfig = {
   defaultLabels: {
     service_name: 'agent-platform',
-    version: '0.6.0',
+    version: '0.8.0-ga-candidate',
     instance: 'local-1',
   },
   metricPrefix: 'agent_platform_',

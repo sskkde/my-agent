@@ -331,7 +331,7 @@ export function registerObservabilityRoutes(server: FastifyInstance, context: Ap
           config: {
             defaultLabels: {
               service_name: 'agent-platform',
-              version: process.env.npm_package_version || '0.6.0',
+              version: process.env.npm_package_version || '0.8.0-ga-candidate',
               instance: process.env.HOSTNAME || 'local-1',
             },
             metricPrefix: 'agent_platform_',

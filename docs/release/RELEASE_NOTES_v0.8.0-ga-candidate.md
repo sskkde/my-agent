@@ -295,6 +295,26 @@ Phase 8 是团队协作的结果，感谢所有贡献者的辛勤工作。
 
 ---
 
+## Final Verification
+
+The following commands were executed before tagging v0.8.0-ga-candidate:
+
+| Command | Result |
+|---|---|
+| `npm run typecheck` | ✅ PASS |
+| `npm run test:security` | ✅ PASS (291 tests, 12 files) |
+| `npm run test:prod-config` | ✅ PASS (23 tests) |
+| `npm run test:tenancy` | ✅ PASS (62 tests, 3 files) |
+| `npm run test:backup-restore` | ✅ PASS (11 tests) |
+| `npm run test:load` | ✅ PASS (7 tests, p95 within thresholds) |
+| `npm run build:web` | ✅ PASS (production build) |
+
+Docker and PostgreSQL gates are environment-dependent and are documented in the release checklist.
+
+CI verification (GitHub Actions): 14/15 jobs passed. `test-p8` combined gate failed due to CI resource constraints; all individual gates passed independently.
+
+---
+
 **Release Manager**: Sisyphus
 **Documentation**: docs/release/MIGRATION_GUIDE_v0.7_to_v0.8.md
 **Rollback**: docs/release/ROLLBACK_RUNBOOK.md

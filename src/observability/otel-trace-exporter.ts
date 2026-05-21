@@ -63,7 +63,7 @@ interface OTLPExportRequest {
 
 const DEFAULT_RESOURCE_ATTRIBUTES: Record<string, string> = {
   'service.name': 'agent-platform',
-  'service.version': '0.6.0',
+  'service.version': '0.8.0-ga-candidate',
 };
 
 const SPAN_KIND_INTERNAL = 1;
@@ -170,7 +170,7 @@ function buildExportRequest(
           {
             scope: {
               name: 'agent-platform',
-              version: '0.6.0',
+              version: '0.8.0-ga-candidate',
             },
             spans: otlpSpans,
           },
