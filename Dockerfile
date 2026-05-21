@@ -10,18 +10,18 @@ WORKDIR /app
 # Copy package files first for better layer caching
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --omit=dev
+# Install all dependencies (including dev for migration tooling)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Create data directory for SQLite
-RUN mkdir -p /data
-
 # Copy and setup entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create data directory for SQLite with proper permissions
+RUN mkdir -p /data && chown -R 1000:1000 /data
 
 # Expose API port
 EXPOSE 3003

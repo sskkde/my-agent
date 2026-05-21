@@ -58,3 +58,4 @@ agent/.sisyphus/
 
 # Agent configuration (local only)
 AGENTS.md
+secrets/

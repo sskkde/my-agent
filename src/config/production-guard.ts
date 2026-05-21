@@ -116,9 +116,14 @@ export function checkProductionConfig(
   }
 
   if (env.COOKIE_SECURE !== 'true') {
-    errors.push(
-      'COOKIE_SECURE must be "true" in production to enforce secure cookies'
-    );
+    const publicBaseUrl = env.PUBLIC_BASE_URL || '';
+    if (publicBaseUrl.startsWith('https://')) {
+      errors.push(
+        'COOKIE_SECURE must be "true" in production when using HTTPS; secure cookies are required for session security'
+      );
+    }
+    // When PUBLIC_BASE_URL is HTTP, COOKIE_SECURE=false is acceptable but not recommended.
+    // This allows HTTP-only deployments to pass the guard while still flagging HTTPS deployments.
   }
 
   if (!env.TRUST_PROXY) {
