@@ -175,6 +175,9 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // ===========================================
   // Triggers - Schedules
   // ===========================================
+  { method: 'GET', pathPattern: '/api/v1/triggers', resource: ResourceType.triggers, action: Action.read },
+  { method: 'PATCH', pathPattern: '/api/v1/triggers/:triggerId', resource: ResourceType.triggers, action: Action.update },
+  { method: 'GET', pathPattern: '/api/v1/triggers/:triggerId/logs', resource: ResourceType.triggers, action: Action.read },
   { method: 'POST', pathPattern: '/api/v1/triggers/schedules', resource: ResourceType.triggers, action: Action.create },
   { method: 'GET', pathPattern: '/api/v1/triggers/schedules', resource: ResourceType.triggers, action: Action.read },
   { method: 'GET', pathPattern: '/api/v1/triggers/schedules/:scheduleId', resource: ResourceType.triggers, action: Action.read },
@@ -214,6 +217,16 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   { method: 'GET', pathPattern: '/api/v1/metrics', resource: ResourceType.observability, action: Action.read },
 
   // ===========================================
+  // DLQ
+  // ===========================================
+  { method: 'GET', pathPattern: '/api/v1/dlq', resource: ResourceType.observability, action: Action.read },
+  { method: 'GET', pathPattern: '/api/v1/dlq/:eventId', resource: ResourceType.observability, action: Action.read },
+  { method: 'POST', pathPattern: '/api/v1/dlq/:eventId/retry', resource: ResourceType.observability, action: Action.update },
+  { method: 'POST', pathPattern: '/api/v1/dlq/batch-retry', resource: ResourceType.observability, action: Action.update },
+  { method: 'POST', pathPattern: '/api/v1/dlq/batch-discard', resource: ResourceType.observability, action: Action.update },
+  { method: 'DELETE', pathPattern: '/api/v1/dlq/:eventId', resource: ResourceType.observability, action: Action.delete },
+
+  // ===========================================
   // Alerts
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/alerts/rules', resource: ResourceType.observability, action: Action.read },
@@ -237,6 +250,16 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   { method: 'PATCH', pathPattern: '/api/v1/agents/:agentId/config/global', resource: 'agent-config', action: Action.manage },
   { method: 'PATCH', pathPattern: '/api/v1/agents/:agentId/config/override', resource: 'agent-config', action: Action.update },
   { method: 'DELETE', pathPattern: '/api/v1/agents/:agentId/config/override', resource: 'agent-config', action: Action.delete },
+
+  // ===========================================
+  // Admin
+  // ===========================================
+  { method: 'GET', pathPattern: '/api/v1/admin/users', resource: ResourceType.users, action: Action.manage },
+  { method: 'PATCH', pathPattern: '/api/v1/admin/users/:userId/role', resource: ResourceType.users, action: Action.manage },
+  { method: 'PATCH', pathPattern: '/api/v1/admin/users/:userId/status', resource: ResourceType.users, action: Action.manage },
+  { method: 'GET', pathPattern: '/api/v1/admin/connectors/health', resource: ResourceType.connectors, action: Action.read },
+  { method: 'GET', pathPattern: '/api/v1/admin/settings', resource: ResourceType.settings, action: Action.read },
+  { method: 'PATCH', pathPattern: '/api/v1/admin/settings', resource: ResourceType.settings, action: Action.manage },
 ];
 
 /**

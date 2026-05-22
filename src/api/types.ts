@@ -1,3 +1,5 @@
+import type { UserRole } from '../storage/user-store.js';
+
 // MVP Allowed Endpoints:
 // GET /api/health, POST /api/sessions, GET /api/sessions/:sessionId,
 // GET /api/sessions/:sessionId/transcripts, POST /api/sessions/:sessionId/messages,
@@ -366,6 +368,7 @@ export interface SetupStatusResponse {
 export interface UserMetadata {
   userId: string;
   username: string;
+  role: UserRole;
   createdAt: string;
 }
 

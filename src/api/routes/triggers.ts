@@ -53,6 +53,17 @@ interface WebhookTriggerCreatedResponse extends WebhookTriggerResponse {
   secret: string;
 }
 
+interface TriggerListResponseItem {
+  triggerId: string;
+  name: string;
+  triggerType: 'schedule' | 'webhook';
+  status: 'active' | 'paused';
+  createdAt: string;
+  cronExpression?: string;
+  webhookKey?: string;
+  webhookUrl?: string;
+}
+
 function mapScheduleTriggerToResponse(trigger: {
   scheduleId: string;
   name: string;
@@ -103,6 +114,29 @@ function generateWebhookSecret(): { secret: string; last4: string } {
   return { secret, last4 };
 }
 
+function mapScheduleTriggerToListItem(trigger: ScheduleTriggerResponse): TriggerListResponseItem {
+  return {
+    triggerId: trigger.scheduleId,
+    name: trigger.name,
+    triggerType: 'schedule',
+    status: trigger.status as 'active' | 'paused',
+    createdAt: trigger.createdAt,
+    cronExpression: trigger.schedulePattern,
+  };
+}
+
+function mapWebhookTriggerToListItem(trigger: WebhookTriggerResponse): TriggerListResponseItem {
+  return {
+    triggerId: trigger.webhookId,
+    name: trigger.name,
+    triggerType: 'webhook',
+    status: trigger.status as 'active' | 'paused',
+    createdAt: trigger.createdAt,
+    webhookKey: trigger.secretLast4,
+    webhookUrl: `/api/v1/webhooks/${trigger.webhookId}/deliver`,
+  };
+}
+
 function verifyHmacSignature(secret: string, payload: string, signature: string): boolean {
   const expectedSignature = 'sha256=' + createHmac('sha256', secret).update(payload).digest('hex');
   if (signature.length !== expectedSignature.length) {
@@ -114,6 +148,102 @@ function verifyHmacSignature(secret: string, payload: string, signature: string)
 export function registerTriggerRoutes(server: FastifyInstance, context: ApiContext): void {
   const { stores } = context;
   const { scheduleTriggerStore, webhookTriggerStore, webhookDeliveryStore, eventStore } = stores;
+
+  server.get<{ Querystring: { type?: string } }>(
+    '/api/v1/triggers',
+    async (request: FastifyRequest<{ Querystring: { type?: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.read)) {
+        return reply;
+      }
+      const userId = request.user?.userId;
+      if (!userId) {
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
+      }
+
+      const type = request.query.type;
+      const schedules = type === 'webhook'
+        ? []
+        : scheduleTriggerStore.findByOwner(userId).map(mapScheduleTriggerToResponse).map(mapScheduleTriggerToListItem);
+      const webhooks = type === 'schedule'
+        ? []
+        : webhookTriggerStore.findByOwner(userId).map(mapWebhookTriggerToResponse).map(mapWebhookTriggerToListItem);
+      const triggers = [...schedules, ...webhooks].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
+      return reply.code(200).send(success({ triggers, total: triggers.length }, request.requestId));
+    },
+  );
+
+  server.patch<{ Params: { triggerId: string }; Body: { status?: 'active' | 'paused' } }>(
+    '/api/v1/triggers/:triggerId',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['triggerId'],
+          properties: { triggerId: { type: 'string', minLength: 1 } },
+        },
+        body: {
+          type: 'object',
+          properties: { status: { type: 'string', enum: ['active', 'paused'] } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { triggerId: string }; Body: { status?: 'active' | 'paused' } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.update)) {
+        return reply;
+      }
+      const userId = request.user?.userId;
+      if (!userId) {
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
+      }
+
+      const { triggerId } = request.params;
+      const { status } = request.body;
+      const schedule = scheduleTriggerStore.getById(triggerId);
+      if (schedule) {
+        if (schedule.ownerUserId !== userId) {
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'Trigger not found', request.requestId));
+        }
+        const updated = status ? scheduleTriggerStore.updateStatus(triggerId, status) : schedule;
+        return reply.code(200).send(success(mapScheduleTriggerToListItem(mapScheduleTriggerToResponse(updated ?? schedule)), request.requestId));
+      }
+
+      const webhook = webhookTriggerStore.getById(triggerId);
+      if (webhook) {
+        if (webhook.ownerUserId !== userId) {
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'Trigger not found', request.requestId));
+        }
+        const updated = status ? webhookTriggerStore.updateStatus(triggerId, status) : webhook;
+        return reply.code(200).send(success(mapWebhookTriggerToListItem(mapWebhookTriggerToResponse(updated ?? webhook)), request.requestId));
+      }
+
+      return reply.code(404).send(envelopeError('NOT_FOUND', 'Trigger not found', request.requestId));
+    },
+  );
+
+  server.get<{ Params: { triggerId: string }; Querystring: { limit?: string } }>(
+    '/api/v1/triggers/:triggerId/logs',
+    async (request: FastifyRequest<{ Params: { triggerId: string }; Querystring: { limit?: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.triggers, Action.read)) {
+        return reply;
+      }
+      const userId = request.user?.userId;
+      if (!userId) {
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
+      }
+      const { triggerId } = request.params;
+      const schedule = scheduleTriggerStore.getById(triggerId);
+      const webhook = webhookTriggerStore.getById(triggerId);
+      const ownerUserId = schedule?.ownerUserId ?? webhook?.ownerUserId;
+      if (!ownerUserId || ownerUserId !== userId) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Trigger not found', request.requestId));
+      }
+
+      return reply.code(200).send(success({ logs: [], total: 0 }, request.requestId));
+    },
+  );
 
   // POST /api/triggers/schedules
   server.post<{ Body: CreateScheduleTriggerRequest }>(

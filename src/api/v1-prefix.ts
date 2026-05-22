@@ -109,6 +109,9 @@ export const ROUTE_MAP: Record<string, string> = {
   
   '/api/tool-results/:resultId': '/api/v1/tool-results/:resultId',
   
+  '/api/triggers': '/api/v1/triggers',
+  '/api/triggers/:triggerId': '/api/v1/triggers/:triggerId',
+  '/api/triggers/:triggerId/logs': '/api/v1/triggers/:triggerId/logs',
   '/api/triggers/schedules': '/api/v1/triggers/schedules',
   '/api/triggers/schedules/:scheduleId': '/api/v1/triggers/schedules/:scheduleId',
   '/api/triggers/webhooks': '/api/v1/triggers/webhooks',
@@ -128,6 +131,18 @@ export const ROUTE_MAP: Record<string, string> = {
   '/api/observability/runs/:runId': '/api/v1/observability/runs/:runId',
   '/api/observability/runs/:runId/timeline': '/api/v1/observability/runs/:runId/timeline',
   '/api/observability/runs/:runId/replay': '/api/v1/observability/runs/:runId/replay',
+
+  '/api/dlq': '/api/v1/dlq',
+  '/api/dlq/:eventId': '/api/v1/dlq/:eventId',
+  '/api/dlq/:eventId/retry': '/api/v1/dlq/:eventId/retry',
+  '/api/dlq/batch-retry': '/api/v1/dlq/batch-retry',
+  '/api/dlq/batch-discard': '/api/v1/dlq/batch-discard',
+
+  '/api/admin/users': '/api/v1/admin/users',
+  '/api/admin/users/:userId/role': '/api/v1/admin/users/:userId/role',
+  '/api/admin/users/:userId/status': '/api/v1/admin/users/:userId/status',
+  '/api/admin/connectors/health': '/api/v1/admin/connectors/health',
+  '/api/admin/settings': '/api/v1/admin/settings',
 
   '/api/api-keys': '/api/v1/api-keys',
   '/api/api-keys/:id': '/api/v1/api-keys/:id',
