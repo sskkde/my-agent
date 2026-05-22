@@ -58,6 +58,7 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
         user: {
           userId: user.userId,
           username: user.username,
+          role: user.role,
           createdAt: user.createdAt,
         },
       };
@@ -104,6 +105,7 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
         user: {
           userId: user.userId,
           username: user.username,
+          role: user.role,
           createdAt: user.createdAt,
         },
       };

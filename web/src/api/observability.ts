@@ -60,8 +60,9 @@ export async function getRuns(status?: string): Promise<RunEntry[]> {
   if (status) params.append('status', status);
   const query = params.toString() ? `?${params.toString()}` : '';
   const response = await fetch(`${API_BASE}/observability/runs${query}`, { credentials: 'include' });
-  const result = await parseResponse<{ data: RunEntry[] }>(response);
-  return result.data;
+  const result = await parseResponse<{ data: RunEntry[] | { runs: RunEntry[] } }>(response);
+  const payload = result.data;
+  return Array.isArray(payload) ? payload : payload.runs;
 }
 
 export async function getRunConsole(runId: string): Promise<ConsoleResponse> {

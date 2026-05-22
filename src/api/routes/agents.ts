@@ -42,7 +42,26 @@ interface ConfigResponse {
 }
 
 function mergeConfigs(global: AgentConfig | null, userOverride: AgentConfig | null): Partial<AgentConfig> | null {
-  if (!global && !userOverride) return null;
+  if (!global && !userOverride) {
+    return {
+      agentId: 'foreground.default',
+      scope: 'global',
+      displayName: 'Default Agent',
+      enabled: true,
+      systemPrompt: '',
+      routingPrompt: '',
+      providerId: '',
+      model: '',
+      allowedToolIds: [],
+      allowedSkillIds: [],
+      routingTimeoutMs: DEFAULT_ROUTING_TIMEOUT_MS,
+      repairAttempts: DEFAULT_REPAIR_ATTEMPTS,
+      promptType: 'foreground.router',
+      promptVersion: null,
+      searchLlmProviderId: null,
+      searchLlmModel: null,
+    };
+  }
   if (!userOverride) return global as Partial<AgentConfig>;
 
   return {
