@@ -1317,6 +1317,51 @@ Claude Code 的工具主要围绕代码、文件和 shell。
 
 ---
 
+## 21.5 P9 Update: ToolPlaneProjection
+
+P9 引入 `ToolPlaneProjection` 模块，负责生成模型可见的工具投影：
+
+**投影模式**：
+- `routing_json` 模式：只提供工具 ID 列表和能力摘要，不提供完整 schema
+- `function_calling` 模式：提供完整工具 schema，放入 `LLMRequest.tools`
+- `structured_json` 模式：只提供工具 ID 列表
+
+**暴露级别**：
+```typescript
+type ExposureLevel =
+  | 'always_on'        // 始终暴露
+  | 'intent_loaded'    // 按意图加载
+  | 'agent_loaded'     // 按 Agent 类型加载
+  | 'lazy_discoverable' // 懒加载可发现
+  | 'hidden';          // 隐藏
+```
+
+**Schema 暴露模式**：
+```typescript
+type SchemaMode =
+  | 'full'       // 完整 schema
+  | 'simplified' // 简化 schema
+  | 'card_only'; // 只有卡片信息
+```
+
+**过滤规则**：
+- `hidden` 和 `denied` 工具不进入 prompt 或 tools
+- 工具按 stable key 排序，确保缓存稳定性
+- Schema 使用 canonical JSON 序列化，属性按字母排序
+
+**缓存优化**：
+- 工具列表顺序稳定，避免破坏 prompt cache
+- `toolExposureHash` 用于跟踪工具配置变化
+- 相同工具配置产生相同的 Segment C hash
+
+**文件位置**：
+- `src/tools/tool-plane-prompt-projection.ts` - 投影生成
+- `src/tools/tool-exposure-plan.ts` - 暴露计划
+- `src/tools/tool-schema-canonicalizer.ts` - 规范化序列化
+- `src/kernel/model-input/tool-plane-projection-renderer.ts` - Layer 6 渲染器
+
+---
+
 # 22. Tool Exposure / Lazy Loading 设计补充
 
 ## 22.1 补充目的
