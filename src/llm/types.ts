@@ -86,6 +86,9 @@ export interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  promptCacheHitTokens?: number;
+  promptCacheMissTokens?: number;
+  cacheHitRate?: number;
 }
 
 /**
@@ -134,4 +137,15 @@ export interface AllProvidersFailedError extends RuntimeError {
   category: 'model_error';
   code: 'ALL_PROVIDERS_FAILED';
   attempts: Array<{ providerId: string; error: RuntimeError }>;
+}
+
+/**
+ * Compute cache hit rate from token usage
+ * Returns 0 if cache metrics are unavailable or total is zero
+ */
+export function computeCacheHitRate(usage: TokenUsage): number {
+  const hit = usage.promptCacheHitTokens ?? 0;
+  const miss = usage.promptCacheMissTokens ?? 0;
+  const total = hit + miss;
+  return total > 0 ? hit / total : 0;
 }

@@ -119,7 +119,29 @@ function mapOpenAIResponse(data: Record<string, unknown>): LLMResponse {
     },
   }));
 
-  const usage = data.usage as Record<string, number> | undefined;
+  const usage = data.usage as Record<string, unknown> | undefined;
+  const promptTokensDetails = usage?.prompt_tokens_details as Record<string, number> | undefined;
+  const cachedTokens = promptTokensDetails?.cached_tokens;
+
+  let cacheMetrics: {
+    promptCacheHitTokens?: number;
+    promptCacheMissTokens?: number;
+    cacheHitRate?: number;
+  } = {};
+
+  if (usage && typeof cachedTokens === 'number' && cachedTokens > 0) {
+    const promptTokens = usage.prompt_tokens as number || 0;
+    const promptCacheHitTokens = cachedTokens;
+    const promptCacheMissTokens = Math.max(0, promptTokens - cachedTokens);
+    const totalPromptTokens = promptCacheHitTokens + promptCacheMissTokens;
+    const cacheHitRate = totalPromptTokens > 0 ? promptCacheHitTokens / totalPromptTokens : 0;
+
+    cacheMetrics = {
+      promptCacheHitTokens,
+      promptCacheMissTokens,
+      cacheHitRate,
+    };
+  }
 
   return {
     id: (data.id as string) || `resp_${Date.now()}`,
@@ -129,9 +151,10 @@ function mapOpenAIResponse(data: Record<string, unknown>): LLMResponse {
     toolCalls: mappedToolCalls,
     usage: usage
       ? {
-          promptTokens: usage.prompt_tokens || 0,
-          completionTokens: usage.completion_tokens || 0,
-          totalTokens: usage.total_tokens || 0,
+          promptTokens: (usage.prompt_tokens as number) || 0,
+          completionTokens: (usage.completion_tokens as number) || 0,
+          totalTokens: (usage.total_tokens as number) || 0,
+          ...cacheMetrics,
         }
       : undefined,
     finishReason: (firstChoice?.finish_reason as LLMResponse['finishReason']) || 'stop',
