@@ -43,7 +43,7 @@ export class AgentKernel {
           return this.buildResult(state, 'timeout');
         }
 
-        const llmRequest = await this.buildLLMRequest(input.contextBundle, state);
+        const llmRequest = await this.buildLLMRequest(input, state);
         this.commitTranscript(state, 'llm_request', {
           model: llmRequest.model,
           messages: llmRequest.messages,
@@ -130,8 +130,8 @@ export class AgentKernel {
     };
   }
 
-  private async buildLLMRequest(contextBundle: ContextBundle, state: KernelRunState): Promise<LLMRequest> {
-    const contextBundleData = projectBundleToData(contextBundle);
+  private async buildLLMRequest(input: KernelRunInput, state: KernelRunState): Promise<LLMRequest> {
+    const contextBundleData = projectBundleToData(input.contextBundle);
 
     const transcriptMessages = this.buildTranscriptMessages(state);
 
@@ -142,9 +142,9 @@ export class AgentKernel {
       contextBundle: contextBundleData,
       transcript: transcriptMessages,
       currentDate: new Date().toISOString(),
-      sessionId: contextBundle.runId,
-      runId: contextBundle.runId,
-      toolProjection: this.config.toolProjection ?? { toolIds: [], tools: [] },
+      sessionId: input.contextBundle.runId,
+      runId: input.contextBundle.runId,
+      toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
     };
 
     const builtInput = await this.config.modelInputBuilder.build(buildInput);
@@ -157,8 +157,8 @@ export class AgentKernel {
         agentKind: builtInput.metadata.agentKind,
         providerFamily: builtInput.metadata.providerFamily,
         transcriptEntries: state.transcript.length,
-        bundleTokenEstimate: contextBundle.tokenEstimate,
-        shouldCompactSoon: contextBundle.compactHints?.shouldCompactSoon ?? false,
+        bundleTokenEstimate: input.contextBundle.tokenEstimate,
+        shouldCompactSoon: input.contextBundle.compactHints?.shouldCompactSoon ?? false,
       });
     }
 
