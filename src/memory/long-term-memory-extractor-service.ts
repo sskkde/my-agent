@@ -23,6 +23,7 @@ export type ExtractorServiceDeps = {
   longTermMemoryStore: LongTermMemoryStore;
   memoryExtractionRunStore: MemoryExtractionRunStore;
   llmAdapter: LLMAdapter;
+  model?: string;
 };
 
 export type ExtractionResult =
@@ -175,7 +176,7 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
 
         const prompt = buildLongTermMemoryExtractionPrompt(window);
         const request: LLMRequest = {
-          model: DEFAULT_MODEL,
+          model: deps.model ?? DEFAULT_MODEL,
           messages: [{ role: 'user', content: prompt }],
           responseFormat: { type: 'json_object' },
         };
