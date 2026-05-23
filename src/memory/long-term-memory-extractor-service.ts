@@ -5,6 +5,7 @@ import type { LongTermMemoryStore, LongTermMemoryRecord } from '../storage/long-
 import type { MemoryExtractionRunStore, ResultCounts } from '../storage/memory-extraction-run-store.js';
 import type { LLMAdapter } from '../llm/adapter.js';
 import type { LLMRequest } from '../llm/types.js';
+import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
 import {
   stableJsonHash,
   fingerprintMemoryCandidate,
@@ -23,7 +24,9 @@ export type ExtractorServiceDeps = {
   longTermMemoryStore: LongTermMemoryStore;
   memoryExtractionRunStore: MemoryExtractionRunStore;
   llmAdapter: LLMAdapter;
+  modelInputBuilder: ModelInputBuilder;
   model?: string;
+  providerFamily?: string;
 };
 
 export type ExtractionResult =
@@ -174,10 +177,22 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
       try {
         deps.memoryExtractionRunStore.markRunning(run.runId);
 
-        const prompt = buildLongTermMemoryExtractionPrompt(window);
+        const extractionPrompt = buildLongTermMemoryExtractionPrompt(window);
+        const builtInput = await deps.modelInputBuilder.build({
+          mode: 'structured_json',
+          agentKind: 'memory',
+          providerFamily: deps.providerFamily ?? 'openai',
+          contextBundle: {
+            pinnedItems: [
+              { itemId: 'extraction-prompt', content: extractionPrompt, isPinned: true },
+            ],
+          },
+          sessionId: deps.sessionId,
+        });
+
         const request: LLMRequest = {
           model: deps.model ?? DEFAULT_MODEL,
-          messages: [{ role: 'user', content: prompt }],
+          messages: builtInput.messages,
           responseFormat: { type: 'json_object' },
         };
 

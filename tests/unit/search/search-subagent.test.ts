@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { SearchSubagentResult, SearchSubagentSuccessResult, SearchSubagentFailureResult } from '../../../src/search/search-subagent.js';
+import type { BuiltModelInput, ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js';
+import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
 
 function assertSuccess(result: SearchSubagentResult): asserts result is SearchSubagentSuccessResult {
   if (!result.success) {
@@ -11,6 +13,71 @@ function assertFailure(result: SearchSubagentResult): asserts result is SearchSu
   if (result.success) {
     throw new Error('Expected failure but got success');
   }
+}
+
+function createMockModelInputBuilder(): ModelInputBuilder {
+  const mock = {
+    build: vi.fn().mockImplementation(async (input: ModelInputBuildInput) => {
+      const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
+      
+      if (input.mode === 'function_calling') {
+        messages.push({
+          role: 'system',
+          content: 'You are a search assistant. Use the web.search tool to find information.',
+        });
+        if (input.currentUserMessage) {
+          messages.push({
+            role: 'user',
+            content: input.currentUserMessage,
+          });
+        }
+      } else if (input.mode === 'structured_json') {
+        messages.push({
+          role: 'system',
+          content: 'You are a search assistant. Provide a helpful answer based on the search results.',
+        });
+        if (input.contextBundle?.orderedItems) {
+          const contextContent = input.contextBundle.orderedItems
+            .map((item: unknown) => (item as { content: string }).content)
+            .join('\n');
+          messages.push({
+            role: 'user',
+            content: `Context:\n${contextContent}\n\nQuery: ${input.currentUserMessage || ''}`,
+          });
+        } else if (input.currentUserMessage) {
+          messages.push({
+            role: 'user',
+            content: input.currentUserMessage,
+          });
+        }
+      }
+      
+      const result: BuiltModelInput = {
+        messages,
+        segments: {
+          staticPrefix: 'platform-base',
+          tenantProject: '',
+          toolPlane: input.toolProjection ? `Tools: ${input.toolProjection.toolIds.join(', ')}` : '',
+          contextBundle: input.currentUserMessage || '',
+        },
+        segmentHashes: {
+          segmentA: 'a'.repeat(64),
+          segmentB: 'b'.repeat(64),
+          segmentC: 'c'.repeat(64),
+          segmentD: 'd'.repeat(64),
+        },
+        metadata: {
+          mode: input.mode as 'routing_json' | 'structured_json' | 'function_calling',
+          agentKind: input.agentKind,
+          providerFamily: input.providerFamily,
+          messageCount: messages.length,
+        },
+      };
+      
+      return result;
+    }),
+  };
+  return mock as unknown as ModelInputBuilder;
 }
 
 describe('SearchSubagent contract tests', () => {
@@ -50,6 +117,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -102,6 +171,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -156,6 +227,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -207,6 +280,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -259,6 +334,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -287,6 +364,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
         mainLlmProviderId: 'provider-main',
@@ -354,6 +433,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -415,6 +496,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -477,6 +560,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -542,6 +627,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -595,6 +682,8 @@ describe('SearchSubagent contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -609,6 +698,230 @@ describe('SearchSubagent contract tests', () => {
       assertFailure(result);
       expect(result.errorCode).toBe('INVALID_TOOL_CALL');
       expect(mockWebSearchExecutor).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ModelInputBuilder integration', () => {
+    it('uses ModelInputBuilder for Phase 1 (function_calling mode)', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js');
+      
+      const mockModelInputBuilder = createMockModelInputBuilder();
+      
+      const mockLlmAdapter = {
+        complete: vi.fn().mockResolvedValue({
+          success: true,
+          response: {
+            id: 'resp-123',
+            content: '',
+            model: 'gpt-4.1-mini',
+            toolCalls: [{
+              id: 'tc-1',
+              type: 'function',
+              function: {
+                name: 'web.search',
+                arguments: '{"query": "test"}',
+              },
+            }],
+            finishReason: 'tool_calls',
+          },
+        }),
+      };
+      
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test',
+        results: [],
+        total: 0,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      });
+      
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: mockModelInputBuilder,
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+      
+      await subagent.execute({
+        query: 'test query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      });
+      
+      expect(mockModelInputBuilder.build).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'function_calling',
+          agentKind: 'search',
+          providerFamily: 'openai',
+        })
+      );
+    });
+
+    it('uses ModelInputBuilder for Phase 2 (structured_json mode)', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js');
+      
+      const mockModelInputBuilder = createMockModelInputBuilder();
+      
+      const mockLlmAdapter = {
+        complete: vi.fn()
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-1',
+              content: '',
+              model: 'gpt-4.1-mini',
+              toolCalls: [{
+                id: 'tc-1',
+                type: 'function',
+                function: {
+                  name: 'web.search',
+                  arguments: '{"query": "test"}',
+                },
+              }],
+              finishReason: 'tool_calls',
+            },
+          })
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-2',
+              content: 'Answer',
+              model: 'gpt-4.1-mini',
+              finishReason: 'stop',
+            },
+          }),
+      };
+      
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test',
+        results: [],
+        total: 0,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      });
+      
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: mockModelInputBuilder,
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+      
+      await subagent.execute({
+        query: 'test query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      });
+      
+      const buildMock = mockModelInputBuilder.build as unknown as ReturnType<typeof vi.fn>;
+      const calls = buildMock.mock.calls;
+      const phase2Call = calls[1];
+      
+      expect(phase2Call[0]).toMatchObject({
+        mode: 'structured_json',
+        agentKind: 'search',
+        providerFamily: 'openai',
+      });
+      expect(phase2Call[0].contextBundle).toBeDefined();
+      expect(phase2Call[0].contextBundle.orderedItems).toBeDefined();
+    });
+
+    it('both phases share the same Segment A hash', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js');
+      
+      const segmentAHash = 'test-segment-a-hash-12345678901234567890123456789012345678901234567890';
+      const mockModelInputBuilder = {
+        build: vi.fn().mockImplementation(async () => ({
+          messages: [
+            { role: 'system', content: 'System prompt' },
+            { role: 'user', content: 'User message' },
+          ],
+          segments: {
+            staticPrefix: 'static-prefix',
+            tenantProject: '',
+            toolPlane: '',
+            contextBundle: 'context',
+          },
+          segmentHashes: {
+            segmentA: segmentAHash,
+            segmentB: 'b'.repeat(64),
+            segmentC: 'c'.repeat(64),
+            segmentD: 'd'.repeat(64),
+          },
+          metadata: {
+            mode: 'function_calling',
+            agentKind: 'search',
+            providerFamily: 'openai',
+            messageCount: 2,
+          },
+        })),
+      };
+      
+      const mockLlmAdapter = {
+        complete: vi.fn()
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-1',
+              content: '',
+              model: 'gpt-4.1-mini',
+              toolCalls: [{
+                id: 'tc-1',
+                type: 'function',
+                function: {
+                  name: 'web.search',
+                  arguments: '{"query": "test"}',
+                },
+              }],
+              finishReason: 'tool_calls',
+            },
+          })
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-2',
+              content: 'Answer',
+              model: 'gpt-4.1-mini',
+              finishReason: 'stop',
+            },
+          }),
+      };
+      
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test',
+        results: [],
+        total: 0,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      });
+      
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: mockModelInputBuilder as unknown as ModelInputBuilder,
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+      
+      const result = await subagent.execute({
+        query: 'test query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      });
+      
+      expect(result.success).toBe(true);
+      assertSuccess(result);
+      expect(result.metadata.segmentAHash).toBe(segmentAHash);
+      
+      expect(mockModelInputBuilder.build).toHaveBeenCalledTimes(2);
     });
   });
 });

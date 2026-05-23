@@ -1,10 +1,14 @@
 /**
  * Search Subagent
- * Dedicated synchronous service for web search with forced tool choice
+ * Dedicated synchronous service for web search with forced tool choice.
+ * Uses ModelInputBuilder for both LLM calls with shared Segment A cache.
  */
 
 import type { LLMRequest, ToolDefinition } from '../llm/types';
 import type { WebSearchResult } from './types';
+import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
+import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js';
+import { extractToolsForRequest } from '../kernel/model-input/model-input-builder.js';
 
 /**
  * Search subagent configuration
@@ -40,6 +44,12 @@ export interface SearchSubagentConfig {
 
   /** Web search executor function */
   webSearchExecutor: (params: { query: string }) => Promise<WebSearchResult & { success: boolean }>;
+
+  /** ModelInputBuilder for constructing LLM messages */
+  modelInputBuilder: ModelInputBuilder;
+
+  /** Provider family for template resolution (e.g., 'openai', 'deepseek') */
+  providerFamily: string;
 
   /** Search model provider ID */
   searchLlmProviderId: string;
@@ -80,6 +90,7 @@ export interface SearchSubagentSuccessResult {
     model: string;
     querySource: 'search_subagent';
     durationMs: number;
+    segmentAHash?: string;
   };
 }
 
@@ -126,15 +137,49 @@ const WEB_SEARCH_TOOL: ToolDefinition = {
 };
 
 /**
+ * Tool plane projection for web.search tool
+ */
+const WEB_SEARCH_TOOL_PROJECTION: ToolPlaneProjection = {
+  toolIds: ['web.search'],
+  tools: [WEB_SEARCH_TOOL],
+};
+
+/**
+ * Build the tool result context as context items for Layer 7
+ */
+function buildToolResultContext(toolResult: WebSearchResult, searchQuery: string): Array<{
+  itemId: string;
+  content: string;
+  semanticType?: string;
+}> {
+  return [
+    {
+      itemId: 'search-query',
+      content: `Search Query: ${searchQuery}`,
+      semanticType: 'search_context',
+    },
+    {
+      itemId: 'search-results',
+      content: `Search Results:\n${JSON.stringify(toolResult, null, 2)}`,
+      semanticType: 'tool_output',
+    },
+  ];
+}
+
+/**
  * Create a search subagent
  */
 export function createSearchSubagent(config: SearchSubagentConfig) {
   const {
     llmAdapter,
     webSearchExecutor,
+    modelInputBuilder,
+    providerFamily,
     searchLlmProviderId,
     searchLlmModel,
   } = config;
+
+  let cachedSegmentAHash: string | undefined;
 
   async function execute(input: SearchSubagentInput): Promise<SearchSubagentResult> {
     const startTime = Date.now();
@@ -150,19 +195,36 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
       }
     }
 
+    // ─── Phase 1: Tool Call (function_calling mode) ──────────────────────────────
+    const phase1BuildInput = {
+      mode: 'function_calling' as const,
+      agentKind: 'search',
+      providerFamily,
+      toolProjection: WEB_SEARCH_TOOL_PROJECTION,
+      currentUserMessage: input.query,
+      currentDate: new Date().toISOString(),
+      sessionId: input.sessionId,
+    };
+
+    let phase1Built;
+    try {
+      phase1Built = await modelInputBuilder.build(phase1BuildInput);
+    } catch (error) {
+      return {
+        success: false,
+        errorCode: 'MODEL_UNAVAILABLE',
+        message: error instanceof Error ? error.message : 'Failed to build LLM request',
+      };
+    }
+
+    cachedSegmentAHash = phase1Built.segmentHashes.segmentA;
+
+    const tools = extractToolsForRequest(phase1BuildInput);
+
     const llmRequest: LLMRequest = {
       model: searchLlmModel,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a search assistant. Use the web.search tool to find information.',
-        },
-        {
-          role: 'user',
-          content: input.query,
-        },
-      ],
-      tools: [WEB_SEARCH_TOOL],
+      messages: phase1Built.messages,
+      tools,
       toolChoice: {
         type: 'function',
         function: { name: 'web.search' },
@@ -228,28 +290,52 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
 
     const toolResult = await webSearchExecutor({ query: searchQuery });
 
+    // ─── Phase 2: Answer Generation (structured_json mode) ────────────────────────
+    const toolResultContext = buildToolResultContext(toolResult, searchQuery);
+
+    const phase2BuildInput = {
+      mode: 'structured_json' as const,
+      agentKind: 'search',
+      providerFamily,
+      currentUserMessage: input.query,
+      currentDate: new Date().toISOString(),
+      sessionId: input.sessionId,
+      contextBundle: {
+        orderedItems: toolResultContext,
+      },
+    };
+
+    let phase2Built;
+    try {
+      phase2Built = await modelInputBuilder.build(phase2BuildInput);
+    } catch {
+      return {
+        success: true,
+        answer: 'Search completed but answer generation failed.',
+        toolResult,
+        metadata: {
+          providerId: searchLlmProviderId,
+          model: searchLlmModel,
+          querySource: 'search_subagent',
+          durationMs: Date.now() - startTime,
+          segmentAHash: cachedSegmentAHash,
+        },
+      };
+    }
+
+    const segmentAMatched = phase2Built.segmentHashes.segmentA === cachedSegmentAHash;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[SearchSubagent] Segment A cache check:', {
+        phase1SegmentA: cachedSegmentAHash?.substring(0, 8),
+        phase2SegmentA: phase2Built.segmentHashes.segmentA.substring(0, 8),
+        matched: segmentAMatched,
+      });
+    }
+
     const answerRequest: LLMRequest = {
       model: searchLlmModel,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a search assistant. Provide a helpful answer based on the search results.',
-        },
-        {
-          role: 'user',
-          content: input.query,
-        },
-        {
-          role: 'assistant',
-          content: '',
-          toolCalls: response.toolCalls,
-        },
-        {
-          role: 'tool',
-          toolCallId: toolCall.id,
-          content: JSON.stringify(toolResult),
-        },
-      ],
+      messages: phase2Built.messages,
     };
 
     let answerResult;
@@ -265,6 +351,7 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
           model: searchLlmModel,
           querySource: 'search_subagent',
           durationMs: Date.now() - startTime,
+          segmentAHash: cachedSegmentAHash,
         },
       };
     }
@@ -282,6 +369,7 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
         model: searchLlmModel,
         querySource: 'search_subagent',
         durationMs: Date.now() - startTime,
+        segmentAHash: cachedSegmentAHash,
       },
     };
   }

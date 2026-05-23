@@ -8,6 +8,8 @@ import { createLongTermMemoryStore, type LongTermMemoryStore } from '../../../sr
 import { createMemoryExtractionRunStore, type MemoryExtractionRunStore } from '../../../src/storage/memory-extraction-run-store.js';
 import type { LLMAdapter } from '../../../src/llm/adapter.js';
 import type { LLMRequest, LLMResult } from '../../../src/llm/types.js';
+import type { BuiltModelInput, ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js';
+import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
 import {
   createLongTermMemoryScheduler,
   type LongTermMemoryScheduler,
@@ -256,6 +258,49 @@ describe('Long-term Memory Pipeline Integration', () => {
   // Helper functions
   // ============================================================================
 
+  function createMockModelInputBuilder(): ModelInputBuilder {
+    return {
+      build: vi.fn(async (input: ModelInputBuildInput): Promise<BuiltModelInput> => {
+        const messages = [];
+        
+        if (input.contextBundle?.pinnedItems) {
+          const pinnedContent = input.contextBundle.pinnedItems
+            .map(item => item.content)
+            .join('\n\n');
+          if (pinnedContent) {
+            messages.push({ role: 'user' as const, content: pinnedContent });
+          }
+        }
+        
+        if (messages.length === 0) {
+          messages.push({ role: 'user' as const, content: '' });
+        }
+        
+        return {
+          messages,
+          segments: {
+            staticPrefix: '',
+            tenantProject: '',
+            toolPlane: '',
+            contextBundle: messages.map(m => m.content).join('\n\n'),
+          },
+          segmentHashes: {
+            segmentA: 'hash-a',
+            segmentB: 'hash-b',
+            segmentC: 'hash-c',
+            segmentD: 'hash-d',
+          },
+          metadata: {
+            mode: input.mode,
+            agentKind: input.agentKind,
+            providerFamily: input.providerFamily,
+            messageCount: messages.length,
+          },
+        };
+      }),
+    } as unknown as ModelInputBuilder;
+  }
+
   function createScheduler(): LongTermMemoryScheduler {
     return createSchedulerWithAdapter(mockLlmAdapter);
   }
@@ -267,6 +312,7 @@ describe('Long-term Memory Pipeline Integration', () => {
       longTermMemoryStore,
       memoryExtractionRunStore,
       llmAdapter: adapter,
+      modelInputBuilder: createMockModelInputBuilder(),
     };
     return createLongTermMemoryScheduler(deps);
   }

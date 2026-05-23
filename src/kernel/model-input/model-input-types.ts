@@ -52,6 +52,10 @@ export interface ContextItemData {
   semanticType?: string;
   /** Whether this item is pinned (always included) */
   isPinned?: boolean;
+  /** Whether this item must appear together with its pair partner */
+  requiresPairIntegrity?: boolean;
+  /** Pair identifier for items that must stay together */
+  pairId?: string;
 }
 
 /**

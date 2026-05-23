@@ -21,6 +21,19 @@ import type { AgentConfig } from '../storage/agent-config-store.js';
 import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../storage/agent-config-store.js';
 import { buildRoutingMessages, computeEffectiveAllowedToolIds } from '../agents/prompt-builder.js';
 import { getToolCatalog } from '../api/tool-catalog.js';
+import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
+import type { ModelInputBuildInput } from '../kernel/model-input/model-input-types.js';
+
+// ─── Feature Flags ──────────────────────────────────────────────────────────
+function isModelInputBuilderEnabled(): boolean {
+  return process.env.MODEL_INPUT_BUILDER_ENABLED !== 'false';
+}
+function isModelInputShadowMode(): boolean {
+  return process.env.MODEL_INPUT_SHADOW_MODE === 'true';
+}
+function isModelInputLegacyFallback(): boolean {
+  return process.env.MODEL_INPUT_LEGACY_FALLBACK !== 'false';
+}
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
@@ -85,10 +98,17 @@ function generateActionId(): string {
 class ForegroundAgentImpl implements ForegroundAgent {
   private llmAdapter?: LLMAdapter;
   private agentConfig?: AgentConfig;
+  private modelInputBuilder?: ModelInputBuilder;
 
-  constructor(_patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS, llmAdapter?: LLMAdapter, agentConfig?: AgentConfig) {
+  constructor(
+    _patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS,
+    llmAdapter?: LLMAdapter,
+    agentConfig?: AgentConfig,
+    modelInputBuilder?: ModelInputBuilder,
+  ) {
     this.llmAdapter = llmAdapter;
     this.agentConfig = agentConfig;
+    this.modelInputBuilder = modelInputBuilder;
   }
 
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
@@ -119,23 +139,92 @@ class ForegroundAgentImpl implements ForegroundAgent {
       agentConfig: effectiveConfig,
       toolCatalog,
     });
-    const llmResult = await this.callLLMRouter(messages, state, toolCatalog);
 
+    // ─── ModelInputBuilder integration ──────────────────────────────────────
+    if (isModelInputBuilderEnabled() && this.modelInputBuilder) {
+      const newBuildInput = this.buildModelInput(input, state, toolCatalog);
+
+      if (isModelInputShadowMode()) {
+        // Shadow: run both paths in parallel, log diffs, use old path result
+        const [legacyResult, newBuildResult] = await Promise.allSettled([
+          this.callLLMRouter(messages, state, toolCatalog),
+          this.runNewPath(newBuildInput, state, toolCatalog),
+        ]);
+
+        const legacyRouterResult = legacyResult.status === 'fulfilled' ? legacyResult.value : undefined;
+
+        if (newBuildResult.status === 'fulfilled' && newBuildResult.value.success && legacyRouterResult) {
+          this.logShadowDiff(newBuildResult.value.output, legacyRouterResult.output);
+        }
+
+        if (legacyRouterResult) {
+          return this.processRouterResult(legacyRouterResult, messages, state, toolCatalog, effectiveConfig, input);
+        }
+        return this.createDecision('answer_directly', {
+          reason: 'LLM routing temporarily unavailable',
+          userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
+        });
+      }
+
+      // New path active (not shadow)
+      try {
+        const newResult = await this.runNewPath(newBuildInput, state, toolCatalog);
+        if (newResult.success) {
+          return this.mapRouterOutputToDecision(newResult.output!, input, state, toolCatalog);
+        }
+
+        // New path failed — fall back to legacy if enabled
+        if (isModelInputLegacyFallback()) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[ForegroundAgent] new path failed, falling back to legacy:', newResult.error?.message);
+          }
+          const legacyFallbackResult = await this.callLLMRouter(messages, state, toolCatalog);
+          return this.processRouterResult(legacyFallbackResult, messages, state, toolCatalog, effectiveConfig, input);
+        }
+
+        // No fallback — return error
+        return this.createDecision('answer_directly', {
+          reason: 'LLM routing temporarily unavailable',
+          userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
+        });
+      } catch {
+        // New path threw unexpectedly — fall back to legacy if enabled
+        if (isModelInputLegacyFallback()) {
+          const legacyFallbackResult = await this.callLLMRouter(messages, state, toolCatalog);
+          return this.processRouterResult(legacyFallbackResult, messages, state, toolCatalog, effectiveConfig, input);
+        }
+        return this.createDecision('answer_directly', {
+          reason: 'LLM routing temporarily unavailable',
+          userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
+        });
+      }
+    }
+
+    // ─── Legacy path (flag off or no builder) ───────────────────────────────
+    const legacyResult = await this.callLLMRouter(messages, state, toolCatalog);
+    return this.processRouterResult(legacyResult, messages, state, toolCatalog, effectiveConfig, input);
+  }
+
+  private async processRouterResult(
+    llmResult: RouterResult,
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    state: ForegroundSessionState,
+    toolCatalog: string[],
+    effectiveConfig: AgentConfig | undefined,
+    input: ForegroundMessageInput,
+  ): Promise<ForegroundDecision> {
     if (!llmResult.success) {
-      // Retry with repair prompt if attempts remain
       const maxRepairAttempts = effectiveConfig?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS;
       if (maxRepairAttempts > 0 && llmResult.error?.retryable) {
-        const retryMessages = llmResult.error.code === 'LLM_REQUEST_FAILED'
+        const repairMessages = llmResult.error.code === 'LLM_REQUEST_FAILED'
           ? messages
           : this.buildRepairMessages(messages, llmResult.error?.message || 'Unknown error');
-        const retryResult = await this.callLLMRouter(retryMessages, state, toolCatalog);
-
+        const retryResult = await this.callLLMRouter(repairMessages, state, toolCatalog);
         if (retryResult.success) {
           return this.mapRouterOutputToDecision(retryResult.output!, input, state, toolCatalog);
         }
       }
 
-      // Deterministic fallback when LLM fails
       if (llmResult.error?.code === 'LLM_REQUEST_FAILED') {
         const fallbackDecision = this.routeDeterministically(input.message, state, toolCatalog);
         if (fallbackDecision) {
@@ -143,7 +232,6 @@ class ForegroundAgentImpl implements ForegroundAgent {
         }
       }
 
-      // Both attempts failed - return graceful processing error
       return this.createDecision('answer_directly', {
         reason: 'LLM routing temporarily unavailable',
         userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
@@ -151,6 +239,114 @@ class ForegroundAgentImpl implements ForegroundAgent {
     }
 
     return this.mapRouterOutputToDecision(llmResult.output!, input, state, toolCatalog);
+  }
+
+  private buildModelInput(
+    input: ForegroundMessageInput,
+    state: ForegroundSessionState,
+    toolCatalog: string[],
+  ): ModelInputBuildInput {
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
+    const providerFamily = state.resolvedProvider?.startsWith('ollama') ? 'ollama' : 'openai';
+
+    return {
+      mode: 'routing_json',
+      agentKind: 'foreground',
+      providerFamily,
+      systemPrompt: effectiveConfig?.systemPrompt ?? undefined,
+      routingPrompt: effectiveConfig?.routingPrompt ?? undefined,
+      toolProjection: {
+        toolIds: effectiveToolIds,
+      },
+      contextBundle: {
+        transcript: state.conversationHistory?.map(entry => ({
+          role: entry.role as 'user' | 'assistant',
+          content: entry.message,
+        })),
+      },
+      currentUserMessage: input.message,
+      currentDate: new Date().toISOString(),
+      sessionId: input.sessionId,
+      runId: input.turnId,
+      messageId: input.turnId,
+      requestId: input.turnId,
+    };
+  }
+
+  private async runNewPath(
+    buildInput: ModelInputBuildInput,
+    state: ForegroundSessionState,
+    _toolCatalog: string[],
+  ): Promise<RouterResult> {
+    if (!this.modelInputBuilder || !this.llmAdapter) {
+      return { success: false, error: { code: 'LLM_REQUEST_FAILED', message: 'ModelInputBuilder or LLMAdapter not available', retryable: false } };
+    }
+
+    const built = await this.modelInputBuilder.build(buildInput);
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const resolvedModel = state.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini';
+    const routingTimeoutMs = effectiveConfig?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS;
+
+    const healthyProviders = this.llmAdapter.getHealthyProviders();
+    const supportsJsonMode = healthyProviders.length > 0 && healthyProviders.every(p => p.config.capabilities.supportsJsonMode);
+
+    const request: LLMRequest = {
+      model: resolvedModel,
+      messages: built.messages,
+      temperature: 0.1,
+      maxTokens: 500,
+      ...(supportsJsonMode ? { responseFormat: { type: 'json_object' } } : {}),
+    };
+
+    if (process.env.NODE_ENV !== 'production') {
+      const promptTokens = built.messages.reduce((sum, msg) => sum + Math.ceil(msg.content.length / 4), 0);
+      console.log('[ForegroundAgent] new path prompt estimate:', {
+        messageCount: built.messages.length,
+        estimatedPromptTokens: promptTokens,
+        segmentHashes: built.segmentHashes,
+        model: resolvedModel,
+      });
+    }
+
+    try {
+      const result: LLMResult = await this.callLLMWithTimeout(request, routingTimeoutMs);
+      if (!result.success) {
+        const isRetryable = result.error?.recoverability === 'retryable_later' || result.error?.category === 'timeout';
+        return { success: false, error: { code: 'LLM_REQUEST_FAILED', message: `LLM request failed: ${result.error?.message || 'Unknown error'}`, retryable: isRetryable } };
+      }
+      return this.parseRouterOutput(result.response.content, state, _toolCatalog);
+    } catch (error) {
+      return { success: false, error: { code: 'MALFORMED_JSON', message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`, retryable: false } };
+    }
+  }
+
+  private logShadowDiff(newOutput: LLMRouterOutput | undefined, legacyOutput: LLMRouterOutput | undefined): void {
+    if (!newOutput || !legacyOutput) return;
+
+    if (process.env.NODE_ENV === 'production') return;
+
+    const diffs: string[] = [];
+
+    if (newOutput.route !== legacyOutput.route) {
+      diffs.push(`route: new=${newOutput.route} legacy=${legacyOutput.route}`);
+    }
+
+    const newTools = newOutput.suggestedTools ?? [];
+    const legacyTools = legacyOutput.suggestedTools ?? [];
+    if (JSON.stringify([...newTools].sort()) !== JSON.stringify([...legacyTools].sort())) {
+      diffs.push(`suggestedTools: new=[${newTools.join(',')}] legacy=[${legacyTools.join(',')}]`);
+    }
+
+    if (newOutput.complexity !== legacyOutput.complexity) {
+      diffs.push(`complexity: new=${newOutput.complexity} legacy=${legacyOutput.complexity}`);
+    }
+
+    if (diffs.length === 0) {
+      console.log('[ForegroundAgent] shadow mode: no diff');
+    } else {
+      console.log('[ForegroundAgent] shadow mode diff:', diffs.join('; '));
+    }
   }
 
   private createDecision(
@@ -837,10 +1033,11 @@ export interface CreateForegroundAgentOptions {
   patterns?: IntentPatterns;
   llmAdapter?: LLMAdapter;
   agentConfig?: AgentConfig;
+  modelInputBuilder?: ModelInputBuilder;
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
-  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig);
+  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder);
 }
 
 export function mergeDelegationPolicies(
