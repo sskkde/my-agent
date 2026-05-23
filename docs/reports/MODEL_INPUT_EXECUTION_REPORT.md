@@ -276,6 +276,35 @@ P9 delivered 17 tasks across 6 waves:
 
 ---
 
+## Post-Release Fix Verification (2026-05-23)
+
+After the initial P9 release (v0.9.0-model-input), a cross-check of the fix plan
+(`my-agent-p9-model-input-final-fix-plan.md`) against the actual codebase revealed
+that most gaps were already addressed, with 2 real gaps requiring fixes:
+
+| Wave | Issue | Actual Status | Action |
+|------|-------|---------------|--------|
+| Wave 1 | DeepSeek cache usage mapping | Already mapped in `providers.ts:146-160` | None needed |
+| Wave 2 | Foreground providerFamily | Binary `ollama/openai` logic only | Fixed: `resolveProviderFamily` helper |
+| Wave 3 | Kernel toolProjection | Already wired in `agent-kernel.ts:136` | None needed |
+| Wave 4 | Snapshot chain | Not wired into Foreground/AgentKernel | Fixed: snapshot recording added |
+| Wave 5 | DeepSeek template alignment | Already aligned with 7-layer design | None needed |
+| Wave 6 | Release Checklist / Execution Report | No fix verification section | Added Final Fix Verification |
+| Wave 7 | test:p9 script | Missing from package.json | Added |
+
+### Fixes Applied
+- `resolveProviderFamily()` — normalizes provider IDs to `deepseek`, `ollama`, or `openai`
+- ForegroundAgent + AgentKernel snapshot recording after LLM calls
+- `test:p9` script for full P9 verification
+
+### Verification
+- Typecheck: ✅
+- Unit tests: 99 files, 2209 passed, 9 skipped
+- Security tests: 16 files, 343 passed
+- provider-family-resolution test: 13/13 passed
+
+---
+
 ## 7. Final Judgment
 
 P9 ModelInputBuilder implementation is complete.

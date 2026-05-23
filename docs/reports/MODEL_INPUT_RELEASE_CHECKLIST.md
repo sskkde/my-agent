@@ -202,6 +202,20 @@ All items from the plan's "Must NOT Have" section verified:
 
 ---
 
+## 8.B Final Fix Verification
+
+| Fix | Status | Evidence |
+|-----|--------|----------|
+| DeepSeek cache usage mapping | ✅ Passed | `providers.ts:146-160` maps `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` |
+| Foreground deepseek providerFamily | ✅ Passed | `resolveProviderFamily` handles deepseek, ollama, openai (13 tests) |
+| Kernel toolProjection | ✅ Passed | `agent-kernel.ts:136` passes `this.config.toolProjection` to build input |
+| Snapshot chain | ✅ Passed | ForegroundAgent + AgentKernel record model input snapshots after LLM calls |
+| DeepSeek template alignment | ✅ Passed | Layer 5/6/7 descriptions match seven-layer design with constraints |
+| Release Checklist state | ✅ Passed | Final Fix Verification section added |
+| test:p9 script | ✅ Passed | Added to `package.json` scripts |
+
+---
+
 ## 9. Sign-Off
 
 ### 9.1 Technical Sign-Off

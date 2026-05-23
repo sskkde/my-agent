@@ -143,6 +143,22 @@ function mapOpenAIResponse(data: Record<string, unknown>): LLMResponse {
     };
   }
 
+  // DeepSeek flat cache fields take priority over OpenAI nested format
+  if (usage) {
+    const dsHit = usage.prompt_cache_hit_tokens;
+    const dsMiss = usage.prompt_cache_miss_tokens;
+    if (typeof dsHit === 'number' || typeof dsMiss === 'number') {
+      const promptCacheHitTokens = typeof dsHit === 'number' ? dsHit : 0;
+      const promptCacheMissTokens = typeof dsMiss === 'number' ? dsMiss : 0;
+      const totalPromptTokens = promptCacheHitTokens + promptCacheMissTokens;
+      cacheMetrics = {
+        promptCacheHitTokens,
+        promptCacheMissTokens,
+        cacheHitRate: totalPromptTokens > 0 ? promptCacheHitTokens / totalPromptTokens : undefined,
+      };
+    }
+  }
+
   return {
     id: (data.id as string) || `resp_${Date.now()}`,
     model: (data.model as string) || 'unknown',

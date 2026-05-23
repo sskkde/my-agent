@@ -19,6 +19,7 @@
     "test:p6": "tsx scripts/check-p6.ts",
     "test:p7": "tsx scripts/check-p7.ts",
     "test:p8": "tsx scripts/check-p8.ts",
+    "test:p9": "npm run test:p8 && npm run test:model-input && npm run test:model-input-security && npm run test:model-input-cache && vitest run tests/unit/llm/provider-family-resolution.test.ts tests/unit/llm/deepseek-cache-usage-mapping.test.ts",
     "test:ga": "tsx scripts/check-p8.ts",
     "test:security": "vitest run tests/security",
     "test:model-input": "vitest run tests/unit/kernel/model-input tests/integration/kernel/model-input",

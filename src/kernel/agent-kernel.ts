@@ -16,6 +16,7 @@ import { extractToolsForRequest } from './model-input/model-input-builder.js';
 
 export class AgentKernel {
   private config: KernelConfig;
+  private lastBuiltModelInput?: import('./model-input/model-input-types.js').BuiltModelInput;
 
   constructor(config: KernelConfig) {
     this.config = config;
@@ -61,6 +62,16 @@ export class AgentKernel {
             message: llmResult.error.message,
           });
         }
+
+        this.config.modelInputSnapshotStore?.record({
+          agentKind: 'kernel',
+          mode: 'function_calling',
+          builtInput: this.lastBuiltModelInput!,
+          response: { content: llmResult.response.content, toolCalls: llmResult.response.toolCalls },
+          tokenUsage: llmResult.response.usage,
+          provider: this.config.providerFamily,
+          model: this.config.defaultModel,
+        });
 
         const llmResponse = llmResult.response;
         this.commitTranscript(state, 'llm_response', {
@@ -133,9 +144,11 @@ export class AgentKernel {
       currentDate: new Date().toISOString(),
       sessionId: contextBundle.runId,
       runId: contextBundle.runId,
+      toolProjection: this.config.toolProjection ?? { toolIds: [], tools: [] },
     };
 
     const builtInput = await this.config.modelInputBuilder.build(buildInput);
+    this.lastBuiltModelInput = builtInput;
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('[AgentKernel] buildLLMRequest via ModelInputBuilder:', {

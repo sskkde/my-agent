@@ -1,6 +1,7 @@
 import type { ContextBundle, ContextItem } from '../context/types.js';
 import type { LLMAdapter } from '../llm/adapter.js';
 import type { ModelInputBuilder } from './model-input/model-input-builder.js';
+import type { ToolPlaneProjection } from './model-input/model-input-types.js';
 
 export interface ToolUseRequest {
   toolCallId: string;
@@ -137,6 +138,8 @@ export interface KernelConfig {
   compactThreshold?: number;
   defaultModel?: string;
   providerFamily?: string;
+  toolProjection?: ToolPlaneProjection;
+  modelInputSnapshotStore?: import('./model-input/model-input-snapshot-store.js').ModelInputSnapshotStore;
 }
 
 export interface CompactTriggerResult {

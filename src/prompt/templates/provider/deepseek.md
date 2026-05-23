@@ -41,9 +41,14 @@ The following MUST NOT appear in Layers 1-4:
 ### Dynamic Content Placement
 
 Dynamic content is placed in Layer 5-7:
-- **Layer 5**: Instruction (current user message, task context)
-- **Layer 6**: ToolPlane (available tools, tool results)
-- **Layer 7**: ContextBundle (memory, history, session state)
+- **Layer 5**: Tenant / Project Instruction Projection (tenant policy, organization policy, project instruction, workspace instruction, stable instruction)
+- **Layer 6**: Tool Plane Projection (visible tool IDs, capability summaries, function schemas for execution mode, canonical tool schema ordering)
+- **Layer 7**: ContextBundle Projection (current user message, current date, session/run/message/request IDs, selected memory, transcript summaries, tool result projections, workflow/trigger/background state)
+
+### Layer Constraints
+
+The current user message MUST NOT appear in Layer 1–6.
+The current date, runId, requestId, and messageId MUST NOT appear in Layer 1–6.
 
 ## JSON Output Mode
 
@@ -105,13 +110,13 @@ DeepSeek responses are validated against:
 
 [USER MESSAGE - LAYER 5-7 - CHANGES PER REQUEST]
 
-=== Current Instruction ===
+=== Tenant / Project Instruction Projection (Layer 5) ===
 {currentInstruction}
 
-=== Available Tools ===
+=== Tool Plane Projection (Layer 6) ===
 {availableTools}
 
-=== Context Bundle ===
+=== ContextBundle Projection (Layer 7) ===
 {contextBundle}
 
 [/USER MESSAGE]
