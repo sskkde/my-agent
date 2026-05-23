@@ -88,10 +88,11 @@ export function registerApiKeyAuth(
           return;
         }
 
-        // If Authorization header starts with "Bearer ak_", it was an API key attempt
-        // that failed validation - return 401 instead of letting RBAC return 403
-        if (authHeader.startsWith('Bearer ak_')) {
-          reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid or expired API key'));
+        // Bearer token present but no auth middleware recognized it.
+        // Return 401 instead of letting RBAC return 403.
+        // Covers: invalid ak_ key, malformed token, non-ak_ token without API_AUTH_TOKEN.
+        if (authHeader.startsWith('Bearer ')) {
+          reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid or unrecognized Bearer token'));
           return;
         }
 

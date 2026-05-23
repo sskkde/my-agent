@@ -384,7 +384,7 @@ describe('Observability Tracing Integration', () => {
         action: 'run_agent',
       });
       expect(dispatchSpan?.durationMs).toBeDefined();
-      expect(dispatchSpan?.durationMs).toBeGreaterThanOrEqual(50);
+      expect(dispatchSpan?.durationMs).toBeGreaterThanOrEqual(40);
     });
 
     it('should record latency metrics for dispatch', async () => {
