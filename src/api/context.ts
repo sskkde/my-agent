@@ -68,8 +68,11 @@ import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js';
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js';
 import { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
+import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js';
 import { PromptTemplateRegistry } from '../prompt/prompt-template-registry.js';
 import { TemplateLoader } from '../prompt/template-loader.js';
+import { createModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js';
+import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -375,10 +378,15 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     templateLoader: new TemplateLoader(),
   });
 
+  const modelInputSnapshotStore = createModelInputSnapshotStore(
+    createModelInputRedactor(),
+  );
+
   const foregroundAgent = injectedForegroundAgent ?? createForegroundAgent({
     llmAdapter,
     agentConfig: agentConfigStore.getByUser('default') ?? undefined,
     modelInputBuilder,
+    modelInputSnapshotStore,
   });
   const refreshProvidersForUser = (_userId: string): void => {
     // Request-scoped adapters read provider configs on each processing scope.
@@ -499,9 +507,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   });
   const defaultModel = modelResolution.type === 'success' ? modelResolution.selectedModel ?? undefined : undefined;
 
-  const providerFamily = modelResolution.type === 'success' && modelResolution.selectedProviderId
-    ? (modelResolution.selectedProviderId.startsWith('ollama') ? 'ollama' : 'openai')
-    : 'openai';
+  const providerFamily = resolveProviderFamily(
+    modelResolution.type === 'success' ? modelResolution.selectedProviderId : undefined,
+  );
 
   const agentKernel = injectedAgentKernel ?? new AgentKernel({
     llmAdapter,
@@ -527,6 +535,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     timeoutMs: 30000,
     defaultModel,
     providerFamily,
+    modelInputSnapshotStore,
   });
 
   // Create processing observer that broadcasts status to SSE subscribers

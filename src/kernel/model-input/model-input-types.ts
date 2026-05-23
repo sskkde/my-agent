@@ -188,3 +188,27 @@ export interface BuiltModelInput {
   /** Build metadata */
   metadata: ModelInputMetadata;
 }
+
+/**
+ * Resolve a provider ID to its family for model input template selection.
+ *
+ * Normalizes provider IDs into one of three families:
+ * - 'deepseek' — DeepSeek-compatible providers (deepseek, deepseek-chat, etc.)
+ * - 'ollama'   — Ollama and Ollama-compatible local providers
+ * - 'openai'   — OpenAI and OpenAI-compatible providers (openai, openrouter, etc.)
+ *
+ * This is used by ForegroundAgent and AgentKernel to select the correct
+ * prompt template and caching strategy for a given LLM provider.
+ */
+export function resolveProviderFamily(
+  providerId: string | undefined,
+): 'openai' | 'deepseek' | 'ollama' {
+  const normalized = providerId?.toLowerCase() ?? '';
+  if (normalized.startsWith('deepseek') || normalized.includes('deepseek')) {
+    return 'deepseek';
+  }
+  if (normalized.startsWith('ollama')) {
+    return 'ollama';
+  }
+  return 'openai';
+}

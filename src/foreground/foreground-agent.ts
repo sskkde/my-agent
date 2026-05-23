@@ -22,7 +22,9 @@ import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../storage/
 import { buildRoutingMessages, computeEffectiveAllowedToolIds } from '../agents/prompt-builder.js';
 import { getToolCatalog } from '../api/tool-catalog.js';
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
+import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js';
 import type { ModelInputBuildInput } from '../kernel/model-input/model-input-types.js';
+import type { ModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js';
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 function isModelInputBuilderEnabled(): boolean {
@@ -99,16 +101,19 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private llmAdapter?: LLMAdapter;
   private agentConfig?: AgentConfig;
   private modelInputBuilder?: ModelInputBuilder;
+  private modelInputSnapshotStore?: ModelInputSnapshotStore;
 
   constructor(
     _patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS,
     llmAdapter?: LLMAdapter,
     agentConfig?: AgentConfig,
     modelInputBuilder?: ModelInputBuilder,
+    modelInputSnapshotStore?: ModelInputSnapshotStore,
   ) {
     this.llmAdapter = llmAdapter;
     this.agentConfig = agentConfig;
     this.modelInputBuilder = modelInputBuilder;
+    this.modelInputSnapshotStore = modelInputSnapshotStore;
   }
 
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
@@ -248,7 +253,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   ): ModelInputBuildInput {
     const effectiveConfig = this.getEffectiveConfig(state);
     const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
-    const providerFamily = state.resolvedProvider?.startsWith('ollama') ? 'ollama' : 'openai';
+    const providerFamily = resolveProviderFamily(state.resolvedProvider);
 
     return {
       mode: 'routing_json',
@@ -315,6 +320,17 @@ class ForegroundAgentImpl implements ForegroundAgent {
         const isRetryable = result.error?.recoverability === 'retryable_later' || result.error?.category === 'timeout';
         return { success: false, error: { code: 'LLM_REQUEST_FAILED', message: `LLM request failed: ${result.error?.message || 'Unknown error'}`, retryable: isRetryable } };
       }
+
+      this.modelInputSnapshotStore?.record({
+        agentKind: 'foreground',
+        mode: 'routing_json',
+        builtInput: built,
+        response: { content: result.response.content, toolCalls: result.response.toolCalls },
+        tokenUsage: result.response.usage,
+        provider: state.resolvedProvider,
+        model: resolvedModel,
+      });
+
       return this.parseRouterOutput(result.response.content, state, _toolCatalog);
     } catch (error) {
       return { success: false, error: { code: 'MALFORMED_JSON', message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`, retryable: false } };
@@ -1034,10 +1050,11 @@ export interface CreateForegroundAgentOptions {
   llmAdapter?: LLMAdapter;
   agentConfig?: AgentConfig;
   modelInputBuilder?: ModelInputBuilder;
+  modelInputSnapshotStore?: ModelInputSnapshotStore;
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
-  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder);
+  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder, options?.modelInputSnapshotStore);
 }
 
 export function mergeDelegationPolicies(

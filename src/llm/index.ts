@@ -71,3 +71,4 @@ export type {
 } from './agent-provider-resolver';
 
 export { resolveProviderAndModel } from './agent-provider-resolver';
+export { resolveProviderFamily } from '../kernel/model-input/model-input-types.js';
