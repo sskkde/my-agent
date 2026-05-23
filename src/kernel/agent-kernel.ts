@@ -145,8 +145,22 @@ export class AgentKernel {
       }
     }
 
+    // Dev-only logging for token estimation and compact trigger info
+    if (process.env.NODE_ENV !== 'production') {
+      const estimatedTokens = messages.reduce((sum, msg) => sum + Math.ceil(msg.content.length / 4), 0);
+      console.log('[AgentKernel] buildLLMRequest context estimate:', {
+        messageCount: messages.length,
+        estimatedPromptTokens: estimatedTokens,
+        pinnedItems: contextBundle.pinnedItems.length,
+        orderedItems: contextBundle.orderedItems.length,
+        transcriptEntries: state.transcript.length,
+        bundleTokenEstimate: contextBundle.tokenEstimate,
+        shouldCompactSoon: contextBundle.compactHints?.shouldCompactSoon ?? false,
+      });
+    }
+
     return {
-      model: 'default-model',
+      model: this.config.defaultModel ?? 'default-model',
       messages,
       temperature: 0.7,
     };
