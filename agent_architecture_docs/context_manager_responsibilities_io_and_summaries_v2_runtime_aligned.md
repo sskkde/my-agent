@@ -463,6 +463,38 @@ Context Manager 为 Workflow step 生成最小可执行上下文。
 - Kernel 不应绕过 Context Manager 直接从 Memory / Transcript / Tool Result 中自行拼接上下文。
 - Context Manager 不负责模型采样，也不驱动 Agent Loop。
 
+### P9 Update: ContextBundleProjection
+
+P9 引入 `ContextBundleProjection` 模块，负责将 `ContextBundle` 正确投影为 LLM 可消费的消息格式：
+
+**SemanticType 到 Role 映射**：
+- `constraint` -> `system`（约束性内容作为系统消息）
+- `draft` -> `assistant`（草稿作为助手消息）
+- `summary` -> `assistant`（摘要作为助手消息）
+- `plan_view` -> `system`（计划视图作为系统消息）
+- `workflow_step_view` -> `system`（工作流步骤视图作为系统消息）
+- `background_run_view` -> `system`（后台运行视图作为系统消息）
+- `trigger_view` -> `user`（触发事件视图作为用户消息）
+
+**未消费字段投影**：
+ContextBundle 中有 5 个字段原未被 AgentKernel 消费，现已通过 ContextBundleProjection 正确投影：
+- `summaryBlocks` -> assistant 消息
+- `planView` -> system 消息
+- `workflowStepView` -> system 消息
+- `backgroundRunView` -> system 消息
+- `triggerView` -> user 消息
+
+**确定性排序**：
+可选字段的投影顺序是确定性的：
+```
+planView -> workflowStepView -> backgroundRunView -> triggerView -> summaryBlocks
+```
+
+**Pair Integrity 保护**：
+- tool_use 与 tool_result 必须成对出现
+- approval request 与 approval response 必须成对
+- 通过 `context-pair-integrity.ts` 实现保护逻辑
+
 ---
 
 ## 12. Session Memory / Working Summary 更新
