@@ -133,6 +133,7 @@ export interface KernelConfig {
   maxIterations: number;
   timeoutMs: number;
   compactThreshold?: number;
+  defaultModel?: string;
 }
 
 export interface CompactTriggerResult {

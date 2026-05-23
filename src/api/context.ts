@@ -66,6 +66,7 @@ import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead
 import type { DatabaseAdapter } from '../storage/database-adapter.js';
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js';
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js';
+import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -475,6 +476,19 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     },
   };
 
+  // Resolve default model for AgentKernel using agent-provider-resolver
+  const globalAgentConfig = agentConfigStore.getGlobalDefault();
+  const modelResolution = resolveProviderAndModel({
+    session: {},
+    agentConfig: globalAgentConfig
+      ? { providerId: globalAgentConfig.providerId ?? undefined, model: globalAgentConfig.model ?? undefined }
+      : {},
+    userId: 'default',
+    providerConfigStore,
+    includeEnvProviders: true,
+  });
+  const defaultModel = modelResolution.type === 'success' ? modelResolution.selectedModel ?? undefined : undefined;
+
   // Use injected agent kernel or create default with real tool executor
   const agentKernel = injectedAgentKernel ?? new AgentKernel({
     llmAdapter,
@@ -497,6 +511,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     dispatcher: createKernelDispatcherAdapter(runtimeDispatcher),
     maxIterations: 10,
     timeoutMs: 30000,
+    defaultModel,
   });
 
   // Create processing observer that broadcasts status to SSE subscribers
