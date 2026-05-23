@@ -266,6 +266,12 @@ All test files referenced in this matrix (sorted by directory):
 | **60** | **OpenAPI Coverage** — 98% route documented | - | - | - | - | ✅ `tests/architecture/openapi-route-coverage.test.ts` | - |
 | **61** | **Web GA Error States** — Production error handling | - | - | - | - | - | ✅ `web/src/features/ga-error-states.test.tsx` |
 | **62** | **Web Setup Flow** — First-run experience | - | - | - | - | - | ✅ `web/src/features/setup/ProductionSetupChecklist.test.tsx` |
+| **63** | **ModelInputBuilder Core** — 7-layer model input assembly with segment hashing | ✅ `tests/unit/kernel/model-input/model-input-builder-order.test.ts` `tests/unit/prompt/template-hash.test.ts` | ✅ `tests/integration/kernel/agent-kernel.test.ts` | - | - | - | - |
+| **64** | **DeepSeek Cache Prefix Stability** — Segment A hash stable across different user messages | ✅ `tests/unit/kernel/model-input/deepseek-cache-prefix-stability.test.ts` | - | - | - | - | - |
+| **65** | **Model Input Secret Redaction** — Snapshots/prompts不含API key/OAuth token/secret | ✅ `tests/unit/kernel/model-input/model-input-redactor.test.ts` | - | - | - | ✅ `tests/security/model-input/secret-redaction.test.ts` | - |
+| **66** | **Model Input Tenant Isolation** — Cross-tenant Layer 5/6/7 data isolation | - | - | - | - | ✅ `tests/security/model-input/tenant-leakage.test.ts` | - |
+| **67** | **Model Input Tool Escalation Prevention** — Denied/hidden tools excluded from prompt | ✅ `tests/unit/kernel/model-input/tool-projection-canonicalization.test.ts` | - | - | - | ✅ `tests/security/model-input/tool-escalation.test.ts` | - |
+| **68** | **Model Input Prompt Injection Boundary** — Data boundary tags isolate user/tool/memory content | - | - | - | - | ✅ `tests/security/model-input/prompt-injection-boundary.test.ts` | - |
 
 ---
 
@@ -317,4 +323,26 @@ All test files referenced in this matrix (sorted by directory):
 
 ---
 
-> **Note**: Matrix updated 2026-05-21 to reflect Phase 8 GA Readiness completion. Phase 8 added 20 new golden paths for production security, PostgreSQL support, multi-tenancy, OAuth, connector GA certification, reliability, and API contracts. Total rows expanded from 42 to 62. Integration column at 79% (49/62). Web column at 61% (38/62). Architecture column at 63% (39/62).
+## P9 Release Gate Coverage
+
+| # | P9 Gate | Unit | Integration | Security | Status |
+|---|---------|------|-------------|----------|--------|
+| 1 | ModelInputBuilder Core | ✅ tests/unit/kernel/model-input/model-input-builder-order.test.ts | ✅ tests/integration/kernel/agent-kernel.test.ts | - | ✅ |
+| 2 | Template System | ✅ tests/unit/prompt/*.test.ts | - | - | ✅ |
+| 3 | TokenUsage DeepSeek Metrics | ✅ tests/unit/llm/deepseek-cache-usage-mapping.test.ts | - | - | ✅ |
+| 4 | ToolPlaneProjection | ✅ tests/unit/tools/tool-schema-canonicalizer.test.ts | ✅ tests/integration/kernel/model-input/tool-plane-projection-boundary.test.ts | - | ✅ |
+| 5 | InstructionResolver | ✅ tests/unit/instructions/instruction-resolver.test.ts | - | - | ✅ |
+| 6 | ContextBundleProjection | ✅ tests/unit/kernel/model-input/context-bundle-projection.test.ts | ✅ tests/integration/kernel/model-input/context-manager-boundary.test.ts | - | ✅ |
+| 7 | ForegroundAgent Shadow Mode | ✅ tests/unit/foreground/shadow-mode.test.ts | ✅ tests/integration/foreground/foreground-agent.test.ts | - | ✅ |
+| 8 | AgentKernel Integration | ✅ tests/unit/kernel/model-input/*.test.ts | ✅ tests/integration/kernel/agent-kernel.test.ts | - | ✅ |
+| 9 | SearchSubagent Integration | ✅ tests/unit/search/search-subagent-model-input.test.ts | - | - | ✅ |
+| 10 | MemoryExtractor Integration | ✅ tests/unit/memory/long-term-memory-extractor-service.test.ts | - | - | ✅ |
+| 11 | ModelInputSnapshot + Redaction | ✅ tests/unit/kernel/model-input/model-input-snapshot-store.test.ts tests/unit/kernel/model-input/model-input-redactor.test.ts | - | ✅ tests/security/model-input/secret-redaction.test.ts | ✅ |
+| 12 | DeepSeek Cache Prefix Stability | ✅ tests/unit/kernel/model-input/deepseek-cache-prefix-stability.test.ts | - | - | ✅ |
+| 13 | Prompt Injection Boundary | - | - | ✅ tests/security/model-input/prompt-injection-boundary.test.ts | ✅ |
+| 14 | Tenant Isolation (Model Input) | - | - | ✅ tests/security/model-input/tenant-leakage.test.ts | ✅ |
+| 15 | Tool Escalation Prevention | ✅ tests/unit/kernel/model-input/tool-projection-canonicalization.test.ts | - | ✅ tests/security/model-input/tool-escalation.test.ts | ✅ |
+
+---
+
+> **Note**: Matrix updated 2026-05-23 to reflect Phase 9 Model Input Architecture completion. Phase 9 added 6 new golden paths for ModelInputBuilder core, cache prefix stability, secret redaction, tenant isolation, tool escalation prevention, and prompt injection boundary. Total rows expanded from 62 to 68.
