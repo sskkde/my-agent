@@ -992,3 +992,37 @@ ForegroundDecision
   → Subagent / Tool / Workflow results
   → Replan history
 ```
+
+---
+
+# P9 Update: ModelInput Snapshot & Cache Metrics
+
+P9 引入 `ModelInputSnapshot` 和 `ModelInputMetrics`，扩展可观测性能力：
+
+## ModelInputSnapshot
+
+每次 LLM 调用保存脱敏快照，包含：
+
+- `snapshotId` — 唯一标识
+- `segmentHashes` — Layer 1-7 的 SHA-256 hash（用于缓存命中率分析）
+- `contextBundleId` / `toolPoolRef` — 引用追踪
+- `cacheUsage` — DeepSeek `promptCacheHitTokens` / `promptCacheMissTokens` / `cacheHitRate`
+- 脱敏后不包含：API key、OAuth token、connector secret、DB password
+
+## Cache Metrics 观测维度
+
+- by agent（foreground / planner / kernel / connector 哪类命中高）
+- by segmentAHash（验证静态前缀是否稳定）
+- by toolExposureHash（发现工具投影抖动）
+
+## 新增审计事件
+
+- `model_input_snapshot_created` — 每次 LLM 调用后记录
+- `model_input_cache_metrics_recorded` — DeepSeek cache hit/miss 记录
+- `model_input_shadow_diff_logged` — ForegroundAgent shadow mode diff
+
+## 实现位置
+
+- `src/kernel/model-input/model-input-snapshot-store.ts`
+- `src/kernel/model-input/model-input-redactor.ts`
+- `src/observability/model-input-metrics.ts`

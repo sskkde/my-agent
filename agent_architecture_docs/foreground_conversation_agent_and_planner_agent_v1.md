@@ -665,3 +665,24 @@ MVP 阶段建议先实现：
 3. Planner 应升级为 Agent Template，可按复杂任务创建多个 PlannerRun。
 4. 推荐架构是：常驻 Foreground Conversation Agent + 按需 fork PlannerRun + Subagent / Workflow / Tool 执行。
 5. PlannerRun 负责任务规划和重规划，具体执行仍必须通过 Runtime Dispatcher。
+
+---
+
+## P9 Update: ModelInputBuilder Integration
+
+P9 引入了 `ModelInputBuilder`，将 Section 5 的 5 层 Prompt Stack 扩展为 7 层 Cache-aware Model Input Architecture：
+
+```text
+Section 5 的 5 层         →  P9 的 7 层
+1. Platform System         →  Layer 1: Platform Base + Layer 2: Provider/Model
+2. Foreground Runtime Role →  Layer 3: Agent Role + Layer 4: Output Contract
+3. User Assistant Persona  →  Layer 5: Tenant/Project Instruction
+4. Session State / Active  →  Layer 6: Tool Plane Projection
+5. Current User Message    →  Layer 7: ContextBundle Projection
+```
+
+关键变化：
+- ForegroundAgent 保持 JSON routing contract，不使用 function calling
+- ForegroundAgent 通过 shadow mode（`MODEL_INPUT_BUILDER_ENABLED`/`MODEL_INPUT_SHADOW_MODE`/`MODEL_INPUT_LEGACY_FALLBACK`）渐进切换到 ModelInputBuilder
+- `prompt-builder.ts` 的 `buildRoutingMessages()` 保留为 legacy fallback
+- 优先级原则不变：Layer 1-4 > Layer 5 > Layer 6 > Layer 7 > User Message
