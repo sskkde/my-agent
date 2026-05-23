@@ -1,0 +1,522 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../src/prompt/prompt-template-registry.js';
+import { TemplateLoader } from '../../../../src/prompt/template-loader.js';
+import { ModelInputBuilder } from '../../../../src/kernel/model-input/model-input-builder.js';
+import { computeCacheKey } from '../../../../src/kernel/model-input/model-input-cache-key.js';
+import { StaticPrefixBuilder } from '../../../../src/kernel/model-input/static-prefix-builder.js';
+import type { ModelInputBuildInput } from '../../../../src/kernel/model-input/model-input-types.js';
+
+function makeTestTemplates(): Map<string, PromptTemplateRecord> {
+  return new Map([
+    ['platform:base', {
+      id: 'platform:base',
+      version: '2026-05-23',
+      path: 'platform/base.md',
+      agentKind: '*',
+      providerFamily: '*',
+      layer: 1,
+      content: 'Platform Base for {agentKind} agent with {providerFamily} provider.',
+      description: 'Test platform base',
+    }],
+    ['platform:safety', {
+      id: 'platform:safety',
+      version: '2026-05-23',
+      path: 'platform/safety.md',
+      agentKind: '*',
+      providerFamily: '*',
+      layer: 1,
+      content: 'Safety rules for {agentKind}.',
+      description: 'Test safety',
+    }],
+    ['provider:openai', {
+      id: 'provider:openai',
+      version: '2026-05-23',
+      path: 'provider/openai.md',
+      agentKind: '*',
+      providerFamily: 'openai',
+      layer: 2,
+      content: 'OpenAI provider config for {agentKind}.',
+      description: 'Test openai provider',
+    }],
+    ['provider:deepseek', {
+      id: 'provider:deepseek',
+      version: '2026-05-23',
+      path: 'provider/deepseek.md',
+      agentKind: '*',
+      providerFamily: 'deepseek',
+      layer: 2,
+      content: 'DeepSeek provider config for {agentKind}.',
+      description: 'Test deepseek provider',
+    }],
+    ['agents:foreground', {
+      id: 'agents:foreground',
+      version: '2026-05-23',
+      path: 'agents/foreground.md',
+      agentKind: 'foreground',
+      providerFamily: '*',
+      layer: 3,
+      content: 'Foreground agent instructions for {agentKind}.',
+      description: 'Test foreground agent',
+    }],
+    ['agents:kernel', {
+      id: 'agents:kernel',
+      version: '2026-05-23',
+      path: 'agents/kernel.md',
+      agentKind: 'kernel',
+      providerFamily: '*',
+      layer: 3,
+      content: 'Kernel agent instructions for {agentKind}.',
+      description: 'Test kernel agent',
+    }],
+    ['output:foreground.schema', {
+      id: 'output:foreground.schema',
+      version: '2026-05-23',
+      path: 'output/foreground.schema.md',
+      agentKind: 'foreground',
+      providerFamily: '*',
+      layer: 4,
+      content: 'Output schema for {agentKind} with {providerFamily}.',
+      description: 'Test foreground schema',
+    }],
+    ['output:planner.schema', {
+      id: 'output:planner.schema',
+      version: '2026-05-23',
+      path: 'output/planner.schema.md',
+      agentKind: 'planner',
+      providerFamily: '*',
+      layer: 4,
+      content: 'Planner output schema for {agentKind}.',
+      description: 'Test planner schema',
+    }],
+  ]);
+}
+
+function makeBuilder(): ModelInputBuilder {
+  const templates = makeTestTemplates();
+  const registry = new PromptTemplateRegistry(templates, '/nonexistent');
+  const loader = new TemplateLoader('/nonexistent');
+  return new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader });
+}
+
+function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
+  return {
+    mode: 'routing_json',
+    agentKind: 'foreground',
+    providerFamily: 'openai',
+    ...overrides,
+  };
+}
+
+describe('ModelInputBuilder', () => {
+  describe('segment ordering', () => {
+    it('outputs segments A/B/C/D in correct order', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        systemPrompt: 'Custom system prompt',
+        toolProjection: { toolIds: ['file.read', 'web.search'] },
+        currentUserMessage: 'Hello world',
+      }));
+
+      const messages = result.messages;
+      expect(messages.length).toBeGreaterThanOrEqual(2);
+
+      const firstSystemIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('Platform Base'));
+      const secondSystemIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('Custom system prompt'));
+      const toolPlaneIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('file.read'));
+      const userMsgIdx = messages.findIndex((m) => m.role === 'user' && m.content.includes('Hello world'));
+
+      expect(firstSystemIdx).toBeLessThan(secondSystemIdx);
+      expect(secondSystemIdx).toBeLessThan(toolPlaneIdx);
+      expect(toolPlaneIdx).toBeLessThan(userMsgIdx);
+    });
+  });
+
+  describe('Segment A hash stability', () => {
+    it('does NOT change when userMessage changes', async () => {
+      const builder = makeBuilder();
+
+      const result1 = await builder.build(makeMinimalInput({ currentUserMessage: 'Hello' }));
+      const result2 = await builder.build(makeMinimalInput({ currentUserMessage: 'Goodbye' }));
+
+      expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA);
+    });
+
+    it('does NOT change when contextBundle changes', async () => {
+      const builder = makeBuilder();
+
+      const result1 = await builder.build(makeMinimalInput());
+      const result2 = await builder.build(makeMinimalInput({
+        contextBundle: {
+          pinnedItems: [{ itemId: 'p1', content: 'Important pinned data' }],
+          orderedItems: [{ itemId: 'o1', content: 'Dynamic context data' }],
+        },
+      }));
+
+      expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA);
+    });
+
+    it('changes when agentKind changes', async () => {
+      const builder = makeBuilder();
+
+      const result1 = await builder.build(makeMinimalInput({ agentKind: 'foreground' }));
+      const result2 = await builder.build(makeMinimalInput({ agentKind: 'kernel' }));
+
+      expect(result1.segmentHashes.segmentA).not.toBe(result2.segmentHashes.segmentA);
+    });
+
+    it('changes when providerFamily changes', async () => {
+      const builder = makeBuilder();
+
+      const result1 = await builder.build(makeMinimalInput({ providerFamily: 'openai' }));
+      const result2 = await builder.build(makeMinimalInput({ providerFamily: 'deepseek' }));
+
+      expect(result1.segmentHashes.segmentA).not.toBe(result2.segmentHashes.segmentA);
+    });
+  });
+
+  describe('dynamic fields NOT in Segment A', () => {
+    it('currentDate is NOT in staticPrefix content', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        currentDate: '2026-05-23T12:00:00Z',
+      }));
+
+      expect(result.segments.staticPrefix).not.toContain('2026-05-23');
+      expect(result.segments.staticPrefix).not.toContain('Current Date');
+    });
+
+    it('runId is NOT in staticPrefix content', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        runId: 'run-abc-123',
+      }));
+
+      expect(result.segments.staticPrefix).not.toContain('run-abc-123');
+      expect(result.segments.staticPrefix).not.toContain('Run ID');
+    });
+
+    it('messageId is NOT in staticPrefix content', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        messageId: 'msg-xyz-456',
+      }));
+
+      expect(result.segments.staticPrefix).not.toContain('msg-xyz-456');
+      expect(result.segments.staticPrefix).not.toContain('Message ID');
+    });
+
+    it('dynamic fields ARE in Segment D', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        currentDate: '2026-05-23T12:00:00Z',
+        runId: 'run-abc-123',
+        messageId: 'msg-xyz-456',
+      }));
+
+      expect(result.segments.contextBundle).toContain('Current Date: 2026-05-23');
+      expect(result.segments.contextBundle).toContain('Run ID: run-abc-123');
+      expect(result.segments.contextBundle).toContain('Message ID: msg-xyz-456');
+    });
+  });
+
+  describe('three modes produce different structures', () => {
+    it('routing_json mode produces user message with tool summaries', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        mode: 'routing_json',
+        toolProjection: { toolIds: ['file.read', 'web.search'] },
+        currentUserMessage: 'Read the file',
+      }));
+
+      const toolMessages = result.messages.filter((m) =>
+        m.role === 'system' && m.content.includes('file.read') && m.content.includes('web.search')
+      );
+      expect(toolMessages.length).toBeGreaterThan(0);
+    });
+
+    it('structured_json mode produces minimal tool plane', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        mode: 'structured_json',
+        toolProjection: { toolIds: ['memory.retrieve'] },
+      }));
+
+      expect(result.metadata.mode).toBe('structured_json');
+      expect(result.segments.toolPlane).toContain('memory.retrieve');
+    });
+
+    it('function_calling mode includes full tool descriptions', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        mode: 'function_calling',
+        agentKind: 'kernel',
+        providerFamily: 'openai',
+        toolProjection: {
+          toolIds: ['file.read'],
+          tools: [{
+            type: 'function' as const,
+            function: {
+              name: 'file.read',
+              description: 'Read a file from disk',
+              parameters: { type: 'object', properties: { path: { type: 'string' } } },
+            },
+          }],
+        },
+      }));
+
+      expect(result.segments.toolPlane).toContain('file.read');
+      expect(result.segments.toolPlane).toContain('Read a file from disk');
+    });
+
+    it('empty toolProjection produces empty Segment C', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        mode: 'routing_json',
+      }));
+
+      expect(result.segments.toolPlane).toBe('');
+    });
+  });
+
+  describe('empty inputs produce valid minimal output', () => {
+    it('minimal input produces valid BuiltModelInput', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput());
+
+      expect(result.messages).toBeDefined();
+      expect(result.segments).toBeDefined();
+      expect(result.segmentHashes).toBeDefined();
+      expect(result.metadata).toBeDefined();
+      expect(result.metadata.mode).toBe('routing_json');
+      expect(result.metadata.agentKind).toBe('foreground');
+      expect(result.metadata.providerFamily).toBe('openai');
+    });
+
+    it('with no templates matching, still produces valid output', async () => {
+      const emptyRegistry = new PromptTemplateRegistry(new Map(), '/nonexistent');
+      const loader = new TemplateLoader('/nonexistent');
+      const builder = new ModelInputBuilder({ templateRegistry: emptyRegistry, templateLoader: loader });
+
+      const result = await builder.build(makeMinimalInput({
+        agentKind: 'nonexistent_agent',
+        providerFamily: 'nonexistent_provider',
+      }));
+
+      expect(result.segments.staticPrefix).toBe('');
+      expect(result.segmentHashes.segmentA).toBeDefined();
+      expect(result.messages).toBeDefined();
+    });
+  });
+
+  describe('metadata', () => {
+    it('reflects input mode, agentKind, providerFamily', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        mode: 'function_calling',
+        agentKind: 'kernel',
+        providerFamily: 'deepseek',
+      }));
+
+      expect(result.metadata.mode).toBe('function_calling');
+      expect(result.metadata.agentKind).toBe('kernel');
+      expect(result.metadata.providerFamily).toBe('deepseek');
+    });
+
+    it('messageCount reflects actual message count', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        systemPrompt: 'Test prompt',
+        toolProjection: { toolIds: ['file.read'] },
+        currentUserMessage: 'Hello',
+      }));
+
+      expect(result.metadata.messageCount).toBe(result.messages.length);
+    });
+  });
+
+  describe('cache key', () => {
+    it('excludes Segment D hash', () => {
+      const key1 = computeCacheKey('a-hash', 'b-hash', 'c-hash');
+      expect(key1).toBeDefined();
+      expect(typeof key1).toBe('string');
+      expect(key1.length).toBe(64);
+    });
+
+    it('produces different keys for different inputs', () => {
+      const key1 = computeCacheKey('hash-a', 'hash-b', 'hash-c');
+      const key2 = computeCacheKey('hash-a', 'hash-b', 'hash-d');
+      expect(key1).not.toBe(key2);
+    });
+
+    it('produces same key for same inputs', () => {
+      const key1 = computeCacheKey('hash-a', 'hash-b', 'hash-c');
+      const key2 = computeCacheKey('hash-a', 'hash-b', 'hash-c');
+      expect(key1).toBe(key2);
+    });
+  });
+
+  describe('Segment B (tenant/project)', () => {
+    it('includes systemPrompt', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        systemPrompt: 'You are a helpful assistant.',
+      }));
+
+      expect(result.segments.tenantProject).toContain('You are a helpful assistant.');
+    });
+
+    it('includes routingPrompt', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        routingPrompt: 'Route based on complexity.',
+      }));
+
+      expect(result.segments.tenantProject).toContain('Route based on complexity.');
+    });
+
+    it('includes both when both are provided', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        systemPrompt: 'System instructions.',
+        routingPrompt: 'Routing rules.',
+      }));
+
+      expect(result.segments.tenantProject).toContain('System instructions.');
+      expect(result.segments.tenantProject).toContain('Routing rules.');
+    });
+
+    it('is empty when neither is provided', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput());
+
+      expect(result.segments.tenantProject).toBe('');
+    });
+  });
+
+  describe('Segment D (context bundle)', () => {
+    it('includes pinned items', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        contextBundle: {
+          pinnedItems: [{ itemId: 'p1', content: 'Important context', isPinned: true }],
+        },
+      }));
+
+      expect(result.segments.contextBundle).toContain('Important context');
+      expect(result.segments.contextBundle).toContain('PINNED');
+    });
+
+    it('includes ordered items', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        contextBundle: {
+          orderedItems: [{ itemId: 'o1', content: 'Dynamic data' }],
+        },
+      }));
+
+      expect(result.segments.contextBundle).toContain('Dynamic data');
+    });
+
+    it('includes plan view', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        contextBundle: {
+          planView: 'Plan: Step 1 - Do something',
+        },
+      }));
+
+      expect(result.segments.contextBundle).toContain('Plan: Step 1');
+    });
+
+    it('includes user message', async () => {
+      const builder = makeBuilder();
+      const result = await builder.build(makeMinimalInput({
+        currentUserMessage: 'Please help me with this task',
+      }));
+
+      expect(result.segments.contextBundle).toContain('Please help me with this task');
+    });
+  });
+
+  describe('boundary: no forbidden imports', () => {
+    const builderSource = readFileSync(
+      resolve(process.cwd(), 'src/kernel/model-input/model-input-builder.ts'),
+      'utf-8'
+    );
+
+    it('ModelInputBuilder does NOT import ToolRegistry', () => {
+      expect(builderSource).not.toContain('ToolRegistry');
+    });
+
+    it('ModelInputBuilder does NOT import MemoryStore', () => {
+      expect(builderSource).not.toContain('MemoryStore');
+    });
+
+    it('ModelInputBuilder does NOT import PermissionEngine', () => {
+      expect(builderSource).not.toContain('PermissionEngine');
+    });
+  });
+});
+
+describe('StaticPrefixBuilder', () => {
+  it('assembles Layer 1-4 templates in order', async () => {
+    const templates = makeTestTemplates();
+    const registry = new PromptTemplateRegistry(templates, '/nonexistent');
+    const loader = new TemplateLoader('/nonexistent');
+    const builder = new StaticPrefixBuilder(registry, loader);
+
+    const result = await builder.buildStaticPrefix('foreground', 'openai');
+
+    expect(result.content).toContain('Platform Base for foreground');
+    expect(result.content).toContain('Safety rules for foreground');
+    expect(result.content).toContain('OpenAI provider config for foreground');
+    expect(result.content).toContain('Foreground agent instructions for foreground');
+    expect(result.content).toContain('Output schema for foreground with openai');
+  });
+
+  it('computes stable hash', async () => {
+    const templates = makeTestTemplates();
+    const registry = new PromptTemplateRegistry(templates, '/nonexistent');
+    const loader = new TemplateLoader('/nonexistent');
+    const builder = new StaticPrefixBuilder(registry, loader);
+
+    const result1 = await builder.buildStaticPrefix('foreground', 'openai');
+    const result2 = await builder.buildStaticPrefix('foreground', 'openai');
+
+    expect(result1.hash).toBe(result2.hash);
+    expect(result1.hash.length).toBe(64);
+  });
+
+  it('returns empty content when no templates match', async () => {
+    const emptyRegistry = new PromptTemplateRegistry(new Map(), '/nonexistent');
+    const loader = new TemplateLoader('/nonexistent');
+    const builder = new StaticPrefixBuilder(emptyRegistry, loader);
+
+    const result = await builder.buildStaticPrefix('nonexistent', 'nonexistent');
+
+    expect(result.content).toBe('');
+    expect(result.hash).toBeDefined();
+  });
+});
+
+describe('computeCacheKey', () => {
+  it('returns a 64-character hex string', () => {
+    const key = computeCacheKey('a', 'b', 'c');
+    expect(key).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('is deterministic', () => {
+    const key1 = computeCacheKey('segA', 'segB', 'segC');
+    const key2 = computeCacheKey('segA', 'segB', 'segC');
+    expect(key1).toBe(key2);
+  });
+
+  it('changes when any segment hash changes', () => {
+    const base = computeCacheKey('A', 'B', 'C');
+    expect(computeCacheKey('X', 'B', 'C')).not.toBe(base);
+    expect(computeCacheKey('A', 'X', 'C')).not.toBe(base);
+    expect(computeCacheKey('A', 'B', 'X')).not.toBe(base);
+  });
+});
