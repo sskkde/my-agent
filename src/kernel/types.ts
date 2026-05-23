@@ -21,6 +21,9 @@ export interface ToolUseResult {
 
 export interface KernelRunInput {
   contextBundle: ContextBundle;
+  /** Per-run tool projection — takes priority over KernelConfig.toolProjection.
+   *  Allows different tool visibility per tenant, workflow step, approval state, or connector scope. */
+  toolProjection?: ToolPlaneProjection;
   maxIterations?: number;
   timeoutMs?: number;
   config?: Record<string, unknown>;

@@ -286,3 +286,125 @@ describe('AgentKernel toolProjection in function_calling mode', () => {
     expect(tools).toBeUndefined();
   });
 });
+
+describe('AgentKernel toolProjection per-run override', () => {
+  let fakeLLM: FakeLLMAdapter;
+
+  beforeEach(() => {
+    fakeLLM = new FakeLLMAdapter();
+  });
+
+  it('KernelRunInput.toolProjection overrides KernelConfig.toolProjection', async () => {
+    const configProjection: ToolPlaneProjection = {
+      toolIds: ['status.query'],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'status.query',
+            description: 'Query status',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+      ],
+    };
+    const runProjection: ToolPlaneProjection = {
+      toolIds: ['web.search'],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'web.search',
+            description: 'Search the web',
+            parameters: { type: 'object', properties: { query: { type: 'string' } } },
+          },
+        },
+      ],
+    };
+
+    const config = makeBaseConfig({
+      llmAdapter: fakeLLM,
+      toolProjection: configProjection,
+    });
+    const kernel = new AgentKernel(config);
+
+    const input: KernelRunInput = {
+      ...makeRunInput(),
+      toolProjection: runProjection,
+    };
+    await kernel.run(input);
+
+    const request = fakeLLM.getLastRequest();
+    expect(request).toBeDefined();
+    expect(request!.tools!.length).toBe(1);
+    expect(request!.tools![0].function.name).toBe('web.search');
+  });
+
+  it('KernelRunInput.toolProjection is used when KernelConfig has none', async () => {
+    const runProjection: ToolPlaneProjection = {
+      toolIds: ['status.query', 'web.search'],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'status.query',
+            description: 'Query status',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'web.search',
+            description: 'Search the web',
+            parameters: { type: 'object', properties: { query: { type: 'string' } } },
+          },
+        },
+      ],
+    };
+
+    const config = makeBaseConfig({ llmAdapter: fakeLLM });
+    const kernel = new AgentKernel(config);
+
+    const input: KernelRunInput = {
+      ...makeRunInput(),
+      toolProjection: runProjection,
+    };
+    await kernel.run(input);
+
+    const request = fakeLLM.getLastRequest();
+    expect(request).toBeDefined();
+    expect(request!.tools!.length).toBe(2);
+    expect(request!.tools![0].function.name).toBe('status.query');
+    expect(request!.tools![1].function.name).toBe('web.search');
+  });
+
+  it('falls back to KernelConfig.toolProjection when run input has none', async () => {
+    const configProjection: ToolPlaneProjection = {
+      toolIds: ['status.query'],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'status.query',
+            description: 'Query status',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+      ],
+    };
+
+    const config = makeBaseConfig({
+      llmAdapter: fakeLLM,
+      toolProjection: configProjection,
+    });
+    const kernel = new AgentKernel(config);
+
+    await kernel.run(makeRunInput());
+
+    const request = fakeLLM.getLastRequest();
+    expect(request).toBeDefined();
+    expect(request!.tools!.length).toBe(1);
+    expect(request!.tools![0].function.name).toBe('status.query');
+  });
+});
