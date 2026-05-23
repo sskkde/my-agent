@@ -369,9 +369,16 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       : createProviderScopedLLMAdapter({ providerConfigStore })
   );
 
+  // Create ModelInputBuilder early so it can be shared by ForegroundAgent and AgentKernel
+  const modelInputBuilder = new ModelInputBuilder({
+    templateRegistry: new PromptTemplateRegistry(),
+    templateLoader: new TemplateLoader(),
+  });
+
   const foregroundAgent = injectedForegroundAgent ?? createForegroundAgent({
     llmAdapter,
     agentConfig: agentConfigStore.getByUser('default') ?? undefined,
+    modelInputBuilder,
   });
   const refreshProvidersForUser = (_userId: string): void => {
     // Request-scoped adapters read provider configs on each processing scope.
@@ -496,12 +503,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     ? (modelResolution.selectedProviderId.startsWith('ollama') ? 'ollama' : 'openai')
     : 'openai';
 
-  const modelInputBuilder = new ModelInputBuilder({
-    templateRegistry: new PromptTemplateRegistry(),
-    templateLoader: new TemplateLoader(),
-  });
-
-  // Use injected agent kernel or create default with real tool executor
   const agentKernel = injectedAgentKernel ?? new AgentKernel({
     llmAdapter,
     toolExecutor: kernelToolExecutor,
@@ -541,6 +542,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     longTermMemoryStore,
     memoryExtractionRunStore,
     llmAdapter,
+    modelInputBuilder,
   });
 
   const workflowRuntime = createWorkflowRuntime({

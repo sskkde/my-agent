@@ -2,12 +2,49 @@ import { describe, it, expect, vi } from 'vitest';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import type { WebSearchResult } from '../../../src/search/types.js';
+import type { BuiltModelInput, ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js';
+import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
 
 const FIXTURES_DIR = join(__dirname, '../../fixtures/web-search');
 
 async function loadFixture(filename: string): Promise<unknown> {
   const content = await readFile(join(FIXTURES_DIR, filename), 'utf-8');
   return JSON.parse(content);
+}
+
+function createMockModelInputBuilder(): ModelInputBuilder {
+  const mock = {
+    build: vi.fn().mockImplementation(async (input: ModelInputBuildInput) => {
+      const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
+      messages.push({ role: 'system', content: 'System prompt' });
+      if (input.currentUserMessage) {
+        messages.push({ role: 'user', content: input.currentUserMessage });
+      }
+      const result: BuiltModelInput = {
+        messages,
+        segments: {
+          staticPrefix: 'static',
+          tenantProject: '',
+          toolPlane: '',
+          contextBundle: input.currentUserMessage || '',
+        },
+        segmentHashes: {
+          segmentA: 'a'.repeat(64),
+          segmentB: 'b'.repeat(64),
+          segmentC: 'c'.repeat(64),
+          segmentD: 'd'.repeat(64),
+        },
+        metadata: {
+          mode: input.mode,
+          agentKind: input.agentKind,
+          providerFamily: input.providerFamily,
+          messageCount: messages.length,
+        },
+      };
+      return result;
+    }),
+  };
+  return mock as unknown as ModelInputBuilder;
 }
 
 describe('web-search-providers contract tests', () => {
@@ -471,6 +508,8 @@ describe('web-search-providers contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -499,6 +538,8 @@ describe('web-search-providers contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -536,6 +577,8 @@ describe('web-search-providers contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
@@ -580,6 +623,8 @@ describe('web-search-providers contract tests', () => {
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
         webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });

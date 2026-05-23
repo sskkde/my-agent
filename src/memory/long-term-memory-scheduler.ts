@@ -3,6 +3,7 @@ import type { SummaryStore } from '../storage/summary-store.js';
 import type { LongTermMemoryStore } from '../storage/long-term-memory-store.js';
 import type { MemoryExtractionRunStore } from '../storage/memory-extraction-run-store.js';
 import type { LLMAdapter } from '../llm/adapter.js';
+import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
 import {
   createLongTermMemoryExtractorService,
   type ExtractionResult,
@@ -14,6 +15,8 @@ export type SchedulerDeps = {
   longTermMemoryStore: LongTermMemoryStore;
   memoryExtractionRunStore: MemoryExtractionRunStore;
   llmAdapter: LLMAdapter;
+  modelInputBuilder: ModelInputBuilder;
+  providerFamily?: string;
 };
 
 export type ScheduleInput = {
@@ -41,6 +44,8 @@ async function executeExtraction(
     longTermMemoryStore: deps.longTermMemoryStore,
     memoryExtractionRunStore: deps.memoryExtractionRunStore,
     llmAdapter: deps.llmAdapter,
+    modelInputBuilder: deps.modelInputBuilder,
+    providerFamily: deps.providerFamily,
   });
 
   return service.run();
