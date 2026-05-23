@@ -1,5 +1,6 @@
 import type { ContextBundle, ContextItem } from '../context/types.js';
 import type { LLMAdapter } from '../llm/adapter.js';
+import type { ModelInputBuilder } from './model-input/model-input-builder.js';
 
 export interface ToolUseRequest {
   toolCallId: string;
@@ -130,10 +131,12 @@ export interface KernelConfig {
   toolExecutor: ToolExecutor;
   contextManager: ContextManager;
   dispatcher: RuntimeDispatcher;
+  modelInputBuilder: ModelInputBuilder;
   maxIterations: number;
   timeoutMs: number;
   compactThreshold?: number;
   defaultModel?: string;
+  providerFamily?: string;
 }
 
 export interface CompactTriggerResult {
