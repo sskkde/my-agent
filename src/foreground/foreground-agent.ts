@@ -285,6 +285,19 @@ Please respond with valid JSON matching the exact schema shown above.`;
       ...(supportsJsonMode ? { responseFormat: { type: 'json_object' } } : {}),
     };
 
+    // Dev-only logging for prompt token estimation
+    if (process.env.NODE_ENV !== 'production') {
+      const promptTokens = messages.reduce((sum, msg) => sum + Math.ceil(msg.content.length / 4), 0);
+      console.log('[ForegroundAgent] callLLMRouter prompt estimate:', {
+        messageCount: messages.length,
+        estimatedPromptTokens: promptTokens,
+        model: resolvedModel,
+        temperature: 0.1,
+        maxTokens: 500,
+        jsonMode: supportsJsonMode,
+      });
+    }
+
     try {
       const result: LLMResult = await this.callLLMWithTimeout(request, routingTimeoutMs);
 
