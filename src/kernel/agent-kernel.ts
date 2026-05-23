@@ -10,6 +10,9 @@ import type {
   KernelTranscriptEntry,
   CompactTriggerResult,
 } from './types.js';
+import type { ModelInputBuildInput } from './model-input/model-input-types.js';
+import { projectBundleToData } from './model-input/context-bundle-adapter.js';
+import { extractToolsForRequest } from './model-input/model-input-builder.js';
 
 export class AgentKernel {
   private config: KernelConfig;
@@ -39,7 +42,7 @@ export class AgentKernel {
           return this.buildResult(state, 'timeout');
         }
 
-        const llmRequest = this.buildLLMRequest(input.contextBundle, state);
+        const llmRequest = await this.buildLLMRequest(input.contextBundle, state);
         this.commitTranscript(state, 'llm_request', {
           model: llmRequest.model,
           messages: llmRequest.messages,
@@ -116,16 +119,48 @@ export class AgentKernel {
     };
   }
 
-  private buildLLMRequest(contextBundle: ContextBundle, state: KernelRunState): LLMRequest {
+  private async buildLLMRequest(contextBundle: ContextBundle, state: KernelRunState): Promise<LLMRequest> {
+    const contextBundleData = projectBundleToData(contextBundle);
+
+    const transcriptMessages = this.buildTranscriptMessages(state);
+
+    const buildInput: ModelInputBuildInput = {
+      mode: 'function_calling',
+      agentKind: 'kernel',
+      providerFamily: this.config.providerFamily ?? 'openai',
+      contextBundle: contextBundleData,
+      transcript: transcriptMessages,
+      currentDate: new Date().toISOString(),
+      sessionId: contextBundle.runId,
+      runId: contextBundle.runId,
+    };
+
+    const builtInput = await this.config.modelInputBuilder.build(buildInput);
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AgentKernel] buildLLMRequest via ModelInputBuilder:', {
+        messageCount: builtInput.messages.length,
+        mode: builtInput.metadata.mode,
+        agentKind: builtInput.metadata.agentKind,
+        providerFamily: builtInput.metadata.providerFamily,
+        transcriptEntries: state.transcript.length,
+        bundleTokenEstimate: contextBundle.tokenEstimate,
+        shouldCompactSoon: contextBundle.compactHints?.shouldCompactSoon ?? false,
+      });
+    }
+
+    const tools = extractToolsForRequest(buildInput);
+
+    return {
+      model: this.config.defaultModel ?? 'default-model',
+      messages: builtInput.messages,
+      temperature: 0.7,
+      tools,
+    };
+  }
+
+  private buildTranscriptMessages(state: KernelRunState): LLMMessage[] {
     const messages: LLMMessage[] = [];
-
-    for (const item of contextBundle.pinnedItems) {
-      messages.push(this.contextItemToMessage(item));
-    }
-
-    for (const item of contextBundle.orderedItems) {
-      messages.push(this.contextItemToMessage(item));
-    }
 
     for (const entry of state.transcript) {
       if (entry.type === 'llm_response' && (entry.content as { content?: string }).content) {
@@ -145,38 +180,7 @@ export class AgentKernel {
       }
     }
 
-    // Dev-only logging for token estimation and compact trigger info
-    if (process.env.NODE_ENV !== 'production') {
-      const estimatedTokens = messages.reduce((sum, msg) => sum + Math.ceil(msg.content.length / 4), 0);
-      console.log('[AgentKernel] buildLLMRequest context estimate:', {
-        messageCount: messages.length,
-        estimatedPromptTokens: estimatedTokens,
-        pinnedItems: contextBundle.pinnedItems.length,
-        orderedItems: contextBundle.orderedItems.length,
-        transcriptEntries: state.transcript.length,
-        bundleTokenEstimate: contextBundle.tokenEstimate,
-        shouldCompactSoon: contextBundle.compactHints?.shouldCompactSoon ?? false,
-      });
-    }
-
-    return {
-      model: this.config.defaultModel ?? 'default-model',
-      messages,
-      temperature: 0.7,
-    };
-  }
-
-  private contextItemToMessage(item: ContextItem): LLMMessage {
-    const roleMap: Record<string, 'system' | 'user' | 'assistant' | 'tool'> = {
-      instruction: 'system',
-      fact: 'user',
-      tool_output: 'tool',
-    };
-
-    return {
-      role: roleMap[item.semanticType] || 'user',
-      content: item.content,
-    };
+    return messages;
   }
 
   private hasToolCalls(response: LLMResponse): boolean {

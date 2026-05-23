@@ -67,6 +67,9 @@ import type { DatabaseAdapter } from '../storage/database-adapter.js';
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js';
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js';
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js';
+import { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
+import { PromptTemplateRegistry } from '../prompt/prompt-template-registry.js';
+import { TemplateLoader } from '../prompt/template-loader.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -489,6 +492,15 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   });
   const defaultModel = modelResolution.type === 'success' ? modelResolution.selectedModel ?? undefined : undefined;
 
+  const providerFamily = modelResolution.type === 'success' && modelResolution.selectedProviderId
+    ? (modelResolution.selectedProviderId.startsWith('ollama') ? 'ollama' : 'openai')
+    : 'openai';
+
+  const modelInputBuilder = new ModelInputBuilder({
+    templateRegistry: new PromptTemplateRegistry(),
+    templateLoader: new TemplateLoader(),
+  });
+
   // Use injected agent kernel or create default with real tool executor
   const agentKernel = injectedAgentKernel ?? new AgentKernel({
     llmAdapter,
@@ -509,9 +521,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       applyDelta: () => {},
     },
     dispatcher: createKernelDispatcherAdapter(runtimeDispatcher),
+    modelInputBuilder,
     maxIterations: 10,
     timeoutMs: 30000,
     defaultModel,
+    providerFamily,
   });
 
   // Create processing observer that broadcasts status to SSE subscribers

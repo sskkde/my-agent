@@ -17,6 +17,9 @@ import { AgentKernel } from '../../../src/kernel/agent-kernel.js';
 import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js';
 import type { LLMResult } from '../../../src/llm/types.js';
 import type { LLMProvider } from '../../../src/llm/provider';
+import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
+import { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js';
+import { TemplateLoader } from '../../../src/prompt/template-loader.js';
 
 class FakeLLMAdapter implements LLMAdapter {
   private responses: LLMResponse[];
@@ -269,11 +272,41 @@ describe('Agent Kernel Single-Loop Runtime', () => {
   let fakeToolExecutor: FakeToolExecutor;
   let fakeContextManager: FakeContextManager;
   let fakeDispatcher: FakeDispatcher;
+  let modelInputBuilder: ModelInputBuilder;
 
   beforeEach(() => {
     fakeToolExecutor = new FakeToolExecutor();
     fakeContextManager = new FakeContextManager();
     fakeDispatcher = new FakeDispatcher();
+
+    const testRegistry = new PromptTemplateRegistry(
+      new Map([
+        ['platform:base', {
+          id: 'platform:base',
+          version: '2026-05-23',
+          path: 'platform/base.md',
+          agentKind: '*',
+          providerFamily: '*',
+          layer: 1,
+          description: 'Test base',
+          content: 'You are a helpful assistant.',
+        }],
+        ['agents:kernel', {
+          id: 'agents:kernel',
+          version: '2026-05-23',
+          path: 'agents/kernel.md',
+          agentKind: 'kernel',
+          providerFamily: '*',
+          layer: 3,
+          description: 'Test kernel',
+          content: 'Execute tasks using available tools.',
+        }],
+      ])
+    );
+    modelInputBuilder = new ModelInputBuilder({
+      templateRegistry: testRegistry,
+      templateLoader: new TemplateLoader(),
+    });
 
     fakeToolExecutor.registerTool('calculator', async (params) => {
       const { a, b, operation } = params as { a: number; b: number; operation: string };
@@ -344,6 +377,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
         contextManager: fakeContextManager as unknown as ContextManager,
         dispatcher: fakeDispatcher as unknown as RuntimeDispatcher,
+        modelInputBuilder,
         maxIterations: 10,
         timeoutMs: 60000,
       };
@@ -391,6 +425,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
         contextManager: fakeContextManager as unknown as ContextManager,
         dispatcher: fakeDispatcher as unknown as RuntimeDispatcher,
+        modelInputBuilder,
         maxIterations: 10,
         timeoutMs: 60000,
       };
@@ -442,6 +477,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
         contextManager: fakeContextManager as unknown as ContextManager,
         dispatcher: fakeDispatcher as unknown as RuntimeDispatcher,
+        modelInputBuilder,
         maxIterations: 3,
         timeoutMs: 60000,
       };
@@ -486,6 +522,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
         contextManager: fakeContextManager as unknown as ContextManager,
         dispatcher: fakeDispatcher as unknown as RuntimeDispatcher,
+        modelInputBuilder,
         maxIterations: 10,
         timeoutMs: 0,
       };
@@ -526,6 +563,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
         contextManager: fakeContextManager as unknown as ContextManager,
         dispatcher: fakeDispatcher as unknown as RuntimeDispatcher,
+        modelInputBuilder,
         maxIterations: 10,
         timeoutMs: 60000,
       };
@@ -559,6 +597,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
         contextManager: fakeContextManager as unknown as ContextManager,
         dispatcher: fakeDispatcher as unknown as RuntimeDispatcher,
+        modelInputBuilder,
         maxIterations: 10,
         timeoutMs: 60000,
       };
