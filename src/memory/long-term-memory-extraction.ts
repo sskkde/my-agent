@@ -7,7 +7,10 @@ export type AllowedLongTermMemoryType =
   | 'user_profile'
   | 'user_safety_rule'
   | 'project_state'
-  | 'long_term_fact';
+  | 'relationship'
+  | 'long_term_fact'
+  | 'durable_fact'
+  | 'episodic_summary';
 
 export type ExtractionSourceRefs = {
   transcriptRefs?: string[];
@@ -61,7 +64,10 @@ export const P0_MEMORY_TYPES: AllowedLongTermMemoryType[] = [
   'user_profile',
   'user_safety_rule',
   'project_state',
+  'relationship',
   'long_term_fact',
+  'durable_fact',
+  'episodic_summary',
 ];
 export const MIN_CONFIDENCE = 0.7;
 
