@@ -520,3 +520,324 @@ describe('computeCacheKey', () => {
     expect(computeCacheKey('A', 'B', 'X')).not.toBe(base);
   });
 });
+
+// ─── PM-7: Strategy Projection Integration Tests ────────────────────────────────
+
+describe('PM-7: Three strategy projections render together', () => {
+  it('renders personaProjection, toolSelectionPolicy, and memoryPolicyProjection in correct segments', async () => {
+    const builder = makeBuilder();
+    const result = await builder.build(makeMinimalInput({
+      // Segment B - Persona
+      personaProjection: {
+        personaId: 'test-persona',
+        styleGuidelines: 'Be concise and professional.',
+        constraints: ['No jargon', 'Be helpful'],
+      },
+      // Segment C - Tool Selection Policy
+      toolProjection: { toolIds: ['file.read', 'web.search'] },
+      toolSelectionPolicy: {
+        heuristics: 'Prefer file.read for local operations.',
+        priorityRules: ['Use web.search when file.read fails'],
+        riskRules: ['Avoid web.search for sensitive queries'],
+      },
+      // Segment D - Memory Policy
+      memoryPolicyProjection: {
+        useRules: 'Use memory for user preferences.',
+        invisibilityRules: ['Hidden preferences should not be revealed'],
+        priorityRules: ['Recent memories take priority'],
+      },
+      currentUserMessage: 'Test message',
+    }));
+
+    // Segment B contains persona content (rendered by renderPersonaProjection)
+    expect(result.segments.tenantProject).toContain('风格指南');
+    expect(result.segments.tenantProject).toContain('Be concise and professional.');
+    expect(result.segments.tenantProject).toContain('约束条件');
+    expect(result.segments.tenantProject).toContain('No jargon');
+
+    // Segment C contains tool selection policy (rendered by renderToolSelectionPolicy)
+    expect(result.segments.toolPlane).toContain('Tool Selection Policy:');
+    expect(result.segments.toolPlane).toContain('Prefer file.read for local operations.');
+    expect(result.segments.toolPlane).toContain('Priority Rules:');
+    expect(result.segments.toolPlane).toContain('Use web.search when file.read fails');
+
+    // Segment D contains memory policy (rendered by renderMemoryPolicyProjection)
+    expect(result.segments.contextBundle).toContain('Memory Policy:');
+    expect(result.segments.contextBundle).toContain('Use memory for user preferences.');
+    expect(result.segments.contextBundle).toContain('Invisibility Rules:');
+    expect(result.segments.contextBundle).toContain('Hidden preferences should not be revealed');
+  });
+
+  it('each projection only appears in its designated segment', async () => {
+    const builder = makeBuilder();
+    const result = await builder.build(makeMinimalInput({
+      personaProjection: {
+        personaId: 'test-persona',
+        styleGuidelines: 'Persona style',
+        constraints: [],
+      },
+      toolProjection: { toolIds: ['file.read'] },
+      toolSelectionPolicy: {
+        heuristics: 'Tool policy content',
+      },
+      memoryPolicyProjection: {
+        useRules: 'Memory policy content',
+      },
+    }));
+
+    // Persona only in Segment B, not in A/C/D
+    expect(result.segments.tenantProject).toContain('Persona style');
+    expect(result.segments.staticPrefix).not.toContain('Persona style');
+    expect(result.segments.toolPlane).not.toContain('Persona style');
+    expect(result.segments.contextBundle).not.toContain('Persona style');
+
+    // Tool selection policy only in Segment C, not in A/B/D
+    expect(result.segments.toolPlane).toContain('Tool policy content');
+    expect(result.segments.staticPrefix).not.toContain('Tool policy content');
+    expect(result.segments.tenantProject).not.toContain('Tool policy content');
+    expect(result.segments.contextBundle).not.toContain('Tool policy content');
+
+    // Memory policy only in Segment D, not in A/B/C
+    expect(result.segments.contextBundle).toContain('Memory policy content');
+    expect(result.segments.staticPrefix).not.toContain('Memory policy content');
+    expect(result.segments.tenantProject).not.toContain('Memory policy content');
+    expect(result.segments.toolPlane).not.toContain('Memory policy content');
+  });
+});
+
+describe('PM-7: Hash stability regression (flag OFF)', () => {
+  it('produces identical hashes when all projection fields are undefined', async () => {
+    const builder = makeBuilder();
+
+    // Create input without any projection fields (simulating flag OFF)
+    const input = makeMinimalInput({
+      systemPrompt: 'Test system prompt',
+      routingPrompt: 'Test routing prompt',
+      toolProjection: { toolIds: ['file.read'] },
+      currentUserMessage: 'Test message',
+    });
+
+    // Build twice with identical input
+    const result1 = await builder.build(input);
+    const result2 = await builder.build(input);
+
+    // All segment hashes must be identical
+    expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA);
+    expect(result1.segmentHashes.segmentB).toBe(result2.segmentHashes.segmentB);
+    expect(result1.segmentHashes.segmentC).toBe(result2.segmentHashes.segmentC);
+    expect(result1.segmentHashes.segmentD).toBe(result2.segmentHashes.segmentD);
+  });
+
+  it('produces stable hash when projection fields are explicitly undefined', async () => {
+    const builder = makeBuilder();
+
+    // Explicitly set projection fields to undefined (flag OFF behavior)
+    const input = makeMinimalInput({
+      personaProjection: undefined,
+      toolSelectionPolicy: undefined,
+      memoryPolicyProjection: undefined,
+      systemPrompt: 'Test',
+    });
+
+    const result1 = await builder.build(input);
+    const result2 = await builder.build(input);
+
+    expect(result1.segmentHashes.segmentB).toBe(result2.segmentHashes.segmentB);
+    expect(result1.segmentHashes.segmentC).toBe(result2.segmentHashes.segmentC);
+    expect(result1.segmentHashes.segmentD).toBe(result2.segmentHashes.segmentD);
+  });
+
+  it('hash changes when projection is added (flag ON)', async () => {
+    const builder = makeBuilder();
+
+    const inputWithoutProjection = makeMinimalInput({
+      systemPrompt: 'Test',
+      toolProjection: { toolIds: ['file.read'] },
+    });
+
+    const inputWithProjection = makeMinimalInput({
+      systemPrompt: 'Test',
+      toolProjection: { toolIds: ['file.read'] },
+      toolSelectionPolicy: {
+        heuristics: 'Use tools wisely',
+      },
+    });
+
+    const result1 = await builder.build(inputWithoutProjection);
+    const result2 = await builder.build(inputWithProjection);
+
+    // Segment C hash should change when policy is added
+    expect(result1.segmentHashes.segmentC).not.toBe(result2.segmentHashes.segmentC);
+    // Other segments should remain stable
+    expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA);
+    expect(result1.segmentHashes.segmentB).toBe(result2.segmentHashes.segmentB);
+  });
+});
+
+describe('PM-7: Token increment validation', () => {
+  // Character estimation: ~4 chars per token
+
+  it('Segment B increment ≤ 150 tokens (600 chars) for personaProjection', async () => {
+    const builder = makeBuilder();
+
+    const inputWithout = makeMinimalInput({
+      systemPrompt: 'Test',
+    });
+
+    const inputWith = makeMinimalInput({
+      systemPrompt: 'Test',
+      personaProjection: {
+        personaId: 'persona-123',
+        styleGuidelines: 'Be concise, professional, and helpful. Use clear language.',
+        constraints: ['Avoid jargon', 'Be respectful', 'Stay on topic'],
+      },
+    });
+
+    const resultWithout = await builder.build(inputWithout);
+    const resultWith = await builder.build(inputWith);
+
+    const increment = resultWith.segments.tenantProject.length - resultWithout.segments.tenantProject.length;
+    // Increment should be ≤ 600 chars (≈150 tokens)
+    expect(increment).toBeLessThanOrEqual(600);
+    expect(increment).toBeGreaterThan(0); // Should have added content
+  });
+
+  it('Segment C increment ≤ 200 tokens (800 chars) for toolSelectionPolicy', async () => {
+    const builder = makeBuilder();
+
+    const inputWithout = makeMinimalInput({
+      toolProjection: { toolIds: ['file.read', 'web.search'] },
+    });
+
+    const inputWith = makeMinimalInput({
+      toolProjection: { toolIds: ['file.read', 'web.search'] },
+      toolSelectionPolicy: {
+        heuristics: 'Prefer file.read for local files. Use web.search for external content.',
+        priorityRules: ['file.read first', 'web.search as fallback'],
+        riskRules: ['Avoid web.search for sensitive data'],
+      },
+    });
+
+    const resultWithout = await builder.build(inputWithout);
+    const resultWith = await builder.build(inputWith);
+
+    const increment = resultWith.segments.toolPlane.length - resultWithout.segments.toolPlane.length;
+    // Increment should be ≤ 800 chars (≈200 tokens)
+    expect(increment).toBeLessThanOrEqual(800);
+    expect(increment).toBeGreaterThan(0);
+  });
+
+  it('Segment D increment ≤ 150 tokens (600 chars) for memoryPolicyProjection', async () => {
+    const builder = makeBuilder();
+
+    const inputWithout = makeMinimalInput({
+      currentUserMessage: 'Test',
+    });
+
+    const inputWith = makeMinimalInput({
+      currentUserMessage: 'Test',
+      memoryPolicyProjection: {
+        useRules: 'Prioritize recent memories. Use for context awareness.',
+        invisibilityRules: ['Hidden memories not revealed'],
+        priorityRules: ['High importance first'],
+      },
+    });
+
+    const resultWithout = await builder.build(inputWithout);
+    const resultWith = await builder.build(inputWith);
+
+    const increment = resultWith.segments.contextBundle.length - resultWithout.segments.contextBundle.length;
+    // Increment should be ≤ 600 chars (≈150 tokens)
+    expect(increment).toBeLessThanOrEqual(600);
+    expect(increment).toBeGreaterThan(0);
+  });
+
+  it('Total increment ≤ 500 tokens (2000 chars) for all three projections', async () => {
+    const builder = makeBuilder();
+
+    const inputWithout = makeMinimalInput({
+      systemPrompt: 'Test',
+      toolProjection: { toolIds: ['file.read'] },
+      currentUserMessage: 'Test',
+    });
+
+    const inputWith = makeMinimalInput({
+      systemPrompt: 'Test',
+      toolProjection: { toolIds: ['file.read'] },
+      currentUserMessage: 'Test',
+      personaProjection: {
+        personaId: 'p1',
+        styleGuidelines: 'Be helpful',
+        constraints: ['No jargon'],
+      },
+      toolSelectionPolicy: {
+        heuristics: 'Use tools wisely',
+        priorityRules: ['Safety first'],
+      },
+      memoryPolicyProjection: {
+        useRules: 'Use memory for context',
+        priorityRules: ['Recent first'],
+      },
+    });
+
+    const resultWithout = await builder.build(inputWithout);
+    const resultWith = await builder.build(inputWith);
+
+    const totalWithout = resultWithout.segments.tenantProject.length +
+                         resultWithout.segments.toolPlane.length +
+                         resultWithout.segments.contextBundle.length;
+    const totalWith = resultWith.segments.tenantProject.length +
+                      resultWith.segments.toolPlane.length +
+                      resultWith.segments.contextBundle.length;
+
+    const totalIncrement = totalWith - totalWithout;
+    // Total increment should be ≤ 2000 chars (≈500 tokens)
+    expect(totalIncrement).toBeLessThanOrEqual(2000);
+  });
+});
+
+describe('PM-7: Default values are undefined (not empty string)', () => {
+  it('projection fields are undefined when not provided', () => {
+    const input = makeMinimalInput();
+
+    // When fields are not provided, they should be undefined
+    expect(input.personaProjection).toBeUndefined();
+    expect(input.toolSelectionPolicy).toBeUndefined();
+    expect(input.memoryPolicyProjection).toBeUndefined();
+  });
+
+  it('build() handles undefined projection fields without error', async () => {
+    const builder = makeBuilder();
+
+    const input: import('../../../../src/kernel/model-input/model-input-types.js').ModelInputBuildInput = {
+      mode: 'routing_json',
+      agentKind: 'foreground',
+      providerFamily: 'openai',
+      // personaProjection intentionally not set
+      // toolSelectionPolicy intentionally not set
+      // memoryPolicyProjection intentionally not set
+    };
+
+    const result = await builder.build(input);
+
+    // Should build successfully without errors
+    expect(result).toBeDefined();
+    expect(result.segments).toBeDefined();
+    expect(result.segmentHashes).toBeDefined();
+
+    // Segments should be valid (empty strings for B/C when no content)
+    expect(result.segments.tenantProject).toBe('');
+    expect(result.segments.toolPlane).toBe('');
+  });
+
+  it('empty segments have valid hashes', async () => {
+    const builder = makeBuilder();
+
+    const result = await builder.build(makeMinimalInput());
+
+    // Empty segments should still have valid SHA-256 hashes
+    expect(result.segmentHashes.segmentB).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.segmentHashes.segmentC).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.segmentHashes.segmentD).toMatch(/^[a-f0-9]{64}$/);
+  });
+});

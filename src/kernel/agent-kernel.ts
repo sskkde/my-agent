@@ -14,6 +14,11 @@ import type { ModelInputBuildInput } from './model-input/model-input-types.js';
 import { projectBundleToData } from './model-input/context-bundle-adapter.js';
 import { extractToolsForRequest } from './model-input/model-input-builder.js';
 
+// ─── Feature Flags ──────────────────────────────────────────────────────────
+function isPromptMemoryP0Enabled(): boolean {
+  return process.env.PROMPT_MEMORY_P0_ENABLED === 'true';
+}
+
 export class AgentKernel {
   private config: KernelConfig;
   private lastBuiltModelInput?: import('./model-input/model-input-types.js').BuiltModelInput;
@@ -145,6 +150,9 @@ export class AgentKernel {
       sessionId: input.contextBundle.runId,
       runId: input.contextBundle.runId,
       toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
+      ...(isPromptMemoryP0Enabled() ? {
+        toolSelectionPolicy: input.toolSelectionPolicy,
+      } : {}),
     };
 
     const builtInput = await this.config.modelInputBuilder.build(buildInput);

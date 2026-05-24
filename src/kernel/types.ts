@@ -1,7 +1,7 @@
 import type { ContextBundle, ContextItem } from '../context/types.js';
 import type { LLMAdapter } from '../llm/adapter.js';
 import type { ModelInputBuilder } from './model-input/model-input-builder.js';
-import type { ToolPlaneProjection } from './model-input/model-input-types.js';
+import type { ToolPlaneProjection, ToolSelectionPolicyProjection } from './model-input/model-input-types.js';
 
 export interface ToolUseRequest {
   toolCallId: string;
@@ -24,6 +24,8 @@ export interface KernelRunInput {
   /** Per-run tool projection — takes priority over KernelConfig.toolProjection.
    *  Allows different tool visibility per tenant, workflow step, approval state, or connector scope. */
   toolProjection?: ToolPlaneProjection;
+  /** Per-run tool selection policy — injected when PROMPT_MEMORY_P0_ENABLED is true. */
+  toolSelectionPolicy?: ToolSelectionPolicyProjection;
   maxIterations?: number;
   timeoutMs?: number;
   config?: Record<string, unknown>;

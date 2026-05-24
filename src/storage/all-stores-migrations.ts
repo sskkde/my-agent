@@ -2141,6 +2141,38 @@ export const addTenantIdMigration: Migration = {
   down: ``
 };
 
+export const shadowExtractionColumnsMigration: Migration = {
+  version: 54,
+  name: 'add_shadow_extraction_columns',
+  up: `
+    ALTER TABLE memory_extraction_runs ADD COLUMN policy_version TEXT DEFAULT NULL;
+    ALTER TABLE memory_extraction_runs ADD COLUMN variant TEXT DEFAULT NULL;
+    ALTER TABLE memory_extraction_runs ADD COLUMN shadow_comparison_payload TEXT DEFAULT NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_variant
+      ON memory_extraction_runs(user_id, variant) WHERE variant IS NOT NULL
+  `,
+  down: ``
+};
+
+export const addEntityTimeIndexMigration: Migration = {
+  version: 55,
+  name: 'add_entity_time_index',
+  up: `
+    ALTER TABLE long_term_memories ADD COLUMN entity_names TEXT DEFAULT NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_ltm_entity_names
+      ON long_term_memories(entity_names);
+
+    CREATE INDEX IF NOT EXISTS idx_ltm_created_at
+      ON long_term_memories(json_extract(lifecycle, '$.createdAt'))
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_ltm_entity_names;
+    DROP INDEX IF EXISTS idx_ltm_created_at
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -2248,6 +2280,12 @@ export const allStoreMigrations: Migration[] = [
   organizationsTableMigration,                // v51
   userOrganizationsTableMigration,            // v52
   addTenantIdMigration,                       // v53
+
+  // Shadow extraction columns
+  shadowExtractionColumnsMigration,           // v54
+
+  // Entity/time index for long-term memories
+  addEntityTimeIndexMigration,                // v55
 ];
 
 /**
