@@ -1,5 +1,4 @@
 import type { ExecutionPlanState } from '../shared/states.js';
-import type { PlannerStatePatchData } from '../memory/planner-state-bridge.js';
 
 export type PlannerRunState =
   | 'initializing'
@@ -77,6 +76,37 @@ export interface ExecutionPlanRef {
   plannerRunId: string;
   status: ExecutionPlanState;
 }
+
+/**
+ * Structured patch data for PlannerStatePatch.
+ * Each patchType has a specific shape to replace the old Record<string, unknown>.
+ * Defined here (in planner/types.ts) so memory/ can import from planner/
+ * without creating a circular dependency.
+ */
+export type PlannerStatePatchData =
+  | {
+      patchType: 'state_transition';
+      from: PlannerRunState | null;
+      to: PlannerRunState;
+      reason?: string;
+    }
+  | {
+      patchType: 'plan_update';
+      planId: string;
+      fromVersion: number;
+      toVersion: number;
+      planSummary?: string;
+    }
+  | {
+      patchType: 'execution_ref_update';
+      refId: string;
+      refType: string;
+      status: string;
+    }
+  | {
+      patchType: 'checkpoint_update';
+      checkpointKeys: string[];
+    };
 
 export interface PlannerStatePatch {
   plannerRunId: string;
