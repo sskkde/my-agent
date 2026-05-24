@@ -11,6 +11,7 @@
  */
 
 import type { LLMMessage, ToolDefinition } from '../../llm/types.js';
+import type { AssistantPersonaProfile } from '../../foreground/types.js';
 
 // ─── Mode ────────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,188 @@ export interface ContextBundleData {
   triggerView?: string;
   /** Prior conversation transcript */
   transcript?: LLMMessage[];
+  /** Summary layer projections for context enrichment */
+  summaryLayers?: SummaryLayerProjection;
+}
+
+/**
+ * Persona projection data for Layer 5.
+ *
+ * Structured persona configuration that affects expression style and preferences,
+ * but cannot override system rules, safety constraints, tool authorization,
+ * output schemas, or tenant boundaries.
+ */
+export interface PersonaProjection {
+  /** Unique identifier for the persona */
+  personaId: string;
+  /** Style guidelines for the persona's expression */
+  styleGuidelines: string;
+  /** Constraints that cannot be overridden by the persona */
+  constraints: string[];
+  /** Optional source profile with additional persona details */
+  sourceProfile?: AssistantPersonaProfile;
+}
+
+/**
+ * Renders a PersonaProjection to a text representation with safety prefix.
+ *
+ * @param projection - The persona projection to render
+ * @returns Rendered persona text with safety constraints
+ */
+export function renderPersonaProjection(projection: PersonaProjection): string {
+  const parts: string[] = [];
+
+  const safetyPrefix =
+    '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界';
+  parts.push(safetyPrefix);
+
+  parts.push(`\n## 风格指南\n${projection.styleGuidelines}`);
+
+  if (projection.constraints.length > 0) {
+    parts.push(`\n## 约束条件\n${projection.constraints.map((c) => `- ${c}`).join('\n')}`);
+  }
+
+  parts.push(`\n## 人格标识\n人格ID: ${projection.personaId}`);
+
+  return parts.join('\n');
+}
+
+/**
+ * Tool selection policy projection for Layer 6.
+ *
+ * Provides heuristics and rules for tool selection decisions.
+ * This is a top-level field in ModelInputBuildInput, NOT inside ToolPlaneProjection.
+ */
+export interface ToolSelectionPolicyProjection {
+  /** Core heuristics for tool selection */
+  heuristics: string;
+  /** Priority rules for tool selection (optional) */
+  priorityRules?: string[];
+  /** Risk rules for tool selection (optional) */
+  riskRules?: string[];
+}
+
+/**
+ * Renders a ToolSelectionPolicyProjection to a text representation.
+ *
+ * @param policy - The tool selection policy to render
+ * @returns Rendered policy text
+ */
+export function renderToolSelectionPolicy(policy: ToolSelectionPolicyProjection): string {
+  const parts: string[] = [];
+
+  parts.push('Tool Selection Policy:');
+  parts.push(policy.heuristics);
+
+  if (policy.priorityRules && policy.priorityRules.length > 0) {
+    parts.push('\nPriority Rules:');
+    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'));
+  }
+
+  if (policy.riskRules && policy.riskRules.length > 0) {
+    parts.push('\nRisk Rules:');
+    parts.push(policy.riskRules.map((r) => `- ${r}`).join('\n'));
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Memory policy projection for Layer 7.
+ *
+ * Provides rules for memory usage in context bundle.
+ * This is a top-level field in ModelInputBuildInput, NOT inside ContextBundleData.
+ */
+export interface MemoryPolicyProjection {
+  /** Core rules for memory usage */
+  useRules: string;
+  /** Rules for invisible memory items (optional) */
+  invisibilityRules?: string[];
+  /** Priority rules for memory items (optional) */
+  priorityRules?: string[];
+  /** Token budget for memory items (optional) */
+  tokenBudget?: number;
+}
+
+/**
+ * Renders a MemoryPolicyProjection to a text representation.
+ *
+ * @param policy - The memory policy to render
+ * @returns Rendered policy text
+ */
+export function renderMemoryPolicyProjection(policy: MemoryPolicyProjection): string {
+  const parts: string[] = [];
+
+  parts.push('Memory Policy:');
+  parts.push(policy.useRules);
+
+  if (policy.invisibilityRules && policy.invisibilityRules.length > 0) {
+    parts.push('\nInvisibility Rules:');
+    parts.push(policy.invisibilityRules.map((r) => `- ${r}`).join('\n'));
+  }
+
+  if (policy.priorityRules && policy.priorityRules.length > 0) {
+    parts.push('\nPriority Rules:');
+    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'));
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Summary layer projection for Layer 7.
+ *
+ * Contains pre-computed summaries at different granularity levels.
+ * All fields are optional - only include summaries that have been computed.
+ */
+export interface SummaryLayerProjection {
+  /** Session-level summary (current session) */
+  session?: string | null;
+  /** Daily summary (aggregated sessions from today) */
+  daily?: string | null;
+  /** Weekly summary (aggregated daily summaries) */
+  weekly?: string | null;
+  /** Long-term user profile */
+  longTerm?: string | null;
+  /** Atomic facts extracted from conversations */
+  atomicFacts?: string | null;
+}
+
+/**
+ * Renders a SummaryLayerProjection to a text representation.
+ *
+ * @param projection - The summary layers to render
+ * @returns Rendered summary text, or empty string if no layers
+ */
+export function renderSummaryLayers(projection: SummaryLayerProjection): string {
+  const parts: string[] = [];
+
+  if (projection.session) {
+    parts.push('## Session Summary');
+    parts.push(projection.session);
+  }
+
+  if (projection.daily) {
+    parts.push('## Daily Summary');
+    parts.push(projection.daily);
+  }
+
+  if (projection.weekly) {
+    parts.push('## Weekly Summary');
+    parts.push(projection.weekly);
+  }
+
+  if (projection.longTerm) {
+    parts.push('## Long-Term Profile');
+    parts.push(projection.longTerm);
+  }
+
+  if (projection.atomicFacts) {
+    parts.push('## Atomic Facts');
+    parts.push(projection.atomicFacts);
+  }
+
+  return parts.join('\n\n');
 }
 
 /**
@@ -104,14 +287,19 @@ export interface ModelInputBuildInput {
   systemPrompt?: string;
   /** Routing prompt overlay */
   routingPrompt?: string;
+  /** Persona projection for expression style and preferences */
+  personaProjection?: PersonaProjection;
 
   // Layer 6 (Tool Plane) - Segment C
   /** Tool plane projection data */
   toolProjection?: ToolPlaneProjection;
+  toolSelectionPolicy?: ToolSelectionPolicyProjection;
 
   // Layer 7 (Context Bundle) - Segment D
   /** Context bundle data */
   contextBundle?: ContextBundleData;
+  /** Memory policy projection for memory usage rules */
+  memoryPolicyProjection?: MemoryPolicyProjection;
 
   // Dynamic fields (only in Segment D)
   /** The current user message */

@@ -24,6 +24,7 @@ import type {
   ToolPlaneProjection,
   ContextItemData,
 } from './model-input-types.js';
+import { renderPersonaProjection, renderToolSelectionPolicy, renderMemoryPolicyProjection, renderSummaryLayers } from './model-input-types.js';
 import { computeTemplateHash } from '../../prompt/template-hash.js';
 import { StaticPrefixBuilder } from './static-prefix-builder.js';
 import type { PromptTemplateRegistry } from '../../prompt/prompt-template-registry.js';
@@ -87,6 +88,10 @@ export class ModelInputBuilder {
       parts.push(input.routingPrompt);
     }
 
+    if (input.personaProjection) {
+      parts.push(renderPersonaProjection(input.personaProjection));
+    }
+
     const content = parts.join('\n\n');
     const hash = computeTemplateHash(content);
 
@@ -96,19 +101,25 @@ export class ModelInputBuilder {
   private buildSegmentC(input: ModelInputBuildInput) {
     const projection = input.toolProjection;
     const mode = input.mode;
+    const policy = input.toolSelectionPolicy;
 
-    let content: string;
+    const parts: string[] = [];
 
-    if (!projection) {
-      content = '';
-    } else if (mode === 'routing_json') {
-      content = this.renderRoutingToolPlane(projection);
-    } else if (mode === 'function_calling') {
-      content = this.renderFunctionCallingToolPlane(projection);
-    } else {
-      content = this.renderStructuredJsonToolPlane(projection);
+    if (projection) {
+      if (mode === 'routing_json') {
+        parts.push(this.renderRoutingToolPlane(projection));
+      } else if (mode === 'function_calling') {
+        parts.push(this.renderFunctionCallingToolPlane(projection));
+      } else {
+        parts.push(this.renderStructuredJsonToolPlane(projection));
+      }
     }
 
+    if (policy) {
+      parts.push(renderToolSelectionPolicy(policy));
+    }
+
+    const content = parts.join('\n\n');
     const hash = computeTemplateHash(content);
 
     return { content, hash };
@@ -116,6 +127,18 @@ export class ModelInputBuilder {
 
   private buildSegmentD(input: ModelInputBuildInput) {
     const parts: string[] = [];
+
+    if (input.memoryPolicyProjection) {
+      parts.push(renderMemoryPolicyProjection(input.memoryPolicyProjection));
+    }
+
+    const bundle = input.contextBundle;
+    if (bundle?.summaryLayers) {
+      const rendered = renderSummaryLayers(bundle.summaryLayers);
+      if (rendered) {
+        parts.push(rendered);
+      }
+    }
 
     if (input.currentDate) {
       parts.push(`Current Date: ${input.currentDate}`);
@@ -137,7 +160,6 @@ export class ModelInputBuilder {
       parts.push(`Request ID: ${input.requestId}`);
     }
 
-    const bundle = input.contextBundle;
     if (bundle) {
       if (bundle.pinnedItems && bundle.pinnedItems.length > 0) {
         parts.push(this.renderContextItems('Pinned Context', bundle.pinnedItems));

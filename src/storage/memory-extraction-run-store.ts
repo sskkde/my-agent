@@ -23,6 +23,9 @@ export type MemoryExtractionRun = {
   failureCode?: string;
   failureMessage?: string;
   sourceRefs: Record<string, unknown>;
+  policyVersion?: string;
+  variant?: string;
+  shadowComparisonPayload?: string;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
@@ -37,6 +40,9 @@ export type CreatePendingInput = {
   includedTurnIds: string[];
   sessionMemorySummaryId?: string;
   sourceRefs?: Record<string, unknown>;
+  policyVersion?: string;
+  variant?: string;
+  shadowComparisonPayload?: string;
 };
 
 export interface MemoryExtractionRunStore {
@@ -46,6 +52,7 @@ export interface MemoryExtractionRunStore {
   markFailed(runId: string, failureCode: string, failureMessage?: string): void;
   getByWindowHash(userId: string, windowHash: string): MemoryExtractionRun | null;
   listByUser(userId: string): MemoryExtractionRun[];
+  listShadowByWindowHash(userId: string, windowHash: string): MemoryExtractionRun[];
   deleteByWindowHash(userId: string, windowHash: string): void;
 }
 
@@ -57,15 +64,17 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
   }
 
   createPending(input: CreatePendingInput): MemoryExtractionRun {
-    const runId = `run-${input.userId}-${input.windowHash}`;
+    const suffix = input.variant ? `-${input.variant}` : '';
+    const runId = `run-${input.userId}-${input.windowHash}${suffix}`;
     const now = new Date().toISOString();
     
     const sql = `
       INSERT INTO memory_extraction_runs (
         run_id, user_id, session_id, trigger_turn_id, window_hash, included_turn_ids,
         session_memory_summary_id, status, attempts, source_refs,
+        policy_version, variant, shadow_comparison_payload,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?, ?, ?, ?)
     `;
     
     this.connection.exec(sql, [
@@ -77,6 +86,9 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
       JSON.stringify(input.includedTurnIds),
       input.sessionMemorySummaryId ?? null,
       JSON.stringify(input.sourceRefs ?? {}),
+      input.policyVersion ?? null,
+      input.variant ?? null,
+      input.shadowComparisonPayload ?? null,
       now,
       now,
     ]);
@@ -92,6 +104,9 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
       status: 'pending',
       attempts: 0,
       sourceRefs: input.sourceRefs ?? {},
+      policyVersion: input.policyVersion,
+      variant: input.variant,
+      shadowComparisonPayload: input.shadowComparisonPayload,
       createdAt: now,
       updatedAt: now,
     };
@@ -179,6 +194,16 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
     return rows.map(r => this.rowToRun(r));
   }
 
+  listShadowByWindowHash(userId: string, windowHash: string): MemoryExtractionRun[] {
+    const sql = `
+      SELECT * FROM memory_extraction_runs 
+      WHERE user_id = ? AND window_hash = ? AND variant = 'shadow'
+      ORDER BY created_at DESC
+    `;
+    const rows = this.connection.query<ExtractionRunRow>(sql, [userId, windowHash]);
+    return rows.map(r => this.rowToRun(r));
+  }
+
   deleteByWindowHash(userId: string, windowHash: string): void {
     const sql = `
       DELETE FROM memory_extraction_runs 
@@ -215,6 +240,9 @@ class MemoryExtractionRunStoreImpl implements MemoryExtractionRunStore {
       failureCode: row.failure_code ?? undefined,
       failureMessage: row.failure_message ?? undefined,
       sourceRefs: JSON.parse(row.source_refs),
+      policyVersion: row.policy_version ?? undefined,
+      variant: row.variant ?? undefined,
+      shadowComparisonPayload: row.shadow_comparison_payload ?? undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -237,6 +265,9 @@ type ExtractionRunRow = {
   failure_code: string | null;
   failure_message: string | null;
   source_refs: string;
+  policy_version: string | null;
+  variant: string | null;
+  shadow_comparison_payload: string | null;
   created_at: string;
   updated_at: string;
 };

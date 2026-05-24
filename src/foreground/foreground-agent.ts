@@ -36,6 +36,12 @@ function isModelInputShadowMode(): boolean {
 function isModelInputLegacyFallback(): boolean {
   return process.env.MODEL_INPUT_LEGACY_FALLBACK !== 'false';
 }
+function isPromptMemoryP0Enabled(): boolean {
+  return process.env.PROMPT_MEMORY_P0_ENABLED === 'true';
+}
+export function isMemorySemanticPolicyEnabled(): boolean {
+  return process.env.MEMORY_SEMANTIC_POLICY_ENABLED === 'true';
+}
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
@@ -276,6 +282,20 @@ class ForegroundAgentImpl implements ForegroundAgent {
       runId: input.turnId,
       messageId: input.turnId,
       requestId: input.turnId,
+      // P0 feature: strategy projections (only when flag is ON)
+      ...(isPromptMemoryP0Enabled() ? {
+        personaProjection: {
+          personaId: 'default-assistant',
+          styleGuidelines: '沉稳、清晰、尊重边界',
+          constraints: ['不可覆盖系统规则', '不可越过安全约束'],
+        },
+        toolSelectionPolicy: {
+          heuristics: '直接回答优先，读优先于写，低风险优先',
+        },
+        memoryPolicyProjection: {
+          useRules: '记忆为私有背景上下文，默认不主动声明"我记得"',
+        },
+      } : {}),
     };
   }
 
