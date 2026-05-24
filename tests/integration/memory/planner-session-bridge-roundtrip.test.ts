@@ -5,8 +5,7 @@ import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.j
 import { createSummaryStore, type SummaryStore, type SourceRefs } from '../../../src/storage/summary-store.js';
 import { createSessionMemoryManager, type SessionMemoryManager } from '../../../src/memory/session-memory-manager.js';
 import { plannerStateToSessionPatch } from '../../../src/memory/planner-state-bridge.js';
-import type { PlannerStatePatch, PlannerRunState } from '../../../src/planner/types.js';
-import type { PlannerStatePatchData } from '../../../src/memory/planner-state-bridge.js';
+import type { PlannerStatePatch, PlannerRunState, PlannerStatePatchData } from '../../../src/planner/types.js';
 
 type LastPlannerStateTransition = {
   from: PlannerRunState | null;
@@ -408,8 +407,8 @@ describe('PlannerSession Bridge Roundtrip Integration', () => {
 
       const sessionPatch = plannerStateToSessionPatch(patch);
 
-      expect(sessionPatch.summary).toBe('[state_transition] planning → waiting_for_user');
-      expect(sessionPatch.structuredState?.lastPlannerStateTransition).toEqual({
+      expect(sessionPatch.updates.summary).toBe('[state_transition] planning → waiting_for_user');
+      expect(sessionPatch.updates.structuredState?.lastPlannerStateTransition).toEqual({
         from: 'planning',
         to: 'waiting_for_user',
         reason: 'Need input',
@@ -432,7 +431,7 @@ describe('PlannerSession Bridge Roundtrip Integration', () => {
 
       const sessionPatch = plannerStateToSessionPatch(patch);
 
-      expect(sessionPatch.structuredState?.lastPlanUpdate).toEqual({
+      expect(sessionPatch.updates.structuredState?.lastPlanUpdate).toEqual({
         planId: 'plan-xyz',
         fromVersion: 5,
         toVersion: 6,
@@ -455,7 +454,7 @@ describe('PlannerSession Bridge Roundtrip Integration', () => {
 
       const sessionPatch = plannerStateToSessionPatch(patch);
 
-      expect(sessionPatch.structuredState?.lastExecutionRefUpdate).toEqual({
+      expect(sessionPatch.updates.structuredState?.lastExecutionRefUpdate).toEqual({
         refId: 'tool-123',
         refType: 'tool_execution',
         status: 'failed',
@@ -475,7 +474,7 @@ describe('PlannerSession Bridge Roundtrip Integration', () => {
 
       const sessionPatch = plannerStateToSessionPatch(patch);
 
-      expect(sessionPatch.structuredState?.lastCheckpointUpdate).toEqual(['cp-1', 'cp-2']);
+      expect(sessionPatch.updates.structuredState?.lastCheckpointUpdate).toEqual(['cp-1', 'cp-2']);
     });
   });
 

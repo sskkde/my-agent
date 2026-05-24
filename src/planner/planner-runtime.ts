@@ -13,8 +13,8 @@ import type {
   ActiveExecutionRef,
   Checkpoint,
   PlannerResumeEvent,
+  PlannerStatePatchData,
 } from './types.js';
-import type { PlannerStatePatchData } from '../memory/planner-state-bridge.js';
 
 export interface PlannerRuntime {
   createPlannerRun(input: PlannerRunInput): PlannerRunResult;

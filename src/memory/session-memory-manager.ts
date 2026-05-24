@@ -126,8 +126,11 @@ export function createSessionMemoryManager(
   }
 
   function applyPlannerStatePatch(sessionId: string, patch: PlannerStatePatch): SessionMemory {
-    const sessionPatch = plannerStateToSessionPatch(patch);
-    return patchSessionMemory(sessionId, sessionPatch);
+    const { updates, warnings } = plannerStateToSessionPatch(patch);
+    if (warnings.length > 0) {
+      console.warn('[SessionMemoryManager] plannerStateToSessionPatch warnings:', warnings);
+    }
+    return patchSessionMemory(sessionId, updates);
   }
 
   function invalidateCache(sessionId: string): void {
