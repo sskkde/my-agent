@@ -14,6 +14,8 @@ import type {
   WorkflowRunSummaryContent,
   BackgroundSubagentSummaryContent,
   CompactSummaryContent,
+  WeeklySummaryContent,
+  PlannerRunSummaryContent,
   SummaryVersionEntry,
   SummaryWriteErrorCode
 } from './types.js';
@@ -137,9 +139,11 @@ export function createSummaryManager(
     writeSessionMemory,
     writeRollingSummary,
     writeDailySummary,
+    writeWeeklySummary,
     writeWorkflowRunSummary,
     writeBackgroundSubagentSummary,
     writeCompactSummary,
+    writePlannerRunSummary,
     getVersionHistory,
     getCurrentVersion,
     storeLowConfidenceFallback
@@ -415,6 +419,41 @@ export function createSummaryManager(
     return { success: true, data: record, version };
   }
 
+  async function writeWeeklySummary(
+    userId: string,
+    content: WeeklySummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>> {
+    try {
+      validateSourceRefsOrThrow(options.sourceRefs);
+    } catch (error) {
+      return errorToResult(error);
+    }
+
+    const summaryId = generateSummaryId();
+    const now = new Date().toISOString();
+
+    const record: SummaryRecord = {
+      summaryId,
+      summaryType: 'weekly_summary',
+      userId,
+      sourceRefs: options.sourceRefs,
+      summary: content.summary,
+      structuredState: {
+        ...content.structuredState,
+        weekRange: content.weekRange
+      },
+      status: 'active',
+      retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
+      createdAt: now
+    };
+
+    summaryStore.save(record);
+    const version = recordVersion(record, null, options.sourceRefs, 'system');
+
+    return { success: true, data: record, version };
+  }
+
   async function writeWorkflowRunSummary(
     workflowRunId: string,
     userId: string,
@@ -517,6 +556,43 @@ export function createSummaryManager(
         ...content.structuredState,
         compactedSummaryIds: content.compactedSummaryIds,
         compressionRatio: content.compressionRatio
+      },
+      status: 'active',
+      retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
+      createdAt: now
+    };
+
+    summaryStore.save(record);
+    const version = recordVersion(record, null, options.sourceRefs, 'system');
+
+    return { success: true, data: record, version };
+  }
+
+  async function writePlannerRunSummary(
+    userId: string,
+    content: PlannerRunSummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>> {
+    try {
+      validateSourceRefsOrThrow(options.sourceRefs);
+    } catch (error) {
+      return errorToResult(error);
+    }
+
+    const summaryId = generateSummaryId();
+    const now = new Date().toISOString();
+
+    const record: SummaryRecord = {
+      summaryId,
+      summaryType: 'planner_run_summary',
+      userId,
+      relatedRefs: { plannerRunId: content.plannerRunId },
+      sourceRefs: options.sourceRefs,
+      summary: content.summary,
+      structuredState: {
+        ...content.structuredState,
+        planStatus: content.planStatus,
+        stepSummary: content.stepSummary
       },
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },

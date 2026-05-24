@@ -86,6 +86,7 @@ export type LongTermMemoryRecord = {
     structured?: Record<string, unknown>;
   };
   entities?: MemoryEntity[];
+  entityNames?: string[];
   sourceRefs: MemorySourceRefs;
   scope: MemoryScope;
   confidence: number;
@@ -134,6 +135,8 @@ export interface LongTermMemoryStore {
   hasTombstone(userId: string, fingerprint: string, sourceWindowHash: string, tenantId?: string): boolean;
   hasTombstoneForSource(userId: string, sourceWindowHash: string, tenantId?: string): boolean;
   searchActive(query: string, userId: string, limit: number, tenantId?: string): LongTermMemoryRecord[];
+  getByEntityName(entityName: string, limit?: number, tenantId?: string): LongTermMemoryRecord[];
+  getByDateRange(startDate: string, endDate: string, limit?: number, tenantId?: string): LongTermMemoryRecord[];
 }
 
 class LongTermMemoryStoreImpl implements LongTermMemoryStore {
@@ -145,18 +148,22 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
 
   save(record: LongTermMemoryRecord, tenantId: string = DEFAULT_TENANT_ID): void {
     const lifecycleStatus = record.lifecycle.status;
+    const entityNames = record.entities 
+      ? JSON.stringify(record.entities.map(e => e.displayName))
+      : null;
     
     const sql = `
       INSERT INTO long_term_memories (
-        memory_id, user_id, memory_type, content, entities, source_refs,
+        memory_id, user_id, memory_type, content, entities, entity_names, source_refs,
         scope, confidence, importance, sensitivity, lifecycle, retrieval,
         fingerprint, source_window_hash, lifecycle_status, tenant_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(memory_id) DO UPDATE SET
         user_id = excluded.user_id,
         memory_type = excluded.memory_type,
         content = excluded.content,
         entities = excluded.entities,
+        entity_names = excluded.entity_names,
         source_refs = excluded.source_refs,
         scope = excluded.scope,
         confidence = excluded.confidence,
@@ -176,6 +183,7 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
       record.memoryType,
       JSON.stringify(record.content),
       record.entities ? JSON.stringify(record.entities) : null,
+      entityNames,
       JSON.stringify(record.sourceRefs),
       JSON.stringify(record.scope),
       record.confidence,
@@ -398,6 +406,33 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
     return rows.map(r => this.rowToRecord(r));
   }
 
+  getByEntityName(entityName: string, limit: number = 10, tenantId: string = DEFAULT_TENANT_ID): LongTermMemoryRecord[] {
+    const sql = `
+      SELECT * FROM long_term_memories 
+      WHERE entity_names LIKE ? 
+        AND lifecycle_status != 'deleted'
+        AND tenant_id = ?
+      ORDER BY json_extract(lifecycle, '$.updatedAt') DESC
+      LIMIT ?
+    `;
+    const rows = this.connection.query<MemoryRow>(sql, [`%"${entityName}"%`, tenantId, limit]);
+    return rows.map(r => this.rowToRecord(r));
+  }
+
+  getByDateRange(startDate: string, endDate: string, limit: number = 50, tenantId: string = DEFAULT_TENANT_ID): LongTermMemoryRecord[] {
+    const sql = `
+      SELECT * FROM long_term_memories 
+      WHERE json_extract(lifecycle, '$.createdAt') >= ? 
+        AND json_extract(lifecycle, '$.createdAt') <= ?
+        AND lifecycle_status != 'deleted'
+        AND tenant_id = ?
+      ORDER BY json_extract(lifecycle, '$.createdAt') DESC
+      LIMIT ?
+    `;
+    const rows = this.connection.query<MemoryRow>(sql, [startDate, endDate, tenantId, limit]);
+    return rows.map(r => this.rowToRecord(r));
+  }
+
   private rowToRecord(row: MemoryRow): LongTermMemoryRecord {
     return {
       memoryId: row.memory_id,
@@ -405,6 +440,7 @@ class LongTermMemoryStoreImpl implements LongTermMemoryStore {
       memoryType: row.memory_type as MemoryType,
       content: JSON.parse(row.content),
       entities: row.entities ? JSON.parse(row.entities) : undefined,
+      entityNames: row.entity_names ? JSON.parse(row.entity_names) : undefined,
       sourceRefs: JSON.parse(row.source_refs) as MemorySourceRefs,
       scope: JSON.parse(row.scope) as MemoryScope,
       confidence: row.confidence,
@@ -436,6 +472,7 @@ type MemoryRow = {
   memory_type: string;
   content: string;
   entities: string | null;
+  entity_names: string | null;
   source_refs: string;
   scope: string;
   confidence: number;

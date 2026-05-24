@@ -17,7 +17,9 @@ export type RollingSummaryTriggerEvent =
   | 'artifact_switch'
   | 'workflow_completed'
   | 'background_completed'
-  | 'token_pressure';
+  | 'token_pressure'
+  | 'topic_shift'
+  | 'plan_update';
 
 export type RollingSummaryEvaluationContext = {
   turnCount: number;
@@ -83,7 +85,9 @@ export function createRollingSummaryPolicy(
     'artifact_switch',
     'workflow_completed',
     'background_completed',
-    'token_pressure'
+    'token_pressure',
+    'topic_shift',
+    'plan_update'
   ];
 
   return {
@@ -102,6 +106,7 @@ export function createRollingSummaryPolicy(
     config: RollingSummaryConfig
   ): RollingSummaryDecision {
     const turnsSinceLastSummary = context.currentTurnCount - context.lastSummaryTurnCount;
+    const minTurnsBetween = config.minTurnsBetweenSummaries ?? DEFAULT_MIN_TURNS;
 
     if (turnsSinceLastSummary >= config.maxTurns) {
       return {
@@ -114,11 +119,31 @@ export function createRollingSummaryPolicy(
     if (config.enableTopicShiftTrigger) {
       const topicShiftResult = detectTopicShift(context, config.topicShiftThreshold);
 
-      if (topicShiftResult.detected) {
+      if (topicShiftResult.detected && turnsSinceLastSummary >= minTurnsBetween) {
         return {
           shouldTrigger: true,
           reason: 'topic_shift_detected',
           topicShiftConfidence: topicShiftResult.confidence,
+          recommendedType: 'rolling_5_turns'
+        };
+      }
+    }
+
+    if (context.currentTokenPressure !== undefined && config.maxTokenPressure !== undefined) {
+      if (context.currentTokenPressure >= config.maxTokenPressure && turnsSinceLastSummary >= minTurnsBetween) {
+        return {
+          shouldTrigger: true,
+          reason: 'token_pressure_triggered',
+          recommendedType: 'rolling_5_turns'
+        };
+      }
+    }
+
+    if (context.lastSummaryTurn !== undefined && turnsSinceLastSummary >= minTurnsBetween) {
+      if (context.recentTranscriptSegments.some(seg => seg.includes('plan') || seg.includes('update'))) {
+        return {
+          shouldTrigger: true,
+          reason: 'plan_update_detected',
           recommendedType: 'rolling_5_turns'
         };
       }
@@ -183,6 +208,26 @@ export function createRollingSummaryPolicy(
       }
 
       if (eventType === 'token_pressure') {
+        if (turnsSinceLastSummary >= DEFAULT_MIN_TURNS) {
+          return {
+            shouldSummarize: true,
+            reason: 'eventType',
+            turnRange: { startTurn: lastSummaryTurn + 1, endTurn: turnCount }
+          };
+        }
+      }
+
+      if (eventType === 'topic_shift') {
+        if (turnsSinceLastSummary >= DEFAULT_MIN_TURNS) {
+          return {
+            shouldSummarize: true,
+            reason: 'topicShift',
+            turnRange: { startTurn: lastSummaryTurn + 1, endTurn: turnCount }
+          };
+        }
+      }
+
+      if (eventType === 'plan_update') {
         if (turnsSinceLastSummary >= DEFAULT_MIN_TURNS) {
           return {
             shouldSummarize: true,

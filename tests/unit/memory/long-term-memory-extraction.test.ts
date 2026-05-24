@@ -27,8 +27,9 @@ describe('Long-term Memory Extraction', () => {
         'user_profile',
         'user_safety_rule',
         'project_state',
+        'long_term_fact',
       ];
-      expect(validTypes).toHaveLength(4);
+      expect(validTypes).toHaveLength(5);
     });
 
     it('ExtractedMemoryCandidate should have required fields', () => {
@@ -454,7 +455,7 @@ describe('Long-term Memory Extraction', () => {
 
       const result = validateExtractedCandidate(candidate, validWindow);
       expect(result.valid).toBe(false);
-      expect(result.reason).toContain('low_confidence');
+      expect(result.reason).toContain('confidence_out_of_range');
     });
 
     it('should accept confidence at exactly 0.7', () => {
@@ -531,7 +532,7 @@ describe('Long-term Memory Extraction', () => {
       expect(result.normalizedCandidate?.scope).not.toHaveProperty('connector');
     });
 
-    it('should clamp importance to valid values', () => {
+    it('should reject invalid importance values', () => {
       const candidate = {
         memoryType: 'user_preference',
         text: 'Prefers dark mode',
@@ -551,11 +552,11 @@ describe('Long-term Memory Extraction', () => {
       } as ExtractedMemoryCandidate;
 
       const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(true);
-      expect(result.normalizedCandidate?.importance).toBe('medium'); // Default
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('invalid_importance');
     });
 
-    it('should default importance to medium when missing', () => {
+    it('should reject missing importance', () => {
       const candidate = {
         memoryType: 'user_preference',
         text: 'Prefers dark mode',
@@ -575,8 +576,8 @@ describe('Long-term Memory Extraction', () => {
       } as ExtractedMemoryCandidate;
 
       const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(true);
-      expect(result.normalizedCandidate?.importance).toBe('medium');
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('invalid_importance');
     });
 
     it('should reject sensitivity = restricted in P0', () => {
@@ -664,6 +665,7 @@ describe('Long-term Memory Extraction', () => {
         'user_profile',
         'user_safety_rule',
         'project_state',
+        'long_term_fact',
       ];
 
       for (const memoryType of p0Types) {
@@ -877,6 +879,7 @@ describe('Long-term Memory Extraction', () => {
       expect(prompt).toContain('user_profile');
       expect(prompt).toContain('user_safety_rule');
       expect(prompt).toContain('project_state');
+      expect(prompt).toContain('long_term_fact');
     });
 
     it('should instruct model to discard one-off tasks', () => {

@@ -85,10 +85,10 @@ describe('prompt-template-registry', () => {
   });
 
   describe('resolveTemplate', () => {
-    it('returns Layer 1-4 templates for foreground + openai', () => {
+    it('returns Layer 1-7 templates for foreground + openai', () => {
       const templates = registry.resolveTemplate('foreground', 'openai');
 
-      expect(templates.length).toBe(5);
+      expect(templates.length).toBe(13);
 
       expect(templates[0].layer).toBe(1);
       expect(templates[0].id).toBe('platform:base');
@@ -104,12 +104,26 @@ describe('prompt-template-registry', () => {
 
       expect(templates[4].layer).toBe(4);
       expect(templates[4].id).toBe('output:foreground.schema');
+
+      expect(templates[5].layer).toBe(5);
+      expect(templates[5].id).toBe('persona:default');
+
+      expect(templates[6].layer).toBe(6);
+      expect(templates[6].id).toBe('heuristics:tool-usage.common');
+
+      // Layer 7 templates (all agentKind: '*')
+      expect(templates[7].layer).toBe(7);
+      expect(templates[8].layer).toBe(7);
+      expect(templates[9].layer).toBe(7);
+      expect(templates[10].layer).toBe(7);
+      expect(templates[11].layer).toBe(7);
+      expect(templates[12].layer).toBe(7);
     });
 
-    it('returns Layer 1-4 templates for foreground + deepseek', () => {
+    it('returns Layer 1-7 templates for foreground + deepseek', () => {
       const templates = registry.resolveTemplate('foreground', 'deepseek');
 
-      expect(templates.length).toBe(5);
+      expect(templates.length).toBe(13);
 
       expect(templates[0].layer).toBe(1);
       expect(templates[0].id).toBe('platform:base');
@@ -125,12 +139,26 @@ describe('prompt-template-registry', () => {
 
       expect(templates[4].layer).toBe(4);
       expect(templates[4].id).toBe('output:foreground.schema');
+
+      expect(templates[5].layer).toBe(5);
+      expect(templates[5].id).toBe('persona:default');
+
+      expect(templates[6].layer).toBe(6);
+      expect(templates[6].id).toBe('heuristics:tool-usage.common');
+
+      // Layer 7 templates (all agentKind: '*')
+      expect(templates[7].layer).toBe(7);
+      expect(templates[8].layer).toBe(7);
+      expect(templates[9].layer).toBe(7);
+      expect(templates[10].layer).toBe(7);
+      expect(templates[11].layer).toBe(7);
+      expect(templates[12].layer).toBe(7);
     });
 
-    it('returns Layer 1-3 templates for kernel + openai', () => {
+    it('returns Layer 1-7 templates for kernel + openai', () => {
       const templates = registry.resolveTemplate('kernel', 'openai');
 
-      expect(templates.length).toBe(4);
+      expect(templates.length).toBe(12);
 
       expect(templates[0].layer).toBe(1);
       expect(templates[0].id).toBe('platform:base');
@@ -143,6 +171,20 @@ describe('prompt-template-registry', () => {
 
       expect(templates[3].layer).toBe(3);
       expect(templates[3].id).toBe('agents:kernel');
+
+      expect(templates[4].layer).toBe(5);
+      expect(templates[4].id).toBe('persona:default');
+
+      expect(templates[5].layer).toBe(6);
+      expect(templates[5].id).toBe('heuristics:tool-usage.common');
+
+      // Layer 7 templates (all agentKind: '*')
+      expect(templates[6].layer).toBe(7);
+      expect(templates[7].layer).toBe(7);
+      expect(templates[8].layer).toBe(7);
+      expect(templates[9].layer).toBe(7);
+      expect(templates[10].layer).toBe(7);
+      expect(templates[11].layer).toBe(7);
     });
 
     it('returns templates sorted by layer', () => {
@@ -153,12 +195,21 @@ describe('prompt-template-registry', () => {
       }
     });
 
-    it('returns Layer 1-2 templates for unknown agent kind', () => {
+    it('returns Layer 1-7 templates for unknown agent kind', () => {
       const templates = registry.resolveTemplate('unknown', 'openai');
-      expect(templates.length).toBe(3);
+      expect(templates.length).toBe(11);
       expect(templates[0].layer).toBe(1);
       expect(templates[1].layer).toBe(1);
       expect(templates[2].layer).toBe(2);
+      expect(templates[3].layer).toBe(5);
+      expect(templates[4].layer).toBe(6);
+      // Layer 7 templates
+      expect(templates[5].layer).toBe(7);
+      expect(templates[6].layer).toBe(7);
+      expect(templates[7].layer).toBe(7);
+      expect(templates[8].layer).toBe(7);
+      expect(templates[9].layer).toBe(7);
+      expect(templates[10].layer).toBe(7);
     });
   });
 
@@ -214,8 +265,16 @@ describe('prompt-template-registry', () => {
       expect(ids).toContain('agents:kernel');
       expect(ids).toContain('output:foreground.schema');
       expect(ids).toContain('output:planner.schema');
+      expect(ids).toContain('persona:default');
+      expect(ids).toContain('heuristics:tool-usage.common');
+      expect(ids).toContain('context:memory-use-rules');
+      expect(ids).toContain('summary:session');
+      expect(ids).toContain('summary:daily');
+      expect(ids).toContain('summary:weekly');
+      expect(ids).toContain('summary:long-term');
+      expect(ids).toContain('summary:atomic-facts');
 
-      expect(ids.length).toBe(8);
+      expect(ids.length).toBe(16);
     });
   });
 
@@ -254,15 +313,28 @@ describe('prompt-template-registry', () => {
       expect(templates.every((t) => t.layer === 4)).toBe(true);
     });
 
-    it('returns empty array for unused layer', () => {
+    it('returns Layer 5 templates', () => {
       const templates = registry.getTemplatesByLayer(5);
-      expect(templates.length).toBe(0);
+      expect(templates.length).toBe(1);
+      expect(templates.every((t) => t.layer === 5)).toBe(true);
+    });
+
+    it('returns Layer 6 templates', () => {
+      const templates = registry.getTemplatesByLayer(6);
+      expect(templates.length).toBe(1);
+      expect(templates.every((t) => t.layer === 6)).toBe(true);
+    });
+
+    it('returns Layer 7 templates', () => {
+      const templates = registry.getTemplatesByLayer(7);
+      expect(templates.length).toBe(6);
+      expect(templates.every((t) => t.layer === 7)).toBe(true);
     });
   });
 
   describe('PROMPT_TEMPLATE_REGISTRY constant', () => {
-    it('contains 8 templates', () => {
-      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(8);
+    it('contains 16 templates', () => {
+      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(16);
     });
 
     it('has all required templates', () => {
@@ -274,13 +346,21 @@ describe('prompt-template-registry', () => {
       expect(PROMPT_TEMPLATE_REGISTRY.has('agents:kernel')).toBe(true);
       expect(PROMPT_TEMPLATE_REGISTRY.has('output:foreground.schema')).toBe(true);
       expect(PROMPT_TEMPLATE_REGISTRY.has('output:planner.schema')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('persona:default')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('heuristics:tool-usage.common')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('context:memory-use-rules')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('summary:session')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('summary:daily')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('summary:weekly')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('summary:long-term')).toBe(true);
+      expect(PROMPT_TEMPLATE_REGISTRY.has('summary:atomic-facts')).toBe(true);
     });
   });
 
   describe('createPromptTemplateRegistry', () => {
     it('creates registry with default templates', () => {
       const reg = createPromptTemplateRegistry();
-      expect(reg.getAllTemplateIds().length).toBe(8);
+      expect(reg.getAllTemplateIds().length).toBe(16);
     });
 
     it('creates registry with custom templates', () => {

@@ -513,6 +513,43 @@ describe('SummaryManager Source-bound Write Controls', () => {
         expect(result.data.structuredState?.compressionRatio).toBe(0.5);
       }
     });
+
+    it('should write weekly summary', async () => {
+      const result = await manager.writeWeeklySummary(
+        'user-123',
+        { 
+          summary: 'Weekly summary',
+          weekRange: { startDate: '2024-01-01', endDate: '2024-01-07' }
+        },
+        { sourceRefs: validSourceRefs }
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.summaryType).toBe('weekly_summary');
+        expect(result.data.structuredState?.weekRange).toEqual({ startDate: '2024-01-01', endDate: '2024-01-07' });
+      }
+    });
+
+    it('should write planner run summary', async () => {
+      const result = await manager.writePlannerRunSummary(
+        'user-123',
+        { 
+          summary: 'Planner run summary',
+          plannerRunId: 'planner-run-001',
+          planStatus: 'completed',
+          stepSummary: { step1: 'done', step2: 'done' }
+        },
+        { sourceRefs: validSourceRefs }
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.summaryType).toBe('planner_run_summary');
+        expect(result.data.relatedRefs?.plannerRunId).toBe('planner-run-001');
+        expect(result.data.structuredState?.planStatus).toBe('completed');
+      }
+    });
   });
 
   describe('diff-based updates', () => {
