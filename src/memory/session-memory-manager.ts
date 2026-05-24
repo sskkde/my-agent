@@ -3,9 +3,11 @@ import type {
   SessionMemory,
   SessionMemoryPatch
 } from './types.js';
+import type { PlannerStatePatch } from '../planner/types.js';
 import type { CacheLayer, CacheStats } from './cache-layer.js';
 import type { CacheConfig } from './limit-types.js';
 import { createCacheLayer } from './cache-layer.js';
+import { plannerStateToSessionPatch } from './planner-state-bridge.js';
 
 export type { SessionMemoryManager } from './types.js';
 
@@ -23,6 +25,7 @@ type SessionMemoryManagerType = {
   createSessionMemory(sessionId: string, userId: string, sourceRefs: SourceRefs): SessionMemory;
   getSessionMemory(sessionId: string): SessionMemory | null;
   patchSessionMemory(sessionId: string, patch: SessionMemoryPatch): SessionMemory;
+  applyPlannerStatePatch(sessionId: string, patch: PlannerStatePatch): SessionMemory;
   invalidateCache(sessionId: string): void;
   getCacheStats(): CacheStats;
 };
@@ -41,6 +44,7 @@ export function createSessionMemoryManager(
     createSessionMemory,
     getSessionMemory,
     patchSessionMemory,
+    applyPlannerStatePatch,
     invalidateCache,
     getCacheStats
   };
@@ -119,6 +123,11 @@ export function createSessionMemoryManager(
     const memory = recordToSessionMemory(updated);
     cache.set(sessionKey(sessionId), memory);
     return memory;
+  }
+
+  function applyPlannerStatePatch(sessionId: string, patch: PlannerStatePatch): SessionMemory {
+    const sessionPatch = plannerStateToSessionPatch(patch);
+    return patchSessionMemory(sessionId, sessionPatch);
   }
 
   function invalidateCache(sessionId: string): void {

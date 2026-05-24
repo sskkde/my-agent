@@ -331,6 +331,26 @@ class MockLongTermMemoryStore implements LongTermMemoryStore {
       )
       .slice(0, limit);
   }
+
+  getByEntityName(entityName: string, limit?: number): LongTermMemoryRecord[] {
+    return Array.from(this.memories.values())
+      .filter(m => 
+        m.lifecycle.status !== 'deleted' &&
+        m.entityNames?.includes(entityName)
+      )
+      .slice(0, limit ?? 10);
+  }
+
+  getByDateRange(startDate: string, endDate: string, limit?: number): LongTermMemoryRecord[] {
+    return Array.from(this.memories.values())
+      .filter(m => 
+        m.lifecycle.status !== 'deleted' &&
+        m.lifecycle.createdAt >= startDate &&
+        m.lifecycle.createdAt <= endDate
+      )
+      .sort((a, b) => b.lifecycle.createdAt.localeCompare(a.lifecycle.createdAt))
+      .slice(0, limit ?? 50);
+  }
 }
 
 class MockSessionStore implements SessionStore {

@@ -1,4 +1,5 @@
 import type { ExecutionPlanState } from '../shared/states.js';
+import type { PlannerStatePatchData } from '../memory/planner-state-bridge.js';
 
 export type PlannerRunState =
   | 'initializing'
@@ -80,7 +81,7 @@ export interface ExecutionPlanRef {
 export interface PlannerStatePatch {
   plannerRunId: string;
   patchType: 'state_transition' | 'checkpoint_update' | 'plan_update' | 'execution_ref_update';
-  patchData: Record<string, unknown>;
+  patchData: PlannerStatePatchData;
   createdAt: string;
 }
 

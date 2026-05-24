@@ -12,9 +12,9 @@ import type {
   PlannerRuntimeAction,
   ActiveExecutionRef,
   Checkpoint,
-  PlannerStatePatch,
   PlannerResumeEvent,
 } from './types.js';
+import type { PlannerStatePatchData } from '../memory/planner-state-bridge.js';
 
 export interface PlannerRuntime {
   createPlannerRun(input: PlannerRunInput): PlannerRunResult;
@@ -150,7 +150,8 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       },
     });
 
-    this.emitPlannerStatePatch(plannerRunId, 'state_transition', {
+    this.emitPlannerStatePatch(plannerRunId, {
+      patchType: 'state_transition',
       from: null,
       to: PLANNER_STATES.INITIALIZING,
     });
@@ -317,7 +318,8 @@ class PlannerRuntimeImpl implements PlannerRuntime {
 
     this.plannerRunStore.updateStatus(plannerRunId, newState, updatedCheckpoint);
 
-    this.emitPlannerStatePatch(plannerRunId, 'state_transition', {
+    this.emitPlannerStatePatch(plannerRunId, {
+      patchType: 'state_transition',
       from: currentState,
       to: newState,
     });
@@ -387,7 +389,8 @@ class PlannerRuntimeImpl implements PlannerRuntime {
 
     this.planStore.applyPatch(patch);
 
-    this.emitPlannerStatePatch(plannerRunId, 'plan_update', {
+    this.emitPlannerStatePatch(plannerRunId, {
+      patchType: 'plan_update',
       planId: run.planId,
       fromVersion: currentVersion,
       toVersion: newVersion,
@@ -413,7 +416,8 @@ class PlannerRuntimeImpl implements PlannerRuntime {
 
     this.plannerRunStore.updateStatus(plannerRunId, run.status, updatedCheckpoint);
 
-    this.emitPlannerStatePatch(plannerRunId, 'execution_ref_update', {
+    this.emitPlannerStatePatch(plannerRunId, {
+      patchType: 'execution_ref_update',
       refId: ref.refId,
       refType: ref.refType,
       status: ref.status,
@@ -450,7 +454,8 @@ class PlannerRuntimeImpl implements PlannerRuntime {
     const checkpoint = checkpointData as Checkpoint;
     this.plannerRunStore.updateStatus(plannerRunId, run.status, checkpoint);
 
-    this.emitPlannerStatePatch(plannerRunId, 'checkpoint_update', {
+    this.emitPlannerStatePatch(plannerRunId, {
+      patchType: 'checkpoint_update',
       checkpointKeys: Object.keys(checkpointData),
     });
   }
@@ -533,8 +538,7 @@ class PlannerRuntimeImpl implements PlannerRuntime {
 
   private emitPlannerStatePatch(
     plannerRunId: string,
-    patchType: PlannerStatePatch['patchType'],
-    patchData: Record<string, unknown>
+    data: PlannerStatePatchData
   ): void {
     const now = new Date().toISOString();
 
@@ -547,8 +551,8 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       },
       payload: {
         plannerRunId,
-        patchType,
-        patchData,
+        patchType: data.patchType,
+        patchData: data,
       },
       sensitivity: 'low',
       retentionClass: 'standard',

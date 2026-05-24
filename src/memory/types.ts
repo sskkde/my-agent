@@ -5,6 +5,7 @@
  */
 
 import type { SummaryRecord, SummaryType, SummaryStatus, SourceRefs, RelatedRefs, RetrievalMetadata } from '../storage/summary-store.js';
+import type { PlannerStatePatch } from '../planner/types.js';
 
 // ============================================================================
 // Working Summary Types
@@ -132,6 +133,10 @@ export type RollingSummaryConfig = {
   enableTopicShiftTrigger: boolean;
   /** Minimum confidence threshold for topic shift detection (0-1) */
   topicShiftThreshold: number;
+  /** Minimum turns between summaries to prevent too-frequent triggers (default: 3) */
+  minTurnsBetweenSummaries?: number;
+  /** Token pressure threshold (0-1) for triggering summary */
+  maxTokenPressure?: number;
 };
 
 /**
@@ -148,6 +153,10 @@ export type RollingSummaryContext = {
   currentTopicKeywords: string[];
   /** Previous topic keywords */
   previousTopicKeywords: string[];
+  /** The turn number of the last summary */
+  lastSummaryTurn?: number;
+  /** Current token pressure (0-1) */
+  currentTokenPressure?: number;
 };
 
 /**
@@ -157,7 +166,7 @@ export type RollingSummaryDecision = {
   /** Whether a rolling summary should be triggered */
   shouldTrigger: boolean;
   /** Reason for the decision */
-  reason: 'max_turns_reached' | 'topic_shift_detected' | 'no_trigger';
+  reason: 'max_turns_reached' | 'topic_shift_detected' | 'plan_update_detected' | 'token_pressure_triggered' | 'no_trigger';
   /** Confidence score for topic shift (if applicable) */
   topicShiftConfidence?: number;
   /** Recommended summary type based on trigger */
@@ -303,6 +312,29 @@ export type CompactSummaryContent = SummaryContent & {
   compressionRatio: number;
 };
 
+/**
+ * Weekly summary content
+ */
+export type WeeklySummaryContent = SummaryContent & {
+  /** Week range covered by this summary */
+  weekRange: {
+    startDate: string;
+    endDate: string;
+  };
+};
+
+/**
+ * Planner run summary content
+ */
+export type PlannerRunSummaryContent = SummaryContent & {
+  /** Planner run ID */
+  plannerRunId: string;
+  /** Planner run status */
+  planStatus: string;
+  /** Step completion summary */
+  stepSummary?: Record<string, unknown>;
+};
+
 // ============================================================================
 // Manager Interface Types
 // ============================================================================
@@ -374,6 +406,15 @@ export interface SummaryManager {
   ): Promise<SummaryWriteResult<SummaryRecord>>;
 
   /**
+   * Write weekly summary with source-bound controls
+   */
+  writeWeeklySummary(
+    userId: string,
+    content: WeeklySummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>>;
+
+  /**
    * Write workflow run summary with source-bound controls
    */
   writeWorkflowRunSummary(
@@ -400,6 +441,15 @@ export interface SummaryManager {
     sessionId: string,
     userId: string,
     content: CompactSummaryContent,
+    options: SummaryWriteOptions
+  ): Promise<SummaryWriteResult<SummaryRecord>>;
+
+  /**
+   * Write planner run summary with source-bound controls
+   */
+  writePlannerRunSummary(
+    userId: string,
+    content: PlannerRunSummaryContent,
     options: SummaryWriteOptions
   ): Promise<SummaryWriteResult<SummaryRecord>>;
 
@@ -457,6 +507,14 @@ export interface SessionMemoryManager {
     sessionId: string,
     userId: string,
     sourceRefs: SourceRefs
+  ): SessionMemory;
+
+  /**
+   * Apply a planner state patch to session memory
+   */
+  applyPlannerStatePatch(
+    sessionId: string,
+    patch: PlannerStatePatch
   ): SessionMemory;
 }
 
