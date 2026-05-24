@@ -340,12 +340,12 @@ describe('Long-term Memory Extraction', () => {
 
     it('should reject unsupported memory types', () => {
       const candidate = {
-        memoryType: 'relationship', // Not in AllowedLongTermMemoryType
-        text: 'User knows Alice',
+        memoryType: 'routine', // Not in AllowedLongTermMemoryType
+        text: 'User follows a routine',
         confidence: 0.9,
         importance: 'medium',
         sensitivity: 'low',
-        keywords: ['relationship'],
+        keywords: ['routine'],
         scope: { visibility: 'private_user' },
         sourceRefs: {
           transcriptRefs: ['turn-1'],
@@ -694,11 +694,8 @@ describe('Long-term Memory Extraction', () => {
 
     it('should reject non-P0 memory types', () => {
       const nonP0Types = [
-        'relationship',
         'routine',
         'workflow_preference',
-        'durable_fact',
-        'episodic_summary',
       ];
 
       for (const memoryType of nonP0Types) {

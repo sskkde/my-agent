@@ -1,7 +1,7 @@
 # Architecture Test Matrix
 
-> **Purpose**: P0 requirements-to-test coverage mapping — maps golden paths to 5 test levels with specific test file references.
-> **Status**: Live, reflects current test infrastructure as of 2026-05-21 (Phase 8 GA Candidate complete)
+> **Purpose**: P0/P10 requirements-to-test coverage mapping — maps golden paths to 5 test levels with specific test file references.
+> **Status**: Live, reflects current test infrastructure as of 2026-05-24 (Phase 10 Memory Semantic Policy complete)
 > **References**: `ARCHITECTURE_GAP_REPORT.md`, `.sisyphus/plans/p0-audit-report.md`, `docs/architecture/P0_SCOPE.md`
 
 ---
@@ -64,6 +64,24 @@ Each cell includes specific test file paths (relative from repository root) that
 | **40** | **DLQ Management UI** — Failed event list/retry/discard | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ `web/src/features/dlq/DLQTab.test.tsx` |
 | **41** | **MemoryTab Expanded** — Memory budget UI with 13 tests | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ `web/src/features/memory/MemoryTab.test.tsx` |
 | **42** | **P6 Product Journey** — End-to-end P6 feature verification | ⚠️ | ⚠️ | ✅ `tests/e2e/flow-18-p6-product-journey.test.ts` | ⚠️ | ⚠️ | ⚠️ |
+
+---
+
+## P10 Golden Path × Test Level Matrix
+
+| # | P10 Golden Path | Unit | Integration | E2E | State-Machine | Architecture | Security |
+|---|---|---|---|---|---|---|---|
+| **P10-1** | **Memory Semantic Policy** — extraction boundary + long_term_fact + ephemeral rejection | ✅ `tests/unit/memory/memory-semantic-policy.test.ts` | ✅ `tests/integration/memory/shadow-extraction-comparison.test.ts` | ⚠️ | ⚠️ | ✅ `tests/security/memory/memory-semantic-policy-leakage.test.ts` | - |
+| **P10-2** | **Persona Projection** — structured persona + safety prefix + Segment B rendering | ✅ `tests/unit/kernel/model-input/persona-projection.test.ts` | ⚠️ | ⚠️ | ⚠️ | ✅ `tests/security/model-input/persona-override.test.ts` | - |
+| **P10-3** | **Tool Selection Policy** — structured heuristics + Segment C rendering | ✅ `tests/unit/kernel/model-input/tool-selection-policy.test.ts` | ⚠️ | ⚠️ | ⚠️ | ✅ `tests/security/model-input/tool-escalation.test.ts` | - |
+| **P10-4** | **Memory Policy Projection** — memory-use-rules + Segment D rendering | ✅ `tests/unit/kernel/model-input/memory-policy-projection.test.ts` | ⚠️ | ⚠️ | ⚠️ | ✅ `tests/security/memory/memory-semantic-policy-leakage.test.ts` | - |
+| **P10-5** | **PlannerState Bridge** — PlannerStatePatchData + → SessionMemory + graceful degradation | ✅ `tests/unit/memory/planner-state-bridge.test.ts` | ✅ `tests/integration/memory/planner-session-bridge-roundtrip.test.ts` | ⚠️ | ⚠️ | ⚠️ | - |
+| **P10-6** | **Weekly/Layered Summary** — writeWeeklySummary + summary templates + SummaryLayerProjection | ✅ `tests/unit/memory/weekly-summary-writer.test.ts` | ✅ `tests/integration/memory/weekly-summary-roundtrip.test.ts` | ⚠️ | ⚠️ | ⚠️ | - |
+| **P10-7** | **Rolling Summary Upgrade** — topic_shift + plan_update triggers | ✅ `tests/unit/memory/rolling-summary-policy-upgrade.test.ts` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | - |
+| **P10-8** | **Hybrid Retrieval** — HybridRetrievalOrchestrator + lexical-first + NoOpVectorBackend | ✅ `tests/unit/memory/hybrid-retrieval.test.ts` + `hybrid-retrieval-lexical-first.test.ts` | ⚠️ | ⚠️ | ⚠️ | ✅ `tests/security/memory/cross-user-retrieval.test.ts` | - |
+| **P10-9** | **Lifecycle Scoring** — LifecycleScorer + shadow mode + rollout phases | ✅ `tests/unit/memory/lifecycle-scoring.test.ts` + `lifecycle-policy-rollout.test.ts` | ⚠️ | ⚠️ | ⚠️ | ✅ `tests/security/memory/false-archive.test.ts` | - |
+| **P10-10** | **Memory Candidate Validation** — validateMemoryCandidate + ExtractedMemoryCandidate extension | ✅ `tests/unit/memory/memory-candidate-validation.test.ts` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | - |
+| **P10-11** | **Feature Flag Scaffolding** — PROMPT_MEMORY_P0_ENABLED + MEMORY_SEMANTIC_POLICY_ENABLED | ✅ `tests/integration/memory/prompt-memory-p0-flag.test.ts` | ✅ same | ⚠️ | ⚠️ | ⚠️ | - |
 
 ---
 

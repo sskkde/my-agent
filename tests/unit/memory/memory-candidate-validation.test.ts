@@ -92,14 +92,14 @@ describe('validateMemoryCandidate', () => {
 
   describe('memoryType validation', () => {
     it('should reject unsupported memory types', () => {
-      const candidate = { ...createValidCandidate(), memoryType: 'relationship' };
+      const candidate = { ...createValidCandidate(), memoryType: 'routine' };
       const result = validateMemoryCandidate(candidate);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('unsupported_memory_type:relationship');
+      expect(result.errors).toContain('unsupported_memory_type:routine');
     });
 
     it('should reject non-P0 memory types', () => {
-      const nonP0Types = ['relationship', 'routine', 'workflow_preference', 'durable_fact', 'episodic_summary'];
+      const nonP0Types = ['routine', 'workflow_preference'];
       
       for (const memoryType of nonP0Types) {
         const candidate = { ...createValidCandidate(), memoryType };

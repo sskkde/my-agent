@@ -1,6 +1,6 @@
 # Model Input Builder Architecture
 
-> Version: 1.0.0
+> Version: 1.1.0
 > Created: 2026-05-23
 > Status: Implemented
 
@@ -52,6 +52,8 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 |  |  - AgentConfig.systemPrompt (custom behavior)              |   |
 |  |  - AgentConfig.routingPrompt (routing instructions)        |   |
 |  |  - Project-level instructions (future)                     |   |
+|  |  - PersonaProjection (P10): personaId, styleGuidelines,    |   |
+|  |    constraints, sourceProfile + safety prefix              |   |
 |  |                                                            |   |
 |  +------------------------------------------------------------+   |
 |                                                                   |
@@ -61,6 +63,8 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 |  |  - Tool IDs and summaries (routing_json mode)              |   |
 |  |  - Full tool schemas (function_calling mode)               |   |
 |  |  - Hidden/denied tools excluded                            |   |
+|  |  - ToolSelectionPolicyProjection (P10, top-level):         |   |
+|  |    heuristics, priorityRules, riskRules                    |   |
 |  |                                                            |   |
 |  +------------------------------------------------------------+   |
 |                                                                   |
@@ -70,6 +74,10 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 |  |  - pinnedItems, orderedItems, summaryBlocks                |   |
 |  |  - planView, workflowStepView, backgroundRunView           |   |
 |  |  - triggerView, transcript                                 |   |
+|  |  - MemoryPolicyProjection (P10, at Segment D start):       |   |
+|  |    useRules, invisibilityRules, priorityRules, tokenBudget |   |
+|  |  - SummaryLayerProjection (P10): session, daily, weekly,   |   |
+|  |    long-term, atomic-facts                                 |   |
 |  |                                                            |   |
 |  |  Dynamic Fields:                                           |   |
 |  |  - currentDate, sessionId, runId, messageId, requestId     |   |
@@ -173,6 +181,66 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 - All optional fields have deterministic ordering
 - Pair integrity protection for tool_use/tool_result
 - SemanticType to role mapping
+
+---
+
+## P10 Strategy Projections
+
+Phase 10 introduces three strategy projections that separate policy configuration from data containers. These projections are top-level `ModelInputBuildInput` fields, never embedded in data containers like `ToolPlaneProjection` or `ContextBundleData`.
+
+### PersonaProjection (Layer 5, Segment B)
+
+**Purpose**: Define structured persona with safety-aware rendering.
+
+**Fields**:
+- `personaId`: Unique identifier for the persona
+- `styleGuidelines`: Writing style and tone preferences
+- `constraints`: Behavioral constraints and boundaries
+- `sourceProfile`: Original profile the persona was derived from
+
+**Rendering**: Via `renderPersonaProjection()` with safety prefix to prevent injection.
+
+**Segment**: Part of Segment B (Cache Key Part 2), affecting cache key computation.
+
+### ToolSelectionPolicyProjection (Layer 6, Segment C)
+
+**Purpose**: Guide tool selection with structured heuristics.
+
+**Fields**:
+- `heuristics`: General selection heuristics
+- `priorityRules`: Rules for prioritizing certain tools
+- `riskRules`: Risk-based restrictions on tool usage
+
+**Important**: This is a top-level `ModelInputBuildInput` field, NOT embedded in `ToolPlaneProjection`.
+
+**Segment**: Part of Segment C (Cache Key Part 3).
+
+### MemoryPolicyProjection (Layer 7, Segment D)
+
+**Purpose**: Control memory access and visibility.
+
+**Fields**:
+- `useRules`: Rules for when to use stored memories
+- `invisibilityRules`: Rules for hiding certain memory content
+- `priorityRules`: Rules for memory retrieval prioritization
+- `tokenBudget`: Token budget for memory content
+
+**Rendering**: Rendered at Segment D start, before other context bundle content.
+
+### SummaryLayerProjection (Layer 7, Segment D)
+
+**Purpose**: Provide layered summary context for the current request.
+
+**Layers**:
+- `session`: Current session summary
+- `daily`: Daily aggregated summary
+- `weekly`: Weekly aggregated summary
+- `long-term`: Long-term memory summary
+- `atomic-facts`: Atomic fact references
+
+**Rendering**: Rendered after MemoryPolicyProjection in Segment D.
+
+**Segment**: Part of Segment D (NOT Cached), always fresh computation.
 
 ---
 
@@ -435,12 +503,16 @@ interface ModelInputBuildInput {
   // Layer 5
   systemPrompt?: string;
   routingPrompt?: string;
+  personaProjection?: PersonaProjection;  // P10
   
   // Layer 6
   toolProjection?: ToolPlaneProjection;
+  toolSelectionPolicy?: ToolSelectionPolicyProjection;  // P10, top-level
   
   // Layer 7
   contextBundle?: ContextBundleData;
+  memoryPolicyProjection?: MemoryPolicyProjection;  // P10
+  summaryLayers?: SummaryLayerProjection;  // P10
   currentUserMessage?: string;
   currentDate?: string;
   sessionId?: string;
@@ -476,6 +548,8 @@ interface BuiltModelInput {
   };
 }
 ```
+
+> **P10 Strategy/Data Separation**: Policy projections (`personaProjection`, `toolSelectionPolicy`, `memoryPolicyProjection`, `summaryLayers`) are top-level `ModelInputBuildInput` fields, never embedded in data containers (`ToolPlaneProjection`, `ContextBundleData`). This separation ensures policy configuration remains independent of runtime data.
 
 ---
 
