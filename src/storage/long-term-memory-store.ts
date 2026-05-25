@@ -15,7 +15,8 @@ export type MemoryType =
   | 'routine'
   | 'workflow_preference'
   | 'durable_fact'
-  | 'episodic_summary';
+  | 'episodic_summary'
+  | 'long_term_fact';
 
 export type MemoryStatus =
   | 'active'
