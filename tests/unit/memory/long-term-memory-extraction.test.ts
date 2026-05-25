@@ -884,7 +884,7 @@ describe('Long-term Memory Extraction', () => {
   // ============================================================================
 
   describe('buildLongTermMemoryExtractionPrompt', () => {
-    it('should generate structured JSON-only prompt', () => {
+    it('should generate structured JSON-only prompt', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -895,7 +895,7 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'User: Hello\nAssistant: Hi there!',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt).toContain('JSON');
       expect(prompt).toContain('user_preference');
       expect(prompt).toContain('user_profile');
@@ -904,7 +904,7 @@ describe('Long-term Memory Extraction', () => {
       expect(prompt).toContain('long_term_fact');
     });
 
-    it('should instruct model to discard one-off tasks', () => {
+    it('should instruct model to discard one-off tasks', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -915,11 +915,11 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'User: Help me with this task...',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt.toLowerCase()).toMatch(/discard|one-off|transient/);
     });
 
-    it('should instruct model to discard unsupported memory types', () => {
+    it('should instruct model to discard unsupported memory types', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -930,11 +930,11 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'User: Remember this...',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt.toLowerCase()).toMatch(/unsupported|memory type/);
     });
 
-    it('should instruct model to discard missing provenance', () => {
+    it('should instruct model to discard missing provenance', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -945,11 +945,11 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'User: Something...',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt.toLowerCase()).toMatch(/provenance|source/);
     });
 
-    it('should instruct model to discard low-confidence claims', () => {
+    it('should instruct model to discard low-confidence claims', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -960,11 +960,11 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'User: Maybe...',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt.toLowerCase()).toMatch(/confidence|uncertain/);
     });
 
-    it('should instruct model to discard sensitive content', () => {
+    it('should instruct model to discard sensitive content', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -975,11 +975,11 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'User: Secret...',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt.toLowerCase()).toMatch(/sensitive|should not be stored/);
     });
 
-    it('should include rendered input in prompt', () => {
+    it('should include rendered input in prompt', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -990,11 +990,11 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'User: I prefer dark mode\nAssistant: Noted!',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt).toContain('I prefer dark mode');
     });
 
-    it('should include window metadata in prompt', () => {
+    it('should include window metadata in prompt', async () => {
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
         sessionId: 'session-456',
@@ -1005,7 +1005,7 @@ describe('Long-term Memory Extraction', () => {
         renderedInput: 'Transcript...',
       };
 
-      const prompt = buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt).toContain('user-123');
       expect(prompt).toContain('session-456');
     });
