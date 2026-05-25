@@ -2,7 +2,7 @@
  * Unit tests for long-term memory extraction contract, prompt, canonicalization, and validator
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   type AllowedLongTermMemoryType,
   type AutoExtractedMemoryType,
@@ -14,6 +14,7 @@ import {
   validateExtractedCandidate,
   canonicalizeMemoryCandidate,
   buildLongTermMemoryExtractionPrompt,
+  buildMemoryExtractionDynamicWindow,
 } from '../../../src/memory/long-term-memory-extraction.js';
 
 describe('Long-term Memory Extraction', () => {
@@ -1008,6 +1009,380 @@ describe('Long-term Memory Extraction', () => {
       const prompt = await buildLongTermMemoryExtractionPrompt(window);
       expect(prompt).toContain('user-123');
       expect(prompt).toContain('session-456');
+    });
+  });
+
+  // ============================================================================
+  // Template-Driven Extraction Tests
+  // ============================================================================
+
+  describe('Template-driven extraction', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      vi.resetModules();
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+      vi.restoreAllMocks();
+    });
+
+    it('should use hardcoded fallback when PROMPT_MEMORY_P0_ENABLED is false', async () => {
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'false' };
+
+      const window: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2', 'turn-3', 'turn-4', 'turn-5'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'User: I prefer dark mode',
+      };
+
+      // Re-import to pick up the env change
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
+        '../../../src/memory/long-term-memory-extraction.js'
+      );
+      const prompt = await buildPrompt(window);
+
+      expect(prompt).toContain('You are a memory extraction system');
+      expect(prompt).toContain('ALLOWED MEMORY TYPES (P0)');
+      expect(prompt).toContain('DISCARD THE FOLLOWING');
+      expect(prompt).toContain('RESPONSE FORMAT (JSON only');
+    });
+
+    it('should load template content when PROMPT_MEMORY_P0_ENABLED is true', async () => {
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+
+      const window: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2', 'turn-3', 'turn-4', 'turn-5'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'User: I prefer dark mode',
+      };
+
+      // Re-import to pick up the env change
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
+        '../../../src/memory/long-term-memory-extraction.js'
+      );
+      const prompt = await buildPrompt(window);
+
+      expect(prompt).toContain('Long-Term Memory Extraction');
+      expect(prompt).toContain('ALLOWED MEMORY TYPES (P0)');
+      expect(prompt).toContain('user_preference');
+      expect(prompt).toContain('user_profile');
+      expect(prompt).toContain('user_safety_rule');
+      expect(prompt).toContain('project_state');
+      expect(prompt).toContain('long_term_fact');
+    });
+
+    it('should include JSON schema from template when P0 enabled', async () => {
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+
+      const window: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'User: Hello',
+      };
+
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
+        '../../../src/memory/long-term-memory-extraction.js'
+      );
+      const prompt = await buildPrompt(window);
+
+      expect(prompt).toContain('Memory Candidate JSON Schema');
+      expect(prompt).toContain('candidates');
+      expect(prompt).toContain('memoryType');
+      expect(prompt).toContain('confidence');
+      expect(prompt).toContain('importance');
+      expect(prompt).toContain('sensitivity');
+      expect(prompt).toContain('sourceRefs');
+      expect(prompt).toContain('transcriptRefs');
+    });
+
+    it('should include atomic facts rules when P0 enabled', async () => {
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+
+      const window: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'User: Hello',
+      };
+
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
+        '../../../src/memory/long-term-memory-extraction.js'
+      );
+      const prompt = await buildPrompt(window);
+
+      expect(prompt).toContain('Atomic Facts Extraction Rules');
+    });
+
+    it('should append dynamic window correctly', async () => {
+      const window: MemoryExtractionWindow = {
+        userId: 'user-abc',
+        sessionId: 'session-xyz',
+        triggerTurnId: 'turn-10',
+        includedTurnIds: ['turn-5', 'turn-6', 'turn-7', 'turn-8', 'turn-9', 'turn-10'],
+        windowHash: 'sha256:custom-hash',
+        sessionMemorySummaryId: 'summary-999',
+        renderedInput: 'User: Custom conversation content here',
+      };
+
+      const prompt = await buildLongTermMemoryExtractionPrompt(window);
+
+      expect(prompt).toContain('CONTEXT:');
+      expect(prompt).toContain('User ID: user-abc');
+      expect(prompt).toContain('Session ID: session-xyz');
+      expect(prompt).toContain('Window Hash: sha256:custom-hash');
+      expect(prompt).toContain('Trigger Turn: turn-10');
+      expect(prompt).toContain('Included Turns: turn-5, turn-6, turn-7, turn-8, turn-9, turn-10');
+      expect(prompt).toContain('Session Memory Summary ID: summary-999');
+      expect(prompt).toContain('CONVERSATION:');
+      expect(prompt).toContain('Custom conversation content here');
+    });
+
+    it('should build dynamic window separately via buildMemoryExtractionDynamicWindow', () => {
+      const window: MemoryExtractionWindow = {
+        userId: 'user-test',
+        sessionId: 'session-test',
+        triggerTurnId: 'turn-3',
+        includedTurnIds: ['turn-1', 'turn-2', 'turn-3'],
+        windowHash: 'hash-xyz',
+        sessionMemorySummaryId: 'summary-test',
+        renderedInput: 'Test conversation',
+      };
+
+      const dynamicWindow = buildMemoryExtractionDynamicWindow(window);
+
+      expect(dynamicWindow).toContain('CONTEXT:');
+      expect(dynamicWindow).toContain('User ID: user-test');
+      expect(dynamicWindow).toContain('Session ID: session-test');
+      expect(dynamicWindow).toContain('Window Hash: hash-xyz');
+      expect(dynamicWindow).toContain('Trigger Turn: turn-3');
+      expect(dynamicWindow).toContain('Included Turns: turn-1, turn-2, turn-3');
+      expect(dynamicWindow).toContain('Session Memory Summary ID: summary-test');
+      expect(dynamicWindow).toContain('CONVERSATION:');
+      expect(dynamicWindow).toContain('Test conversation');
+    });
+
+    it('should handle missing sessionMemorySummaryId in dynamic window', () => {
+      const window: MemoryExtractionWindow = {
+        userId: 'user-test',
+        sessionId: 'session-test',
+        triggerTurnId: 'turn-1',
+        includedTurnIds: ['turn-1'],
+        windowHash: 'hash-xyz',
+        sessionMemorySummaryId: '',
+        renderedInput: 'Test',
+      };
+
+      const dynamicWindow = buildMemoryExtractionDynamicWindow(window);
+      expect(dynamicWindow).toContain('Session Memory Summary ID: none');
+    });
+
+    it('should reject unsupported memory types regardless of template loading', async () => {
+      const validWindow: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2', 'turn-3', 'turn-4', 'turn-5'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'Transcript...',
+      };
+
+      const unsupportedTypes = [
+        'relationship',
+        'durable_fact',
+        'episodic_summary',
+        'routine',
+        'workflow_preference',
+      ];
+
+      for (const memoryType of unsupportedTypes) {
+        const candidate = {
+          memoryType,
+          text: 'Memory content',
+          confidence: 0.9,
+          importance: 'medium',
+          sensitivity: 'low',
+          keywords: ['test'],
+          scope: { visibility: 'private_user' },
+          sourceRefs: {
+            transcriptRefs: ['turn-1'],
+            extraction: {
+              windowHash: 'hash1',
+              triggerTurnId: 'turn-1',
+              includedTurnIds: ['turn-1'],
+            },
+          },
+        } as ExtractedMemoryCandidate;
+
+        const result = validateExtractedCandidate(candidate, validWindow);
+        expect(result.valid).toBe(false);
+        expect(result.reason).toContain('unsupported_memory_type');
+      }
+    });
+
+    it('should reject secret-like patterns in extracted text', async () => {
+      const validWindow: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2', 'turn-3', 'turn-4', 'turn-5'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'Transcript...',
+      };
+
+      const secretPatterns = [
+        'password: my-secret-password',
+        'api_key: sk-1234567890',
+        'private key: -----BEGIN RSA PRIVATE KEY-----',
+      ];
+
+      for (const secretText of secretPatterns) {
+        const candidate: ExtractedMemoryCandidate = {
+          memoryType: 'user_preference',
+          text: secretText,
+          confidence: 0.9,
+          importance: 'high',
+          sensitivity: 'low',
+          keywords: ['secret'],
+          scope: { visibility: 'private_user' },
+          sourceRefs: {
+            transcriptRefs: ['turn-1'],
+            extraction: {
+              windowHash: 'hash1',
+              triggerTurnId: 'turn-1',
+              includedTurnIds: ['turn-1'],
+            },
+          },
+        };
+
+        const result = validateExtractedCandidate(candidate, validWindow);
+        expect(result.valid).toBe(false);
+        expect(result.reason).toContain('secret_like_content');
+      }
+
+      const prompt = await buildLongTermMemoryExtractionPrompt(validWindow);
+      expect(prompt.toLowerCase()).toMatch(/sensitive|should not be stored|passwords|secrets/);
+    });
+
+    it('should reject ephemeral patterns when MEMORY_SEMANTIC_POLICY_ENABLED', async () => {
+      const originalSemanticPolicy = process.env.MEMORY_SEMANTIC_POLICY_ENABLED;
+      process.env.MEMORY_SEMANTIC_POLICY_ENABLED = 'true';
+
+      const validWindow: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2', 'turn-3', 'turn-4', 'turn-5'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'Transcript...',
+      };
+
+      const ephemeralPatterns = [
+        'commit abc123def456',
+        'npm run build',
+        'git push origin main',
+        'console.log("debug")',
+        'passing test suite',
+      ];
+
+      // Re-import to pick up env change
+      const { validateExtractedCandidate: validate } = await import(
+        '../../../src/memory/long-term-memory-extraction.js'
+      );
+
+      for (const ephemeralText of ephemeralPatterns) {
+        const candidate: ExtractedMemoryCandidate = {
+          memoryType: 'user_preference',
+          text: ephemeralText,
+          confidence: 0.9,
+          importance: 'high',
+          sensitivity: 'low',
+          keywords: ['ephemeral'],
+          scope: { visibility: 'private_user' },
+          sourceRefs: {
+            transcriptRefs: ['turn-1'],
+            extraction: {
+              windowHash: 'hash1',
+              triggerTurnId: 'turn-1',
+              includedTurnIds: ['turn-1'],
+            },
+          },
+        };
+
+        const result = validate(candidate, validWindow);
+        expect(result.valid).toBe(false);
+        expect(result.reason).toContain('ephemeral_pattern_detected');
+      }
+
+      process.env.MEMORY_SEMANTIC_POLICY_ENABLED = originalSemanticPolicy;
+    });
+
+    it('should include extraction principles from template', async () => {
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+
+      const window: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'User: Hello',
+      };
+
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
+        '../../../src/memory/long-term-memory-extraction.js'
+      );
+      const prompt = await buildPrompt(window);
+
+      expect(prompt).toContain('Extraction Principles');
+      expect(prompt).toContain('independently referenceable');
+      expect(prompt).toContain('confidence below 0.7');
+    });
+
+    it('should include discard rules from template', async () => {
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+
+      const window: MemoryExtractionWindow = {
+        userId: 'user-123',
+        sessionId: 'session-456',
+        triggerTurnId: 'turn-5',
+        includedTurnIds: ['turn-1', 'turn-2'],
+        windowHash: 'sha256:abc123',
+        sessionMemorySummaryId: 'summary-789',
+        renderedInput: 'User: Hello',
+      };
+
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
+        '../../../src/memory/long-term-memory-extraction.js'
+      );
+      const prompt = await buildPrompt(window);
+
+      expect(prompt).toContain('DISCARD THE FOLLOWING');
+      expect(prompt).toContain('One-off tasks');
+      expect(prompt).toContain('Low-confidence claims');
+      expect(prompt).toContain('Sensitive content');
+      expect(prompt).toContain('File names, commands, test steps');
+      expect(prompt).toContain('Commit/push/release details');
     });
   });
 });

@@ -27,6 +27,7 @@
     "test:memory-lifecycle": "vitest run tests/unit/memory/lifecycle-scoring.test.ts tests/unit/memory/lifecycle-policy-rollout.test.ts",
     "test:prompt-memory": "vitest run tests/unit/kernel/model-input tests/unit/prompt tests/unit/memory",
     "test:prompt-memory-security": "vitest run tests/security/memory tests/security/model-input",
+    "test:prompt-template-runtime": "vitest run tests/unit/prompt/prompt-projection-resolver.test.ts tests/unit/foreground/foreground-template-projection.test.ts",
     "test:p10": "npm run typecheck && npm run test:prompt-memory && npm run test:memory-semantic-policy && npm run test:memory-retrieval && npm run test:memory-lifecycle && npm run test:prompt-memory-security",
     "test:model-input": "vitest run tests/unit/kernel/model-input tests/integration/kernel/model-input",
     "test:model-input-security": "vitest run tests/security/model-input",
