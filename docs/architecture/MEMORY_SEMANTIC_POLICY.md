@@ -12,9 +12,20 @@ The Memory Semantic Policy defines what memory types are allowed for long-term s
 
 ---
 
-## Allowed Memory Types (P0)
+## Storage Types vs Auto-extractable Types
 
-The system supports exactly five memory types for long-term storage:
+It is important to distinguish between what the storage layer can persist and what the P10 automatic extraction pipeline can extract:
+
+- **Auto-extractable types**: The five P0 types listed below. The LLM extraction pipeline recognizes these types, and `validateMemoryCandidate()` enforces them for `origin: 'auto_extraction'` candidates.
+- **Storage-supported (gated) types**: `relationship`, `routine`, `workflow_preference`, `durable_fact`, `episodic_summary`. The storage layer can persist these types via explicit API writes, but the P10 automatic extraction pipeline does not produce them. Enabling auto-extraction for gated types is a P2 decision-gated item that depends on additional infrastructure (entity linking for `relationship`, workflow state tracking for `routine`, etc.).
+
+The auto-extraction whitelist is always enforced for automatic extraction writes. `MEMORY_SEMANTIC_POLICY_ENABLED` controls the additional semantic rejection rules such as ephemeral pattern filtering; it does not widen the auto-extraction type whitelist.
+
+---
+
+## Auto-extractable Memory Types (P0)
+
+P10 automatic extraction supports exactly five auto-extractable memory types. These types are automatically extracted from conversation context by the LLM extraction pipeline:
 
 | Type | Description | Use Case |
 |------|-------------|----------|
@@ -27,39 +38,50 @@ The system supports exactly five memory types for long-term storage:
 ### Type Definition
 
 ```typescript
-export type AllowedLongTermMemoryType =
+export type AutoExtractedMemoryType =
   | 'user_preference'
   | 'user_profile'
   | 'user_safety_rule'
   | 'project_state'
   | 'long_term_fact';
+
+export type AllowedLongTermMemoryType =
+  | AutoExtractedMemoryType
+  | 'relationship'
+  | 'durable_fact'
+  | 'episodic_summary'
+  | 'routine'
+  | 'workflow_preference';
 ```
 
-### P0 Memory Types Array
+### Auto-extraction Types Array
 
 ```typescript
-export const P0_MEMORY_TYPES: AllowedLongTermMemoryType[] = [
+export const AUTO_EXTRACTED_MEMORY_TYPES: AutoExtractedMemoryType[] = [
   'user_preference',
   'user_profile',
   'user_safety_rule',
   'project_state',
   'long_term_fact',
 ];
+
+/** @deprecated Use AUTO_EXTRACTED_MEMORY_TYPES instead. */
+export const P0_MEMORY_TYPES = AUTO_EXTRACTED_MEMORY_TYPES;
 ```
 
 ---
 
-## Prohibited Memory Types
+## Gated Memory Types (Storage-Supported, Not Auto-extractable in P10)
 
-The following memory types are explicitly NOT supported and will be rejected:
+The following memory types are **storage-supported** but **not auto-extractable** in P10. They can be written to storage via explicit API calls but are not automatically extracted by the LLM extraction pipeline:
 
-| Type | Reason |
-|------|--------|
-| `relationship` | Too complex for P0, requires entity linking |
-| `routine` | Workflow state, not long-term memory |
-| `workflow_preference` | Transient operational preference |
-| `durable_fact` | Superseded by `long_term_fact` |
-| `episodic_summary` | Redundant with session summaries |
+| Type | Gating Reason |
+|------|---------------|
+| `relationship` | P2 decision-gated: requires entity linking infrastructure |
+| `routine` | P2 decision-gated: workflow state, not long-term memory |
+| `workflow_preference` | P2 decision-gated: transient operational preference |
+| `durable_fact` | P2 decision-gated: superseded by `long_term_fact` |
+| `episodic_summary` | P2 decision-gated: redundant with session summaries |
 
 ---
 
@@ -158,7 +180,8 @@ When OFF:
 
 When ON:
 - Ephemeral patterns are detected and rejected
-- Only P0 memory types are accepted
+- Only P0 auto-extractable memory types are accepted by the extraction pipeline
+- Gated types (relationship, routine, etc.) remain storage-supported but are not auto-extracted
 - Discard reasons are recorded for audit
 
 ---
@@ -173,7 +196,7 @@ The `validateMemoryCandidate()` function in `src/memory/memory-candidate-types.t
 
 | Check | Condition | Error |
 |-------|-----------|-------|
-| Memory Type | `candidate.memoryType` must be in `P0_MEMORY_TYPES` | `unsupported_memory_type:${type}` |
+| Memory Type | `candidate.memoryType` must be in `P0_MEMORY_TYPES` (auto-extractable types) | `unsupported_memory_type:${type}` |
 | Confidence | `0.7 <= confidence <= 1.0` | `confidence_out_of_range:${value}` |
 | Keywords | Non-empty array, max 12 items, no empty strings | `keywords_empty`, `keywords_too_many`, `keywords_contain_empty_string` |
 | Transcript References | Non-empty `sourceRefs.transcriptRefs` | `missing_transcript_refs` |
@@ -360,7 +383,8 @@ The LLM must respond with JSON containing:
 
 ## Future Extensions (P10.1+)
 
-1. **Semantic Layer API**: Add `semanticLayer` filter to memory retrieval
-2. **MemorySemanticLayer Type**: Typed semantic layer for memory classification
-3. **Additional Ephemeral Patterns**: Extend pattern list based on production data
-4. **Confidence Threshold**: Make `MIN_CONFIDENCE` configurable per tenant
+1. **Expand Auto-extractable Types**: Enable auto-extraction for gated types (relationship, routine, etc.) after required infrastructure is in place
+2. **Semantic Layer API**: Add `semanticLayer` filter to memory retrieval
+3. **MemorySemanticLayer Type**: Typed semantic layer for memory classification
+4. **Additional Ephemeral Patterns**: Extend pattern list based on production data
+5. **Confidence Threshold**: Make `MIN_CONFIDENCE` configurable per tenant
