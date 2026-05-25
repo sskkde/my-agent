@@ -25,6 +25,7 @@ import type { ModelInputBuilder } from '../kernel/model-input/model-input-builde
 import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js';
 import type { ModelInputBuildInput } from '../kernel/model-input/model-input-types.js';
 import type { ModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js';
+import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 function isModelInputBuilderEnabled(): boolean {
@@ -35,9 +36,6 @@ function isModelInputShadowMode(): boolean {
 }
 function isModelInputLegacyFallback(): boolean {
   return process.env.MODEL_INPUT_LEGACY_FALLBACK !== 'false';
-}
-function isPromptMemoryP0Enabled(): boolean {
-  return process.env.PROMPT_MEMORY_P0_ENABLED === 'true';
 }
 export function isMemorySemanticPolicyEnabled(): boolean {
   return process.env.MEMORY_SEMANTIC_POLICY_ENABLED === 'true';

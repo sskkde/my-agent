@@ -13,11 +13,7 @@ import type {
 import type { ModelInputBuildInput } from './model-input/model-input-types.js';
 import { projectBundleToData } from './model-input/context-bundle-adapter.js';
 import { extractToolsForRequest } from './model-input/model-input-builder.js';
-
-// ─── Feature Flags ──────────────────────────────────────────────────────────
-function isPromptMemoryP0Enabled(): boolean {
-  return process.env.PROMPT_MEMORY_P0_ENABLED === 'true';
-}
+import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
 
 export class AgentKernel {
   private config: KernelConfig;
