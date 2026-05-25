@@ -2,15 +2,29 @@ import * as crypto from 'crypto';
 import type { Importance, Sensitivity, Visibility, MemoryEntity, MemoryScope } from '../storage/long-term-memory-store.js';
 import { validateMemoryCandidate } from './memory-candidate-types.js';
 
-export type AllowedLongTermMemoryType =
+/**
+ * Types allowed for auto-extraction from conversation transcripts.
+ * Exactly 5 types per spec: user_preference, user_profile, user_safety_rule, project_state, long_term_fact.
+ */
+export type AutoExtractedMemoryType =
   | 'user_preference'
   | 'user_profile'
   | 'user_safety_rule'
   | 'project_state'
+  | 'long_term_fact';
+
+/**
+ * All types allowed at the storage level, including gated/backcompat types
+ * that are NOT permitted for auto-extraction but can be written via
+ * explicit_user_save, system_import, or manual_admin origins.
+ */
+export type AllowedLongTermMemoryType =
+  | AutoExtractedMemoryType
   | 'relationship'
-  | 'long_term_fact'
   | 'durable_fact'
-  | 'episodic_summary';
+  | 'episodic_summary'
+  | 'routine'
+  | 'workflow_preference';
 
 export type ExtractionSourceRefs = {
   transcriptRefs?: string[];
@@ -59,16 +73,18 @@ export type CanonicalizedCandidate = {
 };
 
 export const VALID_IMPORTANCE: Importance[] = ['low', 'medium', 'high', 'critical'];
-export const P0_MEMORY_TYPES: AllowedLongTermMemoryType[] = [
+
+export const AUTO_EXTRACTED_MEMORY_TYPES: AutoExtractedMemoryType[] = [
   'user_preference',
   'user_profile',
   'user_safety_rule',
   'project_state',
-  'relationship',
   'long_term_fact',
-  'durable_fact',
-  'episodic_summary',
 ];
+
+/** @deprecated Use AUTO_EXTRACTED_MEMORY_TYPES instead */
+export const P0_MEMORY_TYPES: AllowedLongTermMemoryType[] = AUTO_EXTRACTED_MEMORY_TYPES as AllowedLongTermMemoryType[];
+
 export const MIN_CONFIDENCE = 0.7;
 
 const EPHEMERAL_PATTERNS = [

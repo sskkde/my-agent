@@ -5,8 +5,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   type AllowedLongTermMemoryType,
+  type AutoExtractedMemoryType,
   type ExtractedMemoryCandidate,
   type MemoryExtractionWindow,
+  AUTO_EXTRACTED_MEMORY_TYPES,
   stableJsonHash,
   fingerprintMemoryCandidate,
   validateExtractedCandidate,
@@ -20,9 +22,8 @@ describe('Long-term Memory Extraction', () => {
   // ============================================================================
 
   describe('Type definitions', () => {
-    it('AllowedLongTermMemoryType should only allow P0 types', () => {
-      // Valid types
-      const validTypes: AllowedLongTermMemoryType[] = [
+    it('AutoExtractedMemoryType should only allow exactly 5 auto-extraction types', () => {
+      const validTypes: AutoExtractedMemoryType[] = [
         'user_preference',
         'user_profile',
         'user_safety_rule',
@@ -30,6 +31,27 @@ describe('Long-term Memory Extraction', () => {
         'long_term_fact',
       ];
       expect(validTypes).toHaveLength(5);
+    });
+
+    it('AUTO_EXTRACTED_MEMORY_TYPES constant has exactly 5 entries', () => {
+      expect(AUTO_EXTRACTED_MEMORY_TYPES).toHaveLength(5);
+      expect(AUTO_EXTRACTED_MEMORY_TYPES).toContain('long_term_fact');
+    });
+
+    it('AllowedLongTermMemoryType includes gated/backcompat types beyond auto-extraction', () => {
+      const storageTypes: AllowedLongTermMemoryType[] = [
+        'user_preference',
+        'user_profile',
+        'user_safety_rule',
+        'project_state',
+        'long_term_fact',
+        'relationship',
+        'durable_fact',
+        'episodic_summary',
+        'routine',
+        'workflow_preference',
+      ];
+      expect(storageTypes).toHaveLength(10);
     });
 
     it('ExtractedMemoryCandidate should have required fields', () => {
@@ -659,8 +681,8 @@ describe('Long-term Memory Extraction', () => {
       }
     });
 
-    it('should accept all P0 memory types', () => {
-      const p0Types: AllowedLongTermMemoryType[] = [
+    it('should accept all auto-extracted memory types', () => {
+      const autoTypes: AutoExtractedMemoryType[] = [
         'user_preference',
         'user_profile',
         'user_safety_rule',
@@ -668,7 +690,7 @@ describe('Long-term Memory Extraction', () => {
         'long_term_fact',
       ];
 
-      for (const memoryType of p0Types) {
+      for (const memoryType of autoTypes) {
         const candidate: ExtractedMemoryCandidate = {
           memoryType,
           text: 'Memory content',
@@ -692,13 +714,16 @@ describe('Long-term Memory Extraction', () => {
       }
     });
 
-    it('should reject non-P0 memory types', () => {
-      const nonP0Types = [
+    it('should reject non-auto-extraction memory types', () => {
+      const gatedTypes = [
         'routine',
         'workflow_preference',
+        'relationship',
+        'durable_fact',
+        'episodic_summary',
       ];
 
-      for (const memoryType of nonP0Types) {
+      for (const memoryType of gatedTypes) {
         const candidate = {
           memoryType,
           text: 'Memory content',
