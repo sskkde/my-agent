@@ -26,6 +26,7 @@ import { resolveProviderFamily } from '../kernel/model-input/model-input-types.j
 import type { ModelInputBuildInput } from '../kernel/model-input/model-input-types.js';
 import type { ModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js';
 import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
+import type { PromptProjectionResolver, PromptProjectionResolveResult } from '../prompt/prompt-projection-types.js';
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 function isModelInputBuilderEnabled(): boolean {
@@ -106,6 +107,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private agentConfig?: AgentConfig;
   private modelInputBuilder?: ModelInputBuilder;
   private modelInputSnapshotStore?: ModelInputSnapshotStore;
+  private promptProjectionResolver?: PromptProjectionResolver;
 
   constructor(
     _patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS,
@@ -113,11 +115,13 @@ class ForegroundAgentImpl implements ForegroundAgent {
     agentConfig?: AgentConfig,
     modelInputBuilder?: ModelInputBuilder,
     modelInputSnapshotStore?: ModelInputSnapshotStore,
+    promptProjectionResolver?: PromptProjectionResolver,
   ) {
     this.llmAdapter = llmAdapter;
     this.agentConfig = agentConfig;
     this.modelInputBuilder = modelInputBuilder;
     this.modelInputSnapshotStore = modelInputSnapshotStore;
+    this.promptProjectionResolver = promptProjectionResolver;
   }
 
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
@@ -151,7 +155,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
     // ─── ModelInputBuilder integration ──────────────────────────────────────
     if (isModelInputBuilderEnabled() && this.modelInputBuilder) {
-      const newBuildInput = this.buildModelInput(input, state, toolCatalog);
+      const newBuildInput = await this.buildModelInput(input, state, toolCatalog);
 
       if (isModelInputShadowMode()) {
         // Shadow: run both paths in parallel, log diffs, use old path result
@@ -250,14 +254,16 @@ class ForegroundAgentImpl implements ForegroundAgent {
     return this.mapRouterOutputToDecision(llmResult.output!, input, state, toolCatalog);
   }
 
-  private buildModelInput(
+  private async buildModelInput(
     input: ForegroundMessageInput,
     state: ForegroundSessionState,
     toolCatalog: string[],
-  ): ModelInputBuildInput {
+  ): Promise<ModelInputBuildInput> {
     const effectiveConfig = this.getEffectiveConfig(state);
     const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
     const providerFamily = resolveProviderFamily(state.resolvedProvider);
+
+    const projections = await this.resolveProjections();
 
     return {
       mode: 'routing_json',
@@ -280,21 +286,15 @@ class ForegroundAgentImpl implements ForegroundAgent {
       runId: input.turnId,
       messageId: input.turnId,
       requestId: input.turnId,
-      // P0 feature: strategy projections (only when flag is ON)
-      ...(isPromptMemoryP0Enabled() ? {
-        personaProjection: {
-          personaId: 'default-assistant',
-          styleGuidelines: '沉稳、清晰、尊重边界',
-          constraints: ['不可覆盖系统规则', '不可越过安全约束'],
-        },
-        toolSelectionPolicy: {
-          heuristics: '直接回答优先，读优先于写，低风险优先',
-        },
-        memoryPolicyProjection: {
-          useRules: '记忆为私有背景上下文，默认不主动声明"我记得"',
-        },
-      } : {}),
+      ...projections,
     };
+  }
+
+  private async resolveProjections(): Promise<PromptProjectionResolveResult> {
+    if (!isPromptMemoryP0Enabled() || !this.promptProjectionResolver) {
+      return {};
+    }
+    return await this.promptProjectionResolver.resolve({});
   }
 
   private async runNewPath(
@@ -1069,10 +1069,11 @@ export interface CreateForegroundAgentOptions {
   agentConfig?: AgentConfig;
   modelInputBuilder?: ModelInputBuilder;
   modelInputSnapshotStore?: ModelInputSnapshotStore;
+  promptProjectionResolver?: PromptProjectionResolver;
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
-  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder, options?.modelInputSnapshotStore);
+  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder, options?.modelInputSnapshotStore, options?.promptProjectionResolver);
 }
 
 export function mergeDelegationPolicies(

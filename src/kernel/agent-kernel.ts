@@ -136,6 +136,12 @@ export class AgentKernel {
 
     const transcriptMessages = this.buildTranscriptMessages(state);
 
+    let toolSelectionPolicy = input.toolSelectionPolicy;
+    if (toolSelectionPolicy === undefined && isPromptMemoryP0Enabled() && this.config.promptProjectionResolver) {
+      const projectionResult = await this.config.promptProjectionResolver.resolve({});
+      toolSelectionPolicy = projectionResult.toolSelectionPolicy;
+    }
+
     const buildInput: ModelInputBuildInput = {
       mode: 'function_calling',
       agentKind: 'kernel',
@@ -147,7 +153,7 @@ export class AgentKernel {
       runId: input.contextBundle.runId,
       toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
       ...(isPromptMemoryP0Enabled() ? {
-        toolSelectionPolicy: input.toolSelectionPolicy,
+        toolSelectionPolicy,
       } : {}),
     };
 

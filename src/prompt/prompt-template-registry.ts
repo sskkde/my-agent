@@ -101,6 +101,16 @@ const AGENTS_KERNEL_TEMPLATE: PromptTemplateRecord = {
   description: 'Kernel agent template for execution engine',
 };
 
+const AGENTS_MEMORY_TEMPLATE: PromptTemplateRecord = {
+  id: 'agents:memory',
+  version: '2026-05-24',
+  path: 'agents/memory.md',
+  agentKind: 'memory',
+  providerFamily: '*',
+  layer: 3,
+  description: 'Memory extraction prompt for long-term memory candidate extraction',
+};
+
 const OUTPUT_FOREGROUND_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   id: 'output:foreground.schema',
   version: '2026-05-23',
@@ -119,6 +129,16 @@ const OUTPUT_PLANNER_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 4,
   description: 'Planner output schema for execution plan JSON contract',
+};
+
+const OUTPUT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE: PromptTemplateRecord = {
+  id: 'output:memory-candidate.schema',
+  version: '2026-05-24',
+  path: 'output/memory-candidate.schema.md',
+  agentKind: 'memory',
+  providerFamily: '*',
+  layer: 4,
+  description: 'Memory candidate JSON schema for extracted memory structure',
 };
 
 const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
@@ -208,8 +228,10 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['provider:deepseek', PROVIDER_DEEPSEEK_TEMPLATE],
   ['agents:foreground', AGENTS_FOREGROUND_TEMPLATE],
   ['agents:kernel', AGENTS_KERNEL_TEMPLATE],
+  ['agents:memory', AGENTS_MEMORY_TEMPLATE],
   ['output:foreground.schema', OUTPUT_FOREGROUND_SCHEMA_TEMPLATE],
   ['output:planner.schema', OUTPUT_PLANNER_SCHEMA_TEMPLATE],
+  ['output:memory-candidate.schema', OUTPUT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE],
   ['persona:default', PERSONA_DEFAULT_TEMPLATE],
   ['heuristics:tool-usage.common', HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE],
   ['context:memory-use-rules', CONTEXT_MEMORY_USE_RULES_TEMPLATE],

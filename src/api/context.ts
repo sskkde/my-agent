@@ -71,6 +71,7 @@ import { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js';
 import { PromptTemplateRegistry } from '../prompt/prompt-template-registry.js';
 import { TemplateLoader } from '../prompt/template-loader.js';
+import { createPromptProjectionResolver } from '../prompt/prompt-projection-resolver.js';
 import { createModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js';
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js';
 
@@ -373,10 +374,14 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   );
 
   // Create ModelInputBuilder early so it can be shared by ForegroundAgent and AgentKernel
+  const templateRegistry = new PromptTemplateRegistry();
+  const templateLoader = new TemplateLoader();
   const modelInputBuilder = new ModelInputBuilder({
-    templateRegistry: new PromptTemplateRegistry(),
-    templateLoader: new TemplateLoader(),
+    templateRegistry,
+    templateLoader,
   });
+
+  const promptProjectionResolver = createPromptProjectionResolver(templateRegistry, templateLoader);
 
   const modelInputSnapshotStore = createModelInputSnapshotStore(
     createModelInputRedactor(),
@@ -387,6 +392,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     agentConfig: agentConfigStore.getByUser('default') ?? undefined,
     modelInputBuilder,
     modelInputSnapshotStore,
+    promptProjectionResolver,
   });
   const refreshProvidersForUser = (_userId: string): void => {
     // Request-scoped adapters read provider configs on each processing scope.
