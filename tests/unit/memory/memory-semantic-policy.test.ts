@@ -2,8 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   type ExtractedMemoryCandidate,
   type MemoryExtractionWindow,
+  type AutoExtractedMemoryType,
   validateExtractedCandidate,
+  AUTO_EXTRACTED_MEMORY_TYPES,
 } from '../../../src/memory/long-term-memory-extraction.js';
+import { validateMemoryCandidate } from '../../../src/memory/memory-candidate-types.js';
 
 describe('Memory Semantic Policy', () => {
   const validWindow: MemoryExtractionWindow = {
@@ -175,5 +178,67 @@ describe('Memory Semantic Policy', () => {
       const result = validateExtractedCandidate(candidate, validWindow);
       expect(result.valid).toBe(true);
     });
+  });
+});
+
+describe('Auto-extraction vs Storage type distinction', () => {
+  it('AUTO_EXTRACTED_MEMORY_TYPES contains exactly 5 types', () => {
+    expect(AUTO_EXTRACTED_MEMORY_TYPES).toHaveLength(5);
+    expect(AUTO_EXTRACTED_MEMORY_TYPES).toEqual([
+      'user_preference',
+      'user_profile',
+      'user_safety_rule',
+      'project_state',
+      'long_term_fact',
+    ]);
+  });
+
+  it('long_term_fact is in auto-extraction whitelist', () => {
+    expect(AUTO_EXTRACTED_MEMORY_TYPES).toContain('long_term_fact');
+  });
+
+  it('gated types are NOT in auto-extraction whitelist', () => {
+    const gatedTypes = ['relationship', 'routine', 'workflow_preference', 'durable_fact', 'episodic_summary'];
+    for (const t of gatedTypes) {
+      expect(AUTO_EXTRACTED_MEMORY_TYPES.includes(t as AutoExtractedMemoryType)).toBe(false);
+    }
+  });
+
+  it('validateMemoryCandidate rejects gated types for auto_extraction origin', () => {
+    const candidate = {
+      memoryType: 'relationship',
+      text: 'User knows Alice',
+      confidence: 0.9,
+      importance: 'medium' as const,
+      sensitivity: 'low' as const,
+      keywords: ['relationship'],
+      scope: { visibility: 'private_user' as const },
+      sourceRefs: {
+        transcriptRefs: ['turn-1'],
+        extraction: { windowHash: 'h', triggerTurnId: 'turn-1', includedTurnIds: ['turn-1'] },
+      },
+    } as ExtractedMemoryCandidate;
+
+    const result = validateMemoryCandidate(candidate, { origin: 'auto_extraction' });
+    expect(result.valid).toBe(false);
+  });
+
+  it('validateMemoryCandidate accepts gated types for explicit_user_save origin', () => {
+    const candidate = {
+      memoryType: 'relationship',
+      text: 'User knows Alice',
+      confidence: 0.9,
+      importance: 'medium' as const,
+      sensitivity: 'low' as const,
+      keywords: ['relationship'],
+      scope: { visibility: 'private_user' as const },
+      sourceRefs: {
+        transcriptRefs: ['turn-1'],
+        extraction: { windowHash: 'h', triggerTurnId: 'turn-1', includedTurnIds: ['turn-1'] },
+      },
+    } as ExtractedMemoryCandidate;
+
+    const result = validateMemoryCandidate(candidate, { origin: 'explicit_user_save' });
+    expect(result.valid).toBe(true);
   });
 });
