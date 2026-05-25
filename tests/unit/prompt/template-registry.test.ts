@@ -274,7 +274,7 @@ describe('prompt-template-registry', () => {
       expect(ids).toContain('summary:long-term');
       expect(ids).toContain('summary:atomic-facts');
 
-      expect(ids.length).toBe(16);
+      expect(ids.length).toBe(18);
     });
   });
 
@@ -303,13 +303,13 @@ describe('prompt-template-registry', () => {
 
     it('returns Layer 3 templates', () => {
       const templates = registry.getTemplatesByLayer(3);
-      expect(templates.length).toBe(2);
+      expect(templates.length).toBe(3);
       expect(templates.every((t) => t.layer === 3)).toBe(true);
     });
 
     it('returns Layer 4 templates', () => {
       const templates = registry.getTemplatesByLayer(4);
-      expect(templates.length).toBe(2);
+      expect(templates.length).toBe(3);
       expect(templates.every((t) => t.layer === 4)).toBe(true);
     });
 
@@ -333,8 +333,8 @@ describe('prompt-template-registry', () => {
   });
 
   describe('PROMPT_TEMPLATE_REGISTRY constant', () => {
-    it('contains 16 templates', () => {
-      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(16);
+    it('contains 18 templates', () => {
+      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(18);
     });
 
     it('has all required templates', () => {
@@ -360,7 +360,7 @@ describe('prompt-template-registry', () => {
   describe('createPromptTemplateRegistry', () => {
     it('creates registry with default templates', () => {
       const reg = createPromptTemplateRegistry();
-      expect(reg.getAllTemplateIds().length).toBe(16);
+      expect(reg.getAllTemplateIds().length).toBe(18);
     });
 
     it('creates registry with custom templates', () => {
