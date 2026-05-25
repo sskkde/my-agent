@@ -440,3 +440,182 @@ export function renderSummaryLayers(projection: SummaryLayerProjection): string 
 3. **MemorySemanticLayer Type**: Typed semantic layer for memory classification
 4. **Persona Inheritance**: Allow persona inheritance from base templates
 5. **Policy Versioning**: Support multiple policy versions for A/B testing
+
+---
+
+## Template-driven Projection Loading
+
+### 概述
+
+`PromptProjectionResolver` 是 P10 新增的核心组件，负责将模板内容解析为结构化的投影对象。该解析器实现了 Flag 门控逻辑，确保在不同配置下返回正确的投影数据。
+
+### 核心组件
+
+```typescript
+// src/prompt/prompt-projection-resolver.ts
+export function createPromptProjectionResolver(
+  registry: PromptTemplateRegistry,
+  loader: TemplateLoader,
+): PromptProjectionResolver
+```
+
+**依赖关系**：
+- `PromptTemplateRegistry`: 模板元数据注册表，用于检查模板是否存在
+- `TemplateLoader`: 模板文件加载器，负责从文件系统读取模板内容
+
+### Flag 交互矩阵
+
+| PROMPT_MEMORY_P0_ENABLED | PROMPT_TEMPLATE_PROJECTION_ENABLED | 解析结果 |
+|--------------------------|-----------------------------------|---------|
+| OFF (undefined/false) | OFF | `{}` 空对象 |
+| OFF (undefined/false) | ON | `{}` 空对象（TEMPLATE 被 P0 门控） |
+| ON | OFF | Fallback Defaults（硬编码默认值） |
+| ON | ON | Template-loaded Projections（模板加载） |
+
+**关键行为**：
+- `isPromptTemplateProjectionEnabled()` 内部已门控 `isPromptMemoryP0Enabled()`
+- Flag OFF 时，投影字段必须为 `undefined`，保证 hash 稳定性
+
+### 模板类别与 ID
+
+| Template ID | Layer | 用途 | 硬编码约束 |
+|-------------|-------|------|-----------|
+| `persona:default` | 5 | 人格风格指南 | `PERSONA_CONSTRAINTS` 数组 |
+| `heuristics:tool-usage.common` | 6 | 工具选择启发式 | 无 |
+| `context:memory-use-rules` | 7 | 内存使用规则 | `MEMORY_INVISIBILITY_RULES` 数组 |
+
+**硬编码约束说明**：
+- `PERSONA_CONSTRAINTS`: 不可覆盖的安全边界（系统规则、安全约束、工具授权、输出 schema、租户边界）
+- `MEMORY_INVISIBILITY_RULES`: 内存不可见性规则（私有背景上下文、用户询问时才提及、当前对话优先）
+
+### 解析流程
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    resolve(input)                           │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │ isPromptMemoryP0Enabled? │
+                └───────────────────────┘
+                      │           │
+                     OFF          ON
+                      │           │
+                      ▼           ▼
+              ┌───────────┐ ┌───────────────────────────────┐
+              │ return {} │ │ isPromptTemplateProjectionEnabled? │
+              └───────────┘ └───────────────────────────────┘
+                                     │           │
+                                    OFF          ON
+                                     │           │
+                                     ▼           ▼
+                         ┌─────────────────┐ ┌─────────────────────┐
+                         │ Return Fallback │ │ Load 3 Templates    │
+                         │ Defaults        │ │ (parallel)          │
+                         └─────────────────┘ └─────────────────────┘
+                                     │           │
+                                     │           ▼
+                                     │   ┌─────────────────────────────┐
+                                     │   │ Map to Structured Objects   │
+                                     │   │ - PersonaProjection         │
+                                     │   │ - ToolSelectionPolicy       │
+                                     │   │ - MemoryPolicyProjection    │
+                                     │   └─────────────────────────────┘
+                                     │           │
+                                     └─────┬─────┘
+                                           │
+                                           ▼
+                              ┌──────────────────────────┐
+                              │ Return ResolveResult     │
+                              └──────────────────────────┘
+```
+
+### Fallback Defaults
+
+当 `PROMPT_TEMPLATE_PROJECTION_ENABLED=OFF` 时，解析器返回硬编码的默认值：
+
+```typescript
+// src/prompt/prompt-projection-defaults.ts
+export const DEFAULT_PERSONA_PROJECTION: PersonaProjection = {
+  personaId: 'default-assistant',
+  styleGuidelines: '...',
+  constraints: [...PERSONA_CONSTRAINTS],
+};
+
+export const DEFAULT_TOOL_SELECTION_POLICY: ToolSelectionPolicyProjection = {
+  heuristics: '...',
+};
+
+export const DEFAULT_MEMORY_POLICY_PROJECTION: MemoryPolicyProjection = {
+  useRules: '...',
+  invisibilityRules: [...MEMORY_INVISIBILITY_RULES],
+};
+```
+
+### 错误处理策略
+
+模板加载采用优雅降级策略：
+
+1. **注册表检查失败**: 返回空字符串，使用 fallback 默认值
+2. **文件加载失败**: 捕获异常，console.warn，返回空字符串
+3. **模板内容为空**: 使用 fallback 默认值填充结构化对象字段
+
+```typescript
+// 加载失败的容错逻辑
+const personaContent = await loadTemplateContent(loader, 'persona:default', registry);
+// 如果 personaContent 为空字符串，则使用 DEFAULT_PERSONA_PROJECTION.styleGuidelines
+```
+
+### 集成点
+
+| 组件 | 使用方式 | 代码位置 |
+|-----|---------|---------|
+| `ForegroundAgent` | 构造函数注入，`resolveProjections()` 调用 | `src/foreground/foreground-agent.ts` |
+| `AgentKernel` | `KernelConfig` 配置注入，`buildLLMRequest()` 调用 | `src/kernel/agent-kernel.ts` |
+| `api/context.ts` | 创建 resolver 实例，注入到 agent | `src/api/context.ts` |
+
+### 模板加载性能
+
+```typescript
+// 并行加载三个模板，减少 I/O 等待时间
+const [personaContent, heuristicsContent, memoryRulesContent] = await Promise.all([
+  loadTemplateContent(loader, 'persona:default', registry),
+  loadTemplateContent(loader, 'heuristics:tool-usage.common', registry),
+  loadTemplateContent(loader, 'context:memory-use-rules', registry),
+]);
+```
+
+### 安全边界
+
+模板内容永远不能覆盖的安全边界：
+
+```typescript
+const PERSONA_CONSTRAINTS = [
+  '不可覆盖系统规则',
+  '不可越过安全约束',
+  '不可改变工具授权',
+  '不可改变输出 schema',
+  '不可改变租户边界',
+] as const;
+
+const MEMORY_INVISIBILITY_RULES = [
+  'Memory snippets are private background context',
+  'Do not mention memory unless the user explicitly asks',
+  'Current conversation overrides memory',
+] as const;
+```
+
+这些约束以硬编码数组形式注入到投影对象中，确保模板内容无法绕过平台安全策略。
+
+### 文件引用
+
+| 文件 | 行数 | 描述 |
+|-----|-----|-----|
+| `src/prompt/prompt-projection-resolver.ts` | 127 | Resolver 核心实现 |
+| `src/prompt/prompt-projection-types.ts` | 59 | Resolver 类型定义 |
+| `src/prompt/prompt-projection-defaults.ts` | - | Fallback 默认值 |
+| `src/prompt/feature-flags.ts` | 25 | Flag 门控函数 |
+| `src/prompt/templates/persona/default.md` | 7 | 人格模板 |
+| `src/prompt/templates/heuristics/tool-usage.common.md` | 9 | 工具启发式模板 |
+| `src/prompt/templates/context/memory-use-rules.md` | 8 | 内存规则模板 |

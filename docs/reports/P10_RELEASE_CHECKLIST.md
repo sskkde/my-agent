@@ -68,6 +68,18 @@
 | Lifecycle Scoring Tests | `npm test -- tests/unit/memory/lifecycle-scoring` | Passed |
 | Entity/Time Index Tests | `npm test -- tests/unit/memory/entity-time-index` | Passed |
 
+### 2.3 Template-driven Projection Loading Gates
+
+| Check | Verification | Status |
+|-------|-------------|--------|
+| Persona/Tool/Memory templates load correctly | 模板文件存在且可加载 | ✅ Verified |
+| ForegroundAgent no longer hardcodes P10 projection text | 代码已改用 resolver | ✅ Verified |
+| Feature flag OFF preserves baseline hash | `isPromptMemoryP0Enabled()=false` → `{}` | ✅ Verified |
+| Segment A stable under all flag combinations | Hash 计算不受模板加载影响 | ✅ Verified |
+| Memory extraction stable rules from templates | `agents:memory.md` + `output:memory-candidate.schema.md` | ✅ Verified |
+| Fallback defaults work when templates unavailable | `DEFAULT_*` 常量正确使用 | ✅ Verified |
+| Flag interaction matrix correct | P0 × TEMPLATE_PROJECTION 四种组合正确 | ✅ Verified |
+
 ---
 
 ## 3. Feature Flags
@@ -75,6 +87,7 @@
 | Flag | Default | Purpose |
 |------|---------|---------|
 | `PROMPT_MEMORY_P0_ENABLED` | OFF (undefined) | 统管 persona/toolSelectionPolicy/memoryPolicy 投影注入 |
+| `PROMPT_TEMPLATE_PROJECTION_ENABLED` | OFF (undefined) | 启用模板驱动投影加载（门控于 P0） |
 | `MEMORY_SEMANTIC_POLICY_ENABLED` | OFF | 统管 extraction 边界收紧 + long_term_fact 类型 |
 | `HYBRID_RETRIEVAL_ENABLED` | OFF | 启用 Hybrid Retrieval (entity/time index + vector fallback) |
 | `LIFECYCLE_SCORING_SHADOW` | OFF | 启用 Lifecycle Scoring shadow mode |
@@ -85,6 +98,15 @@
 - Flag OFF → projection fields must be `undefined`, NOT empty string `""`
 - Flag OFF → hash stability = P9 baseline (strictly identical)
 - Flag OFF → no behavior changes to existing paths
+
+### Flag Interaction Matrix
+
+| PROMPT_MEMORY_P0_ENABLED | PROMPT_TEMPLATE_PROJECTION_ENABLED | Resolver 返回值 |
+|--------------------------|-----------------------------------|----------------|
+| OFF | OFF | `{}` (无投影) |
+| OFF | ON | `{}` (TEMPLATE 被 P0 门控) |
+| ON | OFF | Fallback Defaults |
+| ON | ON | Template-loaded Projections |
 
 ---
 
@@ -211,6 +233,17 @@ All items from the plan's "Must Have" section:
 - [x] 所有新功能默认关闭的 feature flag
 - [x] Hybrid retrieval 抽象接口 (P2 decision-gated, abstraction complete — vector backend deferred)
 - [x] Lifecycle scoring shadow (P2 decision-gated, shadow complete — production rollout deferred)
+
+### Template-driven Projection Loading (Complete)
+
+- [x] PromptProjectionResolver 接口定义 + 实现
+- [x] Fallback defaults (DEFAULT_PERSONA_PROJECTION, DEFAULT_TOOL_SELECTION_POLICY, DEFAULT_MEMORY_POLICY_PROJECTION)
+- [x] Feature flag PROMPT_TEMPLATE_PROJECTION_ENABLED
+- [x] ForegroundAgent resolver 集成
+- [x] AgentKernel resolver 集成
+- [x] Memory extraction templates (agents:memory.md, output:memory-candidate.schema.md)
+- [x] Summary prompt builder (5 summary types)
+- [x] Flag interaction matrix 验证
 
 ---
 
