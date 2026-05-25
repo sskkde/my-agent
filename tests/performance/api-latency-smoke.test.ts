@@ -31,7 +31,8 @@ async function measureLatency(
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
-    
+    await response.arrayBuffer();
+
     const end = performance.now();
     latencies.push(end - start);
     

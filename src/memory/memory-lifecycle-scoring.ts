@@ -127,7 +127,8 @@ export class LifecycleScorer {
 
     const accessDate = new Date(accessTime);
     const now = new Date();
-    const daysSinceAccess = (now.getTime() - accessDate.getTime()) / (1000 * 60 * 60 * 24);
+    const elapsedDays = (now.getTime() - accessDate.getTime()) / (1000 * 60 * 60 * 24);
+    const daysSinceAccess = Math.max(0, Math.floor(elapsedDays));
 
     if (daysSinceAccess <= 1) return 1.0; // last 24h
     if (daysSinceAccess <= 7) return 0.8; // last 7 days
