@@ -97,6 +97,10 @@ function createMockModelInputBuilder(): ModelInputBuilder {
     build: vi.fn(async (input: ModelInputBuildInput): Promise<BuiltModelInput> => {
       const messages = [];
       
+      if (input.currentUserMessage) {
+        messages.push({ role: 'user' as const, content: input.currentUserMessage });
+      }
+      
       if (input.contextBundle?.pinnedItems) {
         const pinnedContent = input.contextBundle.pinnedItems
           .map(item => item.content)

@@ -1,22 +1,46 @@
-# 记忆候选 JSON Schema
+# Memory Candidate JSON Schema
 
-提取的每条记忆候选必须遵循以下结构：
+Response format for memory extraction. Respond with JSON only, no markdown.
 
 ```json
 {
-  "memoryType": "user_profile | user_preference | user_safety_rule | project_state | relationship | long_term_fact | durable_fact | episodic_summary",
-  "text": "简洁的自然语言描述，可独立引用",
-  "confidence": 0.7-1.0,
-  "importance": "low | medium | high | critical",
-  "sensitivity": "public | internal | private_user | restricted",
-  "keywords": ["1-12个关键词"],
-  "entities": [{"displayName": "实体名称", "type": "person|project|system|concept"}],
-  "scope": {
-    "visibility": "public | internal | private_user",
-    "ttlOverride": null
-  }
+  "candidates": [
+    {
+      "memoryType": "user_preference|user_profile|user_safety_rule|project_state|long_term_fact",
+      "text": "Clear, concise memory text",
+      "structured": { "...optional structured data..." },
+      "confidence": 0.0-1.0,
+      "importance": "low|medium|high|critical",
+      "sensitivity": "low|medium|high",
+      "keywords": ["keyword1", "keyword2"],
+      "entities": [
+        {
+          "entityType": "person|project|workflow|organization",
+          "entityId": "optional-id",
+          "displayName": "Display Name"
+        }
+      ],
+      "scope": {
+        "visibility": "private_user"
+      },
+      "sourceRefs": {
+        "transcriptRefs": ["turn-id-1", "turn-id-2"],
+        "extraction": {
+          "windowHash": "WINDOW_HASH",
+          "triggerTurnId": "TRIGGER_TURN_ID",
+          "includedTurnIds": ["turn-id-1", "turn-id-2"]
+        }
+      },
+      "discardReason": "optional reason if this should be discarded"
+    }
+  ]
 }
 ```
 
-必填字段：memoryType, text, confidence, keywords, scope
-禁止：restricted sensitivity, 空关键词, confidence < 0.7
+## REQUIREMENTS
+
+- confidence must be >= 0.7
+- sensitivity must NOT be "restricted"
+- visibility must be "private_user"
+- transcriptRefs must reference actual turns from the conversation
+- Include discardReason for any candidate that should not be stored

@@ -1,26 +1,36 @@
-# 长期记忆提取
+# Long-Term Memory Extraction
 
-你负责从对话中提取值得长期保存的信息。
+You are a memory extraction system. Analyze the following conversation and extract long-term memories.
 
-## 允许的记忆类型
-- user_profile: 用户身份和稳定特征
-- user_preference: 用户稳定偏好（非单次任务要求）
-- user_safety_rule: 用户安全规则和边界
-- project_state: 长期项目阶段、目标、里程碑、重要决策
-- relationship: 用户与其他人/系统/项目的关系
-- long_term_fact: 可长期复用的原子事实，可溯源、可独立引用
-- durable_fact: 持久有效的事实性知识
-- episodic_summary: 重要事件的摘要记录
+## INSTRUCTIONS
 
-## 禁止写入的内容
-- 文件名、代码行号、命令执行记录
-- commit/push/release 细节
-- 单次任务格式要求、临时协作偏好
-- 工具使用偏好、助手执行过程
-- 低置信度推测、秘密/密钥/密码
+Extract memories that should be stored long-term. You MUST respond with valid JSON only.
 
-## 提取原则
-- 只提取用户明确表达或可从对话可靠推断的信息
-- 每条记忆必须独立可引用，不依赖上下文
-- 置信度低于 0.7 的候选自动丢弃
-- 优先保存用户是谁（身份、偏好、关系），不保存助手做了什么
+## ALLOWED MEMORY TYPES (P0)
+
+- user_preference: User's preferences and choices
+- user_profile: User's profile information (role, experience, skills)
+- user_safety_rule: Safety rules and constraints for the user
+- project_state: Current project state and context
+- long_term_fact: Long-term reusable atomic facts that must be traceable and independently referenceable
+
+## DISCARD THE FOLLOWING
+
+1. One-off tasks and transient context that won't be relevant later
+2. Memory types not in the allowed list above (relationship, routine, workflow_preference, durable_fact, episodic_summary)
+3. Information without clear provenance or source in the conversation
+4. Low-confidence claims or speculation
+5. Sensitive content that should not be stored (passwords, secrets, private keys)
+6. File names, commands, test steps
+7. Commit/push/release details
+8. Collaboration workflow preferences
+9. Tool usage preferences
+10. One-time formatting requirements
+11. Assistant execution process details
+
+## Extraction Principles
+
+- Only extract information the user explicitly expressed or can be reliably inferred from the conversation
+- Each memory must be independently referenceable, not dependent on context
+- Candidates with confidence below 0.7 are automatically discarded
+- Prioritize who the user is (identity, preferences, relationships), not what the assistant did

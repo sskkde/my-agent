@@ -1,6 +1,8 @@
 import * as crypto from 'crypto';
 import type { Importance, Sensitivity, Visibility, MemoryEntity, MemoryScope } from '../storage/long-term-memory-store.js';
 import { validateMemoryCandidate } from './memory-candidate-types.js';
+import { createTemplateLoader } from '../prompt/template-loader.js';
+import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
 
 /**
  * Types allowed for auto-extraction from conversation transcripts.
@@ -221,19 +223,8 @@ export function validateExtractedCandidate(
   };
 }
 
-export function buildLongTermMemoryExtractionPrompt(window: MemoryExtractionWindow): string {
-  return `You are a memory extraction system. Analyze the following conversation and extract long-term memories.
-
-CONTEXT:
-- User ID: ${window.userId}
-- Session ID: ${window.sessionId}
-- Window Hash: ${window.windowHash}
-- Trigger Turn: ${window.triggerTurnId}
-- Included Turns: ${window.includedTurnIds.join(', ')}
-- Session Memory Summary ID: ${window.sessionMemorySummaryId || 'none'}
-
-CONVERSATION:
-${window.renderedInput}
+/** Hardcoded fallback for buildLongTermMemoryExtractionPrompt when template loading fails */
+const HARDCODED_EXTRACTION_PROMPT_BODY = `You are a memory extraction system. Analyze the following conversation and extract long-term memories.
 
 INSTRUCTIONS:
 Extract memories that should be stored long-term. You MUST respond with valid JSON only.
@@ -256,9 +247,9 @@ DISCARD THE FOLLOWING:
 8. Collaboration workflow preferences
 9. Tool usage preferences
 10. One-time formatting requirements
-11. Assistant execution process details
+11. Assistant execution process details`;
 
-RESPONSE FORMAT (JSON only, no markdown):
+const HARDCODED_SCHEMA_BODY = `RESPONSE FORMAT (JSON only, no markdown):
 {
   "candidates": [
     {
@@ -282,8 +273,8 @@ RESPONSE FORMAT (JSON only, no markdown):
       "sourceRefs": {
         "transcriptRefs": ["turn-id-1", "turn-id-2"],
         "extraction": {
-          "windowHash": "${window.windowHash}",
-          "triggerTurnId": "${window.triggerTurnId}",
+          "windowHash": "WINDOW_HASH",
+          "triggerTurnId": "TRIGGER_TURN_ID",
           "includedTurnIds": ["turn-id-1", "turn-id-2"]
         }
       },
@@ -300,4 +291,60 @@ REQUIREMENTS:
 - Include discardReason for any candidate that should not be stored
 
 Respond with JSON only.`;
+
+export async function buildLongTermMemoryExtractionPrompt(window: MemoryExtractionWindow): Promise<string> {
+  let stableRules: string;
+  let schemaSection: string;
+  let atomicFactsRules: string | null = null;
+
+  if (isPromptMemoryP0Enabled()) {
+    const templateLoader = createTemplateLoader();
+    try {
+      stableRules = await templateLoader.load('agents:memory');
+    } catch (e) {
+      console.warn('[memory-extraction] Failed to load agents:memory template, using hardcoded fallback', e);
+      stableRules = HARDCODED_EXTRACTION_PROMPT_BODY;
+    }
+    try {
+      schemaSection = await templateLoader.load('output:memory-candidate.schema');
+    } catch (e) {
+      console.warn('[memory-extraction] Failed to load output:memory-candidate.schema template, using hardcoded fallback', e);
+      schemaSection = HARDCODED_SCHEMA_BODY;
+    }
+    try {
+      atomicFactsRules = await templateLoader.load('summary:atomic-facts');
+    } catch (e) {
+      console.warn('[memory-extraction] Failed to load summary:atomic-facts template, skipping atomic-facts rules', e);
+      atomicFactsRules = null;
+    }
+  } else {
+    stableRules = HARDCODED_EXTRACTION_PROMPT_BODY;
+    schemaSection = HARDCODED_SCHEMA_BODY;
+  }
+
+  const dynamicWindow = buildMemoryExtractionDynamicWindow(window);
+
+  const promptParts = [stableRules];
+  if (atomicFactsRules) {
+    promptParts.push(`\n## Atomic Facts Extraction Rules\n${atomicFactsRules}`);
+  }
+  promptParts.push(dynamicWindow);
+  promptParts.push(schemaSection);
+
+  return promptParts.join('\n\n');
+}
+
+export function buildMemoryExtractionDynamicWindow(window: MemoryExtractionWindow): string {
+  return `
+CONTEXT:
+- User ID: ${window.userId}
+- Session ID: ${window.sessionId}
+- Window Hash: ${window.windowHash}
+- Trigger Turn: ${window.triggerTurnId}
+- Included Turns: ${window.includedTurnIds.join(', ')}
+- Session Memory Summary ID: ${window.sessionMemorySummaryId || 'none'}
+
+CONVERSATION:
+${window.renderedInput}
+`;
 }

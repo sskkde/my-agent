@@ -10,7 +10,7 @@ import {
   stableJsonHash,
   fingerprintMemoryCandidate,
   validateExtractedCandidate,
-  buildLongTermMemoryExtractionPrompt,
+  buildMemoryExtractionDynamicWindow,
   type ExtractedMemoryCandidate,
   type MemoryExtractionWindow,
 } from './long-term-memory-extraction.js';
@@ -177,16 +177,12 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
       try {
         deps.memoryExtractionRunStore.markRunning(run.runId);
 
-        const extractionPrompt = buildLongTermMemoryExtractionPrompt(window);
+        const extractionPrompt = buildMemoryExtractionDynamicWindow(window);
         const builtInput = await deps.modelInputBuilder.build({
           mode: 'structured_json',
           agentKind: 'memory',
           providerFamily: deps.providerFamily ?? 'openai',
-          contextBundle: {
-            pinnedItems: [
-              { itemId: 'extraction-prompt', content: extractionPrompt, isPinned: true },
-            ],
-          },
+          currentUserMessage: extractionPrompt,
           sessionId: deps.sessionId,
         });
 
