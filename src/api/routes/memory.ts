@@ -30,7 +30,13 @@ const VALID_MEMORY_TYPES: MemoryType[] = [
   'user_profile',
   'user_preference',
   'user_safety_rule',
+  'relationship',
   'project_state',
+  'routine',
+  'workflow_preference',
+  'durable_fact',
+  'episodic_summary',
+  'long_term_fact',
 ];
 
 const DEFAULT_LIMIT = 50;

@@ -352,6 +352,52 @@ describe('Long-term Memory Store Invariants', () => {
       expect(rows[0]?.lifecycle_status).toBe('deleted');
     });
   });
+
+  describe('long_term_fact storage acceptance', () => {
+    it('should persist and retrieve long_term_fact memory type', () => {
+      const memory = createTestMemory({
+        memoryId: 'mem-ltf-001',
+        memoryType: 'long_term_fact',
+        content: { text: 'The project uses TypeScript for type safety' },
+        fingerprint: 'fp-ltf-001',
+        sourceWindowHash: 'hash-ltf-001',
+      });
+      memoryStore.save(memory);
+
+      const retrieved = memoryStore.getByMemoryId('mem-ltf-001');
+      expect(retrieved).not.toBeNull();
+      expect(retrieved?.memoryType).toBe('long_term_fact');
+      expect(retrieved?.content.text).toBe('The project uses TypeScript for type safety');
+    });
+
+    it('should find long_term_fact by type', () => {
+      const memory = createTestMemory({
+        memoryId: 'mem-ltf-002',
+        memoryType: 'long_term_fact',
+        fingerprint: 'fp-ltf-002',
+        sourceWindowHash: 'hash-ltf-002',
+      });
+      memoryStore.save(memory);
+
+      const results = memoryStore.getByType('long_term_fact');
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results.some(m => m.memoryId === 'mem-ltf-002')).toBe(true);
+    });
+
+    it('should upsert long_term_fact memory', () => {
+      const memory = createTestMemory({
+        memoryId: 'mem-ltf-003',
+        memoryType: 'long_term_fact',
+        fingerprint: 'fp-ltf-003',
+        sourceWindowHash: 'hash-ltf-003',
+      });
+      memoryStore.upsertExtracted(memory);
+
+      const found = memoryStore.findCurrentByFingerprint('user-123', 'fp-ltf-003');
+      expect(found).not.toBeNull();
+      expect(found?.memoryType).toBe('long_term_fact');
+    });
+  });
 });
 
 describe('Memory Extraction Run Store', () => {
