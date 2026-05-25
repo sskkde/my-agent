@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-P10 Prompt × Memory Enhancement has been successfully implemented across 22 planned tasks (PM-1 through PM-22). All implementation phases are complete with full test coverage, security verification, and feature flag scaffolding. The system is ready for phased rollout with all features defaulting to OFF.
+P10 Prompt × Memory Enhancement has been implemented across 22 planned tasks (PM-1 through PM-22). P0 and P1 deliverables are complete with full test coverage, security verification, and feature flag scaffolding. P2 deliverables have abstraction complete (hybrid retrieval orchestrator with NoOpVectorBackend, lifecycle scoring in shadow mode, entity/time index schema), but production activation is decision-gated pending vector backend selection and lifecycle rollout validation. The system is ready for phased rollout of P0/P1 features with all features defaulting to OFF.
 
 ---
 
@@ -40,16 +40,16 @@ P10 Prompt × Memory Enhancement has been successfully implemented across 22 pla
 | PM-14 | Summary Layer Projections | Complete |
 | PM-15 | P1 Integration | Complete |
 
-### P2 Deliverables (Decision-gated, Complete)
+### P2 Deliverables (Decision-gated, Abstraction Complete — Production Deferred)
 
 | Task | Description | Status |
 |------|-------------|--------|
-| PM-16 | Hybrid Retrieval Abstraction | Complete |
-| PM-17 | Entity/Time Index | Complete |
-| PM-18 | Hybrid Retrieval Integration | Complete |
-| PM-19 | Lifecycle Scoring Shadow | Complete |
-| PM-20 | Lifecycle Policy Transitions | Complete |
-| PM-21 | P2 Integration | Complete |
+| PM-16 | Hybrid Retrieval Abstraction | Abstraction Complete — Vector Backend Deferred |
+| PM-17 | Entity/Time Index | Schema Ready — Production Indexing Deferred |
+| PM-18 | Hybrid Retrieval Integration | Abstraction Complete — NoOpVectorBackend Active |
+| PM-19 | Lifecycle Scoring Shadow | Shadow Mode Complete — Production Rollout Decision-gated |
+| PM-20 | Lifecycle Policy Transitions | Phase Flags Ready — Activation Decision-gated |
+| PM-21 | P2 Integration | Tests Pass — Production Activation Deferred |
 
 ### Final Wave (Complete)
 
@@ -181,9 +181,9 @@ When all flags are OFF:
 
 | Aspect | Details |
 |--------|---------|
-| Risk | P2 hybrid retrieval requires vector backend selection |
-| Mitigation | NoOpVectorBackend provides safe fallback |
-| Status | Decision-gated — backend selection deferred |
+| Risk | P2 hybrid retrieval requires vector backend selection for production use |
+| Mitigation | NoOpVectorBackend provides safe fallback; abstraction is complete |
+| Status | Decision-gated — backend selection deferred; abstraction allows drop-in replacement when ready |
 
 ---
 
@@ -314,6 +314,8 @@ Replace NoOpVectorBackend with actual vector search:
 
 ---
 
-**Release Status**: P10 Complete / Ready for Production
+**Release Status**: P10 P0/P1 Complete + P2 Abstraction Complete (Decision-gated) / Ready for Phased Rollout After Validation
 **Target Release Date**: 2026-05-24
 **Release Manager**: Sisyphus
+
+> P2 items (hybrid retrieval vector backend, lifecycle scoring production rollout) are abstraction-complete with NoOpVectorBackend and shadow-mode safeguards. Production activation requires separate decision after vector backend selection and lifecycle rollout validation.

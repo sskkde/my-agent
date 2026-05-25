@@ -14,6 +14,7 @@
 | Production Files | 14 modified/created |
 | Test Files | 14 created |
 | Final Wave Status | F1-F4 all APPROVED |
+| Production Readiness | P0/P1 ready for phased rollout; P2 production activation decision-gated |
 
 ### P0 Deliverables (Complete)
 - Memory Semantic Policy — `long_term_fact` type + 禁止项扩展
@@ -30,10 +31,10 @@
 - Rolling Summary 触发策略升级 — topic_shift + plan_update events
 - 分层 Summary Prompts — 5 layer prompts + SummaryLayerProjection
 
-### P2 Deliverables (Decision-gated, Complete)
+### P2 Deliverables (Decision-gated, Abstraction Complete)
 - Hybrid Retrieval 抽象 — VectorRetrievalBackend interface + NoOpVectorBackend
 - Entity/Time Index — migration v55 + getByEntityName/getByDateRange
-- Lifecycle Scoring Shadow — LifecycleScorer pure function
+- Lifecycle Scoring Shadow — LifecycleScorer pure function; production rollout gated by `LIFECYCLE_POLICY_ENABLED`
 
 ---
 
@@ -208,8 +209,8 @@ All items from the plan's "Must Have" section:
 - [x] PlannerStatePatch → SessionMemory bridge
 - [x] Shadow mode 验证机制
 - [x] 所有新功能默认关闭的 feature flag
-- [x] Hybrid retrieval 抽象接口 (P2 decision-gated, complete)
-- [x] Lifecycle scoring shadow (P2 decision-gated, complete)
+- [x] Hybrid retrieval 抽象接口 (P2 decision-gated, abstraction complete — vector backend deferred)
+- [x] Lifecycle scoring shadow (P2 decision-gated, shadow complete — production rollout deferred)
 
 ---
 
@@ -263,8 +264,8 @@ All items verified:
 
 ---
 
-**Release Status**: P10 Complete / Ready for Production
+**Release Status**: P10 P0/P1 Complete + P2 Abstraction Complete (Decision-gated) / Ready for Phased Rollout After Validation
 **Target Release Date**: 2026-05-24
 **Release Manager**: Sisyphus
 
-> All automated gates passed. Feature flags default OFF. Manual deployment verification recommended before production rollout.
+> All automated gates passed. Feature flags default OFF. P2 items (hybrid retrieval vector backend and lifecycle policy rollout) remain decision-gated and require separate production activation approval.

@@ -10,11 +10,12 @@
 
 | Attribute | Value |
 |-----------|-------|
-| Phase | P0/P1 (Complete) + P2 (Decision-gated) |
+| Phase | P0/P1 (Complete) + P2 (Decision-gated, Abstraction Complete) |
 | Implementation | PM-1 through PM-22 (22 tasks) + Final Wave (F1-F4) |
 | Production Files | 14 modified/created |
 | Test Files | 14 created |
 | Final Wave Status | F1-F4 all APPROVED |
+| P2 Status | Abstraction complete, NoOpVectorBackend active, Lifecycle shadow mode ready — Production activation decision-gated |
 
 ---
 
@@ -219,8 +220,8 @@ All items verified:
 - [x] PlannerStatePatch → SessionMemory bridge
 - [x] Shadow mode 验证机制
 - [x] 所有新功能默认关闭的 feature flag
-- [x] Hybrid retrieval 抽象接口 (P2 decision-gated, complete)
-- [x] Lifecycle scoring shadow (P2 decision-gated, complete)
+- [x] Hybrid retrieval 抽象接口 (P2 decision-gated, abstraction complete — vector backend deferred)
+- [x] Lifecycle scoring shadow (P2 decision-gated, shadow mode complete — production rollout decision-gated)
 
 ---
 
@@ -263,8 +264,8 @@ All items verified:
 
 ---
 
-**Release Status**: P10 Complete / Ready for Production
+**Release Status**: P10 P0/P1 Complete + P2 Abstraction Complete (Decision-gated) / Ready for Phased Rollout After Validation
 **Target Release Date**: 2026-05-24
 **Release Manager**: Sisyphus
 
-> All automated gates passed. Feature flags default OFF. Manual deployment verification recommended before production rollout.
+> All automated gates passed. Feature flags default OFF. P2 items (hybrid retrieval vector backend, lifecycle scoring production rollout) are abstraction-complete with NoOpVectorBackend and shadow-mode safeguards; production activation requires separate decision. Manual deployment verification recommended before production rollout.
