@@ -588,6 +588,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   registerDefaultRuntimeAdapters({
     adapterRegistry,
     toolExecutor,
+    toolRegistry,
     plannerRuntime,
     workflowRuntime,
     triggerRuntime,
