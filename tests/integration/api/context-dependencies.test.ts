@@ -853,11 +853,13 @@ describe('ApiContext Dependencies - Task 4', () => {
           bundleId: 'bundle-001',
           agentId: 'agent-001',
           agentType: 'main',
+          userId: 'test-user',
           invocationSource: 'system',
           orderedItems: [],
           pinnedItems: [],
           tokenEstimate: 100,
         },
+        userId: 'test-user',
       });
 
       expect(kernelResult).toBeDefined();

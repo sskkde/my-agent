@@ -351,6 +351,7 @@ export type ContextBundle = {
   runId: string;
   agentId: string;
   agentType: string;
+  userId: string;
   invocationSource: InvocationSource;
   pinnedItems: ContextItem[];
   orderedItems: ContextItem[];

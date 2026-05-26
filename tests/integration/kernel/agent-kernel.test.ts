@@ -159,6 +159,7 @@ class FakeContextManager {
       runId: 'test-run',
       agentId: 'test-agent',
       agentType: 'main',
+      userId: 'test-user',
       invocationSource: 'gateway_intent',
       pinnedItems: [],
       orderedItems: this.contextItems,
@@ -191,6 +192,9 @@ class FakeDispatcher {
       completedAt?: string;
     }>
   > = new Map();
+
+  /** Last dispatched request - for test assertions */
+  lastRequest: DispatchRequest | null = null;
 
   registerHandler(
     actionType: string,
@@ -226,6 +230,9 @@ class FakeDispatcher {
     createdAt: string;
     completedAt?: string;
   }> {
+    // Capture the request for test assertions
+    this.lastRequest = request;
+
     const handler = this.handlers.get(request.action.actionType);
     if (handler) {
       return handler(request);
@@ -387,6 +394,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
       };
@@ -435,6 +443,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
       };
@@ -487,6 +496,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        userId: 'test-user',
         maxIterations: 3,
         timeoutMs: 60000,
       };
@@ -532,6 +542,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 0,
       };
@@ -573,6 +584,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
       };
@@ -607,6 +619,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
       };
@@ -618,6 +631,71 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       expect(result.transcript[1].type).toBe('llm_response');
       expect(result.transcript[0].iteration).toBe(1);
       expect(result.transcript[1].iteration).toBe(1);
+    });
+  });
+
+  describe('Dispatch payload verification', () => {
+    it('should pass toolCallId, userId, and sessionId in dispatch payload', async () => {
+      const toolCalls: ToolCall[] = [
+        {
+          id: 'call-dispatch-test',
+          type: 'function',
+          function: {
+            name: 'calculator',
+            arguments: JSON.stringify({ a: 2, b: 3, operation: 'multiply' }),
+          },
+        },
+      ];
+
+      const llmResponses: LLMResponse[] = [
+        createToolUseResponse(toolCalls),
+        createTextResponse('The result is 6.'),
+      ];
+      const fakeLLMAdapter = new FakeLLMAdapter(llmResponses);
+
+      const config: KernelConfig = {
+        llmAdapter: fakeLLMAdapter,
+        toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
+        contextManager: fakeContextManager as unknown as ContextManager,
+        dispatcher: fakeDispatcher as unknown as RuntimeDispatcher,
+        modelInputBuilder,
+        maxIterations: 10,
+        timeoutMs: 60000,
+      };
+
+      const kernel = new AgentKernel(config);
+
+      const contextBundle = fakeContextManager.assembleBundle();
+      const input: KernelRunInput = {
+        contextBundle,
+        userId: 'dispatch-test-user',
+        sessionId: 'dispatch-test-session',
+        maxIterations: 10,
+        timeoutMs: 60000,
+      };
+
+      await kernel.run(input);
+
+      // Verify the dispatch request was captured
+      expect(fakeDispatcher.lastRequest).not.toBeNull();
+
+      const dispatchRequest = fakeDispatcher.lastRequest!;
+
+      // Verify userId from input
+      expect(dispatchRequest.action.userId).toBe('dispatch-test-user');
+      expect(dispatchRequest.context.userId).toBe('dispatch-test-user');
+
+      // Verify sessionId from input
+      expect(dispatchRequest.context.sessionId).toBe('dispatch-test-session');
+
+      // Verify targetAction contains toolCallId
+      const targetAction = dispatchRequest.action.targetAction as {
+        toolName?: string;
+        params?: unknown;
+        toolCallId?: string;
+      };
+      expect(targetAction.toolCallId).toBe('call-dispatch-test');
+      expect(targetAction.toolName).toBe('calculator');
     });
   });
 });

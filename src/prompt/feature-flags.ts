@@ -23,3 +23,11 @@ export function isPromptMemoryP0Enabled(): boolean {
 export function isPromptTemplateProjectionEnabled(): boolean {
   return isPromptMemoryP0Enabled() && process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED === 'true';
 }
+
+/**
+ * Check if TOOL_LOOP_V2 feature is enabled.
+ * This is the feature flag for the new tool loop implementation.
+ */
+export function isToolLoopV2Enabled(): boolean {
+  return process.env.TOOL_LOOP_V2_ENABLED === 'true';
+}

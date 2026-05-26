@@ -48,7 +48,7 @@ export class ModelInputBuilder {
     const segmentC = this.buildSegmentC(input);
     const segmentD = this.buildSegmentD(input);
 
-    const messages = this.assembleMessages(segmentA, segmentB, segmentC, segmentD);
+    const messages = this.assembleMessages(segmentA, segmentB, segmentC, segmentD, input);
 
     return {
       messages,
@@ -212,7 +212,8 @@ export class ModelInputBuilder {
     segmentA: { content: string },
     segmentB: { content: string },
     segmentC: { content: string },
-    segmentD: { content: string }
+    segmentD: { content: string },
+    input: ModelInputBuildInput
   ): LLMMessage[] {
     const messages: LLMMessage[] = [];
 
@@ -230,6 +231,12 @@ export class ModelInputBuilder {
 
     if (segmentD.content) {
       messages.push({ role: 'user', content: segmentD.content });
+    }
+
+    if (input.mode === 'function_calling' && input.transcript && input.transcript.length > 0) {
+      for (const msg of input.transcript) {
+        messages.push(msg);
+      }
     }
 
     return messages;

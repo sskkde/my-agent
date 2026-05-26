@@ -13,7 +13,7 @@ import type {
 import type { ModelInputBuildInput } from './model-input/model-input-types.js';
 import { projectBundleToData } from './model-input/context-bundle-adapter.js';
 import { extractToolsForRequest } from './model-input/model-input-builder.js';
-import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
+import { isPromptMemoryP0Enabled, isToolLoopV2Enabled } from '../prompt/feature-flags.js';
 
 export class AgentKernel {
   private config: KernelConfig;
@@ -88,7 +88,7 @@ export class AgentKernel {
 
           for (const toolRequest of toolUseRequests) {
             this.commitTranscript(state, 'tool_call', toolRequest);
-            const toolResult = await this.dispatchTool(toolRequest, input.contextBundle);
+            const toolResult = await this.dispatchTool(toolRequest, input);
             this.commitTranscript(state, 'tool_result', toolResult);
             this.mergeToolResult(state, toolRequest, toolResult);
           }
@@ -149,7 +149,7 @@ export class AgentKernel {
       contextBundle: contextBundleData,
       transcript: transcriptMessages,
       currentDate: new Date().toISOString(),
-      sessionId: input.contextBundle.runId,
+      sessionId: input.sessionId,
       runId: input.contextBundle.runId,
       toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
       ...(isPromptMemoryP0Enabled() ? {
@@ -186,11 +186,26 @@ export class AgentKernel {
     const messages: LLMMessage[] = [];
 
     for (const entry of state.transcript) {
-      if (entry.type === 'llm_response' && (entry.content as { content?: string }).content) {
-        messages.push({
-          role: 'assistant',
-          content: (entry.content as { content: string }).content,
-        });
+      if (entry.type === 'llm_response') {
+        const llmContent = entry.content as {
+          content?: string;
+          toolCalls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
+        };
+        
+        if (llmContent.content) {
+          messages.push({
+            role: 'assistant',
+            content: llmContent.content,
+          });
+        }
+        
+        if (isToolLoopV2Enabled() && llmContent.toolCalls && llmContent.toolCalls.length > 0) {
+          messages.push({
+            role: 'assistant',
+            content: '',
+            toolCalls: llmContent.toolCalls,
+          });
+        }
       } else if (entry.type === 'tool_result') {
         const toolResult = entry.content as ToolUseResult;
         messages.push({
@@ -232,7 +247,7 @@ export class AgentKernel {
 
   private async dispatchTool(
     toolRequest: ToolUseRequest,
-    contextBundle: ContextBundle
+    input: KernelRunInput
   ): Promise<ToolUseResult> {
     const dispatchResult = await this.config.dispatcher.dispatch({
       requestId: `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -243,18 +258,20 @@ export class AgentKernel {
         targetAction: {
           toolName: toolRequest.toolName,
           params: toolRequest.params,
+          toolCallId: toolRequest.toolCallId,
         },
         source: {
           sourceModule: 'agent_kernel',
           sourceAction: 'run',
         },
-        userId: contextBundle.runId,
+        userId: input.userId,
         createdAt: new Date().toISOString(),
         status: 'pending',
       },
       context: {
         callerModule: 'agent_kernel',
-        userId: contextBundle.runId,
+        userId: input.userId,
+        sessionId: input.sessionId,
       },
     });
 

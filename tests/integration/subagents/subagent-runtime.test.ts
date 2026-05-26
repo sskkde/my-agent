@@ -87,6 +87,7 @@ class FakeContextManager implements SubagentContextManager {
       runId: options.subagentRunId,
       agentId: `agent-${options.subagentRunId}`,
       agentType: options.taskSpec.agentType || 'subagent',
+      userId: 'test-user',
       invocationSource: 'subagent_runtime',
       pinnedItems: [isolatedItem],
       orderedItems: [],
@@ -121,6 +122,7 @@ describe('Subagent Runtime', () => {
       runId: 'parent-run-1',
       agentId: 'parent-agent',
       agentType: 'main',
+      userId: 'test-user',
       invocationSource: 'gateway_intent',
       pinnedItems: [],
       orderedItems: [

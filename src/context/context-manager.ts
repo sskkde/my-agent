@@ -264,6 +264,7 @@ export class ContextManager {
       runId: input.runId,
       agentId: input.agentId,
       agentType: input.agentType,
+      userId: input.userId,
       invocationSource: input.invocationSource,
       pinnedItems,
       orderedItems,
