@@ -150,7 +150,7 @@ export class AgentKernel {
       transcript: transcriptMessages,
       currentDate: new Date().toISOString(),
       sessionId: input.sessionId,
-      runId: input.contextBundle.runId,
+      runId: input.runId ?? input.contextBundle.runId,
       toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
       ...(isPromptMemoryP0Enabled() ? {
         toolSelectionPolicy,
@@ -272,6 +272,7 @@ export class AgentKernel {
         callerModule: 'agent_kernel',
         userId: input.userId,
         sessionId: input.sessionId,
+        kernelRunId: input.runId ?? input.contextBundle.runId,
       },
     });
 

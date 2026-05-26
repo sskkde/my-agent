@@ -26,6 +26,9 @@ export interface KernelRunInput {
   userId: string;
   /** Session ID for this run - optional, used for LLM request context. */
   sessionId?: string;
+  /** Run ID for this run - used for tool dispatch kernelRunId and transcript tracking.
+   *  Falls back to contextBundle.runId if not provided. */
+  runId?: string;
   /** Per-run tool projection — takes priority over KernelConfig.toolProjection.
    *  Allows different tool visibility per tenant, workflow step, approval state, or connector scope. */
   toolProjection?: ToolPlaneProjection;
@@ -121,6 +124,7 @@ export interface RuntimeDispatcher {
       callerModule: string;
       userId?: string;
       sessionId?: string;
+      kernelRunId?: string;
     };
   }): Promise<{
     requestId: string;
