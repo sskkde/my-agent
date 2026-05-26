@@ -25,7 +25,11 @@ export function createKernelDispatcherAdapter(
         actionType: request.action.actionType as RuntimeActionType,
         targetRuntime: request.action.targetRuntime as TargetRuntime,
         targetAction: request.action.targetAction?.toolName ?? 'execute',
-        payload: (request.action.targetAction?.params as Record<string, unknown>) ?? {},
+        payload: {
+          ...((request.action.targetAction?.params as Record<string, unknown>) ?? {}),
+          toolCallId: request.action.targetAction?.toolCallId,
+          toolName: request.action.targetAction?.toolName,
+        },
         userId: request.action.userId,
         sessionId: request.context.sessionId,
         source: request.action.source,
