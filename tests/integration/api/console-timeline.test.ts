@@ -405,6 +405,119 @@ describe('Console Timeline Service', () => {
     });
   });
 
+  describe('Old transcript compatibility (EC-8)', () => {
+    const oldTranscriptSession = 'test-session-old-transcript';
+
+    beforeAll(() => {
+      // Old transcript format: runtimeSummary is completely undefined
+      const turnWithoutRuntimeSummary: TurnTranscript = {
+        turnId: 'turn-old-001',
+        sessionId: oldTranscriptSession,
+        userId,
+        input: {
+          userMessageSummary: 'Old format message',
+        },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-old-001', role: 'assistant', content: 'Response without runtime summary' },
+          ],
+        },
+        // No runtimeSummary at all - old format
+        visibility: 'public',
+        createdAt: '2026-04-29T19:00:00.000Z',
+      };
+
+      // Old transcript format: runtimeSummary exists but no toolCallSummaries
+      const turnWithEmptyRuntimeSummary: TurnTranscript = {
+        turnId: 'turn-old-002',
+        sessionId: oldTranscriptSession,
+        userId,
+        input: {
+          userMessageSummary: 'Another old format',
+        },
+        output: {
+          visibleMessages: [],
+        },
+        runtimeSummary: {
+          // Has runtimeSummary but no toolCallSummaries
+          foregroundDecisionId: 'decision-001',
+        },
+        visibility: 'public',
+        createdAt: '2026-04-29T19:01:00.000Z',
+      };
+
+      // Old transcript with approval/ack messages
+      const turnWithAckMessages: TurnTranscript = {
+        turnId: 'turn-old-003',
+        sessionId: oldTranscriptSession,
+        userId,
+        input: {
+          userMessageSummary: 'Request requiring approval',
+        },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-ack-001', role: 'approval', content: 'Approval granted for action' },
+          ],
+        },
+        runtimeSummary: {
+          approvalSummaries: ['Approval granted'],
+        },
+        visibility: 'public',
+        createdAt: '2026-04-29T19:02:00.000Z',
+      };
+
+      apiContext.stores.transcriptStore.saveTurn(turnWithoutRuntimeSummary);
+      apiContext.stores.transcriptStore.saveTurn(turnWithEmptyRuntimeSummary);
+      apiContext.stores.transcriptStore.saveTurn(turnWithAckMessages);
+    });
+
+    it('should render old transcript without runtimeSummary without crash', () => {
+      const result = timelineService.getTimeline(oldTranscriptSession);
+      
+      // Should have events for the turn
+      const userEvents = result.events.filter(e => e.eventType === 'user_message');
+      const assistantEvents = result.events.filter(e => e.eventType === 'assistant_message');
+      
+      expect(userEvents.length).toBeGreaterThanOrEqual(1);
+      expect(assistantEvents.length).toBeGreaterThanOrEqual(1);
+      
+      // Should not crash and should have proper content
+      const oldMsg = result.events.find(e => e.content === 'Response without runtime summary');
+      expect(oldMsg).toBeDefined();
+    });
+
+    it('should handle runtimeSummary without toolCallSummaries (null/undefined)', () => {
+      const result = timelineService.getTimeline(oldTranscriptSession);
+      
+      // Should not crash
+      expect(result.events.length).toBeGreaterThan(0);
+      
+      // No tool_call events should be emitted for old format
+      const toolEvents = result.events.filter(e => e.eventType === 'tool_call');
+      expect(toolEvents).toHaveLength(0);
+    });
+
+    it('should handle old transcript with approval/ack messages', () => {
+      const result = timelineService.getTimeline(oldTranscriptSession);
+      
+      // Should have approval_decision event from approval role message
+      const approvalEvents = result.events.filter(e => e.eventType === 'approval_decision');
+      expect(approvalEvents.length).toBeGreaterThanOrEqual(1);
+      expect(approvalEvents[0].content).toBe('Approval granted for action');
+    });
+
+    it('should verify toolCallSummaries is undefined in old data', () => {
+      // Read back the turn to verify old format
+      const turn = apiContext.stores.transcriptStore.getTurn('turn-old-001');
+      expect(turn).toBeDefined();
+      expect(turn?.runtimeSummary).toBeUndefined();
+      
+      const turn2 = apiContext.stores.transcriptStore.getTurn('turn-old-002');
+      expect(turn2).toBeDefined();
+      expect(turn2?.runtimeSummary?.toolCallSummaries).toBeUndefined();
+    });
+  });
+
   describe('Complex session with multiple turns', () => {
     const complexSession = 'test-session-complex';
 
