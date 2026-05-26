@@ -117,7 +117,7 @@ describe('mapToolResultToMessage', () => {
       expect(message.toolCallId).toBe('call-large');
       expect(message.content).toContain('[Large result:');
       expect(message.content).toContain('Preview:');
-      expect(message.content).toContain('[Full result stored in blob storage');
+      expect(message.content).toContain('[Full result stored,');
       expect(message.content).toContain('blob:call-large');
     });
 

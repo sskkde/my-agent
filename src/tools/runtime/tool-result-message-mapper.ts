@@ -4,14 +4,21 @@
  */
 
 import type { ToolUseResult } from '../../kernel/types.js';
+import type { ToolResultStore } from '../../storage/tool-result-store.js';
 
-/**
- * LLM-consumable tool result message
- */
 export interface ToolResultMessage {
   role: 'tool';
   toolCallId: string;
   content: string;
+  resultRef?: string;
+}
+
+export interface MapToolResultOptions {
+  thresholdBytes?: number;
+  maxPreviewLength?: number;
+  toolResultStore?: ToolResultStore;
+  userId?: string;
+  sessionId?: string;
 }
 
 /**
@@ -112,10 +119,25 @@ export function mapToolResultToMessage(
     const summary = generateSummary(result.result);
     const sizeKB = Math.round(sizeBytes / 1024);
 
+    let resultRef = `blob:${result.toolCallId}`;
+    if (options?.toolResultStore && options.userId) {
+      const stored = options.toolResultStore.create({
+        resultRef: `tr:${Date.now().toString(36)}-${result.toolCallId}`,
+        toolCallId: result.toolCallId,
+        toolName: '',
+        userId: options.userId,
+        sessionId: options.sessionId,
+        preview: preview.substring(0, 512),
+        sensitivity: 'low',
+      });
+      resultRef = stored.resultRef;
+    }
+
     return {
       role: 'tool',
       toolCallId: result.toolCallId,
-      content: `[Large result: ${summary}, ${sizeKB}KB]\nPreview: ${preview}\n[Full result stored in blob storage, ref: blob:${result.toolCallId}]`,
+      content: `[Large result: ${summary}, ${sizeKB}KB]\nPreview: ${preview}\n[Full result stored, ref: ${resultRef}]`,
+      resultRef,
     };
   }
 

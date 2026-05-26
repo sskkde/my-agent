@@ -719,6 +719,8 @@ async function handleDispatchToolRoute(
             actionId: dispatchResult.actionId,
             status: dispatchResult.status,
             targetRuntime: dispatchResult.targetRuntime,
+            resultPreview: dispatchResult.result ? String(dispatchResult.result).substring(0, 256) : undefined,
+            resultRef: dispatchResult.result ? `tr:${dispatchResult.actionId}` : undefined,
           },
         },
       });
@@ -756,6 +758,8 @@ async function handleDispatchToolRoute(
             actionId: dispatchResult.actionId,
             status: dispatchResult.status,
             targetRuntime: dispatchResult.targetRuntime,
+            resultPreview: dispatchResult.result ? String(dispatchResult.result).substring(0, 256) : undefined,
+            resultRef: dispatchResult.result ? `tr:${dispatchResult.actionId}` : undefined,
           },
         },
       });
@@ -1032,7 +1036,11 @@ function persistTurnTranscript(
   if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
     const suggestedTools = output.result.data?.suggestedTools as string[] | undefined;
     if (suggestedTools && suggestedTools.length > 0) {
-      const toolCallSummaries = suggestedTools.map(toolName => `${toolName}: completed`);
+      const toolCallSummaries = suggestedTools.map((toolName, index) => ({
+        toolCallId: `tc-${input.correlationId}-${index}`,
+        toolName,
+        status: 'completed' as const,
+      }));
       runtimeSummary = { toolCallSummaries };
     }
   }
