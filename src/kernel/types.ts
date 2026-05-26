@@ -22,6 +22,10 @@ export interface ToolUseResult {
 
 export interface KernelRunInput {
   contextBundle: ContextBundle;
+  /** User ID for this run - used for tool dispatch and permission context. */
+  userId: string;
+  /** Session ID for this run - optional, used for LLM request context. */
+  sessionId?: string;
   /** Per-run tool projection — takes priority over KernelConfig.toolProjection.
    *  Allows different tool visibility per tenant, workflow step, approval state, or connector scope. */
   toolProjection?: ToolPlaneProjection;
@@ -103,6 +107,7 @@ export interface RuntimeDispatcher {
       targetAction?: {
         toolName?: string;
         params?: unknown;
+        toolCallId?: string;
       };
       source: {
         sourceModule: string;

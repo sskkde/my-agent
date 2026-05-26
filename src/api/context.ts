@@ -526,6 +526,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
           bundleId: 'default-bundle',
           agentId: 'default-agent',
           agentType: 'main' as const,
+          userId: 'default-user',
           invocationSource: 'system' as const,
           orderedItems: [],
           pinnedItems: [],
