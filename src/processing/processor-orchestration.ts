@@ -31,6 +31,8 @@ import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js';
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js';
 import type { SearchSubagent, SearchSubagentInput, SearchSubagentResult } from '../search/search-subagent.js';
 import { randomUUID } from 'crypto';
+import { isToolLoopV2Enabled } from '../prompt/feature-flags.js';
+import { mapToolResultToMessage } from '../tools/runtime/tool-result-message-mapper.js';
 
 /**
  * Known tool IDs from the catalog - used for server-side validation
@@ -53,6 +55,25 @@ const KNOWN_TOOL_IDS: string[] = [
   'web.fetch',
   'web.search',
 ];
+
+/**
+ * Tools that are synchronous read/search operations.
+ * When TOOL_LOOP_V2 is enabled and dispatch completes, these tools
+ * return their result summary directly instead of an ack message.
+ */
+const SYNCHRONOUS_READ_SEARCH_TOOLS: ReadonlySet<string> = new Set([
+  'web.search',
+  'web.fetch',
+  'file.read',
+  'file.glob',
+  'file.grep',
+  'memory.retrieve',
+  'docs.search',
+  'transcript.search',
+  'status.query',
+  'session.list',
+  'session.history',
+]);
 
 const CONVERSATION_HISTORY_TURN_LIMIT = 20;
 
@@ -559,6 +580,25 @@ function inferToolParams(toolName: string, text: string): Record<string, unknown
   }
 }
 
+function resolveToolResultText(
+  dispatchResult: { status: string; result?: unknown; error?: { code: string; message: string; recoverable: boolean } },
+  toolCallId: string,
+  toolName: string,
+  fallbackText: string,
+): string {
+  if (!isToolLoopV2Enabled()) return fallbackText;
+  if (dispatchResult.status !== 'completed') return fallbackText;
+  if (!SYNCHRONOUS_READ_SEARCH_TOOLS.has(toolName)) return fallbackText;
+  if (!dispatchResult.result && !dispatchResult.error) return fallbackText;
+
+  const toolUseResult = {
+    toolCallId,
+    result: dispatchResult.result,
+    ...(dispatchResult.error ? { error: dispatchResult.error } : {}),
+  };
+  return mapToolResultToMessage(toolUseResult).content;
+}
+
 /**
  * Handles the dispatch_tool route
  */
@@ -664,7 +704,12 @@ async function handleDispatchToolRoute(
       });
 
       return createSuccessOutput(correlationId, {
-        text: decision.userVisibleResponse || 'Processing tool request...',
+        text: resolveToolResultText(
+          dispatchResult,
+          serverRuntimeAction.payload.toolCallId,
+          primaryTool,
+          decision.userVisibleResponse || 'Processing tool request...',
+        ),
         route: decision.route,
         data: {
           reason: decision.reason,
@@ -696,7 +741,12 @@ async function handleDispatchToolRoute(
       });
 
       return createSuccessOutput(correlationId, {
-        text: decision.userVisibleResponse || 'Processing tool request...',
+        text: resolveToolResultText(
+          dispatchResult,
+          (decision.runtimeAction.payload?.toolCallId as string) ?? correlationId,
+          (decision.runtimeAction.payload?.toolName as string) ?? '',
+          decision.userVisibleResponse || 'Processing tool request...',
+        ),
         route: decision.route,
         data: {
           reason: decision.reason,
@@ -977,6 +1027,16 @@ function persistTurnTranscript(
 
   const inboundEventId = input.metadata?.inboundEventId as string | undefined;
 
+  let runtimeSummary: TurnTranscript['runtimeSummary'] | undefined;
+  
+  if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
+    const suggestedTools = output.result.data?.suggestedTools as string[] | undefined;
+    if (suggestedTools && suggestedTools.length > 0) {
+      const toolCallSummaries = suggestedTools.map(toolName => `${toolName}: completed`);
+      runtimeSummary = { toolCallSummaries };
+    }
+  }
+
   const transcript: TurnTranscript = {
     turnId: input.correlationId,
     sessionId: input.sessionId,
@@ -989,6 +1049,7 @@ function persistTurnTranscript(
     output: {
       visibleMessages,
     },
+    runtimeSummary,
     visibility: 'public',
     createdAt: output.timestamp,
   };
