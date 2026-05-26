@@ -11,14 +11,6 @@ export interface PairingGuardResult {
   warnings: PairingGuardWarning[];
 }
 
-/**
- * Validates that every tool_call has a matching tool_result and vice versa.
- * Multi-tool parallel calls (EC-5) are handled by pairing each tool_call
- * with its corresponding tool_result via toolCallId.
- *
- * @param transcript - Array of KernelTranscriptEntry to validate
- * @returns PairingGuardResult with validity status and any warnings
- */
 export function validateToolResultPairing(
   transcript: KernelTranscriptEntry[]
 ): PairingGuardResult {
@@ -63,4 +55,60 @@ export function validateToolResultPairing(
     valid: warnings.length === 0,
     warnings,
   };
+}
+
+export class ToolResultPairingGuard {
+  private pendingCalls: Map<string, ToolUseRequest> = new Map();
+  private completedResults: Map<string, ToolUseResult> = new Map();
+
+  trackAssistantToolCalls(requests: ToolUseRequest[]): void {
+    for (const req of requests) {
+      this.pendingCalls.set(req.toolCallId, req);
+    }
+  }
+
+  acceptToolResult(result: ToolUseResult): void {
+    this.completedResults.set(result.toolCallId, result);
+    this.pendingCalls.delete(result.toolCallId);
+  }
+
+  flushMissingResults(reason = 'iteration_end'): ToolUseResult[] {
+    const missing: ToolUseResult[] = [];
+    for (const [id, req] of this.pendingCalls) {
+      missing.push({
+        toolCallId: id,
+        result: null,
+        error: {
+          code: 'MISSING_TOOL_RESULT',
+          message: `Tool call ${req.toolName} (${id}) had no matching result (${reason})`,
+          recoverable: true,
+        },
+      });
+    }
+    this.pendingCalls.clear();
+    return missing;
+  }
+
+  hasPendingCalls(): boolean {
+    return this.pendingCalls.size > 0;
+  }
+
+  getPendingCallIds(): string[] {
+    return Array.from(this.pendingCalls.keys());
+  }
+
+  validate(): PairingGuardResult {
+    const warnings: PairingGuardWarning[] = [];
+    for (const id of this.pendingCalls.keys()) {
+      warnings.push({
+        type: 'missing_result',
+        toolCallId: id,
+        message: `Tool call ${id} has no matching tool result`,
+      });
+    }
+    return {
+      valid: warnings.length === 0,
+      warnings,
+    };
+  }
 }

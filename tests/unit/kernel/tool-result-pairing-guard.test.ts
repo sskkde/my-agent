@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateToolResultPairing } from '../../../src/kernel/tool-result-pairing-guard.js';
+import { validateToolResultPairing, ToolResultPairingGuard } from '../../../src/kernel/tool-result-pairing-guard.js';
 import type { KernelTranscriptEntry, ToolUseRequest, ToolUseResult } from '../../../src/kernel/types.js';
 
 function makeToolCallEntry(toolCallId: string, toolName: string, iteration = 1): KernelTranscriptEntry {
@@ -163,5 +163,85 @@ describe('validateToolResultPairing', () => {
     const types = result.warnings.map(w => w.type);
     expect(types).toContain('missing_result');
     expect(types).toContain('orphan_result');
+  });
+});
+
+describe('ToolResultPairingGuard', () => {
+  it('track then accept produces valid state', () => {
+    const guard = new ToolResultPairingGuard();
+    guard.trackAssistantToolCalls([
+      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
+    ]);
+    guard.acceptToolResult({ toolCallId: 'tc-1', result: { content: 'file' } });
+
+    expect(guard.hasPendingCalls()).toBe(false);
+    expect(guard.validate().valid).toBe(true);
+  });
+
+  it('track with no accept produces missing result on flush', () => {
+    const guard = new ToolResultPairingGuard();
+    guard.trackAssistantToolCalls([
+      { toolCallId: 'tc-1', toolName: 'web.search', params: { query: 'hello' } },
+    ]);
+
+    expect(guard.hasPendingCalls()).toBe(true);
+    expect(guard.getPendingCallIds()).toEqual(['tc-1']);
+
+    const missing = guard.flushMissingResults('timeout');
+    expect(missing).toHaveLength(1);
+    expect(missing[0].toolCallId).toBe('tc-1');
+    expect(missing[0].result).toBeNull();
+    expect(missing[0].error?.code).toBe('MISSING_TOOL_RESULT');
+    expect(missing[0].error?.recoverable).toBe(true);
+  });
+
+  it('flush clears pending calls', () => {
+    const guard = new ToolResultPairingGuard();
+    guard.trackAssistantToolCalls([
+      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
+      { toolCallId: 'tc-2', toolName: 'web.search', params: {} },
+    ]);
+
+    guard.flushMissingResults();
+    expect(guard.hasPendingCalls()).toBe(false);
+    expect(guard.getPendingCallIds()).toEqual([]);
+  });
+
+  it('partial accept then flush generates synthetic for remaining', () => {
+    const guard = new ToolResultPairingGuard();
+    guard.trackAssistantToolCalls([
+      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
+      { toolCallId: 'tc-2', toolName: 'web.search', params: {} },
+      { toolCallId: 'tc-3', toolName: 'memory.retrieve', params: {} },
+    ]);
+
+    guard.acceptToolResult({ toolCallId: 'tc-1', result: 'file content' });
+    guard.acceptToolResult({ toolCallId: 'tc-3', result: { items: [] } });
+
+    expect(guard.hasPendingCalls()).toBe(true);
+
+    const missing = guard.flushMissingResults();
+    expect(missing).toHaveLength(1);
+    expect(missing[0].toolCallId).toBe('tc-2');
+  });
+
+  it('validate returns warnings for pending calls', () => {
+    const guard = new ToolResultPairingGuard();
+    guard.trackAssistantToolCalls([
+      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
+    ]);
+
+    const result = guard.validate();
+    expect(result.valid).toBe(false);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].type).toBe('missing_result');
+    expect(result.warnings[0].toolCallId).toBe('tc-1');
+  });
+
+  it('empty guard is valid', () => {
+    const guard = new ToolResultPairingGuard();
+    expect(guard.hasPendingCalls()).toBe(false);
+    expect(guard.validate().valid).toBe(true);
+    expect(guard.flushMissingResults()).toEqual([]);
   });
 });
