@@ -6,6 +6,12 @@ import type { LLMProvider } from '../../../src/llm/provider.js';
 import type { LLMResult } from '../../../src/llm/types.js';
 import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
 import type { BuiltModelInput, ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js';
+import type { PromptProjectionResolver, PromptProjectionResolveResult } from '../../../src/prompt/prompt-projection-types.js';
+import {
+  DEFAULT_PERSONA_PROJECTION,
+  DEFAULT_TOOL_SELECTION_POLICY,
+  DEFAULT_MEMORY_POLICY_PROJECTION,
+} from '../../../src/prompt/prompt-projection-defaults.js';
 
 function createMockState(overrides: Partial<ForegroundSessionState> = {}): ForegroundSessionState {
   return {
@@ -115,6 +121,18 @@ function createCapturingMockBuilder(): { builder: ModelInputBuilder; capturedInp
   return { builder, capturedInputs };
 }
 
+function createMockPromptProjectionResolver(result?: PromptProjectionResolveResult): PromptProjectionResolver {
+  const defaultResult: PromptProjectionResolveResult = {
+    personaProjection: DEFAULT_PERSONA_PROJECTION,
+    toolSelectionPolicy: DEFAULT_TOOL_SELECTION_POLICY,
+    memoryPolicyProjection: DEFAULT_MEMORY_POLICY_PROJECTION,
+  };
+
+  return {
+    resolve: vi.fn().mockResolvedValue(result ?? defaultResult),
+  } as unknown as PromptProjectionResolver;
+}
+
 describe('PROMPT_MEMORY_P0_ENABLED feature flag', () => {
   const originalEnv = process.env;
 
@@ -205,8 +223,13 @@ describe('PROMPT_MEMORY_P0_ENABLED feature flag', () => {
         route: 'answer_directly',
         reason: 'Test response',
       }));
+      const mockResolver = createMockPromptProjectionResolver();
 
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder: builder });
+      const agent = createForegroundAgent({
+        llmAdapter,
+        modelInputBuilder: builder,
+        promptProjectionResolver: mockResolver,
+      });
 
       await agent.processMessage(createMockInput(), createMockState());
 
@@ -234,8 +257,13 @@ describe('PROMPT_MEMORY_P0_ENABLED feature flag', () => {
         route: 'answer_directly',
         reason: 'Test response',
       }));
+      const mockResolver = createMockPromptProjectionResolver();
 
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder: builder });
+      const agent = createForegroundAgent({
+        llmAdapter,
+        modelInputBuilder: builder,
+        promptProjectionResolver: mockResolver,
+      });
 
       await agent.processMessage(createMockInput(), createMockState());
 
