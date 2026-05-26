@@ -373,7 +373,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
           ],
         },
         runtimeSummary: {
-          toolCallSummaries: result.toolCalls.map((tc: ToolUseRequest) => `${tc.toolName}: completed`),
+          toolCallSummaries: result.toolCalls.map((tc: ToolUseRequest) => ({ toolCallId: tc.toolCallId, toolName: tc.toolName, status: 'completed' as const })),
         },
         visibility: 'public',
         createdAt: new Date().toISOString(),
@@ -387,7 +387,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       const savedTranscript = transcripts[0];
       expect(savedTranscript.runtimeSummary).toBeDefined();
       expect(savedTranscript.runtimeSummary?.toolCallSummaries).toHaveLength(1);
-      expect(savedTranscript.runtimeSummary?.toolCallSummaries![0]).toBe('web.search: completed');
+      expect(savedTranscript.runtimeSummary?.toolCallSummaries![0]).toEqual({ toolCallId: 'call-ts-1', toolName: 'web.search', status: 'completed' });
     });
 
     it('omits runtimeSummary from transcript when not provided', async () => {
@@ -464,7 +464,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
           ],
         },
         runtimeSummary: {
-          toolCallSummaries: result.toolCalls.map((tc: ToolUseRequest) => `${tc.toolName}: completed`),
+          toolCallSummaries: result.toolCalls.map((tc: ToolUseRequest) => ({ toolCallId: tc.toolCallId, toolName: tc.toolName, status: 'completed' as const })),
         },
         visibility: 'public',
         createdAt: new Date().toISOString(),

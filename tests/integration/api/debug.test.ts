@@ -93,7 +93,7 @@ describe('Debug API', () => {
       },
       runtimeSummary: {
         plannerRunIds: ['planner-run-002'],
-        toolCallSummaries: ['Tool call summary'],
+        toolCallSummaries: [{ toolCallId: 'tc-1', toolName: 'tool_call_summary', status: 'completed' as const }],
       },
       visibility: 'public',
       createdAt: '2026-04-29T10:00:30.000Z',

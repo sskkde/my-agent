@@ -156,10 +156,11 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
         eventType: 'tool_call',
         sessionId: turn.sessionId,
         timestamp: outputTimestamp,
-        content: summary,
+        content: `${summary.toolName}: ${summary.status}`,
         metadata: {
           ...baseMetadata,
           toolCallIndex: index,
+          toolCallId: summary.toolCallId,
         },
         actor: 'system',
       });

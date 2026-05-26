@@ -111,8 +111,8 @@ describe('Console Timeline Service', () => {
         },
         runtimeSummary: {
           toolCallSummaries: [
-            'Called tool: analyze_data with params {"file": "data.csv"}',
-            'Called tool: generate_report with params {"format": "pdf"}',
+            { toolCallId: 'tc-1', toolName: 'analyze_data', status: 'completed' as const },
+            { toolCallId: 'tc-2', toolName: 'generate_report', status: 'completed' as const },
           ],
         },
         visibility: 'public',
@@ -126,9 +126,9 @@ describe('Console Timeline Service', () => {
       const toolEvents = result.events.filter(e => e.eventType === 'tool_call');
 
       expect(toolEvents).toHaveLength(2);
-      expect(toolEvents[0].content).toBe('Called tool: analyze_data with params {"file": "data.csv"}');
+      expect(toolEvents[0].content).toBe('analyze_data: completed');
       expect(toolEvents[0].eventId).toBe('turn-turn-tool-001-tool-0');
-      expect(toolEvents[1].content).toBe('Called tool: generate_report with params {"format": "pdf"}');
+      expect(toolEvents[1].content).toBe('generate_report: completed');
       expect(toolEvents[1].eventId).toBe('turn-turn-tool-001-tool-1');
     });
 
@@ -380,7 +380,7 @@ describe('Console Timeline Service', () => {
           ],
         },
         runtimeSummary: {
-          toolCallSummaries: ['Tool call'],
+          toolCallSummaries: [{ toolCallId: 'tc-f1', toolName: 'tool_call', status: 'completed' as const }],
         },
         visibility: 'public',
         createdAt: '2026-04-29T17:00:00.000Z',
@@ -551,7 +551,7 @@ describe('Console Timeline Service', () => {
           ],
         },
         runtimeSummary: {
-          toolCallSummaries: ['Tool in second turn'],
+          toolCallSummaries: [{ toolCallId: 'tc-c2', toolName: 'tool_in_second_turn', status: 'completed' as const }],
         },
         visibility: 'public',
         createdAt: '2026-04-29T18:01:00.000Z',

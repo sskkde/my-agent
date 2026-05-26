@@ -1,5 +1,13 @@
 import type { UserRole } from '../storage/user-store.js';
 
+export interface ToolCallSummary {
+  toolCallId: string;
+  toolName: string;
+  status: 'completed' | 'failed' | 'pending' | 'skipped';
+  transcriptSummary?: string;
+  resultRef?: string;
+}
+
 // MVP Allowed Endpoints:
 // GET /api/health, POST /api/sessions, GET /api/sessions/:sessionId,
 // GET /api/sessions/:sessionId/transcripts, POST /api/sessions/:sessionId/messages,
@@ -69,7 +77,7 @@ export interface TranscriptTurn {
     foregroundDecisionId?: string;
     plannerRunIds?: string[];
     runtimeActionIds?: string[];
-    toolCallSummaries?: string[];
+    toolCallSummaries?: ToolCallSummary[];
     approvalSummaries?: string[];
   };
   eventRange?: {

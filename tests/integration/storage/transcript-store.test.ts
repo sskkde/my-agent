@@ -61,7 +61,7 @@ describe('TranscriptStore', () => {
         foregroundDecisionId: 'decision-1',
         plannerRunIds: ['planner-1'],
         runtimeActionIds: ['action-1'],
-        toolCallSummaries: ['Tool: test-tool executed'],
+        toolCallSummaries: [{ toolCallId: 'tc-1', toolName: 'test-tool', status: 'completed' as const }],
         approvalSummaries: []
       },
       eventRange: {
@@ -112,7 +112,7 @@ describe('TranscriptStore', () => {
     it('should not store raw tool outputs in transcript', () => {
       const transcript = createTestTranscript({
         runtimeSummary: {
-          toolCallSummaries: ['Tool executed: summary only'],
+          toolCallSummaries: [{ toolCallId: 'tc-s1', toolName: 'tool_executed', status: 'completed' as const }],
           approvalSummaries: []
         }
       });
@@ -124,7 +124,7 @@ describe('TranscriptStore', () => {
       );
       expect(rows.length).toBe(1);
       const summaries = JSON.parse(rows[0].toolCallSummaries);
-      expect(summaries).toEqual(['Tool executed: summary only']);
+      expect(summaries).toEqual([{ toolCallId: 'tc-s1', toolName: 'tool_executed', status: 'completed' }]);
     });
   });
 
@@ -163,7 +163,10 @@ describe('TranscriptStore', () => {
           foregroundDecisionId: 'dec-1',
           plannerRunIds: ['planner-1', 'planner-2'],
           runtimeActionIds: ['action-1', 'action-2'],
-          toolCallSummaries: ['Called weather API', 'Parsed response'],
+          toolCallSummaries: [
+            { toolCallId: 'tc-w1', toolName: 'weather_api', status: 'completed' as const },
+            { toolCallId: 'tc-w2', toolName: 'parse_response', status: 'completed' as const },
+          ],
           approvalSummaries: ['User approved weather check']
         }
       });
@@ -176,7 +179,10 @@ describe('TranscriptStore', () => {
       expect(retrieved?.output.visibleMessages.length).toBe(2);
       expect(retrieved?.output.artifactRefs).toEqual(['weather-data-1']);
       expect(retrieved?.runtimeSummary?.plannerRunIds).toEqual(['planner-1', 'planner-2']);
-      expect(retrieved?.runtimeSummary?.toolCallSummaries).toEqual(['Called weather API', 'Parsed response']);
+      expect(retrieved?.runtimeSummary?.toolCallSummaries).toEqual([
+        { toolCallId: 'tc-w1', toolName: 'weather_api', status: 'completed' },
+        { toolCallId: 'tc-w2', toolName: 'parse_response', status: 'completed' },
+      ]);
     });
   });
 

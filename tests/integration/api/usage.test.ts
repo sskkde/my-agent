@@ -98,9 +98,9 @@ describe('Usage API', () => {
         },
         runtimeSummary: {
           toolCallSummaries: [
-            'Called tool: read_csv with params {"file": "file1.csv"}',
-            'Called tool: analyze_data with params {"method": "statistical"}',
-            'Called tool: generate_chart with params {"type": "bar"}',
+            { toolCallId: 'tc-1', toolName: 'read_csv', status: 'completed' as const },
+            { toolCallId: 'tc-2', toolName: 'analyze_data', status: 'completed' as const },
+            { toolCallId: 'tc-3', toolName: 'generate_chart', status: 'completed' as const },
           ],
           approvalSummaries: [
             'Approval requested: Execute analysis on production data (MEDIUM RISK)',

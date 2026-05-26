@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js';
+import type { ToolCallSummary } from '../api/types.js';
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
 export type Visibility = 'public' | 'internal' | 'confidential';
@@ -31,7 +32,7 @@ export interface TurnTranscript {
     foregroundDecisionId?: string;
     plannerRunIds?: string[];
     runtimeActionIds?: string[];
-    toolCallSummaries?: string[];
+    toolCallSummaries?: ToolCallSummary[];
     approvalSummaries?: string[];
   };
 
