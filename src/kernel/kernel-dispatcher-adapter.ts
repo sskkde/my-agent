@@ -20,6 +20,9 @@ export function createKernelDispatcherAdapter(
       const actionId = request.action.actionId ?? generateId();
       const now = new Date().toISOString();
 
+      const toolDispatchRequest = request.action.targetAction?.toolDispatchRequest;
+      const firstToolUse = toolDispatchRequest?.toolUses[0];
+
       const action = {
         actionId,
         actionType: request.action.actionType as RuntimeActionType,
@@ -29,7 +32,25 @@ export function createKernelDispatcherAdapter(
           toolCallId: request.action.targetAction?.toolCallId,
           toolName: request.action.targetAction?.toolName,
           params: request.action.targetAction?.params,
+          toolDispatchRequest,
+          ...(toolDispatchRequest ? {
+            toolUses: toolDispatchRequest.toolUses.map(toolUse => ({
+              toolCallId: toolUse.toolCallId,
+              toolName: toolUse.toolName,
+              params: toolUse.input,
+              kernelRunId: toolDispatchRequest.runId,
+              timeoutMs: toolDispatchRequest.executionPolicy.timeoutMs,
+            })),
+            toolCallId: firstToolUse?.toolCallId,
+            toolName: firstToolUse?.toolName,
+            params: firstToolUse?.input,
+          } : {}),
+          runId: request.context.kernelRunId,
+          userId: request.context.userId ?? request.action.userId,
+          sessionId: request.context.sessionId,
           kernelRunId: request.context.kernelRunId,
+          agentId: request.context.agentId,
+          agentType: request.context.agentType,
         },
         userId: request.action.userId,
         sessionId: request.context.sessionId,

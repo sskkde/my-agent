@@ -6,10 +6,12 @@ import type {
   PipelineContext,
   NormalizedItem,
   ScoredItem,
+  RuntimeContextDelta,
 } from './types.js';
 
 export class ContextManager {
   private lastReport: ContextSelectionReport | null = null;
+  private deltaItems: ContextItem[] = [];
 
   assemble(input: ContextAssemblyInput): ContextBundle {
     const pipelineContext = this.initializePipeline(input);
@@ -27,6 +29,42 @@ export class ContextManager {
 
   getLastReport(): ContextSelectionReport | null {
     return this.lastReport;
+  }
+
+  getItems(): ContextItem[] {
+    return [...this.deltaItems];
+  }
+
+  addItem(item: ContextItem): void {
+    this.deltaItems.push(item);
+  }
+
+  applyDelta(delta: RuntimeContextDelta): void {
+    if (delta.replaceKeys && delta.replaceKeys.length > 0) {
+      const replaceKeys = new Set(delta.replaceKeys);
+      this.deltaItems = this.deltaItems.filter(item => {
+        const key = item.dedupeKey ?? item.supersedesKey ?? item.itemId;
+        return !replaceKeys.has(key);
+      });
+    }
+
+    if (delta.items.length > 0) {
+      this.deltaItems.push(...delta.items);
+    }
+  }
+
+  assembleBundle(): ContextBundle {
+    return {
+      bundleId: this.generateId('bundle'),
+      runId: '',
+      agentId: '',
+      agentType: 'main',
+      userId: '',
+      invocationSource: 'system',
+      pinnedItems: [],
+      orderedItems: [...this.deltaItems],
+      tokenEstimate: this.deltaItems.reduce((sum, item) => sum + (item.estimatedTokens ?? this.estimateTokens(item.content)), 0),
+    };
   }
 
   private initializePipeline(input: ContextAssemblyInput): PipelineContext {
@@ -63,6 +101,8 @@ export class ContextManager {
         )
       );
     }
+
+    items.push(...this.deltaItems);
 
     return {
       input,

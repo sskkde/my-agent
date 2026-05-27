@@ -14,6 +14,29 @@ import type { ModelInputBuildInput } from './model-input/model-input-types.js';
 import { projectBundleToData } from './model-input/context-bundle-adapter.js';
 import { extractToolsForRequest } from './model-input/model-input-builder.js';
 import { isPromptMemoryP0Enabled, isToolLoopV2Enabled } from '../prompt/feature-flags.js';
+import { ToolResultPairingGuard } from './tool-result-pairing-guard.js';
+import { createToolDispatchRequest, createToolDispatchResult, type ToolExecutionMappedResult } from '../tools/runtime/tool-dispatch-contract.js';
+import type { RuntimeContextDelta } from '../context/types.js';
+import type { ToolExecutionResult } from '../tools/types.js';
+
+function stateSafeId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isRuntimeContextDelta(value: unknown): value is RuntimeContextDelta {
+  return isRecord(value)
+    && typeof value.runId === 'string'
+    && typeof value.source === 'string'
+    && Array.isArray(value.items);
+}
+
+function isToolExecutionResult(value: unknown): value is ToolExecutionResult {
+  return isRecord(value) && typeof value.success === 'boolean';
+}
 
 export class AgentKernel {
   private config: KernelConfig;
@@ -27,6 +50,7 @@ export class AgentKernel {
     const state = this.initializeState(input);
     const maxIterations = input.maxIterations ?? this.config.maxIterations;
     const timeoutMs = input.timeoutMs ?? this.config.timeoutMs;
+    const pairingGuard = new ToolResultPairingGuard();
 
     if (timeoutMs <= 0) {
       state.status = 'failed';
@@ -40,6 +64,7 @@ export class AgentKernel {
         state.currentIteration = iteration + 1;
 
         if (Date.now() - startTime > timeoutMs) {
+          this.flushPairingGuard(pairingGuard, state, 'timeout');
           state.status = 'failed';
           return this.buildResult(state, 'timeout');
         }
@@ -53,6 +78,7 @@ export class AgentKernel {
         const llmResult = await this.config.llmAdapter.complete(llmRequest);
 
         if (!llmResult.success) {
+          this.flushPairingGuard(pairingGuard, state, 'llm_error');
           state.status = 'failed';
           this.commitTranscript(state, 'error', {
             code: llmResult.error.code,
@@ -85,13 +111,30 @@ export class AgentKernel {
         if (this.hasToolCalls(llmResponse)) {
           const toolUseRequests = this.parseToolUseRequests(llmResponse);
           state.toolCalls.push(...toolUseRequests);
+          pairingGuard.trackAssistantToolCalls(toolUseRequests);
 
           for (const toolRequest of toolUseRequests) {
             this.commitTranscript(state, 'tool_call', toolRequest);
-            const toolResult = await this.dispatchTool(toolRequest, input);
+            let toolResult: ToolUseResult;
+            try {
+              toolResult = await this.dispatchTool(toolRequest, input);
+            } catch (dispatchError) {
+              toolResult = {
+                toolCallId: toolRequest.toolCallId,
+                result: null,
+                error: {
+                  code: 'DISPATCH_ERROR',
+                  message: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
+                  recoverable: true,
+                },
+              };
+            }
+            pairingGuard.acceptToolResult(toolResult);
             this.commitTranscript(state, 'tool_result', toolResult);
             this.mergeToolResult(state, toolRequest, toolResult);
           }
+
+          this.flushPairingGuard(pairingGuard, state, 'iteration_end');
 
           const compactResult = this.checkCompactTrigger(input.contextBundle, state);
           if (compactResult.shouldCompact) {
@@ -107,9 +150,11 @@ export class AgentKernel {
         }
       }
 
+      this.flushPairingGuard(pairingGuard, state, 'max_iterations');
       state.status = 'failed';
       return this.buildResult(state, 'max_iterations_reached');
     } catch (error) {
+      this.flushPairingGuard(pairingGuard, state, 'kernel_error');
       state.status = 'failed';
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.commitTranscript(state, 'error', { message: errorMessage });
@@ -192,18 +237,16 @@ export class AgentKernel {
           toolCalls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
         };
         
-        if (llmContent.content) {
-          messages.push({
-            role: 'assistant',
-            content: llmContent.content,
-          });
-        }
-        
         if (isToolLoopV2Enabled() && llmContent.toolCalls && llmContent.toolCalls.length > 0) {
           messages.push({
             role: 'assistant',
-            content: '',
+            content: llmContent.content ?? '',
             toolCalls: llmContent.toolCalls,
+          });
+        } else if (llmContent.content) {
+          messages.push({
+            role: 'assistant',
+            content: llmContent.content,
           });
         }
       } else if (entry.type === 'tool_result') {
@@ -249,6 +292,26 @@ export class AgentKernel {
     toolRequest: ToolUseRequest,
     input: KernelRunInput
   ): Promise<ToolUseResult> {
+    const effectiveRunId = input.runId ?? input.contextBundle.runId;
+    const toolDispatchRequest = createToolDispatchRequest({
+      runId: effectiveRunId,
+      userId: input.userId,
+      ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+      agentId: input.agentId,
+      agentType: input.agentType,
+      assistantMessageId: `assistant-${stateSafeId(toolRequest.toolCallId)}`,
+      toolUses: [{
+        toolCallId: toolRequest.toolCallId,
+        toolName: toolRequest.toolName,
+        input: toolRequest.params,
+      }],
+      permissionContext: {
+        userId: input.userId,
+        sessionId: input.sessionId ?? '',
+        mode: 'ask_on_write',
+        grants: [],
+      },
+    });
     const dispatchResult = await this.config.dispatcher.dispatch({
       requestId: `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       action: {
@@ -259,6 +322,7 @@ export class AgentKernel {
           toolName: toolRequest.toolName,
           params: toolRequest.params,
           toolCallId: toolRequest.toolCallId,
+          toolDispatchRequest,
         },
         source: {
           sourceModule: 'agent_kernel',
@@ -272,9 +336,36 @@ export class AgentKernel {
         callerModule: 'agent_kernel',
         userId: input.userId,
         sessionId: input.sessionId,
-        kernelRunId: input.runId ?? input.contextBundle.runId,
+        kernelRunId: effectiveRunId,
+        agentId: input.agentId,
+        agentType: input.agentType,
       },
     });
+
+    const toolDispatchResult = createToolDispatchResult({
+      runId: toolDispatchRequest.runId,
+      userId: toolDispatchRequest.userId,
+      ...(toolDispatchRequest.sessionId ? { sessionId: toolDispatchRequest.sessionId } : {}),
+      agentId: toolDispatchRequest.agentId,
+      results: [this.toMappedToolResult(toolRequest, dispatchResult)],
+      contextDeltas: this.extractContextDeltas(dispatchResult.result),
+    });
+
+    if (toolDispatchResult.contextDeltas) {
+      for (const delta of toolDispatchResult.contextDeltas) {
+        this.config.contextManager.applyDelta(delta);
+      }
+    }
+
+    const executionResult = this.extractFirstToolExecutionResult(dispatchResult.result);
+
+    if (executionResult) {
+      return {
+        toolCallId: toolRequest.toolCallId,
+        result: executionResult.success ? executionResult.data : null,
+        ...(executionResult.error ? { error: executionResult.error } : {}),
+      };
+    }
 
     if (dispatchResult.status === 'completed') {
       return {
@@ -292,6 +383,53 @@ export class AgentKernel {
         },
       };
     }
+  }
+
+  private toMappedToolResult(
+    toolRequest: ToolUseRequest,
+    dispatchResult: Awaited<ReturnType<KernelConfig['dispatcher']['dispatch']>>
+  ): ToolExecutionMappedResult {
+    const isCompleted = dispatchResult.status === 'completed' && !dispatchResult.error;
+    const contextDeltas = this.extractContextDeltas(dispatchResult.result);
+    const firstContextDelta = contextDeltas?.[0];
+    return {
+      toolCallId: toolRequest.toolCallId,
+      toolName: toolRequest.toolName,
+      status: isCompleted ? 'completed' : 'failed',
+      ...(isCompleted ? { output: dispatchResult.result } : {}),
+      ...(dispatchResult.error ? { error: dispatchResult.error } : {}),
+      resultMessage: {
+        toolCallId: toolRequest.toolCallId,
+        toolName: toolRequest.toolName,
+        isError: !isCompleted,
+        modelFacingContent: isCompleted ? JSON.stringify(dispatchResult.result) : { error: dispatchResult.error },
+        transcriptSummary: isCompleted ? `Tool ${toolRequest.toolName} completed` : `Tool ${toolRequest.toolName} failed`,
+      },
+      ...(firstContextDelta ? { contextDelta: firstContextDelta } : {}),
+    };
+  }
+
+  private extractContextDeltas(result: unknown): RuntimeContextDelta[] | undefined {
+    if (Array.isArray(result)) {
+      const deltas = result
+        .map(item => isToolExecutionResult(item) ? item.contextDelta : undefined)
+        .filter((delta): delta is RuntimeContextDelta => isRuntimeContextDelta(delta));
+      return deltas.length > 0 ? deltas : undefined;
+    }
+
+    if (!isRecord(result)) return undefined;
+    const contextDelta = result.contextDelta;
+    if (!isRuntimeContextDelta(contextDelta)) return undefined;
+    return [contextDelta];
+  }
+
+  private extractFirstToolExecutionResult(result: unknown): ToolExecutionResult | undefined {
+    if (Array.isArray(result)) {
+      const first = result[0];
+      return isToolExecutionResult(first) ? first : undefined;
+    }
+
+    return isToolExecutionResult(result) ? result : undefined;
   }
 
   private mergeToolResult(
@@ -313,6 +451,25 @@ export class AgentKernel {
     };
 
     state.contextItems.push(item);
+  }
+
+  private flushPairingGuard(
+    guard: ToolResultPairingGuard,
+    state: KernelRunState,
+    reason: string
+  ): void {
+    if (!guard.hasPendingCalls()) return;
+
+    const missingResults = guard.flushMissingResults(reason);
+    for (const syntheticResult of missingResults) {
+      this.commitTranscript(state, 'tool_result', syntheticResult);
+      const syntheticRequest: ToolUseRequest = {
+        toolCallId: syntheticResult.toolCallId,
+        toolName: 'unknown',
+        params: {},
+      };
+      this.mergeToolResult(state, syntheticRequest, syntheticResult);
+    }
   }
 
   private checkCompactTrigger(
