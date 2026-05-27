@@ -1,8 +1,3 @@
-/**
- * Tool Result Message Mapper
- * Maps ToolUseResult (Kernel internal format) to LLM-consumable messages
- */
-
 import type { ToolUseResult } from '../../kernel/types.js';
 import type { ToolResultStore } from '../../storage/tool-result-store.js';
 
@@ -11,6 +6,14 @@ export interface ToolResultMessage {
   toolCallId: string;
   content: string;
   resultRef?: string;
+  toolName?: string;
+  isError: boolean;
+  modelFacingContent: string;
+  transcriptSummary?: string;
+  userVisibleSummary?: string;
+  persistedResultRef?: string;
+  structuredContent?: Record<string, unknown>;
+  meta?: Record<string, unknown>;
 }
 
 export interface MapToolResultOptions {
@@ -21,22 +24,9 @@ export interface MapToolResultOptions {
   sessionId?: string;
 }
 
-/**
- * Options for mapping tool results
- */
-export interface MapToolResultOptions {
-  /** Size threshold in bytes for truncation (default: 8KB) */
-  thresholdBytes?: number;
-  /** Maximum preview length in characters for large results (default: 1024) */
-  maxPreviewLength?: number;
-}
-
 const DEFAULT_THRESHOLD_BYTES = 8 * 1024;
 const DEFAULT_MAX_PREVIEW_LENGTH = 1024;
 
-/**
- * Calculate byte size of a value when serialized to JSON
- */
 function getResultSize(result: unknown): number {
   try {
     const serialized = JSON.stringify(result);
@@ -46,9 +36,6 @@ function getResultSize(result: unknown): number {
   }
 }
 
-/**
- * Generate a preview of a large result
- */
 function generatePreview(result: unknown, maxLength: number): string {
   try {
     const serialized = JSON.stringify(result);
@@ -61,9 +48,6 @@ function generatePreview(result: unknown, maxLength: number): string {
   }
 }
 
-/**
- * Generate a summary for a large result
- */
 function generateSummary(result: unknown): string {
   if (result === null || result === undefined) {
     return 'empty result';
@@ -85,18 +69,33 @@ function generateSummary(result: unknown): string {
   return typeof result;
 }
 
-/**
- * Map ToolUseResult to LLM-consumable message format
- *
- * Handles three cases:
- * 1. Error result: content is "Error: {error.message}"
- * 2. Large result (>8KB): content is summary + preview + blob reference
- * 3. Normal result: content is JSON.stringify(result)
- *
- * @param result - The tool use result from kernel
- * @param options - Optional configuration for threshold and preview length
- * @returns LLM-consumable tool result message
- */
+function generateUserVisibleSummary(result: unknown, isError: boolean): string {
+  if (isError) {
+    return 'Tool execution failed';
+  }
+
+  if (result === null || result === undefined) {
+    return 'Tool returned empty result';
+  }
+
+  if (typeof result === 'string') {
+    return result.length > 200
+      ? `string result (${result.length} chars)`
+      : result;
+  }
+
+  if (Array.isArray(result)) {
+    return `array with ${result.length} items`;
+  }
+
+  if (typeof result === 'object') {
+    const keys = Object.keys(result as Record<string, unknown>);
+    return `object with ${keys.length} keys`;
+  }
+
+  return `${typeof result} result`;
+}
+
 export function mapToolResultToMessage(
   result: ToolUseResult,
   options?: MapToolResultOptions
@@ -105,10 +104,21 @@ export function mapToolResultToMessage(
   const maxPreviewLength = options?.maxPreviewLength ?? DEFAULT_MAX_PREVIEW_LENGTH;
 
   if (result.error) {
+    const errorContent = `Error: ${result.error.message}`;
     return {
       role: 'tool',
       toolCallId: result.toolCallId,
-      content: `Error: ${result.error.message}`,
+      content: errorContent,
+      isError: true,
+      modelFacingContent: errorContent,
+      transcriptSummary: `Error: ${result.error.code}`,
+      userVisibleSummary: generateUserVisibleSummary(null, true),
+      structuredContent: {
+        error: true,
+        code: result.error.code,
+        recoverable: result.error.recoverable,
+      },
+      meta: { errorCode: result.error.code, recoverable: result.error.recoverable },
     };
   }
 
@@ -120,6 +130,8 @@ export function mapToolResultToMessage(
     const sizeKB = Math.round(sizeBytes / 1024);
 
     let resultRef = `blob:${result.toolCallId}`;
+    let persistedResultRef: string | undefined;
+
     if (options?.toolResultStore && options.userId) {
       const stored = options.toolResultStore.create({
         resultRef: `tr:${Date.now().toString(36)}-${result.toolCallId}`,
@@ -131,20 +143,41 @@ export function mapToolResultToMessage(
         sensitivity: 'low',
       });
       resultRef = stored.resultRef;
+      persistedResultRef = stored.resultRef;
     }
+
+    const largeContent = `[Large result: ${summary}, ${sizeKB}KB]\nPreview: ${preview}\n[Full result stored, ref: ${resultRef}]`;
 
     return {
       role: 'tool',
       toolCallId: result.toolCallId,
-      content: `[Large result: ${summary}, ${sizeKB}KB]\nPreview: ${preview}\n[Full result stored, ref: ${resultRef}]`,
+      content: largeContent,
       resultRef,
+      isError: false,
+      modelFacingContent: preview,
+      transcriptSummary: `Large result: ${summary}, ${sizeKB}KB`,
+      userVisibleSummary: generateUserVisibleSummary(result.result, false),
+      persistedResultRef,
+      structuredContent: {
+        _type: 'blob_ref',
+        sizeBytes,
+        sizeKB,
+        summary,
+        resultRef,
+      },
+      meta: { sizeBytes, sizeKB, isLargeResult: true },
     };
   }
 
   const stringified = JSON.stringify(result.result);
+  const content = stringified ?? 'undefined';
+
   return {
     role: 'tool',
     toolCallId: result.toolCallId,
-    content: stringified ?? 'undefined',
+    content,
+    isError: false,
+    modelFacingContent: content,
+    userVisibleSummary: generateUserVisibleSummary(result.result, false),
   };
 }

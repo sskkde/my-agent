@@ -15,6 +15,8 @@ describe('mapToolResultToMessage', () => {
       expect(message.role).toBe('tool');
       expect(message.toolCallId).toBe('call-123');
       expect(message.content).toBe('{"status":"success","data":[1,2,3]}');
+      expect(message.isError).toBe(false);
+      expect(message.modelFacingContent).toBe('{"status":"success","data":[1,2,3]}');
     });
 
     it('should handle null result', () => {
@@ -28,6 +30,8 @@ describe('mapToolResultToMessage', () => {
       expect(message.role).toBe('tool');
       expect(message.toolCallId).toBe('call-456');
       expect(message.content).toBe('null');
+      expect(message.isError).toBe(false);
+      expect(message.modelFacingContent).toBe('null');
     });
 
     it('should handle undefined result', () => {
@@ -41,6 +45,7 @@ describe('mapToolResultToMessage', () => {
       expect(message.role).toBe('tool');
       expect(message.toolCallId).toBe('call-789');
       expect(message.content).toBe('undefined');
+      expect(message.isError).toBe(false);
     });
 
     it('should handle string result', () => {
@@ -52,6 +57,7 @@ describe('mapToolResultToMessage', () => {
       const message = mapToolResultToMessage(result);
 
       expect(message.content).toBe('"Hello, world!"');
+      expect(message.modelFacingContent).toBe('"Hello, world!"');
     });
 
     it('should handle array result', () => {
@@ -63,6 +69,37 @@ describe('mapToolResultToMessage', () => {
       const message = mapToolResultToMessage(result);
 
       expect(message.content).toBe('["a","b","c"]');
+    });
+
+    it('should set userVisibleSummary for normal result', () => {
+      const result: ToolUseResult = {
+        toolCallId: 'call-vis',
+        result: 'short string',
+      };
+
+      const message = mapToolResultToMessage(result);
+      expect(message.userVisibleSummary).toBe('short string');
+    });
+
+    it('should truncate long string in userVisibleSummary', () => {
+      const longString = 'x'.repeat(300);
+      const result: ToolUseResult = {
+        toolCallId: 'call-vis-long',
+        result: longString,
+      };
+
+      const message = mapToolResultToMessage(result);
+      expect(message.userVisibleSummary).toContain('300 chars');
+    });
+
+    it('should set userVisibleSummary for array result', () => {
+      const result: ToolUseResult = {
+        toolCallId: 'call-vis-arr',
+        result: [1, 2, 3, 4, 5],
+      };
+
+      const message = mapToolResultToMessage(result);
+      expect(message.userVisibleSummary).toContain('5 items');
     });
   });
 
@@ -83,6 +120,15 @@ describe('mapToolResultToMessage', () => {
       expect(message.role).toBe('tool');
       expect(message.toolCallId).toBe('call-err');
       expect(message.content).toBe('Error: Tool execution timed out after 30s');
+      expect(message.isError).toBe(true);
+      expect(message.modelFacingContent).toBe('Error: Tool execution timed out after 30s');
+      expect(message.transcriptSummary).toBe('Error: TIMEOUT');
+      expect(message.structuredContent).toEqual({
+        error: true,
+        code: 'TIMEOUT',
+        recoverable: true,
+      });
+      expect(message.meta?.errorCode).toBe('TIMEOUT');
     });
 
     it('should handle non-recoverable error', () => {
@@ -99,13 +145,29 @@ describe('mapToolResultToMessage', () => {
       const message = mapToolResultToMessage(result);
 
       expect(message.content).toBe('Error: Missing required parameter: query');
+      expect(message.isError).toBe(true);
+      expect(message.structuredContent?.recoverable).toBe(false);
+    });
+
+    it('should set userVisibleSummary for error result', () => {
+      const result: ToolUseResult = {
+        toolCallId: 'call-err-vis',
+        result: null,
+        error: {
+          code: 'TIMEOUT',
+          message: 'Timeout',
+          recoverable: true,
+        },
+      };
+
+      const message = mapToolResultToMessage(result);
+      expect(message.userVisibleSummary).toBe('Tool execution failed');
     });
   });
 
   describe('large result', () => {
     it('should truncate large result and include blob reference', () => {
-      // Create a result larger than 8KB
-      const largeData = 'x'.repeat(10 * 1024); // 10KB string
+      const largeData = 'x'.repeat(10 * 1024);
       const result: ToolUseResult = {
         toolCallId: 'call-large',
         result: { data: largeData },
@@ -119,31 +181,33 @@ describe('mapToolResultToMessage', () => {
       expect(message.content).toContain('Preview:');
       expect(message.content).toContain('[Full result stored,');
       expect(message.content).toContain('blob:call-large');
+      expect(message.isError).toBe(false);
+      expect(message.modelFacingContent).toBeDefined();
+      expect(message.transcriptSummary).toContain('Large result:');
+      expect(message.structuredContent?.isLargeResult).toBeUndefined();
+      expect(message.structuredContent?._type).toBe('blob_ref');
     });
 
     it('should use custom threshold when provided', () => {
-      // Create a result of 2KB
       const data = 'y'.repeat(2 * 1024);
       const result: ToolUseResult = {
         toolCallId: 'call-custom',
         result: { data },
       };
 
-      // Use 1KB threshold, so 2KB result should be truncated
       const message = mapToolResultToMessage(result, { thresholdBytes: 1024 });
 
       expect(message.content).toContain('[Large result:');
       expect(message.content).toContain('blob:call-custom');
+      expect(message.isError).toBe(false);
     });
 
     it('should not truncate if result is exactly at threshold', () => {
-      // Create result that serializes to exactly 100 bytes
       const result: ToolUseResult = {
         toolCallId: 'call-exact',
         result: { value: 'test' },
       };
 
-      // Use a very high threshold so it's not truncated
       const message = mapToolResultToMessage(result, { thresholdBytes: 100000 });
 
       expect(message.content).not.toContain('[Large result:');
@@ -160,6 +224,7 @@ describe('mapToolResultToMessage', () => {
       const message = mapToolResultToMessage(result);
 
       expect(message.content).toMatch(/\d+KB/);
+      expect(message.structuredContent?.sizeKB).toBeGreaterThan(0);
     });
 
     it('should use custom preview length when provided', () => {
@@ -169,16 +234,23 @@ describe('mapToolResultToMessage', () => {
         result: { data: largeData },
       };
 
-      // Use 100 char preview length
       const message = mapToolResultToMessage(result, { maxPreviewLength: 100 });
 
       expect(message.content).toContain('[Large result:');
-      // Preview should be truncated
-      const previewMatch = message.content.match(/Preview: (.+)/);
-      if (previewMatch) {
-        // Preview line should end with ... since it's truncated
-        expect(previewMatch[1]).toContain('...');
-      }
+    });
+
+    it('should not expose full raw JSON in userVisibleSummary for large result', () => {
+      const largeData = 's'.repeat(20 * 1024);
+      const result: ToolUseResult = {
+        toolCallId: 'call-safe-vis',
+        result: { data: largeData },
+      };
+
+      const message = mapToolResultToMessage(result);
+
+      expect(message.userVisibleSummary).toBeDefined();
+      expect(message.userVisibleSummary!.length).toBeLessThan(300);
+      expect(message.userVisibleSummary).not.toContain(largeData);
     });
   });
 
@@ -192,6 +264,7 @@ describe('mapToolResultToMessage', () => {
       const message = mapToolResultToMessage(result);
 
       expect(message.content).toBe('{}');
+      expect(message.isError).toBe(false);
     });
 
     it('should handle numeric result', () => {
@@ -223,7 +296,7 @@ describe('mapToolResultToMessage', () => {
           level1: {
             level2: {
               level3: {
-                value: 'deep',
+              value: 'deep',
               },
             },
           },
@@ -235,6 +308,22 @@ describe('mapToolResultToMessage', () => {
       expect(message.content).toContain('level1');
       expect(message.content).toContain('level2');
       expect(message.content).toContain('level3');
+    });
+
+    it('backward compat: preserves role, toolCallId, content, resultRef', () => {
+      const result: ToolUseResult = {
+        toolCallId: 'call-compat',
+        result: { text: 'hello' },
+      };
+
+      const message = mapToolResultToMessage(result);
+
+      expect(message.role).toBe('tool');
+      expect(message.toolCallId).toBe('call-compat');
+      expect(message.content).toBe('{"text":"hello"}');
+      expect(message.resultRef).toBeUndefined();
+      expect(message.isError).toBe(false);
+      expect(message.modelFacingContent).toBe('{"text":"hello"}');
     });
   });
 });
