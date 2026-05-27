@@ -615,4 +615,64 @@ describe('ContextManager', () => {
       expect(report?.tokenBudget).toBe(input.selectionPolicy.tokenBudget);
     });
   });
+
+  describe('applyDelta', () => {
+    it('should append delta items to internal store', () => {
+      const delta = {
+        runId: 'run-001',
+        source: 'tool_result' as const,
+        items: [
+          createMockItem({ itemId: 'delta-1', content: 'Delta item 1' }),
+          createMockItem({ itemId: 'delta-2', content: 'Delta item 2' }),
+        ],
+      };
+
+      manager.applyDelta(delta);
+
+      const items = manager.getItems();
+      expect(items).toHaveLength(2);
+      expect(items[0].itemId).toBe('delta-1');
+      expect(items[1].itemId).toBe('delta-2');
+    });
+
+    it('should be safe no-op for empty delta items', () => {
+      const delta = {
+        runId: 'run-001',
+        source: 'tool_result' as const,
+        items: [],
+      };
+
+      manager.applyDelta(delta);
+
+      expect(manager.getItems()).toHaveLength(0);
+    });
+
+    it('should accumulate items across multiple applyDelta calls', () => {
+      manager.applyDelta({
+        runId: 'run-001',
+        source: 'tool_result' as const,
+        items: [createMockItem({ itemId: 'a' })],
+      });
+
+      manager.applyDelta({
+        runId: 'run-002',
+        source: 'subagent_result' as const,
+        items: [createMockItem({ itemId: 'b' })],
+      });
+
+      const items = manager.getItems();
+      expect(items).toHaveLength(2);
+      expect(items[0].itemId).toBe('a');
+      expect(items[1].itemId).toBe('b');
+    });
+  });
+
+  describe('addItem', () => {
+    it('should add a single item', () => {
+      manager.addItem(createMockItem({ itemId: 'single-1' }));
+      const items = manager.getItems();
+      expect(items).toHaveLength(1);
+      expect(items[0].itemId).toBe('single-1');
+    });
+  });
 });

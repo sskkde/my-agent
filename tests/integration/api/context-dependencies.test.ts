@@ -859,6 +859,9 @@ describe('ApiContext Dependencies - Task 4', () => {
           pinnedItems: [],
           tokenEstimate: 100,
         },
+        runId: 'run-001',
+        agentId: 'agent-001',
+        agentType: 'main',
         userId: 'test-user',
       });
 

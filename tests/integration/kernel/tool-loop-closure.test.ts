@@ -346,6 +346,9 @@ describe('Kernel Tool Loop Closure', () => {
   function createInput(overrides?: Partial<KernelRunInput>): KernelRunInput {
     return {
       contextBundle: fakeContextManager.assembleBundle(),
+      runId: 'test-run-id',
+      agentId: 'test-agent',
+      agentType: 'main',
       userId: 'test-user',
       sessionId: 'test-session',
       maxIterations: 10,

@@ -394,6 +394,9 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        runId: 'test-run',
+        agentId: 'test-agent',
+        agentType: 'main',
         userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
@@ -443,6 +446,9 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        runId: 'test-run',
+        agentId: 'test-agent',
+        agentType: 'main',
         userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
@@ -496,6 +502,9 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        runId: 'test-run',
+        agentId: 'test-agent',
+        agentType: 'main',
         userId: 'test-user',
         maxIterations: 3,
         timeoutMs: 60000,
@@ -542,6 +551,9 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        runId: 'test-run',
+        agentId: 'test-agent',
+        agentType: 'main',
         userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 0,
@@ -584,6 +596,9 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        runId: 'test-run',
+        agentId: 'test-agent',
+        agentType: 'main',
         userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
@@ -619,6 +634,9 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        runId: 'test-run',
+        agentId: 'test-agent',
+        agentType: 'main',
         userId: 'test-user',
         maxIterations: 10,
         timeoutMs: 60000,
@@ -668,6 +686,9 @@ describe('Agent Kernel Single-Loop Runtime', () => {
       const contextBundle = fakeContextManager.assembleBundle();
       const input: KernelRunInput = {
         contextBundle,
+        runId: 'test-run',
+        agentId: 'test-agent',
+        agentType: 'main',
         userId: 'dispatch-test-user',
         sessionId: 'dispatch-test-session',
         maxIterations: 10,
@@ -693,9 +714,38 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         toolName?: string;
         params?: unknown;
         toolCallId?: string;
+        toolDispatchRequest?: {
+          runId: string;
+          userId: string;
+          sessionId?: string;
+          agentId: string;
+          agentType: string;
+          toolUses: Array<{ toolCallId: string; toolName: string; input: unknown }>;
+          executionPolicy: {
+            maxConcurrency: number;
+            allowParallelReadOnly: boolean;
+            allowWriteConcurrency: boolean;
+          };
+        };
       };
       expect(targetAction.toolCallId).toBe('call-dispatch-test');
       expect(targetAction.toolName).toBe('calculator');
+      expect(targetAction.toolDispatchRequest).toBeDefined();
+      expect(targetAction.toolDispatchRequest?.runId).toBe('test-run');
+      expect(targetAction.toolDispatchRequest?.userId).toBe('dispatch-test-user');
+      expect(targetAction.toolDispatchRequest?.sessionId).toBe('dispatch-test-session');
+      expect(targetAction.toolDispatchRequest?.agentId).toBe('test-agent');
+      expect(targetAction.toolDispatchRequest?.agentType).toBe('main');
+      expect(targetAction.toolDispatchRequest?.toolUses).toEqual([
+        {
+          toolCallId: 'call-dispatch-test',
+          toolName: 'calculator',
+          input: { a: 2, b: 3, operation: 'multiply' },
+        },
+      ]);
+      expect(targetAction.toolDispatchRequest?.executionPolicy.maxConcurrency).toBe(1);
+      expect(targetAction.toolDispatchRequest?.executionPolicy.allowParallelReadOnly).toBe(true);
+      expect(targetAction.toolDispatchRequest?.executionPolicy.allowWriteConcurrency).toBe(false);
     });
   });
 });

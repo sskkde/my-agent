@@ -266,6 +266,9 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
 
     const run = () => kernel.run({
       contextBundle: contextManager.assembleBundle(),
+      runId: 'e2e-run',
+      agentId: 'e2e-agent',
+      agentType: 'main',
       userId,
       sessionId,
       maxIterations: 10,
