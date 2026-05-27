@@ -1,4 +1,4 @@
-import type { ContextBundle, ContextItem } from '../context/types.js';
+import type { AgentType, ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js';
 import type { LLMAdapter } from '../llm/adapter.js';
 import type { ModelInputBuilder } from './model-input/model-input-builder.js';
 import type { ToolPlaneProjection, ToolSelectionPolicyProjection } from './model-input/model-input-types.js';
@@ -22,13 +22,17 @@ export interface ToolUseResult {
 
 export interface KernelRunInput {
   contextBundle: ContextBundle;
+  /** Run ID for this run - used for tool dispatch kernelRunId and transcript tracking.
+   *  Falls back to contextBundle.runId if not provided at runtime. */
+  runId: string;
+  /** Agent ID for this run - identifies the agent instance executing this run. */
+  agentId: string;
+  /** Agent type for this run - categorizes the agent (main, subagent, background, workflow_step, remote). */
+  agentType: AgentType;
   /** User ID for this run - used for tool dispatch and permission context. */
   userId: string;
   /** Session ID for this run - optional, used for LLM request context. */
   sessionId?: string;
-  /** Run ID for this run - used for tool dispatch kernelRunId and transcript tracking.
-   *  Falls back to contextBundle.runId if not provided. */
-  runId?: string;
   /** Per-run tool projection — takes priority over KernelConfig.toolProjection.
    *  Allows different tool visibility per tenant, workflow step, approval state, or connector scope. */
   toolProjection?: ToolPlaneProjection;
@@ -97,7 +101,7 @@ export interface ContextManager {
   assembleBundle(): ContextBundle;
   getItems(): ContextItem[];
   addItem(item: ContextItem): void;
-  applyDelta(delta: { items?: ContextItem[] }): void;
+  applyDelta(delta: RuntimeContextDelta): void;
 }
 
 export interface RuntimeDispatcher {
@@ -111,6 +115,7 @@ export interface RuntimeDispatcher {
         toolName?: string;
         params?: unknown;
         toolCallId?: string;
+        toolDispatchRequest?: import('../tools/runtime/tool-dispatch-contract.js').ToolDispatchRequest;
       };
       source: {
         sourceModule: string;
@@ -125,6 +130,8 @@ export interface RuntimeDispatcher {
       userId?: string;
       sessionId?: string;
       kernelRunId?: string;
+      agentId?: string;
+      agentType?: AgentType;
     };
   }): Promise<{
     requestId: string;

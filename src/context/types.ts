@@ -68,7 +68,7 @@ export type ContextItem = {
   supersedesKey?: string;
 };
 
-export type AgentType = 'main' | 'subagent' | 'background' | 'workflow_step';
+export type AgentType = 'main' | 'subagent' | 'background' | 'workflow_step' | 'remote';
 
 export type InvocationSource =
   | 'gateway_intent'
