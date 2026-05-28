@@ -90,6 +90,15 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         case 'spawn_planner':
           executionResult = await this.handleSpawnPlanner(decision, input);
           break;
+        case 'cancel_or_modify_task':
+          executionResult = await this.handleCancelOrModifyTask(decision, input);
+          break;
+        case 'resume_existing_planner':
+          executionResult = await this.handleResumeExistingPlanner(decision, input);
+          break;
+        case 'approval_handler':
+          executionResult = { route: 'approval_handler', finalResponse: decision.userVisibleResponse || 'Processing approval...' };
+          break;
         default:
           executionResult = await this.handleAnswerDirectly(decision, input);
           break;
@@ -358,17 +367,130 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
       };
     }
   }
+
+  private async handleCancelOrModifyTask(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput
+  ): Promise<ForegroundExecutionResult> {
+    try {
+      const runtimeAction = decision.runtimeAction ?? this.createCancelRuntimeAction(decision, input);
+
+      if (!runtimeAction) {
+        return {
+          route: 'cancel_or_modify_task',
+          finalResponse: decision.userVisibleResponse || 'I need more details about what to cancel. There are multiple active tasks.',
+        };
+      }
+
+      await this.deps.runtimeDispatcher.dispatch({
+        requestId: input.turnId,
+        action: runtimeAction,
+        context: {
+          callerModule: 'foreground_kernel_runner',
+          userId: input.userId,
+          sessionId: input.sessionId,
+        },
+      });
+
+      return {
+        route: 'cancel_or_modify_task',
+        finalResponse: decision.userVisibleResponse || 'The task has been cancelled.',
+      };
+    } catch (error) {
+      return {
+        route: 'cancel_or_modify_task',
+        finalResponse: decision.userVisibleResponse || 'Failed to cancel the task.',
+        error: {
+          code: 'CANCEL_MODIFY_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to cancel/modify task',
+        },
+      };
+    }
+  }
+
+  private createCancelRuntimeAction(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput
+  ): import('../dispatcher/types.js').RuntimeAction | undefined {
+    if (!decision.targetRef) return undefined;
+    const now = new Date().toISOString();
+    const targetWorkId = decision.targetRef.plannerRunId ?? decision.targetRef.runtimeActionId;
+    if (!targetWorkId) return undefined;
+
+    const isPlannerRun = !!decision.targetRef.plannerRunId;
+    const actionType: 'cancel_planner_run' | 'cancel_background_subagent' = isPlannerRun ? 'cancel_planner_run' : 'cancel_background_subagent';
+    return {
+      actionId: `action-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      actionType,
+      targetRuntime: isPlannerRun ? 'planner_runtime' : 'subagent_runtime',
+      targetAction: actionType,
+      source: { sourceModule: 'foreground_kernel_runner', sourceAction: 'cancel_or_modify_task' },
+      userId: input.userId,
+      sessionId: input.sessionId,
+      targetRef: { runId: targetWorkId },
+      payload: { reason: decision.reason },
+      createdAt: now,
+      updatedAt: now,
+      status: 'created',
+    };
+  }
+
+  private async handleResumeExistingPlanner(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput
+  ): Promise<ForegroundExecutionResult> {
+    try {
+      const plannerRunId = decision.targetRef?.plannerRunId;
+
+      if (!plannerRunId) {
+        return {
+          route: 'resume_existing_planner',
+          finalResponse: decision.userVisibleResponse || 'No existing plan found to resume.',
+        };
+      }
+
+      this.deps.plannerRuntime.resumePlannerRun(plannerRunId, {
+        eventType: 'user_resume',
+        payload: {
+          userMessage: input.message,
+          timestamp: input.timestamp,
+        },
+      });
+
+      return {
+        route: 'resume_existing_planner',
+        finalResponse: "I've resumed work on your existing plan.",
+        runtimeSummary: {
+          plannerRunIds: [plannerRunId],
+        },
+      };
+    } catch (error) {
+      return {
+        route: 'resume_existing_planner',
+        finalResponse: error instanceof Error ? error.message : 'Failed to resume the existing plan.',
+        error: {
+          code: 'RESUME_PLANNER_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to resume planner',
+        },
+      };
+    }
+  }
 }
 
 export function buildRuntimeSummary(
   kernelResult?: KernelRunResult
 ): TurnTranscript['runtimeSummary'] | undefined {
   if (kernelResult?.toolCalls && kernelResult.toolCalls.length > 0) {
+    const status: 'completed' | 'failed' = 
+      kernelResult.finalStatus === 'failed' || kernelResult.finalStatus === 'timeout'
+        ? 'failed'
+        : 'completed';
+    
     return {
       toolCallSummaries: kernelResult.toolCalls.map(tc => ({
         toolCallId: tc.toolCallId,
         toolName: tc.toolName,
-        status: 'completed' as const,
+        status,
       })),
     };
   }

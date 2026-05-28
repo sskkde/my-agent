@@ -33,6 +33,9 @@ import type { SearchSubagent, SearchSubagentInput, SearchSubagentResult } from '
 import { randomUUID } from 'crypto';
 import { isToolLoopV2Enabled } from '../prompt/feature-flags.js';
 import { mapToolResultToMessage } from '../tools/runtime/tool-result-message-mapper.js';
+import type { ForegroundKernelRunner } from '../foreground/foreground-kernel-runner.js';
+import { isForegroundKernelRunnerEnabled } from '../foreground/foreground-kernel-runner.js';
+import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js';
 
 /**
  * Known tool IDs from the catalog - used for server-side validation
@@ -161,6 +164,8 @@ export interface ProcessorOrchestrationDeps {
   memoryExtractionScheduler?: LongTermMemoryScheduler;
   /** Search subagent for pure web.search dispatch */
   searchSubagent?: SearchSubagent;
+  /** ForegroundKernelRunner for the new turn-based execution path */
+  foregroundKernelRunner?: ForegroundKernelRunner;
 }
 
 /**
@@ -315,9 +320,35 @@ export function createOrchestrationProcessor(
             resolvedModel
           ));
 
-          const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
+          const foregroundKernelRunnerEnabled = isForegroundKernelRunnerEnabled();
 
-          output = await handleDecisionRoute(input.correlationId, decision, deps, input, resolvedProviderId, resolvedModel);
+          if (foregroundKernelRunnerEnabled && deps.foregroundKernelRunner) {
+            const turnInput: ForegroundTurnInput = {
+              userId: input.userId,
+              sessionId: input.sessionId,
+              turnId: input.correlationId,
+              message: input.text,
+              timestamp: input.timestamp,
+              hydratedState: hydratedSession,
+              foregroundState,
+              agentConfig: agentConfig ?? undefined,
+            };
+
+            const turnResult = await deps.foregroundKernelRunner.runTurn(turnInput);
+
+            output = createSuccessOutput(input.correlationId, {
+              text: turnResult.finalResponse || '',
+              route: turnResult.decisionTrace?.route || 'answer_directly',
+              data: {
+                reason: turnResult.decisionTrace?.reason,
+                runtimeSummary: turnResult.runtimeSummary,
+                kernelResult: turnResult.kernelResult,
+              },
+            });
+          } else {
+            const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
+            output = await handleDecisionRoute(input.correlationId, decision, deps, input, resolvedProviderId, resolvedModel);
+          }
         }
       } catch (error) {
         emitStatus(deps, buildStatusPayload(
@@ -1032,8 +1063,10 @@ function persistTurnTranscript(
   const inboundEventId = input.metadata?.inboundEventId as string | undefined;
 
   let runtimeSummary: TurnTranscript['runtimeSummary'] | undefined;
-  
-  if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
+
+  if (output.success && output.result?.data?.runtimeSummary) {
+    runtimeSummary = output.result.data.runtimeSummary as TurnTranscript['runtimeSummary'];
+  } else if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
     const suggestedTools = output.result.data?.suggestedTools as string[] | undefined;
     if (suggestedTools && suggestedTools.length > 0) {
       const toolCallSummaries = suggestedTools.map((toolName, index) => ({
