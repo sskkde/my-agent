@@ -130,6 +130,37 @@ function sanitizeConfigForResponse(config: Partial<AgentConfig> | null): Partial
   return sanitized;
 }
 
+/**
+ * Builds a fallback global config when no persisted config exists.
+ * This ensures the API always returns non-null global/effective config
+ * so the frontend can render the form without null-reference errors.
+ */
+function buildDefaultGlobalConfig(agentId: string): AgentConfig {
+  const now = new Date().toISOString();
+  return {
+    agentConfigId: 'default',
+    agentId,
+    scope: 'global',
+    userId: null,
+    displayName: 'Default Agent',
+    enabled: true,
+    systemPrompt: '',
+    routingPrompt: null,
+    providerId: null,
+    model: null,
+    allowedToolIds: [],
+    allowedSkillIds: [],
+    routingTimeoutMs: DEFAULT_ROUTING_TIMEOUT_MS,
+    repairAttempts: DEFAULT_REPAIR_ATTEMPTS,
+    promptType: null,
+    promptVersion: null,
+    searchLlmProviderId: null,
+    searchLlmModel: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 function validateConfigInput(
   input: UpdateGlobalConfigRequest | UpdateOverrideConfigRequest,
   providerConfigStore: ApiContext['providerConfigStore'],
@@ -266,10 +297,10 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
       }
 
       try {
-        const global = agentConfigStore.getGlobalDefault();
+        const global = agentConfigStore.getGlobalDefault() ?? buildDefaultGlobalConfig(agentId);
         const userConfigs = agentConfigStore.listByUser(userId);
         const userOverride = userConfigs.find(c => c.agentId === agentId) || null;
-        const effective = mergeConfigs(global, userOverride);
+        const effective = mergeConfigs(global, userOverride) ?? global;
 
         const promptResolution = resolvePrompt(
           effective?.promptType ?? 'foreground.router',
@@ -279,12 +310,12 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         const response: ConfigResponse = {
           global: sanitizeConfigForResponse(global),
           userOverride: sanitizeConfigForResponse(userOverride),
-          effective: effective ? {
+          effective: {
             ...sanitizeConfigForResponse(effective),
             resolvedPromptType: promptResolution.record.id,
             resolvedPromptVersion: promptResolution.record.version,
             ...(promptResolution.fallbackReason ? { promptFallbackReason: promptResolution.fallbackReason } : {}),
-          } : null,
+          },
         };
 
         return reply.code(200).send(success(response, request.requestId));
