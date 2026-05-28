@@ -110,7 +110,7 @@ function createDispatchEvent(
     createdAt: now,
     payload: result
       ? { status: result.status, error: result.error }
-      : undefined,
+      : {},
     sensitivity: 'medium',
     retentionClass: 'standard'
   };

@@ -192,4 +192,35 @@ describe('web.search tool', () => {
       expect(result.error?.message).toContain('Invalid JSON');
     });
   });
+
+  describe('SearXNG Execution', () => {
+    beforeEach(() => {
+      vi.stubEnv('WEB_SEARCH_BACKEND', 'searxng');
+      vi.stubEnv('SEARXNG_BASE_URL', 'http://searxng:8080');
+    });
+
+    it('should request the SearXNG JSON search endpoint', async () => {
+      const fetchImpl = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          results: [
+            { title: 'SearXNG Result', url: 'https://example.com/result', content: 'Search snippet' },
+          ],
+        }),
+      } as unknown as Response);
+      const tool = createWebSearchTool({ fetchImpl });
+
+      const result = await tool.handler({ query: 'agent platform', limit: 3 }, createToolContext());
+
+      expect(result.success).toBe(true);
+      expect(fetchImpl).toHaveBeenCalledOnce();
+      const requestedUrl = fetchImpl.mock.calls[0]?.[0] as URL;
+      expect(requestedUrl.origin).toBe('http://searxng:8080');
+      expect(requestedUrl.pathname).toBe('/search');
+      expect(requestedUrl.searchParams.get('q')).toBe('agent platform');
+      expect(requestedUrl.searchParams.get('limit')).toBe('3');
+      expect(requestedUrl.searchParams.get('format')).toBe('json');
+    });
+  });
 });

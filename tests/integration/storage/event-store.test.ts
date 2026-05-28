@@ -161,6 +161,26 @@ describe('Event Store', () => {
       expect(result[0]?.count).toBe(1);
     });
 
+    it('should append an event with an undefined payload as an empty object', () => {
+      const event = {
+        eventId: 'evt-undefined-payload',
+        eventType: 'dispatch_requested',
+        sourceModule: 'dispatcher',
+        payload: undefined,
+        sensitivity: 'medium',
+        retentionClass: 'standard',
+        createdAt: new Date().toISOString()
+      } as unknown as EventRecord;
+
+      expect(() => eventStore.append(event)).not.toThrow();
+
+      const result = connection.query<{ payload: string }>(
+        'SELECT payload FROM events WHERE event_id = ?',
+        ['evt-undefined-payload']
+      );
+      expect(result[0]?.payload).toBe('{}');
+    });
+
     it('should append multiple events', () => {
       const events: EventRecord[] = [
         {

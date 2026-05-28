@@ -61,8 +61,12 @@ OLLAMA_BASE_URL=http://your-ollama-host:11434
 
 # Optional
 LOG_LEVEL=info
-WEB_SEARCH_BACKEND=none
+WEB_SEARCH_BACKEND=auto
+SEARXNG_BASE_URL=http://searxng:8080
+SEARXNG_SECRET=<generate-with-openssl-rand-hex-32>
 ```
+
+The bundled SearXNG service mounts `searxng/settings.yml`, which enables JSON output for the internal `web.search` tool. Set `SEARXNG_SECRET` in the shell environment or deployment environment to override the local Compose fallback.
 
 ### Docker Compose Configuration
 
@@ -84,7 +88,11 @@ services:
       - DATABASE_PATH=/data/agent-platform.db
       - NODE_ENV=development
       - APP_SECRET_KEY=dev-secret-key-change-in-production
-      - WEB_SEARCH_BACKEND=none
+      - WEB_SEARCH_BACKEND=auto
+      - SEARXNG_BASE_URL=http://searxng:8080
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-agent-platform-local-searxng-secret-change-me}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3003/api/health"]
       interval: 10s

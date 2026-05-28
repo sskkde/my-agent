@@ -36,7 +36,7 @@ docker compose down
 Docker 配置说明：
 - 数据持久化存储在 `agent_data` volume
 - API 服务包含健康检查，确保服务就绪后再启动 Web
-- 默认禁用 Web 搜索（`WEB_SEARCH_BACKEND=none`），可在 `docker-compose.yml` 中配置
+- 默认使用 `WEB_SEARCH_BACKEND=auto`，Docker Compose 可通过内置 SearXNG 服务提供 Web 搜索
 
 ## Installation
 

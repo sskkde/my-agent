@@ -23,6 +23,16 @@ services:
       retries: 5
       start_period: 30s
 
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    environment:
+      - BASE_URL=http://searxng:8080/
+      - INSTANCE_NAME=agent-platform-search
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-agent-platform-local-searxng-secret-change-me}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml
+
   web:
     build:
       context: .

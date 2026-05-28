@@ -173,7 +173,7 @@ class EventStoreImpl implements EventStore {
         evt.relatedRefs?.waitConditionId ?? null,
         evt.relatedRefs?.artifactId ?? null,
         evt.relatedRefs?.memoryId ?? null,
-        JSON.stringify(evt.payload),
+        JSON.stringify(evt.payload ?? {}),
         evt.sensitivity,
         evt.retentionClass,
         evt.createdAt,

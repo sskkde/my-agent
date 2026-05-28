@@ -527,6 +527,55 @@ describe('RuntimeDispatcher Integration', () => {
       });
     });
 
+    it('should emit dispatch lifecycle events with object payloads', async () => {
+      const events: Array<Parameters<EventStore['append']>[0]> = [];
+      eventStore = {
+        append: (event) => {
+          events.push(event);
+        },
+        query: () => [],
+        findByCorrelationId: () => [],
+        findByCausationId: () => [],
+        updateUserIdForSession: () => 0,
+      };
+      dispatcher = createRuntimeDispatcher({
+        actionStore,
+        eventStore,
+        adapterRegistry,
+        permissionHook: createAllowPermissionHook()
+      });
+      adapterRegistry.register('tool_plane', createMockAdapter({ success: true }));
+
+      const action: RuntimeAction = {
+        actionId: 'test-action-event-payload',
+        actionType: 'execute_tool',
+        source: { sourceModule: 'gateway' },
+        targetRuntime: 'tool_plane',
+        targetAction: 'test_tool',
+        payload: {},
+        status: 'created',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await dispatcher.dispatch({
+        requestId: 'req-event-payload',
+        action,
+        context: { callerModule: 'gateway' }
+      });
+
+      const flatEvents = events.flatMap(event => Array.isArray(event) ? event : [event]);
+      const requested = flatEvents.find(event => event.eventType === 'dispatch_requested');
+      const accepted = flatEvents.find(event => event.eventType === 'dispatch_accepted');
+      const started = flatEvents.find(event => event.eventType === 'dispatch_started');
+      const completed = flatEvents.find(event => event.eventType === 'dispatch_completed');
+
+      expect(requested?.payload).toEqual({});
+      expect(accepted?.payload).toEqual({});
+      expect(started?.payload).toEqual({});
+      expect(completed?.payload).toMatchObject({ status: 'completed' });
+    });
+
     it('should include correlation and causation IDs in events', async () => {
       adapterRegistry.register('tool_plane', createMockAdapter({}));
 

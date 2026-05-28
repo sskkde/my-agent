@@ -65,6 +65,17 @@ function buildSearchUrl(endpointUrl: string, query: string, limit: number): URL 
   return url;
 }
 
+function buildSearXNGSearchUrl(baseUrl: string, query: string, limit: number): URL {
+  const searchUrl = buildSearchUrl(baseUrl, query, limit);
+
+  if (searchUrl.pathname === '/' || searchUrl.pathname === '') {
+    searchUrl.pathname = '/search';
+  }
+
+  searchUrl.searchParams.set('format', 'json');
+  return searchUrl;
+}
+
 async function fetchWithSearXNG(
   baseUrl: string,
   query: string,
@@ -72,7 +83,7 @@ async function fetchWithSearXNG(
   timeoutMs: number,
   fetchImpl: typeof fetch
 ): Promise<{ success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string }> {
-  const searchUrl = buildSearchUrl(baseUrl, query, limit);
+  const searchUrl = buildSearXNGSearchUrl(baseUrl, query, limit);
   
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
