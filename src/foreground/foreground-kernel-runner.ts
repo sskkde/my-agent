@@ -163,7 +163,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         };
       }
     } catch {
-      // LLM call failed — fall through to fallback
+      console.warn('[ForegroundKernelRunner] LLM call in answer_directly failed, falling back to userVisibleResponse');
     }
 
     return {
@@ -219,7 +219,9 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
                 },
               };
             }
-          } catch { /* searchSubagent failed — fallthrough to AgentKernel */ }
+          } catch {
+            console.warn('[ForegroundKernelRunner] searchSubagent execution failed, falling back to AgentKernel');
+          }
         }
       }
 
@@ -285,7 +287,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
     try {
       const runtimeAction = decision.runtimeAction ?? this.createServerStatusQueryAction(input);
 
-      await this.deps.runtimeDispatcher.dispatch({
+      const dispatchResult = await this.deps.runtimeDispatcher.dispatch({
         requestId: input.turnId,
         action: runtimeAction,
         context: {
@@ -295,14 +297,26 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         },
       });
 
+      const statusText = dispatchResult.status === 'completed'
+        ? dispatchResult.result
+          ? `Status: ${typeof dispatchResult.result === 'string' ? dispatchResult.result : JSON.stringify(dispatchResult.result)}`
+          : 'Status check completed.'
+        : dispatchResult.status === 'failed'
+          ? `Status check failed: ${dispatchResult.error?.message || 'Unknown error'}`
+          : 'Status check is pending.';
+
       return {
         route: 'status_query',
-        finalResponse: decision.userVisibleResponse || 'Checking status...',
+        finalResponse: decision.userVisibleResponse || statusText,
+        runtimeSummary: {
+          runtimeActionIds: [runtimeAction.actionId],
+        },
       };
     } catch {
+      console.warn('[ForegroundKernelRunner] status_query dispatch failed, returning fallback response');
       return {
         route: 'status_query',
-        finalResponse: decision.userVisibleResponse || 'Checking status...',
+        finalResponse: decision.userVisibleResponse || 'Status check failed due to an error.',
       };
     }
   }
