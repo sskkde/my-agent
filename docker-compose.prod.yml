@@ -6,19 +6,9 @@
 
 services:
   api:
-    environment:
-      - NODE_ENV=production
-      # Use Docker secrets for sensitive values (see secrets section below)
-      - APP_SECRET_KEY_FILE=/run/secrets/app_secret_key
-      # Production security settings
-      - COOKIE_SECURE=true
-      - TRUST_PROXY=1
-      # Logging
-      - LOG_LEVEL=info
-      # Override default database path for volume separation
-      - DATABASE_PATH=/app/data/app.db
     secrets:
       - app_secret_key
+      - api_auth_token
       # Uncomment as needed for OAuth providers:
       # - google_client_id
       # - google_client_secret
@@ -44,8 +34,6 @@ services:
       - agent_backups:/app/backups
 
   web:
-    environment:
-      - NODE_ENV=production
     deploy:
       resources:
         limits:
@@ -97,6 +85,8 @@ secrets:
   # Generate with: openssl rand -hex 32 > secrets/app_secret_key.txt
   app_secret_key:
     file: ./secrets/app_secret_key.txt
+  api_auth_token:
+    file: ./secrets/api_auth_token.txt
 
   # Optional OAuth provider secrets (uncomment as needed)
   # google_client_id:
