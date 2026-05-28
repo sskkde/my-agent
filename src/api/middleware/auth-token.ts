@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js';
 import { envelopeError } from '../response-envelope.js';
 
 export interface AuthTokenOptions {
@@ -82,5 +83,13 @@ export async function registerAuthToken(
         envelopeError('UNAUTHORIZED', 'Invalid API token', request.requestId)
       );
     }
+
+    // Token matched — mark request as authenticated so downstream middleware (e.g. api-key-auth) skips.
+    request.user = {
+      userId: 'api-token',
+      username: 'api-token',
+      role: 'admin',
+      tenantId: DEFAULT_TENANT_ID,
+    };
   });
 }
