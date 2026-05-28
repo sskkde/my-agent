@@ -23,6 +23,7 @@ outside-symlink-temp/
 
 # Environment files
 .env
+.env.production
 .env.local
 .env.*.local
 .npmrc

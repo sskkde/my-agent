@@ -13,8 +13,10 @@ data/*.db-shm
 
 # Environment files
 .env
+.env.production
 .env.local
 .env.*.local
+secrets/
 
 # Git
 .git
