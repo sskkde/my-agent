@@ -96,7 +96,7 @@ const AgentsTab: React.FC = () => {
         routingTimeoutMs: effective.routingTimeoutMs,
         toolScopeMode,
       });
-    } catch (err) {
+} catch (err) {
       const message = err instanceof ApiClientError ? err.message : '加载配置失败';
       setError(message);
     } finally {
@@ -107,209 +107,6 @@ const AgentsTab: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleInputChange = (field: keyof FormData, value: string | number | string[]) => {
-    if (field === 'routingTimeoutMs' && activeScope === 'override') {
-      setOverrideTimingTouched(true);
-    }
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleToolToggle = (toolId: string) => {
-    setFormData((prev) => {
-      const current = prev.allowedToolIds;
-      const updated = current.includes(toolId)
-        ? current.filter((id) => id !== toolId)
-        : [...current, toolId];
-      return { ...prev, allowedToolIds: updated, toolScopeMode: 'custom' };
-    });
-  };
-
-  const handleToolScopeModeChange = (mode: 'inherit' | 'all' | 'none' | 'custom') => {
-    setFormData((prev) => {
-      if (mode === 'inherit') {
-        return { ...prev, allowedToolIds: [], toolScopeMode: 'inherit' };
-      }
-      if (mode === 'all') {
-        return { ...prev, allowedToolIds: tools.map((t) => t.name), toolScopeMode: 'all' };
-      }
-      if (mode === 'none') {
-        return { ...prev, allowedToolIds: [], toolScopeMode: 'none' };
-      }
-      return { ...prev, toolScopeMode: 'custom' };
-    });
-  };
-
-  const handleSkillToggle = (skillId: string) => {
-    setFormData((prev) => {
-      const current = prev.allowedSkillIds;
-      const updated = current.includes(skillId)
-        ? current.filter((id) => id !== skillId)
-        : [...current, skillId];
-      return { ...prev, allowedSkillIds: updated };
-    });
-  };
-
-  const handleSelectAllTools = () => {
-    setFormData((prev) => ({
-      ...prev,
-      allowedToolIds: tools.map((t) => t.name),
-    }));
-  };
-
-  const handleDeselectAllTools = () => {
-    setFormData((prev) => ({ ...prev, allowedToolIds: [] }));
-  };
-
-  const handleSelectAllSkills = () => {
-    setFormData((prev) => ({
-      ...prev,
-      allowedSkillIds: skills.map((s) => s.skillId),
-    }));
-  };
-
-  const handleDeselectAllSkills = () => {
-    setFormData((prev) => ({ ...prev, allowedSkillIds: [] }));
-  };
-
-  const validateForm = (): boolean => {
-    if (!formData.providerId) {
-      setSaveError('请选择服务提供商');
-      return false;
-    }
-    if (!formData.model.trim()) {
-      setSaveError('请输入模型ID');
-      return false;
-    }
-    if (formData.routingTimeoutMs < MIN_TIMEOUT * 1000 || formData.routingTimeoutMs > MAX_TIMEOUT * 1000) {
-      setSaveError(`超时时间必须在 ${MIN_TIMEOUT}-${MAX_TIMEOUT} 秒之间`);
-      return false;
-    }
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) return;
-
-    setSaving(true);
-    setSaveError(null);
-
-    try {
-      const baseUpdateRequest = {
-        providerId: formData.providerId,
-        model: formData.model,
-        systemPrompt: formData.systemPrompt,
-        routingPrompt: formData.routingPrompt,
-        allowedToolIds: activeScope === 'override' && formData.toolScopeMode === 'inherit'
-          ? undefined
-          : formData.allowedToolIds,
-        allowedSkillIds: formData.allowedSkillIds,
-      };
-      const updateRequest: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest = activeScope === 'global'
-        ? {
-            ...baseUpdateRequest,
-            routingTimeoutMs: formData.routingTimeoutMs,
-            repairAttempts: config?.global.repairAttempts ?? config?.effective.repairAttempts ?? 1,
-          }
-        : {
-            ...baseUpdateRequest,
-            ...(overrideTimingTouched ? { routingTimeoutMs: formData.routingTimeoutMs } : {}),
-          };
-
-      await updateAgentConfig(AGENT_ID, activeScope, updateRequest);
-      await fetchData();
-    } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '保存配置失败';
-      setSaveError(message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleReset = async () => {
-    if (!hasOverride) {
-      if (config) {
-        const global = config.global;
-        setOverrideTimingTouched(false);
-        setFormData({
-          providerId: global.providerId,
-          model: global.model,
-          systemPrompt: global.systemPrompt ?? '',
-          routingPrompt: global.routingPrompt ?? '',
-          allowedToolIds: global.allowedToolIds,
-          allowedSkillIds: global.allowedSkillIds,
-          routingTimeoutMs: global.routingTimeoutMs,
-          toolScopeMode: 'custom',
-        });
-      }
-      return;
-    }
-
-    if (!confirm('确定要重置用户覆盖配置吗？这将恢复到全局默认设置。')) {
-      return;
-    }
-
-    setResetting(true);
-    setSaveError(null);
-
-    try {
-      await resetAgentConfigOverride(AGENT_ID);
-      await fetchData();
-    } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '重置配置失败';
-      setSaveError(message);
-    } finally {
-      setResetting(false);
-    }
-  };
-
-  const handleScopeChange = (scope: 'global' | 'override') => {
-    setActiveScope(scope);
-    setSaveError(null);
-    setOverrideTimingTouched(false);
-
-    if (config) {
-      if (scope === 'global') {
-        const global = config.global;
-        setFormData({
-          providerId: global.providerId,
-          model: global.model,
-          systemPrompt: global.systemPrompt ?? '',
-          routingPrompt: global.routingPrompt ?? '',
-          allowedToolIds: global.allowedToolIds,
-          allowedSkillIds: global.allowedSkillIds,
-          routingTimeoutMs: global.routingTimeoutMs,
-          toolScopeMode: 'custom',
-        });
-      } else {
-        const override = config.userOverride;
-        const effective = config.effective;
-        const overrideToolIds = override?.allowedToolIds ?? effective.allowedToolIds;
-        const derivedToolScopeMode = override?.allowedToolIds === null
-          ? 'inherit'
-          : overrideToolIds.length === 0
-            ? 'none'
-            : overrideToolIds.length === tools.length
-              ? 'all'
-              : 'custom';
-        setFormData({
-          providerId: override?.providerId ?? effective.providerId,
-          model: override?.model ?? effective.model,
-          systemPrompt: override?.systemPrompt ?? effective.systemPrompt ?? '',
-          routingPrompt: override?.routingPrompt ?? effective.routingPrompt ?? '',
-          allowedToolIds: overrideToolIds,
-          allowedSkillIds: override?.allowedSkillIds ?? effective.allowedSkillIds,
-          routingTimeoutMs: override?.routingTimeoutMs ?? effective.routingTimeoutMs,
-          toolScopeMode: derivedToolScopeMode,
-        });
-      }
-    }
-  };
-
-  const getProviderDisplayName = (providerId: string): string => {
-    const provider = providers.find((p) => p.providerId === providerId);
-    return provider?.displayName || providerId;
-  };
 
   if (loading) {
     return (
@@ -324,7 +121,8 @@ const AgentsTab: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error || !config?.effective || !config.global) {
+    const displayError = error || '配置数据不完整，请重试';
     return (
       <div data-testid="agents-panel" className="agents-panel">
         <div className="content-header">
@@ -332,7 +130,7 @@ const AgentsTab: React.FC = () => {
         </div>
         <div className="content-body">
           <div className="agents-error" data-testid="agents-error">
-            <p>{error}</p>
+            <p>{displayError}</p>
             <button
               className="retry-button"
               onClick={fetchData}
@@ -381,6 +179,11 @@ const AgentsTab: React.FC = () => {
 
         <div className="agents-section">
           <h3>模型配置</h3>
+          {!config.effective.providerId && (
+            <div className="unconfigured-banner" data-testid="unconfigured-banner">
+              全局代理尚未配置服务提供商和模型，请先设置后再使用代理功能。
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="providerId">服务提供商 *</label>
@@ -632,14 +435,14 @@ const AgentsTab: React.FC = () => {
             <div className="effective-config">
               <div className="effective-item">
                 <span className="effective-label">提供商:</span>
-                <span className="effective-value" data-testid="effective-provider">
-                  {getProviderDisplayName(config.effective.providerId)}
+                <span className={`effective-value${!config.effective.providerId ? ' not-configured' : ''}`} data-testid="effective-provider">
+                  {config.effective.providerId ? getProviderDisplayName(config.effective.providerId) : '未配置'}
                 </span>
               </div>
               <div className="effective-item">
                 <span className="effective-label">模型:</span>
-                <span className="effective-value" data-testid="effective-model">
-                  {config.effective.model}
+                <span className={`effective-value${!config.effective.model ? ' not-configured' : ''}`} data-testid="effective-model">
+                  {config.effective.model ?? '未配置'}
                 </span>
               </div>
               <div className="effective-item">
