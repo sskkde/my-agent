@@ -14,7 +14,6 @@ import type {
 } from './types.js';
 import type { ForegroundMessageInput, ForegroundSessionState } from '../foreground/types.js';
 import type { ForegroundAgent } from '../foreground/foreground-agent.js';
-import { isForegroundDecideEnabled } from '../foreground/foreground-agent.js';
 import type { HydratedSessionState, Stores } from '../gateway/types.js';
 import type { Gateway } from '../gateway/gateway.js';
 import type { RuntimeDispatcher } from '../dispatcher/types.js';
@@ -34,9 +33,6 @@ import type { SearchSubagent, SearchSubagentInput, SearchSubagentResult } from '
 import { randomUUID } from 'crypto';
 import { isToolLoopV2Enabled } from '../prompt/feature-flags.js';
 import { mapToolResultToMessage } from '../tools/runtime/tool-result-message-mapper.js';
-import type { ForegroundKernelRunner } from '../foreground/foreground-kernel-runner.js';
-import { isForegroundKernelRunnerEnabled } from '../foreground/foreground-kernel-runner.js';
-import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js';
 
 /**
  * Known tool IDs from the catalog - used for server-side validation
@@ -165,8 +161,6 @@ export interface ProcessorOrchestrationDeps {
   memoryExtractionScheduler?: LongTermMemoryScheduler;
   /** Search subagent for pure web.search dispatch */
   searchSubagent?: SearchSubagent;
-  /** ForegroundKernelRunner for the new turn-based execution path */
-  foregroundKernelRunner?: ForegroundKernelRunner;
 }
 
 /**
@@ -321,35 +315,9 @@ export function createOrchestrationProcessor(
             resolvedModel
           ));
 
-          const foregroundKernelRunnerEnabled = isForegroundKernelRunnerEnabled();
+          const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
 
-          if (foregroundKernelRunnerEnabled && deps.foregroundKernelRunner) {
-            const turnInput: ForegroundTurnInput = {
-              userId: input.userId,
-              sessionId: input.sessionId,
-              turnId: input.correlationId,
-              message: input.text,
-              timestamp: input.timestamp,
-              hydratedState: hydratedSession,
-              foregroundState,
-              agentConfig: agentConfig ?? undefined,
-            };
-
-            const turnResult = await deps.foregroundKernelRunner.runTurn(turnInput);
-
-            output = createSuccessOutput(input.correlationId, {
-              text: turnResult.finalResponse || '',
-              route: turnResult.decisionTrace?.route || 'answer_directly',
-              data: {
-                reason: turnResult.decisionTrace?.reason,
-                runtimeSummary: turnResult.runtimeSummary,
-                kernelResult: turnResult.kernelResult,
-              },
-            });
-          } else {
-            const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
-            output = await handleDecisionRoute(input.correlationId, decision, deps, input, resolvedProviderId, resolvedModel);
-          }
+          output = await handleDecisionRoute(input.correlationId, decision, deps, input, resolvedProviderId, resolvedModel);
         }
       } catch (error) {
         emitStatus(deps, buildStatusPayload(
@@ -506,18 +474,6 @@ function buildConversationHistory(
   return history.length > 0 ? history : undefined;
 }
 
-/**
- * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
- * This is the legacy route switch that handles ForegroundDecision routing.
- * Replaced by ForegroundKernelRunner.runTurn() when the feature flag is active.
- *
- * Removal prerequisites:
- * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default (no fallback to processMessage path)
- * - All tests pass with FOREGROUND_KERNEL_RUNNER_ENABLED=true and FOREGROUND_DECIDE_ENABLED=true
- * - No remaining consumers of the legacy dispatch_tool/status_query/spawn_planner routing paths
- * - handleStatusQueryRoute, handleDispatchToolRoute, handleSpawnPlannerRoute are also removed
- * - validateRouteGuardrails and filterToolsAgainstAllowlist are either migrated or no longer needed
- */
 async function handleDecisionRoute(
   correlationId: string,
   decision: import('../foreground/types.js').ForegroundDecision,
@@ -585,16 +541,7 @@ async function handleDecisionRoute(
 }
 
 /**
- * Handles the status_query route.
- *
- * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
- * This is a legacy route handler invoked by handleDecisionRoute's switch statement.
- * ForegroundKernelRunner.runTurn() handles status_query internally via its own routing.
- *
- * Removal prerequisites:
- * - handleDecisionRoute is removed (no callers remain)
- * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default
- * - All tests pass without this function
+ * Handles the status_query route
  */
 function handleStatusQueryRoute(
   correlationId: string,
@@ -653,18 +600,7 @@ function resolveToolResultText(
 }
 
 /**
- * Handles the dispatch_tool route.
- *
- * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
- * This is a legacy route handler invoked by handleDecisionRoute's switch statement.
- * ForegroundKernelRunner.runTurn() handles dispatch_tool internally via ForegroundKernelRunner.
- *
- * Removal prerequisites:
- * - handleDecisionRoute is removed (no callers remain)
- * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default
- * - All tests pass without this function
- * - SearchSubagent invocation (web.search exact-match branch) is migrated to ForegroundKernelRunner
- * - inferToolParams and resolveToolResultText are either migrated or no longer needed
+ * Handles the dispatch_tool route
  */
 async function handleDispatchToolRoute(
   correlationId: string,
@@ -848,16 +784,6 @@ async function handleDispatchToolRoute(
   });
 }
 
-/**
- * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
- * This is a legacy route handler invoked by handleDecisionRoute's switch statement.
- * ForegroundKernelRunner.runTurn() handles spawn_planner internally via its own routing.
- *
- * Removal prerequisites:
- * - handleDecisionRoute is removed (no callers remain)
- * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default
- * - All tests pass without this function
- */
 async function handleSpawnPlannerRoute(
   correlationId: string,
   decision: import('../foreground/types.js').ForegroundDecision,
@@ -1106,19 +1032,8 @@ function persistTurnTranscript(
   const inboundEventId = input.metadata?.inboundEventId as string | undefined;
 
   let runtimeSummary: TurnTranscript['runtimeSummary'] | undefined;
-  const kernelRunnerDecideActive = isForegroundKernelRunnerEnabled() && isForegroundDecideEnabled();
-
-  if (output.success && output.result?.data?.runtimeSummary) {
-    // New path: real runtimeSummary from ForegroundKernelRunner (real toolCallIds from kernel)
-    runtimeSummary = output.result.data.runtimeSummary as TurnTranscript['runtimeSummary'];
-  } else if (kernelRunnerDecideActive) {
-    // Kernel runner/decide path is active but didn't supply a runtimeSummary.
-    // Skip forging — real toolCallIds from kernel results take precedence.
-    if (output.success && output.result?.route === 'dispatch_tool') {
-      console.log('[persistTurnTranscript] Forging bypassed: FOREGROUND_KERNEL_RUNNER + FOREGROUND_DECIDE active; no forging applied for dispatch_tool route');
-    }
-  } else if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
-    // Legacy forging: synthetic toolCallIds from suggestedTools (TOOL_LOOP_V2 only)
+  
+  if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
     const suggestedTools = output.result.data?.suggestedTools as string[] | undefined;
     if (suggestedTools && suggestedTools.length > 0) {
       const toolCallSummaries = suggestedTools.map((toolName, index) => ({

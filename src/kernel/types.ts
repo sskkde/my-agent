@@ -1,8 +1,7 @@
 import type { AgentType, ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js';
 import type { LLMAdapter } from '../llm/adapter.js';
-import type { LLMRequest } from '../llm/types.js';
 import type { ModelInputBuilder } from './model-input/model-input-builder.js';
-import type { ModelInputBuildInput, ToolPlaneProjection, ToolSelectionPolicyProjection } from './model-input/model-input-types.js';
+import type { ToolPlaneProjection, ToolSelectionPolicyProjection } from './model-input/model-input-types.js';
 import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js';
 
 export interface ToolUseRequest {
@@ -20,31 +19,6 @@ export interface ToolUseResult {
     recoverable: boolean;
   };
 }
-
-/**
- * Result from an internal tool handler.
- *
- * When `stop` is true the kernel short-circuits: it commits the tool_call/tool_result
- * to the transcript and returns a KernelRunResult with finalStatus 'completed' and
- * `structuredResult` populated, without calling the dispatcher or continuing the loop.
- */
-export interface InternalToolHandlerResult {
-  /** Standard tool result — always required, even when stopping. */
-  toolResult: ToolUseResult;
-  /** When true, kernel stops the loop immediately after this tool result. */
-  stop?: boolean;
-  /** Optional structured payload returned on the KernelRunResult when stop is true. */
-  structuredResult?: unknown;
-}
-
-/**
- * Generic internal tool handler.
- *
- * Receives a ToolUseRequest and returns an InternalToolHandlerResult.
- * Used by callers (e.g. ForegroundAgent) to intercept specific tool names
- * and handle them internally, bypassing the dispatcher.
- */
-export type InternalToolHandler = (request: ToolUseRequest) => Promise<InternalToolHandlerResult>;
 
 export interface KernelRunInput {
   contextBundle: ContextBundle;
@@ -67,18 +41,6 @@ export interface KernelRunInput {
   maxIterations?: number;
   timeoutMs?: number;
   config?: Record<string, unknown>;
-  /** Internal tool handlers keyed by tool name — bypasses dispatcher when matched. */
-  internalToolHandlers?: Record<string, InternalToolHandler>;
-  /** Complete per-run ModelInputBuilder input. When supplied, kernel uses it instead of its default function_calling input. */
-  modelInputOverride?: ModelInputBuildInput;
-  /** Per-run temperature override for the LLM request. */
-  temperature?: number;
-  /** Per-run maxTokens override for the LLM request. */
-  maxTokens?: number;
-  /** Per-run toolChoice override for the LLM request. */
-  toolChoice?: LLMRequest['toolChoice'];
-  /** Per-run model override for the LLM request. */
-  model?: string;
 }
 
 export type KernelRunStatus = 'completed' | 'max_iterations_reached' | 'timeout' | 'failed';
@@ -93,8 +55,6 @@ export interface KernelRunResult {
     code: string;
     message: string;
   };
-  /** Structured payload from an internal tool handler that signaled stop. */
-  structuredResult?: unknown;
 }
 
 export interface KernelTranscriptEntry {

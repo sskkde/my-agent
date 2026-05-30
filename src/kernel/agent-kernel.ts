@@ -9,7 +9,6 @@ import type {
   ToolUseResult,
   KernelTranscriptEntry,
   CompactTriggerResult,
-  InternalToolHandler,
 } from './types.js';
 import type { ModelInputBuildInput } from './model-input/model-input-types.js';
 import { projectBundleToData } from './model-input/context-bundle-adapter.js';
@@ -76,7 +75,7 @@ export class AgentKernel {
           messages: llmRequest.messages,
         });
 
-        const llmResult = await this.callLLMWithTimeout(llmRequest, timeoutMs - (Date.now() - startTime));
+        const llmResult = await this.config.llmAdapter.complete(llmRequest);
 
         if (!llmResult.success) {
           this.flushPairingGuard(pairingGuard, state, 'llm_error');
@@ -92,13 +91,13 @@ export class AgentKernel {
         }
 
         this.config.modelInputSnapshotStore?.record({
-          agentKind: this.lastBuiltModelInput!.metadata.agentKind,
-          mode: this.lastBuiltModelInput!.metadata.mode,
+          agentKind: 'kernel',
+          mode: 'function_calling',
           builtInput: this.lastBuiltModelInput!,
           response: { content: llmResult.response.content, toolCalls: llmResult.response.toolCalls },
           tokenUsage: llmResult.response.usage,
-          provider: this.lastBuiltModelInput!.metadata.providerFamily,
-          model: llmRequest.model,
+          provider: this.config.providerFamily,
+          model: this.config.defaultModel,
         });
 
         const llmResponse = llmResult.response;
@@ -114,58 +113,25 @@ export class AgentKernel {
           state.toolCalls.push(...toolUseRequests);
           pairingGuard.trackAssistantToolCalls(toolUseRequests);
 
-          let shouldStop = false;
-          let stopStructuredResult: unknown;
-
           for (const toolRequest of toolUseRequests) {
             this.commitTranscript(state, 'tool_call', toolRequest);
             let toolResult: ToolUseResult;
-
-            const internalHandler = this.resolveInternalToolHandler(toolRequest.toolName, input);
-            if (internalHandler) {
-              try {
-                const handlerResult = await internalHandler(toolRequest);
-                toolResult = handlerResult.toolResult;
-                if (handlerResult.stop) {
-                  shouldStop = true;
-                  stopStructuredResult = handlerResult.structuredResult;
-                }
-              } catch (handlerError) {
-                toolResult = {
-                  toolCallId: toolRequest.toolCallId,
-                  result: null,
-                  error: {
-                    code: 'INTERNAL_HANDLER_ERROR',
-                    message: handlerError instanceof Error ? handlerError.message : String(handlerError),
-                    recoverable: true,
-                  },
-                };
-              }
-            } else {
-              try {
-                toolResult = await this.dispatchTool(toolRequest, input);
-              } catch (dispatchError) {
-                toolResult = {
-                  toolCallId: toolRequest.toolCallId,
-                  result: null,
-                  error: {
-                    code: 'DISPATCH_ERROR',
-                    message: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
-                    recoverable: true,
-                  },
-                };
-              }
+            try {
+              toolResult = await this.dispatchTool(toolRequest, input);
+            } catch (dispatchError) {
+              toolResult = {
+                toolCallId: toolRequest.toolCallId,
+                result: null,
+                error: {
+                  code: 'DISPATCH_ERROR',
+                  message: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
+                  recoverable: true,
+                },
+              };
             }
-
             pairingGuard.acceptToolResult(toolResult);
             this.commitTranscript(state, 'tool_result', toolResult);
             this.mergeToolResult(state, toolRequest, toolResult);
-
-            if (shouldStop) {
-              this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop');
-              state.status = 'completed';
-              return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult);
-            }
           }
 
           this.flushPairingGuard(pairingGuard, state, 'iteration_end');
@@ -221,29 +187,20 @@ export class AgentKernel {
       toolSelectionPolicy = projectionResult.toolSelectionPolicy;
     }
 
-    const buildInput: ModelInputBuildInput = input.modelInputOverride
-      ? {
-          ...input.modelInputOverride,
-          ...(transcriptMessages.length > 0
-            ? { transcript: [...(input.modelInputOverride.transcript ?? []), ...transcriptMessages] }
-            : {}),
-          ...(input.toolProjection ? { toolProjection: input.toolProjection } : {}),
-          ...(isPromptMemoryP0Enabled() && toolSelectionPolicy ? { toolSelectionPolicy } : {}),
-        }
-      : {
-          mode: 'function_calling',
-          agentKind: 'kernel',
-          providerFamily: this.config.providerFamily ?? 'openai',
-          contextBundle: contextBundleData,
-          transcript: transcriptMessages,
-          currentDate: new Date().toISOString(),
-          sessionId: input.sessionId,
-          runId: input.runId ?? input.contextBundle.runId,
-          toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
-          ...(isPromptMemoryP0Enabled() ? {
-            toolSelectionPolicy,
-          } : {}),
-        };
+    const buildInput: ModelInputBuildInput = {
+      mode: 'function_calling',
+      agentKind: 'kernel',
+      providerFamily: this.config.providerFamily ?? 'openai',
+      contextBundle: contextBundleData,
+      transcript: transcriptMessages,
+      currentDate: new Date().toISOString(),
+      sessionId: input.sessionId,
+      runId: input.runId ?? input.contextBundle.runId,
+      toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
+      ...(isPromptMemoryP0Enabled() ? {
+        toolSelectionPolicy,
+      } : {}),
+    };
 
     const builtInput = await this.config.modelInputBuilder.build(buildInput);
     this.lastBuiltModelInput = builtInput;
@@ -262,21 +219,12 @@ export class AgentKernel {
 
     const tools = extractToolsForRequest(buildInput);
 
-    const llmRequest: LLMRequest = {
-      model: input.model ?? this.config.defaultModel ?? 'default-model',
+    return {
+      model: this.config.defaultModel ?? 'default-model',
       messages: builtInput.messages,
-      temperature: input.temperature ?? 0.7,
+      temperature: 0.7,
       tools,
     };
-
-    if (input.maxTokens !== undefined) {
-      llmRequest.maxTokens = input.maxTokens;
-    }
-    if (input.toolChoice !== undefined) {
-      llmRequest.toolChoice = input.toolChoice;
-    }
-
-    return llmRequest;
   }
 
   private buildTranscriptMessages(state: KernelRunState): LLMMessage[] {
@@ -320,21 +268,6 @@ export class AgentKernel {
     return response.toolCalls !== undefined && response.toolCalls.length > 0;
   }
 
-  private async callLLMWithTimeout(request: LLMRequest, timeoutMs: number) {
-    if (timeoutMs <= 0) {
-      throw new Error('LLM request timeout before dispatch');
-    }
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`LLM request timeout after ${timeoutMs}ms`)), timeoutMs);
-    });
-
-    return Promise.race([
-      this.config.llmAdapter.complete(request),
-      timeoutPromise,
-    ]);
-  }
-
   private parseToolUseRequests(response: LLMResponse): ToolUseRequest[] {
     if (!response.toolCalls) {
       return [];
@@ -355,29 +288,10 @@ export class AgentKernel {
     }
   }
 
-  private resolveInternalToolHandler(
-    toolName: string,
-    input: KernelRunInput
-  ): InternalToolHandler | undefined {
-    return input.internalToolHandlers?.[toolName];
-  }
-
   private async dispatchTool(
     toolRequest: ToolUseRequest,
     input: KernelRunInput
   ): Promise<ToolUseResult> {
-    if (!this.isCallableProjectedTool(toolRequest.toolName, input)) {
-      return {
-        toolCallId: toolRequest.toolCallId,
-        result: null,
-        error: {
-          code: 'UNPROJECTED_TOOL_CALL',
-          message: `Tool ${toolRequest.toolName} was not projected as callable for this kernel run`,
-          recoverable: false,
-        },
-      };
-    }
-
     const effectiveRunId = input.runId ?? input.contextBundle.runId;
     const toolDispatchRequest = createToolDispatchRequest({
       runId: effectiveRunId,
@@ -469,12 +383,6 @@ export class AgentKernel {
         },
       };
     }
-  }
-
-  private isCallableProjectedTool(toolName: string, input: KernelRunInput): boolean {
-    const projection = input.toolProjection ?? this.config.toolProjection;
-    if (!projection?.tools) return false;
-    return projection.tools.some(tool => tool.function.name === toolName);
   }
 
   private toMappedToolResult(
@@ -606,8 +514,7 @@ export class AgentKernel {
     state: KernelRunState,
     finalStatus: KernelRunResult['finalStatus'],
     error?: { code: string; message: string },
-    finalResponse?: string,
-    structuredResult?: unknown
+    finalResponse?: string
   ): KernelRunResult {
     return {
       finalStatus,
@@ -616,7 +523,6 @@ export class AgentKernel {
       toolCalls: state.toolCalls,
       transcript: state.transcript,
       error,
-      ...(structuredResult !== undefined ? { structuredResult } : {}),
     };
   }
 }

@@ -545,8 +545,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     modelInputSnapshotStore,
   });
 
-  foregroundAgent.setAgentKernel?.(agentKernel);
-
   // Create processing observer that broadcasts status to SSE subscribers
   const processingObserver = {
     emitStatus: (status: import('./types.js').ProcessingStatusPayload) => {
