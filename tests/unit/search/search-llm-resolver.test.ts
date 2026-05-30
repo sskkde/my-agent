@@ -78,6 +78,7 @@ describe('resolveSearchLLM', () => {
         expect(result.providerId).toBe('provider-search');
         expect(result.model).toBe('gpt-4.1-mini');
         expect(result.provider).toBe(provider);
+        expect(result.usedMainConfigFallback).toBe(false);
       }
     });
 
@@ -106,17 +107,24 @@ describe('resolveSearchLLM', () => {
         expect(result.model).toBe('gpt-4.1-mini');
         expect(result.providerId).not.toBe('provider-main');
         expect(result.model).not.toBe('gpt-4');
+        expect(result.usedMainConfigFallback).toBe(false);
       }
     });
   });
 
-  describe('fail closed cases', () => {
-    it('returns error when searchLlmProviderId is not configured', () => {
+  describe('fallback to main agent config', () => {
+    it('falls back to main config when searchLlmProviderId is not configured', () => {
+      const mainProvider = createMockProvider({
+        providerId: 'provider-main',
+        selectedModel: 'gpt-4',
+      });
       const agentConfig = createMockAgentConfig({
         searchLlmProviderId: null,
         searchLlmModel: 'gpt-4.1-mini',
+        providerId: 'provider-main',
+        model: 'gpt-4',
       });
-      const store = createMockProviderConfigStore([]);
+      const store = createMockProviderConfigStore([mainProvider]);
 
       const result = resolveSearchLLM({
         agentConfig,
@@ -124,16 +132,76 @@ describe('resolveSearchLLM', () => {
         userId: 'user-123',
       });
 
-      expect(result.type).toBe('error');
-      if (result.type === 'error') {
-        expect(result.errorCode).toBe('SEARCH_MODEL_NOT_CONFIGURED');
+      expect(result.type).toBe('success');
+      if (result.type === 'success') {
+        expect(result.providerId).toBe('provider-main');
+        expect(result.model).toBe('gpt-4');
+        expect(result.usedMainConfigFallback).toBe(true);
       }
     });
 
-    it('returns error when searchLlmModel is not configured', () => {
+    it('falls back to main config when searchLlmModel is not configured', () => {
+      const mainProvider = createMockProvider({
+        providerId: 'provider-main',
+        selectedModel: 'gpt-4',
+      });
       const agentConfig = createMockAgentConfig({
         searchLlmProviderId: 'provider-search',
         searchLlmModel: null,
+        providerId: 'provider-main',
+        model: 'gpt-4',
+      });
+      const store = createMockProviderConfigStore([mainProvider]);
+
+      const result = resolveSearchLLM({
+        agentConfig,
+        providerConfigStore: store,
+        userId: 'user-123',
+      });
+
+      expect(result.type).toBe('success');
+      if (result.type === 'success') {
+        expect(result.providerId).toBe('provider-main');
+        expect(result.model).toBe('gpt-4');
+        expect(result.usedMainConfigFallback).toBe(true);
+      }
+    });
+
+    it('falls back to main config when both searchLlmProviderId and searchLlmModel are not configured', () => {
+      const mainProvider = createMockProvider({
+        providerId: 'provider-main',
+        selectedModel: 'gpt-4',
+      });
+      const agentConfig = createMockAgentConfig({
+        searchLlmProviderId: null,
+        searchLlmModel: null,
+        providerId: 'provider-main',
+        model: 'gpt-4',
+      });
+      const store = createMockProviderConfigStore([mainProvider]);
+
+      const result = resolveSearchLLM({
+        agentConfig,
+        providerConfigStore: store,
+        userId: 'user-123',
+      });
+
+      expect(result.type).toBe('success');
+      if (result.type === 'success') {
+        expect(result.providerId).toBe('provider-main');
+        expect(result.model).toBe('gpt-4');
+        expect(result.usedMainConfigFallback).toBe(true);
+      }
+    });
+  });
+
+  describe('fail closed cases', () => {
+    it('returns error when neither search nor main provider/model are configured', () => {
+      const agentConfig = createMockAgentConfig({
+        searchLlmProviderId: null,
+        searchLlmModel: null,
+        providerId: null,
+        model: null,
       });
       const store = createMockProviderConfigStore([]);
 
@@ -258,6 +326,77 @@ describe('resolveSearchLLM', () => {
       expect(result.type).toBe('success');
       if (result.type === 'success') {
         expect(result.providerId).toBe('ollama-search');
+      }
+    });
+
+    it('returns error when fallback provider is not found', () => {
+      const agentConfig = createMockAgentConfig({
+        searchLlmProviderId: null,
+        searchLlmModel: null,
+        providerId: 'provider-main',
+        model: 'gpt-4',
+      });
+      const store = createMockProviderConfigStore([]);
+
+      const result = resolveSearchLLM({
+        agentConfig,
+        providerConfigStore: store,
+        userId: 'user-123',
+      });
+
+      expect(result.type).toBe('error');
+      if (result.type === 'error') {
+        expect(result.errorCode).toBe('SEARCH_PROVIDER_NOT_FOUND');
+      }
+    });
+
+    it('returns error when fallback provider is disabled', () => {
+      const mainProvider = createMockProvider({
+        providerId: 'provider-main',
+        enabled: false,
+      });
+      const agentConfig = createMockAgentConfig({
+        searchLlmProviderId: null,
+        searchLlmModel: null,
+        providerId: 'provider-main',
+        model: 'gpt-4',
+      });
+      const store = createMockProviderConfigStore([mainProvider]);
+
+      const result = resolveSearchLLM({
+        agentConfig,
+        providerConfigStore: store,
+        userId: 'user-123',
+      });
+
+      expect(result.type).toBe('error');
+      if (result.type === 'error') {
+        expect(result.errorCode).toBe('SEARCH_PROVIDER_UNAVAILABLE');
+      }
+    });
+
+    it('returns error when fallback provider belongs to different user', () => {
+      const mainProvider = createMockProvider({
+        providerId: 'provider-main',
+        userId: 'other-user',
+      });
+      const agentConfig = createMockAgentConfig({
+        searchLlmProviderId: null,
+        searchLlmModel: null,
+        providerId: 'provider-main',
+        model: 'gpt-4',
+      });
+      const store = createMockProviderConfigStore([mainProvider]);
+
+      const result = resolveSearchLLM({
+        agentConfig,
+        providerConfigStore: store,
+        userId: 'user-123',
+      });
+
+      expect(result.type).toBe('error');
+      if (result.type === 'error') {
+        expect(result.errorCode).toBe('SEARCH_PROVIDER_NOT_FOUND');
       }
     });
   });

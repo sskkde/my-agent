@@ -52,7 +52,7 @@ describe('ToolExecutor', () => {
   });
 
   describe('execute - validation', () => {
-    it('should fail when tool not found', async () => {
+    it('should fail when tool not found and persist error', async () => {
       vi.mocked(mockRegistry.getTool).mockReturnValue(null);
 
       const result = await executor.execute({
@@ -66,6 +66,13 @@ describe('ToolExecutor', () => {
 
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('TOOL_NOT_FOUND');
+      expect(mockToolExecutionStore.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toolCallId: 'call-1',
+          status: 'failed',
+          errorMessage: '[TOOL_NOT_FOUND] Tool not found: unknown-tool',
+        })
+      );
     });
 
     it('should validate params against schema', async () => {
@@ -114,6 +121,12 @@ describe('ToolExecutor', () => {
 
       expect(invalidResult.success).toBe(false);
       expect(invalidResult.error?.code).toBe('SCHEMA_VALIDATION_FAILED');
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-2',
+        'failed',
+        undefined,
+        '[SCHEMA_VALIDATION_FAILED] Schema validation failed: Missing required field: name'
+      );
     });
 
     it('should reject wrong parameter types', async () => {
@@ -144,6 +157,12 @@ describe('ToolExecutor', () => {
 
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('SCHEMA_VALIDATION_FAILED');
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        "[SCHEMA_VALIDATION_FAILED] Schema validation failed: Field 'count' must be of type 'number', got 'string'"
+      );
     });
   });
 
@@ -248,6 +267,12 @@ describe('ToolExecutor', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('PERMISSION_DENIED');
       expect(result.error?.message).toBe('Permission denied by policy');
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'denied',
+        undefined,
+        '[PERMISSION_DENIED] Permission denied by policy'
+      );
     });
 
     it('should handle requires_approval decision', async () => {
@@ -280,6 +305,56 @@ describe('ToolExecutor', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('PERMISSION_DENIED');
       expect(result.error?.message).toContain('requires approval');
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'denied',
+        undefined,
+        '[PERMISSION_DENIED] Operation requires approval'
+      );
+    });
+
+    it('should sanitize permission denied reason containing secrets', async () => {
+      const fakeSecret = 'sk-testsecretkey12345678901234567890';
+      const tool: ToolDefinition = {
+        name: 'sensitive-tool',
+        description: 'A sensitive tool',
+        category: 'admin' as ToolCategory,
+        sensitivity: 'restricted' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({ success: true }),
+      };
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool);
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'denied',
+        allowed: false,
+        reason: `Insufficient permissions for key ${fakeSecret}`,
+      } as PermissionDecision);
+
+      const result = await executor.execute({
+        toolCallId: 'call-1',
+        toolName: 'sensitive-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PERMISSION_DENIED');
+      expect(result.error?.message).toContain(fakeSecret);
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'denied',
+        undefined,
+        expect.stringContaining('[REDACTED_API_KEY]')
+      );
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'denied',
+        undefined,
+        expect.not.stringContaining(fakeSecret)
+      );
     });
   });
 
@@ -366,6 +441,148 @@ describe('ToolExecutor', () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('EXECUTION_FAILED');
       expect(result.error?.message).toBe('Tool execution failed');
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        '[EXECUTION_FAILED] Tool execution failed'
+      );
+    });
+
+    it('should sanitize error messages containing secrets before persistence', async () => {
+      const fakeSecret = 'sk-1234567890abcdefghijklmnopqrstuv';
+      const handler = vi.fn().mockRejectedValue(new Error(`API key ${fakeSecret} is invalid`));
+
+      const tool: ToolDefinition = {
+        name: 'secret-failing-tool',
+        description: 'A tool that fails with secret in error',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      };
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool);
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision);
+
+      const result = await executor.execute({
+        toolCallId: 'call-1',
+        toolName: 'secret-failing-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('EXECUTION_FAILED');
+      expect(result.error?.message).toContain(fakeSecret);
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.stringContaining('[REDACTED_API_KEY]')
+      );
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.not.stringContaining(fakeSecret)
+      );
+    });
+
+    it('should sanitize error messages containing passwords before persistence', async () => {
+      const fakePassword = 'super_secret_password_123!';
+      const handler = vi.fn().mockRejectedValue(new Error(`Authentication failed: password=${fakePassword}`));
+
+      const tool: ToolDefinition = {
+        name: 'auth-failing-tool',
+        description: 'A tool that fails with password in error',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      };
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool);
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision);
+
+      const result = await executor.execute({
+        toolCallId: 'call-1',
+        toolName: 'auth-failing-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain(fakePassword);
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.stringContaining('[REDACTED_PASSWORD]')
+      );
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.not.stringContaining(fakePassword)
+      );
+    });
+
+    it('should sanitize error messages containing bearer tokens before persistence', async () => {
+      const fakeBearerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const handler = vi.fn().mockRejectedValue(new Error(`Bearer ${fakeBearerToken} expired`));
+
+      const tool: ToolDefinition = {
+        name: 'token-failing-tool',
+        description: 'A tool that fails with bearer token in error',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      };
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool);
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision);
+
+      const result = await executor.execute({
+        toolCallId: 'call-1',
+        toolName: 'token-failing-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain(fakeBearerToken);
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.stringContaining('[REDACTED_TOKEN]')
+      );
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.not.stringContaining(fakeBearerToken)
+      );
     });
 
     it('should save execution result to store', async () => {
@@ -467,6 +684,137 @@ describe('ToolExecutor', () => {
           source: 'tool_result',
           items: expect.any(Array),
         })
+      );
+    });
+
+    it('should persist FAILED status when handler returns success:false', async () => {
+      const tool: ToolDefinition = {
+        name: 'failing-result-tool',
+        description: 'A tool that returns failure',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({
+          success: false,
+          error: {
+            code: 'TOOL_ERROR',
+            message: 'Tool returned failure',
+            recoverable: true,
+          },
+        }),
+      };
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool);
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision);
+
+      const result = await executor.execute({
+        toolCallId: 'call-1',
+        toolName: 'failing-result-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('TOOL_ERROR');
+      expect(result.error?.message).toBe('Tool returned failure');
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        '[EXECUTION_FAILED] Tool returned failure'
+      );
+    });
+
+    it('should sanitize error message when handler returns success:false with secrets', async () => {
+      const fakeSecret = 'sk-abcdefghijklmnopqrstuv1234567890';
+      const tool: ToolDefinition = {
+        name: 'secret-result-tool',
+        description: 'A tool that returns failure with secret',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({
+          success: false,
+          error: {
+            code: 'AUTH_ERROR',
+            message: `Invalid API key: ${fakeSecret}`,
+            recoverable: false,
+          },
+        }),
+      };
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool);
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision);
+
+      const result = await executor.execute({
+        toolCallId: 'call-1',
+        toolName: 'secret-result-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.message).toContain(fakeSecret);
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.stringContaining('[REDACTED_API_KEY]')
+      );
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        expect.not.stringContaining(fakeSecret)
+      );
+    });
+
+    it('should handle handler returning success:false without error object', async () => {
+      const tool: ToolDefinition = {
+        name: 'no-error-tool',
+        description: 'A tool that returns failure without error',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({
+          success: false,
+        }),
+      };
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool);
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision);
+
+      const result = await executor.execute({
+        toolCallId: 'call-1',
+        toolName: 'no-error-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      });
+
+      expect(result.success).toBe(false);
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-1',
+        'failed',
+        undefined,
+        '[EXECUTION_FAILED] Tool execution returned failure'
       );
     });
   });

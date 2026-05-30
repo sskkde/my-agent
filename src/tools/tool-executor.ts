@@ -8,6 +8,7 @@ import type {
 } from './types.js';
 import type { RuntimeContextDelta } from '../context/types.js';
 import { TOOL_EXECUTION_STATES } from '../shared/states.js';
+import { sanitizeErrorMessage, formatPersistedError } from './error-sanitizer.js';
 
 class ToolExecutorImpl implements ToolExecutor {
   private config: ToolExecutorConfig;
@@ -37,7 +38,18 @@ class ToolExecutorImpl implements ToolExecutor {
       const tool = this.config.registry.getTool(toolName);
 
       if (!tool) {
-        this.endToolSpan(spanId, startedAt, 'failed', 'Tool not found');
+        const errorMessage = `[TOOL_NOT_FOUND] Tool not found: ${toolName}`;
+        this.config.toolExecutionStore.create({
+          toolCallId,
+          toolName,
+          userId,
+          sessionId,
+          kernelRunId,
+          status: TOOL_EXECUTION_STATES.FAILED,
+          sensitivity: 'low',
+          errorMessage,
+        });
+        this.endToolSpan(spanId, startedAt, 'failed', errorMessage);
         return this.createErrorResult(
           'TOOL_NOT_FOUND',
           `Tool not found: ${toolName}`,
@@ -58,11 +70,13 @@ class ToolExecutorImpl implements ToolExecutor {
 
       const validationResult = this.validateParams(params, tool.schema);
       if (!validationResult.valid) {
-        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED);
-        this.endToolSpan(spanId, startedAt, 'failed', validationResult.errors?.join(', '));
+        const rawErrorMessage = `Schema validation failed: ${validationResult.errors?.join(', ')}`;
+        const persistedErrorMessage = formatPersistedError('SCHEMA_VALIDATION_FAILED', rawErrorMessage);
+        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED, undefined, persistedErrorMessage);
+        this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage));
         return this.createErrorResult(
           'SCHEMA_VALIDATION_FAILED',
-          `Schema validation failed: ${validationResult.errors?.join(', ')}`,
+          rawErrorMessage,
           false
         );
       }
@@ -79,11 +93,13 @@ class ToolExecutorImpl implements ToolExecutor {
       });
 
       if (!permissionDecision.allowed) {
-        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.DENIED);
-        this.endToolSpan(spanId, startedAt, 'failed', permissionDecision.reason || 'Permission denied');
+        const rawErrorMessage = permissionDecision.reason || 'Permission denied';
+        const persistedErrorMessage = formatPersistedError('PERMISSION_DENIED', rawErrorMessage);
+        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.DENIED, undefined, persistedErrorMessage);
+        this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage));
         return this.createErrorResult(
           'PERMISSION_DENIED',
-          permissionDecision.reason || 'Permission denied',
+          rawErrorMessage,
           false
         );
       }
@@ -100,8 +116,8 @@ class ToolExecutorImpl implements ToolExecutor {
         executionStartTime: new Date().toISOString(),
         stores: {
           toolExecutionStore: {
-            updateStatus: (id: string, status: string) => {
-              this.config.toolExecutionStore.updateStatus(id, status);
+            updateStatus: (id: string, status: string, errorMessage?: string) => {
+              this.config.toolExecutionStore.updateStatus(id, status, undefined, errorMessage);
             },
             saveResult: (id: string, result: {
               preview?: string;
@@ -121,12 +137,23 @@ class ToolExecutorImpl implements ToolExecutor {
         contextDelta: this.normalizeContextDelta(handlerResult.contextDelta, kernelRunId),
       };
 
-      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.COMPLETED);
-      this.config.toolExecutionStore.saveResult(toolCallId, {
-        preview: finalResult.resultPreview,
-        resultRef: finalResult.resultRef,
-        structuredContent: finalResult.structuredContent,
-      });
+      if (!finalResult.success) {
+        const rawErrorMessage = finalResult.error?.message || 'Tool execution returned failure';
+        const persistedErrorMessage = formatPersistedError('EXECUTION_FAILED', rawErrorMessage);
+        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED, undefined, persistedErrorMessage);
+        this.config.toolExecutionStore.saveResult(toolCallId, {
+          preview: finalResult.resultPreview,
+          resultRef: finalResult.resultRef,
+          structuredContent: finalResult.structuredContent,
+        });
+      } else {
+        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.COMPLETED);
+        this.config.toolExecutionStore.saveResult(toolCallId, {
+          preview: finalResult.resultPreview,
+          resultRef: finalResult.resultRef,
+          structuredContent: finalResult.structuredContent,
+        });
+      }
 
       if (finalResult.contextDelta && this.config.contextManager) {
         this.config.contextManager.applyDelta(finalResult.contextDelta);
@@ -143,7 +170,8 @@ class ToolExecutorImpl implements ToolExecutor {
         correlationId: toolCallId,
         causationId: kernelRunId,
       });
-      this.endToolSpan(spanId, startedAt, finalResult.success ? 'completed' : 'failed', finalResult.error?.message);
+      const spanError = finalResult.success ? undefined : sanitizeErrorMessage(finalResult.error?.message || 'Tool execution returned failure');
+      this.endToolSpan(spanId, startedAt, finalResult.success ? 'completed' : 'failed', spanError);
 
       if (finalResult.events && finalResult.events.length > 0 && this.config.eventStore) {
         for (const event of finalResult.events) {
@@ -164,13 +192,14 @@ class ToolExecutorImpl implements ToolExecutor {
 
       return finalResult;
     } catch (error) {
-      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED);
+      const rawMessage = error instanceof Error ? error.message : String(error);
+      const persistedErrorMessage = formatPersistedError('EXECUTION_FAILED', rawMessage);
+      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED, undefined, persistedErrorMessage);
 
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.endToolSpan(spanId, startedAt, 'failed', errorMessage);
+      this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawMessage));
       return this.createErrorResult(
         'EXECUTION_FAILED',
-        errorMessage,
+        rawMessage,
         false
       );
     }

@@ -64,7 +64,7 @@ export interface ToolExecutionContext {
   // Access to stores (injected by executor)
   stores: {
     toolExecutionStore: {
-      updateStatus: (toolCallId: string, status: string) => void;
+      updateStatus: (toolCallId: string, status: string, errorMessage?: string) => void;
       saveResult: (toolCallId: string, result: {
         preview?: string;
         resultRef?: string;
@@ -168,8 +168,9 @@ export interface ToolExecutorConfig {
       status: string;
       params?: unknown;
       sensitivity: string;
+      errorMessage?: string;
     }) => void;
-    updateStatus: (toolCallId: string, status: string) => void;
+    updateStatus: (toolCallId: string, status: string, tenantId?: string, errorMessage?: string) => void;
     saveResult: (toolCallId: string, result: {
       preview?: string;
       resultRef?: string;

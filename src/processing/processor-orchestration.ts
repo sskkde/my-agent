@@ -14,6 +14,7 @@ import type {
 } from './types.js';
 import type { ForegroundMessageInput, ForegroundSessionState } from '../foreground/types.js';
 import type { ForegroundAgent } from '../foreground/foreground-agent.js';
+import { isForegroundDecideEnabled } from '../foreground/foreground-agent.js';
 import type { HydratedSessionState, Stores } from '../gateway/types.js';
 import type { Gateway } from '../gateway/gateway.js';
 import type { RuntimeDispatcher } from '../dispatcher/types.js';
@@ -33,6 +34,9 @@ import type { SearchSubagent, SearchSubagentInput, SearchSubagentResult } from '
 import { randomUUID } from 'crypto';
 import { isToolLoopV2Enabled } from '../prompt/feature-flags.js';
 import { mapToolResultToMessage } from '../tools/runtime/tool-result-message-mapper.js';
+import type { ForegroundKernelRunner } from '../foreground/foreground-kernel-runner.js';
+import { isForegroundKernelRunnerEnabled } from '../foreground/foreground-kernel-runner.js';
+import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js';
 
 /**
  * Known tool IDs from the catalog - used for server-side validation
@@ -161,6 +165,8 @@ export interface ProcessorOrchestrationDeps {
   memoryExtractionScheduler?: LongTermMemoryScheduler;
   /** Search subagent for pure web.search dispatch */
   searchSubagent?: SearchSubagent;
+  /** ForegroundKernelRunner for the new turn-based execution path */
+  foregroundKernelRunner?: ForegroundKernelRunner;
 }
 
 /**
@@ -315,9 +321,35 @@ export function createOrchestrationProcessor(
             resolvedModel
           ));
 
-          const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
+          const foregroundKernelRunnerEnabled = isForegroundKernelRunnerEnabled();
 
-          output = await handleDecisionRoute(input.correlationId, decision, deps, input, resolvedProviderId, resolvedModel);
+          if (foregroundKernelRunnerEnabled && deps.foregroundKernelRunner) {
+            const turnInput: ForegroundTurnInput = {
+              userId: input.userId,
+              sessionId: input.sessionId,
+              turnId: input.correlationId,
+              message: input.text,
+              timestamp: input.timestamp,
+              hydratedState: hydratedSession,
+              foregroundState,
+              agentConfig: agentConfig ?? undefined,
+            };
+
+            const turnResult = await deps.foregroundKernelRunner.runTurn(turnInput);
+
+            output = createSuccessOutput(input.correlationId, {
+              text: turnResult.finalResponse || '',
+              route: turnResult.decisionTrace?.route || 'answer_directly',
+              data: {
+                reason: turnResult.decisionTrace?.reason,
+                runtimeSummary: turnResult.runtimeSummary,
+                kernelResult: turnResult.kernelResult,
+              },
+            });
+          } else {
+            const decision = await deps.foregroundAgent.processMessage(foregroundInput, foregroundState);
+            output = await handleDecisionRoute(input.correlationId, decision, deps, input, resolvedProviderId, resolvedModel);
+          }
         }
       } catch (error) {
         emitStatus(deps, buildStatusPayload(
@@ -474,6 +506,18 @@ function buildConversationHistory(
   return history.length > 0 ? history : undefined;
 }
 
+/**
+ * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
+ * This is the legacy route switch that handles ForegroundDecision routing.
+ * Replaced by ForegroundKernelRunner.runTurn() when the feature flag is active.
+ *
+ * Removal prerequisites:
+ * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default (no fallback to processMessage path)
+ * - All tests pass with FOREGROUND_KERNEL_RUNNER_ENABLED=true and FOREGROUND_DECIDE_ENABLED=true
+ * - No remaining consumers of the legacy dispatch_tool/status_query/spawn_planner routing paths
+ * - handleStatusQueryRoute, handleDispatchToolRoute, handleSpawnPlannerRoute are also removed
+ * - validateRouteGuardrails and filterToolsAgainstAllowlist are either migrated or no longer needed
+ */
 async function handleDecisionRoute(
   correlationId: string,
   decision: import('../foreground/types.js').ForegroundDecision,
@@ -541,7 +585,16 @@ async function handleDecisionRoute(
 }
 
 /**
- * Handles the status_query route
+ * Handles the status_query route.
+ *
+ * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
+ * This is a legacy route handler invoked by handleDecisionRoute's switch statement.
+ * ForegroundKernelRunner.runTurn() handles status_query internally via its own routing.
+ *
+ * Removal prerequisites:
+ * - handleDecisionRoute is removed (no callers remain)
+ * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default
+ * - All tests pass without this function
  */
 function handleStatusQueryRoute(
   correlationId: string,
@@ -600,7 +653,18 @@ function resolveToolResultText(
 }
 
 /**
- * Handles the dispatch_tool route
+ * Handles the dispatch_tool route.
+ *
+ * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
+ * This is a legacy route handler invoked by handleDecisionRoute's switch statement.
+ * ForegroundKernelRunner.runTurn() handles dispatch_tool internally via ForegroundKernelRunner.
+ *
+ * Removal prerequisites:
+ * - handleDecisionRoute is removed (no callers remain)
+ * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default
+ * - All tests pass without this function
+ * - SearchSubagent invocation (web.search exact-match branch) is migrated to ForegroundKernelRunner
+ * - inferToolParams and resolveToolResultText are either migrated or no longer needed
  */
 async function handleDispatchToolRoute(
   correlationId: string,
@@ -621,39 +685,36 @@ async function handleDispatchToolRoute(
     );
   }
   // EXACT-MATCH BRANCH: Invoke SearchSubagent for pure web.search
-  // Metis guardrail: Only invoke when filteredTools.length === 1 && filteredTools[0] === 'web.search'
   if (filteredTools.length === 1 && filteredTools[0] === 'web.search' && deps.searchSubagent) {
-    // Get effective AgentConfig for user
-    const agentConfig = deps.agentConfigStore?.getByUser(input.userId);
-    
-    if (agentConfig && agentConfig.searchLlmProviderId && agentConfig.searchLlmModel) {
-      try {
-        const searchInput: SearchSubagentInput = {
-          query: input.text,
-          userId: input.userId,
-          sessionId: input.sessionId,
-        };
-        
-        const searchResult: SearchSubagentResult = await deps.searchSubagent.execute(searchInput);
-        
-        if (searchResult.success) {
-          return createSuccessOutput(correlationId, {
-            text: searchResult.answer,
-            route: decision.route,
-            data: {
-              reason: decision.reason,
-              suggestedTools: filteredTools,
-              searchSubagentMetadata: searchResult.metadata,
-            },
-          });
-        } else {
-          // SearchSubagent failed - fall through to default behavior
-          // Log the failure but don't block the request
-        }
-      } catch (error) {
-        // SearchSubagent threw an error - fall through to default behavior
-        // Log the error but don't block the request
+    try {
+      const searchInput: SearchSubagentInput = {
+        query: input.text,
+        userId: input.userId,
+        sessionId: input.sessionId,
+      };
+      
+      const searchResult: SearchSubagentResult = await deps.searchSubagent.execute(searchInput);
+      
+      if (searchResult.success) {
+        return createSuccessOutput(correlationId, {
+          text: searchResult.answer,
+          route: decision.route,
+          data: {
+            reason: decision.reason,
+            suggestedTools: filteredTools,
+            searchSubagentMetadata: searchResult.metadata,
+          },
+        });
+      } else {
+        emitSearchSubagentFailureEvent(deps, input, searchResult.errorCode, searchResult.message);
       }
+    } catch (error) {
+      emitSearchSubagentFailureEvent(
+        deps,
+        input,
+        'SEARCH_SUBAGENT_EXCEPTION',
+        error instanceof Error ? error.message : 'searchSubagent threw an exception',
+      );
     }
   }
 
@@ -726,7 +787,12 @@ async function handleDispatchToolRoute(
       });
     } catch (error) {
       // Dispatch failed - fall through to default behavior
-      // This can happen when no adapter is registered for the target runtime
+      emitDispatchFailureEvent(
+        deps,
+        input,
+        'DISPATCH_ERROR',
+        error instanceof Error ? error.message : 'Tool dispatch failed',
+      );
     }
   }
 
@@ -784,6 +850,16 @@ async function handleDispatchToolRoute(
   });
 }
 
+/**
+ * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
+ * This is a legacy route handler invoked by handleDecisionRoute's switch statement.
+ * ForegroundKernelRunner.runTurn() handles spawn_planner internally via its own routing.
+ *
+ * Removal prerequisites:
+ * - handleDecisionRoute is removed (no callers remain)
+ * - FOREGROUND_KERNEL_RUNNER_ENABLED=true is the default
+ * - All tests pass without this function
+ */
 async function handleSpawnPlannerRoute(
   correlationId: string,
   decision: import('../foreground/types.js').ForegroundDecision,
@@ -990,6 +1066,70 @@ function logProviderFallbackEvent(
   });
 }
 
+function emitSearchSubagentFailureEvent(
+  deps: ProcessorOrchestrationDeps,
+  input: MessageProcessorInput,
+  errorCode: string,
+  errorMessage: string,
+): void {
+  if (!deps.eventStore) return;
+
+  const eventId = `evt-search-failure-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  try {
+    deps.eventStore.append({
+      eventId,
+      eventType: 'search_subagent_failure',
+      sourceModule: 'foreground_agent',
+      userId: input.userId,
+      sessionId: input.sessionId,
+      correlationId: input.correlationId,
+      payload: {
+        errorCode,
+        errorMessage,
+        fallbackBehavior: 'kernel_execution',
+        turnId: input.correlationId,
+      },
+      sensitivity: 'low',
+      retentionClass: 'standard',
+      createdAt: new Date().toISOString(),
+    });
+  } catch {
+    // Event emission is best-effort; do not block the foreground response path.
+  }
+}
+
+function emitDispatchFailureEvent(
+  deps: ProcessorOrchestrationDeps,
+  input: MessageProcessorInput,
+  errorCode: string,
+  errorMessage: string,
+): void {
+  if (!deps.eventStore) return;
+
+  const eventId = `evt-dispatch-failure-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  try {
+    deps.eventStore.append({
+      eventId,
+      eventType: 'dispatch_tool_failure',
+      sourceModule: 'foreground_agent',
+      userId: input.userId,
+      sessionId: input.sessionId,
+      correlationId: input.correlationId,
+      payload: {
+        errorCode,
+        errorMessage,
+        fallbackBehavior: 'fallback_response',
+        turnId: input.correlationId,
+      },
+      sensitivity: 'low',
+      retentionClass: 'standard',
+      createdAt: new Date().toISOString(),
+    });
+  } catch {
+    // Event emission is best-effort; do not block the foreground response path.
+  }
+}
+
 /**
  * Persists a turn transcript from the processing input and output.
  * Creates visible messages for assistant responses and errors.
@@ -1032,8 +1172,19 @@ function persistTurnTranscript(
   const inboundEventId = input.metadata?.inboundEventId as string | undefined;
 
   let runtimeSummary: TurnTranscript['runtimeSummary'] | undefined;
-  
-  if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
+  const kernelRunnerDecideActive = isForegroundKernelRunnerEnabled() && isForegroundDecideEnabled();
+
+  if (output.success && output.result?.data?.runtimeSummary) {
+    // New path: real runtimeSummary from ForegroundKernelRunner (real toolCallIds from kernel)
+    runtimeSummary = output.result.data.runtimeSummary as TurnTranscript['runtimeSummary'];
+  } else if (kernelRunnerDecideActive) {
+    // Kernel runner/decide path is active but didn't supply a runtimeSummary.
+    // Skip forging — real toolCallIds from kernel results take precedence.
+    if (output.success && output.result?.route === 'dispatch_tool') {
+      console.log('[persistTurnTranscript] Forging bypassed: FOREGROUND_KERNEL_RUNNER + FOREGROUND_DECIDE active; no forging applied for dispatch_tool route');
+    }
+  } else if (isToolLoopV2Enabled() && output.success && output.result?.route === 'dispatch_tool') {
+    // Legacy forging: synthetic toolCallIds from suggestedTools (TOOL_LOOP_V2 only)
     const suggestedTools = output.result.data?.suggestedTools as string[] | undefined;
     if (suggestedTools && suggestedTools.length > 0) {
       const toolCallSummaries = suggestedTools.map((toolName, index) => ({

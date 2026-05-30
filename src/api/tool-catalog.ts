@@ -1,4 +1,5 @@
 import type { ToolSummary } from './types.js';
+import type { ToolDefinition } from '../llm/types.js';
 
 export const BUILT_IN_TOOLS: ToolSummary[] = [
   {
@@ -131,4 +132,15 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
 
 export function getToolCatalog(): ToolSummary[] {
   return [...BUILT_IN_TOOLS];
+}
+
+export function getToolDefinitions(): ToolDefinition[] {
+  return BUILT_IN_TOOLS.map(tool => ({
+    type: 'function' as const,
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: { type: 'object', properties: {} },
+    },
+  }));
 }

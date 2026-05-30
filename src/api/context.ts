@@ -25,6 +25,7 @@ import type { MessageProcessor } from '../processing/types.js';
 import { createMessageProcessor as createMessageProcessorImpl } from '../processing/message-processor.js';
 import { createOrchestrationProcessor, type ProcessorOrchestrationDeps } from '../processing/processor-orchestration.js';
 import { createForegroundAgent, type ForegroundAgent } from '../foreground/foreground-agent.js';
+import { createForegroundKernelRunner, type ForegroundKernelRunner } from '../foreground/foreground-kernel-runner.js';
 import { createRuntimeDispatcher } from '../dispatcher/runtime-dispatcher.js';
 import type { RuntimeDispatcher, RuntimeDispatcherConfig } from '../dispatcher/types.js';
 import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js';
@@ -545,6 +546,18 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     modelInputSnapshotStore,
   });
 
+  foregroundAgent.setAgentKernel?.(agentKernel);
+
+  const foregroundKernelRunner: ForegroundKernelRunner = createForegroundKernelRunner({
+    foregroundAgent,
+    agentKernel,
+    runtimeDispatcher,
+    plannerRuntime,
+    llmAdapter,
+    agentConfig: globalAgentConfig ?? undefined,
+    eventStore,
+  });
+
   // Create processing observer that broadcasts status to SSE subscribers
   const processingObserver = {
     emitStatus: (status: import('./types.js').ProcessingStatusPayload) => {
@@ -601,6 +614,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     gateway,
     stores,
     foregroundAgent,
+    foregroundKernelRunner,
     runtimeDispatcher,
     plannerRuntime,
     agentKernel,

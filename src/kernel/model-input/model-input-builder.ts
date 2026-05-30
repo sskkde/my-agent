@@ -11,6 +11,7 @@
  *
  * Modes:
  * - routing_json: ForegroundAgent (no tools in request, tool summaries only)
+ * - routing_tool_call: ForegroundAgent with decide (tool summaries + full schemas for function calling)
  * - structured_json: MemoryExtractor (no tools, JSON response format)
  * - function_calling: AgentKernel/SearchSubagent (tools in request)
  *
@@ -108,6 +109,8 @@ export class ModelInputBuilder {
     if (projection) {
       if (mode === 'routing_json') {
         parts.push(this.renderRoutingToolPlane(projection));
+      } else if (mode === 'routing_tool_call') {
+        parts.push(this.renderRoutingToolCallPlane(projection));
       } else if (mode === 'function_calling') {
         parts.push(this.renderFunctionCallingToolPlane(projection));
       } else {
@@ -233,7 +236,7 @@ export class ModelInputBuilder {
       messages.push({ role: 'user', content: segmentD.content });
     }
 
-    if (input.mode === 'function_calling' && input.transcript && input.transcript.length > 0) {
+    if ((input.mode === 'function_calling' || input.mode === 'routing_tool_call') && input.transcript && input.transcript.length > 0) {
       for (const msg of input.transcript) {
         messages.push(msg);
       }
@@ -249,6 +252,24 @@ export class ModelInputBuilder {
 
     if (projection.toolSummaries) {
       parts.push(projection.toolSummaries);
+    }
+
+    return parts.join('\n\n');
+  }
+
+  private renderRoutingToolCallPlane(projection: ToolPlaneProjection): string {
+    const parts: string[] = [];
+
+    parts.push(`Available Tool IDs: ${projection.toolIds.join(', ')}`);
+
+    if (projection.toolSummaries) {
+      parts.push(projection.toolSummaries);
+    }
+
+    if (projection.tools && projection.tools.length > 0) {
+      for (const tool of projection.tools) {
+        parts.push(`Tool: ${tool.function.name}\nDescription: ${tool.function.description}`);
+      }
     }
 
     return parts.join('\n\n');
@@ -306,7 +327,7 @@ export class ModelInputBuilder {
 export function extractToolsForRequest(
   input: ModelInputBuildInput
 ): LLMToolDefinition[] | undefined {
-  if (input.mode !== 'function_calling') {
+  if (input.mode !== 'function_calling' && input.mode !== 'routing_tool_call') {
     return undefined;
   }
 

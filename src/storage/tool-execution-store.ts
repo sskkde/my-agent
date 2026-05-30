@@ -26,7 +26,7 @@ export interface ToolExecution {
 export interface ToolExecutionStore {
   create(exec: Omit<ToolExecution, 'startedAt' | 'completedAt' | 'terminalStateReached'>, tenantId?: string): void;
   getById(toolCallId: string, tenantId?: string): ToolExecution | null;
-  updateStatus(toolCallId: string, status: ToolExecutionState, tenantId?: string): void;
+  updateStatus(toolCallId: string, status: ToolExecutionState, tenantId?: string, errorMessage?: string): void;
   saveResult(toolCallId: string, result: {
     preview?: string;
     resultRef?: string;
@@ -120,15 +120,15 @@ class ToolExecutionStoreImpl implements ToolExecutionStore {
     return this.mapRowToToolExecution(results[0]);
   }
 
-  updateStatus(toolCallId: string, status: ToolExecutionState, tenantId: string = DEFAULT_TENANT_ID): void {
+  updateStatus(toolCallId: string, status: ToolExecutionState, tenantId: string = DEFAULT_TENANT_ID, errorMessage?: string): void {
     const terminalReached = isTerminalState(status) ? 1 : 0;
     const completedAt = terminalReached === 1 ? new Date().toISOString() : null;
 
     this.connection.exec(
       `UPDATE tool_executions 
-       SET status = ?, terminal_state_reached = ?, completed_at = COALESCE(?, completed_at)
+       SET status = ?, terminal_state_reached = ?, completed_at = COALESCE(?, completed_at), error_message = COALESCE(?, error_message)
        WHERE tool_call_id = ? AND tenant_id = ?`,
-      [status, terminalReached, completedAt, toolCallId, tenantId]
+      [status, terminalReached, completedAt, errorMessage ?? null, toolCallId, tenantId]
     );
   }
 

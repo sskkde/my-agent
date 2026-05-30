@@ -184,7 +184,7 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
     }
   });
 
-  it('when TOOL_LOOP_V2 is OFF, toolCalls are NOT replayed in transcript messages', async () => {
+  it('when TOOL_LOOP_V2 is OFF, toolCalls WITH RESULTS are still replayed to avoid orphan tool messages', async () => {
     process.env.TOOL_LOOP_V2_ENABLED = 'false';
 
     const toolCalls: ToolCall[] = [
@@ -222,7 +222,16 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
     const secondRequest = requests[1];
     const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
     const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
-    expect(hasToolCalls).toBe(false);
+    // NEW INVARIANT: toolCalls with results must always be replayed to avoid orphan tool messages
+    expect(hasToolCalls).toBe(true);
+
+    // Verify no orphan tool messages - each tool message must have a preceding assistant with toolCalls
+    const toolMessages = secondRequest.messages.filter(m => m.role === 'tool');
+    expect(toolMessages.length).toBe(1);
+    expect(toolMessages[0].toolCallId).toBe('call-1');
+
+    const toolCallMessage = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
+    expect(toolCallMessage?.toolCalls).toEqual(toolCalls);
   });
 
   it('when TOOL_LOOP_V2 is ON, toolCalls ARE replayed in transcript messages', async () => {
@@ -413,7 +422,7 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
     expect(hasToolCalls).toBe(true);
   });
 
-  it('flag OFF: toolCalls not replayed when flag is OFF at buildTranscriptMessages time', async () => {
+  it('flag OFF: toolCalls WITH RESULTS still replayed when flag is OFF at buildTranscriptMessages time', async () => {
     process.env.TOOL_LOOP_V2_ENABLED = 'true';
 
     const toolCalls: ToolCall[] = [
@@ -454,8 +463,9 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
     const secondRequest = requests[1];
     const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
     const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
-    
-    expect(hasToolCalls).toBe(false);
+
+    // NEW INVARIANT: toolCalls with results are always replayed regardless of flag state
+    expect(hasToolCalls).toBe(true);
   });
 
   it('flag state determines buildTranscriptMessages behavior consistently within run', async () => {
@@ -510,5 +520,133 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
       const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
       expect(hasToolCalls).toBe(true);
     }
+  });
+});
+
+describe('Regression: no orphan tool messages when TOOL_LOOP_V2 is OFF', () => {
+  let originalEnv: string | undefined;
+
+  beforeEach(() => {
+    originalEnv = process.env.TOOL_LOOP_V2_ENABLED;
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.TOOL_LOOP_V2_ENABLED;
+    } else {
+      process.env.TOOL_LOOP_V2_ENABLED = originalEnv;
+    }
+  });
+
+  it('when flag is OFF/unset, tool messages are always paired with assistant toolCalls', async () => {
+    delete process.env.TOOL_LOOP_V2_ENABLED;
+
+    const toolCalls: ToolCall[] = [
+      {
+        id: 'call-regression-1',
+        type: 'function',
+        function: { name: 'test_tool', arguments: '{}' },
+      },
+    ];
+
+    const fakeLLM = new FakeLLMAdapter();
+    fakeLLM.setResponseQueue([
+      async () => ({
+        success: true,
+        response: {
+          id: 'resp-regression-1',
+          model: 'test-model',
+          content: '',
+          role: 'assistant',
+          toolCalls,
+          finishReason: 'tool_calls',
+          createdAt: new Date().toISOString(),
+        },
+        providerId: 'fake',
+      }),
+    ]);
+
+    const config = makeBaseConfig({ llmAdapter: fakeLLM });
+    const kernel = new AgentKernel(config);
+    await kernel.run(makeRunInput());
+
+    const requests = fakeLLM.getAllRequests();
+    expect(requests.length).toBe(2);
+
+    const secondRequest = requests[1];
+
+    const toolMessages = secondRequest.messages.filter(m => m.role === 'tool');
+    expect(toolMessages.length).toBe(1);
+
+    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
+    const assistantWithToolCalls = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
+    expect(assistantWithToolCalls).toBeDefined();
+
+    const toolCallIds = assistantWithToolCalls?.toolCalls?.map(tc => tc.id) ?? [];
+    expect(toolCallIds).toContain('call-regression-1');
+    expect(toolMessages[0].toolCallId).toBe('call-regression-1');
+  });
+
+  it('after failed tool, second LLM request has no orphan tool messages (flag OFF)', async () => {
+    process.env.TOOL_LOOP_V2_ENABLED = 'false';
+
+    const toolCalls: ToolCall[] = [
+      {
+        id: 'call-fail-regression',
+        type: 'function',
+        function: { name: 'failing_tool', arguments: '{}' },
+      },
+    ];
+
+    class FailingDispatcher implements RuntimeDispatcher {
+      async dispatch() {
+        return {
+          requestId: 'req-fail',
+          actionId: 'act-fail',
+          status: 'failed',
+          targetRuntime: 'tool_plane',
+          error: { code: 'TOOL_FAILED', message: 'Tool execution failed', recoverable: true },
+          createdAt: new Date().toISOString(),
+        };
+      }
+    }
+
+    const fakeLLM = new FakeLLMAdapter();
+    fakeLLM.setResponseQueue([
+      async () => ({
+        success: true,
+        response: {
+          id: 'resp-fail-1',
+          model: 'test-model',
+          content: '',
+          role: 'assistant',
+          toolCalls,
+          finishReason: 'tool_calls',
+          createdAt: new Date().toISOString(),
+        },
+        providerId: 'fake',
+      }),
+    ]);
+
+    const config = makeBaseConfig({
+      llmAdapter: fakeLLM,
+      dispatcher: new FailingDispatcher(),
+    });
+    const kernel = new AgentKernel(config);
+    await kernel.run(makeRunInput());
+
+    const requests = fakeLLM.getAllRequests();
+    expect(requests.length).toBe(2);
+
+    const secondRequest = requests[1];
+
+    const toolMessages = secondRequest.messages.filter(m => m.role === 'tool');
+    expect(toolMessages.length).toBe(1);
+    expect(toolMessages[0].toolCallId).toBe('call-fail-regression');
+
+    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
+    const assistantWithToolCalls = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
+    expect(assistantWithToolCalls).toBeDefined();
+    expect(assistantWithToolCalls?.toolCalls?.[0]?.id).toBe('call-fail-regression');
   });
 });

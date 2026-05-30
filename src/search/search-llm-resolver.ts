@@ -14,6 +14,7 @@ export interface SearchLLMResolutionResult {
   providerId: string;
   model: string;
   provider: ProviderConfigWithSecret;
+  usedMainConfigFallback: boolean;
 }
 
 export interface SearchLLMResolutionError {
@@ -38,7 +39,8 @@ export interface ResolveSearchLLMOptions {
  * 
  * Resolution order:
  * 1. AgentConfig.searchLlmProviderId/searchLlmModel (if configured)
- * 2. Fail closed - do NOT fall back to main model
+ * 2. Fall back to AgentConfig.providerId/model (main agent config)
+ * 3. Fail if neither is configured
  * 
  * @param options Resolution options
  * @returns Search LLM resolution result
@@ -46,8 +48,18 @@ export interface ResolveSearchLLMOptions {
 export function resolveSearchLLM(options: ResolveSearchLLMOptions): ResolveSearchLLMResult {
   const { agentConfig, providerConfigStore, userId } = options;
 
-  // Check if search LLM is configured
-  if (!agentConfig.searchLlmProviderId || !agentConfig.searchLlmModel) {
+  let providerId: string;
+  let model: string;
+  let usedMainConfigFallback = false;
+
+  if (agentConfig.searchLlmProviderId && agentConfig.searchLlmModel) {
+    providerId = agentConfig.searchLlmProviderId;
+    model = agentConfig.searchLlmModel;
+  } else if (agentConfig.providerId && agentConfig.model) {
+    providerId = agentConfig.providerId;
+    model = agentConfig.model;
+    usedMainConfigFallback = true;
+  } else {
     return {
       type: 'error',
       errorCode: 'SEARCH_MODEL_NOT_CONFIGURED',
@@ -56,13 +68,13 @@ export function resolveSearchLLM(options: ResolveSearchLLMOptions): ResolveSearc
   }
 
   // Get provider with secret
-  const provider = providerConfigStore.getByIdWithSecret(agentConfig.searchLlmProviderId);
+  const provider = providerConfigStore.getByIdWithSecret(providerId);
   
   if (!provider) {
     return {
       type: 'error',
       errorCode: 'SEARCH_PROVIDER_NOT_FOUND',
-      message: `Search provider not found: ${agentConfig.searchLlmProviderId}`,
+      message: `Search provider not found: ${providerId}`,
     };
   }
 
@@ -71,7 +83,7 @@ export function resolveSearchLLM(options: ResolveSearchLLMOptions): ResolveSearc
     return {
       type: 'error',
       errorCode: 'SEARCH_PROVIDER_NOT_FOUND',
-      message: `Search provider not accessible for user: ${agentConfig.searchLlmProviderId}`,
+      message: `Search provider not accessible for user: ${providerId}`,
     };
   }
 
@@ -80,7 +92,7 @@ export function resolveSearchLLM(options: ResolveSearchLLMOptions): ResolveSearc
     return {
       type: 'error',
       errorCode: 'SEARCH_PROVIDER_UNAVAILABLE',
-      message: `Search provider is disabled: ${agentConfig.searchLlmProviderId}`,
+      message: `Search provider is disabled: ${providerId}`,
     };
   }
 
@@ -91,15 +103,16 @@ export function resolveSearchLLM(options: ResolveSearchLLMOptions): ResolveSearc
     return {
       type: 'error',
       errorCode: 'SEARCH_PROVIDER_UNAVAILABLE',
-      message: `Search provider is not configured with credentials: ${agentConfig.searchLlmProviderId}`,
+      message: `Search provider is not configured with credentials: ${providerId}`,
     };
   }
 
   return {
     type: 'success',
-    providerId: agentConfig.searchLlmProviderId,
-    model: agentConfig.searchLlmModel,
+    providerId,
+    model,
     provider,
+    usedMainConfigFallback,
   };
 }
 

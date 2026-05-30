@@ -15,8 +15,9 @@ import type {
 } from '../../../src/kernel/types.js';
 import { AgentKernel } from '../../../src/kernel/agent-kernel.js';
 import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js';
-import type { LLMResult } from '../../../src/llm/types.js';
+import type { LLMResult, LLMRequest, ToolDefinition } from '../../../src/llm/types.js';
 import type { LLMProvider } from '../../../src/llm/provider';
+import type { ToolPlaneProjection } from '../../../src/kernel/model-input/model-input-types.js';
 import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
 import { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js';
 import { TemplateLoader } from '../../../src/prompt/template-loader.js';
@@ -24,6 +25,7 @@ import { TemplateLoader } from '../../../src/prompt/template-loader.js';
 class FakeLLMAdapter implements LLMAdapter {
   private responses: LLMResponse[];
   private currentIndex = 0;
+  private capturedRequests: LLMRequest[] = [];
   config: LLMAdapterConfig;
   providers: LLMProvider[] = [];
 
@@ -36,7 +38,8 @@ class FakeLLMAdapter implements LLMAdapter {
     };
   }
 
-  async complete(): Promise<LLMResult> {
+  async complete(request: LLMRequest): Promise<LLMResult> {
+    this.capturedRequests.push(request);
     const response = this.responses[this.currentIndex++];
     if (this.currentIndex >= this.responses.length) {
       this.currentIndex = this.responses.length - 1;
@@ -46,6 +49,10 @@ class FakeLLMAdapter implements LLMAdapter {
       response,
       providerId: 'fake-provider',
     };
+  }
+
+  getAllRequests(): LLMRequest[] {
+    return this.capturedRequests;
   }
 
   async *stream(): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: import('../../../src/api/types.js').ExactContextUsage }> {
@@ -118,7 +125,7 @@ class FakeToolExecutor {
         success: false,
         error: {
           code: 'TOOL_NOT_FOUND',
-          message: `Tool not found: ${request.toolName}`,
+          message: 'Tool not found: ' + request.toolName,
           recoverable: false,
         },
       };
@@ -215,7 +222,7 @@ class FakeDispatcher {
       targetRuntime: request.action.targetRuntime,
       error: {
         code: 'NO_HANDLER',
-        message: `No handler for action type: ${request.action.actionType}`,
+        message: 'No handler for action type: ' + request.action.actionType,
         recoverable: false,
       },
       createdAt: new Date().toISOString(),
@@ -225,7 +232,7 @@ class FakeDispatcher {
 
 function createTextResponse(content: string): LLMResponse {
   return {
-    id: `resp-${Date.now()}`,
+    id: 'resp-' + Date.now(),
     model: 'test-model',
     content,
     role: 'assistant',
@@ -236,7 +243,7 @@ function createTextResponse(content: string): LLMResponse {
 
 function createToolUseResponse(toolCalls: ToolCall[]): LLMResponse {
   return {
-    id: `resp-${Date.now()}`,
+    id: 'resp-' + Date.now(),
     model: 'test-model',
     content: '',
     role: 'assistant',
@@ -324,7 +331,7 @@ describe('Kernel Tool Loop Closure', () => {
         actionId: request.action.actionId,
         status: toolResult.success ? 'completed' : 'failed',
         targetRuntime: 'tool_plane',
-        result: toolResult.data,
+        result: toolResult,
         createdAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
       };
@@ -357,9 +364,21 @@ describe('Kernel Tool Loop Closure', () => {
     };
   }
 
-  // ── Scenario 1: Single-turn tool loop ──────────────────────────────────
+  function toolProjectionFor(...toolNames: string[]): ToolPlaneProjection {
+    const tools: ToolDefinition[] = toolNames.map(function(name) {
+      return {
+        type: 'function',
+        function: {
+          name: name,
+          description: 'Test tool: ' + name,
+          parameters: { type: 'object', properties: {} },
+        },
+      };
+    });
+    return { toolIds: toolNames, tools: tools };
+  }
 
-  it('should complete single-turn tool loop (tool → result → LLM text response)', async () => {
+  it('should complete single-turn tool loop (tool to result to LLM text response)', async () => {
     const toolCalls: ToolCall[] = [
       {
         id: 'call-single-1',
@@ -391,8 +410,6 @@ describe('Kernel Tool Loop Closure', () => {
     expect(types).toContain('tool_result');
     expect(types.filter((t) => t === 'llm_response')).toHaveLength(2);
   });
-
-  // ── Scenario 2: Multi-turn tool loop ───────────────────────────────────
 
   it('should complete multi-turn tool loop (multiple tool rounds before text)', async () => {
     const toolCalls1: ToolCall[] = [
@@ -438,8 +455,6 @@ describe('Kernel Tool Loop Closure', () => {
     expect(types.filter((t) => t === 'tool_result')).toHaveLength(2);
   });
 
-  // ── Scenario 3: maxIterations reached ──────────────────────────────────
-
   it('should return max_iterations_reached when LLM always returns tool_calls', async () => {
     const toolCalls: ToolCall[] = [
       {
@@ -468,11 +483,9 @@ describe('Kernel Tool Loop Closure', () => {
     expect(result.finalResponse).toBeUndefined();
   });
 
-  // ── Scenario 4: Empty tool_calls array (EC-1) ─────────────────────────
-
   it('should handle empty tool_calls array without stalling (EC-1)', async () => {
     const emptyToolCallsResponse: LLMResponse = {
-      id: `resp-${Date.now()}`,
+      id: 'resp-' + Date.now(),
       model: 'test-model',
       content: '',
       role: 'assistant',
@@ -495,5 +508,265 @@ describe('Kernel Tool Loop Closure', () => {
     const types = result.transcript.map((e) => e.type);
     expect(types).not.toContain('tool_call');
     expect(types).not.toContain('tool_result');
+  });
+
+  it('should produce tool_result with error when tool fails and loop completes', async () => {
+    fakeToolExecutor.registerTool('failing-tool', async function() {
+      return {
+        success: false,
+        error: { code: 'EXECUTION_FAILED', message: 'Network timeout contacting upstream service', recoverable: true },
+      };
+    });
+
+    const tc: ToolCall[] = [
+      { id: 'call-fail-1', type: 'function', function: { name: 'failing-tool', arguments: JSON.stringify({ target: 'example.com' }) } },
+    ];
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(tc), createTextResponse('Tool failed, retrying.')]);
+    const kernel = new AgentKernel(createConfig(adapter));
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('failing-tool') }));
+
+    const tre = result.transcript.filter(function(e) { return e.type === 'tool_result'; });
+    expect(tre).toHaveLength(1);
+
+    const tr = tre[0].content as { toolCallId: string; result: unknown; error?: { code: string; message: string; recoverable: boolean } };
+    expect(tr.toolCallId).toBe('call-fail-1');
+    expect(tr.error).toBeDefined();
+    expect(tr.error!.code).toBe('EXECUTION_FAILED');
+    expect(tr.error!.message).toContain('Network timeout');
+    expect(tr.result).toBeNull();
+    expect(result.finalStatus).toBe('completed');
+    expect(result.finalResponse).toBe('Tool failed, retrying.');
+  });
+
+  it('should include Error: content in tool role message sent to LLM after failure', async () => {
+    fakeToolExecutor.registerTool('error-tool', async function() {
+      return {
+        success: false,
+        error: { code: 'SERVICE_UNAVAILABLE', message: 'Upstream service temporarily unavailable', recoverable: true },
+      };
+    });
+
+    const tc: ToolCall[] = [
+      { id: 'call-err-1', type: 'function', function: { name: 'error-tool', arguments: JSON.stringify({ query: 'test' }) } },
+    ];
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(tc), createTextResponse('Service down.')]);
+    const kernel = new AgentKernel(createConfig(adapter));
+    await kernel.run(createInput({ toolProjection: toolProjectionFor('error-tool') }));
+
+    const reqs = adapter.getAllRequests();
+    expect(reqs.length).toBe(2);
+
+    const secondRequest = reqs[1];
+    const toolMsgs = secondRequest.messages.filter(function(m) { return m.role === 'tool'; });
+    expect(toolMsgs.length).toBeGreaterThanOrEqual(1);
+
+    const errMsg = toolMsgs.find(function(m) { return m.content.startsWith('Error:'); });
+    expect(errMsg).toBeDefined();
+    expect(errMsg!.content).toBe('Error: Upstream service temporarily unavailable');
+    expect(errMsg!.toolCallId).toBe('call-err-1');
+    expect(errMsg!.role).toBe('tool');
+  });
+
+  it('should complete loop with finalResponse when LLM recovers after tool failure', async () => {
+    fakeToolExecutor.registerTool('retriable-tool', async function(params: unknown) {
+      const a = (params as { attempt: number }).attempt;
+      if (a === 1) {
+        return { success: false, error: { code: 'TRANSIENT_ERROR', message: 'Connection refused, please retry', recoverable: true } };
+      }
+      return { success: true, data: { result: 'success after retry' }, resultPreview: 'success' };
+    });
+
+    const tc1: ToolCall[] = [
+      { id: 'call-retry-1', type: 'function', function: { name: 'retriable-tool', arguments: JSON.stringify({ attempt: 1 }) } },
+    ];
+    const tc2: ToolCall[] = [
+      { id: 'call-retry-2', type: 'function', function: { name: 'retriable-tool', arguments: JSON.stringify({ attempt: 2 }) } },
+    ];
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(tc1), createToolUseResponse(tc2), createTextResponse('Success on second attempt.')]);
+    const kernel = new AgentKernel(createConfig(adapter));
+    const result: KernelRunResult = await kernel.run(createInput({
+      toolProjection: toolProjectionFor('retriable-tool'),
+      maxIterations: 5,
+    }));
+
+    expect(result.finalStatus).toBe('completed');
+    expect(result.toolCalls).toHaveLength(2);
+    expect(result.iterationsUsed).toBe(3);
+
+    const tre = result.transcript.filter(function(e) { return e.type === 'tool_result'; });
+    expect(tre).toHaveLength(2);
+
+    const firstResult = tre[0].content as { toolCallId: string; error?: { code: string } };
+    expect(firstResult.toolCallId).toBe('call-retry-1');
+    expect(firstResult.error!.code).toBe('TRANSIENT_ERROR');
+
+    const secondResult = tre[1].content as { toolCallId: string; result: unknown };
+    expect(secondResult.toolCallId).toBe('call-retry-2');
+    expect(secondResult.result).toEqual({ result: 'success after retry' });
+
+    const reqs = adapter.getAllRequests();
+    const middleRequest = reqs[1];
+    const errMsgs = middleRequest.messages.filter(function(m) {
+      return m.role === 'tool' && m.content.startsWith('Error:');
+    });
+    expect(errMsgs).toHaveLength(1);
+    expect(errMsgs[0].content).toBe('Error: Connection refused, please retry');
+  });
+
+  it('should produce paired results for all tools when some succeed and some fail', async () => {
+    fakeToolExecutor.registerTool('success-tool', async function(params: unknown) {
+      const x = (params as { x: number }).x;
+      return { success: true, data: { value: x * 2 } };
+    });
+    fakeToolExecutor.registerTool('failure-tool', async function() {
+      return {
+        success: false,
+        error: { code: 'PERMISSION_DENIED', message: 'User does not have write access', recoverable: false },
+      };
+    });
+
+    const tcs: ToolCall[] = [
+      { id: 'call-success', type: 'function', function: { name: 'success-tool', arguments: JSON.stringify({ x: 21 }) } },
+      { id: 'call-failure', type: 'function', function: { name: 'failure-tool', arguments: '{}' } },
+    ];
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(tcs), createTextResponse('One succeeded, one failed.')]);
+    const kernel = new AgentKernel(createConfig(adapter));
+    const result: KernelRunResult = await kernel.run(createInput({
+      toolProjection: toolProjectionFor('success-tool', 'failure-tool'),
+    }));
+
+    expect(result.toolCalls).toHaveLength(2);
+
+    const tre = result.transcript.filter(function(e) { return e.type === 'tool_result'; });
+    expect(tre).toHaveLength(2);
+
+    const ids = tre.map(function(e) { return (e.content as { toolCallId: string }).toolCallId; }).sort();
+    expect(ids).toEqual(['call-failure', 'call-success'].sort());
+
+    const okEntry = tre.find(function(e) { return (e.content as { toolCallId: string }).toolCallId === 'call-success'; })!;
+    const okContent = okEntry.content as { result: unknown; error?: unknown };
+    expect(okContent.result).toEqual({ value: 42 });
+    expect(okContent.error).toBeUndefined();
+
+    const failEntry = tre.find(function(e) { return (e.content as { toolCallId: string }).toolCallId === 'call-failure'; })!;
+    const failContent = failEntry.content as { result: unknown; error?: { code: string; recoverable: boolean } };
+    expect(failContent.result).toBeNull();
+    expect(failContent.error!.code).toBe('PERMISSION_DENIED');
+    expect(failContent.error!.recoverable).toBe(false);
+
+    expect(result.finalStatus).toBe('completed');
+
+    const req2 = adapter.getAllRequests()[1];
+    const msgs = req2.messages.filter(function(m) { return m.role === 'tool'; });
+    expect(msgs).toHaveLength(2);
+
+    const successMsg = msgs.find(function(m) { return m.toolCallId === 'call-success'; })!;
+    expect(successMsg.content).toBe(JSON.stringify({ value: 42 }));
+
+    const failureMsg = msgs.find(function(m) { return m.toolCallId === 'call-failure'; })!;
+    expect(failureMsg.content).toBe('Error: User does not have write access');
+  });
+
+  it('should produce tool_result with DISPATCH_ERROR when tool dispatch throws', async () => {
+    fakeDispatcher.registerHandler('execute_tool', async function(request: DispatchRequest) {
+      const p = request.action.targetAction as { toolName?: string } | undefined;
+      if (p && p.toolName === 'crash-tool') {
+        throw new Error('Dispatcher panic: tool plane unreachable');
+      }
+      const r = await fakeToolExecutor.execute({
+        toolCallId: 'x',
+        toolName: p?.toolName || 'unknown',
+        params: {},
+        userId: 'test-user',
+        permissionContext: { userId: 'test-user', permissions: ['tool:execute'] },
+      });
+      return {
+        requestId: request.requestId,
+        actionId: request.action.actionId,
+        status: r.success ? 'completed' : 'failed',
+        targetRuntime: 'tool_plane',
+        result: r,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      };
+    });
+
+    const tc: ToolCall[] = [
+      { id: 'call-crash', type: 'function', function: { name: 'crash-tool', arguments: '{}' } },
+    ];
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(tc), createTextResponse('Dispatch crashed.')]);
+    const kernel = new AgentKernel(createConfig(adapter));
+    const result: KernelRunResult = await kernel.run(createInput({
+      toolProjection: toolProjectionFor('crash-tool'),
+    }));
+
+    const tre = result.transcript.filter(function(e) { return e.type === 'tool_result'; });
+    expect(tre).toHaveLength(1);
+
+    const tr = tre[0].content as { toolCallId: string; result: unknown; error?: { code: string; message: string; recoverable: boolean } };
+    expect(tr.toolCallId).toBe('call-crash');
+    expect(tr.error!.code).toBe('DISPATCH_ERROR');
+    expect(tr.error!.message).toContain('Dispatcher panic');
+    expect(tr.result).toBeNull();
+    expect(result.finalStatus).toBe('completed');
+
+    const em = adapter.getAllRequests()[1].messages.find(function(m) {
+      return m.role === 'tool' && m.content.startsWith('Error:');
+    })!;
+    expect(em.content).toContain('Dispatcher panic');
+  });
+
+  it('should produce error tool_result when tool is not projected as callable', async () => {
+    const tc: ToolCall[] = [
+      { id: 'call-unprojected', type: 'function', function: { name: 'unprojected-tool', arguments: '{}' } },
+    ];
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(tc), createTextResponse('Tool not available.')]);
+    const kernel = new AgentKernel(createConfig(adapter));
+    const result: KernelRunResult = await kernel.run(createInput());
+
+    const tre = result.transcript.filter(function(e) { return e.type === 'tool_result'; });
+    expect(tre).toHaveLength(1);
+
+    const tr = tre[0].content as { toolCallId: string; error?: { code: string; recoverable: boolean } };
+    expect(tr.error!.code).toBe('UNPROJECTED_TOOL_CALL');
+    expect(tr.error!.recoverable).toBe(false);
+    expect(result.finalStatus).toBe('completed');
+  });
+
+  it('should produce valid pairing when transcript includes both successful and failed tool calls', async () => {
+    fakeToolExecutor.registerTool('tool-a', async function() { return { success: true, data: { ok: true } }; });
+    fakeToolExecutor.registerTool('tool-b', async function() {
+      return { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests', recoverable: true } };
+    });
+    fakeToolExecutor.registerTool('tool-c', async function() { return { success: true, data: { done: true } }; });
+
+    const ta: ToolCall[] = [
+      { id: 'call-a', type: 'function', function: { name: 'tool-a', arguments: '{}' } },
+    ];
+    const tbc: ToolCall[] = [
+      { id: 'call-b', type: 'function', function: { name: 'tool-b', arguments: '{}' } },
+      { id: 'call-c', type: 'function', function: { name: 'tool-c', arguments: '{}' } },
+    ];
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(ta), createToolUseResponse(tbc), createTextResponse('All done.')]);
+    const kernel = new AgentKernel(createConfig(adapter));
+    const result: KernelRunResult = await kernel.run(createInput({
+      toolProjection: toolProjectionFor('tool-a', 'tool-b', 'tool-c'),
+      maxIterations: 5,
+    }));
+
+    expect(result.toolCalls).toHaveLength(3);
+    expect(result.transcript.filter(function(e) { return e.type === 'tool_result'; })).toHaveLength(3);
+
+    const { validateToolResultPairing } = await import('../../../src/kernel/tool-result-pairing-guard.js');
+    const pr = validateToolResultPairing(result.transcript);
+    expect(pr.valid).toBe(true);
+    expect(pr.warnings).toHaveLength(0);
   });
 });

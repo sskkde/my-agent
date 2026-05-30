@@ -1,3 +1,59 @@
+/**
+ * Foreground Agent — User-facing conversation routing
+ *
+ * This module implements the foreground agent, which handles user-facing
+ * interactions and produces routing decisions via the `foreground.decide`
+ * internal tool or legacy routing_json mechanism.
+ *
+ * ## Foreground.decide Mechanism
+ *
+ * The `foreground.decide` tool is an **internal-only** structured-output
+ * mechanism for native LLM function calling. It is NOT registered in the
+ * public tool catalog. When enabled, the LLM invokes this tool to produce
+ * a structured routing decision instead of free-form JSON text.
+ *
+ * ## Fallback Chain
+ *
+ * When foreground.decide is enabled, the fallback chain is:
+ *   1. `foreground.decide` tool call
+ *   2. Repair/retry (if extraction error is retryable)
+ *   3. `routing_json` (legacy JSON-in-text mode, if FOREGROUND_DECIDE_LEGACY_FALLBACK=true)
+ *   4. Deterministic routing (pattern-based fallback)
+ *   5. `answer_directly` (final fallback)
+ *
+ * ## Feature Flags
+ *
+ * | Flag | Default | Description |
+ * |------|---------|-------------|
+ * | `FOREGROUND_DECIDE_ENABLED` | `false` | Enable the decide tool path |
+ * | `FOREGROUND_DECIDE_SHADOW_MODE` | `false` | Run both decide + legacy paths, log diffs, return legacy result |
+ * | `FOREGROUND_DECIDE_LEGACY_FALLBACK` | `true` | Fall back to routing_json if decide fails |
+ *
+ * ## Security Invariant
+ *
+ * **CRITICAL**: `runtimeAction` is NEVER taken from LLM output. The server
+ * creates all runtime actions based on the decided route. This invariant
+ * is enforced in multiple layers:
+ *   - `foreground-decision-schema.ts`: runtimeAction excluded from schema
+ *   - `foreground-decision-validator.ts`: runtimeAction stripped during normalization
+ *   - `foreground-decide-extractor.ts`: runtimeAction never extracted
+ *   - `mapRouterOutputToDecision()`: runtimeAction created server-side only
+ *
+ * ## P5 Cleanup Prerequisites
+ *
+ * In Phase 5, the following legacy code paths will be removed:
+ *   - `callLLMRouter()` (legacy routing_json path)
+ *   - `parseRouterOutput()` (legacy JSON parsing)
+ *   - `FOREGROUND_DECIDE_LEGACY_FALLBACK` flag (no longer needed)
+ *   - Shadow mode logging infrastructure
+ *
+ * Prerequisites for P5 cleanup:
+ *   1. `FOREGROUND_DECIDE_ENABLED=true` must be the default
+ *   2. All providers must support function calling
+ *   3. Shadow mode tests must show 99%+ parity with legacy
+ *   4. No production incidents attributed to decide path
+ */
+
 import {
   DEFAULT_INTENT_PATTERNS,
 } from './types.js';
@@ -15,18 +71,25 @@ import type {
 } from './types.js';
 import type { RuntimeAction, TargetRuntime } from '../dispatcher/types.js';
 
+import { extractForegroundDecideToolCall } from './foreground-decide-extractor.js';
 import type { LLMAdapter } from '../llm/adapter.js';
-import type { LLMRequest, LLMResult } from '../llm/types.js';
+import type { LLMRequest, LLMResult, LLMMessage } from '../llm/types.js';
 import type { AgentConfig } from '../storage/agent-config-store.js';
 import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../storage/agent-config-store.js';
 import { buildRoutingMessages, computeEffectiveAllowedToolIds } from '../agents/prompt-builder.js';
 import { getToolCatalog } from '../api/tool-catalog.js';
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
+import { extractToolsForRequest } from '../kernel/model-input/model-input-builder.js';
 import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js';
 import type { ModelInputBuildInput } from '../kernel/model-input/model-input-types.js';
 import type { ModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js';
 import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
 import type { PromptProjectionResolver, PromptProjectionResolveResult } from '../prompt/prompt-projection-types.js';
+import { FOREGROUND_DECIDE_SCHEMA } from './foreground-decision-schema.js';
+import { validateForegroundDecideParams } from './foreground-decision-validator.js';
+import type { AgentKernel } from '../kernel/agent-kernel.js';
+import type { ContextBundle, ContextItem } from '../context/types.js';
+import type { KernelRunResult, ToolUseRequest } from '../kernel/types.js';
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 function isModelInputBuilderEnabled(): boolean {
@@ -42,8 +105,32 @@ export function isMemorySemanticPolicyEnabled(): boolean {
   return process.env.MEMORY_SEMANTIC_POLICY_ENABLED === 'true';
 }
 
+export function isForegroundDecideEnabled(): boolean {
+  return process.env.FOREGROUND_DECIDE_ENABLED === 'true';
+}
+
+export function isForegroundDecideShadowMode(): boolean {
+  return process.env.FOREGROUND_DECIDE_SHADOW_MODE === 'true';
+}
+
+export function isForegroundDecideLegacyFallback(): boolean {
+  return process.env.FOREGROUND_DECIDE_LEGACY_FALLBACK !== 'false';
+}
+
+/**
+ * Log deprecation warning when foreground.decide falls back to legacy routing_json.
+ * Only logs in non-production environments.
+ * Sanitized: does not include user message content or tool arguments.
+ */
+function logForegroundDecideFallback(reason: string): void {
+  if (process.env.NODE_ENV === 'production') return;
+  console.log('[ForegroundAgent] foreground.decide fallback:', reason);
+}
+
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
+  /** Inject AgentKernel for kernel-backed foreground.decide routing. No-op if not supported. */
+  setAgentKernel?(kernel: AgentKernel): void;
 }
 
 const TOOL_ALIASES: Record<string, string[]> = {
@@ -108,6 +195,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private modelInputBuilder?: ModelInputBuilder;
   private modelInputSnapshotStore?: ModelInputSnapshotStore;
   private promptProjectionResolver?: PromptProjectionResolver;
+  private agentKernel?: AgentKernel;
 
   constructor(
     _patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS,
@@ -116,12 +204,18 @@ class ForegroundAgentImpl implements ForegroundAgent {
     modelInputBuilder?: ModelInputBuilder,
     modelInputSnapshotStore?: ModelInputSnapshotStore,
     promptProjectionResolver?: PromptProjectionResolver,
+    agentKernel?: AgentKernel,
   ) {
     this.llmAdapter = llmAdapter;
     this.agentConfig = agentConfig;
     this.modelInputBuilder = modelInputBuilder;
     this.modelInputSnapshotStore = modelInputSnapshotStore;
     this.promptProjectionResolver = promptProjectionResolver;
+    this.agentKernel = agentKernel;
+  }
+
+  setAgentKernel(kernel: AgentKernel): void {
+    this.agentKernel = kernel;
   }
 
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
@@ -156,7 +250,86 @@ class ForegroundAgentImpl implements ForegroundAgent {
     // ─── ModelInputBuilder integration ──────────────────────────────────────
     if (isModelInputBuilderEnabled() && this.modelInputBuilder) {
       const newBuildInput = await this.buildModelInput(input, state, toolCatalog);
+      const isDecideMode = newBuildInput.mode === 'routing_tool_call';
 
+      // ─── Decide shadow mode ─────────────────────────────────────────────
+      // Run both decide + legacy paths in parallel, log diffs, return legacy result
+      if (isDecideMode && isForegroundDecideShadowMode()) {
+        const [legacyResult, decideResult] = await Promise.allSettled([
+          this.callLLMRouter(messages, state, toolCatalog),
+          this.runDecidePathWithRepair(newBuildInput, state, toolCatalog),
+        ]);
+
+        const legacyRouterResult = legacyResult.status === 'fulfilled' ? legacyResult.value : undefined;
+        const decideRouterResult = decideResult.status === 'fulfilled' ? decideResult.value : undefined;
+
+        if (decideRouterResult?.success && legacyRouterResult?.success) {
+          this.logShadowDiff(decideRouterResult.output, legacyRouterResult.output);
+        }
+
+        if (legacyRouterResult) {
+          return this.processRouterResult(legacyRouterResult, messages, state, toolCatalog, effectiveConfig, input);
+        }
+        return this.createDecision('answer_directly', {
+          reason: 'LLM routing temporarily unavailable',
+          userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
+        });
+      }
+
+      // ─── Decide path active (not shadow) ────────────────────────────────
+      // Fallback chain: kernel decide → direct decide → repair → routing_json → deterministic → answer_directly
+      if (isDecideMode && this.agentKernel) {
+        try {
+          const kernelDecideResult = await this.runDecidePathViaKernel(newBuildInput, state, toolCatalog);
+          if (kernelDecideResult.success) {
+            return this.mapRouterOutputToDecision(kernelDecideResult.output!, input, state, toolCatalog);
+          }
+          logForegroundDecideFallback(`kernel decide path failed (${kernelDecideResult.error?.code}), falling back to direct decide`);
+        } catch {
+          logForegroundDecideFallback('kernel decide path threw, falling back to direct decide');
+        }
+      }
+
+      if (isDecideMode) {
+        try {
+          const decideResult = await this.runDecidePathWithRepair(newBuildInput, state, toolCatalog);
+          if (decideResult.success) {
+            return this.mapRouterOutputToDecision(decideResult.output!, input, state, toolCatalog);
+          }
+
+          // Decide failed — fall back to routing_json if legacy fallback enabled
+          if (isForegroundDecideLegacyFallback()) {
+            logForegroundDecideFallback(`decide path failed (${decideResult.error?.code}), falling back to routing_json`);
+            const legacyFallbackResult = await this.callLLMRouter(messages, state, toolCatalog);
+            return this.processRouterResult(legacyFallbackResult, messages, state, toolCatalog, effectiveConfig, input);
+          }
+
+          // No legacy fallback — try deterministic, then answer_directly
+          logForegroundDecideFallback('legacy fallback disabled, returning answer_directly');
+          const deterministicDecision = this.routeDeterministically(input.message, state, toolCatalog);
+          if (deterministicDecision) {
+            return deterministicDecision;
+          }
+          return this.createDecision('answer_directly', {
+            reason: 'LLM routing temporarily unavailable',
+            userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
+          });
+        } catch {
+          // Decide threw unexpectedly — fall back to routing_json if legacy fallback enabled
+          if (isForegroundDecideLegacyFallback()) {
+            logForegroundDecideFallback('decide tool LLM request failed, falling back to routing_json');
+            const legacyFallbackResult = await this.callLLMRouter(messages, state, toolCatalog);
+            return this.processRouterResult(legacyFallbackResult, messages, state, toolCatalog, effectiveConfig, input);
+          }
+          logForegroundDecideFallback('legacy fallback disabled, returning answer_directly');
+          return this.createDecision('answer_directly', {
+            reason: 'LLM routing temporarily unavailable',
+            userVisibleResponse: 'The AI provider did not respond in time. Please try again in a moment.',
+          });
+        }
+      }
+
+      // ─── Non-decide model-input-builder path ────────────────────────────
       if (isModelInputShadowMode()) {
         // Shadow: run both paths in parallel, log diffs, use old path result
         const [legacyResult, newBuildResult] = await Promise.allSettled([
@@ -265,14 +438,23 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
     const projections = await this.resolveProjections();
 
+    const healthyProviders = this.llmAdapter?.getHealthyProviders() ?? [];
+    const supportsFunctionCalling = healthyProviders.length > 0 && healthyProviders.every(p => p.config.capabilities.supportsFunctionCalling);
+    const useDecide = isForegroundDecideEnabled() && supportsFunctionCalling;
+
+    const mode = useDecide ? 'routing_tool_call' : 'routing_json';
+
+    const toolProjectionTools = useDecide ? [FOREGROUND_DECIDE_SCHEMA] : undefined;
+
     return {
-      mode: 'routing_json',
+      mode,
       agentKind: 'foreground',
       providerFamily,
       systemPrompt: effectiveConfig?.systemPrompt ?? undefined,
       routingPrompt: effectiveConfig?.routingPrompt ?? undefined,
       toolProjection: {
         toolIds: effectiveToolIds,
+        ...(toolProjectionTools ? { tools: toolProjectionTools } : {}),
       },
       contextBundle: {
         transcript: state.conversationHistory?.map(entry => ({
@@ -314,12 +496,22 @@ class ForegroundAgentImpl implements ForegroundAgent {
     const healthyProviders = this.llmAdapter.getHealthyProviders();
     const supportsJsonMode = healthyProviders.length > 0 && healthyProviders.every(p => p.config.capabilities.supportsJsonMode);
 
+    const isDecideMode = buildInput.mode === 'routing_tool_call';
+    const toolsForRequest = isDecideMode ? extractToolsForRequest(buildInput) : undefined;
+
     const request: LLMRequest = {
       model: resolvedModel,
       messages: built.messages,
       temperature: 0.1,
       maxTokens: 500,
-      ...(supportsJsonMode ? { responseFormat: { type: 'json_object' } } : {}),
+      ...(isDecideMode && toolsForRequest
+        ? {
+            tools: toolsForRequest,
+            toolChoice: { type: 'function' as const, function: { name: 'foreground.decide' } },
+          }
+        : supportsJsonMode
+          ? { responseFormat: { type: 'json_object' as const } }
+          : {}),
     };
 
     if (process.env.NODE_ENV !== 'production') {
@@ -329,6 +521,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
         estimatedPromptTokens: promptTokens,
         segmentHashes: built.segmentHashes,
         model: resolvedModel,
+        isDecideMode,
       });
     }
 
@@ -341,7 +534,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
       this.modelInputSnapshotStore?.record({
         agentKind: 'foreground',
-        mode: 'routing_json',
+        mode: buildInput.mode,
         builtInput: built,
         response: { content: result.response.content, toolCalls: result.response.toolCalls },
         tokenUsage: result.response.usage,
@@ -349,10 +542,375 @@ class ForegroundAgentImpl implements ForegroundAgent {
         model: resolvedModel,
       });
 
+      if (isDecideMode) {
+        const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, _toolCatalog);
+        const extraction = extractForegroundDecideToolCall(result.response.toolCalls, {
+          toolCatalog: _toolCatalog,
+          effectiveToolIds,
+        });
+
+        if (!extraction.success) {
+          return {
+            success: false,
+            error: { code: 'MALFORMED_JSON', message: `foreground.decide extraction failed: ${extraction.detail}`, retryable: extraction.canRetry },
+          };
+        }
+
+        const { decision } = extraction;
+        return {
+          success: true,
+          output: {
+            // SECURITY: Only safe fields extracted — runtimeAction is never passed through
+            route: decision.route,
+            reason: decision.reason,
+            userVisibleResponse: decision.userVisibleResponse,
+            estimatedSteps: decision.estimatedSteps,
+            complexity: decision.complexity,
+            suggestedTools: decision.suggestedTools,
+          },
+        };
+      }
+
       return this.parseRouterOutput(result.response.content, state, _toolCatalog);
     } catch (error) {
       return { success: false, error: { code: 'MALFORMED_JSON', message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`, retryable: false } };
     }
+  }
+
+  /**
+   * Call LLM with `foreground.decide` tool schema and extract the decision.
+   * Shared by initial decide calls and repair attempts.
+   */
+  private async callDecideLLM(
+    messages: LLMMessage[],
+    state: ForegroundSessionState,
+    toolCatalog: string[],
+    buildInput: ModelInputBuildInput,
+    built?: Awaited<ReturnType<NonNullable<ModelInputBuilder['build']>>>,
+  ): Promise<RouterResult> {
+    if (!this.llmAdapter) {
+      return { success: false, error: { code: 'LLM_REQUEST_FAILED', message: 'LLMAdapter not available', retryable: false } };
+    }
+
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const resolvedModel = state.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini';
+    const routingTimeoutMs = effectiveConfig?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS;
+
+    const toolsForRequest = extractToolsForRequest(buildInput);
+
+    const request: LLMRequest = {
+      model: resolvedModel,
+      messages,
+      temperature: 0.1,
+      maxTokens: 500,
+      tools: toolsForRequest,
+      toolChoice: { type: 'function' as const, function: { name: 'foreground.decide' } },
+    };
+
+    if (process.env.NODE_ENV !== 'production') {
+      const promptTokens = messages.reduce((sum, msg) => sum + Math.ceil(msg.content.length / 4), 0);
+      console.log('[ForegroundAgent] decide LLM call prompt estimate:', {
+        messageCount: messages.length,
+        estimatedPromptTokens: promptTokens,
+        model: resolvedModel,
+      });
+    }
+
+    try {
+      const result: LLMResult = await this.callLLMWithTimeout(request, routingTimeoutMs);
+      if (!result.success) {
+        const isRetryable = result.error?.recoverability === 'retryable_later' || result.error?.category === 'timeout';
+        return { success: false, error: { code: 'LLM_REQUEST_FAILED', message: `LLM request failed: ${result.error?.message || 'Unknown error'}`, retryable: isRetryable } };
+      }
+
+      if (built) {
+        this.modelInputSnapshotStore?.record({
+          agentKind: 'foreground',
+          mode: buildInput.mode,
+          builtInput: built,
+          response: { content: result.response.content, toolCalls: result.response.toolCalls },
+          tokenUsage: result.response.usage,
+          provider: state.resolvedProvider,
+          model: resolvedModel,
+        });
+      }
+
+      const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
+      const extraction = extractForegroundDecideToolCall(result.response.toolCalls, {
+        toolCatalog,
+        effectiveToolIds,
+      });
+
+      if (!extraction.success) {
+        return {
+          success: false,
+          error: { code: 'MALFORMED_JSON', message: `foreground.decide extraction failed: ${extraction.detail}`, retryable: extraction.canRetry },
+        };
+      }
+
+      const { decision } = extraction;
+      return {
+        success: true,
+        output: {
+          // SECURITY: Only safe fields extracted — runtimeAction is never passed through
+          route: decision.route,
+          reason: decision.reason,
+          userVisibleResponse: decision.userVisibleResponse,
+          estimatedSteps: decision.estimatedSteps,
+          complexity: decision.complexity,
+          suggestedTools: decision.suggestedTools,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: { code: 'MALFORMED_JSON', message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`, retryable: false } };
+    }
+  }
+
+  /**
+   * Run the decide path with a repair attempt on retryable extraction errors.
+   *
+   * Flow: build messages → call LLM with decide tool → extraction fails (retryable)
+   *       → repair (add error to user message, re-call LLM) → return final result
+   */
+  private async runDecidePathWithRepair(
+    buildInput: ModelInputBuildInput,
+    state: ForegroundSessionState,
+    toolCatalog: string[],
+  ): Promise<RouterResult> {
+    if (!this.modelInputBuilder) {
+      return { success: false, error: { code: 'LLM_REQUEST_FAILED', message: 'ModelInputBuilder not available', retryable: false } };
+    }
+
+    const built = await this.modelInputBuilder.build(buildInput);
+    const result = await this.callDecideLLM(built.messages, state, toolCatalog, buildInput, built);
+
+    if (result.success) {
+      return result;
+    }
+
+    if (!result.error?.retryable) {
+      return result;
+    }
+
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const maxRepairAttempts = effectiveConfig?.repairAttempts ?? DEFAULT_REPAIR_ATTEMPTS;
+    if (maxRepairAttempts <= 0) {
+      return result;
+    }
+
+    const repairMessages = this.buildRepairMessages(
+      built.messages as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+      result.error.message,
+    );
+    return this.callDecideLLM(repairMessages, state, toolCatalog, buildInput, built);
+  }
+
+  /**
+   * Run the decide path via AgentKernel infrastructure.
+   *
+   * Uses the kernel's shared modelInputBuilder, llmAdapter, and
+   * modelInputSnapshotStore for a single-shot routing decision with
+   * `foreground.decide` as an internal handler.
+   *
+   * The existing buildModelInput() output serves as modelInputOverride,
+   * bypassing the kernel's own model input construction.
+   *
+   * On failure, callers should fall through to runDecidePathWithRepair
+   * or legacy routing_json.
+   */
+  private async runDecidePathViaKernel(
+    buildInput: ModelInputBuildInput,
+    state: ForegroundSessionState,
+    toolCatalog: string[],
+  ): Promise<RouterResult> {
+    if (!this.agentKernel) {
+      return {
+        success: false,
+        error: { code: 'LLM_REQUEST_FAILED', message: 'AgentKernel not available', retryable: false },
+      };
+    }
+
+    const effectiveConfig = this.getEffectiveConfig(state);
+    const routingTimeoutMs = effectiveConfig?.routingTimeoutMs ?? DEFAULT_ROUTING_TIMEOUT_MS;
+    const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
+    const resolvedModel = state.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini';
+    const modelInputOverride: ModelInputBuildInput = {
+      ...buildInput,
+      toolProjection: {
+        toolIds: effectiveToolIds,
+        tools: [FOREGROUND_DECIDE_SCHEMA],
+      },
+    };
+
+    try {
+      const kernelResult = await this.agentKernel.run({
+        contextBundle: this.buildKernelRoutingContextBundle(modelInputOverride, state),
+        runId: modelInputOverride.runId ?? `foreground-route-${Date.now()}`,
+        agentId: 'foreground.default',
+        agentType: 'main',
+        userId: state.hydratedSession.userContext.userId,
+        sessionId: modelInputOverride.sessionId ?? state.hydratedSession.userContext.sessionId,
+        toolProjection: modelInputOverride.toolProjection,
+        internalToolHandlers: {
+          'foreground.decide': async (request) => this.handleForegroundDecideToolCall(request, toolCatalog, effectiveToolIds),
+        },
+        modelInputOverride,
+        temperature: 0.1,
+        maxTokens: 500,
+        toolChoice: { type: 'function' as const, function: { name: 'foreground.decide' } },
+        model: resolvedModel,
+        maxIterations: 1,
+        timeoutMs: routingTimeoutMs,
+      });
+
+      return this.routerResultFromKernelResult(kernelResult);
+    } catch (error) {
+      return {
+        success: false,
+        error: { code: 'MALFORMED_JSON', message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`, retryable: false },
+      };
+    }
+  }
+
+  private buildKernelRoutingContextBundle(
+    buildInput: ModelInputBuildInput,
+    state: ForegroundSessionState,
+  ): ContextBundle {
+    const currentMessage = buildInput.currentUserMessage ?? '';
+    const orderedItems: ContextItem[] = currentMessage
+      ? [{
+          itemId: `${buildInput.requestId ?? buildInput.runId ?? 'foreground'}-message`,
+          sourceType: 'session_history',
+          semanticType: 'instruction',
+          content: currentMessage,
+          estimatedTokens: Math.ceil(currentMessage.length / 4),
+          freshnessTs: new Date().toISOString(),
+        }]
+      : [];
+
+    return {
+      bundleId: `${buildInput.runId ?? 'foreground-routing'}-bundle`,
+      runId: buildInput.runId ?? `foreground-route-${Date.now()}`,
+      agentId: 'foreground.default',
+      agentType: 'main',
+      userId: state.hydratedSession.userContext.userId,
+      invocationSource: 'gateway_intent',
+      pinnedItems: [],
+      orderedItems,
+      tokenEstimate: Math.max(1000, orderedItems.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0)),
+    };
+  }
+
+  private async handleForegroundDecideToolCall(
+    request: ToolUseRequest,
+    toolCatalog: string[],
+    effectiveToolIds: string[],
+  ) {
+    const validation = validateForegroundDecideParams(request.params, {
+      toolCatalog,
+      effectiveToolIds,
+    });
+
+    if (!validation.valid) {
+      const validationError = validation.error ?? {
+        code: 'INVALID_PARAMS' as const,
+        message: 'foreground.decide validation failed',
+      };
+      return {
+        toolResult: {
+          toolCallId: request.toolCallId,
+          result: null,
+          error: {
+            code: validationError.code,
+            message: validationError.message,
+            recoverable: true,
+          },
+        },
+        stop: true,
+      };
+    }
+
+    const structuredResult = { decision: validation.decision };
+    return {
+      toolResult: {
+        toolCallId: request.toolCallId,
+        result: structuredResult,
+      },
+      stop: true,
+      structuredResult,
+    };
+  }
+
+  private routerResultFromKernelResult(kernelResult: KernelRunResult): RouterResult {
+    if (kernelResult.error) {
+      return {
+        success: false,
+        error: {
+          code: 'LLM_REQUEST_FAILED',
+          message: kernelResult.error.message,
+          retryable: kernelResult.finalStatus === 'timeout',
+        },
+      };
+    }
+
+    if (!this.isForegroundDecisionStructuredResult(kernelResult.structuredResult)) {
+      const toolError = this.firstKernelToolError(kernelResult);
+      return {
+        success: false,
+        error: {
+          code: toolError?.code === 'INVALID_ROUTE' ? 'INVALID_ROUTE' : 'MALFORMED_JSON',
+          message: toolError?.message ?? `Kernel foreground.decide did not return a structured decision (status: ${kernelResult.finalStatus})`,
+          retryable: toolError?.recoverable ?? true,
+        },
+      };
+    }
+
+    const { decision } = kernelResult.structuredResult;
+    return {
+      success: true,
+      output: this.routerOutputFromDecision(decision),
+    };
+  }
+
+  private firstKernelToolError(kernelResult: KernelRunResult): { code: string; message: string; recoverable: boolean } | undefined {
+    for (const entry of kernelResult.transcript) {
+      if (entry.type !== 'tool_result') continue;
+      const content = entry.content;
+      if (this.isToolResultWithError(content)) {
+        return content.error;
+      }
+    }
+    return undefined;
+  }
+
+  private isToolResultWithError(value: unknown): value is { error: { code: string; message: string; recoverable: boolean } } {
+    if (typeof value !== 'object' || value === null || !('error' in value)) return false;
+    const error = (value as { error?: unknown }).error;
+    return typeof error === 'object'
+      && error !== null
+      && typeof (error as { code?: unknown }).code === 'string'
+      && typeof (error as { message?: unknown }).message === 'string'
+      && typeof (error as { recoverable?: unknown }).recoverable === 'boolean';
+  }
+
+  private isForegroundDecisionStructuredResult(value: unknown): value is { decision: ForegroundDecision } {
+    if (typeof value !== 'object' || value === null || !('decision' in value)) return false;
+    const decision = (value as { decision?: unknown }).decision;
+    return typeof decision === 'object'
+      && decision !== null
+      && typeof (decision as { route?: unknown }).route === 'string'
+      && typeof (decision as { reason?: unknown }).reason === 'string';
+  }
+
+  private routerOutputFromDecision(decision: ForegroundDecision): LLMRouterOutput {
+    return {
+      route: decision.route,
+      reason: decision.reason,
+      userVisibleResponse: decision.userVisibleResponse,
+      estimatedSteps: decision.estimatedSteps,
+      complexity: decision.complexity,
+      suggestedTools: decision.suggestedTools,
+    };
   }
 
   private logShadowDiff(newOutput: LLMRouterOutput | undefined, legacyOutput: LLMRouterOutput | undefined): void {
@@ -588,7 +1146,11 @@ Please respond with valid JSON matching the exact schema shown above.`;
   }
 
   /**
-   * Parse and validate router output
+   * Parse and validate router output.
+   *
+   * SECURITY: The LLM output is parsed into `LLMRouterOutput` which intentionally
+   * excludes `runtimeAction`. Any runtime actions in the raw JSON are discarded
+   * during parsing. Server-side creation happens only in `mapRouterOutputToDecision`.
    */
   private parseRouterOutput(
     rawOutput: string,
@@ -789,7 +1351,12 @@ Please respond with valid JSON matching the exact schema shown above.`;
   }
 
   /**
-   * Map router output to a ForegroundDecision
+   * Map router output to a ForegroundDecision.
+   *
+   * SECURITY INVARIANT: `runtimeAction` is NEVER taken from the LLM. It is
+   * created server-side only for `status_query` and `cancel_or_modify_task`
+   * routes. The `LLMRouterOutput` type omits `runtimeAction` entirely, so the
+   * LLM-provided value cannot reach this function.
    */
   private mapRouterOutputToDecision(
     output: LLMRouterOutput,
@@ -813,7 +1380,8 @@ Please respond with valid JSON matching the exact schema shown above.`;
       }
     }
 
-    // Handle special routes that need runtime actions
+    // SECURITY: Server-side runtime action creation for special routes.
+    // Neither handler reads runtimeAction from LLM output — they always create fresh.
     if (route === 'cancel_or_modify_task') {
       const resolvedWork = this.resolveActiveWork(state.activeWorkRefs, state.hydratedSession.sessionContext);
       const interruptType = this.detectInterruptType(input.message);
@@ -834,6 +1402,7 @@ Please respond with valid JSON matching the exact schema shown above.`;
       }
 
       const targetWork = resolvedWork.targetWork;
+      // SECURITY: runtimeAction created server-side — never from LLM
       const runtimeAction = this.createInterruptRuntimeAction(
         interruptType,
         targetWork,
@@ -854,6 +1423,7 @@ Please respond with valid JSON matching the exact schema shown above.`;
     }
 
     if (route === 'status_query') {
+      // SECURITY: runtimeAction created server-side — never from LLM
       const runtimeAction = this.createStatusQueryRuntimeAction(input.userId, input.sessionId);
       return this.createDecision('status_query', {
         reason,
@@ -1070,10 +1640,11 @@ export interface CreateForegroundAgentOptions {
   modelInputBuilder?: ModelInputBuilder;
   modelInputSnapshotStore?: ModelInputSnapshotStore;
   promptProjectionResolver?: PromptProjectionResolver;
+  agentKernel?: AgentKernel;
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
-  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder, options?.modelInputSnapshotStore, options?.promptProjectionResolver);
+  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder, options?.modelInputSnapshotStore, options?.promptProjectionResolver, options?.agentKernel);
 }
 
 export function mergeDelegationPolicies(
