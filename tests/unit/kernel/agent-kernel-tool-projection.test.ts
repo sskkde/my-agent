@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type {
   LLMResult,
   LLMRequest,
@@ -95,6 +95,86 @@ class FakeDispatcher implements RuntimeDispatcher {
       createdAt: new Date().toISOString(),
     };
   }
+}
+
+class CountingDispatcher implements RuntimeDispatcher {
+  calls = 0;
+
+  async dispatch() {
+    this.calls += 1;
+    return {
+      requestId: 'req-counting',
+      actionId: 'act-counting',
+      status: 'completed',
+      targetRuntime: 'tool_plane',
+      result: { dispatched: true },
+      createdAt: new Date().toISOString(),
+    };
+  }
+}
+
+class ToolCallLLMAdapter implements LLMAdapter {
+  private lastRequest: LLMRequest | undefined;
+  config: LLMAdapterConfig = {
+    providers: [],
+    defaultTimeoutMs: 60000,
+    enableCircuitBreaker: false,
+  };
+  providers: LLMProvider[] = [];
+
+  async complete(request: LLMRequest): Promise<LLMResult> {
+    this.lastRequest = request;
+    return {
+      success: true,
+      response: {
+        id: 'resp-tool-call',
+        model: request.model,
+        content: '',
+        role: 'assistant',
+        finishReason: 'tool_calls',
+        createdAt: new Date().toISOString(),
+        toolCalls: [{
+          id: 'tc-internal-1',
+          type: 'function',
+          function: {
+            name: 'foreground.decide',
+            arguments: JSON.stringify({ route: 'answer_directly', reason: 'Use internal handler' }),
+          },
+        }],
+      },
+      providerId: 'fake',
+    };
+  }
+
+  async *stream(): AsyncGenerator<{ delta: string; providerId: string }> {}
+
+  addProvider(provider: LLMProvider): void { this.providers.push(provider); }
+  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId); }
+  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId); }
+  getHealthyProviders(): LLMProvider[] { return this.providers; }
+  updateProviderPriority(_providerId: string, _priority: number): void {}
+
+  getLastRequest(): LLMRequest | undefined { return this.lastRequest; }
+}
+
+class HangingLLMAdapter implements LLMAdapter {
+  config: LLMAdapterConfig = {
+    providers: [],
+    defaultTimeoutMs: 60000,
+    enableCircuitBreaker: false,
+  };
+  providers: LLMProvider[] = [];
+
+  async complete(): Promise<LLMResult> {
+    return new Promise(() => {});
+  }
+
+  async *stream(): AsyncGenerator<{ delta: string; providerId: string }> {}
+  addProvider(provider: LLMProvider): void { this.providers.push(provider); }
+  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId); }
+  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId); }
+  getHealthyProviders(): LLMProvider[] { return this.providers; }
+  updateProviderPriority(_providerId: string, _priority: number): void {}
 }
 
 function createModelInputBuilder(): ModelInputBuilder {
@@ -412,5 +492,135 @@ describe('AgentKernel toolProjection per-run override', () => {
     expect(request).toBeDefined();
     expect(request!.tools!.length).toBe(1);
     expect(request!.tools![0].function.name).toBe('status.query');
+  });
+});
+
+describe('AgentKernel internal tool handling', () => {
+  it('bypasses dispatcher and returns structuredResult when internal handler stops', async () => {
+    const fakeLLM = new ToolCallLLMAdapter();
+    const dispatcher = new CountingDispatcher();
+    const kernel = new AgentKernel(makeBaseConfig({
+      llmAdapter: fakeLLM,
+      dispatcher,
+    }));
+
+    const result = await kernel.run({
+      ...makeRunInput(),
+      toolProjection: {
+        toolIds: [],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'foreground.decide',
+            description: 'Internal foreground routing decision',
+            parameters: { type: 'object', properties: {} },
+          },
+        }],
+      },
+      internalToolHandlers: {
+        'foreground.decide': async (request) => ({
+          toolResult: {
+            toolCallId: request.toolCallId,
+            result: { decision: { route: 'answer_directly', reason: 'Handled internally' } },
+          },
+          stop: true,
+          structuredResult: { decision: { route: 'answer_directly', reason: 'Handled internally' } },
+        }),
+      },
+    });
+
+    expect(dispatcher.calls).toBe(0);
+    expect(result.finalStatus).toBe('completed');
+    expect(result.structuredResult).toEqual({ decision: { route: 'answer_directly', reason: 'Handled internally' } });
+    expect(result.transcript.some(entry => entry.type === 'tool_call')).toBe(true);
+    expect(result.transcript.some(entry => entry.type === 'tool_result')).toBe(true);
+  });
+
+  it('uses modelInputOverride and per-run LLM request overrides', async () => {
+    const fakeLLM = new ToolCallLLMAdapter();
+    const kernel = new AgentKernel(makeBaseConfig({ llmAdapter: fakeLLM }));
+
+    await kernel.run({
+      ...makeRunInput(),
+      modelInputOverride: {
+        mode: 'routing_tool_call',
+        agentKind: 'foreground',
+        providerFamily: 'openai',
+        toolProjection: sampleToolProjection,
+        currentUserMessage: 'Please route this message',
+        sessionId: 'session-override',
+        runId: 'run-override',
+      },
+      temperature: 0.1,
+      maxTokens: 500,
+      toolChoice: { type: 'function', function: { name: 'foreground.decide' } },
+      model: 'foreground-routing-model',
+      internalToolHandlers: {
+        'foreground.decide': async (request) => ({
+          toolResult: { toolCallId: request.toolCallId, result: { decision: { route: 'answer_directly', reason: 'ok' } } },
+          stop: true,
+          structuredResult: { decision: { route: 'answer_directly', reason: 'ok' } },
+        }),
+      },
+    });
+
+    const request = fakeLLM.getLastRequest();
+    expect(request).toBeDefined();
+    expect(request!.model).toBe('foreground-routing-model');
+    expect(request!.temperature).toBe(0.1);
+    expect(request!.maxTokens).toBe(500);
+    expect(request!.toolChoice).toEqual({ type: 'function', function: { name: 'foreground.decide' } });
+    expect(request!.tools?.map(tool => tool.function.name)).toEqual(['status.query', 'web.search']);
+    expect(request!.messages.some(message => message.content.includes('Please route this message'))).toBe(true);
+  });
+
+  it('does not dispatch tool calls that were not projected as callable schemas', async () => {
+    const fakeLLM = new ToolCallLLMAdapter();
+    const dispatcher = new CountingDispatcher();
+    const kernel = new AgentKernel(makeBaseConfig({
+      llmAdapter: fakeLLM,
+      dispatcher,
+    }));
+
+    const result = await kernel.run({
+      ...makeRunInput(),
+      toolProjection: {
+        toolIds: ['foreground.decide'],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'other.tool',
+            description: 'Different projected tool',
+            parameters: { type: 'object', properties: {} },
+          },
+        }],
+      },
+    });
+
+    expect(dispatcher.calls).toBe(0);
+    expect(result.finalStatus).toBe('max_iterations_reached');
+    const toolResult = result.transcript.find(entry => entry.type === 'tool_result');
+    expect(toolResult?.content).toMatchObject({
+      error: {
+        code: 'UNPROJECTED_TOOL_CALL',
+      },
+    });
+  });
+
+  it('returns timeout when the LLM call exceeds timeoutMs', async () => {
+    vi.useFakeTimers();
+    const kernel = new AgentKernel(makeBaseConfig({ llmAdapter: new HangingLLMAdapter() }));
+    const runPromise = kernel.run({
+      ...makeRunInput(),
+      timeoutMs: 10,
+    });
+
+    await vi.advanceTimersByTimeAsync(11);
+    const result = await runPromise;
+    vi.useRealTimers();
+
+    expect(result.finalStatus).toBe('failed');
+    expect(result.error?.code).toBe('KERNEL_ERROR');
+    expect(result.error?.message).toContain('LLM request timeout');
   });
 });
