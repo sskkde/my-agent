@@ -10,7 +10,9 @@ import type { PlannerResumeEvent } from '../planner/types.js';
 import type { WaitConditionType, RegisterTriggerInput, RegisterWaitConditionInput } from '../triggers/types.js';
 import type { KernelRunInput } from '../kernel/types.js';
 import type { BackgroundRuntime, BackgroundRunInput } from '../subagents/background-runtime.js';
-import type { SubagentTaskSpec } from '../subagents/types.js';
+import type { SubagentTaskSpec, SubagentRuntime, LaunchSubagentInput } from '../subagents/types.js';
+import type { SubagentRegistry } from '../subagents/registry.js';
+import type { ContextBundle } from '../context/types.js';
 import { createPermissionContext } from '../permissions/types.js';
 
 /**
@@ -34,6 +36,8 @@ export function registerDefaultRuntimeAdapters(deps: {
   agentKernel: AgentKernel;
   permissionGrantStore: PermissionGrantStore;
   backgroundRuntime: BackgroundRuntime;
+  subagentRuntime: SubagentRuntime;
+  subagentRegistry: SubagentRegistry;
 }): void {
   const {
     adapterRegistry,
@@ -45,6 +49,8 @@ export function registerDefaultRuntimeAdapters(deps: {
     agentKernel,
     permissionGrantStore,
     backgroundRuntime,
+    subagentRuntime,
+    subagentRegistry,
   } = deps;
 
   // Tool plane adapter - executes tools
@@ -347,6 +353,89 @@ export function registerDefaultRuntimeAdapters(deps: {
 
           backgroundRuntime.cancelBackgroundRun(backgroundRunId);
           return { backgroundRunId, status: 'cancelled' };
+        }
+
+        case 'launch_subagent': {
+          const agentType = payload.agentType as string | undefined;
+          const taskSpec = payload.taskSpec as SubagentTaskSpec | undefined;
+          const parentContext = payload.parentContext as ContextBundle | undefined;
+          const parentRunId = payload.parentRunId as string | undefined;
+          const rootRunId = payload.rootRunId as string | undefined;
+
+          if (!agentType || !taskSpec) {
+            throw new Error('launch_subagent missing required fields: agentType, taskSpec');
+          }
+
+          if (!parentContext) {
+            throw new Error('launch_subagent missing required field: parentContext');
+          }
+
+          const definition = subagentRegistry.assertAllowed(agentType);
+
+          const launchInput: LaunchSubagentInput = {
+            taskSpec: {
+              ...taskSpec,
+              agentType,
+            },
+            parentContext,
+            parentRunId,
+            rootRunId,
+          };
+
+          const run = subagentRuntime.launchSubagent(launchInput);
+          const result = await subagentRuntime.executeSubagent(run.subagentRunId);
+
+          return {
+            subagentRunId: run.subagentRunId,
+            agentType: definition.agentType,
+            status: result.status,
+            result,
+          };
+        }
+
+        case 'resume_subagent': {
+          const subagentRunId = payload.subagentRunId as string | undefined;
+
+          if (!subagentRunId) {
+            throw new Error('resume_subagent missing subagentRunId');
+          }
+
+          const run = subagentRuntime.getSubagentRun(subagentRunId);
+          if (!run) {
+            throw new Error(`Subagent run not found: ${subagentRunId}`);
+          }
+
+          if (run.status === 'queued') {
+            const result = await subagentRuntime.executeSubagent(subagentRunId);
+            return {
+              subagentRunId,
+              agentType: run.taskSpec.agentType,
+              status: result.status,
+              result,
+            };
+          }
+
+          return {
+            subagentRunId,
+            agentType: run.taskSpec.agentType,
+            status: run.status,
+            result: run.result,
+          };
+        }
+
+        case 'cancel_subagent': {
+          const subagentRunId = payload.subagentRunId as string | undefined;
+
+          if (!subagentRunId) {
+            throw new Error('cancel_subagent missing subagentRunId');
+          }
+
+          const result = subagentRuntime.cancelSubagent(subagentRunId);
+          return {
+            subagentRunId,
+            status: result.status,
+            result,
+          };
         }
 
         default:
