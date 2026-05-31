@@ -15,6 +15,8 @@ import { buildContextBundleFromForegroundState } from './context-bundle-builder.
 import { buildKernelConfigFromDeps, isForegroundContextManager } from './kernel-config-builder.js';
 import { mapSuggestedToolsToProjection } from './tool-projection-mapper.js';
 import { getToolCatalog, getToolDefinitions } from '../api/tool-catalog.js';
+import { buildLaunchSubagentAction, inferSubagentType } from '../subagents/action-mapper.js';
+import type { SubagentResult } from '../subagents/types.js';
 
 export function isForegroundKernelRunnerEnabled(): boolean {
   return process.env.FOREGROUND_KERNEL_RUNNER_ENABLED === 'true';
@@ -100,6 +102,9 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
           break;
         case 'approval_handler':
           executionResult = { route: 'approval_handler', finalResponse: decision.userVisibleResponse || 'Processing approval...' };
+          break;
+        case 'dispatch_subagent':
+          executionResult = await this.handleDispatchSubagent(decision, input);
           break;
         default:
           executionResult = await this.handleAnswerDirectly(decision, input);
@@ -567,6 +572,78 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         },
       };
     }
+  }
+
+  private async handleDispatchSubagent(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput
+  ): Promise<ForegroundExecutionResult> {
+    try {
+      const runtimeAction = decision.runtimeAction ?? this.createServerSubagentAction(decision, input);
+
+      const dispatchResult = await this.deps.runtimeDispatcher.dispatch({
+        requestId: input.turnId,
+        action: runtimeAction,
+        context: {
+          callerModule: 'foreground_kernel_runner',
+          userId: input.userId,
+          sessionId: input.sessionId,
+        },
+      });
+
+      if (dispatchResult.status === 'completed' && dispatchResult.result) {
+        const subagentResult = dispatchResult.result as SubagentResult;
+        return {
+          route: 'dispatch_subagent',
+          finalResponse: subagentResult.response || decision.userVisibleResponse || 'Subagent completed.',
+          runtimeSummary: {
+            runtimeActionIds: [runtimeAction.actionId],
+          },
+        };
+      }
+
+      return {
+        route: 'dispatch_subagent',
+        finalResponse: decision.userVisibleResponse || 'Subagent dispatch completed.',
+        runtimeSummary: {
+          runtimeActionIds: [runtimeAction.actionId],
+        },
+      };
+    } catch (error) {
+      return {
+        route: 'dispatch_subagent',
+        finalResponse: decision.userVisibleResponse || 'Failed to dispatch subagent.',
+        error: {
+          code: 'DISPATCH_SUBAGENT_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to dispatch subagent',
+        },
+      };
+    }
+  }
+
+  private createServerSubagentAction(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput
+  ): import('../dispatcher/types.js').RuntimeAction {
+    const agentType = inferSubagentType({
+      message: input.message,
+      suggestedTools: decision.suggestedTools,
+    });
+
+    return buildLaunchSubagentAction({
+      agentType,
+      taskSpec: {
+        objective: input.message,
+        agentType,
+        tools: decision.suggestedTools,
+      },
+      userId: input.userId,
+      sessionId: input.sessionId,
+      sourceRef: {
+        sourceType: 'foreground_turn',
+        turnId: input.turnId,
+      },
+    });
   }
 }
 

@@ -70,6 +70,7 @@ import type {
   TaskComplexity,
 } from './types.js';
 import type { RuntimeAction, TargetRuntime } from '../dispatcher/types.js';
+import { buildLaunchSubagentAction, inferSubagentType } from '../subagents/action-mapper.js';
 
 import { extractForegroundDecideToolCall } from './foreground-decide-extractor.js';
 import type { LLMAdapter } from '../llm/adapter.js';
@@ -1440,6 +1441,38 @@ Please respond with valid JSON matching the exact schema shown above.`;
         reason,
         userVisibleResponse: userVisibleResponse || 'Resuming your previous task...',
         targetRef: plannerRunIds.length > 0 ? { plannerRunId: plannerRunIds[0] } : {},
+      });
+    }
+
+    if (route === 'dispatch_subagent') {
+      const agentType = inferSubagentType({
+        message: input.message,
+        suggestedTools,
+        metadata: input.metadata as Record<string, unknown> | undefined,
+      });
+
+      const runtimeAction = buildLaunchSubagentAction({
+        agentType,
+        taskSpec: {
+          objective: input.message,
+          agentType,
+          tools: suggestedTools,
+        },
+        userId: input.userId,
+        sessionId: input.sessionId,
+        sourceRef: {
+          sourceType: 'foreground_turn',
+          turnId: input.turnId,
+        },
+      });
+
+      return this.createDecision('dispatch_subagent', {
+        reason,
+        userVisibleResponse: userVisibleResponse || 'Dispatching a specialized subagent...',
+        runtimeAction,
+        estimatedSteps,
+        complexity,
+        suggestedTools,
       });
     }
 
