@@ -37,6 +37,7 @@ import { mapToolResultToMessage } from '../tools/runtime/tool-result-message-map
 import type { ForegroundKernelRunner } from '../foreground/foreground-kernel-runner.js';
 import { isForegroundKernelRunnerEnabled } from '../foreground/foreground-kernel-runner.js';
 import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js';
+import { buildLaunchSubagentAction, inferSubagentType } from '../subagents/action-mapper.js';
 
 /**
  * Known tool IDs from the catalog - used for server-side validation
@@ -566,7 +567,7 @@ async function handleDecisionRoute(
       return handleResumePlannerRoute(correlationId, decision);
 
     case 'dispatch_subagent':
-      return handleDispatchSubagentRoute(correlationId, decision);
+      return handleDispatchSubagentRoute(correlationId, decision, deps, input);
 
     case 'approval_handler':
       return handleApprovalHandlerRoute(correlationId, decision);
@@ -921,19 +922,50 @@ function handleResumePlannerRoute(
 }
 
 /**
- * Handles the dispatch_subagent route
+ * Handles the dispatch_subagent route.
+ *
+ * @deprecated P5: Remove once FOREGROUND_KERNEL_RUNNER_ENABLED=true is the only path.
+ * This is a legacy route handler invoked by handleDecisionRoute's switch statement.
+ * ForegroundKernelRunner.runTurn() handles dispatch_subagent internally via its own routing.
  */
-function handleDispatchSubagentRoute(
+async function handleDispatchSubagentRoute(
   correlationId: string,
-  decision: import('../foreground/types.js').ForegroundDecision
-): MessageProcessorOutput {
-  // Subagent dispatch is acknowledged
+  decision: import('../foreground/types.js').ForegroundDecision,
+  deps: ProcessorOrchestrationDeps,
+  input: MessageProcessorInput
+): Promise<MessageProcessorOutput> {
+  const runtimeAction = decision.runtimeAction ?? buildLaunchSubagentAction({
+    agentType: inferSubagentType({ message: input.text }),
+    taskSpec: {
+      objective: input.text,
+    },
+    userId: input.userId,
+    sessionId: input.sessionId,
+    sourceRef: { sourceType: 'foreground_turn' },
+  });
+
+  deps.runtimeDispatcher.dispatch({
+    requestId: correlationId,
+    action: runtimeAction,
+    context: {
+      userId: input.userId,
+      sessionId: input.sessionId,
+      callerModule: 'processing',
+    },
+  }).catch((error) => {
+    console.error(
+      `[processor-orchestration] Subagent dispatch failed for ${correlationId}:`,
+      error instanceof Error ? error.message : error,
+    );
+  });
+
   return createSuccessOutput(correlationId, {
     text: decision.userVisibleResponse || 'Dispatching subagent...',
     route: decision.route,
     data: {
       reason: decision.reason,
-      hasRuntimeAction: !!decision.runtimeAction,
+      hasRuntimeAction: true,
+      actionId: runtimeAction.actionId,
     },
   });
 }
