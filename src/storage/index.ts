@@ -75,3 +75,6 @@ export * from './webhook-delivery-store.js';
 export * from './webhook-trigger-store.js';
 export * from './workflow-draft-store.js';
 export * from './workflow-definition-store.js';
+export * from './subagent-run-store.js';
+export * from './subagent-transcript-store.js';
+export * from './subagent-provider-preference-store.js';

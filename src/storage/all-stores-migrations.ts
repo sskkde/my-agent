@@ -22,6 +22,9 @@ import { alertTablesMigration } from './alert-store.js';
  * - ToolResult Store
  * - Connector Store
  * - Long-term Memory Store
+ * - Subagent Runs Store
+ * - Subagent Transcripts Store
+ * - Subagent Provider Preferences Store
  */
 
 // ============================================================================
@@ -2173,6 +2176,103 @@ export const addEntityTimeIndexMigration: Migration = {
   `
 };
 
+// ============================================================================
+// STORE 56: Subagent Runs Store (version 56)
+// ============================================================================
+export const subagentRunsTableMigration: Migration = {
+  version: 56,
+  name: 'create_subagent_runs_table',
+  up: `
+    CREATE TABLE IF NOT EXISTS subagent_runs (
+      subagent_run_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_id TEXT,
+      parent_run_id TEXT,
+      root_run_id TEXT,
+      background_run_id TEXT,
+      agent_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      task_spec_json TEXT NOT NULL,
+      context_bundle_json TEXT,
+      provider_id TEXT,
+      model TEXT,
+      result_json TEXT,
+      error_code TEXT,
+      error_message TEXT,
+      created_at TEXT NOT NULL,
+      started_at TEXT,
+      completed_at TEXT,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_user_status
+      ON subagent_runs(user_id, status);
+
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_session_status
+      ON subagent_runs(session_id, status);
+
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_background
+      ON subagent_runs(background_run_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_subagent_runs_user_status;
+    DROP INDEX IF EXISTS idx_subagent_runs_session_status;
+    DROP INDEX IF EXISTS idx_subagent_runs_background;
+    DROP TABLE IF EXISTS subagent_runs
+  `
+};
+
+// ============================================================================
+// STORE 57: Subagent Transcripts Store (version 57)
+// ============================================================================
+export const subagentTranscriptsTableMigration: Migration = {
+  version: 57,
+  name: 'create_subagent_transcripts_table',
+  up: `
+    CREATE TABLE IF NOT EXISTS subagent_transcripts (
+      id TEXT PRIMARY KEY,
+      subagent_run_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      content_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_subagent_transcripts_run_id
+      ON subagent_transcripts(subagent_run_id);
+
+    CREATE INDEX IF NOT EXISTS idx_subagent_transcripts_run_type
+      ON subagent_transcripts(subagent_run_id, event_type)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_subagent_transcripts_run_id;
+    DROP INDEX IF EXISTS idx_subagent_transcripts_run_type;
+    DROP TABLE IF EXISTS subagent_transcripts
+  `
+};
+
+// ============================================================================
+// STORE 58: Subagent Provider Preferences Store (version 58)
+// ============================================================================
+export const subagentProviderPreferencesTableMigration: Migration = {
+  version: 58,
+  name: 'create_subagent_provider_preferences_table',
+  up: `
+    CREATE TABLE IF NOT EXISTS subagent_provider_preferences (
+      user_id TEXT NOT NULL,
+      agent_type TEXT NOT NULL,
+      provider_id TEXT,
+      model TEXT,
+      fallback_mode TEXT NOT NULL DEFAULT 'any_compatible',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, agent_type)
+    )
+  `,
+  down: `
+    DROP TABLE IF EXISTS subagent_provider_preferences
+  `
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -2286,6 +2386,11 @@ export const allStoreMigrations: Migration[] = [
 
   // Entity/time index for long-term memories
   addEntityTimeIndexMigration,                // v55
+
+  // Subagent stores
+  subagentRunsTableMigration,                 // v56
+  subagentTranscriptsTableMigration,          // v57
+  subagentProviderPreferencesTableMigration,  // v58
 ];
 
 /**
