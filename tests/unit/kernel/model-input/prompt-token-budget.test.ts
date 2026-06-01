@@ -71,8 +71,8 @@ describe('Prompt Token Budget Tests', () => {
       const policy: ToolSelectionPolicyProjection = {
         heuristics: 'Select tools based on task requirements. Prefer read-only tools over write tools.',
         priorityRules: [
-          'file.read > file.write',
-          'web.search > memory.retrieve for current info',
+          'file_read > file_write',
+          'web_search > memory_retrieve for current info',
         ],
         riskRules: [
           'Always ask user before destructive operations',
