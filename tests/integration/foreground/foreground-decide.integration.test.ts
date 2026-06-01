@@ -195,14 +195,11 @@ function createMockModelInputBuilder(): ModelInputBuilder {
 describe('foreground.decide Routing Integration Tests', () => {
   let originalDecideEnabled: string | undefined;
   let originalModelInputBuilder: string | undefined;
-  let originalKernelRunnerEnabled: string | undefined;
 
   beforeEach(() => {
     originalDecideEnabled = process.env.FOREGROUND_DECIDE_ENABLED;
     originalModelInputBuilder = process.env.MODEL_INPUT_BUILDER_ENABLED;
-    originalKernelRunnerEnabled = process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
     process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-    process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
     delete process.env.MODEL_INPUT_BUILDER_ENABLED;
   });
 
@@ -216,11 +213,6 @@ describe('foreground.decide Routing Integration Tests', () => {
       delete process.env.MODEL_INPUT_BUILDER_ENABLED;
     } else {
       process.env.MODEL_INPUT_BUILDER_ENABLED = originalModelInputBuilder;
-    }
-    if (originalKernelRunnerEnabled === undefined) {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-    } else {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = originalKernelRunnerEnabled;
     }
     vi.clearAllMocks();
   });

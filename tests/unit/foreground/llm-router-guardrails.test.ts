@@ -4,7 +4,7 @@ import type { AgentConfig } from '../../../src/storage/agent-config-store.js';
 import type { RuntimeAction } from '../../../src/dispatcher/types.js';
 
 /**
- * Known tool IDs from the catalog - must match src/processing/processor-orchestration.ts
+ * Known tool IDs from the catalog - must match src/api/tool-catalog.ts
  */
 const KNOWN_TOOL_IDS: string[] = [
   'artifact.create',
@@ -25,7 +25,7 @@ const KNOWN_TOOL_IDS: string[] = [
 ];
 
 /**
- * Known skill IDs from the catalog - must match src/processing/processor-orchestration.ts
+ * Known skill IDs from the catalog - must match src/api/tool-catalog.ts
  */
 const KNOWN_SKILL_IDS: string[] = [
   'artifact.create',
