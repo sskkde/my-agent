@@ -2,20 +2,20 @@
  * Foreground Agent — User-facing conversation routing
  *
  * This module implements the foreground agent, which handles user-facing
- * interactions and produces routing decisions via the `foreground.decide`
+ * interactions and produces routing decisions via the `foreground_decide`
  * internal tool or legacy routing_json mechanism.
  *
- * ## Foreground.decide Mechanism
+ * ## Foreground_decide Mechanism
  *
- * The `foreground.decide` tool is an **internal-only** structured-output
+ * The `foreground_decide` tool is an **internal-only** structured-output
  * mechanism for native LLM function calling. It is NOT registered in the
  * public tool catalog. When enabled, the LLM invokes this tool to produce
  * a structured routing decision instead of free-form JSON text.
  *
  * ## Fallback Chain
  *
- * When foreground.decide is enabled, the fallback chain is:
- *   1. `foreground.decide` tool call
+ * When foreground_decide is enabled, the fallback chain is:
+ *   1. `foreground_decide` tool call
  *   2. Repair/retry (if extraction error is retryable)
  *   3. `routing_json` (legacy JSON-in-text mode, if FOREGROUND_DECIDE_LEGACY_FALLBACK=true)
  *   4. Deterministic routing (pattern-based fallback)
@@ -119,32 +119,32 @@ export function isForegroundDecideLegacyFallback(): boolean {
 }
 
 /**
- * Log deprecation warning when foreground.decide falls back to legacy routing_json.
+ * Log deprecation warning when foreground_decide falls back to legacy routing_json.
  * Only logs in non-production environments.
  * Sanitized: does not include user message content or tool arguments.
  */
 function logForegroundDecideFallback(reason: string): void {
   if (process.env.NODE_ENV === 'production') return;
-  console.log('[ForegroundAgent] foreground.decide fallback:', reason);
+  console.log('[ForegroundAgent] foreground_decide fallback:', reason);
 }
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
-  /** Inject AgentKernel for kernel-backed foreground.decide routing. No-op if not supported. */
+  /** Inject AgentKernel for kernel-backed foreground_decide routing. No-op if not supported. */
   setAgentKernel?(kernel: AgentKernel): void;
 }
 
 const TOOL_ALIASES: Record<string, string[]> = {
-  search: ['docs.search'],
-  'web.search': ['web.search'],
-  'internet.search': ['web.search'],
-  web: ['web.search'],
-  'docs': ['docs.search'],
-  'documentation.search': ['docs.search'],
-  'transcript': ['transcript.search'],
-  'memory.search': ['memory.retrieve'],
-  'memory': ['memory.retrieve'],
-  status: ['status.query'],
+  search: ['docs_search'],
+  'web.search': ['web_search'],
+  'internet.search': ['web_search'],
+  web: ['web_search'],
+  'docs': ['docs_search'],
+  'documentation.search': ['docs_search'],
+  'transcript': ['transcript_search'],
+  'memory.search': ['memory_retrieve'],
+  'memory': ['memory_retrieve'],
+  status: ['status_query'],
 };
 
 /**
@@ -508,7 +508,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       ...(isDecideMode && toolsForRequest
         ? {
             tools: toolsForRequest,
-            toolChoice: { type: 'function' as const, function: { name: 'foreground.decide' } },
+            toolChoice: { type: 'function' as const, function: { name: 'foreground_decide' } },
           }
         : supportsJsonMode
           ? { responseFormat: { type: 'json_object' as const } }
@@ -553,33 +553,33 @@ class ForegroundAgentImpl implements ForegroundAgent {
         if (!extraction.success) {
           return {
             success: false,
-            error: { code: 'MALFORMED_JSON', message: `foreground.decide extraction failed: ${extraction.detail}`, retryable: extraction.canRetry },
-          };
-        }
-
-        const { decision } = extraction;
-        return {
-          success: true,
-          output: {
-            // SECURITY: Only safe fields extracted — runtimeAction is never passed through
-            route: decision.route,
-            reason: decision.reason,
-            userVisibleResponse: decision.userVisibleResponse,
-            estimatedSteps: decision.estimatedSteps,
-            complexity: decision.complexity,
-            suggestedTools: decision.suggestedTools,
-          },
+          error: { code: 'MALFORMED_JSON', message: `foreground_decide extraction failed: ${extraction.detail}`, retryable: extraction.canRetry },
         };
       }
 
-      return this.parseRouterOutput(result.response.content, state, _toolCatalog);
-    } catch (error) {
-      return { success: false, error: { code: 'MALFORMED_JSON', message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`, retryable: false } };
+      const { decision } = extraction;
+      return {
+        success: true,
+        output: {
+          // SECURITY: Only safe fields extracted — runtimeAction is never passed through
+          route: decision.route,
+          reason: decision.reason,
+          userVisibleResponse: decision.userVisibleResponse,
+          estimatedSteps: decision.estimatedSteps,
+          complexity: decision.complexity,
+          suggestedTools: decision.suggestedTools,
+        },
+      };
     }
-  }
 
-  /**
-   * Call LLM with `foreground.decide` tool schema and extract the decision.
+    return this.parseRouterOutput(result.response.content, state, _toolCatalog);
+  } catch (error) {
+    return { success: false, error: { code: 'MALFORMED_JSON', message: `Exception calling LLM: ${error instanceof Error ? error.message : 'Unknown error'}`, retryable: false } };
+  }
+}
+
+/**
+ * Call LLM with `foreground_decide` tool schema and extract the decision.
    * Shared by initial decide calls and repair attempts.
    */
   private async callDecideLLM(
@@ -605,7 +605,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       temperature: 0.1,
       maxTokens: 500,
       tools: toolsForRequest,
-      toolChoice: { type: 'function' as const, function: { name: 'foreground.decide' } },
+      toolChoice: { type: 'function' as const, function: { name: 'foreground_decide' } },
     };
 
     if (process.env.NODE_ENV !== 'production') {
@@ -645,7 +645,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       if (!extraction.success) {
         return {
           success: false,
-          error: { code: 'MALFORMED_JSON', message: `foreground.decide extraction failed: ${extraction.detail}`, retryable: extraction.canRetry },
+          error: { code: 'MALFORMED_JSON', message: `foreground_decide extraction failed: ${extraction.detail}`, retryable: extraction.canRetry },
         };
       }
 
@@ -711,7 +711,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
    *
    * Uses the kernel's shared modelInputBuilder, llmAdapter, and
    * modelInputSnapshotStore for a single-shot routing decision with
-   * `foreground.decide` as an internal handler.
+   * `foreground_decide` as an internal handler.
    *
    * The existing buildModelInput() output serves as modelInputOverride,
    * bypassing the kernel's own model input construction.
@@ -753,12 +753,12 @@ class ForegroundAgentImpl implements ForegroundAgent {
         sessionId: modelInputOverride.sessionId ?? state.hydratedSession.userContext.sessionId,
         toolProjection: modelInputOverride.toolProjection,
         internalToolHandlers: {
-          'foreground.decide': async (request) => this.handleForegroundDecideToolCall(request, toolCatalog, effectiveToolIds),
+          'foreground_decide': async (request) => this.handleForegroundDecideToolCall(request, toolCatalog, effectiveToolIds),
         },
         modelInputOverride,
         temperature: 0.1,
         maxTokens: 500,
-        toolChoice: { type: 'function' as const, function: { name: 'foreground.decide' } },
+        toolChoice: { type: 'function' as const, function: { name: 'foreground_decide' } },
         model: resolvedModel,
         maxIterations: 1,
         timeoutMs: routingTimeoutMs,
@@ -815,7 +815,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     if (!validation.valid) {
       const validationError = validation.error ?? {
         code: 'INVALID_PARAMS' as const,
-        message: 'foreground.decide validation failed',
+        message: 'foreground_decide validation failed',
       };
       return {
         toolResult: {
@@ -860,7 +860,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
         success: false,
         error: {
           code: toolError?.code === 'INVALID_ROUTE' ? 'INVALID_ROUTE' : 'MALFORMED_JSON',
-          message: toolError?.message ?? `Kernel foreground.decide did not return a structured decision (status: ${kernelResult.finalStatus})`,
+          message: toolError?.message ?? `Kernel foreground_decide did not return a structured decision (status: ${kernelResult.finalStatus})`,
           retryable: toolError?.recoverable ?? true,
         },
       };
@@ -979,7 +979,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
 
     if (content.includes('search') || content.includes('find') || content.includes('look up') || content.includes('搜索') || content.includes('查找')) {
-      const suggestedTools = this.filterAllowedTools(['docs.search'], effectiveToolIds);
+      const suggestedTools = this.filterAllowedTools(['docs_search'], effectiveToolIds);
       if (suggestedTools.length > 0) {
         return this.createDecision('dispatch_tool', {
           reason: 'Deterministic fallback: search-related query detected',
@@ -990,7 +990,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     }
 
     if (content.includes('status') || content.includes('progress') || content.includes('what is running') || content.includes('状态')) {
-      const suggestedTools = this.filterAllowedTools(['status.query'], effectiveToolIds);
+      const suggestedTools = this.filterAllowedTools(['status_query'], effectiveToolIds);
       if (suggestedTools.length > 0) {
         return this.createDecision('status_query', {
           reason: 'Deterministic fallback: status query detected',

@@ -22,10 +22,10 @@ import type { ToolPlaneProjection } from '../kernel/model-input/model-input-type
  *
  * @example
  * ```typescript
- * const suggested = ['file.read', 'web.search', 'unknown.tool'];
- * const catalog = ['file.read', 'web.search', 'memory.retrieve'];
+ * const suggested = ['file_read', 'web_search', 'unknown.tool'];
+ * const catalog = ['file_read', 'web_search', 'memory_retrieve'];
  * const projection = mapSuggestedToolsToProjection(suggested, catalog);
- * // projection.toolIds = ['file.read', 'web.search']
+ * // projection.toolIds = ['file_read', 'web_search']
  * ```
  */
 export function mapSuggestedToolsToProjection(

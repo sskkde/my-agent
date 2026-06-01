@@ -252,7 +252,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
       if (
         this.deps.searchSubagent &&
         suggestedTools.length === 1 &&
-        suggestedTools[0] === 'web.search'
+        suggestedTools[0] === 'web_search'
       ) {
         try {
           const searchInput: SearchSubagentInput = {
@@ -269,7 +269,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
               runtimeSummary: {
                 toolCallSummaries: [{
                   toolCallId: `search-${input.turnId}`,
-                  toolName: 'web.search',
+                  toolName: 'web_search',
                   status: 'completed',
                 }],
               },
