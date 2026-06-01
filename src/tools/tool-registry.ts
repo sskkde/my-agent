@@ -6,11 +6,18 @@ import type {
   ToolPool,
   ToolPoolAssemblyOptions,
 } from './types.js';
+import { isValidToolName } from './tool-name.js';
 
 class ToolRegistryImpl implements ToolRegistry {
   private tools: Map<string, ToolDefinition> = new Map();
 
   register(definition: ToolDefinition, options: ToolRegistrationOptions = {}): void {
+    if (!isValidToolName(definition.name)) {
+      throw new Error(
+        `Invalid tool name: "${definition.name}". Tool names must match [A-Za-z0-9_-]{1,64}.`,
+      );
+    }
+
     if (this.tools.has(definition.name) && !options.overwriteExisting) {
       throw new Error(`Tool already registered: ${definition.name}`);
     }
