@@ -8,7 +8,7 @@ describe('MVP smoke: session foreground tool dispatch', () => {
       route: 'dispatch_tool',
       requiresPlanner: false,
       reason: 'Test routing',
-      suggestedTools: ['docs.search'],
+      suggestedTools: ['docs_search'],
     };
 
     const harness = await createSmokeHarness({
@@ -53,12 +53,12 @@ describe('MVP smoke: session foreground tool dispatch', () => {
         const toolAction = actions.find(action => action.actionType === 'execute_tool');
         expect(toolAction).toBeDefined();
         expect(toolAction?.status).toBe('completed');
-        expect(toolAction?.payload.toolName).toBe('docs.search');
+        expect(toolAction?.payload.toolName).toBe('docs_search');
 
         const toolCallId = toolAction?.payload.toolCallId;
         expect(typeof toolCallId).toBe('string');
         const toolExecution = harness.baseCtx.stores.toolExecutionStore.getById(toolCallId as string);
-        expect(toolExecution?.toolName).toBe('docs.search');
+        expect(toolExecution?.toolName).toBe('docs_search');
         expect(toolExecution?.status).toBe('completed');
       });
     } finally {

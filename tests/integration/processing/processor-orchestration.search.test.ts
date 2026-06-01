@@ -50,7 +50,7 @@ describe('Processor orchestration SearchSubagent branch', () => {
     context.connection.close();
   });
 
-  describe('pure web.search SearchSubagent branch', () => {
+  describe('pure web_search SearchSubagent branch', () => {
     it('returns SearchSubagent answer via runner for foreground web search', async () => {
       context.agentConfigStore.upsert({
         agentId: 'foreground.default',
@@ -71,12 +71,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
             route: 'dispatch_tool',
             requiresPlanner: false,
             reason: 'Web search request',
-            suggestedTools: ['web.search'],
+            suggestedTools: ['web_search'],
           },
           runtimeSummary: {
             toolCallSummaries: [{
               toolCallId: `search-corr-search-001`,
-              toolName: 'web.search',
+              toolName: 'web_search',
               status: 'completed',
             }],
           },
@@ -133,12 +133,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
             route: 'dispatch_tool',
             requiresPlanner: false,
             reason: 'Web search request',
-            suggestedTools: ['web.search'],
+            suggestedTools: ['web_search'],
           },
           runtimeSummary: {
             toolCallSummaries: [{
               toolCallId: 'search-corr-search-001',
-              toolName: 'web.search',
+              toolName: 'web_search',
               status: 'completed',
             }],
           },
@@ -173,7 +173,7 @@ describe('Processor orchestration SearchSubagent branch', () => {
       expect(result.result?.text).toContain('answer');
       expect(result.result?.data?.runtimeSummary).toBeDefined();
       const summary = result.result?.data?.runtimeSummary as { toolCallSummaries: Array<{ toolName: string; status: string }> };
-      expect(summary.toolCallSummaries[0].toolName).toBe('web.search');
+      expect(summary.toolCallSummaries[0].toolName).toBe('web_search');
       expect(summary.toolCallSummaries[0].status).toBe('completed');
     });
   });
@@ -190,12 +190,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
             route: 'dispatch_tool',
             requiresPlanner: false,
             reason: 'Memory retrieval',
-            suggestedTools: ['memory.retrieve'],
+            suggestedTools: ['memory_retrieve'],
           },
           runtimeSummary: {
             toolCallSummaries: [{
               toolCallId: 'tc-memory-001',
-              toolName: 'memory.retrieve',
+              toolName: 'memory_retrieve',
               status: 'completed',
             }],
           },
@@ -241,7 +241,7 @@ describe('Processor orchestration SearchSubagent branch', () => {
             route: 'dispatch_tool',
             requiresPlanner: false,
             reason: 'Docs search request',
-            suggestedTools: ['docs.search'],
+            suggestedTools: ['docs_search'],
           },
         } as ForegroundTurnResult),
       };
@@ -287,7 +287,7 @@ describe('Processor orchestration SearchSubagent branch', () => {
             route: 'dispatch_tool',
             requiresPlanner: false,
             reason: 'Web search request',
-            suggestedTools: ['web.search'],
+            suggestedTools: ['web_search'],
           },
           error: {
             code: 'SEARCH_MODEL_INCAPABLE',

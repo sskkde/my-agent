@@ -109,10 +109,10 @@ describe('Console Routes API', () => {
       expect(skill.enabled).toBe(true);
 
       const skillIds = body.data.skills.map(s => s.skillId);
-      expect(skillIds).toContain('artifact.create');
+      expect(skillIds).toContain('artifact_create');
       expect(skillIds).toContain('ask_user');
-      expect(skillIds).toContain('status.query');
-      expect(skillIds).toContain('web.search');
+      expect(skillIds).toContain('status_query');
+      expect(skillIds).toContain('web_search');
     });
   });
 

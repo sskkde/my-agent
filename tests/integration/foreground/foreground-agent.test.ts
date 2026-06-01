@@ -228,7 +228,7 @@ describe('Foreground Conversation Agent', () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'Simple search operation',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
         estimatedSteps: 1,
         complexity: 'low',
       }));
@@ -241,8 +241,8 @@ describe('Foreground Conversation Agent', () => {
       const prompt = request?.messages.find((message) => message.role === 'user')?.content;
 
       expect(prompt).toContain('AVAILABLE TOOL IDS');
-      expect(prompt).toContain('docs.search');
-      expect(prompt).toContain('transcript.search');
+      expect(prompt).toContain('docs_search');
+      expect(prompt).toContain('transcript_search');
       expect(prompt).toContain('suggestedTools must use only the exact tool IDs');
     });
 
@@ -287,7 +287,7 @@ describe('Foreground Conversation Agent', () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'Simple search operation',
-        suggestedTools: ['memory.retrieve', 'transcript.search'],
+        suggestedTools: ['memory_retrieve', 'transcript_search'],
         estimatedSteps: 1,
         complexity: 'low',
       }));
@@ -297,8 +297,8 @@ describe('Foreground Conversation Agent', () => {
       const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('dispatch_tool');
-      expect(decision.suggestedTools).toContain('memory.retrieve');
-      expect(decision.suggestedTools).toContain('transcript.search');
+      expect(decision.suggestedTools).toContain('memory_retrieve');
+      expect(decision.suggestedTools).toContain('transcript_search');
     });
 
     it('normalizes generic search tool suggestions to known tool IDs', async () => {
@@ -315,7 +315,7 @@ describe('Foreground Conversation Agent', () => {
       const decision = await agent.processMessage(input, baseState);
 
       expect(decision.route).toBe('dispatch_tool');
-      expect(decision.suggestedTools).toEqual(['docs.search']);
+      expect(decision.suggestedTools).toEqual(['docs_search']);
     });
   });
 
@@ -946,10 +946,10 @@ describe('Foreground Conversation Agent', () => {
       const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
       const prompt = request?.messages.find((m) => m.role === 'user')?.content;
 
-      expect(prompt).toContain('docs.search');
-      expect(prompt).toContain('transcript.search');
-      expect(prompt).toContain('memory.retrieve');
-      expect(prompt).toContain('web.search');
+      expect(prompt).toContain('docs_search');
+      expect(prompt).toContain('transcript_search');
+      expect(prompt).toContain('memory_retrieve');
+      expect(prompt).toContain('web_search');
     });
 
     it('should render "none" when agentConfig.allowedToolIds is empty array', async () => {
@@ -992,8 +992,8 @@ describe('Foreground Conversation Agent', () => {
 
       const toolIdsSection = prompt?.split('AVAILABLE TOOL IDS')[1]?.split('When using dispatch_tool')[0] ?? '';
       expect(toolIdsSection).toContain('none');
-      expect(toolIdsSection).not.toContain('docs.search');
-      expect(toolIdsSection).not.toContain('transcript.search');
+      expect(toolIdsSection).not.toContain('docs_search');
+      expect(toolIdsSection).not.toContain('transcript_search');
     });
 
     it('should only list allowed tools when agentConfig.allowedToolIds restricts tools', async () => {
@@ -1016,7 +1016,7 @@ describe('Foreground Conversation Agent', () => {
           routingPrompt: null,
           providerId: null,
           model: null,
-          allowedToolIds: ['ask_user', 'status.query'],
+          allowedToolIds: ['ask_user', 'status_query'],
           allowedSkillIds: [],
           routingTimeoutMs: 60000,
           repairAttempts: 1,
@@ -1035,12 +1035,12 @@ describe('Foreground Conversation Agent', () => {
       const prompt = request?.messages.find((m) => m.role === 'user')?.content;
 
       expect(prompt).toContain('ask_user');
-      expect(prompt).toContain('status.query');
+      expect(prompt).toContain('status_query');
 
       const toolIdsSection = prompt?.split('AVAILABLE TOOL IDS')[1]?.split('When using dispatch_tool')[0] ?? '';
-      expect(toolIdsSection).not.toContain('docs.search');
-      expect(toolIdsSection).not.toContain('transcript.search');
-      expect(toolIdsSection).not.toContain('memory.retrieve');
+      expect(toolIdsSection).not.toContain('docs_search');
+      expect(toolIdsSection).not.toContain('transcript_search');
+      expect(toolIdsSection).not.toContain('memory_retrieve');
     });
 
     it('should include live web search guidance in the prompt', async () => {
@@ -1055,9 +1055,9 @@ describe('Foreground Conversation Agent', () => {
       const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
       const prompt = request?.messages.find((m) => m.role === 'user')?.content;
 
-      expect(prompt).toContain('Use web.search for live web search');
+      expect(prompt).toContain('Use web_search for live web search');
       expect(prompt).toContain('real-time weather');
-      expect(prompt).toContain('Do NOT use docs.search, transcript.search, or memory.retrieve for live web queries');
+      expect(prompt).toContain('Do NOT use docs_search, transcript_search, or memory_retrieve for live web queries');
     });
 
     it('should use registry base prompt as first system message', async () => {
@@ -1089,24 +1089,24 @@ describe('Foreground Conversation Agent', () => {
       const request = vi.mocked(mockLLMAdapter.complete).mock.calls[0]?.[0];
       const prompt = request?.messages.find((m) => m.role === 'user')?.content;
 
-      expect(prompt).toContain('artifact.create');
-      expect(prompt).toContain('plan.patch');
-      expect(prompt).toContain('docs.search');
-      expect(prompt).toContain('web.search');
+      expect(prompt).toContain('artifact_create');
+      expect(prompt).toContain('plan_patch');
+      expect(prompt).toContain('docs_search');
+      expect(prompt).toContain('web_search');
     });
 
-    it('should preserve web.search suggestions instead of aliasing them to docs.search', async () => {
+    it('should preserve web_search suggestions instead of aliasing them to docs_search', async () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'Live web lookup',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
       }));
       agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
 
       const decision = await agent.processMessage(createInput('今天北京天气如何？'), baseState);
 
       expect(decision.route).toBe('dispatch_tool');
-      expect(decision.suggestedTools).toEqual(['web.search']);
+      expect(decision.suggestedTools).toEqual(['web_search']);
     });
   });
 
@@ -1115,7 +1115,7 @@ describe('Foreground Conversation Agent', () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'Weather lookup',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
       }));
       agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
 
@@ -1132,7 +1132,7 @@ describe('Foreground Conversation Agent', () => {
           routingPrompt: null,
           providerId: null,
           model: null,
-          allowedToolIds: ['ask_user', 'status.query'],
+          allowedToolIds: ['ask_user', 'status_query'],
           allowedSkillIds: [],
           routingTimeoutMs: 60000,
           repairAttempts: 1,
@@ -1183,7 +1183,7 @@ describe('Foreground Conversation Agent', () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'Search docs',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
       }));
       agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
 
@@ -1200,7 +1200,7 @@ describe('Foreground Conversation Agent', () => {
           routingPrompt: null,
           providerId: null,
           model: null,
-          allowedToolIds: ['docs.search', 'ask_user'],
+          allowedToolIds: ['docs_search', 'ask_user'],
           allowedSkillIds: [],
           routingTimeoutMs: 60000,
           repairAttempts: 1,
@@ -1216,14 +1216,14 @@ describe('Foreground Conversation Agent', () => {
       const decision = await agent.processMessage(createInput('搜索文档'), stateWithDocsAllowed);
 
       expect(decision.route).toBe('dispatch_tool');
-      expect(decision.suggestedTools).toContain('docs.search');
+      expect(decision.suggestedTools).toContain('docs_search');
     });
 
     it('should convert dispatch_tool with only disallowed tools in mixed list to answer_directly', async () => {
       mockLLMAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'Mixed tools',
-        suggestedTools: ['docs.search', 'transcript.search'],
+        suggestedTools: ['docs_search', 'transcript_search'],
       }));
       agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
 

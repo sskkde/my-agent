@@ -106,7 +106,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'Kernel processed response',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: { query: 'test' } },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: { query: 'test' } },
         ],
         transcript: [],
       } as KernelRunResult),
@@ -169,7 +169,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -177,7 +177,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'Based on the retrieved memory, here is the information you requested.',
         iterationsUsed: 2,
         toolCalls: [
-          { toolCallId: 'tc-memory-retrieve-001', toolName: 'memory.retrieve', params: { query: 'project details' } },
+          { toolCallId: 'tc-memory-retrieve-001', toolName: 'memory_retrieve', params: { query: 'project details' } },
         ],
         transcript: [
           { iteration: 1, timestamp: '2024-01-15T10:00:01.000Z', type: 'tool_call', content: { toolCallId: 'tc-memory-retrieve-001' } },
@@ -213,7 +213,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
         userVisibleResponse: 'Searching documentation...',
       } as ForegroundDecision);
 
@@ -222,7 +222,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'The documentation shows that TypeScript interfaces can be extended using the extends keyword.',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-docs-search-001', toolName: 'docs.search', params: { query: 'interface extends' } },
+          { toolCallId: 'tc-docs-search-001', toolName: 'docs_search', params: { query: 'interface extends' } },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -251,7 +251,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
       } as ForegroundDecision);
 
       const rawToolResult = {
@@ -269,7 +269,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'I found two excellent TypeScript resources: the official TypeScript Handbook and TypeScript Deep Dive by Basarat.',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-web-search-001', toolName: 'web.search', params: { query: 'TypeScript tutorial' } },
+          { toolCallId: 'tc-web-search-001', toolName: 'web_search', params: { query: 'TypeScript tutorial' } },
         ],
         transcript: [
           { iteration: 1, timestamp: '2024-01-15T10:00:01.000Z', type: 'tool_result', content: rawToolResult },
@@ -303,7 +303,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['memory.retrieve', 'transcript.search'],
+        suggestedTools: ['memory_retrieve', 'transcript_search'],
       } as ForegroundDecision);
 
       const realToolCallIds = ['tc-memory-retrieve-002', 'tc-transcript-search-003'];
@@ -313,8 +313,8 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'I found relevant information in both memory and transcript.',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: realToolCallIds[0], toolName: 'memory.retrieve', params: { query: 'project' } },
-          { toolCallId: realToolCallIds[1], toolName: 'transcript.search', params: { query: 'discussion' } },
+          { toolCallId: realToolCallIds[0], toolName: 'memory_retrieve', params: { query: 'project' } },
+          { toolCallId: realToolCallIds[1], toolName: 'transcript_search', params: { query: 'discussion' } },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -333,10 +333,10 @@ describe('ForegroundKernelRunner Integration Tests', () => {
       expect(result.runtimeSummary).toBeDefined();
       expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(2);
       expect(result.runtimeSummary?.toolCallSummaries?.[0].toolCallId).toBe(realToolCallIds[0]);
-      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory.retrieve');
+      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory_retrieve');
       expect(result.runtimeSummary?.toolCallSummaries?.[0].status).toBe('completed');
       expect(result.runtimeSummary?.toolCallSummaries?.[1].toolCallId).toBe(realToolCallIds[1]);
-      expect(result.runtimeSummary?.toolCallSummaries?.[1].toolName).toBe('transcript.search');
+      expect(result.runtimeSummary?.toolCallSummaries?.[1].toolName).toBe('transcript_search');
       expect(result.runtimeSummary?.toolCallSummaries?.[1].status).toBe('completed');
     });
   });
@@ -347,7 +347,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
         userVisibleResponse: 'Searching the web...',
       } as ForegroundDecision);
 
@@ -356,7 +356,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: undefined,
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-web-search-failed', toolName: 'web.search', params: { query: 'test' } },
+          { toolCallId: 'tc-web-search-failed', toolName: 'web_search', params: { query: 'test' } },
         ],
         transcript: [],
         error: {
@@ -389,7 +389,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
         userVisibleResponse: 'The document search encountered an issue.',
       } as ForegroundDecision);
 

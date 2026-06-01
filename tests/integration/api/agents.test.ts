@@ -461,13 +461,13 @@ describe('Agent Config API Integration', () => {
           cookie: `agent-platform-session=${authToken}`,
         },
         payload: {
-          allowedToolIds: ['ask_user', 'status.query'],
+          allowedToolIds: ['ask_user', 'status_query'],
         },
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.data.allowedToolIds).toEqual(['ask_user', 'status.query']);
+      expect(body.data.allowedToolIds).toEqual(['ask_user', 'status_query']);
     });
 
     it('should validate skill IDs', async () => {
@@ -495,13 +495,13 @@ describe('Agent Config API Integration', () => {
           cookie: `agent-platform-session=${authToken}`,
         },
         payload: {
-          allowedSkillIds: ['ask_user', 'artifact.create'],
+          allowedSkillIds: ['ask_user', 'artifact_create'],
         },
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.data.allowedSkillIds).toEqual(['ask_user', 'artifact.create']);
+      expect(body.data.allowedSkillIds).toEqual(['ask_user', 'artifact_create']);
     });
 
     it('should return 400 for invalid agent ID', async () => {

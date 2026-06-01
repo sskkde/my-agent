@@ -356,7 +356,7 @@ describe('Connector Runtime Integration', () => {
       const toolBridge = createConnectorToolBridge();
       const toolDef = toolBridge.bridgeCapabilityToToolDefinition(capability);
 
-      expect(toolDef.name).toBe('connector.test.execute');
+      expect(toolDef.name).toBe('connector_test_execute');
       expect(toolDef.description).toBe('Read data from external source');
       expect(toolDef.category).toBe('read');
       expect(toolDef.sensitivity).toBe('low');
@@ -692,7 +692,7 @@ describe('Connector Runtime Integration', () => {
 
       const toolDef = mapMCPDescriptorToToolDefinition(descriptor);
 
-      expect(toolDef.name).toBe('mcp.get_user');
+      expect(toolDef.name).toBe('mcp_get_user');
       expect(toolDef.description).toBe('Get user by ID');
       expect(toolDef.category).toBe('read');
       expect(toolDef.sensitivity).toBe('low');

@@ -13,7 +13,7 @@ describe('MVP smoke: workflow lifecycle', () => {
           stepId: 'step_collect',
           stepType: 'tool_call',
           name: 'Collect data',
-          config: { toolName: 'docs.search', toolParams: { query: 'mvp smoke' } },
+          config: { toolName: 'docs_search', toolParams: { query: 'mvp smoke' } },
           nextStepId: 'step_summarize',
         },
         {

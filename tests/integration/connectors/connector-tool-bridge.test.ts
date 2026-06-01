@@ -74,7 +74,7 @@ describe('ConnectorToolBridge Tool Plane integration', () => {
 
     registerConnectorTools(registry, { ...instance, connectorId: 'mock_email' }, capabilities, { runtime });
 
-    const tool = registry.getTool('connector.mock_email.search_emails');
+    const tool = registry.getTool('connector_mock_email_search_emails');
     expect(tool).toBeDefined();
     expect(tool?.category).toBe('search');
     expect(tool?.sensitivity).toBe('low');
@@ -89,7 +89,7 @@ describe('ConnectorToolBridge Tool Plane integration', () => {
 
     const result = await executor.execute({
       toolCallId: 'call-email-search',
-      toolName: 'connector.mock_email.search_emails',
+      toolName: 'connector_mock_email_search_emails',
       params: { query: 'meeting', maxResults: 5 },
       userId: 'test-user-001',
       sessionId: 'test-session-001',
@@ -99,7 +99,7 @@ describe('ConnectorToolBridge Tool Plane integration', () => {
     expect(result.success).toBe(true);
     expect((result.data as { emails: unknown[] }).emails.length).toBeGreaterThan(0);
     expect(toolExecutionStore.getById('call-email-search')).toMatchObject({
-      toolName: 'connector.mock_email.search_emails',
+      toolName: 'connector_mock_email_search_emails',
       status: 'completed',
       resultPreview: 'Connector mock_email returned success',
     });
@@ -111,14 +111,14 @@ describe('ConnectorToolBridge Tool Plane integration', () => {
 
     registerConnectorTools(registry, { ...instance, connectorId: 'mock_calendar' }, capabilities, { runtime });
 
-    const tool = registry.getTool('connector.mock_calendar.search_events');
+    const tool = registry.getTool('connector_mock_calendar_search_events');
     expect(tool).toBeDefined();
     expect(tool?.category).toBe('search');
     expect(tool?.metadata?.requiredAuthScopes).toEqual(['connector:mock_calendar']);
 
     const result = await executor.execute({
       toolCallId: 'call-calendar-search',
-      toolName: 'connector.mock_calendar.search_events',
+      toolName: 'connector_mock_calendar_search_events',
       params: { start: '2024-01-01T00:00:00Z', end: '2024-01-31T23:59:59Z' },
       userId: 'test-user-001',
       sessionId: 'test-session-001',
@@ -140,7 +140,7 @@ describe('ConnectorToolBridge Tool Plane integration', () => {
 
     registerConnectorTools(registry, { ...instance, connectorId: 'mock_docs' }, capabilities, { runtime });
 
-    const tool = registry.getTool('connector.mock_docs.search_docs');
+    const tool = registry.getTool('connector_mock_docs_search_docs');
     expect(tool).toBeDefined();
     expect(tool?.metadata).toMatchObject({
       availability: 'deferred',
@@ -149,7 +149,7 @@ describe('ConnectorToolBridge Tool Plane integration', () => {
 
     const result = await executor.execute({
       toolCallId: 'call-docs-disconnected',
-      toolName: 'connector.mock_docs.search_docs',
+      toolName: 'connector_mock_docs_search_docs',
       params: { query: 'Project' },
       userId: 'test-user-001',
       sessionId: 'test-session-001',
@@ -159,13 +159,13 @@ describe('ConnectorToolBridge Tool Plane integration', () => {
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe('CONNECTOR_UNAVAILABLE');
     expect(toolExecutionStore.getById('call-docs-disconnected')).toMatchObject({
-      toolName: 'connector.mock_docs.search_docs',
-      status: 'completed',
+      toolName: 'connector_mock_docs_search_docs',
+      status: 'failed',
       resultPreview: 'Connector unavailable: mock_docs',
     });
 
     unregisterConnectorTools(registry, { ...instance, connectorId: 'mock_docs' });
-    expect(registry.hasTool('connector.mock_docs.search_docs')).toBe(false);
+    expect(registry.hasTool('connector_mock_docs_search_docs')).toBe(false);
   });
 });
 

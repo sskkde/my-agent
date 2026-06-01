@@ -501,7 +501,7 @@ describe('Contacts Connector Integration (Real HTTP Transport)', () => {
       expect(listContactsCapability).toBeDefined();
 
       const toolDef = toolBridge.bridgeCapabilityToToolDefinition(listContactsCapability!);
-      expect(toolDef.name).toBe('connector.contacts.list_contacts');
+      expect(toolDef.name).toBe('connector_contacts_list_contacts');
       expect(toolDef.category).toBe('read');
       expect(toolDef.sensitivity).toBe('low');
       expect(toolDef.requiresPermission).toBe(false);

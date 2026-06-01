@@ -134,24 +134,24 @@ describe('Tools and Models API Integration', () => {
       const body = JSON.parse(response.body);
       const toolNames = body.data.tools.map((t: { name: string }) => t.name);
 
-      expect(toolNames).toContain('artifact.create');
-      expect(toolNames).toContain('artifact.update');
+      expect(toolNames).toContain('artifact_create');
+      expect(toolNames).toContain('artifact_update');
       expect(toolNames).toContain('ask_user');
-      expect(toolNames).toContain('status.query');
-      expect(toolNames).toContain('memory.retrieve');
-      expect(toolNames).toContain('transcript.search');
-      expect(toolNames).toContain('plan.patch');
-      expect(toolNames).toContain('docs.search');
-      expect(toolNames).toContain('file.read');
-      expect(toolNames).toContain('file.glob');
-      expect(toolNames).toContain('file.grep');
-      expect(toolNames).toContain('session.list');
-      expect(toolNames).toContain('session.history');
-      expect(toolNames).toContain('web.fetch');
-      expect(toolNames).toContain('web.search');
+      expect(toolNames).toContain('status_query');
+      expect(toolNames).toContain('memory_retrieve');
+      expect(toolNames).toContain('transcript_search');
+      expect(toolNames).toContain('plan_patch');
+      expect(toolNames).toContain('docs_search');
+      expect(toolNames).toContain('file_read');
+      expect(toolNames).toContain('file_glob');
+      expect(toolNames).toContain('file_grep');
+      expect(toolNames).toContain('session_list');
+      expect(toolNames).toContain('session_history');
+      expect(toolNames).toContain('web_fetch');
+      expect(toolNames).toContain('web_search');
     });
 
-    it('should return correct metadata for web.search', async () => {
+    it('should return correct metadata for web_search', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/v1/tools',
@@ -159,7 +159,7 @@ describe('Tools and Models API Integration', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      const webSearch = body.data.tools.find((t: { name: string }) => t.name === 'web.search');
+      const webSearch = body.data.tools.find((t: { name: string }) => t.name === 'web_search');
 
       expect(webSearch).toBeDefined();
       expect(webSearch.description).toBe('Search the public web for information using an external search provider');
@@ -167,7 +167,7 @@ describe('Tools and Models API Integration', () => {
       expect(webSearch.sensitivity).toBe('medium');
     });
 
-    it('should return correct metadata for artifact.create', async () => {
+    it('should return correct metadata for artifact_create', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/v1/tools',
@@ -175,7 +175,7 @@ describe('Tools and Models API Integration', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      const artifactCreate = body.data.tools.find((t: { name: string }) => t.name === 'artifact.create');
+      const artifactCreate = body.data.tools.find((t: { name: string }) => t.name === 'artifact_create');
 
       expect(artifactCreate).toBeDefined();
       expect(artifactCreate.description).toBe('Create a new artifact with the given title and content');

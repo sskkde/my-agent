@@ -584,7 +584,7 @@ describe('GitHub Connector Integration', () => {
       expect(listIssuesCapability).toBeDefined();
 
       const toolDef = toolBridge.bridgeCapabilityToToolDefinition(listIssuesCapability!);
-      expect(toolDef.name).toBe('connector.github.list_issues');
+      expect(toolDef.name).toBe('connector_github_list_issues');
       expect(toolDef.category).toBe('read');
       expect(toolDef.sensitivity).toBe('low');
       expect(toolDef.requiresPermission).toBe(false);
