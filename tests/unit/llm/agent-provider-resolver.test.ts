@@ -12,7 +12,7 @@ const CREATE_TABLE_SQL = `
   CREATE TABLE provider_configs (
     provider_id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','custom')),
+    provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom')),
     display_name TEXT,
     enabled INTEGER NOT NULL DEFAULT 1,
     base_url TEXT,
@@ -480,6 +480,28 @@ describe('agent-provider-resolver', () => {
       const candidateIds = successResult.candidates.map(c => c.providerId);
       expect(candidateIds).toContain('openrouter');
     });
+
+    it('should include DeepSeek env provider with a DeepSeek default model', () => {
+      const envBackup = { ...process.env };
+      process.env.DEEPSEEK_API_KEY = 'test-deepseek-key';
+
+      const options: ResolveProviderOptions = {
+        session: {},
+        agentConfig: {},
+        userId: 'user-1',
+        providerConfigStore,
+        includeEnvProviders: true,
+      };
+
+      const result = resolveProviderAndModel(options);
+
+      process.env = envBackup;
+
+      expect(result.type).toBe('success');
+      const successResult = result as ProviderResolutionResult;
+      expect(successResult.selectedProviderId).toBe('deepseek');
+      expect(successResult.selectedModel).toBe('deepseek-v4-flash');
+    });
   });
 
   describe('model selection', () => {
@@ -567,6 +589,31 @@ describe('agent-provider-resolver', () => {
       // Falls back to available provider but keeps session model
       expect(successResult.selectedProviderId).toBe('fallback-provider');
       expect(successResult.selectedModel).toBe('override-model');
+    });
+
+    it('should default DeepSeek database providers to a DeepSeek model when none is configured', () => {
+      providerConfigStore.create({
+        providerId: 'deepseek-provider',
+        userId: 'user-1',
+        providerType: 'deepseek',
+        displayName: 'DeepSeek Provider',
+        apiKey: 'sk-deepseek',
+        enabled: true,
+      });
+
+      const options: ResolveProviderOptions = {
+        session: {},
+        agentConfig: {},
+        userId: 'user-1',
+        providerConfigStore,
+      };
+
+      const result = resolveProviderAndModel(options);
+
+      expect(result.type).toBe('success');
+      const successResult = result as ProviderResolutionResult;
+      expect(successResult.selectedProviderId).toBe('deepseek-provider');
+      expect(successResult.selectedModel).toBe('deepseek-v4-flash');
     });
   });
 });

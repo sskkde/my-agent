@@ -1,5 +1,7 @@
 import type { ProviderConfigStore, ProviderConfigSanitized, ProviderType } from '../storage/provider-config-store.js';
 
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
+
 /**
  * Session provider/model selection
  */
@@ -114,6 +116,18 @@ function getEnvProviderCandidates(): ProviderCandidate[] {
       enabled: true,
       configured: true,
       selectedModel: null,
+      source: 'env',
+    });
+  }
+
+  if (process.env.DEEPSEEK_API_KEY) {
+    candidates.push({
+      providerId: 'deepseek',
+      providerType: 'deepseek',
+      displayName: 'DeepSeek (Env)',
+      enabled: true,
+      configured: true,
+      selectedModel: DEFAULT_DEEPSEEK_MODEL,
       source: 'env',
     });
   }
@@ -287,6 +301,8 @@ export function resolveProviderAndModel(
     selectedModel = session.selectedModel;
   } else if (agentConfig.model) {
     selectedModel = agentConfig.model;
+  } else if (selectedCandidate.providerType === 'deepseek') {
+    selectedModel = selectedCandidate.selectedModel ?? DEFAULT_DEEPSEEK_MODEL;
   } else {
     selectedModel = selectedCandidate.selectedModel;
   }

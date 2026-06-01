@@ -123,7 +123,7 @@ export function resolveSearchLLM(options: ResolveSearchLLMOptions): ResolveSearc
  */
 export function providerSupportsFunctionCalling(provider: ProviderConfigWithSecret): boolean {
   // All standard provider types support function calling
-  const supportedTypes = ['openrouter', 'openai', 'ollama'];
+  const supportedTypes = ['openrouter', 'openai', 'ollama', 'deepseek'];
   
   if (supportedTypes.includes(provider.providerType)) {
     return true;

@@ -398,7 +398,7 @@ export interface AuthSuccessResponse {
 // Provider Types - Task 18
 // =============================================================================
 
-export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'custom';
+export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom';
 
 export interface ProviderSummary {
   providerId: string;

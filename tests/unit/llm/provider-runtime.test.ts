@@ -7,7 +7,7 @@ const CREATE_TABLE_SQL = `
   CREATE TABLE provider_configs (
     provider_id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','custom')),
+    provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom')),
     display_name TEXT,
     enabled INTEGER NOT NULL DEFAULT 1,
     base_url TEXT,
@@ -209,6 +209,46 @@ describe('provider-runtime', () => {
       expect(openaiProvider?.config.capabilities.supportsJsonMode).toBe(true);
       expect(openrouterProvider?.config.capabilities.supportsJsonMode).toBe(true);
     });
+  });
+
+  it('creates DeepSeek providers with OpenAI-compatible defaults', async () => {
+    providerConfigStore.create({
+      providerId: 'deepseek-provider',
+      userId: 'user-1',
+      providerType: 'deepseek',
+      displayName: 'User DeepSeek',
+      apiKey: 'sk-deepseek',
+      selectedModel: 'deepseek-v4-flash',
+    });
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+    await adapter.runWithUserProviders('user-1', async () => {
+      const provider = adapter.providers.find(p => p.id === 'deepseek-provider');
+
+      expect(provider).toBeDefined();
+      expect(provider?.config.baseUrl).toBe('https://api.deepseek.com');
+      expect(provider?.config.capabilities.supportsFunctionCalling).toBe(true);
+      expect(provider?.config.capabilities.supportsJsonMode).toBe(true);
+      expect(provider?.config.capabilities.supportedModels).toEqual(['deepseek-v4-flash']);
+    });
+  });
+
+  it('creates DeepSeek env providers with a DeepSeek default model', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.DEEPSEEK_API_KEY = 'sk-env-deepseek';
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+    await adapter.runWithUserProviders('user-without-db-providers', async () => {
+      const provider = adapter.providers.find(p => p.id === 'deepseek');
+
+      expect(provider).toBeDefined();
+      expect(provider?.config.baseUrl).toBe('https://api.deepseek.com');
+      expect(provider?.config.capabilities.supportedModels).toEqual(['deepseek-v4-flash']);
+    });
+
+    delete process.env.DEEPSEEK_API_KEY;
   });
 
   it('assigns supportsJsonMode false for custom and ollama providers', async () => {

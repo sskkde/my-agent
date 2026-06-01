@@ -32,6 +32,7 @@ interface ProviderFormData {
 const PROVIDER_TYPE_OPTIONS: { value: ProviderType; label: string }[] = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'openrouter', label: 'OpenRouter' },
+  { value: 'deepseek', label: 'DeepSeek' },
   { value: 'ollama', label: 'Ollama' },
   { value: 'custom', label: '自定义' },
 ];

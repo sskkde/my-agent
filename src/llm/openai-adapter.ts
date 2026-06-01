@@ -170,6 +170,16 @@ function buildRequestBody(request: LLMRequest): Record<string, unknown> {
       content: m.content,
       ...(m.name && { name: m.name }),
       ...(m.toolCallId && { tool_call_id: m.toolCallId }),
+      ...(m.toolCalls && m.toolCalls.length > 0 && {
+        tool_calls: m.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: tc.type,
+          function: {
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+          },
+        })),
+      }),
     })),
   };
 

@@ -12,6 +12,7 @@ import type {
 
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_RETRIES = 2;
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
 
 const DEFAULT_CAPABILITIES: ProviderCapabilities = {
   supportsStreaming: false,
@@ -37,7 +38,7 @@ interface CreateProviderScopedLLMAdapterOptions {
 }
 
 function providerCapabilities(selectedModel: string | null, providerType?: ProviderType): ProviderCapabilities {
-  const supportsJsonMode = providerType === 'openai' || providerType === 'openrouter';
+  const supportsJsonMode = providerType === 'openai' || providerType === 'openrouter' || providerType === 'deepseek';
   return {
     ...DEFAULT_CAPABILITIES,
     supportsJsonMode,
@@ -86,6 +87,11 @@ function createProvider(providerType: ProviderType, config: RuntimeProviderConfi
       return new OpenRouterAdapter(config);
     case 'ollama':
       return new OllamaAdapter(config);
+    case 'deepseek':
+      return new OpenAIAdapter({
+        ...config,
+        baseUrl: config.baseUrl || 'https://api.deepseek.com',
+      });
     case 'openai':
     case 'custom':
       return new OpenAIAdapter(config);
@@ -139,6 +145,14 @@ function createEnvProviders(): LLMProvider[] {
     providers.push(new OllamaAdapter(createRuntimeConfig('ollama', 'Ollama (Env)', null, 'ollama', {
       priority: 30,
       baseUrl: process.env.OLLAMA_BASE_URL,
+    })));
+  }
+
+  if (process.env.DEEPSEEK_API_KEY) {
+    providers.push(new OpenAIAdapter(createRuntimeConfig('deepseek', 'DeepSeek (Env)', DEFAULT_DEEPSEEK_MODEL, 'deepseek', {
+      priority: 40,
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
     })));
   }
 

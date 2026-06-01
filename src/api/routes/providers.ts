@@ -14,7 +14,7 @@ import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
-const VALID_PROVIDER_TYPES: ProviderType[] = ['openai', 'openrouter', 'ollama', 'custom'];
+const VALID_PROVIDER_TYPES: ProviderType[] = ['openai', 'openrouter', 'ollama', 'deepseek', 'custom'];
 const TEST_TIMEOUT_MS = 10000;
 
 function sanitizeProviderForResponse(provider: ProviderConfigSanitized): ProviderSummary {
@@ -158,6 +158,10 @@ async function testOpenAIConnection(apiKey: string, baseUrl?: string | null): Pr
 
 async function testOpenRouterConnection(apiKey: string, baseUrl?: string | null): Promise<TestResult> {
   return testOpenAICompatibleConnection(apiKey, baseUrl || 'https://openrouter.ai/api/v1');
+}
+
+async function testDeepSeekConnection(apiKey: string, baseUrl?: string | null): Promise<TestResult> {
+  return testOpenAICompatibleConnection(apiKey, baseUrl || 'https://api.deepseek.com');
 }
 
 async function testOllamaConnection(baseUrl: string): Promise<TestResult> {
@@ -343,6 +347,13 @@ async function testEnvProvider(providerId: string): Promise<TestResult | null> {
       }
       return testOpenAIConnection(apiKey, null);
     }
+    case 'deepseek': {
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) {
+        return { success: false, latencyMs: 0, error: 'DEEPSEEK_API_KEY not configured' };
+      }
+      return testDeepSeekConnection(apiKey, process.env.DEEPSEEK_BASE_URL);
+    }
     default:
       return null;
   }
@@ -369,6 +380,11 @@ async function testProviderConnection(
         return { success: false, latencyMs: 0, error: 'Base URL is required for Ollama' };
       }
       return testOllamaConnection(baseUrl);
+    case 'deepseek':
+      if (!apiKey) {
+        return { success: false, latencyMs: 0, error: 'API key is required for DeepSeek' };
+      }
+      return testDeepSeekConnection(apiKey, baseUrl);
     case 'custom':
       if (!apiKey) {
         return { success: false, latencyMs: 0, error: 'API key is required for custom provider' };
@@ -447,7 +463,7 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
           request.requestId));
       }
 
-      if ((providerType === 'openai' || providerType === 'openrouter' || providerType === 'custom') && !apiKey) {
+      if ((providerType === 'openai' || providerType === 'openrouter' || providerType === 'deepseek' || providerType === 'custom') && !apiKey) {
         return reply.code(400).send(envelopeError('API_KEY_REQUIRED',
           `API key is required for ${providerType} provider`,
           request.requestId));
