@@ -6,7 +6,7 @@ import type { ToolExecutionContext } from '../../../src/tools/types.js';
 function createToolContext(): ToolExecutionContext {
   return {
     toolCallId: 'tc-web-search-001',
-    toolName: 'web.search',
+    toolName: 'web_search',
     userId: 'user-123',
     sessionId: 'session-001',
     permissionContext: {
@@ -25,7 +25,7 @@ function createToolContext(): ToolExecutionContext {
   };
 }
 
-describe('web.search tool', () => {
+describe('web_search tool', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -34,7 +34,7 @@ describe('web.search tool', () => {
     it('should have correct name and metadata', () => {
       const tool = createWebSearchTool();
 
-      expect(tool.name).toBe('web.search');
+      expect(tool.name).toBe('web_search');
       expect(tool.category).toBe('search');
       expect(tool.sensitivity).toBe('medium');
       expect(tool.schema.required).toContain('query');

@@ -15,13 +15,13 @@ vi.mock('../../../src/tools/builtins/safe-paths.js', async (importOriginal) => {
   };
 });
 
-describe('file.read tool', () => {
+describe('file_read tool', () => {
   let tool: ToolDefinition;
   let testDir: string;
 
   const createToolContext = (overrides: Partial<ToolExecutionContext> = {}): ToolExecutionContext => ({
     toolCallId: 'tc-001',
-    toolName: 'file.read',
+    toolName: 'file_read',
     userId: 'user-123',
     sessionId: 'session-001',
     permissionContext: {
@@ -314,7 +314,7 @@ describe('file.read tool', () => {
 
   describe('Tool Definition', () => {
     it('should have correct name', () => {
-      expect(tool.name).toBe('file.read');
+      expect(tool.name).toBe('file_read');
     });
 
     it('should have read category', () => {

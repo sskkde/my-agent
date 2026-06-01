@@ -399,14 +399,14 @@ describe('agent-config-store', () => {
 
   describe('allowedToolIds three-state semantics', () => {
     const ALL_TOOLS = [
-      'artifact.create',
-      'artifact.update',
+      'artifact_create',
+      'artifact_update',
       'ask_user',
-      'status.query',
-      'memory.retrieve',
-      'transcript.search',
-      'plan.patch',
-      'docs.search',
+      'status_query',
+      'memory_retrieve',
+      'transcript_search',
+      'plan_patch',
+      'docs_search',
     ];
 
     it('should inherit allowedToolIds from global when user override has null', () => {

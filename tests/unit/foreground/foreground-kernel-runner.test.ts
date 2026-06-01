@@ -101,7 +101,7 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: 'Kernel processed response',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: { query: 'test' } },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: { query: 'test' } },
         ],
         transcript: [],
       } as KernelRunResult),
@@ -250,7 +250,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       const deps = {
@@ -280,7 +280,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -318,7 +318,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -326,7 +326,7 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: llmProcessedResponse,
         iterationsUsed: 2,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'web.search', params: { query: 'test' } },
+          { toolCallId: 'tc-001', toolName: 'web_search', params: { query: 'test' } },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -355,7 +355,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -363,8 +363,8 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: 'Result',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: {} },
-          { toolCallId: 'tc-002', toolName: 'transcript.search', params: {} },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
+          { toolCallId: 'tc-002', toolName: 'transcript_search', params: {} },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -384,7 +384,7 @@ describe('ForegroundKernelRunner', () => {
       expect(result.runtimeSummary).toBeDefined();
       expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(2);
       expect(result.runtimeSummary?.toolCallSummaries?.[0].toolCallId).toBe('tc-001');
-      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory.retrieve');
+      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory_retrieve');
       expect(result.runtimeSummary?.toolCallSummaries?.[0].status).toBe('completed');
     });
   });
@@ -592,7 +592,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve', 'nonexistent.tool', 'another.fake.tool'],
+        suggestedTools: ['memory_retrieve', 'nonexistent.tool', 'another.fake.tool'],
       } as ForegroundDecision);
 
       const deps = {
@@ -796,8 +796,8 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: 'Done',
         iterationsUsed: 2,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: {} },
-          { toolCallId: 'tc-002', toolName: 'web.search', params: {} },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
+          { toolCallId: 'tc-002', toolName: 'web_search', params: {} },
         ],
         transcript: [],
       };
@@ -808,12 +808,12 @@ describe('ForegroundKernelRunner', () => {
       expect(summary?.toolCallSummaries).toHaveLength(2);
       expect(summary?.toolCallSummaries?.[0]).toEqual({
         toolCallId: 'tc-001',
-        toolName: 'memory.retrieve',
+        toolName: 'memory_retrieve',
         status: 'completed',
       });
       expect(summary?.toolCallSummaries?.[1]).toEqual({
         toolCallId: 'tc-002',
-        toolName: 'web.search',
+        toolName: 'web_search',
         status: 'completed',
       });
     });
@@ -842,7 +842,7 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: undefined,
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: {} },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
         ],
         transcript: [],
         error: { code: 'ERROR', message: 'Failed' },
@@ -859,7 +859,7 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: undefined,
         iterationsUsed: 5,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: {} },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
         ],
         transcript: [],
       };
@@ -896,7 +896,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Web search required',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
       } as ForegroundDecision);
 
       const deps = {
@@ -940,7 +940,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Web search required',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
       } as ForegroundDecision);
 
       const deps = {
@@ -977,7 +977,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -1021,7 +1021,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -1059,7 +1059,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockRejectedValue(new Error('Kernel crashed'));
@@ -1093,7 +1093,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -1127,7 +1127,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -1163,7 +1163,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockRejectedValue(new Error('Kernel unavailable'));
@@ -1245,7 +1245,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -1253,7 +1253,7 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: undefined,
         iterationsUsed: 5,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: {} },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -1291,7 +1291,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -1299,7 +1299,7 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: undefined,
         iterationsUsed: 10,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: {} },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -1337,7 +1337,7 @@ describe('ForegroundKernelRunner', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -1345,7 +1345,7 @@ describe('ForegroundKernelRunner', () => {
         finalResponse: undefined,
         iterationsUsed: 5,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: {} },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
         ],
         transcript: [],
       } as KernelRunResult);

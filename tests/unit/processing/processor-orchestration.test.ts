@@ -262,7 +262,7 @@ describe('ProcessorOrchestration', () => {
           route: 'dispatch_tool',
           requiresPlanner: false,
           reason: 'Simple read task detected',
-          suggestedTools: ['memory.retrieve', 'transcript.search'],
+          suggestedTools: ['memory_retrieve', 'transcript_search'],
         },
         kernelResult: {
           finalStatus: 'completed',
@@ -272,7 +272,7 @@ describe('ProcessorOrchestration', () => {
         },
         runtimeSummary: {
           toolCallSummaries: [
-            { toolCallId: 'tc-001', toolName: 'memory.retrieve', status: 'completed' },
+            { toolCallId: 'tc-001', toolName: 'memory_retrieve', status: 'completed' },
           ],
         },
       } as ForegroundTurnResult);
@@ -308,7 +308,7 @@ describe('ProcessorOrchestration', () => {
           route: 'dispatch_tool',
           requiresPlanner: false,
           reason: 'Tool dispatch via kernel runner',
-          suggestedTools: ['docs.search'],
+          suggestedTools: ['docs_search'],
         },
         kernelResult: {
           finalStatus: 'completed',

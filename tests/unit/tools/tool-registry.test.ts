@@ -220,4 +220,34 @@ describe('ToolRegistry', () => {
       expect(registry.hasTool('nonexistent')).toBe(false);
     });
   });
+
+  describe('name validation', () => {
+    const makeTool = (name: string): ToolDefinition => ({
+      name,
+      description: 'test',
+      category: 'read' as ToolCategory,
+      sensitivity: 'low' as ToolSensitivity,
+      schema: { type: 'object', properties: {} },
+      handler: async () => ({ success: true }),
+    });
+
+    it('should reject names containing dots', () => {
+      expect(() => registry.register(makeTool('my.tool'))).toThrow(/Invalid tool name/);
+    });
+
+    it('should reject empty names', () => {
+      expect(() => registry.register(makeTool(''))).toThrow(/Invalid tool name/);
+    });
+
+    it('should reject names over 64 characters', () => {
+      const long = 'a'.repeat(65);
+      expect(() => registry.register(makeTool(long))).toThrow(/Invalid tool name/);
+    });
+
+    it('should accept legal names with hyphens and underscores', () => {
+      expect(() => registry.register(makeTool('my-tool_v1'))).not.toThrow();
+      expect(() => registry.register(makeTool('tool-123'))).not.toThrow();
+      expect(() => registry.register(makeTool('_leading_underscore'))).not.toThrow();
+    });
+  });
 });

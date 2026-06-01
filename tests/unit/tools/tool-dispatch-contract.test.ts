@@ -16,11 +16,11 @@ import type {
 function makeResult(overrides: Partial<ToolExecutionMappedResult> = {}): ToolExecutionMappedResult {
   return {
     toolCallId: 'tc-1',
-    toolName: 'file.read',
+    toolName: 'file_read',
     status: 'completed',
     resultMessage: {
       toolCallId: 'tc-1',
-      toolName: 'file.read',
+      toolName: 'file_read',
       isError: false,
       modelFacingContent: '{"ok":true}',
       transcriptSummary: 'Tool completed',
@@ -40,7 +40,7 @@ describe('ToolDispatchContract', () => {
         agentType: 'main',
         assistantMessageId: 'assistant-1',
         toolUses: [
-          { toolCallId: 'tc-1', toolName: 'file.read', input: { path: '/tmp/test.txt' } },
+          { toolCallId: 'tc-1', toolName: 'file_read', input: { path: '/tmp/test.txt' } },
         ],
         permissionContext: {
           userId: 'user-1',
@@ -71,7 +71,7 @@ describe('ToolDispatchContract', () => {
         assistantMessageId: 'assistant-remote',
         workingContextRef: 'ctx-1',
         toolUses: [
-          { toolCallId: 'tc-remote', toolName: 'status.query', input: {} },
+          { toolCallId: 'tc-remote', toolName: 'status_query', input: {} },
         ],
         permissionContext: {
           userId: 'user-remote',
@@ -95,7 +95,7 @@ describe('ToolDispatchContract', () => {
         agentType: 'main',
         assistantMessageId: 'assistant-3',
         toolUses: [
-          { toolCallId: 'tc-3', toolName: 'status.query', input: {} },
+          { toolCallId: 'tc-3', toolName: 'status_query', input: {} },
         ],
         permissionContext: {
           userId: 'user-3',
@@ -120,7 +120,7 @@ describe('ToolDispatchContract', () => {
         agentType: 'subagent',
         assistantMessageId: 'assistant-4',
         toolUses: [
-          { toolCallId: 'tc-4', toolName: 'file.read', input: { path: '/etc/hosts' } },
+          { toolCallId: 'tc-4', toolName: 'file_read', input: { path: '/etc/hosts' } },
         ],
         permissionContext: {
           userId: 'user-4',
@@ -184,7 +184,7 @@ describe('ToolDispatchContract', () => {
         status: 'completed',
         results: [makeResult()],
         contextDeltas: [{ runId: 'run-6', source: 'tool_result', items: [] }],
-        events: [{ eventType: 'tool_executed', payload: { toolName: 'file.read' }, timestamp: new Date().toISOString() }],
+        events: [{ eventType: 'tool_executed', payload: { toolName: 'file_read' }, timestamp: new Date().toISOString() }],
         updatedWorkingContextRef: 'ctx-2',
       };
 
@@ -290,12 +290,12 @@ describe('ToolDispatchContract', () => {
     it('has required document fields', () => {
       const mapped = makeResult({
         toolCallId: 'tc-10',
-        toolName: 'status.query',
+        toolName: 'status_query',
         status: 'completed',
       });
 
       expect(mapped.toolCallId).toBe('tc-10');
-      expect(mapped.toolName).toBe('status.query');
+      expect(mapped.toolName).toBe('status_query');
       expect(mapped.status).toBe('completed');
       expect(mapped.resultMessage.modelFacingContent).toBe('{"ok":true}');
     });
@@ -307,7 +307,7 @@ describe('ToolDispatchContract', () => {
         error: { code: 'TIMEOUT', message: 'Timed out', recoverable: true },
         resultMessage: {
           toolCallId: 'tc-11',
-          toolName: 'web.search',
+          toolName: 'web_search',
           isError: true,
           modelFacingContent: { error: { code: 'TIMEOUT' } },
           transcriptSummary: 'Tool timed out',

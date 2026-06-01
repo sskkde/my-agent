@@ -31,10 +31,10 @@ describe('buildDefaultRiskPolicies', () => {
 });
 
 describe('getToolRiskPolicy', () => {
-  it('returns the correct policy for file.read', () => {
-    const policy = getToolRiskPolicy('file.read');
+  it('returns the correct policy for file_read', () => {
+    const policy = getToolRiskPolicy('file_read');
     expect(policy).toBeDefined();
-    expect(policy!.toolName).toBe('file.read');
+    expect(policy!.toolName).toBe('file_read');
     expect(policy!.riskLevel).toBe('medium');
     expect(policy!.requiresApproval).toBe(false);
     expect(policy!.canAutoGrant).toBe(true);
@@ -51,11 +51,11 @@ describe('getToolRiskPolicy', () => {
 
 describe('write tool risk levels', () => {
   const writeTools = [
-    'artifact.create',
-    'artifact.update',
-    'plan.patch',
-    'email.send_draft',
-    'calendar.create_event',
+    'artifact_create',
+    'artifact_update',
+    'plan_patch',
+    'email_send_draft',
+    'calendar_create_event',
   ];
 
   it.each(writeTools)('%s has riskLevel >= medium', (toolName) => {
@@ -71,15 +71,15 @@ describe('write tool risk levels', () => {
     expect(policy!.requiresApproval).toBe(true);
   });
 
-  it('plan.patch has high risk level (high sensitivity)', () => {
-    const policy = getToolRiskPolicy('plan.patch');
+  it('plan_patch has high risk level (high sensitivity)', () => {
+    const policy = getToolRiskPolicy('plan_patch');
     expect(policy).toBeDefined();
     expect(policy!.riskLevel).toBe('high');
     expect(policy!.auditLevel).toBe('high');
   });
 
-  it('email.send_draft has high risk level (high sensitivity)', () => {
-    const policy = getToolRiskPolicy('email.send_draft');
+  it('email_send_draft has high risk level (high sensitivity)', () => {
+    const policy = getToolRiskPolicy('email_send_draft');
     expect(policy).toBeDefined();
     expect(policy!.riskLevel).toBe('high');
     expect(policy!.auditLevel).toBe('high');
@@ -87,7 +87,7 @@ describe('write tool risk levels', () => {
 });
 
 describe('read tool risk levels', () => {
-  const readTools = ['file.read', 'web.fetch', 'status.query'];
+  const readTools = ['file_read', 'web_fetch', 'status_query'];
 
   it.each(readTools)('%s has riskLevel <= medium', (toolName) => {
     const policy = getToolRiskPolicy(toolName);
@@ -102,14 +102,14 @@ describe('read tool risk levels', () => {
     expect(policy!.requiresApproval).toBe(false);
   });
 
-  it('status.query (low sensitivity) has canAutoGrant=true', () => {
-    const policy = getToolRiskPolicy('status.query');
+  it('status_query (low sensitivity) has canAutoGrant=true', () => {
+    const policy = getToolRiskPolicy('status_query');
     expect(policy).toBeDefined();
     expect(policy!.canAutoGrant).toBe(true);
   });
 
-  it('file.read (medium sensitivity, read category) has canAutoGrant=true', () => {
-    const policy = getToolRiskPolicy('file.read');
+  it('file_read (medium sensitivity, read category) has canAutoGrant=true', () => {
+    const policy = getToolRiskPolicy('file_read');
     expect(policy).toBeDefined();
     expect(policy!.canAutoGrant).toBe(true);
   });
@@ -141,30 +141,30 @@ describe('individual tool requiresApproval correctness', () => {
   };
 
   it('write tools require approval', () => {
-    expectApproval('artifact.create', true);
-    expectApproval('artifact.update', true);
-    expectApproval('plan.patch', true);
-    expectApproval('email.send_draft', true);
-    expectApproval('calendar.create_event', true);
+    expectApproval('artifact_create', true);
+    expectApproval('artifact_update', true);
+    expectApproval('plan_patch', true);
+    expectApproval('email_send_draft', true);
+    expectApproval('calendar_create_event', true);
   });
 
   it('read/search/internal tools do not require approval', () => {
     expectApproval('ask_user', false);
-    expectApproval('status.query', false);
-    expectApproval('memory.retrieve', false);
-    expectApproval('transcript.search', false);
-    expectApproval('docs.search', false);
-    expectApproval('file.read', false);
-    expectApproval('file.glob', false);
-    expectApproval('file.grep', false);
-    expectApproval('session.list', false);
-    expectApproval('session.history', false);
-    expectApproval('web.fetch', false);
-    expectApproval('web.search', false);
-    expectApproval('email.search', false);
-    expectApproval('calendar.list', false);
-    expectApproval('contacts.search', false);
-    expectApproval('docs.read', false);
+    expectApproval('status_query', false);
+    expectApproval('memory_retrieve', false);
+    expectApproval('transcript_search', false);
+    expectApproval('docs_search', false);
+    expectApproval('file_read', false);
+    expectApproval('file_glob', false);
+    expectApproval('file_grep', false);
+    expectApproval('session_list', false);
+    expectApproval('session_history', false);
+    expectApproval('web_fetch', false);
+    expectApproval('web_search', false);
+    expectApproval('email_search', false);
+    expectApproval('calendar_list', false);
+    expectApproval('contacts_search', false);
+    expectApproval('docs_read', false);
   });
 });
 
@@ -225,41 +225,41 @@ describe('determineRiskLevel', () => {
 describe('canAutoGrant correctness', () => {
   it('low sensitivity tools can auto-grant', () => {
     expect(getToolRiskPolicy('ask_user')!.canAutoGrant).toBe(true);
-    expect(getToolRiskPolicy('status.query')!.canAutoGrant).toBe(true);
-    expect(getToolRiskPolicy('docs.search')!.canAutoGrant).toBe(true);
+    expect(getToolRiskPolicy('status_query')!.canAutoGrant).toBe(true);
+    expect(getToolRiskPolicy('docs_search')!.canAutoGrant).toBe(true);
   });
 
   it('medium sensitivity read tools can auto-grant', () => {
-    expect(getToolRiskPolicy('file.read')!.canAutoGrant).toBe(true);
-    expect(getToolRiskPolicy('memory.retrieve')!.canAutoGrant).toBe(true);
-    expect(getToolRiskPolicy('web.fetch')!.canAutoGrant).toBe(true);
+    expect(getToolRiskPolicy('file_read')!.canAutoGrant).toBe(true);
+    expect(getToolRiskPolicy('memory_retrieve')!.canAutoGrant).toBe(true);
+    expect(getToolRiskPolicy('web_fetch')!.canAutoGrant).toBe(true);
   });
 
   it('medium sensitivity non-read tools cannot auto-grant', () => {
-    expect(getToolRiskPolicy('transcript.search')!.canAutoGrant).toBe(false);
-    expect(getToolRiskPolicy('artifact.create')!.canAutoGrant).toBe(false);
-    expect(getToolRiskPolicy('web.search')!.canAutoGrant).toBe(false);
+    expect(getToolRiskPolicy('transcript_search')!.canAutoGrant).toBe(false);
+    expect(getToolRiskPolicy('artifact_create')!.canAutoGrant).toBe(false);
+    expect(getToolRiskPolicy('web_search')!.canAutoGrant).toBe(false);
   });
 
   it('high sensitivity tools cannot auto-grant', () => {
-    expect(getToolRiskPolicy('plan.patch')!.canAutoGrant).toBe(false);
-    expect(getToolRiskPolicy('email.send_draft')!.canAutoGrant).toBe(false);
+    expect(getToolRiskPolicy('plan_patch')!.canAutoGrant).toBe(false);
+    expect(getToolRiskPolicy('email_send_draft')!.canAutoGrant).toBe(false);
   });
 });
 
 describe('auditLevel correctness', () => {
   it('low sensitivity → auditLevel low', () => {
-    expect(getToolRiskPolicy('status.query')!.auditLevel).toBe('low');
+    expect(getToolRiskPolicy('status_query')!.auditLevel).toBe('low');
     expect(getToolRiskPolicy('ask_user')!.auditLevel).toBe('low');
   });
 
   it('medium sensitivity → auditLevel medium', () => {
-    expect(getToolRiskPolicy('file.read')!.auditLevel).toBe('medium');
-    expect(getToolRiskPolicy('artifact.create')!.auditLevel).toBe('medium');
+    expect(getToolRiskPolicy('file_read')!.auditLevel).toBe('medium');
+    expect(getToolRiskPolicy('artifact_create')!.auditLevel).toBe('medium');
   });
 
   it('high sensitivity → auditLevel high', () => {
-    expect(getToolRiskPolicy('plan.patch')!.auditLevel).toBe('high');
-    expect(getToolRiskPolicy('email.send_draft')!.auditLevel).toBe('high');
+    expect(getToolRiskPolicy('plan_patch')!.auditLevel).toBe('high');
+    expect(getToolRiskPolicy('email_send_draft')!.auditLevel).toBe('high');
   });
 });

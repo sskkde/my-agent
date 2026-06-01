@@ -6,7 +6,7 @@ import {
 import type { AgentConfig } from '../../../src/storage/agent-config-store.js';
 import type { ForegroundSessionState } from '../../../src/foreground/types.js';
 
-const DEFAULT_TOOL_CATALOG = ['file.read', 'file.write', 'web.search', 'memory.retrieve'];
+const DEFAULT_TOOL_CATALOG = ['file_read', 'file_write', 'web_search', 'memory_retrieve'];
 
 function createMockSessionState(): ForegroundSessionState {
   return {
@@ -124,7 +124,7 @@ describe('computeEffectiveAllowedToolIds', () => {
       routingPrompt: null,
       providerId: null,
       model: null,
-      allowedToolIds: ['file.read', 'web.search', 'unknown.tool'], // explicit list
+      allowedToolIds: ['file_read', 'web_search', 'unknown_tool'], // explicit list
       allowedSkillIds: null,
       routingTimeoutMs: 60000,
       repairAttempts: 1,
@@ -139,8 +139,8 @@ describe('computeEffectiveAllowedToolIds', () => {
     const result = computeEffectiveAllowedToolIds(agentConfig, DEFAULT_TOOL_CATALOG);
 
     // Should only include tools that are in both the config and the known catalog
-    expect(result).toEqual(['file.read', 'web.search']);
-    expect(result).not.toContain('unknown.tool');
+    expect(result).toEqual(['file_read', 'web_search']);
+    expect(result).not.toContain('unknown_tool');
   });
 
   it('returns empty array when explicit list has no intersection with known tools', () => {
@@ -155,7 +155,7 @@ describe('computeEffectiveAllowedToolIds', () => {
       routingPrompt: null,
       providerId: null,
       model: null,
-      allowedToolIds: ['nonexistent.tool', 'another.unknown'],
+      allowedToolIds: ['nonexistent_tool', 'another_unknown'],
       allowedSkillIds: null,
       routingTimeoutMs: 60000,
       repairAttempts: 1,
@@ -187,7 +187,7 @@ describe('buildRoutingMessages', () => {
       routingPrompt: 'Custom routing instructions',
       providerId: null,
       model: null,
-      allowedToolIds: ['file.read', 'web.search'],
+      allowedToolIds: ['file_read', 'web_search'],
       allowedSkillIds: null,
       routingTimeoutMs: 60000,
       repairAttempts: 1,
@@ -263,7 +263,7 @@ describe('buildRoutingMessages', () => {
       routingPrompt: null,
       providerId: null,
       model: null,
-      allowedToolIds: ['file.read'], // Only one tool allowed
+      allowedToolIds: ['file_read'], // Only one tool allowed
       allowedSkillIds: null,
       routingTimeoutMs: 60000,
       repairAttempts: 1,
@@ -283,9 +283,9 @@ describe('buildRoutingMessages', () => {
     });
 
     const lastMessage = messages[messages.length - 1];
-    expect(lastMessage.content).toContain('file.read');
-    expect(lastMessage.content).not.toContain('web.search');
-    expect(lastMessage.content).not.toContain('memory.retrieve');
+    expect(lastMessage.content).toContain('file_read');
+    expect(lastMessage.content).not.toContain('web_search');
+    expect(lastMessage.content).not.toContain('memory_retrieve');
   });
 
   it('shows "none" for tool IDs when no tools are allowed', () => {
@@ -325,21 +325,21 @@ describe('buildRoutingMessages', () => {
     expect(lastMessage.content).toContain('- none');
   });
 
-  it('includes web.search guidance when web.search is available', () => {
+  it('includes web_search guidance when web_search is available', () => {
     const sessionState = createMockSessionState();
 
     const messages = buildRoutingMessages({
       message: 'Search the web',
       sessionState,
       agentConfig: undefined,
-      toolCatalog: ['web.search', 'file.read'],
+      toolCatalog: ['web_search', 'file_read'],
     });
 
     const lastMessage = messages[messages.length - 1];
-    expect(lastMessage.content).toContain('Use web.search for live web search');
+    expect(lastMessage.content).toContain('Use web_search for live web search');
   });
 
-  it('includes limitation message when web.search is not available', () => {
+  it('includes limitation message when web_search is not available', () => {
     const sessionState = createMockSessionState();
     const agentConfig: AgentConfig = {
       agentConfigId: 'test',
@@ -352,7 +352,7 @@ describe('buildRoutingMessages', () => {
       routingPrompt: null,
       providerId: null,
       model: null,
-      allowedToolIds: ['file.read'], // web.search not included
+      allowedToolIds: ['file_read'], // web_search not included
       allowedSkillIds: null,
       routingTimeoutMs: 60000,
       repairAttempts: 1,

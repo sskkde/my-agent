@@ -15,13 +15,13 @@ vi.mock('../../../src/tools/builtins/safe-paths.js', async (importOriginal) => {
   };
 });
 
-describe('file.grep tool', () => {
+describe('file_grep tool', () => {
   let tool: ToolDefinition;
   let testDir: string;
 
   const createToolContext = (overrides: Partial<ToolExecutionContext> = {}): ToolExecutionContext => ({
     toolCallId: 'tc-001',
-    toolName: 'file.grep',
+    toolName: 'file_grep',
     userId: 'user-123',
     sessionId: 'session-001',
     permissionContext: {
@@ -360,7 +360,7 @@ describe('file.grep tool', () => {
 
   describe('Tool Definition', () => {
     it('should have correct name', () => {
-      expect(tool.name).toBe('file.grep');
+      expect(tool.name).toBe('file_grep');
     });
 
     it('should have search category', () => {

@@ -79,7 +79,7 @@ function createDecideToolCallResult(route: string, reason: string, extra?: Recor
           id: 'tc-decide-1',
           type: 'function' as const,
           function: {
-            name: 'foreground.decide',
+            name: 'foreground_decide',
             arguments: JSON.stringify({
               schemaVersion: '1.0',
               route,
@@ -104,7 +104,7 @@ function createMockModelInputBuilder(): ModelInputBuilder {
     segments: {
       staticPrefix: 'system-prompt',
       tenantProject: '',
-      toolPlane: 'Available Tool IDs: docs.search',
+      toolPlane: 'Available Tool IDs: docs_search',
       contextBundle: 'User Message: Hello',
     },
     segmentHashes: {
@@ -435,7 +435,7 @@ describe('Foreground Decide Shadow Mode', () => {
       const llmAdapter = createDecideShadowLLMAdapter(
         'answer_directly', 'legacy reason',
         'dispatch_tool', 'decide reason',
-        { suggestedTools: ['docs.search'] },
+        { suggestedTools: ['docs_search'] },
       );
       const modelInputBuilder = createMockModelInputBuilder();
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

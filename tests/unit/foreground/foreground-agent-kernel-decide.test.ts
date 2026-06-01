@@ -90,7 +90,7 @@ function createMockInput(): ForegroundMessageInput {
   };
 }
 
-describe('ForegroundAgent kernel-backed foreground.decide routing', () => {
+describe('ForegroundAgent kernel-backed foreground_decide routing', () => {
   const originalDecideEnabled = process.env.FOREGROUND_DECIDE_ENABLED;
   const originalModelInputEnabled = process.env.MODEL_INPUT_BUILDER_ENABLED;
 
@@ -107,7 +107,7 @@ describe('ForegroundAgent kernel-backed foreground.decide routing', () => {
     else process.env.MODEL_INPUT_BUILDER_ENABLED = originalModelInputEnabled;
   });
 
-  it('calls AgentKernel with foreground.decide internal handler and returns the structured decision', async () => {
+  it('calls AgentKernel with foreground_decide internal handler and returns the structured decision', async () => {
     let capturedInput: KernelRunInput | undefined;
     const kernelResult: KernelRunResult = {
       finalStatus: 'completed',
@@ -119,7 +119,7 @@ describe('ForegroundAgent kernel-backed foreground.decide routing', () => {
           route: 'dispatch_tool',
           requiresPlanner: false,
           reason: 'Needs documentation search',
-          suggestedTools: ['docs.search'],
+          suggestedTools: ['docs_search'],
         },
       },
     };
@@ -141,16 +141,16 @@ describe('ForegroundAgent kernel-backed foreground.decide routing', () => {
     expect(agentKernel.run).toHaveBeenCalledTimes(1);
     expect(decision.route).toBe('dispatch_tool');
     expect(decision.reason).toBe('Needs documentation search');
-    expect(decision.suggestedTools).toEqual(['docs.search']);
+    expect(decision.suggestedTools).toEqual(['docs_search']);
     expect(capturedInput?.modelInputOverride?.mode).toBe('routing_tool_call');
     expect(capturedInput?.modelInputOverride?.agentKind).toBe('foreground');
-    expect(capturedInput?.toolChoice).toEqual({ type: 'function', function: { name: 'foreground.decide' } });
+    expect(capturedInput?.toolChoice).toEqual({ type: 'function', function: { name: 'foreground_decide' } });
     expect(capturedInput?.temperature).toBe(0.1);
     expect(capturedInput?.maxTokens).toBe(500);
     expect(capturedInput?.model).toBe('test-model');
     expect(capturedInput?.maxIterations).toBe(1);
-    expect(capturedInput?.internalToolHandlers?.['foreground.decide']).toBeTypeOf('function');
-    expect(capturedInput?.toolProjection?.tools?.[0].function.name).toBe('foreground.decide');
-    expect(capturedInput?.toolProjection?.toolIds).toContain('docs.search');
+    expect(capturedInput?.internalToolHandlers?.['foreground_decide']).toBeTypeOf('function');
+    expect(capturedInput?.toolProjection?.tools?.[0].function.name).toBe('foreground_decide');
+    expect(capturedInput?.toolProjection?.toolIds).toContain('docs_search');
   });
 });

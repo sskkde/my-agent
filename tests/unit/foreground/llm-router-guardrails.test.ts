@@ -7,36 +7,36 @@ import type { RuntimeAction } from '../../../src/dispatcher/types.js';
  * Known tool IDs from the catalog - must match src/api/tool-catalog.ts
  */
 const KNOWN_TOOL_IDS: string[] = [
-  'artifact.create',
-  'artifact.update',
+  'artifact_create',
+  'artifact_update',
   'ask_user',
-  'status.query',
-  'memory.retrieve',
-  'transcript.search',
-  'plan.patch',
-  'docs.search',
-  'file.read',
-  'file.glob',
-  'file.grep',
-  'session.list',
-  'session.history',
-  'web.fetch',
-  'web.search',
+  'status_query',
+  'memory_retrieve',
+  'transcript_search',
+  'plan_patch',
+  'docs_search',
+  'file_read',
+  'file_glob',
+  'file_grep',
+  'session_list',
+  'session_history',
+  'web_fetch',
+  'web_search',
 ];
 
 /**
  * Known skill IDs from the catalog - must match src/api/tool-catalog.ts
  */
 const KNOWN_SKILL_IDS: string[] = [
-  'artifact.create',
-  'artifact.update',
+  'artifact_create',
+  'artifact_update',
   'ask_user',
-  'status.query',
-  'memory.retrieve',
-  'transcript.search',
-  'plan.patch',
-  'docs.search',
-  'web.search',
+  'status_query',
+  'memory_retrieve',
+  'transcript_search',
+  'plan_patch',
+  'docs_search',
+  'web_search',
 ];
 
 describe('LLM Router Guardrails', () => {
@@ -82,20 +82,20 @@ describe('LLM Router Guardrails', () => {
 
   describe('Tool Filtering', () => {
     it('should filter out hallucinated tools not in known catalog', () => {
-      const suggestedTools = ['hallucinated.tool.that.does.not.exist', 'docs.search', 'another.fake'];
+      const suggestedTools = ['hallucinated.tool.that.does.not.exist', 'docs_search', 'another.fake'];
       const filtered = suggestedTools.filter(toolId => KNOWN_TOOL_IDS.includes(toolId));
 
-      expect(filtered).toEqual(['docs.search']);
+      expect(filtered).toEqual(['docs_search']);
       expect(filtered).not.toContain('hallucinated.tool.that.does.not.exist');
       expect(filtered).not.toContain('another.fake');
     });
 
     it('should filter tools against AgentConfig allowlist', () => {
       const agentConfig = createMockAgentConfig({
-        allowedToolIds: ['docs.search', 'memory.retrieve'],
+        allowedToolIds: ['docs_search', 'memory_retrieve'],
       });
 
-      const suggestedTools = ['docs.search', 'plan.patch', 'memory.retrieve', 'unknown.tool'];
+      const suggestedTools = ['docs_search', 'plan_patch', 'memory_retrieve', 'unknown.tool'];
 
       const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
         ? KNOWN_TOOL_IDS
@@ -105,17 +105,17 @@ describe('LLM Router Guardrails', () => {
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
       );
 
-      expect(filtered).toEqual(['docs.search', 'memory.retrieve']);
-      expect(filtered).not.toContain('plan.patch');
+      expect(filtered).toEqual(['docs_search', 'memory_retrieve']);
+      expect(filtered).not.toContain('plan_patch');
       expect(filtered).not.toContain('unknown.tool');
     });
 
     it('should return empty array when all tools are disallowed', () => {
       const agentConfig = createMockAgentConfig({
-        allowedToolIds: ['docs.search'],
+        allowedToolIds: ['docs_search'],
       });
 
-      const suggestedTools = ['plan.patch', 'artifact.create'];
+      const suggestedTools = ['plan_patch', 'artifact_create'];
 
       const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
         ? KNOWN_TOOL_IDS
@@ -133,7 +133,7 @@ describe('LLM Router Guardrails', () => {
         allowedToolIds: null,
       });
 
-      const suggestedTools = ['docs.search', 'memory.retrieve', 'transcript.search'];
+      const suggestedTools = ['docs_search', 'memory_retrieve', 'transcript_search'];
 
       const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
         ? KNOWN_TOOL_IDS
@@ -143,7 +143,7 @@ describe('LLM Router Guardrails', () => {
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
       );
 
-      expect(filtered).toEqual(['docs.search', 'memory.retrieve', 'transcript.search']);
+      expect(filtered).toEqual(['docs_search', 'memory_retrieve', 'transcript_search']);
     });
 
     it('should handle undefined suggestedTools', () => {
@@ -164,20 +164,20 @@ describe('LLM Router Guardrails', () => {
 
   describe('Skill Filtering', () => {
     it('should filter out hallucinated skills not in known catalog', () => {
-      const suggestedSkills = ['hallucinated.skill', 'docs.search', 'fake.skill'];
+      const suggestedSkills = ['hallucinated.skill', 'docs_search', 'fake.skill'];
       const filtered = suggestedSkills.filter(skillId => KNOWN_SKILL_IDS.includes(skillId));
 
-      expect(filtered).toEqual(['docs.search']);
+      expect(filtered).toEqual(['docs_search']);
       expect(filtered).not.toContain('hallucinated.skill');
       expect(filtered).not.toContain('fake.skill');
     });
 
     it('should filter skills against AgentConfig allowlist', () => {
       const agentConfig = createMockAgentConfig({
-        allowedSkillIds: ['docs.search', 'memory.retrieve'],
+        allowedSkillIds: ['docs_search', 'memory_retrieve'],
       });
 
-      const suggestedSkills = ['docs.search', 'plan.patch', 'memory.retrieve'];
+      const suggestedSkills = ['docs_search', 'plan_patch', 'memory_retrieve'];
 
       const allowedSkillIds = agentConfig.allowedSkillIds === null || agentConfig.allowedSkillIds === undefined
         ? KNOWN_SKILL_IDS
@@ -187,8 +187,8 @@ describe('LLM Router Guardrails', () => {
         skillId => allowedSkillIds.includes(skillId) && KNOWN_SKILL_IDS.includes(skillId)
       );
 
-      expect(filtered).toEqual(['docs.search', 'memory.retrieve']);
-      expect(filtered).not.toContain('plan.patch');
+      expect(filtered).toEqual(['docs_search', 'memory_retrieve']);
+      expect(filtered).not.toContain('plan_patch');
     });
   });
 
@@ -311,31 +311,31 @@ describe('LLM Router Guardrails', () => {
   describe('Known Catalog Validation', () => {
     it('should only accept tools from known catalog', () => {
       const suggestedTools = [
-        'artifact.create',
-        'artifact.update',
+        'artifact_create',
+        'artifact_update',
         'malicious_tool',
         'another.unknown',
-        'docs.search',
-        'web.search',
+        'docs_search',
+        'web_search',
       ];
 
       const filtered = suggestedTools.filter(toolId => KNOWN_TOOL_IDS.includes(toolId));
 
-      expect(filtered).toEqual(['artifact.create', 'artifact.update', 'docs.search', 'web.search']);
+      expect(filtered).toEqual(['artifact_create', 'artifact_update', 'docs_search', 'web_search']);
       expect(filtered).not.toContain('malicious_tool');
       expect(filtered).not.toContain('another.unknown');
     });
 
     it('should only accept skills from known catalog', () => {
       const suggestedSkills = [
-        'artifact.create',
+        'artifact_create',
         'malicious_skill',
-        'memory.retrieve',
+        'memory_retrieve',
       ];
 
       const filtered = suggestedSkills.filter(skillId => KNOWN_SKILL_IDS.includes(skillId));
 
-      expect(filtered).toEqual(['artifact.create', 'memory.retrieve']);
+      expect(filtered).toEqual(['artifact_create', 'memory_retrieve']);
       expect(filtered).not.toContain('malicious_skill');
     });
 
@@ -357,15 +357,15 @@ describe('LLM Router Guardrails', () => {
   describe('Intersection Logic', () => {
     it('should perform three-way intersection: suggested ∩ allowed ∩ known', () => {
       const agentConfig = createMockAgentConfig({
-        allowedToolIds: ['docs.search', 'memory.retrieve', 'transcript.search'],
+        allowedToolIds: ['docs_search', 'memory_retrieve', 'transcript_search'],
       });
 
       const suggestedTools = [
-        'docs.search',
-        'memory.retrieve',
-        'plan.patch',
+        'docs_search',
+        'memory_retrieve',
+        'plan_patch',
         'hallucinated.tool',
-        'artifact.create',
+        'artifact_create',
       ];
 
       const allowedToolIds = agentConfig.allowedToolIds ?? [];
@@ -374,18 +374,18 @@ describe('LLM Router Guardrails', () => {
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
       );
 
-      expect(filtered).toEqual(['docs.search', 'memory.retrieve']);
-      expect(filtered).not.toContain('plan.patch');
+      expect(filtered).toEqual(['docs_search', 'memory_retrieve']);
+      expect(filtered).not.toContain('plan_patch');
       expect(filtered).not.toContain('hallucinated.tool');
-      expect(filtered).not.toContain('artifact.create');
+      expect(filtered).not.toContain('artifact_create');
     });
 
     it('should return empty when suggested and allowed have no intersection', () => {
       const agentConfig = createMockAgentConfig({
-        allowedToolIds: ['docs.search'],
+        allowedToolIds: ['docs_search'],
       });
 
-      const suggestedTools = ['plan.patch', 'artifact.create'];
+      const suggestedTools = ['plan_patch', 'artifact_create'];
 
       const filtered = suggestedTools.filter(
         toolId => (agentConfig.allowedToolIds ?? []).includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
@@ -406,7 +406,7 @@ describe('LLM Router Guardrails', () => {
   describe('Edge Cases', () => {
     it('should handle null AgentConfig gracefully (all known tools)', () => {
       const agentConfig: AgentConfig | null = null;
-      const suggestedTools = ['docs.search', 'plan.patch'];
+      const suggestedTools = ['docs_search', 'plan_patch'];
 
       const cfg = agentConfig as AgentConfig | null;
       const allowedToolIds: string[] = cfg?.allowedToolIds === null || cfg?.allowedToolIds === undefined
@@ -417,7 +417,7 @@ describe('LLM Router Guardrails', () => {
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
       );
 
-      expect(filtered).toEqual(['docs.search', 'plan.patch']);
+      expect(filtered).toEqual(['docs_search', 'plan_patch']);
     });
 
     it('should handle AgentConfig with null allowedToolIds (inherit = all known)', () => {
@@ -425,7 +425,7 @@ describe('LLM Router Guardrails', () => {
         allowedToolIds: null,
       });
 
-      const suggestedTools = ['docs.search', 'plan.patch'];
+      const suggestedTools = ['docs_search', 'plan_patch'];
 
       const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
         ? KNOWN_TOOL_IDS
@@ -435,7 +435,7 @@ describe('LLM Router Guardrails', () => {
         toolId => allowedToolIds.includes(toolId) && KNOWN_TOOL_IDS.includes(toolId)
       );
 
-      expect(filtered).toEqual(['docs.search', 'plan.patch']);
+      expect(filtered).toEqual(['docs_search', 'plan_patch']);
     });
 
     it('should handle AgentConfig with empty allowedToolIds (none allowed)', () => {
@@ -443,7 +443,7 @@ describe('LLM Router Guardrails', () => {
         allowedToolIds: [],
       });
 
-      const suggestedTools = ['docs.search', 'plan.patch'];
+      const suggestedTools = ['docs_search', 'plan_patch'];
 
       const allowedToolIds = agentConfig.allowedToolIds === null || agentConfig.allowedToolIds === undefined
         ? KNOWN_TOOL_IDS
@@ -457,19 +457,19 @@ describe('LLM Router Guardrails', () => {
     });
 
     it('should handle duplicate tool suggestions', () => {
-      const suggestedTools = ['docs.search', 'docs.search', 'memory.retrieve', 'docs.search'];
+      const suggestedTools = ['docs_search', 'docs_search', 'memory_retrieve', 'docs_search'];
 
       const filtered = suggestedTools.filter(toolId => KNOWN_TOOL_IDS.includes(toolId));
 
-      expect(filtered).toEqual(['docs.search', 'docs.search', 'memory.retrieve', 'docs.search']);
+      expect(filtered).toEqual(['docs_search', 'docs_search', 'memory_retrieve', 'docs_search']);
     });
 
     it('should handle case-sensitive tool IDs', () => {
-      const suggestedTools = ['Docs.Search', 'DOCS.SEARCH', 'docs.search'];
+      const suggestedTools = ['Docs.Search', 'DOCS.SEARCH', 'docs_search'];
 
       const filtered = suggestedTools.filter(toolId => KNOWN_TOOL_IDS.includes(toolId));
 
-      expect(filtered).toEqual(['docs.search']);
+      expect(filtered).toEqual(['docs_search']);
     });
   });
 });
