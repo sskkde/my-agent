@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getSettings } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import ProviderManager from './ProviderManager';
+import SubagentConfig from './SubagentConfig';
 import type { SettingsConfig } from '../../api/types';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
@@ -88,6 +89,8 @@ const SettingsTab: React.FC = () => {
             </div>
 
             <ProviderManager isAuthenticated={isAuthenticated} />
+
+            <SubagentConfig isAuthenticated={isAuthenticated} />
 
             <div className="settings-notice" data-testid="settings-notice">
               <p>安全提示: API 密钥和敏感配置信息不会在此显示</p>

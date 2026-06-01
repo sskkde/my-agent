@@ -490,16 +490,16 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('artifact.create', () => {
+  describe('artifact_create', () => {
     it('should create an artifact with artifactId prefixed with art_', async () => {
-      const tool = registry.getTool('artifact.create');
+      const tool = registry.getTool('artifact_create');
       expect(tool).toBeDefined();
 
       const result = await tool!.handler!(
         { title: 'Test Document', content: 'Test content', artifactType: 'document' },
         {
           toolCallId: 'tc_123',
-          toolName: 'artifact.create',
+          toolName: 'artifact_create',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -515,13 +515,13 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should return error if title is missing', async () => {
-      const tool = registry.getTool('artifact.create');
+      const tool = registry.getTool('artifact_create');
       
       const result = await tool!.handler!(
         { content: 'Test content' },
         {
           toolCallId: 'tc_123',
-          toolName: 'artifact.create',
+          toolName: 'artifact_create',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -535,13 +535,13 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should return error if content is missing', async () => {
-      const tool = registry.getTool('artifact.create');
+      const tool = registry.getTool('artifact_create');
       
       const result = await tool!.handler!(
         { title: 'Test Document' },
         {
           toolCallId: 'tc_123',
-          toolName: 'artifact.create',
+          toolName: 'artifact_create',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -555,15 +555,15 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('artifact.update', () => {
+  describe('artifact_update', () => {
     it('should update an existing artifact', async () => {
       // First create an artifact
-      const createTool = registry.getTool('artifact.create');
+      const createTool = registry.getTool('artifact_create');
       const createResult = await createTool!.handler!(
         { title: 'Original Title', content: 'Original content', artifactType: 'document' },
         {
           toolCallId: 'tc_123',
-          toolName: 'artifact.create',
+          toolName: 'artifact_create',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -576,12 +576,12 @@ describe('Built-in Safe Tools', () => {
       const artifactId = (createResult.data as Record<string, unknown>).artifactId;
 
       // Now update it
-      const updateTool = registry.getTool('artifact.update');
+      const updateTool = registry.getTool('artifact_update');
       const updateResult = await updateTool!.handler!(
         { artifactId, title: 'Updated Title', content: 'Updated content' },
         {
           toolCallId: 'tc_124',
-          toolName: 'artifact.update',
+          toolName: 'artifact_update',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -598,13 +598,13 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should return error if artifact not found', async () => {
-      const tool = registry.getTool('artifact.update');
+      const tool = registry.getTool('artifact_update');
       
       const result = await tool!.handler!(
         { artifactId: 'art_nonexistent', title: 'New Title', content: 'New content' },
         {
           toolCallId: 'tc_123',
-          toolName: 'artifact.update',
+          toolName: 'artifact_update',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -664,16 +664,16 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('status.query', () => {
+  describe('status_query', () => {
     it('should query active work projection (stub)', async () => {
-      const tool = registry.getTool('status.query');
+      const tool = registry.getTool('status_query');
       expect(tool).toBeDefined();
 
       const result = await tool!.handler!(
         {},
         {
           toolCallId: 'tc_123',
-          toolName: 'status.query',
+          toolName: 'status_query',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -689,13 +689,13 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should accept optional targetId parameter', async () => {
-      const tool = registry.getTool('status.query');
+      const tool = registry.getTool('status_query');
       
       const result = await tool!.handler!(
         { targetId: 'run_123' },
         {
           toolCallId: 'tc_123',
-          toolName: 'status.query',
+          toolName: 'status_query',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -709,7 +709,7 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('memory.retrieve', () => {
+  describe('memory_retrieve', () => {
     it('should retrieve from memory store', async () => {
       // First save some memory
       const summaryRecord: SummaryRecord = {
@@ -724,12 +724,12 @@ describe('Built-in Safe Tools', () => {
       };
       summaryStore.save(summaryRecord);
 
-      const tool = registry.getTool('memory.retrieve');
+      const tool = registry.getTool('memory_retrieve');
       const result = await tool!.handler!(
         { sessionId: 'session_123', limit: 10 },
         {
           toolCallId: 'tc_123',
-          toolName: 'memory.retrieve',
+          toolName: 'memory_retrieve',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -746,13 +746,13 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should return error if neither sessionId nor userId provided', async () => {
-      const tool = registry.getTool('memory.retrieve');
+      const tool = registry.getTool('memory_retrieve');
       
       const result = await tool!.handler!(
         {},
         {
           toolCallId: 'tc_123',
-          toolName: 'memory.retrieve',
+          toolName: 'memory_retrieve',
           userId: '',
           permissionContext: createTestPermissionContext(),
           executionStartTime: new Date().toISOString(),
@@ -765,7 +765,7 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('transcript.search', () => {
+  describe('transcript_search', () => {
     it('should search transcript store', async () => {
       // First save a transcript
       const transcript: TurnTranscript = {
@@ -779,12 +779,12 @@ describe('Built-in Safe Tools', () => {
       };
       transcriptStore.saveTurn(transcript);
 
-      const tool = registry.getTool('transcript.search');
+      const tool = registry.getTool('transcript_search');
       const result = await tool!.handler!(
         { query: 'search', sessionId: 'session_123' },
         {
           toolCallId: 'tc_123',
-          toolName: 'transcript.search',
+          toolName: 'transcript_search',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -801,13 +801,13 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should return error if query is missing', async () => {
-      const tool = registry.getTool('transcript.search');
+      const tool = registry.getTool('transcript_search');
       
       const result = await tool!.handler!(
         { sessionId: 'session_123' },
         {
           toolCallId: 'tc_123',
-          toolName: 'transcript.search',
+          toolName: 'transcript_search',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -821,7 +821,7 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('plan.patch', () => {
+  describe('plan_patch', () => {
     it('should patch execution plan', async () => {
       // First create a plan
       const plan: ExecutionPlanRecord = {
@@ -837,7 +837,7 @@ describe('Built-in Safe Tools', () => {
       };
       planStore.createPlan(plan);
 
-      const tool = registry.getTool('plan.patch');
+      const tool = registry.getTool('plan_patch');
       const result = await tool!.handler!(
         { 
           planId: 'plan_123', 
@@ -850,7 +850,7 @@ describe('Built-in Safe Tools', () => {
         },
         {
           toolCallId: 'tc_123',
-          toolName: 'plan.patch',
+          toolName: 'plan_patch',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -867,13 +867,13 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should return error if planId is missing', async () => {
-      const tool = registry.getTool('plan.patch');
+      const tool = registry.getTool('plan_patch');
       
       const result = await tool!.handler!(
         { patch: '{}' },
         {
           toolCallId: 'tc_123',
-          toolName: 'plan.patch',
+          toolName: 'plan_patch',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -887,16 +887,16 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('docs.search (mock)', () => {
+  describe('docs_search (mock)', () => {
     it('should return preview for large results with persistedResultRef', async () => {
-      const tool = registry.getTool('docs.search');
+      const tool = registry.getTool('docs_search');
       expect(tool).toBeDefined();
 
       const result = await tool!.handler!(
         { query: 'typescript', limit: 100 },
         {
           toolCallId: 'tc_123',
-          toolName: 'docs.search',
+          toolName: 'docs_search',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -912,9 +912,9 @@ describe('Built-in Safe Tools', () => {
     });
   });
 
-  describe('web.search', () => {
+  describe('web_search', () => {
     it('should be registered as a built-in search tool', () => {
-      const tool = registry.getTool('web.search');
+      const tool = registry.getTool('web_search');
 
       expect(tool).toBeDefined();
       expect(tool?.category).toBe('search');
@@ -922,14 +922,14 @@ describe('Built-in Safe Tools', () => {
     });
 
     it('should return recoverable error when search provider is not configured', async () => {
-      const tool = registry.getTool('web.search');
+      const tool = registry.getTool('web_search');
       expect(tool).toBeDefined();
 
       const result = await tool!.handler(
         { query: 'latest TypeScript release' },
         {
           toolCallId: 'tc_web_search_123',
-          toolName: 'web.search',
+          toolName: 'web_search',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),
@@ -946,7 +946,7 @@ describe('Built-in Safe Tools', () => {
 
   describe('Large result handling', () => {
     it('should store large results in ToolResultStore and return preview + resultRef', async () => {
-      const tool = registry.getTool('transcript.search');
+      const tool = registry.getTool('transcript_search');
       
       // Create many transcripts to trigger large result handling
       for (let i = 0; i < 1000; i++) {
@@ -966,7 +966,7 @@ describe('Built-in Safe Tools', () => {
         { query: 'content', sessionId: 'session_123' },
         {
           toolCallId: 'tc_123',
-          toolName: 'transcript.search',
+          toolName: 'transcript_search',
           userId: 'user_123',
           sessionId: 'session_123',
           permissionContext: createTestPermissionContext(),

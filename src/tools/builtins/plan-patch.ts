@@ -88,7 +88,7 @@ export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
   };
 
   return {
-    name: 'plan.patch',
+    name: 'plan_patch',
     description: 'Apply a patch to an execution plan',
     category: 'write',
     sensitivity: 'high',

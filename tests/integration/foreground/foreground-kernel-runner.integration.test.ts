@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createForegroundKernelRunner,
-  isForegroundKernelRunnerEnabled,
 } from '../../../src/foreground/foreground-kernel-runner.js';
 import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js';
 import type { ForegroundDecision, ForegroundSessionState } from '../../../src/foreground/types.js';
@@ -91,12 +90,8 @@ describe('ForegroundKernelRunner Integration Tests', () => {
   let mockRuntimeDispatcher: RuntimeDispatcher;
   let mockPlannerRuntime: PlannerRuntime;
   let mockLlmAdapter: LLMAdapter;
-  let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-    process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
-
     mockForegroundAgent = {
       processMessage: vi.fn().mockResolvedValue({
         route: 'answer_directly',
@@ -111,7 +106,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'Kernel processed response',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory.retrieve', params: { query: 'test' } },
+          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: { query: 'test' } },
         ],
         transcript: [],
       } as KernelRunResult),
@@ -165,11 +160,6 @@ describe('ForegroundKernelRunner Integration Tests', () => {
   });
 
   afterEach(() => {
-    if (originalEnv === undefined) {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-    } else {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = originalEnv;
-    }
     vi.clearAllMocks();
   });
 
@@ -179,7 +169,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       } as ForegroundDecision);
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
@@ -187,7 +177,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'Based on the retrieved memory, here is the information you requested.',
         iterationsUsed: 2,
         toolCalls: [
-          { toolCallId: 'tc-memory-retrieve-001', toolName: 'memory.retrieve', params: { query: 'project details' } },
+          { toolCallId: 'tc-memory-retrieve-001', toolName: 'memory_retrieve', params: { query: 'project details' } },
         ],
         transcript: [
           { iteration: 1, timestamp: '2024-01-15T10:00:01.000Z', type: 'tool_call', content: { toolCallId: 'tc-memory-retrieve-001' } },
@@ -223,7 +213,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
         userVisibleResponse: 'Searching documentation...',
       } as ForegroundDecision);
 
@@ -232,7 +222,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'The documentation shows that TypeScript interfaces can be extended using the extends keyword.',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-docs-search-001', toolName: 'docs.search', params: { query: 'interface extends' } },
+          { toolCallId: 'tc-docs-search-001', toolName: 'docs_search', params: { query: 'interface extends' } },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -261,7 +251,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
       } as ForegroundDecision);
 
       const rawToolResult = {
@@ -279,7 +269,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'I found two excellent TypeScript resources: the official TypeScript Handbook and TypeScript Deep Dive by Basarat.',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-web-search-001', toolName: 'web.search', params: { query: 'TypeScript tutorial' } },
+          { toolCallId: 'tc-web-search-001', toolName: 'web_search', params: { query: 'TypeScript tutorial' } },
         ],
         transcript: [
           { iteration: 1, timestamp: '2024-01-15T10:00:01.000Z', type: 'tool_result', content: rawToolResult },
@@ -313,7 +303,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['memory.retrieve', 'transcript.search'],
+        suggestedTools: ['memory_retrieve', 'transcript_search'],
       } as ForegroundDecision);
 
       const realToolCallIds = ['tc-memory-retrieve-002', 'tc-transcript-search-003'];
@@ -323,8 +313,8 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: 'I found relevant information in both memory and transcript.',
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: realToolCallIds[0], toolName: 'memory.retrieve', params: { query: 'project' } },
-          { toolCallId: realToolCallIds[1], toolName: 'transcript.search', params: { query: 'discussion' } },
+          { toolCallId: realToolCallIds[0], toolName: 'memory_retrieve', params: { query: 'project' } },
+          { toolCallId: realToolCallIds[1], toolName: 'transcript_search', params: { query: 'discussion' } },
         ],
         transcript: [],
       } as KernelRunResult);
@@ -343,10 +333,10 @@ describe('ForegroundKernelRunner Integration Tests', () => {
       expect(result.runtimeSummary).toBeDefined();
       expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(2);
       expect(result.runtimeSummary?.toolCallSummaries?.[0].toolCallId).toBe(realToolCallIds[0]);
-      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory.retrieve');
+      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory_retrieve');
       expect(result.runtimeSummary?.toolCallSummaries?.[0].status).toBe('completed');
       expect(result.runtimeSummary?.toolCallSummaries?.[1].toolCallId).toBe(realToolCallIds[1]);
-      expect(result.runtimeSummary?.toolCallSummaries?.[1].toolName).toBe('transcript.search');
+      expect(result.runtimeSummary?.toolCallSummaries?.[1].toolName).toBe('transcript_search');
       expect(result.runtimeSummary?.toolCallSummaries?.[1].status).toBe('completed');
     });
   });
@@ -357,7 +347,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
         userVisibleResponse: 'Searching the web...',
       } as ForegroundDecision);
 
@@ -366,7 +356,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         finalResponse: undefined,
         iterationsUsed: 1,
         toolCalls: [
-          { toolCallId: 'tc-web-search-failed', toolName: 'web.search', params: { query: 'test' } },
+          { toolCallId: 'tc-web-search-failed', toolName: 'web_search', params: { query: 'test' } },
         ],
         transcript: [],
         error: {
@@ -399,7 +389,7 @@ describe('ForegroundKernelRunner Integration Tests', () => {
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
         userVisibleResponse: 'The document search encountered an issue.',
       } as ForegroundDecision);
 
@@ -498,65 +488,4 @@ describe('ForegroundKernelRunner Integration Tests', () => {
     });
   });
 
-  describe('Scenario 7: Feature flag disabled path', () => {
-    it('returns failed result with FEATURE_DISABLED code when flag is off', async () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-
-      const runner = createForegroundKernelRunner({
-        foregroundAgent: mockForegroundAgent,
-        agentKernel: mockAgentKernel,
-        runtimeDispatcher: mockRuntimeDispatcher,
-        plannerRuntime: mockPlannerRuntime,
-        llmAdapter: mockLlmAdapter,
-      });
-
-      const input = createMockInput({ message: 'Hello' });
-      const result = await runner.runTurn(input);
-
-      expect(result.status).toBe('failed');
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('FEATURE_DISABLED');
-      expect(result.error?.message).toContain('not enabled');
-      expect(mockForegroundAgent.processMessage).not.toHaveBeenCalled();
-      expect(mockAgentKernel.run).not.toHaveBeenCalled();
-    });
-
-    it('createForegroundKernelRunner still creates runner when flag is disabled (graceful degradation)', async () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-
-      const runner = createForegroundKernelRunner({
-        foregroundAgent: mockForegroundAgent,
-        agentKernel: mockAgentKernel,
-        runtimeDispatcher: mockRuntimeDispatcher,
-        plannerRuntime: mockPlannerRuntime,
-        llmAdapter: mockLlmAdapter,
-      });
-
-      expect(runner).toBeDefined();
-      expect(typeof runner.runTurn).toBe('function');
-
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
-
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('FEATURE_DISABLED');
-    });
-  });
-
-  describe('isForegroundKernelRunnerEnabled', () => {
-    it('returns true when FOREGROUND_KERNEL_RUNNER_ENABLED is true', () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
-      expect(isForegroundKernelRunnerEnabled()).toBe(true);
-    });
-
-    it('returns false when FOREGROUND_KERNEL_RUNNER_ENABLED is false', () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-      expect(isForegroundKernelRunnerEnabled()).toBe(false);
-    });
-
-    it('returns false when FOREGROUND_KERNEL_RUNNER_ENABLED is not set', () => {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-      expect(isForegroundKernelRunnerEnabled()).toBe(false);
-    });
-  });
 });

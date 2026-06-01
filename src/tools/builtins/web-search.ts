@@ -442,7 +442,7 @@ export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefin
   };
 
   return {
-    name: 'web.search',
+    name: 'web_search',
     description: 'Search the public web for information using an external search provider',
     category: 'search',
     sensitivity: 'medium',

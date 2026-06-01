@@ -99,7 +99,7 @@ function createMockContext(userId: string): ToolExecutionContext {
   };
 }
 
-describe('session.list tool', () => {
+describe('session_list tool', () => {
   let mockSessionStore: SessionStore;
   let tool: ReturnType<typeof createSessionListTool>;
 
@@ -193,14 +193,14 @@ describe('session.list tool', () => {
   });
 
   it('should have correct tool metadata', () => {
-    expect(tool.name).toBe('session.list');
+    expect(tool.name).toBe('session_list');
     expect(tool.category).toBe('read');
     expect(tool.sensitivity).toBe('medium');
     expect(tool.schema.required).toEqual([]);
   });
 });
 
-describe('session.history tool', () => {
+describe('session_history tool', () => {
   let mockSessionStore: SessionStore;
   let mockTranscriptStore: TranscriptStore;
   let tool: ReturnType<typeof createSessionHistoryTool>;
@@ -364,7 +364,7 @@ describe('session.history tool', () => {
   });
 
   it('should have correct tool metadata', () => {
-    expect(tool.name).toBe('session.history');
+    expect(tool.name).toBe('session_history');
     expect(tool.category).toBe('read');
     expect(tool.sensitivity).toBe('medium');
     expect(tool.schema.required).toEqual(['sessionId']);

@@ -6,13 +6,13 @@ import {
   WEB_FETCH_MAX_RETURNED_CHARS,
 } from '../../../src/tools/builtins/web-safety.js';
 
-describe('web.fetch tool', () => {
+describe('web_fetch tool', () => {
   let tool: ToolDefinition;
   const originalFetch = global.fetch;
 
   const createToolContext = (overrides: Partial<ToolExecutionContext> = {}): ToolExecutionContext => ({
     toolCallId: 'tc-001',
-    toolName: 'web.fetch',
+    toolName: 'web_fetch',
     userId: 'user-123',
     sessionId: 'session-001',
     permissionContext: {
@@ -63,7 +63,7 @@ describe('web.fetch tool', () => {
 
   describe('Tool Definition', () => {
     it('should have correct name and metadata', () => {
-      expect(tool.name).toBe('web.fetch');
+      expect(tool.name).toBe('web_fetch');
       expect(tool.category).toBe('read');
       expect(tool.sensitivity).toBe('medium');
     });

@@ -12,7 +12,7 @@ import { COMMAND_CATALOG, getAllCommands } from '../command-core/catalog.js';
 import { resolveAlias } from '../command-core/aliases.js';
 import type { CommandDefinition, ParsedCommand } from '../command-core/types.js';
 
-const VALID_PROVIDER_TYPES = ['openai', 'openrouter', 'ollama'] as const;
+const VALID_PROVIDER_TYPES = ['openai', 'openrouter', 'deepseek', 'ollama'] as const;
 type ProviderType = typeof VALID_PROVIDER_TYPES[number];
 
 function isValidProviderType(type: string): type is ProviderType {

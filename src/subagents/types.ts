@@ -1,5 +1,7 @@
 import type { ContextBundle } from '../context/types.js';
 import type { KernelRunResult } from '../kernel/types.js';
+import type { SubagentRunStore } from '../storage/subagent-run-store.js';
+import type { SubagentTranscriptStore } from '../storage/subagent-transcript-store.js';
 
 export type SubagentRunState =
   | 'queued'
@@ -61,6 +63,10 @@ export interface SubagentConfig {
   maxConcurrent: number;
   defaultTimeoutMs?: number;
   defaultMaxIterations?: number;
+  /** Persistent store for subagent runs. If not provided, falls back to in-memory Map. */
+  runStore?: SubagentRunStore;
+  /** Optional transcript store for recording execution events. */
+  transcriptStore?: SubagentTranscriptStore;
 }
 
 export interface KernelAdapter {

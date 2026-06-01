@@ -312,7 +312,7 @@ describe('Retention Policy', () => {
       const result = toolResultStore.create({
         resultRef: 'ref://results/tc-ret-001',
         toolCallId,
-        toolName: 'file.read',
+        toolName: 'file_read',
         userId,
         sessionId: 'sess-ret-003',
         preview: 'Contents of file.txt',
@@ -321,7 +321,7 @@ describe('Retention Policy', () => {
 
       expect(result.resultRef).toBe('ref://results/tc-ret-001');
       expect(result.toolCallId).toBe(toolCallId);
-      expect(result.toolName).toBe('file.read');
+      expect(result.toolName).toBe('file_read');
       expect(result.preview).toBe('Contents of file.txt');
       expect(result.sensitivity).toBe('low');
       expect(result.id).toBeTruthy();
@@ -335,7 +335,7 @@ describe('Retention Policy', () => {
       toolResultStore.create({
         resultRef: 'ref://results/a',
         toolCallId,
-        toolName: 'web.fetch',
+        toolName: 'web_fetch',
         userId,
         sensitivity: 'low',
       });
@@ -343,7 +343,7 @@ describe('Retention Policy', () => {
       toolResultStore.create({
         resultRef: 'ref://results/b',
         toolCallId,
-        toolName: 'web.fetch',
+        toolName: 'web_fetch',
         userId,
         sensitivity: 'medium',
       });
@@ -367,7 +367,7 @@ describe('Retention Policy', () => {
       toolResultStore.create({
         resultRef: 'ref://results/y',
         toolCallId: 'tc-y',
-        toolName: 'file.read',
+        toolName: 'file_read',
         userId,
         sensitivity: 'low',
       });
@@ -376,7 +376,7 @@ describe('Retention Policy', () => {
       expect(searchResults.length).toBeGreaterThanOrEqual(1);
       expect(searchResults.every(r => r.toolName === 'search')).toBe(true);
 
-      const fileResults = toolResultStore.findByToolName('file.read');
+      const fileResults = toolResultStore.findByToolName('file_read');
       expect(fileResults.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -386,7 +386,7 @@ describe('Retention Policy', () => {
       toolResultStore.create({
         resultRef: 'ref://results/high-sens',
         toolCallId: 'tc-high',
-        toolName: 'web.fetch',
+        toolName: 'web_fetch',
         userId,
         sensitivity: 'high',
       });
@@ -394,7 +394,7 @@ describe('Retention Policy', () => {
       toolResultStore.create({
         resultRef: 'ref://results/low-sens',
         toolCallId: 'tc-low',
-        toolName: 'web.fetch',
+        toolName: 'web_fetch',
         userId,
         sensitivity: 'low',
       });

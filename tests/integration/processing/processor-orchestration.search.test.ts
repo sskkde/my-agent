@@ -6,7 +6,8 @@ import type { ApiContext } from '../../../src/api/context.js';
 import { generateSessionToken, hashToken, hashPassword } from '../../../src/storage/auth-crypto.js';
 import { randomUUID } from 'crypto';
 import type { Stores } from '../../../src/gateway/types.js';
-import type { SearchSubagentSuccessResult, SearchSubagentFailureResult } from '../../../src/search/search-subagent.js';
+import type { ForegroundKernelRunner } from '../../../src/foreground/foreground-kernel-runner.js';
+import type { ForegroundTurnResult } from '../../../src/foreground/foreground-runner-types.js';
 
 describe('Processor orchestration SearchSubagent branch', () => {
   let server: FastifyInstance;
@@ -49,9 +50,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
     context.connection.close();
   });
 
-  describe('pure web.search SearchSubagent branch', () => {
-    it('invokes SearchSubagent for pure web.search', async () => {
-      // Setup AgentConfig with search LLM fields
+  describe('pure web_search SearchSubagent branch', () => {
+    it('returns SearchSubagent answer via runner for foreground web search', async () => {
       context.agentConfigStore.upsert({
         agentId: 'foreground.default',
         scope: 'user',
@@ -60,132 +60,44 @@ describe('Processor orchestration SearchSubagent branch', () => {
         searchLlmProviderId: 'provider-search',
         searchLlmModel: 'gpt-4.1-mini',
       });
-      
-      const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn().mockResolvedValue({
-        success: true,
-        answer: 'Based on the search results, here is the answer.',
-        toolResult: {
-          query: 'test query',
-          results: [{ title: 'A', url: 'https://a.com', snippet: 's' }],
-          total: 1,
-          provider: 'searxng',
-          endpointHost: 'localhost:8888',
-        },
-        metadata: {
-          providerId: 'provider-search',
-          model: 'gpt-4.1-mini',
-          querySource: 'search_subagent',
-          durationMs: 150,
-        },
-      } as SearchSubagentSuccessResult);
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
-      };
-      
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Web search request',
-          userVisibleResponse: 'Searching the web...',
-          suggestedTools: ['web.search'],
-        }),
-      };
-      
-      const processor = createOrchestrationProcessor({
-        deps: {
-          gateway: context.gateway,
-          stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
-          runtimeDispatcher: context.runtimeDispatcher,
-          plannerRuntime: context.plannerRuntime,
-          agentKernel: context.agentKernel,
-          llmAdapter: context.llmAdapter,
-          transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
-        },
-      });
-      
-      const result = await processor({
-        correlationId: 'corr-search-001',
-        userId,
-        sessionId: 'session-001',
-        text: 'Search for TypeScript tutorials',
-        timestamp: new Date().toISOString(),
-        metadata: {},
-      });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).toHaveBeenCalled();
-      expect(result.result?.text).toContain('answer');
-    });
 
-    it('returns SearchSubagent answer for foreground web search', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: 'provider-search',
-        searchLlmModel: 'gpt-4.1-mini',
-      });
-      
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn().mockResolvedValue({
-        success: true,
-        answer: 'TypeScript is a strongly typed programming language that builds on JavaScript.',
-        toolResult: {
-          query: 'What is TypeScript',
-          results: [
-            { title: 'TypeScript Official', url: 'https://www.typescriptlang.org/', snippet: 'TypeScript is JavaScript with syntax for types.' },
-          ],
-          total: 1,
-          provider: 'searxng',
-          endpointHost: 'localhost:8888',
-        },
-        metadata: {
-          providerId: 'provider-search',
-          model: 'gpt-4.1-mini',
-          querySource: 'search_subagent',
-          durationMs: 200,
-        },
-      } as SearchSubagentSuccessResult);
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
+
+      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+        runTurn: vi.fn().mockResolvedValue({
+          status: 'completed',
+          finalResponse: 'TypeScript is a strongly typed programming language that builds on JavaScript.',
+          decisionTrace: {
+            route: 'dispatch_tool',
+            requiresPlanner: false,
+            reason: 'Web search request',
+            suggestedTools: ['web_search'],
+          },
+          runtimeSummary: {
+            toolCallSummaries: [{
+              toolCallId: `search-corr-search-001`,
+              toolName: 'web_search',
+              status: 'completed',
+            }],
+          },
+        } as ForegroundTurnResult),
       };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Web search request',
-          userVisibleResponse: 'Searching the web...',
-          suggestedTools: ['web.search'],
-        }),
-      };
-      
+
       const processor = createOrchestrationProcessor({
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
+          foregroundAgent: { processMessage: vi.fn() } as any,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
           agentConfigStore: context.agentConfigStore,
+          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
-      
+
       const result = await processor({
         correlationId: 'corr-search-002',
         userId,
@@ -194,103 +106,116 @@ describe('Processor orchestration SearchSubagent branch', () => {
         timestamp: new Date().toISOString(),
         metadata: {},
       });
-      
+
       expect(result.success).toBe(true);
       expect(result.result?.text).toBe('TypeScript is a strongly typed programming language that builds on JavaScript.');
-      expect(result.result?.data?.searchSubagentMetadata).toBeDefined();
-      const metadata = result.result?.data?.searchSubagentMetadata as {
-        providerId: string;
-        model: string;
-        querySource: string;
-      };
-      expect(metadata.providerId).toBe('provider-search');
-      expect(metadata.model).toBe('gpt-4.1-mini');
-      expect(metadata.querySource).toBe('search_subagent');
+      expect(result.result?.route).toBe('dispatch_tool');
+      expect(mockForegroundKernelRunner.runTurn).toHaveBeenCalled();
     });
 
-    it('does not invoke SearchSubagent for mixed tool suggestions', async () => {
+    it('includes runtimeSummary with search toolCallSummaries from runner', async () => {
+      context.agentConfigStore.upsert({
+        agentId: 'foreground.default',
+        scope: 'user',
+        userId,
+        displayName: 'User Config',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      });
+
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn();
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
+
+      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+        runTurn: vi.fn().mockResolvedValue({
+          status: 'completed',
+          finalResponse: 'Based on the search results, here is the answer.',
+          decisionTrace: {
+            route: 'dispatch_tool',
+            requiresPlanner: false,
+            reason: 'Web search request',
+            suggestedTools: ['web_search'],
+          },
+          runtimeSummary: {
+            toolCallSummaries: [{
+              toolCallId: 'search-corr-search-001',
+              toolName: 'web_search',
+              status: 'completed',
+            }],
+          },
+        } as ForegroundTurnResult),
       };
-      
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Mixed tool request',
-          userVisibleResponse: 'Processing...',
-          suggestedTools: ['web.search', 'docs.search'],
-        }),
-      };
-      
+
       const processor = createOrchestrationProcessor({
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
+          foregroundAgent: { processMessage: vi.fn() } as any,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
           agentConfigStore: context.agentConfigStore,
+          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
-      
+
       const result = await processor({
-        correlationId: 'corr-mixed-001',
+        correlationId: 'corr-search-001',
         userId,
         sessionId: 'session-001',
-        text: 'Search web and docs',
+        text: 'Search for TypeScript tutorials',
         timestamp: new Date().toISOString(),
         metadata: {},
       });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).not.toHaveBeenCalled();
-      expect(result.result?.data?.suggestedTools).toEqual(['web.search', 'docs.search']);
-    });
 
-    it('does not invoke SearchSubagent for non-search tools', async () => {
+      expect(result.success).toBe(true);
+      expect(result.result?.text).toContain('answer');
+      expect(result.result?.data?.runtimeSummary).toBeDefined();
+      const summary = result.result?.data?.runtimeSummary as { toolCallSummaries: Array<{ toolName: string; status: string }> };
+      expect(summary.toolCallSummaries[0].toolName).toBe('web_search');
+      expect(summary.toolCallSummaries[0].status).toBe('completed');
+    });
+  });
+
+  describe('non-search dispatch_tool routes via runner', () => {
+    it('passes through non-search tool results from runner', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn();
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
+
+      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+        runTurn: vi.fn().mockResolvedValue({
+          status: 'completed',
+          finalResponse: 'Memory retrieved successfully.',
+          decisionTrace: {
+            route: 'dispatch_tool',
+            requiresPlanner: false,
+            reason: 'Memory retrieval',
+            suggestedTools: ['memory_retrieve'],
+          },
+          runtimeSummary: {
+            toolCallSummaries: [{
+              toolCallId: 'tc-memory-001',
+              toolName: 'memory_retrieve',
+              status: 'completed',
+            }],
+          },
+        } as ForegroundTurnResult),
       };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Memory retrieval',
-          userVisibleResponse: 'Retrieving memory...',
-          suggestedTools: ['memory.retrieve'],
-        }),
-      };
-      
+
       const processor = createOrchestrationProcessor({
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
+          foregroundAgent: { processMessage: vi.fn() } as any,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
+          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
-      
+
       const result = await processor({
         correlationId: 'corr-memory-001',
         userId,
@@ -299,56 +224,42 @@ describe('Processor orchestration SearchSubagent branch', () => {
         timestamp: new Date().toISOString(),
         metadata: {},
       });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).not.toHaveBeenCalled();
-    });
-  });
 
-  describe('keeps non-search dispatch_tool behavior unchanged', () => {
-    it('does not invoke SearchSubagent for docs.search', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: 'provider-search',
-        searchLlmModel: 'gpt-4.1-mini',
-      });
-      
+      expect(result.success).toBe(true);
+      expect(result.result?.text).toBe('Memory retrieved successfully.');
+      expect(result.result?.route).toBe('dispatch_tool');
+    });
+
+    it('does not contain "Processing tool request..." in any response', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn();
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
+
+      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+        runTurn: vi.fn().mockResolvedValue({
+          status: 'completed',
+          finalResponse: 'The documentation shows that TypeScript interfaces can be extended.',
+          decisionTrace: {
+            route: 'dispatch_tool',
+            requiresPlanner: false,
+            reason: 'Docs search request',
+            suggestedTools: ['docs_search'],
+          },
+        } as ForegroundTurnResult),
       };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Docs search request',
-          userVisibleResponse: 'Searching docs...',
-          suggestedTools: ['docs.search'],
-        }),
-      };
-      
+
       const processor = createOrchestrationProcessor({
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
+          foregroundAgent: { processMessage: vi.fn() } as any,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
+          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
-      
+
       const result = await processor({
         correlationId: 'corr-docs-001',
         userId,
@@ -357,288 +268,48 @@ describe('Processor orchestration SearchSubagent branch', () => {
         timestamp: new Date().toISOString(),
         metadata: {},
       });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).not.toHaveBeenCalled();
-      expect(result.result?.data?.suggestedTools).toEqual(['docs.search']);
-    });
 
-    it('does not invoke SearchSubagent for web.fetch', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: 'provider-search',
-        searchLlmModel: 'gpt-4.1-mini',
-      });
-      
-      const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn();
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
-      };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Web fetch request',
-          userVisibleResponse: 'Fetching web content...',
-          suggestedTools: ['web.fetch'],
-        }),
-      };
-      
-      const processor = createOrchestrationProcessor({
-        deps: {
-          gateway: context.gateway,
-          stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
-          runtimeDispatcher: context.runtimeDispatcher,
-          plannerRuntime: context.plannerRuntime,
-          agentKernel: context.agentKernel,
-          llmAdapter: context.llmAdapter,
-          transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
-        },
-      });
-      
-      const result = await processor({
-        correlationId: 'corr-fetch-001',
-        userId,
-        sessionId: 'session-001',
-        text: 'Fetch https://example.com',
-        timestamp: new Date().toISOString(),
-        metadata: {},
-      });
-      
       expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).not.toHaveBeenCalled();
-      expect(result.result?.data?.suggestedTools).toEqual(['web.fetch']);
-    });
-
-    it('does not invoke SearchSubagent for mixed web.search and docs.search', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: 'provider-search',
-        searchLlmModel: 'gpt-4.1-mini',
-      });
-      
-      const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn();
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
-      };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Mixed search request',
-          userVisibleResponse: 'Searching both web and docs...',
-          suggestedTools: ['web.search', 'docs.search'],
-        }),
-      };
-      
-      const processor = createOrchestrationProcessor({
-        deps: {
-          gateway: context.gateway,
-          stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
-          runtimeDispatcher: context.runtimeDispatcher,
-          plannerRuntime: context.plannerRuntime,
-          agentKernel: context.agentKernel,
-          llmAdapter: context.llmAdapter,
-          transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
-        },
-      });
-      
-      const result = await processor({
-        correlationId: 'corr-mixed-002',
-        userId,
-        sessionId: 'session-001',
-        text: 'Search web and docs for TypeScript',
-        timestamp: new Date().toISOString(),
-        metadata: {},
-      });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).not.toHaveBeenCalled();
-      expect(result.result?.data?.suggestedTools).toEqual(['web.search', 'docs.search']);
-    });
-
-    it('does not invoke SearchSubagent for mixed web.search and web.fetch', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: 'provider-search',
-        searchLlmModel: 'gpt-4.1-mini',
-      });
-      
-      const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn();
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
-      };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Mixed web tools request',
-          userVisibleResponse: 'Processing...',
-          suggestedTools: ['web.search', 'web.fetch'],
-        }),
-      };
-      
-      const processor = createOrchestrationProcessor({
-        deps: {
-          gateway: context.gateway,
-          stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
-          runtimeDispatcher: context.runtimeDispatcher,
-          plannerRuntime: context.plannerRuntime,
-          agentKernel: context.agentKernel,
-          llmAdapter: context.llmAdapter,
-          transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
-        },
-      });
-      
-      const result = await processor({
-        correlationId: 'corr-mixed-web-001',
-        userId,
-        sessionId: 'session-001',
-        text: 'Search and fetch',
-        timestamp: new Date().toISOString(),
-        metadata: {},
-      });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).not.toHaveBeenCalled();
-      expect(result.result?.data?.suggestedTools).toEqual(['web.search', 'web.fetch']);
+      expect(result.result?.text).not.toContain('Processing tool request...');
+      expect(result.result?.text).not.toContain('Processing...');
     });
   });
 
-  describe('error paths for SearchSubagent', () => {
-    it('falls through when search LLM is not configured', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: null,
-        searchLlmModel: null,
-      });
-      
+  describe('error paths for runner', () => {
+    it('returns error when runner reports failure', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn();
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
-      };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Web search request',
-          userVisibleResponse: 'Searching the web...',
-          suggestedTools: ['web.search'],
-        }),
-      };
-      
-      const processor = createOrchestrationProcessor({
-        deps: {
-          gateway: context.gateway,
-          stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
-          runtimeDispatcher: context.runtimeDispatcher,
-          plannerRuntime: context.plannerRuntime,
-          agentKernel: context.agentKernel,
-          llmAdapter: context.llmAdapter,
-          transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
-        },
-      });
-      
-      const result = await processor({
-        correlationId: 'corr-no-config-001',
-        userId,
-        sessionId: 'session-001',
-        text: 'Search for something',
-        timestamp: new Date().toISOString(),
-        metadata: {},
-      });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).not.toHaveBeenCalled();
-    });
 
-    it('falls through when SearchSubagent fails', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: 'provider-search',
-        searchLlmModel: 'gpt-4.1-mini',
-      });
-      
-      const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn().mockResolvedValue({
-        success: false,
-        errorCode: 'SEARCH_MODEL_INCAPABLE',
-        message: 'Search model does not support function calling',
-      } as SearchSubagentFailureResult);
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
+      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+        runTurn: vi.fn().mockResolvedValue({
+          status: 'failed',
+          finalResponse: 'Search failed.',
+          decisionTrace: {
+            route: 'dispatch_tool',
+            requiresPlanner: false,
+            reason: 'Web search request',
+            suggestedTools: ['web_search'],
+          },
+          error: {
+            code: 'SEARCH_MODEL_INCAPABLE',
+            message: 'Search model does not support function calling',
+          },
+        } as ForegroundTurnResult),
       };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Web search request',
-          userVisibleResponse: 'Searching the web...',
-          suggestedTools: ['web.search'],
-        }),
-      };
-      
+
       const processor = createOrchestrationProcessor({
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
+          foregroundAgent: { processMessage: vi.fn() } as any,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
+          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
-      
+
       const result = await processor({
         correlationId: 'corr-fail-001',
         userId,
@@ -647,55 +318,32 @@ describe('Processor orchestration SearchSubagent branch', () => {
         timestamp: new Date().toISOString(),
         metadata: {},
       });
-      
+
       expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).toHaveBeenCalled();
-      expect(result.result?.data?.suggestedTools).toEqual(['web.search']);
+      expect(result.result?.route).toBe('dispatch_tool');
     });
 
-    it('falls through when SearchSubagent throws an error', async () => {
-      context.agentConfigStore.upsert({
-        agentId: 'foreground.default',
-        scope: 'user',
-        userId,
-        displayName: 'User Config',
-        searchLlmProviderId: 'provider-search',
-        searchLlmModel: 'gpt-4.1-mini',
-      });
-      
+    it('returns PROCESSING_ERROR when runner throws', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
-      
-      const mockSearchSubagentExecute = vi.fn().mockRejectedValue(new Error('SearchSubagent crashed'));
-      
-      const mockSearchSubagent = {
-        execute: mockSearchSubagentExecute,
+
+      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+        runTurn: vi.fn().mockRejectedValue(new Error('Runner crashed')),
       };
-      
-      const mockForegroundAgent = {
-        processMessage: vi.fn().mockResolvedValue({
-          route: 'dispatch_tool',
-          requiresPlanner: false,
-          reason: 'Web search request',
-          userVisibleResponse: 'Searching the web...',
-          suggestedTools: ['web.search'],
-        }),
-      };
-      
+
       const processor = createOrchestrationProcessor({
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: mockForegroundAgent,
+          foregroundAgent: { processMessage: vi.fn() } as any,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          searchSubagent: mockSearchSubagent,
-          agentConfigStore: context.agentConfigStore,
+          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
-      
+
       const result = await processor({
         correlationId: 'corr-throw-001',
         userId,
@@ -704,10 +352,10 @@ describe('Processor orchestration SearchSubagent branch', () => {
         timestamp: new Date().toISOString(),
         metadata: {},
       });
-      
-      expect(result.success).toBe(true);
-      expect(mockSearchSubagentExecute).toHaveBeenCalled();
-      expect(result.result?.data?.suggestedTools).toEqual(['web.search']);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PROCESSING_ERROR');
+      expect(result.error?.message).toBe('Runner crashed');
     });
   });
 });

@@ -87,7 +87,7 @@ function createMockModelInputBuilder(): ModelInputBuilder {
     segments: {
       staticPrefix: 'system-prompt',
       tenantProject: '',
-      toolPlane: 'Available Tool IDs: docs.search',
+      toolPlane: 'Available Tool IDs: docs_search',
       contextBundle: 'User Message: Hello',
     },
     segmentHashes: {

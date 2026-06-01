@@ -23,7 +23,7 @@ import type {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Valid routing decisions for `foreground.decide` */
+/** Valid routing decisions for `foreground_decide` */
 const VALID_ROUTES: readonly ForegroundDecisionRoute[] = [
   'answer_directly',
   'dispatch_tool',
@@ -49,18 +49,19 @@ const MAX_REASON_LENGTH = 1000;
 /**
  * Tool alias map — resolves common shorthand names to canonical tool IDs.
  * Copied from foreground-agent.ts to keep the validator self-contained.
+ * Alias values use underscore-separated canonical names (LLM-safe).
  */
 const TOOL_ALIASES: Record<string, string[]> = {
-  search: ['docs.search'],
-  'web.search': ['web.search'],
-  'internet.search': ['web.search'],
-  web: ['web.search'],
-  docs: ['docs.search'],
-  'documentation.search': ['docs.search'],
-  transcript: ['transcript.search'],
-  'memory.search': ['memory.retrieve'],
-  memory: ['memory.retrieve'],
-  status: ['status.query'],
+  search: ['docs_search'],
+  'web.search': ['web_search'],
+  'internet.search': ['web_search'],
+  web: ['web_search'],
+  docs: ['docs_search'],
+  'documentation.search': ['docs_search'],
+  transcript: ['transcript_search'],
+  'memory.search': ['memory_retrieve'],
+  memory: ['memory_retrieve'],
+  status: ['status_query'],
 };
 
 // ---------------------------------------------------------------------------

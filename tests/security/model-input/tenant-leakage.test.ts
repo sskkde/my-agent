@@ -167,26 +167,26 @@ describe('Tenant Leakage Security Tests', () => {
 
       const resultA = await builder.build(makeTenantInput(TENANT_A, {
         toolProjection: {
-          toolIds: ['file.read', 'web.search'],
+          toolIds: ['file_read', 'web_search'],
           toolSummaries: `${TENANT_A} tools: read files, search web`,
         },
       }));
 
       const resultB = await builder.build(makeTenantInput(TENANT_B, {
         toolProjection: {
-          toolIds: ['memory.retrieve', 'status.query'],
+          toolIds: ['memory_retrieve', 'status_query'],
           toolSummaries: `${TENANT_B} tools: retrieve memory, query status`,
         },
       }));
 
-      expect(resultA.segments.toolPlane).toContain('file.read');
-      expect(resultA.segments.toolPlane).toContain('web.search');
-      expect(resultA.segments.toolPlane).not.toContain('memory.retrieve');
+      expect(resultA.segments.toolPlane).toContain('file_read');
+      expect(resultA.segments.toolPlane).toContain('web_search');
+      expect(resultA.segments.toolPlane).not.toContain('memory_retrieve');
       expect(resultA.segments.toolPlane).not.toContain(TENANT_B);
 
-      expect(resultB.segments.toolPlane).toContain('memory.retrieve');
-      expect(resultB.segments.toolPlane).toContain('status.query');
-      expect(resultB.segments.toolPlane).not.toContain('file.read');
+      expect(resultB.segments.toolPlane).toContain('memory_retrieve');
+      expect(resultB.segments.toolPlane).toContain('status_query');
+      expect(resultB.segments.toolPlane).not.toContain('file_read');
       expect(resultB.segments.toolPlane).not.toContain(TENANT_A);
     });
 
@@ -194,10 +194,10 @@ describe('Tenant Leakage Security Tests', () => {
       const builder = makeBuilder();
 
       const resultA = await builder.build(makeTenantInput(TENANT_A, {
-        toolProjection: { toolIds: ['file.read'] },
+        toolProjection: { toolIds: ['file_read'] },
       }));
       const resultB = await builder.build(makeTenantInput(TENANT_B, {
-        toolProjection: { toolIds: ['memory.retrieve'] },
+        toolProjection: { toolIds: ['memory_retrieve'] },
       }));
 
       expect(resultA.segmentHashes.segmentC).not.toBe(resultB.segmentHashes.segmentC);

@@ -102,7 +102,7 @@ describe('Approval rejection blocks side effects', () => {
     const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
     const req: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'artifact.create',
+        actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/001',
     };
@@ -119,7 +119,7 @@ describe('Approval rejection blocks side effects', () => {
     const ctx = createPermissionContext('u_reject', 's_reject', 'ask_on_write');
     const req: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'artifact.create',
+        actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/reject-test',
     };
@@ -148,7 +148,7 @@ describe('Approval rejection blocks side effects', () => {
     const ctx = createPermissionContext('u_audit', 's_audit', 'ask_on_write');
     const req: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'artifact.create',
+        actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/audit-test',
     };
@@ -177,7 +177,7 @@ describe('Approval rejection blocks side effects', () => {
     const ctx = createPermissionContext('u_nogrant', 's_nogrant', 'ask_on_write');
     const req: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'artifact.create',
+        actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/no-grant',
     };
@@ -206,7 +206,7 @@ describe('Approval rejection blocks side effects', () => {
     const ctx = createPermissionContext(userId, sessionId, 'ask_on_write');
     const req: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'artifact.create',
+        actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/again',
     };
@@ -232,7 +232,7 @@ describe('Approval rejection blocks side effects', () => {
     const ctx = createPermissionContext(userId, sessionId, 'ask_on_write');
     const req: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'artifact.create',
+        actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/always-test',
     };
@@ -254,7 +254,7 @@ describe('Approval rejection blocks side effects', () => {
 
     const grants = grantStore.findActiveByUserAndScope(userId, 'session');
     expect(grants.length).toBe(1);
-    expect(grants[0].action).toBe('artifact.create');
+    expect(grants[0].action).toBe('artifact_create');
   });
 
   it('denied decision uses createDeniedDecision pattern', () => {
@@ -277,13 +277,13 @@ describe('Approval rejection blocks side effects', () => {
     const ctx = createPermissionContext('u_hard', 's_hard', 'hard_deny');
     const readReq: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'file.read',
+        actionType: 'file_read',
       operationType: 'read',
       resource: '/data/file.txt',
     };
     const writeReq: PermissionCheckRequest = {
       context: ctx,
-      actionType: 'artifact.create',
+        actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/001',
     };

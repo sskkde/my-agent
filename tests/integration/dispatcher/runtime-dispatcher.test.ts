@@ -14,6 +14,8 @@ import type { WorkflowRuntime } from '../../../src/workflows/workflow-runtime.js
 import type { EventTriggerRuntime } from '../../../src/triggers/event-trigger-runtime.js';
 import type { AgentKernel } from '../../../src/kernel/agent-kernel.js';
 import type { PermissionGrantStore } from '../../../src/storage/permission-grant-store.js';
+import type { SubagentRuntime } from '../../../src/subagents/types.js';
+import type { SubagentRegistry } from '../../../src/subagents/registry.js';
 
 function createMockRuntimeActionStore(): RuntimeActionStore {
   const actions = new Map<string, ReturnType<RuntimeActionStore['findById']>>();
@@ -834,6 +836,13 @@ describe('RuntimeDispatcher with subagent_runtime adapter', () => {
       agentKernel: { run: vi.fn() } as unknown as AgentKernel,
       permissionGrantStore: { findByUser: vi.fn(() => []) } as unknown as PermissionGrantStore,
       backgroundRuntime,
+      subagentRuntime: {
+        launchSubagent: vi.fn(),
+        executeSubagent: vi.fn(),
+        getSubagentRun: vi.fn(),
+        cancelSubagent: vi.fn(),
+      } as unknown as SubagentRuntime,
+      subagentRegistry: { assertAllowed: vi.fn() } as unknown as SubagentRegistry,
     });
 
     dispatcher = createRuntimeDispatcher({

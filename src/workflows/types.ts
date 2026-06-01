@@ -24,6 +24,14 @@ export interface WorkflowStepRetryPolicy {
 
 export type OnFailurePolicy = 'fail' | 'continue' | 'skip' | 'compensate';
 
+export interface SubagentModelOverride {
+  providerId?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  providerFallbackMode?: 'none' | 'same_provider' | 'any_compatible';
+}
+
 export interface WorkflowStepConfig {
   toolName?: string;
   toolParams?: Record<string, unknown>;
@@ -31,6 +39,14 @@ export interface WorkflowStepConfig {
   agentParams?: Record<string, unknown>;
   subagentType?: string;
   subagentParams?: Record<string, unknown>;
+  // Subagent execution mode (for subagent_run steps)
+  subagentExecutionMode?: 'sync' | 'background';
+  // Model override for subagent
+  subagentModelOverride?: SubagentModelOverride;
+  // Allowed tools for subagent (overrides definition defaults)
+  subagentAllowedTools?: string[];
+  // Output mode for subagent results
+  subagentOutputMode?: 'summary' | 'artifact' | 'json';
   approvalScope?: string;
   waitCondition?: Record<string, unknown>;
   // Legacy retry policy (deprecated, use retryPolicy)

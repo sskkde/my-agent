@@ -15,13 +15,13 @@ vi.mock('../../../src/tools/builtins/safe-paths.js', async (importOriginal) => {
   };
 });
 
-describe('file.glob tool', () => {
+describe('file_glob tool', () => {
   let tool: ToolDefinition;
   let testDir: string;
 
   const createToolContext = (overrides: Partial<ToolExecutionContext> = {}): ToolExecutionContext => ({
     toolCallId: 'tc-001',
-    toolName: 'file.glob',
+    toolName: 'file_glob',
     userId: 'user-123',
     sessionId: 'session-001',
     permissionContext: {
@@ -310,7 +310,7 @@ describe('file.glob tool', () => {
 
   describe('Tool Definition', () => {
     it('should have correct name', () => {
-      expect(tool.name).toBe('file.glob');
+      expect(tool.name).toBe('file_glob');
     });
 
     it('should have search category', () => {

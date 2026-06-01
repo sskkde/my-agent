@@ -11,7 +11,7 @@ describe('Tool Loop Security', () => {
           iteration: 1,
           timestamp: new Date().toISOString(),
           type: 'tool_call',
-          content: { toolCallId: 'tc-1', toolName: 'file.read', params: {} } as ToolUseRequest,
+          content: { toolCallId: 'tc-1', toolName: 'file_read', params: {} } as ToolUseRequest,
         },
         {
           iteration: 1,
@@ -37,8 +37,8 @@ describe('Tool Loop Security', () => {
     it('detects missing tool results for tracked tool calls', () => {
       const guard = new ToolResultPairingGuard();
       guard.trackAssistantToolCalls([
-        { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
-        { toolCallId: 'tc-2', toolName: 'web.search', params: { query: 'test' } },
+        { toolCallId: 'tc-1', toolName: 'file_read', params: {} },
+        { toolCallId: 'tc-2', toolName: 'web_search', params: { query: 'test' } },
       ]);
       guard.acceptToolResult({ toolCallId: 'tc-1', result: 'ok' });
 
@@ -57,7 +57,7 @@ describe('Tool Loop Security', () => {
           iteration: 1,
           timestamp: new Date().toISOString(),
           type: 'tool_call',
-          content: { toolCallId: 'tc-1', toolName: 'file.read', params: {} } as ToolUseRequest,
+          content: { toolCallId: 'tc-1', toolName: 'file_read', params: {} } as ToolUseRequest,
         },
         {
           iteration: 1,
@@ -81,7 +81,7 @@ describe('Tool Loop Security', () => {
     it('flushMissingResults produces synthetic results with recoverable=true', () => {
       const guard = new ToolResultPairingGuard();
       guard.trackAssistantToolCalls([
-        { toolCallId: 'tc-missing', toolName: 'memory.retrieve', params: {} },
+        { toolCallId: 'tc-missing', toolName: 'memory_retrieve', params: {} },
       ]);
 
       const missing = guard.flushMissingResults('test');

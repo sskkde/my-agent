@@ -1,5 +1,5 @@
 /**
- * Extraction and interception layer for `foreground.decide` tool calls.
+ * Extraction and interception layer for `foreground_decide` tool calls.
  *
  * Security model: this module intercepts and validates LLM-produced tool calls
  * but never dispatches them, never adds them to user-visible responses, and
@@ -32,7 +32,7 @@ export type ForegroundDecideExtractionResult =
   | { success: false; fallbackReason: ForegroundDecideFallbackReason; detail: string; canRetry: boolean };
 
 /**
- * Extract and validate a `foreground.decide` tool call from an LLM response.
+ * Extract and validate a `foreground_decide` tool call from an LLM response.
  *
  * This is an **interception** layer — it never dispatches, never adds tool
  * calls to user-visible responses, and never passes LLM data unfiltered.
@@ -52,8 +52,8 @@ export function extractForegroundDecideToolCall(
   }
 
   const toolCall = toolCalls[0]!;
-  if (toolCall.function.name !== 'foreground.decide') {
-    return { success: false, fallbackReason: 'unexpected_tool_call', detail: `Expected "foreground.decide", got "${toolCall.function.name}"`, canRetry: false };
+  if (toolCall.function.name !== 'foreground_decide') {
+    return { success: false, fallbackReason: 'unexpected_tool_call', detail: `Expected "foreground_decide", got "${toolCall.function.name}"`, canRetry: false };
   }
 
   let parsed: unknown;

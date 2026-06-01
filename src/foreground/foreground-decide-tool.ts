@@ -21,7 +21,7 @@ import { FOREGROUND_DECIDE_SCHEMA } from './foreground-decision-schema.js';
 import type { ForegroundDecision } from './types.js';
 
 /**
- * Structured result returned by the `foreground.decide` tool handler.
+ * Structured result returned by the `foreground_decide` tool handler.
  *
  * Contains the validated {@link ForegroundDecision} and an optional list of
  * validation errors (present only when `success` is `false` on the outer
@@ -33,7 +33,7 @@ export interface ForegroundDecideResult {
 }
 
 /**
- * Create the `foreground.decide` internal tool definition.
+ * Create the `foreground_decide` internal tool definition.
  *
  * This tool is **not** registered in the public tool catalog. It is only
  * available to the foreground agent as a structured-output mechanism for
@@ -100,7 +100,7 @@ export function createForegroundDecideTool(): ToolDefinition {
     FOREGROUND_DECIDE_SCHEMA.function.parameters as unknown as ToolSchema;
 
   return {
-    name: 'foreground.decide',
+    name: 'foreground_decide',
     description:
       'Internal routing decision tool for the foreground agent. ' +
       'Produce a structured routing decision for the current user message instead of free-form text. ' +

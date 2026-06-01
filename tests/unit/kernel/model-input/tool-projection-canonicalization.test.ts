@@ -151,12 +151,12 @@ describe('Tool Projection Canonicalization', () => {
 
       const result1 = await builder.build(makeMinimalInput({
         mode: 'routing_json',
-        toolProjection: { toolIds: ['file.read', 'web.search', 'memory.retrieve'] },
+        toolProjection: { toolIds: ['file_read', 'web_search', 'memory_retrieve'] },
       }));
 
       const result2 = await builder.build(makeMinimalInput({
         mode: 'routing_json',
-        toolProjection: { toolIds: ['memory.retrieve', 'file.read', 'web.search'] },
+        toolProjection: { toolIds: ['memory_retrieve', 'file_read', 'web_search'] },
       }));
 
       expect(result1.segmentHashes.segmentC).not.toBe(result2.segmentHashes.segmentC);
@@ -168,11 +168,11 @@ describe('Tool Projection Canonicalization', () => {
       const results = await Promise.all([
         builder.build(makeMinimalInput({
           mode: 'routing_json',
-          toolProjection: { toolIds: ['file.read', 'web.search'] },
+          toolProjection: { toolIds: ['file_read', 'web_search'] },
         })),
         builder.build(makeMinimalInput({
           mode: 'routing_json',
-          toolProjection: { toolIds: ['file.read', 'web.search'] },
+          toolProjection: { toolIds: ['file_read', 'web_search'] },
         })),
       ]);
 
@@ -280,7 +280,7 @@ describe('Tool Projection Canonicalization', () => {
 
   describe('computeTemplateHash canonicalization', () => {
     it('same content always produces same hash', () => {
-      const content = 'Available Tool IDs: file.read, web.search';
+      const content = 'Available Tool IDs: file_read, web_search';
       const hash1 = computeTemplateHash(content);
       const hash2 = computeTemplateHash(content);
 

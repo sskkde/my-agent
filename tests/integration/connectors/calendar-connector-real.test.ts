@@ -472,7 +472,7 @@ describe('Calendar Connector Integration', () => {
       expect(listEventsCapability).toBeDefined();
 
       const toolDef = toolBridge.bridgeCapabilityToToolDefinition(listEventsCapability!);
-      expect(toolDef.name).toBe('connector.calendar.list_events');
+      expect(toolDef.name).toBe('connector_calendar_list_events');
       expect(toolDef.category).toBe('read');
       expect(toolDef.sensitivity).toBe('low');
     });

@@ -340,6 +340,132 @@ describe('Multi-Provider LLM Adapter Integration', () => {
         })
       );
     });
+
+    it('should serialize assistant message toolCalls as tool_calls in request body', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+      });
+
+      const request: LLMRequest = {
+        model: 'gpt-4',
+        messages: [
+          { role: 'user', content: 'What is the weather in Paris?' },
+          {
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              {
+                id: 'call_abc123',
+                type: 'function',
+                function: {
+                  name: 'get_weather',
+                  arguments: '{"location":"Paris"}',
+                },
+              },
+            ],
+          },
+          {
+            role: 'tool',
+            content: '{"temperature": 20, "condition": "sunny"}',
+            toolCallId: 'call_abc123',
+          },
+        ],
+      };
+
+      await adapter.complete(request);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.any(String),
+        })
+      );
+
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+
+      expect(requestBody.messages[1]).toHaveProperty('tool_calls');
+      expect(requestBody.messages[1].tool_calls).toHaveLength(1);
+      expect(requestBody.messages[1].tool_calls[0]).toEqual({
+        id: 'call_abc123',
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          arguments: '{"location":"Paris"}',
+        },
+      });
+
+      expect(requestBody.messages[2]).toHaveProperty('tool_call_id');
+      expect(requestBody.messages[2].tool_call_id).toBe('call_abc123');
+    });
+
+    it('should handle multiple tool calls in assistant message', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+      });
+
+      const request: LLMRequest = {
+        model: 'gpt-4',
+        messages: [
+          { role: 'user', content: 'Get weather for Paris and London' },
+          {
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              {
+                id: 'call_1',
+                type: 'function',
+                function: {
+                  name: 'get_weather',
+                  arguments: '{"location":"Paris"}',
+                },
+              },
+              {
+                id: 'call_2',
+                type: 'function',
+                function: {
+                  name: 'get_weather',
+                  arguments: '{"location":"London"}',
+                },
+              },
+            ],
+          },
+        ],
+      };
+
+      await adapter.complete(request);
+
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+
+      expect(requestBody.messages[1].tool_calls).toHaveLength(2);
+      expect(requestBody.messages[1].tool_calls[0].id).toBe('call_1');
+      expect(requestBody.messages[1].tool_calls[1].id).toBe('call_2');
+    });
+
+    it('should omit tool_calls when assistant message has no toolCalls', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+      });
+
+      const request: LLMRequest = {
+        model: 'gpt-4',
+        messages: [
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: 'Hi there!' },
+        ],
+      };
+
+      await adapter.complete(request);
+
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+
+      expect(requestBody.messages[1]).not.toHaveProperty('tool_calls');
+    });
   });
 
   describe('OpenRouter Adapter', () => {
@@ -438,6 +564,58 @@ describe('Multi-Provider LLM Adapter Integration', () => {
         'https://custom-openrouter.com/api/v1/chat/completions',
         expect.any(Object)
       );
+    });
+
+    it('should serialize assistant message toolCalls as tool_calls in request body', async () => {
+      const adapter = new OpenRouterAdapter({
+        ...createTestProviderConfig('openrouter', 1),
+        apiKey: 'test-router-key',
+      });
+
+      const request: LLMRequest = {
+        model: 'anthropic/claude-3-opus',
+        messages: [
+          { role: 'user', content: 'What is the weather?' },
+          {
+            role: 'assistant',
+            content: '',
+            toolCalls: [
+              {
+                id: 'call_xyz789',
+                type: 'function',
+                function: {
+                  name: 'get_weather',
+                  arguments: '{"location":"Tokyo"}',
+                },
+              },
+            ],
+          },
+          {
+            role: 'tool',
+            content: '{"temperature": 25}',
+            toolCallId: 'call_xyz789',
+          },
+        ],
+      };
+
+      await adapter.complete(request);
+
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+
+      expect(requestBody.messages[1]).toHaveProperty('tool_calls');
+      expect(requestBody.messages[1].tool_calls).toHaveLength(1);
+      expect(requestBody.messages[1].tool_calls[0]).toEqual({
+        id: 'call_xyz789',
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          arguments: '{"location":"Tokyo"}',
+        },
+      });
+
+      expect(requestBody.messages[2]).toHaveProperty('tool_call_id');
+      expect(requestBody.messages[2].tool_call_id).toBe('call_xyz789');
     });
   });
 

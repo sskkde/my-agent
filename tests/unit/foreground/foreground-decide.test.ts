@@ -15,14 +15,14 @@ import { createForegroundDecideTool } from '../../../src/foreground/foreground-d
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TOOL_CATALOG = [
-  'web.search',
-  'docs.search',
-  'transcript.search',
-  'memory.retrieve',
-  'status.query',
-  'file.read',
-  'file.glob',
-  'file.grep',
+  'web_search',
+  'docs_search',
+  'transcript_search',
+  'memory_retrieve',
+  'status_query',
+  'file_read',
+  'file_glob',
+  'file_grep',
 ];
 
 const DEFAULT_EFFECTIVE_TOOL_IDS = [...DEFAULT_TOOL_CATALOG];
@@ -50,7 +50,7 @@ function makeDecideToolCall(params?: Partial<ForegroundDecideParams>): ToolCall 
     id: 'tc-001',
     type: 'function',
     function: {
-      name: 'foreground.decide',
+      name: 'foreground_decide',
       arguments: JSON.stringify(validParams(params)),
     },
   };
@@ -74,7 +74,7 @@ describe('validateForegroundDecideParams', () => {
     it('should accept all optional fields', () => {
       const params = validParams({
         userVisibleResponse: 'Hello!',
-        suggestedTools: ['web.search'],
+        suggestedTools: ['web_search'],
         estimatedSteps: 5,
         complexity: 'high',
         targetRef: { plannerRunId: 'pr-001', planId: 'p-001' },
@@ -260,7 +260,7 @@ describe('validateForegroundDecideParams', () => {
 describe('normalizeToForegroundDecision', () => {
   it('should produce a ForegroundDecision with no runtimeAction', () => {
     const params = validParams({
-      suggestedTools: ['web.search'],
+      suggestedTools: ['web_search'],
       estimatedSteps: 3,
       complexity: 'medium',
     });
@@ -292,16 +292,16 @@ describe('normalizeToForegroundDecision', () => {
   });
 
   it('should use filteredTools when provided', () => {
-    const params = validParams({ suggestedTools: ['web.search', 'nonexistent.tool'] });
-    const filteredTools = ['web.search'];
+    const params = validParams({ suggestedTools: ['web_search', 'nonexistent.tool'] });
+    const filteredTools = ['web_search'];
     const decision = normalizeToForegroundDecision(params, filteredTools);
-    expect(decision.suggestedTools).toEqual(['web.search']);
+    expect(decision.suggestedTools).toEqual(['web_search']);
   });
 
   it('should pass through raw suggestedTools when filteredTools not provided', () => {
-    const params = validParams({ suggestedTools: ['web.search', 'docs.search'] });
+    const params = validParams({ suggestedTools: ['web_search', 'docs_search'] });
     const decision = normalizeToForegroundDecision(params);
-    expect(decision.suggestedTools).toEqual(['web.search', 'docs.search']);
+    expect(decision.suggestedTools).toEqual(['web_search', 'docs_search']);
   });
 });
 
@@ -330,7 +330,7 @@ describe('extractForegroundDecideToolCall', () => {
         id: 'tc-001',
         type: 'function',
         function: {
-          name: 'foreground.decide',
+          name: 'foreground_decide',
           arguments: JSON.stringify(paramsWithAction),
         },
       }];
@@ -370,7 +370,7 @@ describe('extractForegroundDecideToolCall', () => {
           id: 'tc-002',
           type: 'function',
           function: {
-            name: 'foreground.decide',
+            name: 'foreground_decide',
             arguments: JSON.stringify(validParams()),
           },
         },
@@ -411,7 +411,7 @@ describe('extractForegroundDecideToolCall', () => {
         id: 'tc-001',
         type: 'function',
         function: {
-          name: 'foreground.decide',
+          name: 'foreground_decide',
           arguments: '{not valid json',
         },
       }];
@@ -430,7 +430,7 @@ describe('extractForegroundDecideToolCall', () => {
         id: 'tc-001',
         type: 'function',
         function: {
-          name: 'foreground.decide',
+          name: 'foreground_decide',
           arguments: JSON.stringify(validParams({ route: 'bad_route' as any })),
         },
       }];
@@ -448,7 +448,7 @@ describe('extractForegroundDecideToolCall', () => {
         id: 'tc-001',
         type: 'function',
         function: {
-          name: 'foreground.decide',
+          name: 'foreground_decide',
           arguments: JSON.stringify(validParams({ schemaVersion: '99.0' })),
         },
       }];
@@ -466,7 +466,7 @@ describe('extractForegroundDecideToolCall', () => {
         id: 'tc-001',
         type: 'function',
         function: {
-          name: 'foreground.decide',
+          name: 'foreground_decide',
           arguments: JSON.stringify(validParams({ reason: '' })),
         },
       }];
@@ -487,29 +487,29 @@ describe('extractForegroundDecideToolCall', () => {
 describe('tool filtering', () => {
   it('should remove disallowed suggested tools', () => {
     const opts = defaultOptions({
-      effectiveToolIds: ['web.search', 'docs.search'],
+      effectiveToolIds: ['web_search', 'docs_search'],
     });
     const params = validParams({
-      suggestedTools: ['web.search', 'memory.retrieve', 'nonexistent.tool'],
+      suggestedTools: ['web_search', 'memory_retrieve', 'nonexistent.tool'],
     });
     const result = validateForegroundDecideParams(params, opts);
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toContain('web.search');
-    expect(result.decision?.suggestedTools).not.toContain('memory.retrieve');
+    expect(result.decision?.suggestedTools).toContain('web_search');
+    expect(result.decision?.suggestedTools).not.toContain('memory_retrieve');
     expect(result.decision?.suggestedTools).not.toContain('nonexistent.tool');
   });
 
   it('should remove tools not in toolCatalog even if in effectiveToolIds', () => {
     const opts = defaultOptions({
-      toolCatalog: ['web.search'],
-      effectiveToolIds: ['web.search', 'docs.search', 'memory.retrieve'],
+      toolCatalog: ['web_search'],
+      effectiveToolIds: ['web_search', 'docs_search', 'memory_retrieve'],
     });
     const params = validParams({
-      suggestedTools: ['web.search', 'docs.search', 'memory.retrieve'],
+      suggestedTools: ['web_search', 'docs_search', 'memory_retrieve'],
     });
     const result = validateForegroundDecideParams(params, opts);
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toEqual(['web.search']);
+    expect(result.decision?.suggestedTools).toEqual(['web_search']);
   });
 
   it('should handle empty suggestedTools array', () => {
@@ -528,60 +528,60 @@ describe('tool filtering', () => {
 });
 
 describe('alias resolution', () => {
-  it('should resolve "search" alias to "docs.search"', () => {
+  it('should resolve "search" alias to "docs_search"', () => {
     const params = validParams({ suggestedTools: ['search'] });
     const result = validateForegroundDecideParams(params, defaultOptions());
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toContain('docs.search');
+    expect(result.decision?.suggestedTools).toContain('docs_search');
     expect(result.decision?.suggestedTools).not.toContain('search');
   });
 
-  it('should resolve "web" alias to "web.search"', () => {
+  it('should resolve "web" alias to "web_search"', () => {
     const params = validParams({ suggestedTools: ['web'] });
     const result = validateForegroundDecideParams(params, defaultOptions());
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toContain('web.search');
+    expect(result.decision?.suggestedTools).toContain('web_search');
   });
 
-  it('should resolve "memory" alias to "memory.retrieve"', () => {
+  it('should resolve "memory" alias to "memory_retrieve"', () => {
     const params = validParams({ suggestedTools: ['memory'] });
     const result = validateForegroundDecideParams(params, defaultOptions());
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toContain('memory.retrieve');
+    expect(result.decision?.suggestedTools).toContain('memory_retrieve');
   });
 
-  it('should resolve "transcript" alias to "transcript.search"', () => {
+  it('should resolve "transcript" alias to "transcript_search"', () => {
     const params = validParams({ suggestedTools: ['transcript'] });
     const result = validateForegroundDecideParams(params, defaultOptions());
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toContain('transcript.search');
+    expect(result.decision?.suggestedTools).toContain('transcript_search');
   });
 
-  it('should resolve "status" alias to "status.query"', () => {
+  it('should resolve "status" alias to "status_query"', () => {
     const params = validParams({ suggestedTools: ['status'] });
     const result = validateForegroundDecideParams(params, defaultOptions());
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toContain('status.query');
+    expect(result.decision?.suggestedTools).toContain('status_query');
   });
 
-  it('should resolve "internet.search" alias to "web.search"', () => {
+  it('should resolve "internet.search" alias to "web_search"', () => {
     const params = validParams({ suggestedTools: ['internet.search'] });
     const result = validateForegroundDecideParams(params, defaultOptions());
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toContain('web.search');
+    expect(result.decision?.suggestedTools).toContain('web_search');
   });
 
   it('should deduplicate resolved aliases', () => {
-    const params = validParams({ suggestedTools: ['web', 'web.search', 'internet.search'] });
+    const params = validParams({ suggestedTools: ['web', 'web_search', 'internet.search'] });
     const result = validateForegroundDecideParams(params, defaultOptions());
     expect(result.valid).toBe(true);
-    expect(result.decision?.suggestedTools).toEqual(['web.search']);
+    expect(result.decision?.suggestedTools).toEqual(['web_search']);
   });
 
   it('should skip aliases that do not resolve to a catalog tool', () => {
     const opts = defaultOptions({
-      toolCatalog: ['docs.search'],
-      effectiveToolIds: ['docs.search'],
+      toolCatalog: ['docs_search'],
+      effectiveToolIds: ['docs_search'],
     });
     const params = validParams({ suggestedTools: ['web'] });
     const result = validateForegroundDecideParams(params, opts);
@@ -618,7 +618,7 @@ describe('runtimeAction rejection', () => {
       id: 'tc-001',
       type: 'function',
       function: {
-        name: 'foreground.decide',
+        name: 'foreground_decide',
         arguments: JSON.stringify(paramsWithAction),
       },
     }];
@@ -643,7 +643,7 @@ describe('runtimeAction rejection', () => {
 describe('createForegroundDecideTool', () => {
   const mockContext: ToolExecutionContext = {
     toolCallId: 'tc-001',
-    toolName: 'foreground.decide',
+    toolName: 'foreground_decide',
     userId: 'user-123',
     sessionId: 'session-456',
     permissionContext: {
@@ -663,7 +663,7 @@ describe('createForegroundDecideTool', () => {
 
   it('should return a ToolDefinition with correct name', () => {
     const tool = createForegroundDecideTool();
-    expect(tool.name).toBe('foreground.decide');
+    expect(tool.name).toBe('foreground_decide');
     expect(tool.category).toBe('internal');
     expect(tool.handler).toBeDefined();
   });

@@ -375,7 +375,7 @@ describe('Phase 3 E2E: Connector Event to Workflow', () => {
           name: 'Triggered Step',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.mock_email.search_emails',
+            toolName: 'connector_mock_email_search_emails',
             toolParams: { query: 'triggered' },
           },
         },

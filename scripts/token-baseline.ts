@@ -38,39 +38,39 @@ function createBuilder(): ModelInputBuilder {
 function makeRoutingToolProjection(): ToolPlaneProjection {
   return {
     toolIds: [
-      'artifact.create',
-      'artifact.update',
+      'artifact_create',
+      'artifact_update',
       'ask_user',
-      'status.query',
-      'memory.retrieve',
-      'transcript.search',
-      'plan.patch',
-      'docs.search',
-      'file.read',
-      'file.glob',
-      'file.grep',
-      'session.list',
-      'session.history',
-      'web.fetch',
-      'web.search',
+      'status_query',
+      'memory_retrieve',
+      'transcript_search',
+      'plan_patch',
+      'docs_search',
+      'file_read',
+      'file_glob',
+      'file_grep',
+      'session_list',
+      'session_history',
+      'web_fetch',
+      'web_search',
     ],
     toolSummaries: `
 Tool Summaries:
-- artifact.create: Create a new artifact (file, document, etc.)
-- artifact.update: Update an existing artifact
+- artifact_create: Create a new artifact (file, document, etc.)
+- artifact_update: Update an existing artifact
 - ask_user: Ask the user for clarification or input
-- status.query: Query status of running tasks
-- memory.retrieve: Retrieve relevant memories
-- transcript.search: Search conversation transcript
-- plan.patch: Modify the execution plan
-- docs.search: Search documentation
-- file.read: Read file contents
-- file.glob: Find files by pattern
-- file.grep: Search file contents
-- session.list: List available sessions
-- session.history: Get session history
-- web.fetch: Fetch web content
-- web.search: Search the web
+- status_query: Query status of running tasks
+- memory_retrieve: Retrieve relevant memories
+- transcript_search: Search conversation transcript
+- plan_patch: Modify the execution plan
+- docs_search: Search documentation
+- file_read: Read file contents
+- file_glob: Find files by pattern
+- file_grep: Search file contents
+- session_list: List available sessions
+- session_history: Get session history
+- web_fetch: Fetch web content
+- web_search: Search the web
 `.trim(),
   };
 }
@@ -78,12 +78,12 @@ Tool Summaries:
 // Typical tool projection for function_calling (Kernel/Search)
 function makeFunctionCallingToolProjection(): ToolPlaneProjection {
   return {
-    toolIds: ['file.read', 'file.glob', 'file.grep', 'web.search', 'web.fetch'],
+    toolIds: ['file_read', 'file_glob', 'file_grep', 'web_search', 'web_fetch'],
     tools: [
       {
         type: 'function',
         function: {
-          name: 'file.read',
+          name: 'file_read',
           description: 'Read the contents of a file from the filesystem',
           parameters: {
             type: 'object',
@@ -97,7 +97,7 @@ function makeFunctionCallingToolProjection(): ToolPlaneProjection {
       {
         type: 'function',
         function: {
-          name: 'file.glob',
+          name: 'file_glob',
           description: 'Find files matching a glob pattern',
           parameters: {
             type: 'object',
@@ -112,7 +112,7 @@ function makeFunctionCallingToolProjection(): ToolPlaneProjection {
       {
         type: 'function',
         function: {
-          name: 'file.grep',
+          name: 'file_grep',
           description: 'Search for a pattern in file contents',
           parameters: {
             type: 'object',
@@ -128,7 +128,7 @@ function makeFunctionCallingToolProjection(): ToolPlaneProjection {
       {
         type: 'function',
         function: {
-          name: 'web.search',
+          name: 'web_search',
           description: 'Search the web for information',
           parameters: {
             type: 'object',
@@ -142,7 +142,7 @@ function makeFunctionCallingToolProjection(): ToolPlaneProjection {
       {
         type: 'function',
         function: {
-          name: 'web.fetch',
+          name: 'web_fetch',
           description: 'Fetch content from a URL',
           parameters: {
             type: 'object',
@@ -160,7 +160,7 @@ function makeFunctionCallingToolProjection(): ToolPlaneProjection {
 // Typical tool projection for structured_json (Memory)
 function makeStructuredJsonToolProjection(): ToolPlaneProjection {
   return {
-    toolIds: ['memory.retrieve'],
+    toolIds: ['memory_retrieve'],
   };
 }
 

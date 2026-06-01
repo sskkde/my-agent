@@ -18,7 +18,7 @@ describe('MVP smoke: approval resume flow', () => {
         targetAction: 'execute_tool',
         payload: {
           toolCallId: 'smoke-approved-tool-call',
-          toolName: 'docs.search',
+          toolName: 'docs_search',
           params: { query: 'approval smoke' },
         },
         correlationId: 'smoke-approval-correlation',
@@ -37,7 +37,7 @@ describe('MVP smoke: approval resume flow', () => {
         riskLevel: 'medium',
         scope: 'tool',
         actionType: 'execute_tool',
-        resource: 'docs.search',
+        resource: 'docs_search',
         justification: 'Smoke test approval resume',
         requestedBy: 'smoke-test',
         requestedAt: now,

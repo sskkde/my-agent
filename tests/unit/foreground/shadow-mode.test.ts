@@ -107,7 +107,7 @@ function createMockModelInputBuilder(): ModelInputBuilder {
     segments: {
       staticPrefix: 'system-prompt',
       tenantProject: '',
-      toolPlane: 'Available Tool IDs: docs.search',
+      toolPlane: 'Available Tool IDs: docs_search',
       contextBundle: 'User Message: Hello',
     },
     segmentHashes: {
@@ -172,7 +172,7 @@ describe('ForegroundAgent Shadow Mode Integration', () => {
       const llmAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'Search query',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
       }));
 
       const agent = createForegroundAgent({ llmAdapter });
@@ -297,7 +297,7 @@ describe('ForegroundAgent Shadow Mode Integration', () => {
       const llmAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'dispatch_tool',
         reason: 'New path tool dispatch',
-        suggestedTools: ['docs.search'],
+        suggestedTools: ['docs_search'],
       }));
 
       const modelInputBuilder = createMockModelInputBuilder();

@@ -872,7 +872,7 @@ describe('Google Contacts Connector GA Certification', () => {
       expect(listCap).toBeDefined();
 
       const toolDef = toolBridge.bridgeCapabilityToToolDefinition(listCap!);
-      expect(toolDef.name).toBe('connector.contacts.list_contacts');
+      expect(toolDef.name).toBe('connector_contacts_list_contacts');
       expect(toolDef.category).toBe('read');
       expect(toolDef.sensitivity).toBe('low');
     });

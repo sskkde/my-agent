@@ -7,7 +7,7 @@ import { createLongTermMemoryStore, type LongTermMemoryStore, type LongTermMemor
 import { createMemoryRetrieveTool, type MemoryRetrieveParams } from '../../../src/tools/builtins/memory-retrieve.js';
 import type { ToolDefinition, ToolExecutionContext } from '../../../src/tools/types.js';
 
-describe('memory.retrieve tool', () => {
+describe('memory_retrieve tool', () => {
   let connection: ConnectionManager;
   let summaryStore: SummaryStore;
   let longTermMemoryStore: LongTermMemoryStore;
@@ -43,7 +43,7 @@ describe('memory.retrieve tool', () => {
 
   const createToolContext = (overrides: Partial<ToolExecutionContext> = {}): ToolExecutionContext => ({
     toolCallId: 'tc-001',
-    toolName: 'memory.retrieve',
+    toolName: 'memory_retrieve',
     userId: 'user-123',
     sessionId: 'session-001',
     permissionContext: {

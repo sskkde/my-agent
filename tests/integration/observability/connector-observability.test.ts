@@ -96,7 +96,7 @@ describe('connector_observability', () => {
 
     const result = await executor.execute({
       toolCallId: 'call-email-search-observable',
-      toolName: 'connector.mock_email.search_emails',
+      toolName: 'connector_mock_email_search_emails',
       params: { query: 'secret meeting token abc123', maxResults: 5 },
       userId: 'user-connector-001',
       sessionId: 'session-connector-001',

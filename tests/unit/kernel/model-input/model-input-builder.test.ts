@@ -115,7 +115,7 @@ describe('ModelInputBuilder', () => {
       const builder = makeBuilder();
       const result = await builder.build(makeMinimalInput({
         systemPrompt: 'Custom system prompt',
-        toolProjection: { toolIds: ['file.read', 'web.search'] },
+        toolProjection: { toolIds: ['file_read', 'web_search'] },
         currentUserMessage: 'Hello world',
       }));
 
@@ -124,7 +124,7 @@ describe('ModelInputBuilder', () => {
 
       const firstSystemIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('Platform Base'));
       const secondSystemIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('Custom system prompt'));
-      const toolPlaneIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('file.read'));
+      const toolPlaneIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('file_read'));
       const userMsgIdx = messages.findIndex((m) => m.role === 'user' && m.content.includes('Hello world'));
 
       expect(firstSystemIdx).toBeLessThan(secondSystemIdx);
@@ -226,12 +226,12 @@ describe('ModelInputBuilder', () => {
       const builder = makeBuilder();
       const result = await builder.build(makeMinimalInput({
         mode: 'routing_json',
-        toolProjection: { toolIds: ['file.read', 'web.search'] },
+        toolProjection: { toolIds: ['file_read', 'web_search'] },
         currentUserMessage: 'Read the file',
       }));
 
       const toolMessages = result.messages.filter((m) =>
-        m.role === 'system' && m.content.includes('file.read') && m.content.includes('web.search')
+        m.role === 'system' && m.content.includes('file_read') && m.content.includes('web_search')
       );
       expect(toolMessages.length).toBeGreaterThan(0);
     });
@@ -240,11 +240,11 @@ describe('ModelInputBuilder', () => {
       const builder = makeBuilder();
       const result = await builder.build(makeMinimalInput({
         mode: 'structured_json',
-        toolProjection: { toolIds: ['memory.retrieve'] },
+        toolProjection: { toolIds: ['memory_retrieve'] },
       }));
 
       expect(result.metadata.mode).toBe('structured_json');
-      expect(result.segments.toolPlane).toContain('memory.retrieve');
+      expect(result.segments.toolPlane).toContain('memory_retrieve');
     });
 
     it('function_calling mode includes full tool descriptions', async () => {
@@ -254,11 +254,11 @@ describe('ModelInputBuilder', () => {
         agentKind: 'kernel',
         providerFamily: 'openai',
         toolProjection: {
-          toolIds: ['file.read'],
+          toolIds: ['file_read'],
           tools: [{
             type: 'function' as const,
             function: {
-              name: 'file.read',
+              name: 'file_read',
               description: 'Read a file from disk',
               parameters: { type: 'object', properties: { path: { type: 'string' } } },
             },
@@ -266,7 +266,7 @@ describe('ModelInputBuilder', () => {
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('file.read');
+      expect(result.segments.toolPlane).toContain('file_read');
       expect(result.segments.toolPlane).toContain('Read a file from disk');
     });
 
@@ -328,7 +328,7 @@ describe('ModelInputBuilder', () => {
       const builder = makeBuilder();
       const result = await builder.build(makeMinimalInput({
         systemPrompt: 'Test prompt',
-        toolProjection: { toolIds: ['file.read'] },
+        toolProjection: { toolIds: ['file_read'] },
         currentUserMessage: 'Hello',
       }));
 
@@ -534,11 +534,11 @@ describe('PM-7: Three strategy projections render together', () => {
         constraints: ['No jargon', 'Be helpful'],
       },
       // Segment C - Tool Selection Policy
-      toolProjection: { toolIds: ['file.read', 'web.search'] },
+      toolProjection: { toolIds: ['file_read', 'web_search'] },
       toolSelectionPolicy: {
-        heuristics: 'Prefer file.read for local operations.',
-        priorityRules: ['Use web.search when file.read fails'],
-        riskRules: ['Avoid web.search for sensitive queries'],
+        heuristics: 'Prefer file_read for local operations.',
+        priorityRules: ['Use web_search when file_read fails'],
+        riskRules: ['Avoid web_search for sensitive queries'],
       },
       // Segment D - Memory Policy
       memoryPolicyProjection: {
@@ -557,9 +557,9 @@ describe('PM-7: Three strategy projections render together', () => {
 
     // Segment C contains tool selection policy (rendered by renderToolSelectionPolicy)
     expect(result.segments.toolPlane).toContain('Tool Selection Policy:');
-    expect(result.segments.toolPlane).toContain('Prefer file.read for local operations.');
+    expect(result.segments.toolPlane).toContain('Prefer file_read for local operations.');
     expect(result.segments.toolPlane).toContain('Priority Rules:');
-    expect(result.segments.toolPlane).toContain('Use web.search when file.read fails');
+    expect(result.segments.toolPlane).toContain('Use web_search when file_read fails');
 
     // Segment D contains memory policy (rendered by renderMemoryPolicyProjection)
     expect(result.segments.contextBundle).toContain('Memory Policy:');
@@ -576,7 +576,7 @@ describe('PM-7: Three strategy projections render together', () => {
         styleGuidelines: 'Persona style',
         constraints: [],
       },
-      toolProjection: { toolIds: ['file.read'] },
+      toolProjection: { toolIds: ['file_read'] },
       toolSelectionPolicy: {
         heuristics: 'Tool policy content',
       },
@@ -613,7 +613,7 @@ describe('PM-7: Hash stability regression (flag OFF)', () => {
     const input = makeMinimalInput({
       systemPrompt: 'Test system prompt',
       routingPrompt: 'Test routing prompt',
-      toolProjection: { toolIds: ['file.read'] },
+      toolProjection: { toolIds: ['file_read'] },
       currentUserMessage: 'Test message',
     });
 
@@ -652,12 +652,12 @@ describe('PM-7: Hash stability regression (flag OFF)', () => {
 
     const inputWithoutProjection = makeMinimalInput({
       systemPrompt: 'Test',
-      toolProjection: { toolIds: ['file.read'] },
+      toolProjection: { toolIds: ['file_read'] },
     });
 
     const inputWithProjection = makeMinimalInput({
       systemPrompt: 'Test',
-      toolProjection: { toolIds: ['file.read'] },
+      toolProjection: { toolIds: ['file_read'] },
       toolSelectionPolicy: {
         heuristics: 'Use tools wisely',
       },
@@ -706,15 +706,15 @@ describe('PM-7: Token increment validation', () => {
     const builder = makeBuilder();
 
     const inputWithout = makeMinimalInput({
-      toolProjection: { toolIds: ['file.read', 'web.search'] },
+      toolProjection: { toolIds: ['file_read', 'web_search'] },
     });
 
     const inputWith = makeMinimalInput({
-      toolProjection: { toolIds: ['file.read', 'web.search'] },
+      toolProjection: { toolIds: ['file_read', 'web_search'] },
       toolSelectionPolicy: {
-        heuristics: 'Prefer file.read for local files. Use web.search for external content.',
-        priorityRules: ['file.read first', 'web.search as fallback'],
-        riskRules: ['Avoid web.search for sensitive data'],
+        heuristics: 'Prefer file_read for local files. Use web_search for external content.',
+        priorityRules: ['file_read first', 'web_search as fallback'],
+        riskRules: ['Avoid web_search for sensitive data'],
       },
     });
 
@@ -757,13 +757,13 @@ describe('PM-7: Token increment validation', () => {
 
     const inputWithout = makeMinimalInput({
       systemPrompt: 'Test',
-      toolProjection: { toolIds: ['file.read'] },
+      toolProjection: { toolIds: ['file_read'] },
       currentUserMessage: 'Test',
     });
 
     const inputWith = makeMinimalInput({
       systemPrompt: 'Test',
-      toolProjection: { toolIds: ['file.read'] },
+      toolProjection: { toolIds: ['file_read'] },
       currentUserMessage: 'Test',
       personaProjection: {
         personaId: 'p1',

@@ -6,7 +6,7 @@ export interface BuiltinToolDeps {
 
 export function createWebSearchTool(deps: BuiltinToolDeps): ToolDefinition {
   return {
-    name: 'web.search',
+    name: 'web_search',
     description: 'Search the web',
     category: 'search',
     sensitivity: 'medium',
@@ -64,7 +64,7 @@ export function createWebSearchTool(deps: BuiltinToolDeps): ToolDefinition {
 
 export function createWebFetchTool(): ToolDefinition {
   return {
-    name: 'web.fetch',
+    name: 'web_fetch',
     description: 'Fetch the contents of a web page',
     category: 'read',
     sensitivity: 'medium',

@@ -210,7 +210,7 @@ Conditions:
       "description": "Read the configuration file",
       "successCriteria": "File contents retrieved successfully",
       "estimatedComplexity": "low",
-      "tools": ["file.read"]
+      "tools": ["file_read"]
     },
     {
       "stepId": "step_parse",
@@ -236,7 +236,7 @@ Conditions:
       "description": "Analyze current authentication implementation",
       "successCriteria": "Current implementation fully understood",
       "estimatedComplexity": "medium",
-      "tools": ["file.read", "file.glob", "file.grep"]
+      "tools": ["file_read", "file_glob", "file_grep"]
     },
     {
       "stepId": "step_design_oauth",
@@ -251,7 +251,7 @@ Conditions:
       "dependencies": ["step_design_oauth"],
       "successCriteria": "All tests passing",
       "estimatedComplexity": "high",
-      "tools": ["file.read", "file.write"]
+      "tools": ["file_read", "file_write"]
     },
     {
       "stepId": "step_test",

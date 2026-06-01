@@ -344,7 +344,7 @@ export function createWebFetchTool(): ToolDefinition {
   };
 
   return {
-    name: 'web.fetch',
+    name: 'web_fetch',
     description: 'Fetch content from a URL with safety validation and HTML-to-text conversion',
     category: 'read',
     sensitivity: 'medium',

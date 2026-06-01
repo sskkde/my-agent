@@ -272,7 +272,7 @@ describe('Phase 3 Cross-Runtime Integration', () => {
           name: 'Search Emails',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.mock_email.search_emails',
+            toolName: 'connector_mock_email_search_emails',
             toolParams: { query: 'urgent' },
           },
           nextStepId: 'step_2',
@@ -282,7 +282,7 @@ describe('Phase 3 Cross-Runtime Integration', () => {
           name: 'Require Approval',
           stepType: 'approval',
           config: {
-            approvalScope: 'connector.mock_docs.create_doc',
+            approvalScope: 'connector_mock_docs_create_doc',
           },
           nextStepId: 'step_3',
         },
@@ -291,7 +291,7 @@ describe('Phase 3 Cross-Runtime Integration', () => {
           name: 'Create Document',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.mock_docs.create_doc',
+            toolName: 'connector_mock_docs_create_doc',
             toolParams: { title: 'Action Items', content: 'From emails' },
           },
         },
@@ -338,7 +338,7 @@ describe('Phase 3 Cross-Runtime Integration', () => {
           name: 'Search Emails',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.mock_email.search_emails',
+            toolName: 'connector_mock_email_search_emails',
             toolParams: { query: 'test' },
           },
         },
@@ -385,7 +385,7 @@ describe('Phase 3 Cross-Runtime Integration', () => {
           name: 'Export Document (async)',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.mock_docs.export_doc',
+            toolName: 'connector_mock_docs_export_doc',
             toolParams: { docId: 'doc_001', format: 'pdf' },
           },
         },
@@ -472,7 +472,7 @@ describe('Phase 3 Cross-Runtime Integration', () => {
           name: 'Quick Search',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.mock_email.search_emails',
+            toolName: 'connector_mock_email_search_emails',
             toolParams: { query: 'test' },
           },
         },
@@ -517,7 +517,7 @@ describe('Phase 3 Cross-Runtime Integration', () => {
           name: 'Search',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.mock_email.search_emails',
+            toolName: 'connector_mock_email_search_emails',
             toolParams: { query: 'test' },
           },
         },

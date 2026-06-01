@@ -45,7 +45,7 @@ describe('Large Result Reference Integration', () => {
       };
 
       const processed = processor.processResult(toolExecutionResult, {
-        toolName: 'connector.fetch_emails',
+        toolName: 'connector_fetch_emails',
         userId: 'user-123',
         sessionId: 'session-456',
         toolCallId: 'tool-call-789',
@@ -58,7 +58,7 @@ describe('Large Result Reference Integration', () => {
       expect(processed.rawBlobRef?.sizeBytes).toBeGreaterThan(64 * 1024);
       expect(processed.preview).toBeDefined();
       expect(processed.preview?.length).toBeLessThanOrEqual(503); // 500 + '...'
-      expect(processed.summary).toContain('connector.fetch_emails');
+      expect(processed.summary).toContain('connector_fetch_emails');
       expect(processed.sensitivity).toBe('medium');
 
       const blob = blobStore.getBlob(processed.rawBlobRef!.blobId, { userId: 'user-123' });
@@ -76,7 +76,7 @@ describe('Large Result Reference Integration', () => {
       };
 
       const processed = processor.processResult(toolExecutionResult, {
-        toolName: 'connector.get_calendar',
+        toolName: 'connector_get_calendar',
         userId: 'user-123',
         toolCallId: 'tool-call-abc',
       });
@@ -98,7 +98,7 @@ describe('Large Result Reference Integration', () => {
       };
 
       const processed = processor.processResult(toolExecutionResult, {
-        toolName: 'connector.fetch_docs',
+        toolName: 'connector_fetch_docs',
         userId: 'user-123',
         toolCallId: 'tool-call-def',
       });
@@ -180,7 +180,7 @@ describe('Large Result Reference Integration', () => {
       };
 
       const processed = processor.processResult(toolExecutionResult, {
-        toolName: 'connector.private_data',
+        toolName: 'connector_private_data',
         userId: 'user-owner',
         toolCallId: 'tool-call-private',
       });
@@ -199,7 +199,7 @@ describe('Large Result Reference Integration', () => {
       };
 
       const processed = processor.processResult(toolExecutionResult, {
-        toolName: 'connector.session_data',
+        toolName: 'connector_session_data',
         userId: 'user-owner',
         sessionId: 'session-abc',
         toolCallId: 'tool-call-session',
@@ -219,7 +219,7 @@ describe('Large Result Reference Integration', () => {
       };
 
       const processed = processor.processResult(toolExecutionResult, {
-        toolName: 'connector.protected',
+        toolName: 'connector_protected',
         userId: 'user-owner',
         toolCallId: 'tool-call-protected',
       });

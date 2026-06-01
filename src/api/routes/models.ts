@@ -96,6 +96,24 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
         });
       }
 
+      if (process.env.DEEPSEEK_API_KEY) {
+        providers.push({
+          providerId: 'deepseek',
+          providerType: 'deepseek',
+          displayName: 'DeepSeek (Env)',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: null,
+          baseUrl: process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com',
+          selectedModel: 'deepseek-v4-flash',
+          source: 'env',
+          lastTestStatus: null,
+          lastTestedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
       if (providerConfigStore) {
         const userProviders = providerConfigStore.listByUser(userId);
         for (const provider of userProviders) {

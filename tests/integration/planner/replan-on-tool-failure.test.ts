@@ -243,7 +243,7 @@ describe('Planner: Tool Failure Replan', () => {
     const { plannerRunId } = createPlanningRun();
 
     // Simulate a tool execution failure
-    const failureReason = "Tool execution failed: 'file.read' on path '/etc/shadow' returned permission denied";
+      const failureReason = "Tool execution failed: 'file_read' on path '/etc/shadow' returned permission denied";
     plannerRuntime.replan(plannerRunId, failureReason);
 
     // Verify state transitioned to REPLANNING
@@ -338,8 +338,8 @@ describe('Planner: Tool Failure Replan', () => {
     // Simulate 3 consecutive replan cycles (replan → planning → replan → planning → replan)
     // Each cycle: tool fails → replan → LLM generates new plan → back to planning
     const failureReasons: string[] = [
-      "Tool 'web.fetch' returned HTTP 403",
-      "Retry attempt 2: Tool 'web.fetch' still failing",
+        "Tool 'web_fetch' returned HTTP 403",
+        "Retry attempt 2: Tool 'web_fetch' still failing",
       "Retry attempt 3: All tool alternatives exhausted",
     ];
 

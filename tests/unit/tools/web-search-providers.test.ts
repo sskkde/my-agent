@@ -609,7 +609,7 @@ describe('web-search-providers contract tests', () => {
               id: 'tc-1',
               type: 'function',
               function: {
-                name: 'web.fetch',
+                name: 'web_fetch',
                 arguments: '{"url": "https://example.com"}',
               },
             }],

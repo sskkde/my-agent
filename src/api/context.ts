@@ -60,6 +60,15 @@ import type { ToolRegistry, ToolExecutor } from '../tools/types.js';
 import { registerBuiltInTools } from '../tools/builtins/index.js';
 import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js';
 import { createBackgroundRuntime } from '../subagents/background-runtime.js';
+import { createSubagentRegistry, type SubagentRegistry } from '../subagents/registry.js';
+import { registerBuiltInSubagents } from '../subagents/builtin-definitions.js';
+import { createDefaultSubagentContextManager } from '../subagents/context-manager.js';
+import { createSubagentKernelAdapter } from '../subagents/kernel-adapter.js';
+import { createSubagentRuntime } from '../subagents/subagent-runtime.js';
+import type { SubagentRuntime } from '../subagents/types.js';
+import { createSubagentRunStore, type SubagentRunStore } from '../storage/subagent-run-store.js';
+import { createSubagentTranscriptStore, type SubagentTranscriptStore } from '../storage/subagent-transcript-store.js';
+import { createSubagentProviderPreferenceStore, type SubagentProviderPreferenceStore } from '../storage/subagent-provider-preference-store.js';
 import { createAuditRecorder } from '../observability/audit-recorder.js';
 import { createAuditStore } from '../observability/audit-store.js';
 import type { AuditRecorder } from '../observability/audit-types.js';
@@ -132,6 +141,11 @@ export interface ApiContext {
   memoryExtractionScheduler?: LongTermMemoryScheduler;
   workflowRuntime: WorkflowRuntime;
   triggerRuntime: EventTriggerRuntime;
+  subagentRuntime: SubagentRuntime;
+  subagentRegistry: SubagentRegistry;
+  subagentRunStore: SubagentRunStore;
+  subagentTranscriptStore: SubagentTranscriptStore;
+  subagentProviderPreferenceStore: SubagentProviderPreferenceStore;
   auditRecorder: AuditRecorder;
 }
 
@@ -279,6 +293,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let deadLetterStore: DeadLetterStore;
   let apiKeyStore: ApiKeyStore;
   let organizationStore: OrganizationStore;
+  let subagentRunStore: SubagentRunStore;
+  let subagentTranscriptStore: SubagentTranscriptStore;
+  let subagentProviderPreferenceStore: SubagentProviderPreferenceStore;
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection);
@@ -313,6 +330,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     deadLetterStore = (existingStores as Record<string, unknown>)?.deadLetterStore as DeadLetterStore ?? createDeadLetterStore(connection);
     apiKeyStore = (existingStores as Record<string, unknown>)?.apiKeyStore as ApiKeyStore ?? createApiKeyStore(connection);
     organizationStore = (existingStores as Record<string, unknown>)?.organizationStore as OrganizationStore ?? createOrganizationStore(connection);
+    subagentRunStore = createSubagentRunStore(connection);
+    subagentTranscriptStore = createSubagentTranscriptStore(connection);
+    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection);
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -597,6 +617,44 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     watchdogTimeoutMs: 60000,
   });
 
+  const subagentRegistry = createSubagentRegistry();
+  registerBuiltInSubagents(subagentRegistry);
+
+  const subagentContextManager = createDefaultSubagentContextManager({
+    summaryStore: {
+      get: (id: string) => {
+        const record = summaryStore.getBySummaryId(id);
+        return record ? { content: record.summary } : null;
+      },
+    },
+    transcriptStore: {
+      get: (id: string) => transcriptStore.getTurn(id),
+    },
+    artifactStore: {
+      get: (id: string) => artifactStore.findById(id) ?? null,
+    },
+  });
+
+  const subagentKernelAdapter = createSubagentKernelAdapter({
+    agentKernel,
+    subagentRegistry,
+    providerConfigStore,
+    agentConfigStore,
+    sessionStore,
+    preferenceStore: subagentProviderPreferenceStore,
+    runWithProvidersForUser,
+  });
+
+  const subagentRuntime = createSubagentRuntime({
+    kernelAdapter: subagentKernelAdapter,
+    contextManager: subagentContextManager,
+    maxConcurrent: 10,
+    defaultTimeoutMs: 60000,
+    defaultMaxIterations: 10,
+    runStore: subagentRunStore,
+    transcriptStore: subagentTranscriptStore,
+  });
+
   // Register default runtime adapters
   registerDefaultRuntimeAdapters({
     adapterRegistry,
@@ -608,6 +666,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     agentKernel,
     permissionGrantStore,
     backgroundRuntime,
+    subagentRuntime,
+    subagentRegistry,
   });
 
   const messageProcessor = injectedMessageProcessor ?? createOrchestrationMessageProcessor({
@@ -686,6 +746,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     memoryExtractionScheduler,
     workflowRuntime,
     triggerRuntime,
+    subagentRuntime,
+    subagentRegistry,
+    subagentRunStore,
+    subagentTranscriptStore,
+    subagentProviderPreferenceStore,
     auditRecorder,
   };
 }

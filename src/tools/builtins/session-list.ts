@@ -77,7 +77,7 @@ export function createSessionListTool(sessionStore: SessionStore): ToolDefinitio
   };
 
   return {
-    name: 'session.list',
+    name: 'session_list',
     description: 'List sessions for the current user with optional status filter and pagination',
     category: 'read',
     sensitivity: 'medium',

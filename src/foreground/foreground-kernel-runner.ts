@@ -15,10 +15,8 @@ import { buildContextBundleFromForegroundState } from './context-bundle-builder.
 import { buildKernelConfigFromDeps, isForegroundContextManager } from './kernel-config-builder.js';
 import { mapSuggestedToolsToProjection } from './tool-projection-mapper.js';
 import { getToolCatalog, getToolDefinitions } from '../api/tool-catalog.js';
-
-export function isForegroundKernelRunnerEnabled(): boolean {
-  return process.env.FOREGROUND_KERNEL_RUNNER_ENABLED === 'true';
-}
+import { buildLaunchSubagentAction, inferSubagentType } from '../subagents/action-mapper.js';
+import type { SubagentResult } from '../subagents/types.js';
 
 export interface ForegroundKernelRunnerDeps {
   foregroundAgent: ForegroundAgent;
@@ -44,14 +42,6 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
 
   async runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult> {
     try {
-      if (!isForegroundKernelRunnerEnabled()) {
-        return this.buildFailedResult(
-          { route: 'answer_directly', requiresPlanner: false, reason: 'Feature flag disabled' },
-          'FEATURE_DISABLED',
-          'ForegroundKernelRunner is not enabled',
-        );
-      }
-
       const fgMessageInput = {
         message: input.message,
         userId: input.userId,
@@ -101,6 +91,9 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         case 'approval_handler':
           executionResult = { route: 'approval_handler', finalResponse: decision.userVisibleResponse || 'Processing approval...' };
           break;
+        case 'dispatch_subagent':
+          executionResult = await this.handleDispatchSubagent(decision, input);
+          break;
         default:
           executionResult = await this.handleAnswerDirectly(decision, input);
           break;
@@ -131,19 +124,6 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         },
       };
     }
-  }
-
-  private buildFailedResult(
-    decisionTrace: ForegroundDecision,
-    code: string,
-    message: string,
-  ): ForegroundTurnResult {
-    return {
-      status: 'failed',
-      finalResponse: '',
-      decisionTrace,
-      error: { code, message },
-    };
   }
 
   private emitFailureEvent(
@@ -221,6 +201,47 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
     return messages;
   }
 
+  private async buildFailureAwareResponse(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput,
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<string> {
+    const model = input.foregroundState.resolvedModel ?? input.agentConfig?.model ?? this.deps.agentConfig?.model ?? '';
+    const suggestedTools = decision.suggestedTools?.length ? decision.suggestedTools.join(', ') : 'none';
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: [
+          'You are handling a failed tool-use turn.',
+          'The assistant had already decided that a tool/action was needed, but the tool loop failed before a usable tool result was produced.',
+          'Explain the failure to the user in natural language, do not pretend the tool succeeded, and suggest a concrete next step.',
+          'Keep the response concise and avoid exposing secrets or raw stack traces.',
+        ].join(' '),
+      },
+      { role: 'user', content: input.message },
+      {
+        role: 'assistant',
+        content: `I intended to handle this via route ${decision.route} using suggested tools: ${suggestedTools}.`,
+      },
+      {
+        role: 'user',
+        content: `Tool/action failure context: ${errorCode}: ${errorMessage}`,
+      },
+    ];
+
+    try {
+      const llmResult = await this.deps.llmAdapter.complete({ model, messages });
+      if (llmResult.success && llmResult.response.content) {
+        return llmResult.response.content;
+      }
+    } catch {
+      // Fall through to explicit deterministic error text.
+    }
+
+    return `抱歉，工具调用没有成功完成（${errorCode}）：${errorMessage}。请检查模型/工具配置后重试。`;
+  }
+
   private async handleDispatchTool(
     decision: ForegroundDecision,
     input: ForegroundTurnInput
@@ -231,7 +252,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
       if (
         this.deps.searchSubagent &&
         suggestedTools.length === 1 &&
-        suggestedTools[0] === 'web.search'
+        suggestedTools[0] === 'web_search'
       ) {
         try {
           const searchInput: SearchSubagentInput = {
@@ -248,7 +269,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
               runtimeSummary: {
                 toolCallSummaries: [{
                   toolCallId: `search-${input.turnId}`,
-                  toolName: 'web.search',
+                  toolName: 'web_search',
                   status: 'completed',
                 }],
               },
@@ -316,12 +337,19 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
           'kernel_dispatch_failure',
           errorCode,
           errorMessage,
-          'user_visible_response',
+          'llm_error_context',
+        );
+
+        const failureAwareResponse = await this.buildFailureAwareResponse(
+          decision,
+          input,
+          errorCode,
+          errorMessage,
         );
 
         return {
           route: 'dispatch_tool',
-          finalResponse: decision.userVisibleResponse || `Tool execution failed (${errorCode}).`,
+          finalResponse: failureAwareResponse,
           runtimeSummary: buildRuntimeSummary(kernelResult),
           error: {
             code: errorCode,
@@ -345,12 +373,19 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         'dispatch_tool_failure',
         errorCode,
         errorMessage,
-        'user_visible_response',
+        'llm_error_context',
+      );
+
+      const failureAwareResponse = await this.buildFailureAwareResponse(
+        decision,
+        input,
+        errorCode,
+        errorMessage,
       );
 
       return {
         route: 'dispatch_tool',
-        finalResponse: decision.userVisibleResponse || `Tool dispatch encountered an issue (${errorCode}).`,
+        finalResponse: failureAwareResponse,
         error: {
           code: errorCode,
           message: errorMessage,
@@ -567,6 +602,78 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         },
       };
     }
+  }
+
+  private async handleDispatchSubagent(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput
+  ): Promise<ForegroundExecutionResult> {
+    try {
+      const runtimeAction = decision.runtimeAction ?? this.createServerSubagentAction(decision, input);
+
+      const dispatchResult = await this.deps.runtimeDispatcher.dispatch({
+        requestId: input.turnId,
+        action: runtimeAction,
+        context: {
+          callerModule: 'foreground_kernel_runner',
+          userId: input.userId,
+          sessionId: input.sessionId,
+        },
+      });
+
+      if (dispatchResult.status === 'completed' && dispatchResult.result) {
+        const subagentResult = dispatchResult.result as SubagentResult;
+        return {
+          route: 'dispatch_subagent',
+          finalResponse: subagentResult.response || decision.userVisibleResponse || 'Subagent completed.',
+          runtimeSummary: {
+            runtimeActionIds: [runtimeAction.actionId],
+          },
+        };
+      }
+
+      return {
+        route: 'dispatch_subagent',
+        finalResponse: decision.userVisibleResponse || 'Subagent dispatch completed.',
+        runtimeSummary: {
+          runtimeActionIds: [runtimeAction.actionId],
+        },
+      };
+    } catch (error) {
+      return {
+        route: 'dispatch_subagent',
+        finalResponse: decision.userVisibleResponse || 'Failed to dispatch subagent.',
+        error: {
+          code: 'DISPATCH_SUBAGENT_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to dispatch subagent',
+        },
+      };
+    }
+  }
+
+  private createServerSubagentAction(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput
+  ): import('../dispatcher/types.js').RuntimeAction {
+    const agentType = inferSubagentType({
+      message: input.message,
+      suggestedTools: decision.suggestedTools,
+    });
+
+    return buildLaunchSubagentAction({
+      agentType,
+      taskSpec: {
+        objective: input.message,
+        agentType,
+        tools: decision.suggestedTools,
+      },
+      userId: input.userId,
+      sessionId: input.sessionId,
+      sourceRef: {
+        sourceType: 'foreground_turn',
+        turnId: input.turnId,
+      },
+    });
   }
 }
 

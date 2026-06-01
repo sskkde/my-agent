@@ -137,7 +137,7 @@ class ToolCallLLMAdapter implements LLMAdapter {
           id: 'tc-internal-1',
           type: 'function',
           function: {
-            name: 'foreground.decide',
+            name: 'foreground_decide',
             arguments: JSON.stringify({ route: 'answer_directly', reason: 'Use internal handler' }),
           },
         }],
@@ -244,12 +244,12 @@ function makeRunInput(): KernelRunInput {
 }
 
 const sampleToolProjection: ToolPlaneProjection = {
-  toolIds: ['status.query', 'web.search'],
+  toolIds: ['status_query', 'web_search'],
   tools: [
     {
       type: 'function',
       function: {
-        name: 'status.query',
+        name: 'status_query',
         description: 'Query active work status',
         parameters: { type: 'object', properties: { runId: { type: 'string' } } },
       },
@@ -257,7 +257,7 @@ const sampleToolProjection: ToolPlaneProjection = {
     {
       type: 'function',
       function: {
-        name: 'web.search',
+        name: 'web_search',
         description: 'Search the web',
         parameters: { type: 'object', properties: { query: { type: 'string' } } },
       },
@@ -286,8 +286,8 @@ describe('AgentKernel toolProjection in function_calling mode', () => {
     expect(request).toBeDefined();
     expect(request!.tools).toBeDefined();
     expect(request!.tools!.length).toBe(2);
-    expect(request!.tools![0].function.name).toBe('status.query');
-    expect(request!.tools![1].function.name).toBe('web.search');
+    expect(request!.tools![0].function.name).toBe('status_query');
+    expect(request!.tools![1].function.name).toBe('web_search');
   });
 
   it('uses empty fallback when toolProjection is not provided', async () => {
@@ -324,7 +324,7 @@ describe('AgentKernel toolProjection in function_calling mode', () => {
     // When toolProjection has toolIds but no tools field,
     // extractToolsForRequest returns undefined (no full schemas available)
     const projectionWithoutSchemas: ToolPlaneProjection = {
-      toolIds: ['status.query', 'web.search'],
+      toolIds: ['status_query', 'web_search'],
     };
 
     const buildInput: ModelInputBuildInput = {
@@ -382,12 +382,12 @@ describe('AgentKernel toolProjection per-run override', () => {
 
   it('KernelRunInput.toolProjection overrides KernelConfig.toolProjection', async () => {
     const configProjection: ToolPlaneProjection = {
-      toolIds: ['status.query'],
+      toolIds: ['status_query'],
       tools: [
         {
           type: 'function',
           function: {
-            name: 'status.query',
+            name: 'status_query',
             description: 'Query status',
             parameters: { type: 'object', properties: {} },
           },
@@ -395,12 +395,12 @@ describe('AgentKernel toolProjection per-run override', () => {
       ],
     };
     const runProjection: ToolPlaneProjection = {
-      toolIds: ['web.search'],
+      toolIds: ['web_search'],
       tools: [
         {
           type: 'function',
           function: {
-            name: 'web.search',
+            name: 'web_search',
             description: 'Search the web',
             parameters: { type: 'object', properties: { query: { type: 'string' } } },
           },
@@ -423,17 +423,17 @@ describe('AgentKernel toolProjection per-run override', () => {
     const request = fakeLLM.getLastRequest();
     expect(request).toBeDefined();
     expect(request!.tools!.length).toBe(1);
-    expect(request!.tools![0].function.name).toBe('web.search');
+    expect(request!.tools![0].function.name).toBe('web_search');
   });
 
   it('KernelRunInput.toolProjection is used when KernelConfig has none', async () => {
     const runProjection: ToolPlaneProjection = {
-      toolIds: ['status.query', 'web.search'],
+      toolIds: ['status_query', 'web_search'],
       tools: [
         {
           type: 'function',
           function: {
-            name: 'status.query',
+            name: 'status_query',
             description: 'Query status',
             parameters: { type: 'object', properties: {} },
           },
@@ -441,7 +441,7 @@ describe('AgentKernel toolProjection per-run override', () => {
         {
           type: 'function',
           function: {
-            name: 'web.search',
+            name: 'web_search',
             description: 'Search the web',
             parameters: { type: 'object', properties: { query: { type: 'string' } } },
           },
@@ -461,18 +461,18 @@ describe('AgentKernel toolProjection per-run override', () => {
     const request = fakeLLM.getLastRequest();
     expect(request).toBeDefined();
     expect(request!.tools!.length).toBe(2);
-    expect(request!.tools![0].function.name).toBe('status.query');
-    expect(request!.tools![1].function.name).toBe('web.search');
+    expect(request!.tools![0].function.name).toBe('status_query');
+    expect(request!.tools![1].function.name).toBe('web_search');
   });
 
   it('falls back to KernelConfig.toolProjection when run input has none', async () => {
     const configProjection: ToolPlaneProjection = {
-      toolIds: ['status.query'],
+      toolIds: ['status_query'],
       tools: [
         {
           type: 'function',
           function: {
-            name: 'status.query',
+            name: 'status_query',
             description: 'Query status',
             parameters: { type: 'object', properties: {} },
           },
@@ -491,7 +491,7 @@ describe('AgentKernel toolProjection per-run override', () => {
     const request = fakeLLM.getLastRequest();
     expect(request).toBeDefined();
     expect(request!.tools!.length).toBe(1);
-    expect(request!.tools![0].function.name).toBe('status.query');
+    expect(request!.tools![0].function.name).toBe('status_query');
   });
 });
 
@@ -511,14 +511,14 @@ describe('AgentKernel internal tool handling', () => {
         tools: [{
           type: 'function',
           function: {
-            name: 'foreground.decide',
+            name: 'foreground_decide',
             description: 'Internal foreground routing decision',
             parameters: { type: 'object', properties: {} },
           },
         }],
       },
       internalToolHandlers: {
-        'foreground.decide': async (request) => ({
+        'foreground_decide': async (request) => ({
           toolResult: {
             toolCallId: request.toolCallId,
             result: { decision: { route: 'answer_directly', reason: 'Handled internally' } },
@@ -553,10 +553,10 @@ describe('AgentKernel internal tool handling', () => {
       },
       temperature: 0.1,
       maxTokens: 500,
-      toolChoice: { type: 'function', function: { name: 'foreground.decide' } },
+      toolChoice: { type: 'function', function: { name: 'foreground_decide' } },
       model: 'foreground-routing-model',
       internalToolHandlers: {
-        'foreground.decide': async (request) => ({
+        'foreground_decide': async (request) => ({
           toolResult: { toolCallId: request.toolCallId, result: { decision: { route: 'answer_directly', reason: 'ok' } } },
           stop: true,
           structuredResult: { decision: { route: 'answer_directly', reason: 'ok' } },
@@ -569,8 +569,8 @@ describe('AgentKernel internal tool handling', () => {
     expect(request!.model).toBe('foreground-routing-model');
     expect(request!.temperature).toBe(0.1);
     expect(request!.maxTokens).toBe(500);
-    expect(request!.toolChoice).toEqual({ type: 'function', function: { name: 'foreground.decide' } });
-    expect(request!.tools?.map(tool => tool.function.name)).toEqual(['status.query', 'web.search']);
+      expect(request!.toolChoice).toEqual({ type: 'function', function: { name: 'foreground_decide' } });
+    expect(request!.tools?.map(tool => tool.function.name)).toEqual(['status_query', 'web_search']);
     expect(request!.messages.some(message => message.content.includes('Please route this message'))).toBe(true);
   });
 
@@ -585,7 +585,7 @@ describe('AgentKernel internal tool handling', () => {
     const result = await kernel.run({
       ...makeRunInput(),
       toolProjection: {
-        toolIds: ['foreground.decide'],
+        toolIds: ['foreground_decide'],
         tools: [{
           type: 'function',
           function: {

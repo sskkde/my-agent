@@ -19,7 +19,7 @@ describe('Workflow API Integration', () => {
     stepType: 'tool_call',
     name: 'Test Step',
     config: {
-      toolName: 'status.query',
+      toolName: 'status_query',
     },
   };
 
@@ -322,13 +322,13 @@ describe('Workflow API Integration', () => {
           stepId: 'step-1',
           stepType: 'tool_call',
           name: 'First Step',
-          config: { toolName: 'status.query' },
+          config: { toolName: 'status_query' },
         },
         {
           stepId: 'step-2',
           stepType: 'tool_call',
           name: 'Second Step',
-          config: { toolName: 'memory.retrieve' },
+          config: { toolName: 'memory_retrieve' },
           nextStepId: undefined,
         },
       ];

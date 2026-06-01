@@ -7,7 +7,7 @@ import {
 } from './provider-crypto.js';
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
-export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'custom';
+export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom';
 
 export interface ProviderConfig {
   providerId: string;

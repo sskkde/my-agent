@@ -1,7 +1,7 @@
 /**
  * Foreground Decision Schema
  *
- * Defines the `foreground.decide` internal tool schema for native LLM
+ * Defines the `foreground_decide` internal tool schema for native LLM
  * function/tool calling. The model invokes this tool to produce a structured
  * routing decision instead of free-form text.
  *
@@ -18,7 +18,7 @@ import type { ForegroundDecisionRoute, TaskComplexity } from './types.js';
 // Schema version constant
 // ---------------------------------------------------------------------------
 
-/** Current schema version for `foreground.decide` tool parameters */
+/** Current schema version for `foreground_decide` tool parameters */
 export const FOREGROUND_DECIDE_SCHEMA_VERSION = '1.0' as const;
 
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ export const FOREGROUND_DECIDE_SCHEMA_VERSION = '1.0' as const;
 // ---------------------------------------------------------------------------
 
 /**
- * Parameters for the `foreground.decide` internal tool.
+ * Parameters for the `foreground_decide` internal tool.
  *
  * The LLM produces a JSON object matching this shape. The foreground agent
  * then uses it to route the conversation appropriately.
@@ -105,7 +105,7 @@ export interface ForegroundDecideParams {
 export const FOREGROUND_DECIDE_SCHEMA: ToolDefinition = {
   type: 'function',
   function: {
-    name: 'foreground.decide',
+    name: 'foreground_decide',
     description:
       'Produce a structured routing decision for the current user message. ' +
       'Call this tool instead of generating a free-form response when you need ' +

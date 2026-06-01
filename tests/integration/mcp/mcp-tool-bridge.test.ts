@@ -61,11 +61,11 @@ describe('McpToolBridge', () => {
 
     await bridge.registerTools(registry, session.sessionId);
 
-    const tool = registry.getTool('mcp.mock.echo');
+    const tool = registry.getTool('mcp_mock_echo');
     expect(tool).not.toBeNull();
     expect(tool?.metadata?.exposureMode).toBeDefined();
 
-    const result = await bridge.callTool(session.sessionId, 'mcp.mock.echo', { message: 'hello phase3' });
+    const result = await bridge.callTool(session.sessionId, 'mcp_mock_echo', { message: 'hello phase3' });
 
     expect(result.status).toBe('completed');
     expect(result.data).toEqual({ result: 'Mock result for echo' });
@@ -90,20 +90,20 @@ describe('McpToolBridge', () => {
       }),
     });
 
-    await expect(bridge.callTool(session.sessionId, 'mcp.mock.echo', {})).resolves.toMatchObject({
+    await expect(bridge.callTool(session.sessionId, 'mcp_mock_echo', {})).resolves.toMatchObject({
       status: 'timeout',
       error: { code: 'connector_timeout' },
     });
 
     const controller = new AbortController();
     controller.abort();
-    await expect(bridge.callTool(session.sessionId, 'mcp.mock.echo', {}, { signal: controller.signal })).resolves.toMatchObject({
+    await expect(bridge.callTool(session.sessionId, 'mcp_mock_echo', {}, { signal: controller.signal })).resolves.toMatchObject({
       status: 'cancelled',
       synthetic: true,
     });
 
     manager.closeSession(session.sessionId);
-    await expect(bridge.callTool(session.sessionId, 'mcp.mock.echo', {})).resolves.toMatchObject({
+    await expect(bridge.callTool(session.sessionId, 'mcp_mock_echo', {})).resolves.toMatchObject({
       status: 'failed',
       error: { code: 'mcp_session_disconnected', recoverable: true },
     });

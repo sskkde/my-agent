@@ -137,7 +137,7 @@ describe('DeepSeek Cache Prefix Stability', () => {
 
       const result1 = await builder.build(makeMinimalInput());
       const result2 = await builder.build(makeMinimalInput({
-        toolProjection: { toolIds: ['file.read', 'web.search'] },
+        toolProjection: { toolIds: ['file_read', 'web_search'] },
       }));
 
       expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA);

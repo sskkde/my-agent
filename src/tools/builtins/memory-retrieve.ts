@@ -133,7 +133,7 @@ export function createMemoryRetrieveTool(
       const stored = toolResultStore.create({
         resultRef: `mem_${Date.now()}`,
         toolCallId: context.toolCallId,
-        toolName: 'memory.retrieve',
+        toolName: 'memory_retrieve',
         userId: context.userId,
         sessionId: context.sessionId,
         preview: resultJson.slice(0, 500),
@@ -153,7 +153,7 @@ export function createMemoryRetrieveTool(
   };
 
   return {
-    name: 'memory.retrieve',
+    name: 'memory_retrieve',
     description: 'Retrieve memory records from session or user memory',
     category: 'read',
     sensitivity: 'medium',

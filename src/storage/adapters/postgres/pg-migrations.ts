@@ -1323,8 +1323,8 @@ export const agentConfigPromptBindingMigration: PgMigration = {
     SELECT
       agent_config_id, agent_id, scope, user_id, display_name, enabled,
       system_prompt, routing_prompt, provider_id, model,
-      CASE WHEN allowed_tool_ids = '[]' THEN '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]' ELSE allowed_tool_ids END,
-      CASE WHEN allowed_skill_ids = '[]' THEN '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]' ELSE allowed_skill_ids END,
+      CASE WHEN allowed_tool_ids = '[]' THEN '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]' ELSE allowed_tool_ids END,
+      CASE WHEN allowed_skill_ids = '[]' THEN '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]' ELSE allowed_skill_ids END,
       routing_timeout_ms, repair_attempts,
       NULL, NULL,
       created_at, updated_at
@@ -1339,11 +1339,11 @@ export const agentConfigPromptBindingMigration: PgMigration = {
     UPDATE agent_configs
     SET allowed_tool_ids = '[]',
         updated_at = NOW()
-    WHERE allowed_tool_ids = '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]';
+    WHERE allowed_tool_ids = '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]';
     UPDATE agent_configs
     SET allowed_skill_ids = '[]',
         updated_at = NOW()
-    WHERE allowed_skill_ids = '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]';
+    WHERE allowed_skill_ids = '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]';
     ALTER TABLE agent_configs DROP COLUMN prompt_version;
     ALTER TABLE agent_configs DROP COLUMN prompt_type
   `
@@ -2239,6 +2239,80 @@ export const addTenantIdPgMigration: PgMigration = {
   down: ``
 };
 
+export const deepseekProviderTypeMigration: PgMigration = {
+  version: 59,
+  name: 'add_deepseek_provider_type',
+  up: `
+    CREATE TABLE provider_configs_new (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom')),
+      display_name TEXT,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    INSERT INTO provider_configs_new (
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
+    ) SELECT
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
+    FROM provider_configs;
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP INDEX IF EXISTS idx_provider_configs_tenant;
+    DROP TABLE provider_configs;
+    ALTER TABLE provider_configs_new RENAME TO provider_configs;
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id);
+    CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)
+  `,
+  down: `
+    CREATE TABLE provider_configs_old (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','custom')),
+      display_name TEXT,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    INSERT INTO provider_configs_old (
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
+    ) SELECT
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at
+    FROM provider_configs
+    WHERE provider_type IN ('openai','openrouter','ollama','custom');
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP INDEX IF EXISTS idx_provider_configs_tenant;
+    DROP TABLE provider_configs;
+    ALTER TABLE provider_configs_old RENAME TO provider_configs;
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id);
+    CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)
+  `
+};
+
 export const pgStoreMigrations: PgMigration[] = [
   eventsTableMigration,
   runtimeActionsTableMigration,
@@ -2293,6 +2367,7 @@ export const pgStoreMigrations: PgMigration[] = [
   organizationsTablePgMigration,
   userOrganizationsTablePgMigration,
   addTenantIdPgMigration,
+  deepseekProviderTypeMigration,
 ];
 
 export function getLatestPgMigrationVersion(): number {

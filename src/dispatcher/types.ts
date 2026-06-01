@@ -10,6 +10,7 @@ export type RuntimeActionType =
   | 'resume_agent_run'
   | 'launch_subagent'
   | 'resume_subagent'
+  | 'cancel_subagent'
   | 'launch_background_subagent'
   | 'resume_background_subagent'
   | 'cancel_background_subagent'

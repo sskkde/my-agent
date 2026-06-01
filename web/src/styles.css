@@ -7951,3 +7951,307 @@ body {
   color: var(--text);
 }
 
+/* ==========================================================================
+   Subagent Config Styles
+   ========================================================================== */
+
+.subagent-config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.subagent-config-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.subagent-config-header h3 {
+  margin: 0;
+}
+
+.subagent-config-hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.subagent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subagent-card {
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.subagent-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.subagent-card-header:hover {
+  background: var(--bg-elevated);
+}
+
+.subagent-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.subagent-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.subagent-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.subagent-override-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.subagent-effective-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.effective-provider {
+  font-weight: 500;
+}
+
+.effective-model {
+  font-family: monospace;
+  font-size: 12px;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.subagent-expand-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.subagent-expand-btn:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.subagent-expand-btn[aria-expanded="true"] {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.subagent-card-body {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.subagent-description {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.subagent-capabilities {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.capabilities-label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.capabilities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.capability-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.subagent-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.subagent-save-error {
+  padding: 10px 12px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.subagent-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.subagent-actions .primary-button,
+.subagent-actions .secondary-button {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.subagent-effective-section {
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.subagent-effective-section h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 12px 0;
+}
+
+.effective-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.effective-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.effective-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.effective-value {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.effective-value.not-configured {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.effective-value.has-override {
+  color: var(--accent);
+}
+
+/* Mobile styles for subagent config */
+@media (max-width: 480px) {
+  .subagent-card-header {
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+
+  .subagent-info {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .subagent-effective-info {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .subagent-expand-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .subagent-card-body {
+    padding: 12px;
+  }
+
+  .subagent-form {
+    padding: 12px;
+  }
+
+  .subagent-actions {
+    flex-direction: column;
+  }
+
+  .subagent-actions .primary-button,
+  .subagent-actions .secondary-button {
+    width: 100%;
+  }
+
+  .effective-config-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,6 +1,6 @@
 import type { CommandContext, FrontendCommandResult } from '../types.js';
 
-const VALID_PROVIDER_TYPES = ['openai', 'openrouter', 'ollama', 'custom'] as const;
+const VALID_PROVIDER_TYPES = ['openai', 'openrouter', 'deepseek', 'ollama', 'custom'] as const;
 type ProviderType = typeof VALID_PROVIDER_TYPES[number];
 
 function isValidProviderType(type: string): type is ProviderType {

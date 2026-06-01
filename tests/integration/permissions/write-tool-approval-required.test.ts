@@ -99,7 +99,7 @@ describe('Write-tool approval required', () => {
       const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
       const req: PermissionCheckRequest = {
         context: ctx,
-        actionType: 'artifact.create',
+        actionType: 'artifact_create',
         operationType: 'write',
         resource: '/artifact/001',
       };
@@ -144,7 +144,7 @@ describe('Write-tool approval required', () => {
       const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
       const req: PermissionCheckRequest = {
         context: ctx,
-        actionType: 'file.read',
+        actionType: 'file_read',
         operationType: 'read',
         resource: '/data/file.txt',
       };
@@ -178,7 +178,7 @@ describe('Write-tool approval required', () => {
         id: `grant_rl_${Date.now()}`,
         userId,
         scope,
-        action: 'artifact.create',
+        action: 'artifact_create',
         riskLevelMax: 'medium',
       });
 
@@ -191,7 +191,7 @@ describe('Write-tool approval required', () => {
 
       const req: PermissionCheckRequest = {
         context: ctx,
-        actionType: 'artifact.create',
+        actionType: 'artifact_create',
         operationType: 'write',
         resource: '/artifact/001',
         riskLevel: 'low',
@@ -210,7 +210,7 @@ describe('Write-tool approval required', () => {
         id: `grant_rl_high_${Date.now()}`,
         userId,
         scope,
-        action: 'artifact.create',
+        action: 'artifact_create',
         riskLevelMax: 'medium',
       });
 
@@ -223,7 +223,7 @@ describe('Write-tool approval required', () => {
 
       const req: PermissionCheckRequest = {
         context: ctx,
-        actionType: 'artifact.create',
+        actionType: 'artifact_create',
         operationType: 'write',
         resource: '/artifact/001',
         riskLevel: 'critical',
@@ -255,7 +255,7 @@ describe('Write-tool approval required', () => {
 
       const req: PermissionCheckRequest = {
         context: ctx,
-        actionType: 'artifact.create',
+        actionType: 'artifact_create',
         operationType: 'write',
         resource: '/artifact/001',
         riskLevel: 'high',

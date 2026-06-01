@@ -187,7 +187,7 @@ export const providerConfigsTableMigration: Migration = {
     CREATE TABLE provider_configs (
       provider_id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
-      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','custom')),
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom')),
       display_name TEXT,
       enabled INTEGER NOT NULL DEFAULT 1,
       base_url TEXT,

@@ -30,11 +30,11 @@ function makeToolResultEntry(toolCallId: string, result: unknown, iteration = 1)
 describe('validateToolResultPairing', () => {
   it('paired calls pass validation', () => {
     const transcript: KernelTranscriptEntry[] = [
-      makeToolCallEntry('tc-1', 'file.read'),
+      makeToolCallEntry('tc-1', 'file_read'),
       makeToolResultEntry('tc-1', { content: 'file contents' }),
-      makeToolCallEntry('tc-2', 'web.search'),
+      makeToolCallEntry('tc-2', 'web_search'),
       makeToolResultEntry('tc-2', { results: [] }),
-      makeToolCallEntry('tc-3', 'memory.retrieve'),
+      makeToolCallEntry('tc-3', 'memory_retrieve'),
       makeToolResultEntry('tc-3', { items: [] }),
     ];
 
@@ -46,11 +46,11 @@ describe('validateToolResultPairing', () => {
 
   it('missing result detected', () => {
     const transcript: KernelTranscriptEntry[] = [
-      makeToolCallEntry('tc-1', 'file.read'),
+      makeToolCallEntry('tc-1', 'file_read'),
       makeToolResultEntry('tc-1', { content: 'file contents' }),
-      makeToolCallEntry('tc-2', 'web.search'),
+      makeToolCallEntry('tc-2', 'web_search'),
       makeToolResultEntry('tc-2', { results: [] }),
-      makeToolCallEntry('tc-3', 'memory.retrieve'),
+      makeToolCallEntry('tc-3', 'memory_retrieve'),
     ];
 
     const result = validateToolResultPairing(transcript);
@@ -63,7 +63,7 @@ describe('validateToolResultPairing', () => {
 
   it('orphan result detected', () => {
     const transcript: KernelTranscriptEntry[] = [
-      makeToolCallEntry('tc-1', 'file.read'),
+      makeToolCallEntry('tc-1', 'file_read'),
       makeToolResultEntry('tc-1', { content: 'file contents' }),
       makeToolResultEntry('tc-orphan', { data: 'orphan data' }),
     ];
@@ -78,11 +78,11 @@ describe('validateToolResultPairing', () => {
 
   it('multiple tool calls all paired (EC-5)', () => {
     const transcript: KernelTranscriptEntry[] = [
-      makeToolCallEntry('tc-1', 'file.read'),
-      makeToolCallEntry('tc-2', 'web.search'),
-      makeToolCallEntry('tc-3', 'memory.retrieve'),
-      makeToolCallEntry('tc-4', 'docs.search'),
-      makeToolCallEntry('tc-5', 'transcript.search'),
+      makeToolCallEntry('tc-1', 'file_read'),
+      makeToolCallEntry('tc-2', 'web_search'),
+      makeToolCallEntry('tc-3', 'memory_retrieve'),
+      makeToolCallEntry('tc-4', 'docs_search'),
+      makeToolCallEntry('tc-5', 'transcript_search'),
       makeToolResultEntry('tc-1', { content: 'file 1' }),
       makeToolResultEntry('tc-2', { results: ['result 2'] }),
       makeToolResultEntry('tc-3', { items: ['item 3'] }),
@@ -117,10 +117,10 @@ describe('validateToolResultPairing', () => {
 
   it('multiple missing results detected', () => {
     const transcript: KernelTranscriptEntry[] = [
-      makeToolCallEntry('tc-1', 'file.read'),
+      makeToolCallEntry('tc-1', 'file_read'),
       makeToolResultEntry('tc-1', { content: 'file' }),
-      makeToolCallEntry('tc-2', 'web.search'),
-      makeToolCallEntry('tc-3', 'memory.retrieve'),
+      makeToolCallEntry('tc-2', 'web_search'),
+      makeToolCallEntry('tc-3', 'memory_retrieve'),
       makeToolResultEntry('tc-3', { items: [] }),
     ];
 
@@ -133,7 +133,7 @@ describe('validateToolResultPairing', () => {
 
   it('multiple orphan results detected', () => {
     const transcript: KernelTranscriptEntry[] = [
-      makeToolCallEntry('tc-1', 'file.read'),
+      makeToolCallEntry('tc-1', 'file_read'),
       makeToolResultEntry('tc-1', { content: 'file' }),
       makeToolResultEntry('tc-orphan-1', { data: 1 }),
       makeToolResultEntry('tc-orphan-2', { data: 2 }),
@@ -150,9 +150,9 @@ describe('validateToolResultPairing', () => {
 
   it('mixed warnings: missing result and orphan result', () => {
     const transcript: KernelTranscriptEntry[] = [
-      makeToolCallEntry('tc-1', 'file.read'),
+      makeToolCallEntry('tc-1', 'file_read'),
       makeToolResultEntry('tc-1', { content: 'file' }),
-      makeToolCallEntry('tc-missing', 'web.search'),
+      makeToolCallEntry('tc-missing', 'web_search'),
       makeToolResultEntry('tc-orphan', { data: 'orphan' }),
     ];
 
@@ -170,7 +170,7 @@ describe('ToolResultPairingGuard', () => {
   it('track then accept produces valid state', () => {
     const guard = new ToolResultPairingGuard();
     guard.trackAssistantToolCalls([
-      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
+      { toolCallId: 'tc-1', toolName: 'file_read', params: {} },
     ]);
     guard.acceptToolResult({ toolCallId: 'tc-1', result: { content: 'file' } });
 
@@ -181,7 +181,7 @@ describe('ToolResultPairingGuard', () => {
   it('track with no accept produces missing result on flush', () => {
     const guard = new ToolResultPairingGuard();
     guard.trackAssistantToolCalls([
-      { toolCallId: 'tc-1', toolName: 'web.search', params: { query: 'hello' } },
+      { toolCallId: 'tc-1', toolName: 'web_search', params: { query: 'hello' } },
     ]);
 
     expect(guard.hasPendingCalls()).toBe(true);
@@ -198,8 +198,8 @@ describe('ToolResultPairingGuard', () => {
   it('flush clears pending calls', () => {
     const guard = new ToolResultPairingGuard();
     guard.trackAssistantToolCalls([
-      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
-      { toolCallId: 'tc-2', toolName: 'web.search', params: {} },
+      { toolCallId: 'tc-1', toolName: 'file_read', params: {} },
+      { toolCallId: 'tc-2', toolName: 'web_search', params: {} },
     ]);
 
     guard.flushMissingResults();
@@ -210,9 +210,9 @@ describe('ToolResultPairingGuard', () => {
   it('partial accept then flush generates synthetic for remaining', () => {
     const guard = new ToolResultPairingGuard();
     guard.trackAssistantToolCalls([
-      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
-      { toolCallId: 'tc-2', toolName: 'web.search', params: {} },
-      { toolCallId: 'tc-3', toolName: 'memory.retrieve', params: {} },
+      { toolCallId: 'tc-1', toolName: 'file_read', params: {} },
+      { toolCallId: 'tc-2', toolName: 'web_search', params: {} },
+      { toolCallId: 'tc-3', toolName: 'memory_retrieve', params: {} },
     ]);
 
     guard.acceptToolResult({ toolCallId: 'tc-1', result: 'file content' });
@@ -228,7 +228,7 @@ describe('ToolResultPairingGuard', () => {
   it('validate returns warnings for pending calls', () => {
     const guard = new ToolResultPairingGuard();
     guard.trackAssistantToolCalls([
-      { toolCallId: 'tc-1', toolName: 'file.read', params: {} },
+      { toolCallId: 'tc-1', toolName: 'file_read', params: {} },
     ]);
 
     const result = guard.validate();

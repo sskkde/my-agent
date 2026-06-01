@@ -23,7 +23,7 @@ function createMockModelInputBuilder(): ModelInputBuilder {
       if (input.mode === 'function_calling') {
         messages.push({
           role: 'system',
-          content: 'You are a search assistant. Use the web.search tool to find information.',
+          content: 'You are a search assistant. Use the web_search tool to find information.',
         });
         if (input.currentUserMessage) {
           messages.push({
@@ -81,7 +81,7 @@ function createMockModelInputBuilder(): ModelInputBuilder {
 }
 
 describe('SearchSubagent contract tests', () => {
-  describe('uses only web.search and dedicated search model', () => {
+  describe('uses only web_search and dedicated search model', () => {
     it('provides exactly one tool to the search model', async () => {
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js');
       
@@ -96,7 +96,7 @@ describe('SearchSubagent contract tests', () => {
               id: 'tc-1',
               type: 'function',
               function: {
-                name: 'web.search',
+                name: 'web_search',
                 arguments: '{"query": "test"}',
               },
             }],
@@ -133,10 +133,10 @@ describe('SearchSubagent contract tests', () => {
       const llmRequest = llmCall[0];
       
       expect(llmRequest.tools).toHaveLength(1);
-      expect(llmRequest.tools[0].function.name).toBe('web.search');
+      expect(llmRequest.tools[0].function.name).toBe('web_search');
     });
 
-    it('forces toolChoice to web.search', async () => {
+    it('forces toolChoice to web_search', async () => {
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js');
       
       const mockLlmAdapter = {
@@ -150,7 +150,7 @@ describe('SearchSubagent contract tests', () => {
               id: 'tc-1',
               type: 'function',
               function: {
-                name: 'web.search',
+                name: 'web_search',
                 arguments: '{"query": "test"}',
               },
             }],
@@ -188,7 +188,7 @@ describe('SearchSubagent contract tests', () => {
       
       expect(llmRequest.toolChoice).toEqual({
         type: 'function',
-        function: { name: 'web.search' },
+        function: { name: 'web_search' },
       });
     });
 
@@ -206,7 +206,7 @@ describe('SearchSubagent contract tests', () => {
               id: 'tc-1',
               type: 'function',
               function: {
-                name: 'web.search',
+                name: 'web_search',
                 arguments: '{"query": "test"}',
               },
             }],
@@ -259,7 +259,7 @@ describe('SearchSubagent contract tests', () => {
               id: 'tc-1',
               type: 'function',
               function: {
-                name: 'web.search',
+                name: 'web_search',
                 arguments: '{"query": "test"}',
               },
             }],
@@ -403,7 +403,7 @@ describe('SearchSubagent contract tests', () => {
                 id: 'tc-1',
                 type: 'function',
                 function: {
-                  name: 'web.search',
+                  name: 'web_search',
                   arguments: '{"query": "test"}',
                 },
               }],
@@ -451,7 +451,7 @@ describe('SearchSubagent contract tests', () => {
       expect(result.answer).toContain('answer');
     });
 
-    it('returns web.search toolResult for evidence', async () => {
+    it('returns web_search toolResult for evidence', async () => {
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js');
       
       const mockLlmAdapter = {
@@ -466,7 +466,7 @@ describe('SearchSubagent contract tests', () => {
                 id: 'tc-1',
                 type: 'function',
                 function: {
-                  name: 'web.search',
+                  name: 'web_search',
                   arguments: '{"query": "test"}',
                 },
               }],
@@ -530,7 +530,7 @@ describe('SearchSubagent contract tests', () => {
                 id: 'tc-1',
                 type: 'function',
                 function: {
-                  name: 'web.search',
+                  name: 'web_search',
                   arguments: '{"query": "test"}',
                 },
               }],
@@ -597,7 +597,7 @@ describe('SearchSubagent contract tests', () => {
                 id: 'tc-1',
                 type: 'function',
                 function: {
-                  name: 'web.search',
+                  name: 'web_search',
                   arguments: '{"query": "test"}',
                 },
               }],
@@ -654,7 +654,7 @@ describe('SearchSubagent contract tests', () => {
   });
 
   describe('tool boundary enforcement', () => {
-    it('never calls tools other than web.search', async () => {
+    it('never calls tools other than web_search', async () => {
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js');
       
       const mockLlmAdapter = {
@@ -668,7 +668,7 @@ describe('SearchSubagent contract tests', () => {
               id: 'tc-1',
               type: 'function',
               function: {
-                name: 'web.fetch',
+                name: 'web_fetch',
                 arguments: '{"url": "https://example.com"}',
               },
             }],
@@ -718,7 +718,7 @@ describe('SearchSubagent contract tests', () => {
               id: 'tc-1',
               type: 'function',
               function: {
-                name: 'web.search',
+                name: 'web_search',
                 arguments: '{"query": "test"}',
               },
             }],
@@ -777,7 +777,7 @@ describe('SearchSubagent contract tests', () => {
                 id: 'tc-1',
                 type: 'function',
                 function: {
-                  name: 'web.search',
+                  name: 'web_search',
                   arguments: '{"query": "test"}',
                 },
               }],
@@ -875,7 +875,7 @@ describe('SearchSubagent contract tests', () => {
                 id: 'tc-1',
                 type: 'function',
                 function: {
-                  name: 'web.search',
+                  name: 'web_search',
                   arguments: '{"query": "test"}',
                 },
               }],

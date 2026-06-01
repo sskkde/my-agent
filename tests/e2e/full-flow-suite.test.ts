@@ -563,7 +563,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
           stepId: 'step_001',
           stepType: 'tool_call',
           name: 'Search Documents',
-          config: { toolName: 'docs.search', toolParams: { query: 'reports' } },
+          config: { toolName: 'docs_search', toolParams: { query: 'reports' } },
           nextStepId: 'step_002',
         },
         {

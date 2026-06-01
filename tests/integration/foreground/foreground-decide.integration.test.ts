@@ -86,7 +86,7 @@ function createDecideToolCall(params: {
     id: `tc-decide-${Date.now()}`,
     type: 'function',
     function: {
-      name: 'foreground.decide',
+      name: 'foreground_decide',
       arguments: JSON.stringify({
         schemaVersion: '1.0',
         route: params.route,
@@ -195,14 +195,11 @@ function createMockModelInputBuilder(): ModelInputBuilder {
 describe('foreground.decide Routing Integration Tests', () => {
   let originalDecideEnabled: string | undefined;
   let originalModelInputBuilder: string | undefined;
-  let originalKernelRunnerEnabled: string | undefined;
 
   beforeEach(() => {
     originalDecideEnabled = process.env.FOREGROUND_DECIDE_ENABLED;
     originalModelInputBuilder = process.env.MODEL_INPUT_BUILDER_ENABLED;
-    originalKernelRunnerEnabled = process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
     process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-    process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
     delete process.env.MODEL_INPUT_BUILDER_ENABLED;
   });
 
@@ -216,11 +213,6 @@ describe('foreground.decide Routing Integration Tests', () => {
       delete process.env.MODEL_INPUT_BUILDER_ENABLED;
     } else {
       process.env.MODEL_INPUT_BUILDER_ENABLED = originalModelInputBuilder;
-    }
-    if (originalKernelRunnerEnabled === undefined) {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-    } else {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = originalKernelRunnerEnabled;
     }
     vi.clearAllMocks();
   });
@@ -282,7 +274,7 @@ describe('foreground.decide Routing Integration Tests', () => {
       const decideToolCall = createDecideToolCall({
         route: 'dispatch_tool',
         reason: 'User needs memory retrieval',
-        suggestedTools: ['memory.retrieve'],
+        suggestedTools: ['memory_retrieve'],
       });
       const llmResult = createDecideLLMResult(decideToolCall);
 
@@ -299,7 +291,7 @@ describe('foreground.decide Routing Integration Tests', () => {
           finalResponse: 'Retrieved memory: Project Mercury details.',
           iterationsUsed: 1,
           toolCalls: [
-            { toolCallId: 'tc-mem-001', toolName: 'memory.retrieve', params: { query: 'project' } },
+            { toolCallId: 'tc-mem-001', toolName: 'memory_retrieve', params: { query: 'project' } },
           ],
           transcript: [],
         } as KernelRunResult),
@@ -329,7 +321,7 @@ describe('foreground.decide Routing Integration Tests', () => {
       const decideToolCall = createDecideToolCall({
         route: 'dispatch_tool',
         reason: 'Search documentation',
-        suggestedTools: ['docs.search', 'transcript.search'],
+        suggestedTools: ['docs_search', 'transcript_search'],
       });
       const llmResult = createDecideLLMResult(decideToolCall);
 
@@ -346,7 +338,7 @@ describe('foreground.decide Routing Integration Tests', () => {
           finalResponse: 'Found documentation about TypeScript interfaces.',
           iterationsUsed: 1,
           toolCalls: [
-            { toolCallId: 'tc-docs-001', toolName: 'docs.search', params: { query: 'typescript' } },
+            { toolCallId: 'tc-docs-001', toolName: 'docs_search', params: { query: 'typescript' } },
           ],
           transcript: [],
         } as KernelRunResult),
@@ -366,8 +358,8 @@ describe('foreground.decide Routing Integration Tests', () => {
 
       expect(result.status).toBe('completed');
       expect(result.decisionTrace.route).toBe('dispatch_tool');
-      expect(result.decisionTrace.suggestedTools).toContain('docs.search');
-      expect(result.decisionTrace.suggestedTools).toContain('transcript.search');
+      expect(result.decisionTrace.suggestedTools).toContain('docs_search');
+      expect(result.decisionTrace.suggestedTools).toContain('transcript_search');
       expect(mockAgentKernel.run).toHaveBeenCalledTimes(1);
     });
   });

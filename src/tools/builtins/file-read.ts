@@ -173,7 +173,7 @@ export function createFileReadTool(): ToolDefinition {
   };
 
   return {
-    name: 'file.read',
+    name: 'file_read',
     description: 'Read file content with workspace boundary enforcement and safety checks',
     category: 'read',
     sensitivity: 'medium',

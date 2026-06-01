@@ -77,7 +77,7 @@ export function createArtifactCreateTool(artifactStore: ArtifactStore): ToolDefi
   };
 
   return {
-    name: 'artifact.create',
+    name: 'artifact_create',
     description: 'Create a new artifact with the given title and content',
     category: 'write',
     sensitivity: 'medium',
