@@ -62,7 +62,7 @@ export function createDocsSearchTool(toolResultStore?: ToolResultStore): ToolDef
       const stored = toolResultStore.create({
         resultRef: `docs_${Date.now()}`,
         toolCallId: context.toolCallId,
-        toolName: 'docs.search',
+        toolName: 'docs_search',
         userId: context.userId,
         sessionId: context.sessionId,
         preview: `Found ${result.results.length} documents for "${typedParams.query}"`,
@@ -82,7 +82,7 @@ export function createDocsSearchTool(toolResultStore?: ToolResultStore): ToolDef
   };
 
   return {
-    name: 'docs.search',
+    name: 'docs_search',
     description: 'Search documentation for relevant content (mock implementation)',
     category: 'search',
     sensitivity: 'low',

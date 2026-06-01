@@ -202,7 +202,7 @@ export function createFileGlobTool(): ToolDefinition {
   };
 
   return {
-    name: 'file.glob',
+    name: 'file_glob',
     description: 'Find files matching a glob pattern within the workspace',
     category: 'search',
     sensitivity: 'low',

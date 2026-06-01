@@ -57,7 +57,7 @@ export function createStatusQueryTool(): ToolDefinition {
   };
 
   return {
-    name: 'status.query',
+    name: 'status_query',
     description: 'Query active work status for the current user or a specific run',
     category: 'read',
     sensitivity: 'low',

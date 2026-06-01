@@ -311,7 +311,7 @@ export function createMockConnectorTools(): ToolDefinition[] {
 
   return [
     {
-      name: 'email.search',
+      name: 'email_search',
       description: 'Search emails matching a query (mock implementation)',
       category: 'search',
       sensitivity: 'medium',
@@ -326,7 +326,7 @@ export function createMockConnectorTools(): ToolDefinition[] {
       handler: emailSearchHandler,
     },
     {
-      name: 'email.send_draft',
+      name: 'email_send_draft',
       description: 'Create an email draft (mock implementation)',
       category: 'write',
       sensitivity: 'high',
@@ -344,7 +344,7 @@ export function createMockConnectorTools(): ToolDefinition[] {
       handler: emailSendDraftHandler,
     },
     {
-      name: 'calendar.list',
+      name: 'calendar_list',
       description: 'List calendar events (mock implementation)',
       category: 'read',
       sensitivity: 'low',
@@ -359,7 +359,7 @@ export function createMockConnectorTools(): ToolDefinition[] {
       handler: calendarListHandler,
     },
     {
-      name: 'calendar.create_event',
+      name: 'calendar_create_event',
       description: 'Create a calendar event (mock implementation)',
       category: 'write',
       sensitivity: 'medium',
@@ -378,7 +378,7 @@ export function createMockConnectorTools(): ToolDefinition[] {
       handler: calendarCreateEventHandler,
     },
     {
-      name: 'contacts.search',
+      name: 'contacts_search',
       description: 'Search contacts matching a query (mock implementation)',
       category: 'search',
       sensitivity: 'medium',
@@ -393,7 +393,7 @@ export function createMockConnectorTools(): ToolDefinition[] {
       handler: contactsSearchHandler,
     },
     {
-      name: 'docs.read',
+      name: 'docs_read',
       description: 'Read a document by ID (mock implementation)',
       category: 'read',
       sensitivity: 'low',

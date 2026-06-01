@@ -89,7 +89,7 @@ export function createArtifactUpdateTool(artifactStore: ArtifactStore): ToolDefi
   };
 
   return {
-    name: 'artifact.update',
+    name: 'artifact_update',
     description: 'Update an existing artifact by artifactId',
     category: 'write',
     sensitivity: 'medium',

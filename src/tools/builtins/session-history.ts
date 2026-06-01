@@ -145,7 +145,7 @@ export function createSessionHistoryTool(
   };
 
   return {
-    name: 'session.history',
+    name: 'session_history',
     description: 'Retrieve message history for a session with pagination and truncation',
     category: 'read',
     sensitivity: 'medium',

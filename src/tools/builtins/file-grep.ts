@@ -336,7 +336,7 @@ export function createFileGrepTool(): ToolDefinition {
   };
 
   return {
-    name: 'file.grep',
+    name: 'file_grep',
     description: 'Search for pattern matches in files within the workspace',
     category: 'search',
     sensitivity: 'medium',

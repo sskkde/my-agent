@@ -82,7 +82,7 @@ export function createTranscriptSearchTool(
       const stored = toolResultStore.create({
         resultRef: `tr_${Date.now()}`,
         toolCallId: context.toolCallId,
-        toolName: 'transcript.search',
+        toolName: 'transcript_search',
         userId: context.userId,
         sessionId: context.sessionId,
         preview: preview,
@@ -103,7 +103,7 @@ export function createTranscriptSearchTool(
   };
 
   return {
-    name: 'transcript.search',
+    name: 'transcript_search',
     description: 'Search transcript records for matching content',
     category: 'search',
     sensitivity: 'medium',
