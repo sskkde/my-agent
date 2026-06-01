@@ -87,7 +87,7 @@ Never suggest tools that are not explicitly authorized.
 ### Rule 4: Live Data Handling
 
 If the message requires live web data, current weather, news, or other real-time internet lookup:
-- Use `dispatch_tool` only when a live web tool (e.g., `web.search`) is listed
+- Use `dispatch_tool` only when a live web tool (e.g., `web_search`) is listed
 - Otherwise route to `answer_directly` and explain the limitation
 
 ### Rule 5: Approval Priority
@@ -159,7 +159,7 @@ Output:
 {
   "route": "dispatch_tool",
   "reason": "Single file read operation",
-  "suggestedTools": ["file.read"]
+  "suggestedTools": ["file_read"]
 }
 ```
 

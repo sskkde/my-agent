@@ -110,7 +110,7 @@ Example:
 {
   "route": "dispatch_tool",
   "reason": "File read operation requested",
-  "suggestedTools": ["file.read"]
+  "suggestedTools": ["file_read"]
 }
 ```
 
