@@ -113,8 +113,8 @@ function buildDynamicRoutingPrompt(
   const toolIdsSummary = effectiveToolIds.length > 0
     ? effectiveToolIds.join(', ')
     : 'none';
-  const webSearchGuidance = effectiveToolIds.includes('web.search')
-    ? '- Use web.search for live web search, current news, real-time weather, or other real-time internet lookups when a simple search is enough. Do NOT use docs.search, transcript.search, or memory.retrieve for live web queries.'
+  const webSearchGuidance = effectiveToolIds.includes('web_search')
+    ? '- Use web_search for live web search, current news, real-time weather, or other real-time internet lookups when a simple search is enough. Do NOT use docs_search, transcript_search, or memory_retrieve for live web queries.'
     : '- None of the available tools provide live web search, real-time weather data, or current internet lookups. For questions requiring internet access, use answer_directly and explain the limitation or ask for clarification.';
 
   return `You are a message router for an AI assistant. Analyze the user message and decide how to handle it.

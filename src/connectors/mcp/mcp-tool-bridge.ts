@@ -3,6 +3,7 @@ import type { McpSessionManager } from './mcp-session-manager.js';
 import type { ToolDefinition, ToolExecutionContext, ToolExecutionResult, ToolRegistry } from '../../tools/types.js';
 import type { ToolSchemaProvider } from '../../tools/schema/tool-schema-provider.js';
 import { createToolSchemaProvider } from '../../tools/schema/tool-schema-provider.js';
+import { sanitizeToolName } from '../../tools/tool-name.js';
 import {
   createCancelledResponse,
   createTimeoutResponse,
@@ -42,6 +43,7 @@ export class McpToolBridge {
   private readonly auditRecorder?: AuditRecorder;
   private readonly defaultUserId: string;
   private readonly registeredBySession = new Map<string, string[]>();
+  private readonly bridgedToRaw = new Map<string, string>();
 
   constructor(options: McpToolBridgeOptions) {
     this.sessionManager = options.sessionManager;
@@ -283,12 +285,13 @@ export class McpToolBridge {
   }
 
   private bridgedToolName(serverId: string, toolName: string): string {
-    return `mcp.${serverId}.${toolName}`;
+    const sanitized = sanitizeToolName(`mcp.${serverId}.${toolName}`);
+    this.bridgedToRaw.set(sanitized, toolName);
+    return sanitized;
   }
 
-  private rawToolName(serverId: string, toolName: string): string {
-    const prefix = `mcp.${serverId}.`;
-    return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : toolName;
+  private rawToolName(_serverId: string, toolName: string): string {
+    return this.bridgedToRaw.get(toolName) ?? toolName;
   }
 
   private toRecord(value: unknown): Record<string, unknown> {

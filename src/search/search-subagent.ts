@@ -121,7 +121,7 @@ export interface SearchSubagent {
 const WEB_SEARCH_TOOL: ToolDefinition = {
   type: 'function',
   function: {
-    name: 'web.search',
+    name: 'web_search',
     description: 'Search the public web for information',
     parameters: {
       type: 'object',
@@ -137,10 +137,10 @@ const WEB_SEARCH_TOOL: ToolDefinition = {
 };
 
 /**
- * Tool plane projection for web.search tool
+ * Tool plane projection for web_search tool
  */
 const WEB_SEARCH_TOOL_PROJECTION: ToolPlaneProjection = {
-  toolIds: ['web.search'],
+  toolIds: ['web_search'],
   tools: [WEB_SEARCH_TOOL],
 };
 
@@ -227,7 +227,7 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
       tools,
       toolChoice: {
         type: 'function',
-        function: { name: 'web.search' },
+        function: { name: 'web_search' },
       },
     };
 
@@ -261,7 +261,7 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
     }
 
     const toolCall = response.toolCalls[0];
-    if (toolCall.function.name !== 'web.search') {
+    if (toolCall.function.name !== 'web_search') {
       return {
         success: false,
         errorCode: 'INVALID_TOOL_CALL',
@@ -277,14 +277,14 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
         return {
           success: false,
           errorCode: 'INVALID_TOOL_CALL',
-          message: 'Invalid web.search arguments: missing or empty query',
+          message: 'Invalid web_search arguments: missing or empty query',
         };
       }
     } catch {
       return {
         success: false,
         errorCode: 'INVALID_TOOL_CALL',
-        message: 'Invalid web.search arguments: failed to parse JSON',
+        message: 'Invalid web_search arguments: failed to parse JSON',
       };
     }
 

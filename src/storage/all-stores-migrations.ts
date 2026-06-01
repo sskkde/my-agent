@@ -1479,8 +1479,8 @@ export const agentConfigPromptBindingMigration: Migration = {
     SELECT
       agent_config_id, agent_id, scope, user_id, display_name, enabled,
       system_prompt, routing_prompt, provider_id, model,
-      CASE WHEN allowed_tool_ids = '[]' THEN '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]' ELSE allowed_tool_ids END,
-      CASE WHEN allowed_skill_ids = '[]' THEN '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]' ELSE allowed_skill_ids END,
+      CASE WHEN allowed_tool_ids = '[]' THEN '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]' ELSE allowed_tool_ids END,
+      CASE WHEN allowed_skill_ids = '[]' THEN '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]' ELSE allowed_skill_ids END,
       routing_timeout_ms, repair_attempts,
       NULL, NULL,
       tenant_id, created_at, updated_at
@@ -1495,11 +1495,11 @@ export const agentConfigPromptBindingMigration: Migration = {
     UPDATE agent_configs
     SET allowed_tool_ids = '[]',
         updated_at = datetime('now')
-    WHERE allowed_tool_ids = '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]';
+    WHERE allowed_tool_ids = '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]';
     UPDATE agent_configs
     SET allowed_skill_ids = '[]',
         updated_at = datetime('now')
-    WHERE allowed_skill_ids = '["artifact.create","artifact.update","ask_user","status.query","memory.retrieve","transcript.search","plan.patch","docs.search"]'
+    WHERE allowed_skill_ids = '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]'
   `
 };
 

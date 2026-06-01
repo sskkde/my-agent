@@ -57,7 +57,7 @@ function routeDeterministically(messages: Array<{ role: string; content: string 
     return {
       route: 'dispatch_tool',
       reason: 'User requested to search or find information',
-      suggestedTools: ['web.search'],
+      suggestedTools: ['web_search'],
     };
   }
 
@@ -65,7 +65,7 @@ function routeDeterministically(messages: Array<{ role: string; content: string 
     return {
       route: 'status_query',
       reason: 'User is asking about status or progress',
-      suggestedTools: ['status.query'],
+      suggestedTools: ['status_query'],
     };
   }
 

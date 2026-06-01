@@ -13,15 +13,15 @@ import { resolvePrompt } from '../../agents/prompt-registry.js';
 import { ResourceType, Action } from '../../permissions/rbac-types.js';
 
 const BUILTIN_SKILL_IDS = [
-  'artifact.create',
-  'artifact.update',
+  'artifact_create',
+  'artifact_update',
   'ask_user',
-  'status.query',
-  'memory.retrieve',
-  'transcript.search',
-  'plan.patch',
-  'docs.search',
-  'web.search',
+  'status_query',
+  'memory_retrieve',
+  'transcript_search',
+  'plan_patch',
+  'docs_search',
+  'web_search',
 ];
 
 const VALID_AGENT_IDS = ['foreground.default'];

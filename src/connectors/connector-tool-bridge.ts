@@ -10,6 +10,7 @@ import type {
 import type { ConnectorInstance } from '../storage/connector-store.js';
 import type { ToolDefinition, ToolCategory, ToolRegistry, ToolSensitivity, ToolSchema } from '../tools/types.js';
 import { createToolSchemaProvider, type ToolSchemaProvider } from '../tools/schema/tool-schema-provider.js';
+import { sanitizeToolName } from '../tools/tool-name.js';
 
 type ConnectorToolInstance = ConnectorInstance & {
   connectorId?: string;
@@ -40,7 +41,7 @@ export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
     const sensitivity = this.determineRiskLevel(capability);
     const connectorId = this.determineConnectorId(capability, connectorInstance);
     const operation = this.determineOperation(capability);
-    const toolName = `connector.${connectorId}.${operation}`;
+    const toolName = sanitizeToolName(`connector.${connectorId}.${operation}`);
     const connected = this.isConnected(connectorInstance);
 
     const schema: ToolSchema = {
@@ -365,7 +366,7 @@ export function mapMCPDescriptorToToolDefinition(descriptor: MCPToolDescriptor):
   }
 
   return {
-    name: `mcp.${descriptor.name}`,
+    name: sanitizeToolName(`mcp.${descriptor.name}`),
     description: descriptor.description,
     category,
     sensitivity,
