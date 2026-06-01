@@ -18,10 +18,6 @@ import { getToolCatalog, getToolDefinitions } from '../api/tool-catalog.js';
 import { buildLaunchSubagentAction, inferSubagentType } from '../subagents/action-mapper.js';
 import type { SubagentResult } from '../subagents/types.js';
 
-export function isForegroundKernelRunnerEnabled(): boolean {
-  return process.env.FOREGROUND_KERNEL_RUNNER_ENABLED === 'true';
-}
-
 export interface ForegroundKernelRunnerDeps {
   foregroundAgent: ForegroundAgent;
   agentKernel: AgentKernel;
@@ -46,14 +42,6 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
 
   async runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult> {
     try {
-      if (!isForegroundKernelRunnerEnabled()) {
-        return this.buildFailedResult(
-          { route: 'answer_directly', requiresPlanner: false, reason: 'Feature flag disabled' },
-          'FEATURE_DISABLED',
-          'ForegroundKernelRunner is not enabled',
-        );
-      }
-
       const fgMessageInput = {
         message: input.message,
         userId: input.userId,
@@ -138,19 +126,6 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
     }
   }
 
-  private buildFailedResult(
-    decisionTrace: ForegroundDecision,
-    code: string,
-    message: string,
-  ): ForegroundTurnResult {
-    return {
-      status: 'failed',
-      finalResponse: '',
-      decisionTrace,
-      error: { code, message },
-    };
-  }
-
   private emitFailureEvent(
     input: ForegroundTurnInput,
     eventType: string,
@@ -224,6 +199,47 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
     }
     messages.push({ role: 'user', content: input.message });
     return messages;
+  }
+
+  private async buildFailureAwareResponse(
+    decision: ForegroundDecision,
+    input: ForegroundTurnInput,
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<string> {
+    const model = input.foregroundState.resolvedModel ?? input.agentConfig?.model ?? this.deps.agentConfig?.model ?? '';
+    const suggestedTools = decision.suggestedTools?.length ? decision.suggestedTools.join(', ') : 'none';
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: [
+          'You are handling a failed tool-use turn.',
+          'The assistant had already decided that a tool/action was needed, but the tool loop failed before a usable tool result was produced.',
+          'Explain the failure to the user in natural language, do not pretend the tool succeeded, and suggest a concrete next step.',
+          'Keep the response concise and avoid exposing secrets or raw stack traces.',
+        ].join(' '),
+      },
+      { role: 'user', content: input.message },
+      {
+        role: 'assistant',
+        content: `I intended to handle this via route ${decision.route} using suggested tools: ${suggestedTools}.`,
+      },
+      {
+        role: 'user',
+        content: `Tool/action failure context: ${errorCode}: ${errorMessage}`,
+      },
+    ];
+
+    try {
+      const llmResult = await this.deps.llmAdapter.complete({ model, messages });
+      if (llmResult.success && llmResult.response.content) {
+        return llmResult.response.content;
+      }
+    } catch {
+      // Fall through to explicit deterministic error text.
+    }
+
+    return `抱歉，工具调用没有成功完成（${errorCode}）：${errorMessage}。请检查模型/工具配置后重试。`;
   }
 
   private async handleDispatchTool(
@@ -321,12 +337,19 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
           'kernel_dispatch_failure',
           errorCode,
           errorMessage,
-          'user_visible_response',
+          'llm_error_context',
+        );
+
+        const failureAwareResponse = await this.buildFailureAwareResponse(
+          decision,
+          input,
+          errorCode,
+          errorMessage,
         );
 
         return {
           route: 'dispatch_tool',
-          finalResponse: decision.userVisibleResponse || `Tool execution failed (${errorCode}).`,
+          finalResponse: failureAwareResponse,
           runtimeSummary: buildRuntimeSummary(kernelResult),
           error: {
             code: errorCode,
@@ -350,12 +373,19 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
         'dispatch_tool_failure',
         errorCode,
         errorMessage,
-        'user_visible_response',
+        'llm_error_context',
+      );
+
+      const failureAwareResponse = await this.buildFailureAwareResponse(
+        decision,
+        input,
+        errorCode,
+        errorMessage,
       );
 
       return {
         route: 'dispatch_tool',
-        finalResponse: decision.userVisibleResponse || `Tool dispatch encountered an issue (${errorCode}).`,
+        finalResponse: failureAwareResponse,
         error: {
           code: errorCode,
           message: errorMessage,

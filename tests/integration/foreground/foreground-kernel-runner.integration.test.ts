@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createForegroundKernelRunner,
-  isForegroundKernelRunnerEnabled,
 } from '../../../src/foreground/foreground-kernel-runner.js';
 import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js';
 import type { ForegroundDecision, ForegroundSessionState } from '../../../src/foreground/types.js';
@@ -91,12 +90,8 @@ describe('ForegroundKernelRunner Integration Tests', () => {
   let mockRuntimeDispatcher: RuntimeDispatcher;
   let mockPlannerRuntime: PlannerRuntime;
   let mockLlmAdapter: LLMAdapter;
-  let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-    process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
-
     mockForegroundAgent = {
       processMessage: vi.fn().mockResolvedValue({
         route: 'answer_directly',
@@ -165,11 +160,6 @@ describe('ForegroundKernelRunner Integration Tests', () => {
   });
 
   afterEach(() => {
-    if (originalEnv === undefined) {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-    } else {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = originalEnv;
-    }
     vi.clearAllMocks();
   });
 
@@ -498,65 +488,4 @@ describe('ForegroundKernelRunner Integration Tests', () => {
     });
   });
 
-  describe('Scenario 7: Feature flag disabled path', () => {
-    it('returns failed result with FEATURE_DISABLED code when flag is off', async () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-
-      const runner = createForegroundKernelRunner({
-        foregroundAgent: mockForegroundAgent,
-        agentKernel: mockAgentKernel,
-        runtimeDispatcher: mockRuntimeDispatcher,
-        plannerRuntime: mockPlannerRuntime,
-        llmAdapter: mockLlmAdapter,
-      });
-
-      const input = createMockInput({ message: 'Hello' });
-      const result = await runner.runTurn(input);
-
-      expect(result.status).toBe('failed');
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('FEATURE_DISABLED');
-      expect(result.error?.message).toContain('not enabled');
-      expect(mockForegroundAgent.processMessage).not.toHaveBeenCalled();
-      expect(mockAgentKernel.run).not.toHaveBeenCalled();
-    });
-
-    it('createForegroundKernelRunner still creates runner when flag is disabled (graceful degradation)', async () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-
-      const runner = createForegroundKernelRunner({
-        foregroundAgent: mockForegroundAgent,
-        agentKernel: mockAgentKernel,
-        runtimeDispatcher: mockRuntimeDispatcher,
-        plannerRuntime: mockPlannerRuntime,
-        llmAdapter: mockLlmAdapter,
-      });
-
-      expect(runner).toBeDefined();
-      expect(typeof runner.runTurn).toBe('function');
-
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
-
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('FEATURE_DISABLED');
-    });
-  });
-
-  describe('isForegroundKernelRunnerEnabled', () => {
-    it('returns true when FOREGROUND_KERNEL_RUNNER_ENABLED is true', () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
-      expect(isForegroundKernelRunnerEnabled()).toBe(true);
-    });
-
-    it('returns false when FOREGROUND_KERNEL_RUNNER_ENABLED is false', () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-      expect(isForegroundKernelRunnerEnabled()).toBe(false);
-    });
-
-    it('returns false when FOREGROUND_KERNEL_RUNNER_ENABLED is not set', () => {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-      expect(isForegroundKernelRunnerEnabled()).toBe(false);
-    });
-  });
 });

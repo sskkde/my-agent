@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createForegroundKernelRunner,
-  isForegroundKernelRunnerEnabled,
   buildRuntimeSummary,
 } from '../../../src/foreground/foreground-kernel-runner.js';
 import type {
@@ -84,15 +83,8 @@ describe('ForegroundKernelRunner', () => {
   let mockRuntimeDispatcher: RuntimeDispatcher;
   let mockPlannerRuntime: PlannerRuntime;
   let mockLlmAdapter: LLMAdapter;
-  let originalEnv: string | undefined;
 
   beforeEach(() => {
-    // Store original env
-    originalEnv = process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-
-    // Enable feature flag by default
-    process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
-
     // Create mock foreground agent
     mockForegroundAgent = {
       processMessage: vi.fn().mockResolvedValue({
@@ -165,30 +157,7 @@ describe('ForegroundKernelRunner', () => {
   });
 
   afterEach(() => {
-    // Restore original env
-    if (originalEnv === undefined) {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-    } else {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = originalEnv;
-    }
     vi.clearAllMocks();
-  });
-
-  describe('isForegroundKernelRunnerEnabled', () => {
-    it('should return true when FOREGROUND_KERNEL_RUNNER_ENABLED is true', () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'true';
-      expect(isForegroundKernelRunnerEnabled()).toBe(true);
-    });
-
-    it('should return false when FOREGROUND_KERNEL_RUNNER_ENABLED is not set', () => {
-      delete process.env.FOREGROUND_KERNEL_RUNNER_ENABLED;
-      expect(isForegroundKernelRunnerEnabled()).toBe(false);
-    });
-
-    it('should return false when FOREGROUND_KERNEL_RUNNER_ENABLED is false', () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-      expect(isForegroundKernelRunnerEnabled()).toBe(false);
-    });
   });
 
   describe('createForegroundKernelRunner', () => {
@@ -675,27 +644,6 @@ describe('ForegroundKernelRunner', () => {
   });
 
   describe('Scenario 8: Route validation failure returns failed result', () => {
-    it('should return failed result when feature flag is disabled', async () => {
-      process.env.FOREGROUND_KERNEL_RUNNER_ENABLED = 'false';
-
-      const deps = {
-        foregroundAgent: mockForegroundAgent,
-        agentKernel: mockAgentKernel,
-        runtimeDispatcher: mockRuntimeDispatcher,
-        plannerRuntime: mockPlannerRuntime,
-        llmAdapter: mockLlmAdapter,
-      };
-
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
-
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('FEATURE_DISABLED');
-      expect(result.error?.message).toContain('not enabled');
-      expect(mockForegroundAgent.processMessage).not.toHaveBeenCalled();
-    });
-
     it('should return failed result on unhandled exception', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockRejectedValue(new Error('Agent crashed'));
 
@@ -1064,7 +1012,7 @@ describe('ForegroundKernelRunner', () => {
       expect(event.payload).toMatchObject({
         errorCode: 'MODEL_ERROR',
         errorMessage: 'LLM provider returned an error',
-        fallbackBehavior: 'user_visible_response',
+        fallbackBehavior: 'llm_error_context',
       });
     });
 
@@ -1136,7 +1084,7 @@ describe('ForegroundKernelRunner', () => {
       expect(event.payload).toMatchObject({
         errorCode: 'DISPATCH_TOOL_ERROR',
         errorMessage: 'Kernel crashed',
-        fallbackBehavior: 'user_visible_response',
+        fallbackBehavior: 'llm_error_context',
       });
     });
 
@@ -1205,8 +1153,9 @@ describe('ForegroundKernelRunner', () => {
       const result = await runner.runTurn(input);
 
       expect(result.status).toBe('failed');
-      expect(result.finalResponse).toContain('TIMEOUT_ERROR');
-      expect(result.finalResponse).not.toBe('Tool execution failed.');
+      expect(result.finalResponse).toBe('LLM response content');
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
+      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('TIMEOUT_ERROR');
     });
 
     it('should include error code in foreground error message for dispatch failure', async () => {
@@ -1233,8 +1182,9 @@ describe('ForegroundKernelRunner', () => {
       const result = await runner.runTurn(input);
 
       expect(result.status).toBe('failed');
-      expect(result.finalResponse).toContain('DISPATCH_TOOL_ERROR');
-      expect(result.finalResponse).not.toBe('Tool execution failed.');
+      expect(result.finalResponse).toBe('LLM response content');
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
+      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('DISPATCH_TOOL_ERROR');
     });
   });
 
@@ -1324,7 +1274,9 @@ describe('ForegroundKernelRunner', () => {
       expect(result.status).toBe('failed');
       expect(result.error?.code).toBe('KERNEL_TIMEOUT');
       expect(result.error?.message).toBe('Kernel execution timed out');
-      expect(result.finalResponse).toContain('KERNEL_TIMEOUT');
+      expect(result.finalResponse).toBe('LLM response content');
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
+      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('KERNEL_TIMEOUT');
       expect(mockEventStore.append).toHaveBeenCalled();
       const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
       expect(event.eventType).toBe('kernel_dispatch_failure');
@@ -1368,7 +1320,9 @@ describe('ForegroundKernelRunner', () => {
       expect(result.status).toBe('failed');
       expect(result.error?.code).toBe('KERNEL_MAX_ITERATIONS');
       expect(result.error?.message).toBe('Kernel reached maximum iterations');
-      expect(result.finalResponse).toContain('KERNEL_MAX_ITERATIONS');
+      expect(result.finalResponse).toBe('LLM response content');
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
+      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('KERNEL_MAX_ITERATIONS');
       expect(mockEventStore.append).toHaveBeenCalled();
       const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
       expect(event.eventType).toBe('kernel_dispatch_failure');
