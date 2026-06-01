@@ -9,8 +9,28 @@ import {
   INHERIT_REPAIR_ATTEMPTS,
   INHERIT_ROUTING_TIMEOUT_MS,
 } from '../../storage/agent-config-store.js';
-import { resolvePrompt } from '../../agents/prompt-registry.js';
 import { ResourceType, Action } from '../../permissions/rbac-types.js';
+
+/**
+ * Minimal prompt resolver for API responses.
+ * Returns the prompt type and version directly from config.
+ * This is a simplified version - the full prompt resolution now happens
+ * in the prompt-template-registry system.
+ */
+function resolvePrompt(
+  promptType: string,
+  version?: string | null
+): {
+  record: { id: string; version: string };
+  fallbackReason?: 'UNKNOWN_PROMPT_VERSION' | 'UNKNOWN_PROMPT_TYPE';
+} {
+  return {
+    record: {
+      id: promptType,
+      version: version ?? 'default',
+    },
+  };
+}
 
 const BUILTIN_SKILL_IDS = [
   'artifact_create',

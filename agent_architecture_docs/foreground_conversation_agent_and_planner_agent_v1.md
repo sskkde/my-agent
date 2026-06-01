@@ -683,6 +683,9 @@ Section 5 的 5 层         →  P9 的 7 层
 
 关键变化：
 - ForegroundAgent 保持 JSON routing contract，不使用 function calling
-- ForegroundAgent 通过 shadow mode（`MODEL_INPUT_BUILDER_ENABLED`/`MODEL_INPUT_SHADOW_MODE`/`MODEL_INPUT_LEGACY_FALLBACK`）渐进切换到 ModelInputBuilder
-- `prompt-builder.ts` 的 `buildRoutingMessages()` 保留为 legacy fallback
+- ForegroundAgent 已完全迁移到 ModelInputBuilder（迁移标志已移除）
+  - ~~`MODEL_INPUT_BUILDER_ENABLED`~~ - 已移除（Task 4, 2026-06-01）
+  - ~~`MODEL_INPUT_SHADOW_MODE`~~ - 已移除（Task 4, 2026-06-01）
+  - ~~`MODEL_INPUT_LEGACY_FALLBACK`~~ - 已移除（Task 4, 2026-06-01）
+- `prompt-builder.ts` 的 `buildRoutingMessages()` 将在 Task 8 中删除
 - 优先级原则不变：Layer 1-4 > Layer 5 > Layer 6 > Layer 7 > User Message

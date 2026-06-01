@@ -346,8 +346,8 @@ describe('ForegroundAgent Template Projection Integration', () => {
     });
   });
 
-  describe('legacy path (MODEL_INPUT_BUILDER_ENABLED=false)', () => {
-    it('should not call resolver when using legacy path', async () => {
+  describe('MODEL_INPUT_BUILDER_ENABLED flag has no effect', () => {
+    it('should still use ModelInputBuilder and resolver when MODEL_INPUT_BUILDER_ENABLED=false', async () => {
       process.env.MODEL_INPUT_BUILDER_ENABLED = 'false';
       process.env.PROMPT_MEMORY_P0_ENABLED = 'true';
 
@@ -357,7 +357,7 @@ describe('ForegroundAgent Template Projection Integration', () => {
       const modelInputBuilder = createMockModelInputBuilder();
       const llmAdapter = createMockLLMAdapter(JSON.stringify({
         route: 'answer_directly',
-        reason: 'Legacy response',
+        reason: 'Always new path',
       }));
 
       const agent = createForegroundAgent({
@@ -371,8 +371,9 @@ describe('ForegroundAgent Template Projection Integration', () => {
         createMockState(),
       );
 
-      expect(resolver.resolve).not.toHaveBeenCalled();
-      expect(modelInputBuilder.build).not.toHaveBeenCalled();
+      // ModelInputBuilder is always used regardless of MODEL_INPUT_BUILDER_ENABLED
+      expect(modelInputBuilder.build).toHaveBeenCalled();
+      expect(resolver.resolve).toHaveBeenCalled();
     });
   });
 });

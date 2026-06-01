@@ -64,37 +64,6 @@ function createSuccessLLMResult(responseJson: string): LLMResult {
   };
 }
 
-function createDecideToolCallResult(route: string, reason: string, extra?: Record<string, unknown>): LLMResult {
-  return {
-    success: true,
-    response: {
-      id: 'resp-decide-1',
-      model: 'test-model',
-      content: '',
-      role: 'assistant',
-      finishReason: 'stop',
-      createdAt: new Date().toISOString(),
-      toolCalls: [
-        {
-          id: 'tc-decide-1',
-          type: 'function' as const,
-          function: {
-            name: 'foreground_decide',
-            arguments: JSON.stringify({
-              schemaVersion: '1.0',
-              route,
-              requiresPlanner: route === 'spawn_planner',
-              reason,
-              ...extra,
-            }),
-          },
-        },
-      ],
-    },
-    providerId: 'test-provider',
-  };
-}
-
 function createMockModelInputBuilder(): ModelInputBuilder {
   const builtOutput: BuiltModelInput = {
     messages: [
@@ -124,37 +93,6 @@ function createMockModelInputBuilder(): ModelInputBuilder {
   return {
     build: vi.fn().mockResolvedValue(builtOutput),
   } as unknown as ModelInputBuilder;
-}
-
-/**
- * Mock differentiates legacy (JSON content) vs decide (tool calls) by checking
- * whether `request.tools` is present — the decide path sends tool definitions.
- */
-function createDecideShadowLLMAdapter(
-  legacyRoute: string,
-  legacyReason: string,
-  decideRoute: string,
-  decideReason: string,
-  decideExtra?: Record<string, unknown>,
-): LLMAdapter {
-  return {
-    complete: vi.fn().mockImplementation((request: { tools?: unknown[] }) => {
-      if (request.tools) {
-        return Promise.resolve(createDecideToolCallResult(decideRoute, decideReason, decideExtra));
-      }
-      return Promise.resolve(createSuccessLLMResult(JSON.stringify({
-        route: legacyRoute,
-        reason: legacyReason,
-      })));
-    }),
-    getHealthyProviders: vi.fn().mockReturnValue([{
-      config: {
-        providerId: 'test-provider',
-        providerType: 'openrouter',
-        capabilities: { supportsJsonMode: true, supportsFunctionCalling: true },
-      },
-    }] as unknown as LLMProvider[]),
-  } as unknown as LLMAdapter;
 }
 
 function createLegacyOnlyLLMAdapter(route: string, reason: string): LLMAdapter {
@@ -258,229 +196,9 @@ describe('Foreground Decide Shadow Mode', () => {
     });
   });
 
-  describe('Shadow mode: FOREGROUND_DECIDE_ENABLED=true, FOREGROUND_DECIDE_SHADOW_MODE=true', () => {
-    it('should return legacy result (not decide result) when routes differ', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const llmAdapter = createDecideShadowLLMAdapter(
-        'answer_directly', 'legacy: direct answer',
-        'dispatch_tool', 'decide: tool dispatch',
-      );
-      const modelInputBuilder = createMockModelInputBuilder();
-      vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      const result = await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
-
-      expect(result.route).toBe('answer_directly');
-      expect(result.reason).toBe('legacy: direct answer');
-    });
-
-    it('should run both decide and legacy paths in parallel', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const llmAdapter = createDecideShadowLLMAdapter(
-        'answer_directly', 'legacy',
-        'answer_directly', 'decide',
-      );
-      const modelInputBuilder = createMockModelInputBuilder();
-      vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
-
-      expect(llmAdapter.complete).toHaveBeenCalledTimes(2);
-      expect(modelInputBuilder.build).toHaveBeenCalled();
-    });
-
-    it('should handle decide path failure gracefully and still return legacy result', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const legacyResponse = JSON.stringify({ route: 'answer_directly', reason: 'Legacy still works' });
-      const llmAdapter = {
-        complete: vi.fn().mockImplementation((request: { tools?: unknown[] }) => {
-          if (request.tools) {
-            return Promise.resolve({
-              success: false,
-              error: {
-                errorId: 'err-decide',
-                category: 'timeout',
-                code: 'TIMEOUT',
-                message: 'Decide path timed out',
-                recoverability: 'retryable_later',
-                source: { module: 'test' },
-                createdAt: new Date().toISOString(),
-              },
-              providerId: 'test-provider',
-            } as LLMResult);
-          }
-          return Promise.resolve(createSuccessLLMResult(legacyResponse));
-        }),
-        getHealthyProviders: vi.fn().mockReturnValue([{
-          config: {
-            providerId: 'test-provider',
-            providerType: 'openrouter',
-            capabilities: { supportsJsonMode: true, supportsFunctionCalling: true },
-          },
-        }]),
-      } as unknown as LLMAdapter;
-
-      const modelInputBuilder = createMockModelInputBuilder();
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      const result = await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
-
-      expect(result.route).toBe('answer_directly');
-      expect(result.reason).toBe('Legacy still works');
-    });
-  });
-
-  describe('Shadow mode diff logging', () => {
-    it('should log route diff when decide and legacy routes differ', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const llmAdapter = createDecideShadowLLMAdapter(
-        'answer_directly', 'legacy reason',
-        'dispatch_tool', 'decide reason',
-      );
-      const modelInputBuilder = createMockModelInputBuilder();
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
-
-      const shadowDiffCall = consoleSpy.mock.calls.find((call: unknown[]) =>
-        call.some((arg: unknown) => typeof arg === 'string' && arg.includes('shadow mode diff')),
-      );
-      expect(shadowDiffCall).toBeDefined();
-      const diffContent = shadowDiffCall!.slice(1).join(' ');
-      expect(diffContent).toContain('route: new=dispatch_tool legacy=answer_directly');
-    });
-
-    it('should log complexity diff when complexity values differ', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const llmAdapter = createDecideShadowLLMAdapter(
-        'answer_directly', 'legacy reason',
-        'answer_directly', 'decide reason',
-        { complexity: 'high' },
-      );
-      const modelInputBuilder = createMockModelInputBuilder();
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
-
-      const shadowDiffCall = consoleSpy.mock.calls.find((call: unknown[]) =>
-        call.some((arg: unknown) => typeof arg === 'string' && arg.includes('shadow mode diff')),
-      );
-      expect(shadowDiffCall).toBeDefined();
-      const diffContent = shadowDiffCall!.slice(1).join(' ');
-      expect(diffContent).toContain('complexity');
-    });
-
-    it('should log "no diff" when decide and legacy produce identical outputs', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const llmAdapter = createDecideShadowLLMAdapter(
-        'answer_directly', 'same reason',
-        'answer_directly', 'same reason',
-      );
-      const modelInputBuilder = createMockModelInputBuilder();
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
-
-      const noDiffCall = consoleSpy.mock.calls.find((call: unknown[]) =>
-        call.some((arg: unknown) => typeof arg === 'string' && arg.includes('shadow mode: no diff')),
-      );
-      expect(noDiffCall).toBeDefined();
-    });
-
-    it('should log suggestedTools diff when tool lists differ', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const llmAdapter = createDecideShadowLLMAdapter(
-        'answer_directly', 'legacy reason',
-        'dispatch_tool', 'decide reason',
-        { suggestedTools: ['docs_search'] },
-      );
-      const modelInputBuilder = createMockModelInputBuilder();
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      await agent.processMessage(
-        createMockInput({ message: 'Search for docs' }),
-        createMockState(),
-      );
-
-      const shadowDiffCall = consoleSpy.mock.calls.find((call: unknown[]) =>
-        call.some((arg: unknown) => typeof arg === 'string' && arg.includes('shadow mode diff')),
-      );
-      expect(shadowDiffCall).toBeDefined();
-      const diffContent = shadowDiffCall!.slice(1).join(' ');
-      expect(diffContent).toContain('route: new=dispatch_tool legacy=answer_directly');
-    });
-
-    it('should use vi.spyOn on console.log for shadow mode assertions', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
-
-      const llmAdapter = createDecideShadowLLMAdapter(
-        'answer_directly', 'legacy',
-        'dispatch_tool', 'decide',
-      );
-      const modelInputBuilder = createMockModelInputBuilder();
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
-
-      await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
-
-      expect(consoleSpy).toHaveBeenCalled();
-    });
-  });
-
   describe('Edge cases', () => {
-    it('should fallback to answer_directly when both paths fail in shadow mode', async () => {
+    it('should fallback to answer_directly when LLM fails with decide enabled', async () => {
       process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
 
       const failingAdapter = {
         complete: vi.fn().mockResolvedValue({
@@ -517,7 +235,7 @@ describe('Foreground Decide Shadow Mode', () => {
       expect(result.route).toBe('answer_directly');
     });
 
-    it('should work without ModelInputBuilder when decide flag is off', async () => {
+    it('should return answer_directly with diagnostic reason when ModelInputBuilder is missing', async () => {
       process.env.FOREGROUND_DECIDE_ENABLED = 'false';
 
       const llmAdapter = createLegacyOnlyLLMAdapter('answer_directly', 'Direct answer');
@@ -530,7 +248,7 @@ describe('Foreground Decide Shadow Mode', () => {
       );
 
       expect(result.route).toBe('answer_directly');
-      expect(result.reason).toBe('Direct answer');
+      expect(result.reason).toBe('ModelInputBuilder not available');
     });
   });
 });
