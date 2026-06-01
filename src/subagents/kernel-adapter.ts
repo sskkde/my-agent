@@ -50,6 +50,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
     private readonly agentConfigStore: AgentConfigStore,
     private readonly sessionStore: SessionStore,
     private readonly preferenceStore?: SubagentProviderPreferenceStore,
+    private readonly runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>,
   ) {}
 
   async execute(options: {
@@ -146,7 +147,13 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       model: resolvedProvider.model,
     };
 
-    return this.agentKernel.run(kernelInput);
+    const kernelRunFn = () => this.agentKernel.run(kernelInput);
+
+    if (this.runWithProvidersForUser) {
+      return this.runWithProvidersForUser(userId, kernelRunFn, resolvedProvider.providerId);
+    }
+
+    return kernelRunFn();
   }
 }
 
@@ -157,6 +164,7 @@ export function createSubagentKernelAdapter(deps: {
   agentConfigStore: AgentConfigStore;
   sessionStore: SessionStore;
   preferenceStore?: SubagentProviderPreferenceStore;
+  runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>;
 }): KernelAdapter {
   return new AgentKernelSubagentAdapter(
     deps.agentKernel,
@@ -165,5 +173,6 @@ export function createSubagentKernelAdapter(deps: {
     deps.agentConfigStore,
     deps.sessionStore,
     deps.preferenceStore,
+    deps.runWithProvidersForUser,
   );
 }

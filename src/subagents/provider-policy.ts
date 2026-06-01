@@ -72,6 +72,7 @@ export function validateProviderCapabilities(
   model: string,
   requiredCapabilities: SubagentProviderPolicy['requiredCapabilities'],
   providerConfigStore: ResolveSubagentProviderInput['providerConfigStore'],
+  userId?: string,
 ): { valid: boolean; missingCapabilities?: string[] } {
   if (!providerId || !model) {
     return {
@@ -86,7 +87,7 @@ export function validateProviderCapabilities(
   }
 
   // Resolve the provider entry so we can verify it exists and is enabled.
-  const providers = providerConfigStore.getByUser('');
+  const providers = providerConfigStore.getByUser(userId ?? '');
   const provider = providers.find(
     (p) => p.providerId === providerId && p.enabled,
   );
@@ -122,6 +123,7 @@ function candidateMatchesPolicy(
   model: string,
   policy: SubagentProviderPolicy,
   providerConfigStore: ResolveSubagentProviderInput['providerConfigStore'],
+  userId?: string,
 ): boolean {
   if (policy.allowedProviderIds && policy.allowedProviderIds.length > 0) {
     if (!policy.allowedProviderIds.includes(providerId)) {
@@ -140,9 +142,54 @@ function candidateMatchesPolicy(
     model,
     policy.requiredCapabilities,
     providerConfigStore,
+    userId,
   );
 
   return valid;
+}
+
+/**
+ * Resolve a partial user preference into a concrete providerId + model pair.
+ *
+ * When only providerId is set, the provider's configured selectedModel is used.
+ * When only model is set, the first enabled user provider offering that model is used.
+ * When both are set, they are returned as-is.
+ * When neither is set, null is returned.
+ */
+function resolvePartialPreference(
+  pref: SubagentProviderPreference | null,
+  providerConfigStore: ResolveSubagentProviderInput['providerConfigStore'],
+  userId: string,
+): { providerId: string; model: string } | null {
+  if (!pref) return null;
+
+  if (pref.providerId && pref.model) {
+    return { providerId: pref.providerId, model: pref.model };
+  }
+
+  if (pref.providerId) {
+    const userProviders = providerConfigStore.getByUser(userId);
+    const provider = userProviders.find(
+      (p) => p.providerId === pref.providerId && p.enabled,
+    );
+    if (provider?.selectedModel) {
+      return { providerId: pref.providerId, model: provider.selectedModel };
+    }
+    return null;
+  }
+
+  if (pref.model) {
+    const userProviders = providerConfigStore.getByUser(userId);
+    const provider = userProviders.find(
+      (p) => p.enabled && p.selectedModel === pref.model,
+    );
+    if (provider) {
+      return { providerId: provider.providerId, model: pref.model };
+    }
+    return null;
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -203,6 +250,7 @@ export function resolveSubagentProvider(
         modelOverride.model,
         policy,
         providerConfigStore,
+        userId,
       )
     ) {
       return {
@@ -216,18 +264,21 @@ export function resolveSubagentProvider(
   // -----------------------------------------------------------------------
   // 2. user subagent preference
   // -----------------------------------------------------------------------
-  if (userPref?.providerId && userPref.model) {
+  if (userPref?.providerId || userPref?.model) {
+    const resolvedPref = resolvePartialPreference(userPref, providerConfigStore, userId);
     if (
+      resolvedPref &&
       candidateMatchesPolicy(
-        userPref.providerId,
-        userPref.model,
+        resolvedPref.providerId,
+        resolvedPref.model,
         policy,
         providerConfigStore,
+        userId,
       )
     ) {
       return {
-        providerId: userPref.providerId,
-        model: userPref.model,
+        providerId: resolvedPref.providerId,
+        model: resolvedPref.model,
         source: 'user_subagent_preference',
       };
     }
@@ -243,6 +294,7 @@ export function resolveSubagentProvider(
         policy.defaultModel,
         policy,
         providerConfigStore,
+        userId,
       )
     ) {
       return {
@@ -265,6 +317,7 @@ export function resolveSubagentProvider(
           session.selectedModel,
           policy,
           providerConfigStore,
+          userId,
         )
       ) {
         return {
@@ -287,6 +340,7 @@ export function resolveSubagentProvider(
         globalConfig.model,
         policy,
         providerConfigStore,
+        userId,
       )
     ) {
       return {
@@ -331,7 +385,7 @@ export function resolveSubagentProvider(
     const model = provider.selectedModel;
     if (!model) continue;
 
-    if (candidateMatchesPolicy(provider.providerId, model, policy, providerConfigStore)) {
+    if (candidateMatchesPolicy(provider.providerId, model, policy, providerConfigStore, userId)) {
       return {
         providerId: provider.providerId,
         model,
