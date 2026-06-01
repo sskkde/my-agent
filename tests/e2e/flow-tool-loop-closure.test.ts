@@ -81,7 +81,7 @@ function makeTextResponse(content: string): LLMResponse {
 
 function createMockSearchTool(): ToolDefinition {
   return {
-    name: 'web.search',
+    name: 'web_search',
     description: 'Search the web',
     category: 'search',
     sensitivity: 'low',
@@ -103,7 +103,7 @@ function createMockSearchTool(): ToolDefinition {
 
 function createMockReadTool(): ToolDefinition {
   return {
-    name: 'file.read',
+    name: 'file_read',
     description: 'Read a file',
     category: 'read',
     sensitivity: 'medium',
@@ -125,7 +125,7 @@ function createMockReadTool(): ToolDefinition {
 
 function createMockStatusTool(): ToolDefinition {
   return {
-    name: 'status.query',
+    name: 'status_query',
     description: 'Query active work status',
     category: 'read',
     sensitivity: 'low',
@@ -283,7 +283,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       harness.registerTool(createMockSearchTool());
 
       const toolCalls: ToolCall[] = [
-        makeToolCall('call-search-1', 'web.search', { query: 'TypeScript performance' }),
+        makeToolCall('call-search-1', 'web_search', { query: 'TypeScript performance' }),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([
@@ -299,7 +299,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       expect(result.finalResponse).toContain('TypeScript');
       expect(result.finalResponse).not.toContain('Processing tool request...');
       expect(result.toolCalls).toHaveLength(1);
-      expect(result.toolCalls[0].toolName).toBe('web.search');
+      expect(result.toolCalls[0].toolName).toBe('web_search');
       expect(result.toolCalls[0].toolCallId).toBe('call-search-1');
 
       const types = result.transcript.map((e) => e.type);
@@ -319,7 +319,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       harness.registerTool(createMockReadTool());
 
       const toolCalls: ToolCall[] = [
-        makeToolCall('call-read-1', 'file.read', { path: '/tmp/test.txt' }),
+        makeToolCall('call-read-1', 'file_read', { path: '/tmp/test.txt' }),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([
@@ -333,7 +333,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       expect(result.finalStatus).toBe('completed');
       expect(result.finalResponse).toContain('greeting');
       expect(result.toolCalls).toHaveLength(1);
-      expect(result.toolCalls[0].toolName).toBe('file.read');
+      expect(result.toolCalls[0].toolName).toBe('file_read');
 
       const pairing = validateToolResultPairing(result.transcript);
       expect(pairing.valid).toBe(true);
@@ -348,7 +348,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       harness.registerTool(createMockSearchTool());
 
       const toolCalls: ToolCall[] = [
-        makeToolCall('call-ts-1', 'web.search', { query: 'weather today' }),
+        makeToolCall('call-ts-1', 'web_search', { query: 'weather today' }),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([
@@ -386,7 +386,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       const savedTranscript = transcripts[0];
       expect(savedTranscript.runtimeSummary).toBeDefined();
       expect(savedTranscript.runtimeSummary?.toolCallSummaries).toHaveLength(1);
-      expect(savedTranscript.runtimeSummary?.toolCallSummaries![0]).toEqual({ toolCallId: 'call-ts-1', toolName: 'web.search', status: 'completed' });
+      expect(savedTranscript.runtimeSummary?.toolCallSummaries![0]).toEqual({ toolCallId: 'call-ts-1', toolName: 'web_search', status: 'completed' });
     });
 
     it('omits runtimeSummary from transcript when not provided', async () => {
@@ -419,9 +419,9 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       harness.registerTool(createMockStatusTool());
 
       const toolCalls: ToolCall[] = [
-        makeToolCall('call-p1', 'web.search', { query: 'test' }),
-        makeToolCall('call-p2', 'file.read', { path: '/tmp/a.txt' }),
-        makeToolCall('call-p3', 'status.query', {}),
+        makeToolCall('call-p1', 'web_search', { query: 'test' }),
+        makeToolCall('call-p2', 'file_read', { path: '/tmp/a.txt' }),
+        makeToolCall('call-p3', 'status_query', {}),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([
@@ -436,7 +436,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       expect(result.toolCalls).toHaveLength(3);
 
       const toolNames = result.toolCalls.map((tc: ToolUseRequest) => tc.toolName).sort();
-      expect(toolNames).toEqual(['file.read', 'status.query', 'web.search']);
+      expect(toolNames).toEqual(['file_read', 'status_query', 'web_search']);
 
       expect(result.transcript.filter((e) => e.type === 'tool_call')).toHaveLength(3);
       expect(result.transcript.filter((e) => e.type === 'tool_result')).toHaveLength(3);
@@ -477,7 +477,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       harness.registerTool(createMockSearchTool());
 
       const toolCalls: ToolCall[] = [
-        makeToolCall('call-orp-1', 'web.search', { query: 'test' }),
+        makeToolCall('call-orp-1', 'web_search', { query: 'test' }),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([
@@ -509,7 +509,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       harness.registerTool(createMockSearchTool());
 
       const toolCalls: ToolCall[] = [
-        makeToolCall('call-mis-1', 'web.search', { query: 'test' }),
+        makeToolCall('call-mis-1', 'web_search', { query: 'test' }),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([
@@ -563,7 +563,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
 
     it('handles tool execution error gracefully', async () => {
       harness.registerTool({
-        name: 'web.search',
+        name: 'web_search',
         description: 'Search',
         category: 'search',
         sensitivity: 'low',
@@ -580,7 +580,7 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       });
 
       const toolCalls: ToolCall[] = [
-        makeToolCall('call-err-1', 'web.search', { query: 'fail' }),
+        makeToolCall('call-err-1', 'web_search', { query: 'fail' }),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([
@@ -610,10 +610,10 @@ describe('Flow: Tool Loop Closure (E2E)', () => {
       harness.registerTool(createMockReadTool());
 
       const toolCalls1: ToolCall[] = [
-        makeToolCall('call-mt-1', 'web.search', { query: 'step 1' }),
+        makeToolCall('call-mt-1', 'web_search', { query: 'step 1' }),
       ];
       const toolCalls2: ToolCall[] = [
-        makeToolCall('call-mt-2', 'file.read', { path: '/tmp/result.txt' }),
+        makeToolCall('call-mt-2', 'file_read', { path: '/tmp/result.txt' }),
       ];
 
       const adapter = new FakeToolLoopLLMAdapter([

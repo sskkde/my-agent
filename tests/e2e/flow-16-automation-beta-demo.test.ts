@@ -568,7 +568,7 @@ describe('Flow 16: Automation Beta Demo', () => {
       const userId = 'user_demo';
       const sessionId = 'sess_demo';
       const steps: WorkflowStep[] = [
-        { stepId: 'conn_step_1', stepType: 'tool_call', name: 'Connector Step', config: { toolName: 'connector.tool' } },
+      { stepId: 'conn_step_1', stepType: 'tool_call', name: 'Connector Step', config: { toolName: 'connector_tool' } },
       ];
 
       const draft = workflowRuntime.createDraft({

@@ -19,7 +19,7 @@ function createReadTool(
   resultSize: 'small' | 'large',
   toolResultStore: ToolResultStore,
 ): ToolDefinition {
-  const toolName = resultSize === 'large' ? 'file.read_large' : 'file.read';
+  const toolName = resultSize === 'large' ? 'file_read_large' : 'file_read';
 
   return {
     name: toolName,
@@ -164,7 +164,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       const result = await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/tmp/large_file.log' },
         userId,
         sessionId,
@@ -178,7 +178,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const exec = harness.stores.toolExecutionStore.getById(toolCallId);
       expect(exec).toBeDefined();
       expect(exec?.toolCallId).toBe(toolCallId);
-      expect(exec?.toolName).toBe('file.read_large');
+      expect(exec?.toolName).toBe('file_read_large');
       expect(exec?.userId).toBe(userId);
       expect(exec?.sessionId).toBe(sessionId);
 
@@ -213,7 +213,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       const result = await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/data/huge.json' },
         userId,
         sessionId,
@@ -230,7 +230,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       expect(storedRef).toBeDefined();
       expect(storedRef.resultRef).toBe(result.resultRef);
       expect(storedRef.toolCallId).toBe(toolCallId);
-      expect(storedRef.toolName).toBe('file.read_large');
+      expect(storedRef.toolName).toBe('file_read_large');
       expect(storedRef.userId).toBe(userId);
       expect(storedRef.sessionId).toBe(sessionId);
       expect(storedRef.sensitivity).toBe('medium');
@@ -253,7 +253,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/data/search_results.json' },
         userId,
         sessionId,
@@ -263,7 +263,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const refs = toolResultStore.findByToolCallId(toolCallId);
       expect(refs.length).toBe(1);
       expect(refs[0].toolCallId).toBe(toolCallId);
-      expect(refs[0].toolName).toBe('file.read_large');
+      expect(refs[0].toolName).toBe('file_read_large');
     });
   });
 
@@ -287,7 +287,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       const result = await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read',
+        toolName: 'file_read',
         params: { path: '/tmp/hello.txt' },
         userId,
         sessionId,
@@ -328,7 +328,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read',
+        toolName: 'file_read',
         params: { path: '/tmp/small.txt' },
         userId,
         sessionId,
@@ -360,7 +360,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       const result = await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/tmp/log.txt' },
         userId,
         sessionId,
@@ -401,7 +401,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/data/deploy_commands.log' },
         userId,
         sessionId,
@@ -437,7 +437,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/etc/config.json' },
         userId,
         sessionId,
@@ -479,7 +479,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       const result = await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/data/report.json' },
         userId,
         sessionId,
@@ -494,7 +494,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       );
       expect(toolEvent).toBeDefined();
       expect(toolEvent?.payload?.resultRefId).toBe(result.resultRef);
-      expect(toolEvent?.payload?.toolName).toBe('file.read_large');
+      expect(toolEvent?.payload?.toolName).toBe('file_read_large');
     });
 
     it('timeline includes tool execution event for read tools', async () => {
@@ -514,7 +514,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read',
+        toolName: 'file_read',
         params: { path: '/tmp/notes.txt' },
         userId,
         sessionId,
@@ -556,7 +556,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
 
       await harness.toolExecutor.execute({
         toolCallId: smallCallId,
-        toolName: 'file.read',
+        toolName: 'file_read',
         params: { path: '/tmp/a.txt' },
         userId,
         sessionId,
@@ -565,7 +565,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
 
       await harness.toolExecutor.execute({
         toolCallId: largeCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/tmp/b.log' },
         userId,
         sessionId,
@@ -600,7 +600,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const toolCallId = harness.idGenerator.custom('tool_call');
       const result = await harness.toolExecutor.execute({
         toolCallId,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/tmp/huge.log' },
         userId,
         sessionId,
@@ -641,7 +641,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const tcA = harness.idGenerator.custom('tool_call');
       await harness.toolExecutor.execute({
         toolCallId: tcA,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/data/a.json' },
         userId: user1,
         sessionId: sessA,
@@ -659,7 +659,7 @@ describe('Flow 13: Read Tool + ResultRef Dedicated E2E', () => {
       const tcB = harness.idGenerator.custom('tool_call');
       await harness.toolExecutor.execute({
         toolCallId: tcB,
-        toolName: 'file.read_large',
+        toolName: 'file_read_large',
         params: { path: '/data/b.json' },
         userId: user2,
         sessionId: sessB,

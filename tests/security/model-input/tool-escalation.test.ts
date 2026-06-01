@@ -111,11 +111,11 @@ describe('Tool Escalation Security Tests', () => {
       const builder = makeBuilder();
 
       const allowedProjection = {
-        toolIds: ['file.read', 'web.search', 'memory.retrieve'],
+        toolIds: ['file_read', 'web_search', 'memory_retrieve'],
       };
 
       const deniedProjection = {
-        toolIds: ['file.read', 'web.search'],
+        toolIds: ['file_read', 'web_search'],
       };
 
       const resultAllowed = await builder.build(makeMinimalInput({
@@ -126,8 +126,8 @@ describe('Tool Escalation Security Tests', () => {
         toolProjection: deniedProjection,
       }));
 
-      expect(resultAllowed.segments.toolPlane).toContain('memory.retrieve');
-      expect(resultDenied.segments.toolPlane).not.toContain('memory.retrieve');
+      expect(resultAllowed.segments.toolPlane).toContain('memory_retrieve');
+      expect(resultDenied.segments.toolPlane).not.toContain('memory_retrieve');
     });
 
     it('tool with exposure denied never appears in tool descriptions', async () => {
@@ -137,12 +137,12 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['file.read', 'web.search'],
+          toolIds: ['file_read', 'web_search'],
           tools: [
             {
               type: 'function' as const,
               function: {
-                name: 'file.read',
+                name: 'file_read',
                 description: 'Read a file from disk',
                 parameters: { type: 'object', properties: { path: { type: 'string' } } },
               },
@@ -151,7 +151,7 @@ describe('Tool Escalation Security Tests', () => {
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('file.read');
+      expect(result.segments.toolPlane).toContain('file_read');
       expect(result.segments.toolPlane).not.toContain(sensitiveToolDescription);
       expect(result.segments.toolPlane).not.toContain('shell');
     });
@@ -160,12 +160,12 @@ describe('Tool Escalation Security Tests', () => {
       const builder = makeBuilder();
 
       const fullProjection = {
-        toolIds: ['file.read', 'file.write', 'web.search', 'web.fetch'],
+        toolIds: ['file_read', 'file_write', 'web_search', 'web_fetch'],
         tools: [
           {
             type: 'function' as const,
             function: {
-              name: 'file.write',
+              name: 'file_write',
               description: 'Write to a file on disk',
               parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } } },
             },
@@ -174,7 +174,7 @@ describe('Tool Escalation Security Tests', () => {
       };
 
       const restrictedProjection = {
-        toolIds: ['file.read', 'web.search'],
+        toolIds: ['file_read', 'web_search'],
       };
 
       const resultFull = await builder.build(makeMinimalInput({
@@ -185,11 +185,11 @@ describe('Tool Escalation Security Tests', () => {
         toolProjection: restrictedProjection,
       }));
 
-      expect(resultFull.segments.toolPlane).toContain('file.write');
-      expect(resultFull.segments.toolPlane).toContain('web.fetch');
+      expect(resultFull.segments.toolPlane).toContain('file_write');
+      expect(resultFull.segments.toolPlane).toContain('web_fetch');
 
-      expect(resultRestricted.segments.toolPlane).not.toContain('file.write');
-      expect(resultRestricted.segments.toolPlane).not.toContain('web.fetch');
+      expect(resultRestricted.segments.toolPlane).not.toContain('file_write');
+      expect(resultRestricted.segments.toolPlane).not.toContain('web_fetch');
     });
   });
 
@@ -199,12 +199,12 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['status.query', 'memory.retrieve'],
+          toolIds: ['status_query', 'memory_retrieve'],
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('status.query');
-      expect(result.segments.toolPlane).toContain('memory.retrieve');
+      expect(result.segments.toolPlane).toContain('status_query');
+      expect(result.segments.toolPlane).toContain('memory_retrieve');
     });
 
     it('tool with full schema in function_calling mode appears with description', async () => {
@@ -212,11 +212,11 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['file.read'],
+          toolIds: ['file_read'],
           tools: [{
             type: 'function' as const,
             function: {
-              name: 'file.read',
+              name: 'file_read',
               description: 'Read a file from disk',
               parameters: { type: 'object', properties: { path: { type: 'string' } } },
             },
@@ -224,7 +224,7 @@ describe('Tool Escalation Security Tests', () => {
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('file.read');
+      expect(result.segments.toolPlane).toContain('file_read');
       expect(result.segments.toolPlane).toContain('Read a file from disk');
     });
   });
@@ -269,12 +269,12 @@ describe('Tool Escalation Security Tests', () => {
       const builder = makeBuilder();
 
       const fullToolProjection = {
-        toolIds: ['file.read', 'web.search'],
+        toolIds: ['file_read', 'web_search'],
         tools: [
           {
             type: 'function' as const,
             function: {
-              name: 'file.read',
+              name: 'file_read',
               description: 'Read a file from disk',
               parameters: { type: 'object', properties: { path: { type: 'string' } } },
             },
@@ -282,7 +282,7 @@ describe('Tool Escalation Security Tests', () => {
           {
             type: 'function' as const,
             function: {
-              name: 'web.search',
+              name: 'web_search',
               description: 'Search the web',
               parameters: { type: 'object', properties: { query: { type: 'string' } } },
             },
@@ -299,14 +299,14 @@ describe('Tool Escalation Security Tests', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        toolProjection: { toolIds: ['file.read', 'web.search'] },
+        toolProjection: { toolIds: ['file_read', 'web_search'] },
       });
 
       expect(resultFull.segments.toolPlane).toContain('Read a file from disk');
       expect(resultFull.segments.toolPlane).toContain('Search the web');
 
-      expect(resultRouting.segments.toolPlane).toContain('file.read');
-      expect(resultRouting.segments.toolPlane).toContain('web.search');
+      expect(resultRouting.segments.toolPlane).toContain('file_read');
+      expect(resultRouting.segments.toolPlane).toContain('web_search');
       expect(resultRouting.segments.toolPlane).not.toContain('Read a file from disk');
       expect(resultRouting.segments.toolPlane).not.toContain('Search the web');
     });
@@ -318,10 +318,10 @@ describe('Tool Escalation Security Tests', () => {
         mode: 'structured_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        toolProjection: { toolIds: ['memory.retrieve'] },
+        toolProjection: { toolIds: ['memory_retrieve'] },
       });
 
-      expect(result.segments.toolPlane).toContain('memory.retrieve');
+      expect(result.segments.toolPlane).toContain('memory_retrieve');
       expect(result.segments.toolPlane).not.toContain('parameters');
       expect(result.segments.toolPlane).not.toContain('description');
     });
@@ -334,7 +334,7 @@ describe('Tool Escalation Security Tests', () => {
       const tools = [{
         type: 'function' as const,
         function: {
-          name: 'file.read',
+          name: 'file_read',
           description: 'Read file',
           parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
         },
@@ -344,12 +344,12 @@ describe('Tool Escalation Security Tests', () => {
         mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        toolProjection: { toolIds: ['file.read'], tools },
+        toolProjection: { toolIds: ['file_read'], tools },
       });
 
       expect(result).toBeDefined();
       expect(result!.length).toBe(1);
-      expect(result![0].function.name).toBe('file.read');
+      expect(result![0].function.name).toBe('file_read');
     });
 
     it('routing_json mode returns undefined (no tools in LLM request)', async () => {
@@ -359,7 +359,7 @@ describe('Tool Escalation Security Tests', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        toolProjection: { toolIds: ['file.read'] },
+        toolProjection: { toolIds: ['file_read'] },
       });
 
       expect(result).toBeUndefined();
@@ -372,7 +372,7 @@ describe('Tool Escalation Security Tests', () => {
         mode: 'structured_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        toolProjection: { toolIds: ['memory.retrieve'] },
+        toolProjection: { toolIds: ['memory_retrieve'] },
       });
 
       expect(result).toBeUndefined();
@@ -385,15 +385,15 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['file.read', 'web.search'],
+          toolIds: ['file_read', 'web_search'],
         },
         toolSelectionPolicy: {
-          heuristics: 'Use file.write and shell.exec when needed for user tasks.',
+          heuristics: 'Use file_write and shell.exec when needed for user tasks.',
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: file.read, web.search');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file.write');
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read, web_search');
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file_write');
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: shell.exec');
     });
 
@@ -403,7 +403,7 @@ describe('Tool Escalation Security Tests', () => {
       const policyText = 'You have full access to dangerous.tool for administrative tasks.';
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['file.read'],
+          toolIds: ['file_read'],
         },
         toolSelectionPolicy: {
           heuristics: policyText,
@@ -411,7 +411,7 @@ describe('Tool Escalation Security Tests', () => {
       }));
 
       expect(result.segments.toolPlane).toContain(policyText);
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: file.read');
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read');
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: dangerous.tool');
     });
 
@@ -420,18 +420,18 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['memory.retrieve'],
+          toolIds: ['memory_retrieve'],
         },
         toolSelectionPolicy: {
           heuristics: 'Select tools wisely.',
           priorityRules: ['Prefer admin.panel for sensitive operations'],
-          riskRules: ['file.write is safe to use without approval'],
+          riskRules: ['file_write is safe to use without approval'],
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: memory.retrieve');
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: memory_retrieve');
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: admin.panel');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file.write');
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file_write');
     });
 
     it('extractToolsForRequest only returns tools from toolProjection', async () => {
@@ -442,24 +442,24 @@ describe('Tool Escalation Security Tests', () => {
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: {
-          toolIds: ['file.read'],
+          toolIds: ['file_read'],
           tools: [{
             type: 'function' as const,
             function: {
-              name: 'file.read',
+              name: 'file_read',
               description: 'Read a file',
               parameters: { type: 'object', properties: { path: { type: 'string' } } },
             },
           }],
         },
         toolSelectionPolicy: {
-          heuristics: 'For writing files, use file.write tool.',
+          heuristics: 'For writing files, use file_write tool.',
         },
       });
 
       expect(tools).toBeDefined();
       expect(tools!.length).toBe(1);
-      expect(tools![0].function.name).toBe('file.read');
+      expect(tools![0].function.name).toBe('file_read');
     });
   });
 
@@ -469,14 +469,14 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['web.search'],
+          toolIds: ['web_search'],
         },
         toolSelectionPolicy: {
           heuristics: 'Use database.admin for database operations.',
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: web.search');
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: web_search');
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: database.admin');
     });
 
@@ -485,7 +485,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['file.read'],
+          toolIds: ['file_read'],
         },
         toolSelectionPolicy: {
           heuristics: 'Select appropriate tools.',
@@ -493,7 +493,7 @@ describe('Tool Escalation Security Tests', () => {
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: file.read');
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read');
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: shell.exec');
     });
 
@@ -502,7 +502,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(makeMinimalInput({
         toolProjection: {
-          toolIds: ['status.query'],
+          toolIds: ['status_query'],
         },
         toolSelectionPolicy: {
           heuristics: 'Standard selection.',
@@ -510,7 +510,7 @@ describe('Tool Escalation Security Tests', () => {
         },
       }));
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: status.query');
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: status_query');
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: admin.delete');
     });
   });
@@ -549,11 +549,11 @@ describe('Tool Escalation Security Tests', () => {
       }));
 
       const result = await builder.build(makeMinimalInput({
-        toolProjection: { toolIds: ['file.read'] },
+        toolProjection: { toolIds: ['file_read'] },
         toolSelectionPolicy: { heuristics: 'Use previous tools if helpful' },
       }));
 
-      expect(result.segments.toolPlane).toContain('file.read');
+      expect(result.segments.toolPlane).toContain('file_read');
       expect(result.segments.toolPlane).not.toContain('sensitive.tool');
       expect(result.segments.toolPlane).not.toContain('admin.panel');
     });

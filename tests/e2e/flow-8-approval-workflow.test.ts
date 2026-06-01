@@ -117,7 +117,7 @@ describe('Flow 8: Approval Workflow E2E Flows', () => {
           name: 'Write Operation',
           description: 'Perform write after approval',
           config: {
-            toolName: 'file.write',
+            toolName: 'file_write',
             toolParams: { path: '/output/report.txt' },
           },
         },

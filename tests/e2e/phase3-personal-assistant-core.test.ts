@@ -124,7 +124,7 @@ describe('Phase 3 E2E: Personal Assistant Core', () => {
           name: 'Search Emails',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.gmail.search_emails',
+            toolName: 'connector_gmail_search_emails',
             toolParams: { query: 'urgent' },
           },
         },
@@ -251,7 +251,7 @@ describe('Phase 3 E2E: Personal Assistant Core', () => {
           name: 'Quick Task',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.gmail.search_emails',
+            toolName: 'connector_gmail_search_emails',
             toolParams: { query: 'test' },
           },
         },
@@ -325,7 +325,7 @@ describe('Phase 3 E2E: Personal Assistant Core', () => {
           name: 'First Step',
           stepType: 'tool_call',
           config: {
-            toolName: 'connector.docs.search_docs',
+            toolName: 'connector_docs_search_docs',
             toolParams: { query: 'test' },
           },
         },
