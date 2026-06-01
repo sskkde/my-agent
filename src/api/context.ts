@@ -641,6 +641,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     providerConfigStore,
     agentConfigStore,
     sessionStore,
+    preferenceStore: subagentProviderPreferenceStore,
+    runWithProvidersForUser,
   });
 
   const subagentRuntime = createSubagentRuntime({
