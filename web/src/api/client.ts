@@ -50,6 +50,9 @@ import type {
   DeleteMemoryResponse,
   PlannerRunEventsResponse,
   PlannerRunSummaryResponse,
+  SubagentDefinitionsResponse,
+  SubagentPreferenceResponse,
+  UpdateSubagentPreferenceRequest,
 } from './types';
 
 const API_BASE = '/api/v1';
@@ -602,4 +605,42 @@ export async function getPlannerRunEvents(plannerRunId: string): Promise<Planner
 export async function getPlannerRunSummary(plannerRunId: string): Promise<PlannerRunSummaryResponse> {
   const response = await fetch(`${API_BASE}/planner-runs/${plannerRunId}/summary`, { credentials: 'include' });
   return parseResponse<PlannerRunSummaryResponse>(response);
+}
+
+export async function getSubagentDefinitions(): Promise<SubagentDefinitionsResponse> {
+  const response = await fetch(`${API_BASE}/subagents`, { credentials: 'include' });
+  const definitions = await parseResponse<SubagentDefinitionsResponse['definitions']>(response);
+  return { definitions };
+}
+
+export async function getSubagentPreference(subagentType: string): Promise<SubagentPreferenceResponse> {
+  const response = await fetch(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, { credentials: 'include' });
+  return parseResponse<SubagentPreferenceResponse>(response);
+}
+
+export async function updateSubagentPreference(
+  subagentType: string,
+  request: UpdateSubagentPreferenceRequest
+): Promise<SubagentPreferenceResponse> {
+  const response = await fetch(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return parseResponse<SubagentPreferenceResponse>(response);
+}
+
+export async function resetSubagentPreference(subagentType: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiClientError(errorBody.error || {
+      code: 'UNKNOWN_ERROR',
+      message: `HTTP ${response.status}: ${response.statusText}`,
+    });
+  }
 }

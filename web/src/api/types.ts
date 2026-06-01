@@ -875,3 +875,48 @@ export interface UpdateSystemSettingsRequest {
   rateLimitPerHour?: number;
   sessionTokenTtlHours?: number;
 }
+
+// =============================================================================
+// Subagent Configuration Types
+// =============================================================================
+
+export type SubagentFallbackMode = 'none' | 'same_provider' | 'any_compatible';
+
+export interface SubagentProviderPolicy {
+  defaultProviderId?: string;
+  defaultModel?: string;
+  allowedProviderIds?: string[];
+  allowedModelIds?: string[];
+  requiredCapabilities?: string[];
+  fallbackMode: SubagentFallbackMode;
+}
+
+export interface SubagentDefinition {
+  agentType: string;
+  displayName: string;
+  description: string;
+  modality: string;
+  providerPolicy: SubagentProviderPolicy;
+}
+
+export interface SubagentPreference {
+  providerId?: string;
+  model?: string;
+  fallbackMode?: SubagentFallbackMode;
+}
+
+export interface SubagentPreferenceResponse {
+  agentType: string;
+  preference: SubagentPreference | null;
+  providerPolicy: SubagentProviderPolicy;
+}
+
+export interface SubagentDefinitionsResponse {
+  definitions: SubagentDefinition[];
+}
+
+export interface UpdateSubagentPreferenceRequest {
+  providerId?: string | null;
+  model?: string | null;
+  fallbackMode?: SubagentFallbackMode;
+}
