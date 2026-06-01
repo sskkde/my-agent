@@ -146,4 +146,8 @@ export const ROUTE_MAP: Record<string, string> = {
 
   '/api/api-keys': '/api/v1/api-keys',
   '/api/api-keys/:id': '/api/v1/api-keys/:id',
+
+  '/api/subagents': '/api/v1/subagents',
+  '/api/subagents/:agentType': '/api/v1/subagents/:agentType',
+  '/api/subagents/:agentType/preference': '/api/v1/subagents/:agentType/preference',
 };

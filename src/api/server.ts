@@ -35,6 +35,7 @@ import { registerOrganizationRoutes } from './routes/organizations.js';
 import { registerOAuthRoutes } from './routes/oauth.js';
 import { registerDlqRoutes } from './routes/dlq.js';
 import { registerAdminRoutes } from './routes/admin.js';
+import { registerSubagentRoutes } from './routes/subagents.js';
 import { registerApiKeyAuth } from './middleware/api-key-auth.js';
 import { registerAuthMiddleware } from './middleware/auth.js';
 import { registerAuthToken } from './middleware/auth-token.js';
@@ -164,6 +165,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerOAuthRoutes(server, context);
     registerDlqRoutes(server, context);
     registerAdminRoutes(server, context);
+    registerSubagentRoutes(server, context);
 
     // Register legacy 301 redirects for all old /api/ paths → /api/v1/
     for (const [legacyPath, v1Path] of Object.entries(ROUTE_MAP)) {
@@ -238,6 +240,8 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     // API Keys (GET already registered via ROUTE_MAP)
     server.route(createLegacyRedirect('/api/api-keys', '/api/v1/api-keys', 'POST'));
     server.route(createLegacyRedirect('/api/api-keys/:id', '/api/v1/api-keys/:id', 'DELETE'));
+    server.route(createLegacyRedirect('/api/subagents/:agentType/preference', '/api/v1/subagents/:agentType/preference', 'PUT'));
+    server.route(createLegacyRedirect('/api/subagents/:agentType/preference', '/api/v1/subagents/:agentType/preference', 'DELETE'));
   } else {
     server.get('/api/v1/health', async (): Promise<HealthResponse> => {
       return {
