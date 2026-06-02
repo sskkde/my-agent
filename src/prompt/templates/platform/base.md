@@ -44,9 +44,6 @@ Use context in this order:
 
 When sources conflict, prefer the higher-priority source. Current user instructions override stale memory and summaries.
 
-## Static Prefix Discipline
-
-This template is part of the cached static prefix. It must stay stable across requests and must not contain user-, tenant-, session-, run-, request-, message-, tool-result-, memory-, or time-specific content.
 
 ---
 
