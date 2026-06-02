@@ -6,6 +6,20 @@ import type { MessageProcessor, MessageProcessorOutput } from '../../../src/proc
 import type { OutboundEnvelope } from '../../../src/gateway/types.js';
 import type { DeliveryResult } from '../../../src/gateway/channel-registry.js';
 
+async function closeSseReader(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+  try {
+    await reader.cancel();
+  } catch {
+    // The stream may already be closed or aborted by the test timeout controller.
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // Ignore already-released locks.
+    }
+  }
+}
+
 describe('Outbound WebUI Routing - Task 8', () => {
   let server: FastifyInstance;
   let baseUrl: string;
@@ -299,7 +313,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
         expect(sseChunks).toContain('event: timeline_event');
         expect(sseChunks).toContain('"eventType":"error"');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -413,11 +427,13 @@ describe('Outbound WebUI Routing - Task 8', () => {
         })();
 
         // Send message - this triggers Gateway -> Processor -> Transcript -> Channel -> SSE flow
-        await fetch(`${successBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
+        const messageResponse = await fetch(`${successBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cookie': successAuthCookie },
           body: JSON.stringify({ text: 'Trigger assistant response' }),
         });
+        expect(messageResponse.status).toBe(202);
+        await messageResponse.json();
 
         await Promise.race([
           readPromise,
@@ -429,7 +445,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
         expect(sseChunks).toContain('"eventType":"assistant_message"');
         expect(sseChunks).toContain('Live assistant response via Gateway');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -492,7 +508,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
         expect(sseChunks).toContain('"eventType":"user_message"');
         expect(sseChunks).toContain('User message content');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -540,7 +556,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
           lastEventId = idMatch[1];
         }
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(firstTimeout);
         firstController.abort();
@@ -587,7 +603,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
 
         expect(catchUpChunks).toContain('Second message while disconnected');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(secondTimeout);
         secondController.abort();

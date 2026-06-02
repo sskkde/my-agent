@@ -2,6 +2,20 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createApiServer } from '../../../src/api/server.js';
 import { createApiContext, isApiContextError, type ApiContext } from '../../../src/api/context.js';
 import type { FastifyInstance } from 'fastify';
+
+async function closeSseReader(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+  try {
+    await reader.cancel();
+  } catch {
+    // The stream may already be closed or aborted by the test timeout controller.
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // Ignore already-released locks.
+    }
+  }
+}
 import type { TranscriptTurn } from '../../../src/api/types.js';
 import type { ForegroundDecision } from '../../../src/foreground/types.js';
 
@@ -184,7 +198,7 @@ describe('Task 9: Full-Flow Backend Integration Tests', () => {
         expect(sseChunks).toContain('"eventType":"assistant_message"');
         expect(sseChunks).toContain('Full flow test message');
 
-        reader.releaseLock();
+          await closeSseReader(reader);
 
         // Verify transcript contains user + assistant
         const transcriptsResponse = await fetch(`${testBaseUrl}/api/v1/sessions/${sessionId}/transcripts`, {

@@ -3,6 +3,20 @@ import { createApiServer } from '../../../src/api/server.js';
 import { createApiContext, isApiContextError, type ApiContext } from '../../../src/api/context.js';
 import type { FastifyInstance } from 'fastify';
 import type { ConsoleTimelineEvent, ProcessingStatusPayload } from '../../../src/api/types.js';
+
+async function closeSseReader(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+  try {
+    await reader.cancel();
+  } catch {
+    // The stream may already be closed or aborted by the test timeout controller.
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // Ignore already-released locks.
+    }
+  }
+}
 import type { AddressInfo } from 'node:net';
 
 describe('Timeline SSE Route Integration', () => {
@@ -84,7 +98,7 @@ describe('Timeline SSE Route Integration', () => {
 
         expect(chunks).toContain('"type":"snapshot"');
         expect(chunks).toContain('data:');
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -152,7 +166,7 @@ describe('Timeline SSE Route Integration', () => {
         expect(chunks).toContain('live-test-event-001');
         expect(chunks).toContain('Live test message');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -239,7 +253,7 @@ describe('Timeline SSE Route Integration', () => {
         expect(chunks).toContain('right-session-event');
         expect(chunks).toContain('This should appear');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -308,7 +322,7 @@ describe('Timeline SSE Route Integration', () => {
         expect(chunks).not.toContain('turn-turn-001-input');
         expect(chunks).toContain('turn-turn-002-input');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -371,7 +385,7 @@ describe('Timeline SSE Route Integration', () => {
         expect(chunks).not.toContain('turn-turn-003-input');
         expect(chunks).toContain('turn-turn-004-input');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -430,7 +444,7 @@ describe('Timeline SSE Route Integration', () => {
         expect(chunks).toContain('"type":"snapshot"');
         expect(chunks).not.toContain('turn-turn-005-input');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -501,7 +515,7 @@ describe('Timeline SSE Route Integration', () => {
         expect(chunks).toContain('"model":"anthropic/claude-3-opus"');
         expect(chunks).toContain('"stage":"model_call"');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
@@ -569,7 +583,7 @@ describe('Timeline SSE Route Integration', () => {
         expect(chunks).not.toContain('wrong-attempt');
         expect(chunks).not.toContain('"type":"processing_status"');
 
-        reader.releaseLock();
+        await closeSseReader(reader);
       } finally {
         clearTimeout(timeout);
         controller.abort();
