@@ -456,9 +456,34 @@ describe('ApiContext Dependencies - Task 4', () => {
         }),
       };
 
+      const llmAdapter: LLMAdapter = {
+        config: { providers: [], defaultTimeoutMs: 1000, enableCircuitBreaker: false },
+        providers: [],
+        complete: async () => ({
+          success: true,
+          response: {
+            id: 'mock-id',
+            content: 'Provider is available.',
+            model: 'mock-model',
+            role: 'assistant',
+            finishReason: 'stop',
+            createdAt: new Date().toISOString(),
+            usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+          },
+          providerId: 'mock-provider',
+        }),
+        stream: async function* () {},
+        addProvider: () => {},
+        removeProvider: () => {},
+        getProvider: () => undefined,
+        getHealthyProviders: () => [],
+        updateProviderPriority: () => {},
+      };
+
       const result = createApiContext({
         dbPath: ':memory:',
         foregroundAgent,
+        llmAdapter,
       });
       expect(isApiContextError(result)).toBe(false);
       if (isApiContextError(result)) return;
