@@ -14,6 +14,7 @@ describe('MVP smoke: session foreground tool dispatch', () => {
     const harness = await createSmokeHarness({
       username: 'smoke-tool-user',
       foregroundDecision: mockDecision,
+      enableToolCall: true,
     });
 
     try {
@@ -30,6 +31,11 @@ describe('MVP smoke: session foreground tool dispatch', () => {
       await waitForCondition(() => {
         const actions = harness.baseCtx.stores.runtimeActionStore.query({ sessionId });
         expect(actions.some(action => action.actionType === 'execute_tool')).toBe(true);
+      });
+
+      await waitForCondition(() => {
+        const transcripts = harness.baseCtx.stores.transcriptStore.findBySession(sessionId);
+        expect(transcripts.some(turn => turn.turnId === messageBody.data.correlationId)).toBe(true);
       });
 
       const transcriptResponse = await fetch(`${harness.baseUrl}/api/v1/sessions/${sessionId}/transcripts`, {

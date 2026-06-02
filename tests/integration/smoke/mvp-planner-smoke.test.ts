@@ -27,6 +27,7 @@ describe('MVP smoke: complex task planner flow', () => {
       });
 
       expect(messageResponse.status).toBe(202);
+      await messageResponse.json();
 
       await waitForCondition(() => {
         const plannerRuns = harness.baseCtx.stores.plannerRunStore.findByUser(harness.userId);

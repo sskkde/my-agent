@@ -4,6 +4,7 @@ import { createApiContext, isApiContextError, type ApiContext } from '../../../s
 import { createApiServer } from '../../../src/api/server.js';
 import type { ForegroundDecision } from '../../../src/foreground/types.js';
 import type { LLMAdapter } from '../../../src/llm/adapter.js';
+import type { LLMRequest } from '../../../src/llm/types.js';
 
 export interface SmokeHarness {
   baseCtx: ApiContext;
@@ -38,21 +39,57 @@ export function createStubbedForegroundAgent(decision: ForegroundDecision): ApiC
   } as unknown as ApiContext['foregroundAgent'];
 }
 
-export function createMockLlmAdapter(): LLMAdapter {
+export function createMockLlmAdapter(options: { enableToolCall?: boolean } = {}): LLMAdapter {
+  let toolCallReturned = false;
+
   return {
     providers: [{ providerId: 'smoke-provider' }],
-    complete: vi.fn().mockResolvedValue({
-      success: true,
-      response: {
-        id: 'smoke-llm-response',
-        content: 'Smoke kernel response',
-        finishReason: 'stop',
-      },
-      usage: {
-        promptTokens: 1,
-        completionTokens: 1,
-        totalTokens: 2,
-      },
+    complete: vi.fn(async (request: LLMRequest) => {
+      const hasTools = request.tools && request.tools.length > 0;
+
+      if (options.enableToolCall && hasTools && !toolCallReturned) {
+        const firstTool = request.tools![0];
+        const toolCallId = `tc-smoke-${Date.now()}`;
+        const args = firstTool.function.name === 'docs_search'
+          ? JSON.stringify({ query: 'smoke test query' })
+          : '{}';
+        toolCallReturned = true;
+        return {
+          success: true,
+          response: {
+            id: 'smoke-llm-response',
+            content: '',
+            finishReason: 'tool_calls' as const,
+            toolCalls: [{
+              id: toolCallId,
+              type: 'function' as const,
+              function: {
+                name: firstTool.function.name,
+                arguments: args,
+              },
+            }],
+          },
+          usage: {
+            promptTokens: 1,
+            completionTokens: 1,
+            totalTokens: 2,
+          },
+        };
+      }
+
+      return {
+        success: true,
+        response: {
+          id: 'smoke-llm-response',
+          content: 'Smoke kernel response',
+          finishReason: 'stop' as const,
+        },
+        usage: {
+          promptTokens: 1,
+          completionTokens: 1,
+          totalTokens: 2,
+        },
+      };
     }),
     getProviderHealth: vi.fn().mockReturnValue({ healthy: true }),
   } as unknown as LLMAdapter;
@@ -61,6 +98,7 @@ export function createMockLlmAdapter(): LLMAdapter {
 export async function createSmokeHarness(options: {
   username: string;
   foregroundDecision?: ForegroundDecision;
+  enableToolCall?: boolean;
 }): Promise<SmokeHarness> {
   const originalOpenRouterApiKey = process.env.OPENROUTER_API_KEY;
   process.env.OPENROUTER_API_KEY ??= 'smoke-test-key';
@@ -81,7 +119,7 @@ export async function createSmokeHarness(options: {
       : undefined,
     timelineBroadcaster: baseCtx.timelineBroadcaster,
     channelRegistry: baseCtx.channelRegistry,
-    llmAdapter: createMockLlmAdapter(),
+    llmAdapter: createMockLlmAdapter({ enableToolCall: options.enableToolCall }),
   });
   if (isApiContextError(testCtx)) {
     throw new Error(`Failed to create test context: ${testCtx.message}`);
