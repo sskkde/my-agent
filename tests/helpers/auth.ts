@@ -35,6 +35,7 @@ export async function createAuthenticatedTestContext(dbPath: string = ':memory:'
   if (!authCookie) {
     throw new Error('No set-cookie header received from setup');
   }
+  await setupResponse.text();
 
   return { server, baseUrl, apiContext, authCookie };
 }

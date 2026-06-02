@@ -108,6 +108,7 @@ describe('API Key Routes', () => {
       });
 
       expect(response.status).toBe(401);
+      await response.arrayBuffer();
     });
   });
 
@@ -145,6 +146,7 @@ describe('API Key Routes', () => {
     it('returns 401 without authentication', async () => {
       const response = await fetch(`${baseUrl}/api/v1/api-keys`);
       expect(response.status).toBe(401);
+      await response.arrayBuffer();
     });
   });
 
@@ -166,6 +168,7 @@ describe('API Key Routes', () => {
       });
 
       expect(deleteResponse.status).toBe(200);
+      await deleteResponse.arrayBuffer();
 
       // Verify it's revoked in the list
       const listResponse = await fetch(`${baseUrl}/api/v1/api-keys`, {
@@ -183,6 +186,7 @@ describe('API Key Routes', () => {
       });
 
       expect(response.status).toBe(404);
+      await response.arrayBuffer();
     });
 
     it('returns 401 without authentication', async () => {
@@ -190,6 +194,7 @@ describe('API Key Routes', () => {
         method: 'DELETE',
       });
       expect(response.status).toBe(401);
+      await response.arrayBuffer();
     });
   });
 
@@ -210,6 +215,7 @@ describe('API Key Routes', () => {
       });
 
       expect(response.status).toBe(200);
+      await response.arrayBuffer();
     });
 
     it('rejects an invalid API key', async () => {
@@ -233,10 +239,12 @@ describe('API Key Routes', () => {
       const createBody = await createResponse.json() as { ok: boolean; data: { id: string; key: string } };
 
       // Revoke the key
-      await fetch(`${baseUrl}/api/v1/api-keys/${createBody.data.id}`, {
+      const revokeResponse = await fetch(`${baseUrl}/api/v1/api-keys/${createBody.data.id}`, {
         method: 'DELETE',
         headers: { 'Cookie': cookie },
       });
+      expect(revokeResponse.status).toBe(200);
+      await revokeResponse.arrayBuffer();
 
       // Try to use the revoked key
       const response = await fetch(`${baseUrl}/api/v1/api-keys`, {
@@ -277,6 +285,7 @@ describe('API Key Routes', () => {
 
       // Should still be 401 because the token isn't a valid API key
       expect(response.status).toBe(401);
+      await response.arrayBuffer();
     });
 
     it('API key can be used instead of session cookie', async () => {
@@ -295,6 +304,7 @@ describe('API Key Routes', () => {
       });
 
       expect(response.status).toBe(200);
+      await response.arrayBuffer();
     });
   });
 });

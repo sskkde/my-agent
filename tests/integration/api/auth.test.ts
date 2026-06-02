@@ -36,6 +36,7 @@ describe('Auth Routes', () => {
     expect(setupResponse.status).toBe(201);
     const setCookieHeader = setupResponse.headers.get('set-cookie');
     expect(setCookieHeader).toBeDefined();
+    await setupResponse.text();
     return setCookieHeader!;
   }
 
@@ -258,11 +259,13 @@ describe('Auth Routes', () => {
     it('should allow access to /api/health without auth', async () => {
       const response = await fetch(`${baseUrl}/api/v1/health`);
       expect(response.status).toBe(200);
+      await response.text();
     });
 
     it('should allow access to /api/setup/status without auth', async () => {
       const response = await fetch(`${baseUrl}/api/v1/setup/status`);
       expect(response.status).toBe(200);
+      await response.text();
     });
 
     it('should reject /api/sessions without auth', async () => {
@@ -281,6 +284,7 @@ describe('Auth Routes', () => {
       });
 
       expect(response.status).toBe(200);
+      await response.text();
     });
   });
 
