@@ -365,8 +365,10 @@ describe('ProcessorOrchestration', () => {
 
       const result = await processor(input);
 
-      expect(result.success).toBe(true);
-      expect(result.result?.route).toBe('dispatch_tool');
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PROCESSING_ERROR');
+      expect(result.error?.message).toBe('Kernel execution failed');
+      expect(result.error?.details).toEqual({ foregroundErrorCode: 'KERNEL_ERROR' });
     });
   });
 
@@ -436,8 +438,10 @@ describe('ProcessorOrchestration', () => {
 
       const result = await processor(input);
 
-      expect(result.success).toBe(true);
-      expect(result.result?.route).toBe('spawn_planner');
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PROCESSING_ERROR');
+      expect(result.error?.message).toBe('Planner runtime unavailable');
+      expect(result.error?.details).toEqual({ foregroundErrorCode: 'SPAWN_PLANNER_ERROR' });
     });
   });
 

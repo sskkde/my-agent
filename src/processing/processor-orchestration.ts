@@ -238,15 +238,24 @@ export function createOrchestrationProcessor(
 
           const turnResult = await deps.foregroundKernelRunner.runTurn(turnInput);
 
-          output = createSuccessOutput(input.correlationId, {
-            text: turnResult.finalResponse || '',
-            route: turnResult.decisionTrace?.route || 'answer_directly',
-            data: {
-              reason: turnResult.decisionTrace?.reason,
-              runtimeSummary: turnResult.runtimeSummary,
-              kernelResult: turnResult.kernelResult,
-            },
-          });
+          if (turnResult.status === 'failed' || turnResult.error) {
+            output = createErrorOutput(
+              input.correlationId,
+              'PROCESSING_ERROR',
+              turnResult.error?.message ?? 'Foreground turn failed',
+              turnResult.error?.code ? { foregroundErrorCode: turnResult.error.code } : undefined
+            );
+          } else {
+            output = createSuccessOutput(input.correlationId, {
+              text: turnResult.finalResponse || '',
+              route: turnResult.decisionTrace?.route || 'answer_directly',
+              data: {
+                reason: turnResult.decisionTrace?.reason,
+                runtimeSummary: turnResult.runtimeSummary,
+                kernelResult: turnResult.kernelResult,
+              },
+            });
+          }
         }
       } catch (error) {
         emitStatus(deps, buildStatusPayload(

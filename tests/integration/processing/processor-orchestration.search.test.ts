@@ -319,8 +319,10 @@ describe('Processor orchestration SearchSubagent branch', () => {
         metadata: {},
       });
 
-      expect(result.success).toBe(true);
-      expect(result.result?.route).toBe('dispatch_tool');
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('PROCESSING_ERROR');
+      expect(result.error?.message).toBe('Search model does not support function calling');
+      expect(result.error?.details).toEqual({ foregroundErrorCode: 'SEARCH_MODEL_INCAPABLE' });
     });
 
     it('returns PROCESSING_ERROR when runner throws', async () => {
