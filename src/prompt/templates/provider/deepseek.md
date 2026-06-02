@@ -36,10 +36,6 @@ When the current mode enables tool calling:
 - Do not invent unavailable tools.
 - Treat tool errors as evidence to handle, not as permission to fabricate results.
 
-## Static Prefix Discipline
-
-This template is part of Layer 2 (Provider). It is designed for maximum KV cache stability. Keep it stable, compact, and free of runtime-specific data.
-
 ---
 
 **END OF DEEPSEEK PROVIDER TEMPLATE**

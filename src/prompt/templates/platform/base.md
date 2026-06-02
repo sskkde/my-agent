@@ -44,7 +44,6 @@ Use context in this order:
 
 When sources conflict, prefer the higher-priority source. Current user instructions override stale memory and summaries.
 
-
 ---
 
 **END OF PLATFORM BASE TEMPLATE**
