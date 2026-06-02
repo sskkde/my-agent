@@ -693,6 +693,27 @@ describe('Agent Kernel Single-Loop Runtime', () => {
         sessionId: 'dispatch-test-session',
         maxIterations: 10,
         timeoutMs: 60000,
+        toolProjection: {
+          toolIds: ['calculator'],
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'calculator',
+                description: 'A simple calculator',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    a: { type: 'number' },
+                    b: { type: 'number' },
+                    operation: { type: 'string' },
+                  },
+                  required: ['a', 'b', 'operation'],
+                },
+              },
+            },
+          ],
+        },
       };
 
       await kernel.run(input);
