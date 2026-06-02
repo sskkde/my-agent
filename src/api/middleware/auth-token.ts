@@ -60,13 +60,14 @@ export async function registerAuthToken(
       return;
     }
 
-    // Skip if already authenticated by session or API key middleware
-    if (request.user) {
+    // Skip if already authenticated by session/API key middleware or already rejected by an earlier hook.
+    if (request.user || reply.sent) {
       return;
     }
 
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      request.headers = { ...request.headers, 'x-no-compression': 'true' };
       return reply.code(401).send(
         envelopeError('UNAUTHORIZED', 'Missing or invalid Authorization header', request.requestId)
       );
@@ -79,6 +80,7 @@ export async function registerAuthToken(
     }
 
     if (providedToken !== token) {
+      request.headers = { ...request.headers, 'x-no-compression': 'true' };
       return reply.code(401).send(
         envelopeError('UNAUTHORIZED', 'Invalid API token', request.requestId)
       );

@@ -124,30 +124,24 @@ export function registerAuthMiddleware(
   server: FastifyInstance,
   options: AuthMiddlewareOptions
 ): void {
-  server.addHook('onRequest', (request: FastifyRequest, reply: FastifyReply, done) => {
+  server.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
     if (isPathExcluded(request.url, options.excludedPaths)) {
-      done();
       return;
     }
 
     // Skip session auth for Bearer token auth (API keys and API_AUTH_TOKEN)
     const authHeader = request.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
-      done();
       return;
     }
 
-    authenticateRequest(request, options.userStore, options.authTokenStore)
-      .then(user => {
-        if (!user) {
-          const error = ApiErrorFactory.unauthorized('Invalid or expired session');
-          reply.code(401).send(error);
-          return;
-        }
+    const user = await authenticateRequest(request, options.userStore, options.authTokenStore);
+    if (!user) {
+      const error = ApiErrorFactory.unauthorized('Invalid or expired session');
+      request.headers = { ...request.headers, 'x-no-compression': 'true' };
+      return reply.code(401).send(error);
+    }
 
-        request.user = user;
-        done();
-      })
-      .catch(done);
+    request.user = user;
   });
 }

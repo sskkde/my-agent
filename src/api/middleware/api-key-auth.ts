@@ -62,42 +62,35 @@ export function registerApiKeyAuth(
   server: FastifyInstance,
   apiKeyStore: ApiKeyStore
 ): void {
-  server.addHook('preHandler', (request: FastifyRequest, reply: FastifyReply, done) => {
-    if (request.user) {
-      done();
+  server.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
+    // Skip if already authenticated or response already sent
+    if (request.user || reply.sent) {
       return;
     }
 
     const authHeader = request.headers.authorization;
     if (!authHeader) {
-      done();
       return;
     }
 
-    authenticateApiKey(request, apiKeyStore)
-      .then(identity => {
-        if (identity) {
-          request.apiKey = identity;
-          request.user = {
-            userId: identity.userId ?? identity.id,
-            username: `api-key:${identity.id}`,
-            role: identity.role as import('../../storage/user-store.js').UserRole,
-            tenantId: DEFAULT_TENANT_ID,
-          };
-          done();
-          return;
-        }
+    const identity = await authenticateApiKey(request, apiKeyStore);
+    if (identity) {
+      request.apiKey = identity;
+      request.user = {
+        userId: identity.userId ?? identity.id,
+        username: `api-key:${identity.id}`,
+        role: identity.role as import('../../storage/user-store.js').UserRole,
+        tenantId: DEFAULT_TENANT_ID,
+      };
+      return;
+    }
 
-        // Bearer token present but no auth middleware recognized it.
-        // Return 401 instead of letting RBAC return 403.
-        // Covers: invalid ak_ key, malformed token, non-ak_ token without API_AUTH_TOKEN.
-        if (authHeader.startsWith('Bearer ')) {
-          reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid or unrecognized Bearer token'));
-          return;
-        }
-
-        done();
-      })
-      .catch(done);
+    // Bearer token present but no auth middleware recognized it.
+    // Return 401 instead of letting RBAC return 403.
+    // Covers: invalid ak_ key, malformed token, non-ak_ token without API_AUTH_TOKEN.
+    if (authHeader.startsWith('Bearer ')) {
+      request.headers = { ...request.headers, 'x-no-compression': 'true' };
+      return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid or unrecognized Bearer token'));
+    }
   });
 }

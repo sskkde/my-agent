@@ -95,6 +95,11 @@ export async function registerRbacMiddleware(
       return;
     }
 
+    // Skip if reply already sent by a previous hook (e.g., auth middleware)
+    if (reply.sent) {
+      return;
+    }
+
     const role = getRoleFromRequest(request);
     request.rbacRole = role;
 
@@ -110,12 +115,14 @@ export async function registerRbacMiddleware(
         return false;
       }
       if (!role) {
+        request.headers = { ...request.headers, 'x-no-compression': 'true' };
         reply.code(403).send(
           envelopeError('FORBIDDEN', `No role found for request`, request.requestId)
         );
         return false;
       }
       if (!checkPermission(role, resource, action, context)) {
+        request.headers = { ...request.headers, 'x-no-compression': 'true' };
         reply.code(403).send(
           envelopeError('FORBIDDEN', `Role '${role}' cannot perform '${action}' on '${resource}'`, request.requestId)
         );
