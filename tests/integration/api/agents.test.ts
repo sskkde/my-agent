@@ -71,7 +71,7 @@ describe('Agent Config API Integration', () => {
       expect(response.statusCode).toBe(401);
     });
 
-    it('should return null configs when no configs exist', async () => {
+    it('should return default config when no persisted config exists', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/v1/agents/foreground.default/config',
@@ -82,10 +82,26 @@ describe('Agent Config API Integration', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.data).toEqual({
-        global: null,
-        userOverride: null,
-        effective: null,
+
+      expect(body.data.global).toMatchObject({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Default Agent',
+        enabled: true,
+        systemPrompt: '',
+        routingTimeoutMs: 60000,
+        repairAttempts: 1,
+      });
+      expect(body.data.global.agentConfigId).toBe('default');
+      expect(body.data.userOverride).toBeNull();
+      expect(body.data.effective).toMatchObject({
+        agentId: 'foreground.default',
+        scope: 'global',
+        displayName: 'Default Agent',
+        enabled: true,
+        systemPrompt: '',
+        routingTimeoutMs: 60000,
+        repairAttempts: 1,
       });
     });
 
@@ -181,7 +197,13 @@ describe('Agent Config API Integration', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.data.global).toBeNull();
+      expect(body.data.global).toMatchObject({
+        agentId: 'foreground.default',
+        scope: 'global',
+        routingTimeoutMs: 60000,
+        repairAttempts: 1,
+      });
+      expect(body.data.global.agentConfigId).toBe('default');
       expect(body.data.userOverride.routingTimeoutMs).toBeUndefined();
       expect(body.data.userOverride.repairAttempts).toBeUndefined();
       expect(body.data.effective.routingTimeoutMs).toBe(60000);
