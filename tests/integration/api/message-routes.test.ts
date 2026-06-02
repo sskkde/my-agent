@@ -106,6 +106,7 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
       });
 
       expect(response.status).toBe(202);
+      await response.arrayBuffer();
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -136,6 +137,7 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
       });
 
       expect(response.status).toBe(400);
+      await response.arrayBuffer();
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -211,33 +213,54 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
       const address = errorServer.server.address();
       const errorBaseUrl = `http://localhost:${(address as any).port}`;
 
-      const setupResponse = await fetch(`${errorBaseUrl}/api/v1/setup/user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'erroruser', password: 'password123' }),
-      });
-      const errorAuthCookie = setupResponse.headers.get('set-cookie')!;
+      try {
+        const setupResponse = await fetch(`${errorBaseUrl}/api/v1/setup/user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'erroruser', password: 'password123' }),
+        });
+        const errorAuthCookie = setupResponse.headers.get('set-cookie')!;
+        await setupResponse.arrayBuffer();
 
-      const createResponse = await fetch(`${errorBaseUrl}/api/v1/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
-        body: JSON.stringify({})
-      });
-      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+        const createResponse = await fetch(`${errorBaseUrl}/api/v1/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
+          body: JSON.stringify({})
+        });
+        const { data: { session: { sessionId } } } = await createResponse.json() as any;
 
-      const startTime = Date.now();
-      const response = await fetch(`${errorBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
-        body: JSON.stringify({ text: 'Error test' })
-      });
-      const endTime = Date.now();
+        const startTime = Date.now();
+        const response = await fetch(`${errorBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
+          body: JSON.stringify({ text: 'Error test' })
+        });
+        const endTime = Date.now();
 
-      expect(response.status).toBe(202);
-      expect(endTime - startTime).toBeLessThan(500);
+        expect(response.status).toBe(202);
+        await response.arrayBuffer();
+        expect(endTime - startTime).toBeLessThan(500);
 
-      await errorServer.close();
-      (errorCtx as any).connection.close();
+        await new Promise<void>((resolve, reject) => {
+          const deadline = Date.now() + 5000;
+          const poll = (): void => {
+            const events = errorCtx.stores.eventStore.query({ sessionId, eventType: 'gateway_error' });
+            if (events.length > 0) {
+              resolve();
+              return;
+            }
+            if (Date.now() > deadline) {
+              reject(new Error('Timed out waiting for async processor error report'));
+              return;
+            }
+            setTimeout(poll, 25);
+          };
+          poll();
+        });
+      } finally {
+        await errorServer.close();
+        (errorCtx as any).connection.close();
+      }
     });
   });
 });
