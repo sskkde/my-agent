@@ -54,7 +54,6 @@ import type {
   ForegroundMessageInput,
   ForegroundSessionState,
   TaskAnalysis,
-  DirectDelegationPolicy,
   IntentPatterns,
   ActiveWorkResolution,
   ResolvedActiveWork,
@@ -107,10 +106,6 @@ export function isMemorySemanticPolicyEnabled(): boolean {
 
 export function isForegroundDecideEnabled(): boolean {
   return process.env.FOREGROUND_DECIDE_ENABLED === 'true';
-}
-
-export function isForegroundDecideShadowMode(): boolean {
-  return process.env.FOREGROUND_DECIDE_SHADOW_MODE === 'true';
 }
 
 /**
@@ -1324,16 +1319,4 @@ export function createForegroundAgent(options?: CreateForegroundAgentOptions): F
     options?.maxIterations,
     options?.timeoutMs,
   );
-}
-
-export function mergeDelegationPolicies(
-  personaPolicy: DirectDelegationPolicy,
-  systemPolicy?: Partial<DirectDelegationPolicy>
-): DirectDelegationPolicy {
-  return {
-    estimatedStepsGte: systemPolicy?.estimatedStepsGte ?? personaPolicy.estimatedStepsGte,
-    maxComplexity: systemPolicy?.maxComplexity ?? personaPolicy.maxComplexity,
-    allowedToolCategories: systemPolicy?.allowedToolCategories ?? personaPolicy.allowedToolCategories,
-    requireConfirmationFor: systemPolicy?.requireConfirmationFor ?? personaPolicy.requireConfirmationFor,
-  };
 }
