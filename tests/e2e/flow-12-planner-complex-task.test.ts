@@ -10,6 +10,7 @@ import { createPlanStore } from '../../src/storage/plan-store.js';
 import { createRuntimeActionStore } from '../../src/storage/runtime-action-store.js';
 import { DeterministicPlanGenerator } from '../../src/planner/deterministic-plan-generator.js';
 import { PLANNER_STATES, EXECUTION_PLAN_STATES } from '../../src/shared/states.js';
+import { createMockModelInputBuilder } from '../helpers/model-input.js';
 
 // ============================================================
 // Mock LLM Adapter - routes to spawn_planner
@@ -126,7 +127,7 @@ describe('Flow 12: Planner Complex Task', () => {
   describe('ForegroundAgent Planner Routing', () => {
     it('routes complex Chinese task to spawn_planner', async () => {
       const mockAdapter = createPlannerMockLLMAdapter();
-      const agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      const agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const userId = 'user_012';
       const sessionId = 'sess_012';
@@ -152,7 +153,7 @@ describe('Flow 12: Planner Complex Task', () => {
 
     it('routes complex English task to spawn_planner', async () => {
       const mockAdapter = createPlannerMockLLMAdapter();
-      const agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      const agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const userId = 'user_012';
       const sessionId = 'sess_012';
@@ -203,7 +204,7 @@ describe('Flow 12: Planner Complex Task', () => {
         getHealthyProviders: vi.fn(() => []),
         updateProviderPriority: vi.fn(),
       };
-      const agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      const agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const userId = 'user_012';
       const sessionId = 'sess_012';
@@ -772,7 +773,7 @@ describe('Flow 12: Planner Complex Task', () => {
 
       // Step 1: ForegroundAgent routes complex message to spawn_planner
       const mockAdapter = createPlannerMockLLMAdapter();
-      const agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      const agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const message = '帮我整理项目状态，生成摘要并准备写入artifact';
       const turnId = harness.idGenerator.custom('turn');

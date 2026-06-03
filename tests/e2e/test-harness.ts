@@ -29,6 +29,7 @@ import { TestClock } from '../helpers/clock.js';
 import { IdGenerator } from '../helpers/ids.js';
 import type { EventRecord } from '../../src/storage/event-store.js';
 import type { ToolExecutionState } from '../../src/shared/states.js';
+import { createMockModelInputBuilder } from '../helpers/model-input.js';
 
 export interface E2EHarness {
   connection: ConnectionManager;
@@ -278,7 +279,7 @@ export function createE2EHarness(): E2EHarness {
     updateProviderPriority: () => {},
   };
 
-  const foregroundAgent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+  const foregroundAgent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
   const outboundEnvelopes: OutboundEnvelope[] = [];
 

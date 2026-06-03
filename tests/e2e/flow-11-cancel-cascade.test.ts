@@ -17,6 +17,7 @@ import type {
   EventStore as RecoveryEventStore,
 } from '../../src/recovery/types.js';
 import { CANCELLATION_TARGET_TYPES, CANCELLATION_STATUSES } from '../../src/shared/cancellation.js';
+import { createMockModelInputBuilder } from '../helpers/model-input.js';
 
 // ============================================================
 // Mock LLM Adapter (flow-10 pattern)
@@ -134,7 +135,7 @@ describe('Flow 11: Cancel Cascade', () => {
           userVisibleResponse: 'Cancelling the active planner task...',
         })
       );
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel the current task');
       const state = createBaseState({
@@ -166,7 +167,7 @@ describe('Flow 11: Cancel Cascade', () => {
           userVisibleResponse: 'Cancelling the background task...',
         })
       );
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('stop the background job');
       const state = createBaseState({
@@ -194,7 +195,7 @@ describe('Flow 11: Cancel Cascade', () => {
           userVisibleResponse: 'You have multiple active tasks. Which one would you like to cancel?',
         })
       );
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel it');
       const state = createBaseState({
@@ -225,7 +226,7 @@ describe('Flow 11: Cancel Cascade', () => {
           userVisibleResponse: 'There is no active work to cancel.',
         })
       );
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel everything');
       const state = createBaseState();
@@ -246,7 +247,7 @@ describe('Flow 11: Cancel Cascade', () => {
           userVisibleResponse: 'Cancelling your task...',
         })
       );
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel my task');
       const state = createBaseState({

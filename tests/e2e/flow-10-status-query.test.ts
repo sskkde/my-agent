@@ -3,6 +3,7 @@ import { createForegroundAgent, type ForegroundAgent } from '../../src/foregroun
 import type { ForegroundMessageInput, ForegroundSessionState } from '../../src/foreground/types.js';
 import type { LLMAdapter } from '../../src/llm/adapter.js';
 import type { LLMRequest, LLMResult, LLMResponse } from '../../src/llm/types.js';
+import { createMockModelInputBuilder } from '../helpers/model-input.js';
 
 function createMockLLMAdapter(responseContent: string): LLMAdapter {
   return {
@@ -97,7 +98,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User asked about task status',
         userVisibleResponse: 'Checking your task status...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('what is the status of my tasks?');
       const state = createBaseState();
@@ -115,7 +116,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User asked about active work',
         userVisibleResponse: 'Checking active work...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('show me my active work');
       const state = createBaseState({
@@ -152,7 +153,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
           reason: 'User asked about status',
           userVisibleResponse: 'Checking status...',
         }));
-        agent = createForegroundAgent({ llmAdapter: mockAdapter });
+        agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
         const input = createMessageInput(query);
         const state = createBaseState();
@@ -187,7 +188,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested cancellation',
         userVisibleResponse: 'Cancelling the active task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel the current task');
       const state = createBaseState({
@@ -215,7 +216,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested to stop background work',
         userVisibleResponse: 'Stopping the background task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('stop the background job');
       const state = createBaseState({
@@ -241,7 +242,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'Cancel request but multiple active tasks',
         userVisibleResponse: 'Which task would you like to cancel?',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel it');
       const state = createBaseState({
@@ -269,7 +270,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested to modify task',
         userVisibleResponse: 'Modifying the task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('change the task objective to process emails instead');
       const state = createBaseState({
@@ -298,7 +299,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested pause',
         userVisibleResponse: 'Pausing the task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('pause the current task');
       const state = createBaseState({
@@ -325,7 +326,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested resume',
         userVisibleResponse: 'Resuming the task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('resume the paused task');
       const state = createBaseState({
@@ -352,7 +353,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested pause',
         userVisibleResponse: 'Pausing the task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const pauseInput = createMessageInput('pause');
       const state = createBaseState({
@@ -378,7 +379,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'Cancel request with multiple active tasks',
         userVisibleResponse: 'You have multiple active tasks. Which one would you like to cancel?',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel');
       const state = createBaseState({
@@ -404,7 +405,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'Stop request with multiple active tasks',
         userVisibleResponse: 'Listing all active work...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('stop');
       const state = createBaseState({
@@ -430,7 +431,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'Cancel specific document processing task',
         userVisibleResponse: 'Cancelling the document processing task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel the document processing task');
       const state = createBaseState({
@@ -455,7 +456,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested cancellation',
         userVisibleResponse: 'Cancelling your task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel my task');
       const state = createBaseState({
@@ -484,7 +485,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested cancellation',
         userVisibleResponse: 'Cancelling...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const plannerState = createBaseState({
         hydratedSession: {
@@ -506,7 +507,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested cancellation',
         userVisibleResponse: 'Cancelling the task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel the task');
       const state = createBaseState({
@@ -533,7 +534,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User asked about status',
         userVisibleResponse: 'Checking status...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('status');
       const state = createBaseState({
@@ -559,7 +560,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User asked to show status',
         userVisibleResponse: 'Showing status...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('show status');
       const state = createBaseState({
@@ -586,7 +587,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'No active work to cancel',
         userVisibleResponse: 'There is no active work to cancel.',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('cancel');
       const state = createBaseState();
@@ -603,7 +604,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User asked for status when no work active',
         userVisibleResponse: 'No active work status...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const input = createMessageInput('status');
       const state = createBaseState();
@@ -628,7 +629,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
           reason: 'User wants to modify task',
           userVisibleResponse: 'Modifying...',
         }));
-        agent = createForegroundAgent({ llmAdapter: mockAdapter });
+        agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
         const input = createMessageInput(phrase);
         const state = createBaseState({
@@ -652,7 +653,7 @@ describe('Flow 10: Status Query and User Interrupt Flows', () => {
         reason: 'User requested pause or cancel',
         userVisibleResponse: 'Processing...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockAdapter, modelInputBuilder: createMockModelInputBuilder() });
 
       const pauseInput = createMessageInput('pause the task');
       const cancelInput = createMessageInput('cancel the task');

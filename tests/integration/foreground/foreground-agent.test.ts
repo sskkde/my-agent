@@ -5,6 +5,7 @@ import type { ForegroundMessageInput, ForegroundSessionState } from '../../../sr
 import type { LLMAdapter } from '../../../src/llm/adapter.js';
 import type { LLMRequest, LLMResult, LLMResponse } from '../../../src/llm/types.js';
 import type { AgentConfig } from '../../../src/storage/agent-config-store.js';
+import { createRealModelInputBuilder } from '../../helpers/model-input.js';
 
 describe('Foreground Conversation Agent', () => {
   let agent: ReturnType<typeof createForegroundAgent>;
@@ -120,7 +121,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Simple question about PlannerRun',
         userVisibleResponse: 'PlannerRun is a task execution unit.',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('解释一下 PlannerRun 是什么？');
       const decision = await agent.processMessage(input, baseState);
@@ -136,7 +137,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Simple greeting',
         userVisibleResponse: '你好！很高兴见到你。',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('你好');
       const decision = await agent.processMessage(input, baseState);
@@ -161,7 +162,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Question about weather',
         userVisibleResponse: '今天天气不错！',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('今天天气好吗');
       const decision = await agent.processMessage(input, baseState);
@@ -179,7 +180,7 @@ describe('Foreground Conversation Agent', () => {
         estimatedSteps: 5,
         complexity: 'high',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('帮我规划下周去上海出差，包括日程、酒店、会议资料');
       const decision = await agent.processMessage(input, baseState);
@@ -196,7 +197,7 @@ describe('Foreground Conversation Agent', () => {
         estimatedSteps: 3,
         complexity: 'medium',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('请帮我搜索资料、写报告和发送邮件');
       const decision = await agent.processMessage(input, baseState);
@@ -210,7 +211,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Multi-step task',
         estimatedSteps: 2,
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const state = {
         ...baseState,
@@ -232,7 +233,7 @@ describe('Foreground Conversation Agent', () => {
         estimatedSteps: 1,
         complexity: 'low',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('搜索一下文档');
       await agent.processMessage(input, baseState);
@@ -252,7 +253,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Uses prior context',
         userVisibleResponse: 'Your codename is Mercury.',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const state: ForegroundSessionState = {
         ...baseState,
@@ -291,7 +292,7 @@ describe('Foreground Conversation Agent', () => {
         estimatedSteps: 1,
         complexity: 'low',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('搜索一下最近的会议记录');
       const decision = await agent.processMessage(input, baseState);
@@ -309,7 +310,7 @@ describe('Foreground Conversation Agent', () => {
         estimatedSteps: 1,
         complexity: 'low',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('搜索一下最近的会议记录');
       const decision = await agent.processMessage(input, baseState);
@@ -345,7 +346,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'User requested cancellation',
         userVisibleResponse: 'Cancelling the active task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const state = createBaseState({ activePlannerRunIds: ['pl_run_001'] });
       const input = createInput('取消刚才的任务');
@@ -361,7 +362,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'User requested to stop background work',
         userVisibleResponse: 'Stopping the background task...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const state = createBaseState({ activeBackgroundRunIds: ['bg_run_001'] });
       const input = createInput('停止后台任务');
@@ -378,7 +379,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'User asking about task progress',
         userVisibleResponse: 'Checking status...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('任务进度怎么样了');
       const decision = await agent.processMessage(input, baseState);
@@ -392,7 +393,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'User asking about current status',
         userVisibleResponse: 'Let me check...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('现在是什么状态');
       const decision = await agent.processMessage(input, baseState);
@@ -408,7 +409,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'User wants to continue existing session',
         userVisibleResponse: 'Resuming your session...',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const state = createBaseState({ activePlannerRunIds: ['pl_run_001'] });
       const input = createInput('继续');
@@ -494,7 +495,7 @@ describe('Foreground Conversation Agent', () => {
         getHealthyProviders: vi.fn(() => []),
         updateProviderPriority: vi.fn(),
       };
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('Hello');
       const decision = await agent.processMessage(input, baseState);
@@ -532,7 +533,7 @@ describe('Foreground Conversation Agent', () => {
         getHealthyProviders: vi.fn(() => []),
         updateProviderPriority: vi.fn(),
       };
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('你现在使用的是什么模型？');
       const decision = await agent.processMessage(input, baseState);
@@ -596,7 +597,7 @@ describe('Foreground Conversation Agent', () => {
         getHealthyProviders: vi.fn(() => []),
         updateProviderPriority: vi.fn(),
       };
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('Reply exactly with OK.');
       const decision = await agent.processMessage(input, baseState);
@@ -614,7 +615,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Simple greeting',
         userVisibleResponse: 'Custom greeting from LLM',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('你好');
       const decision = await agent.processMessage(input, baseState);
@@ -628,7 +629,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Complex trip planning',
         userVisibleResponse: 'Planning your Shanghai trip with LLM',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('帮我规划下周去上海出差，包括日程、酒店、会议资料');
       const decision = await agent.processMessage(input, baseState);
@@ -722,7 +723,7 @@ describe('Foreground Conversation Agent', () => {
         updateProviderPriority: vi.fn(),
       };
 
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig, modelInputBuilder: createRealModelInputBuilder() });
 
       const originalSetTimeout = global.setTimeout;
       const mockSetTimeout = vi.fn((fn: () => void, ms: number) => {
@@ -789,7 +790,7 @@ describe('Foreground Conversation Agent', () => {
       };
 
       mockLLMAdapter = createMockLLMAdapter('invalid json');
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, agentConfig: constructorConfig, modelInputBuilder: createRealModelInputBuilder() });
 
       const decision = await agent.processMessage(createInput('Hello'), {
         ...baseState,
@@ -808,7 +809,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Simple greeting',
         userVisibleResponse: 'Hello!',
       }), { supportsJsonMode: true });
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('你好');
       await agent.processMessage(input, baseState);
@@ -826,7 +827,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Simple greeting',
         userVisibleResponse: 'Hello!',
       }), { supportsJsonMode: false });
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('你好');
       await agent.processMessage(input, baseState);
@@ -897,7 +898,7 @@ describe('Foreground Conversation Agent', () => {
         getHealthyProviders: vi.fn(() => [customProvider, fallbackProvider]),
         updateProviderPriority: vi.fn(),
       };
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const input = createInput('你好');
       await agent.processMessage(input, baseState);
@@ -913,7 +914,7 @@ describe('Foreground Conversation Agent', () => {
         route: 'answer_directly',
         reason: 'Simple question',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const stateWithNullAllowed: ForegroundSessionState = {
         ...baseState,
@@ -957,7 +958,7 @@ describe('Foreground Conversation Agent', () => {
         route: 'answer_directly',
         reason: 'Simple question',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const stateWithEmptyAllowed: ForegroundSessionState = {
         ...baseState,
@@ -1001,7 +1002,7 @@ describe('Foreground Conversation Agent', () => {
         route: 'answer_directly',
         reason: 'Simple question',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const stateWithRestricted: ForegroundSessionState = {
         ...baseState,
@@ -1048,7 +1049,7 @@ describe('Foreground Conversation Agent', () => {
         route: 'answer_directly',
         reason: 'Weather question',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       await agent.processMessage(createInput('当前北京天气如何？'), baseState);
 
@@ -1065,7 +1066,7 @@ describe('Foreground Conversation Agent', () => {
         route: 'answer_directly',
         reason: 'Simple question',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       await agent.processMessage(createInput('Hello'), baseState);
 
@@ -1082,7 +1083,7 @@ describe('Foreground Conversation Agent', () => {
         route: 'answer_directly',
         reason: 'Simple question',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       await agent.processMessage(createInput('Hello'), baseState);
 
@@ -1101,7 +1102,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Live web lookup',
         suggestedTools: ['web_search'],
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const decision = await agent.processMessage(createInput('今天北京天气如何？'), baseState);
 
@@ -1117,7 +1118,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Weather lookup',
         suggestedTools: ['docs_search'],
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const stateWithRestricted: ForegroundSessionState = {
         ...baseState,
@@ -1158,7 +1159,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'No tools suggested',
         suggestedTools: [],
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const decision = await agent.processMessage(createInput('当前北京天气如何？'), baseState);
 
@@ -1171,7 +1172,7 @@ describe('Foreground Conversation Agent', () => {
         route: 'dispatch_tool',
         reason: 'No tools suggested',
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const decision = await agent.processMessage(createInput('当前北京天气如何？'), baseState);
 
@@ -1185,7 +1186,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Search docs',
         suggestedTools: ['docs_search'],
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const stateWithDocsAllowed: ForegroundSessionState = {
         ...baseState,
@@ -1225,7 +1226,7 @@ describe('Foreground Conversation Agent', () => {
         reason: 'Mixed tools',
         suggestedTools: ['docs_search', 'transcript_search'],
       }));
-      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter });
+      agent = createForegroundAgent({ llmAdapter: mockLLMAdapter, modelInputBuilder: createRealModelInputBuilder() });
 
       const stateWithRestricted: ForegroundSessionState = {
         ...baseState,
