@@ -7,6 +7,24 @@ import {
 } from './provider-crypto.js';
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
 
+function safeJsonParse<T>(value: string | null, fallback: T): T {
+  if (value === null || value === undefined) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeJsonStringify(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
+}
+
 export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom';
 
 export interface ProviderConfig {
@@ -22,15 +40,38 @@ export interface ProviderConfig {
   lastTestedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  family?: string | null;
+  protocol?: string | null;
+  priority?: number | null;
+  headers?: Record<string, string> | null;
+  capabilities?: Record<string, unknown> | null;
+  models?: Record<string, unknown>[] | null;
+  defaultModel?: string | null;
+  options?: Record<string, unknown> | null;
 }
 
 export interface ProviderConfigWithSecret extends ProviderConfig {
   apiKey: string | null;
+  family?: string | null;
+  protocol?: string | null;
+  priority?: number | null;
+  headers?: Record<string, string> | null;
+  capabilities?: Record<string, unknown> | null;
+  models?: Record<string, unknown>[] | null;
+  defaultModel?: string | null;
+  options?: Record<string, unknown> | null;
 }
 
 export interface ProviderConfigSanitized extends ProviderConfig {
   configured: boolean;
   apiKeyLast4: string | null;
+  family?: string | null;
+  protocol?: string | null;
+  priority?: number | null;
+  capabilities?: Record<string, unknown> | null;
+  models?: Record<string, unknown>[] | null;
+  defaultModel?: string | null;
+  options?: Record<string, unknown> | null;
 }
 
 export interface CreateProviderConfigInput {
@@ -42,6 +83,14 @@ export interface CreateProviderConfigInput {
   baseUrl?: string;
   selectedModel?: string;
   apiKey?: string;
+  family?: string | null;
+  protocol?: string | null;
+  priority?: number | null;
+  headers?: Record<string, string> | null;
+  capabilities?: Record<string, unknown> | null;
+  models?: Record<string, unknown>[] | null;
+  defaultModel?: string | null;
+  options?: Record<string, unknown> | null;
 }
 
 export interface UpdateProviderConfigInput {
@@ -50,6 +99,14 @@ export interface UpdateProviderConfigInput {
   baseUrl?: string;
   selectedModel?: string;
   apiKey?: string;
+  family?: string | null;
+  protocol?: string | null;
+  priority?: number | null;
+  headers?: Record<string, string> | null;
+  capabilities?: Record<string, unknown> | null;
+  models?: Record<string, unknown>[] | null;
+  defaultModel?: string | null;
+  options?: Record<string, unknown> | null;
 }
 
 export interface ProviderConfigStore {
@@ -77,6 +134,14 @@ interface ProviderConfigRow {
   last_tested_at: string | null;
   created_at: string;
   updated_at: string;
+  family: string | null;
+  protocol: string | null;
+  priority: number | null;
+  headers_json: string | null;
+  capabilities_json: string | null;
+  models_json: string | null;
+  default_model: string | null;
+  options_json: string | null;
 }
 
 function isConfiguredProvider(providerType: ProviderType, encryptedApiKey: string | null, baseUrl: string | null): boolean {
@@ -109,8 +174,9 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       INSERT INTO provider_configs (
         provider_id, user_id, provider_type, display_name, enabled,
         base_url, selected_model, encrypted_api_key, api_key_last4,
-        source, last_test_status, last_tested_at, created_at, updated_at, tenant_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        source, last_test_status, last_tested_at, created_at, updated_at, tenant_id,
+        family, protocol, priority, headers_json, capabilities_json, models_json, default_model, options_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -129,6 +195,14 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       now,
       now,
       tenantId,
+      input.family ?? null,
+      input.protocol ?? null,
+      input.priority ?? null,
+      safeJsonStringify(input.headers),
+      safeJsonStringify(input.capabilities),
+      safeJsonStringify(input.models),
+      input.defaultModel ?? null,
+      safeJsonStringify(input.options),
     ];
 
     this.connection.exec(sql, params);
@@ -147,7 +221,14 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       createdAt: now,
       updatedAt: now,
       configured: isConfiguredProvider(input.providerType, encryptedApiKey, input.baseUrl ?? null),
-      apiKeyLast4
+      apiKeyLast4,
+      family: input.family ?? null,
+      protocol: input.protocol ?? null,
+      priority: input.priority ?? null,
+      capabilities: input.capabilities ?? null,
+      models: input.models ?? null,
+      defaultModel: input.defaultModel ?? null,
+      options: input.options ?? null,
     };
   }
 
@@ -191,7 +272,15 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       lastTestedAt: row.last_tested_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      apiKey
+      apiKey,
+      family: row.family,
+      protocol: row.protocol,
+      priority: row.priority,
+      headers: safeJsonParse<Record<string, string> | null>(row.headers_json, null),
+      capabilities: safeJsonParse<Record<string, unknown> | null>(row.capabilities_json, null),
+      models: safeJsonParse<Record<string, unknown>[] | null>(row.models_json, null),
+      defaultModel: row.default_model,
+      options: safeJsonParse<Record<string, unknown> | null>(row.options_json, null),
     };
   }
 
@@ -235,6 +324,46 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       params.push(serializeEncryptedSecret(encrypted));
       sets.push('api_key_last4 = ?');
       params.push(updates.apiKey.slice(-4));
+    }
+
+    if (updates.family !== undefined) {
+      sets.push('family = ?');
+      params.push(updates.family);
+    }
+
+    if (updates.protocol !== undefined) {
+      sets.push('protocol = ?');
+      params.push(updates.protocol);
+    }
+
+    if (updates.priority !== undefined) {
+      sets.push('priority = ?');
+      params.push(updates.priority);
+    }
+
+    if (updates.headers !== undefined) {
+      sets.push('headers_json = ?');
+      params.push(safeJsonStringify(updates.headers));
+    }
+
+    if (updates.capabilities !== undefined) {
+      sets.push('capabilities_json = ?');
+      params.push(safeJsonStringify(updates.capabilities));
+    }
+
+    if (updates.models !== undefined) {
+      sets.push('models_json = ?');
+      params.push(safeJsonStringify(updates.models));
+    }
+
+    if (updates.defaultModel !== undefined) {
+      sets.push('default_model = ?');
+      params.push(updates.defaultModel);
+    }
+
+    if (updates.options !== undefined) {
+      sets.push('options_json = ?');
+      params.push(safeJsonStringify(updates.options));
     }
 
     if (sets.length === 0) {
@@ -300,7 +429,14 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       configured: isConfiguredProvider(row.provider_type, row.encrypted_api_key, row.base_url),
-      apiKeyLast4: row.api_key_last4
+      apiKeyLast4: row.api_key_last4,
+      family: row.family,
+      protocol: row.protocol,
+      priority: row.priority,
+      capabilities: safeJsonParse<Record<string, unknown> | null>(row.capabilities_json, null),
+      models: safeJsonParse<Record<string, unknown>[] | null>(row.models_json, null),
+      defaultModel: row.default_model,
+      options: safeJsonParse<Record<string, unknown> | null>(row.options_json, null),
     };
   }
 }

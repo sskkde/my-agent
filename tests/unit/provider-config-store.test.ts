@@ -20,7 +20,15 @@ const CREATE_TABLE_SQL = `
     last_tested_at TEXT,
             tenant_id TEXT NOT NULL DEFAULT 'org_default',
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    family TEXT DEFAULT NULL,
+    protocol TEXT DEFAULT NULL,
+    priority INTEGER DEFAULT NULL,
+    headers_json TEXT DEFAULT NULL,
+    capabilities_json TEXT DEFAULT NULL,
+    models_json TEXT DEFAULT NULL,
+    default_model TEXT DEFAULT NULL,
+    options_json TEXT DEFAULT NULL
   )
 `;
 
