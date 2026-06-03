@@ -269,6 +269,8 @@ export interface ProviderRuntimeConfig extends ProviderConfig {
  */
 export interface ProviderCandidate {
   providerId: string;
+  /** Provider type identifier (e.g. 'openai', 'ollama', 'openrouter') */
+  providerType: string;
   config: ProviderRuntimeConfig;
   model: ModelInfo;
   priority: number;

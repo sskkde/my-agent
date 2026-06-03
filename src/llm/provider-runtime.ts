@@ -2,13 +2,15 @@ import { AsyncLocalStorage } from 'async_hooks';
 import type { LLMAdapter } from './adapter.js';
 import { createLLMAdapter } from './adapter.js';
 import type { LLMProvider } from './provider.js';
-import type { ProviderCapabilities, ProviderConfig as RuntimeProviderConfig } from './types.js';
+import type { ProviderCapabilities, ProviderConfig as RuntimeProviderConfig, ProviderCandidate, AllProvidersFailedError } from './types.js';
 import { OllamaAdapter, OpenAIAdapter, OpenRouterAdapter } from './providers.js';
 import type {
   ProviderConfigStore,
   ProviderConfigWithSecret,
   ProviderType,
 } from '../storage/provider-config-store.js';
+import { resolveProviderCandidates, type EnvProviderDescriptor } from './routing/provider-resolver.js';
+import { deriveRequestRequirements, canServeRequest } from './routing/request-requirements.js';
 
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_RETRIES = 2;
@@ -96,6 +98,56 @@ function createProvider(providerType: ProviderType, config: RuntimeProviderConfi
     case 'custom':
       return new OpenAIAdapter(config);
   }
+}
+
+function createProviderFromCandidate(candidate: ProviderCandidate): LLMProvider {
+  return createProvider(candidate.providerType as ProviderType, candidate.config);
+}
+
+function buildEnvProviderDescriptors(): EnvProviderDescriptor[] {
+  if (process.env.NODE_ENV === 'test') {
+    return [];
+  }
+
+  const descriptors: EnvProviderDescriptor[] = [];
+
+  if (process.env.OPENROUTER_API_KEY) {
+    descriptors.push({
+      providerType: 'openrouter',
+      providerId: 'openrouter',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseUrl: process.env.OPENROUTER_BASE_URL,
+    });
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    descriptors.push({
+      providerType: 'openai',
+      providerId: 'openai',
+      apiKey: process.env.OPENAI_API_KEY,
+      baseUrl: process.env.OPENAI_BASE_URL,
+    });
+  }
+
+  if (process.env.OLLAMA_BASE_URL) {
+    descriptors.push({
+      providerType: 'ollama',
+      providerId: 'ollama',
+      baseUrl: process.env.OLLAMA_BASE_URL,
+    });
+  }
+
+  if (process.env.DEEPSEEK_API_KEY) {
+    descriptors.push({
+      providerType: 'deepseek',
+      providerId: 'deepseek',
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
+      model: DEFAULT_DEEPSEEK_MODEL,
+    });
+  }
+
+  return descriptors;
 }
 
 function createDatabaseProvider(provider: ProviderConfigWithSecret, priority: number): LLMProvider | null {
@@ -216,6 +268,12 @@ function buildLLMProvidersForUser(
   return providers;
 }
 
+interface ScopeContext {
+  userId?: string;
+  preferredProviderId?: string;
+  providers: LLMProvider[];
+}
+
 export function refreshLLMProvidersForUser(options: RefreshLLMProvidersOptions): void {
   const providers = buildLLMProvidersForUser(options.providerConfigStore, options.userId);
   replaceProviders(options.adapter, providers);
@@ -224,10 +282,33 @@ export function refreshLLMProvidersForUser(options: RefreshLLMProvidersOptions):
 export function createProviderScopedLLMAdapter(
   options: CreateProviderScopedLLMAdapterOptions
 ): ProviderScopedLLMAdapter {
-  const providerScope = new AsyncLocalStorage<LLMProvider[]>();
+  const providerScope = new AsyncLocalStorage<ScopeContext>();
 
   const currentProviders = (): LLMProvider[] => {
-    return providerScope.getStore() ?? buildLLMProvidersForUser(options.providerConfigStore);
+    const ctx = providerScope.getStore();
+    return ctx?.providers ?? buildLLMProvidersForUser(options.providerConfigStore);
+  };
+
+  const buildCapabilityCandidates = (): ProviderCandidate[] => {
+    const ctx = providerScope.getStore();
+
+    let dbProviders: ProviderConfigWithSecret[] = [];
+    if (ctx?.userId) {
+      const store = options.providerConfigStore;
+      const storedProviders = store.listByUser(ctx.userId);
+      dbProviders = storedProviders
+        .map(p => store.getByIdWithSecret(p.providerId))
+        .filter((p): p is ProviderConfigWithSecret => p !== null);
+    }
+
+    const candidates = resolveProviderCandidates({
+      dbProviders,
+      envProviders: buildEnvProviderDescriptors(),
+      preferredProviderId: ctx?.preferredProviderId,
+      nodeEnv: process.env.NODE_ENV,
+    });
+
+    return candidates;
   };
 
   const complete: LLMAdapter['complete'] = async (request) => {
@@ -238,8 +319,27 @@ export function createProviderScopedLLMAdapter(
       enableLogging: false,
     });
 
-    for (const provider of currentProviders()) {
-      scopedAdapter.addProvider(provider);
+    const candidates = buildCapabilityCandidates();
+
+    const requirements = deriveRequestRequirements(request);
+    const eligible = candidates.filter(c => canServeRequest(requirements, c.model));
+
+    if (eligible.length === 0) {
+      const error: AllProvidersFailedError = {
+        errorId: `err_no_capable_provider_${Date.now()}`,
+        category: 'model_error',
+        code: 'ALL_PROVIDERS_FAILED',
+        message: 'No provider can serve the request based on capability requirements',
+        recoverability: 'retryable_later',
+        source: { module: 'provider_runtime', runId: request.model },
+        attempts: [],
+        createdAt: new Date().toISOString(),
+      };
+      return { success: false, error, providerId: 'none' };
+    }
+
+    for (const candidate of eligible) {
+      scopedAdapter.addProvider(createProviderFromCandidate(candidate));
     }
 
     return scopedAdapter.complete(request);
@@ -293,7 +393,7 @@ export function createProviderScopedLLMAdapter(
     },
     runWithUserProviders<T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string): Promise<T> {
       const providers = buildLLMProvidersForUser(options.providerConfigStore, userId, preferredProviderId);
-      return providerScope.run(providers, fn);
+      return providerScope.run({ userId, preferredProviderId, providers }, fn);
     },
   };
 }

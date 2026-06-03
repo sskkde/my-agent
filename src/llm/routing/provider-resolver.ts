@@ -245,6 +245,7 @@ export function resolveProviderCandidates(
 
     candidates.push({
       providerId: provider.providerId,
+      providerType: provider.providerType,
       config: { ...config, priority },
       model,
       priority,
@@ -313,6 +314,7 @@ export function resolveProviderCandidates(
 
       candidates.push({
         providerId: env.providerId,
+        providerType: env.providerType,
         config: { ...config, priority },
         model,
         priority,
