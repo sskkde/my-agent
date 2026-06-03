@@ -246,7 +246,7 @@ describe('Provider API Integration', () => {
       expect(body.error.code).toBe('API_KEY_REQUIRED');
     });
 
-    it('should return 400 when Ollama provider missing baseUrl', async () => {
+    it('should create Ollama provider with catalog default baseUrl when not provided', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/providers',
@@ -259,9 +259,12 @@ describe('Provider API Integration', () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('BASE_URL_REQUIRED');
+      expect(body.data.providerType).toBe('ollama');
+      expect(body.data.baseUrl).toBe('http://localhost:11434');
+      expect(body.data.family).toBe('ollama');
+      expect(body.data.protocol).toBe('ollama_chat');
     });
 
     it('should return 400 when custom provider missing apiKey', async () => {

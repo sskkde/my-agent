@@ -400,6 +400,10 @@ export interface AuthSuccessResponse {
 
 export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom';
 
+/**
+ * Provider summary for API responses
+ * Sanitized view of provider configuration without sensitive data
+ */
 export interface ProviderSummary {
   providerId: string;
   providerType: ProviderType;
@@ -414,22 +418,54 @@ export interface ProviderSummary {
   lastTestedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  family?: string | null;
+  protocol?: string | null;
+  priority?: number | null;
+  defaultModel?: string | null;
+  capabilities?: Record<string, unknown> | null;
+  options?: Record<string, unknown> | null;
+  models?: Record<string, unknown>[] | null;
+  headersConfigured?: boolean;
 }
 
+/**
+ * Request body for creating a new provider configuration
+ * All optional fields can be derived from provider catalog defaults
+ */
 export interface CreateProviderRequest {
   providerType: ProviderType;
   displayName?: string;
   apiKey?: string;
   baseUrl?: string;
   selectedModel?: string;
+  family?: string;
+  protocol?: string;
+  priority?: number;
+  defaultModel?: string;
+  headers?: Record<string, string>;
+  capabilities?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  models?: Record<string, unknown>[];
 }
 
+/**
+ * Request body for updating an existing provider configuration
+ * All fields are optional - only provided fields will be updated
+ */
 export interface UpdateProviderRequest {
   displayName?: string;
   apiKey?: string;
   baseUrl?: string;
   selectedModel?: string;
   enabled?: boolean;
+  family?: string;
+  protocol?: string;
+  priority?: number;
+  defaultModel?: string;
+  headers?: Record<string, string>;
+  capabilities?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  models?: Record<string, unknown>[];
 }
 
 export interface TestProviderResponse {

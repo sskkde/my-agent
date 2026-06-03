@@ -13,8 +13,8 @@ import { randomUUID } from 'crypto';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { ResourceType, Action } from '../../permissions/rbac-types.js';
+import { isKnownProviderType, getProviderCatalogEntry } from '../../llm/catalog/provider-catalog.js';
 
-const VALID_PROVIDER_TYPES: ProviderType[] = ['openai', 'openrouter', 'ollama', 'deepseek', 'custom'];
 const TEST_TIMEOUT_MS = 10000;
 
 function sanitizeProviderForResponse(provider: ProviderConfigSanitized): ProviderSummary {
@@ -32,11 +32,19 @@ function sanitizeProviderForResponse(provider: ProviderConfigSanitized): Provide
     lastTestedAt: provider.lastTestedAt,
     createdAt: provider.createdAt,
     updatedAt: provider.updatedAt,
+    family: provider.family,
+    protocol: provider.protocol,
+    priority: provider.priority,
+    defaultModel: provider.defaultModel,
+    capabilities: provider.capabilities,
+    options: provider.options,
+    models: provider.models,
+    headersConfigured: provider.headers !== null && Object.keys(provider.headers || {}).length > 0,
   };
 }
 
 function validateProviderType(providerType: unknown): providerType is ProviderType {
-  return typeof providerType === 'string' && VALID_PROVIDER_TYPES.includes(providerType as ProviderType);
+  return typeof providerType === 'string' && isKnownProviderType(providerType);
 }
 
 interface TestResult {
@@ -364,35 +372,38 @@ async function testProviderConnection(
   apiKey: string | null,
   baseUrl: string | null
 ): Promise<TestResult> {
+  const catalogEntry = getProviderCatalogEntry(providerType);
+  const effectiveBaseUrl = baseUrl ?? catalogEntry?.defaultBaseUrl ?? null;
+
   switch (providerType) {
     case 'openai':
       if (!apiKey) {
         return { success: false, latencyMs: 0, error: 'API key is required for OpenAI' };
       }
-      return testOpenAIConnection(apiKey, baseUrl);
+      return testOpenAIConnection(apiKey, effectiveBaseUrl);
     case 'openrouter':
       if (!apiKey) {
         return { success: false, latencyMs: 0, error: 'API key is required for OpenRouter' };
       }
-      return testOpenRouterConnection(apiKey, baseUrl);
+      return testOpenRouterConnection(apiKey, effectiveBaseUrl);
     case 'ollama':
-      if (!baseUrl) {
+      if (!effectiveBaseUrl) {
         return { success: false, latencyMs: 0, error: 'Base URL is required for Ollama' };
       }
-      return testOllamaConnection(baseUrl);
+      return testOllamaConnection(effectiveBaseUrl);
     case 'deepseek':
       if (!apiKey) {
         return { success: false, latencyMs: 0, error: 'API key is required for DeepSeek' };
       }
-      return testDeepSeekConnection(apiKey, baseUrl);
+      return testDeepSeekConnection(apiKey, effectiveBaseUrl);
     case 'custom':
       if (!apiKey) {
         return { success: false, latencyMs: 0, error: 'API key is required for custom provider' };
       }
-      if (!baseUrl) {
+      if (!effectiveBaseUrl) {
         return { success: false, latencyMs: 0, error: 'Base URL is required for custom provider' };
       }
-      return testCustomConnection(apiKey, baseUrl);
+      return testCustomConnection(apiKey, effectiveBaseUrl);
     default:
       return { success: false, latencyMs: 0, error: 'Unknown provider type' };
   }
@@ -438,6 +449,14 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
             apiKey: { type: 'string' },
             baseUrl: { type: 'string' },
             selectedModel: { type: 'string' },
+            family: { type: 'string' },
+            protocol: { type: 'string' },
+            priority: { type: 'integer', minimum: 0 },
+            defaultModel: { type: 'string' },
+            headers: { type: 'object' },
+            capabilities: { type: 'object' },
+            options: { type: 'object' },
+            models: { type: 'array' },
           },
         },
       },
@@ -455,25 +474,29 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
         return reply.code(503).send(envelopeError('SERVICE_UNAVAILABLE', 'Provider configuration store not available', request.requestId));
       }
 
-      const { providerType, displayName, apiKey, baseUrl, selectedModel } = request.body || {};
+      const {
+        providerType,
+        displayName,
+        apiKey,
+        baseUrl,
+        selectedModel,
+        family,
+        protocol,
+        priority,
+        defaultModel,
+        headers,
+        capabilities,
+        options,
+        models,
+      } = request.body || {};
 
       if (!validateProviderType(providerType)) {
         return reply.code(400).send(envelopeError('INVALID_PROVIDER_TYPE',
-          `Invalid provider type. Must be one of: ${VALID_PROVIDER_TYPES.join(', ')}`,
+          `Invalid provider type: ${providerType}`,
           request.requestId));
       }
 
-      if ((providerType === 'openai' || providerType === 'openrouter' || providerType === 'deepseek' || providerType === 'custom') && !apiKey) {
-        return reply.code(400).send(envelopeError('API_KEY_REQUIRED',
-          `API key is required for ${providerType} provider`,
-          request.requestId));
-      }
-
-      if ((providerType === 'ollama' || providerType === 'custom') && !baseUrl) {
-        return reply.code(400).send(envelopeError('BASE_URL_REQUIRED',
-          `Base URL is required for ${providerType} provider`,
-          request.requestId));
-      }
+      const catalogEntry = getProviderCatalogEntry(providerType);
 
       if (displayName !== undefined && (typeof displayName !== 'string' || displayName.trim().length === 0)) {
         return reply.code(400).send(envelopeError('INVALID_DISPLAY_NAME',
@@ -481,8 +504,72 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
           request.requestId));
       }
 
+      if (priority !== undefined && priority !== null) {
+        if (!Number.isInteger(priority) || priority < 0) {
+          return reply.code(400).send(envelopeError('INVALID_PRIORITY',
+            'Priority must be a non-negative integer',
+            request.requestId));
+        }
+      }
+
+      if (headers !== undefined && headers !== null) {
+        if (typeof headers !== 'object' || Array.isArray(headers)) {
+          return reply.code(400).send(envelopeError('INVALID_HEADERS',
+            'Headers must be a plain object',
+            request.requestId));
+        }
+      }
+
+      if (capabilities !== undefined && capabilities !== null) {
+        if (typeof capabilities !== 'object' || Array.isArray(capabilities)) {
+          return reply.code(400).send(envelopeError('INVALID_CAPABILITIES',
+            'Capabilities must be a plain object',
+            request.requestId));
+        }
+      }
+
+      if (options !== undefined && options !== null) {
+        if (typeof options !== 'object' || Array.isArray(options)) {
+          return reply.code(400).send(envelopeError('INVALID_OPTIONS',
+            'Options must be a plain object',
+            request.requestId));
+        }
+      }
+
+      if (models !== undefined && models !== null) {
+        if (!Array.isArray(models)) {
+          return reply.code(400).send(envelopeError('INVALID_MODELS',
+            'Models must be an array',
+            request.requestId));
+        }
+      }
+
+      const requiresApiKey = catalogEntry?.requiresApiKey ?? true;
+      const requiresBaseUrl = catalogEntry?.requiresBaseUrl ?? false;
+
+      if (requiresApiKey && !apiKey) {
+        return reply.code(400).send(envelopeError('API_KEY_REQUIRED',
+          `API key is required for ${providerType} provider`,
+          request.requestId));
+      }
+
+      if (requiresBaseUrl && !baseUrl) {
+        const catalogDefaultUrl = catalogEntry?.defaultBaseUrl;
+        if (!catalogDefaultUrl) {
+          return reply.code(400).send(envelopeError('BASE_URL_REQUIRED',
+            `Base URL is required for ${providerType} provider`,
+            request.requestId));
+        }
+      }
+
       const providerId = randomUUID();
       const finalDisplayName = displayName?.trim() || `${providerType}-${providerId.slice(0, 8)}`;
+
+      const finalFamily = family ?? catalogEntry?.family ?? null;
+      const finalProtocol = protocol ?? catalogEntry?.protocol ?? null;
+      const finalBaseUrl = baseUrl ?? catalogEntry?.defaultBaseUrl;
+      const finalDefaultModel = defaultModel ?? catalogEntry?.defaultModel ?? null;
+      const finalSelectedModel = selectedModel ?? catalogEntry?.defaultModel;
 
       try {
         const provider = providerConfigStore.create({
@@ -491,9 +578,17 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
           providerType,
           displayName: finalDisplayName,
           apiKey,
-          baseUrl,
-          selectedModel,
+          baseUrl: finalBaseUrl,
+          selectedModel: finalSelectedModel,
           enabled: true,
+          family: finalFamily,
+          protocol: finalProtocol,
+          priority: priority ?? null,
+          headers: headers ?? null,
+          capabilities: capabilities ?? null,
+          options: options ?? null,
+          models: models ?? null,
+          defaultModel: finalDefaultModel,
         });
         context.refreshProvidersForUser(userId);
 
@@ -520,6 +615,14 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
             baseUrl: { type: 'string' },
             selectedModel: { type: 'string' },
             enabled: { type: 'boolean' },
+            family: { type: 'string' },
+            protocol: { type: 'string' },
+            priority: { type: 'integer', minimum: 0 },
+            defaultModel: { type: 'string' },
+            headers: { type: 'object' },
+            capabilities: { type: 'object' },
+            options: { type: 'object' },
+            models: { type: 'array' },
           },
         },
       },
@@ -548,12 +651,66 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
         return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this provider', request.requestId));
       }
 
-      const { displayName, apiKey, baseUrl, selectedModel, enabled } = request.body || {};
+      const {
+        displayName,
+        apiKey,
+        baseUrl,
+        selectedModel,
+        enabled,
+        family,
+        protocol,
+        priority,
+        defaultModel,
+        headers,
+        capabilities,
+        options,
+        models,
+      } = request.body || {};
 
       if (displayName !== undefined && (typeof displayName !== 'string' || displayName.trim().length === 0)) {
         return reply.code(400).send(envelopeError('INVALID_DISPLAY_NAME',
           'Display name must be a non-empty string',
           request.requestId));
+      }
+
+      if (priority !== undefined && priority !== null) {
+        if (!Number.isInteger(priority) || priority < 0) {
+          return reply.code(400).send(envelopeError('INVALID_PRIORITY',
+            'Priority must be a non-negative integer',
+            request.requestId));
+        }
+      }
+
+      if (headers !== undefined && headers !== null) {
+        if (typeof headers !== 'object' || Array.isArray(headers)) {
+          return reply.code(400).send(envelopeError('INVALID_HEADERS',
+            'Headers must be a plain object',
+            request.requestId));
+        }
+      }
+
+      if (capabilities !== undefined && capabilities !== null) {
+        if (typeof capabilities !== 'object' || Array.isArray(capabilities)) {
+          return reply.code(400).send(envelopeError('INVALID_CAPABILITIES',
+            'Capabilities must be a plain object',
+            request.requestId));
+        }
+      }
+
+      if (options !== undefined && options !== null) {
+        if (typeof options !== 'object' || Array.isArray(options)) {
+          return reply.code(400).send(envelopeError('INVALID_OPTIONS',
+            'Options must be a plain object',
+            request.requestId));
+        }
+      }
+
+      if (models !== undefined && models !== null) {
+        if (!Array.isArray(models)) {
+          return reply.code(400).send(envelopeError('INVALID_MODELS',
+            'Models must be an array',
+            request.requestId));
+        }
       }
 
       const updates: Record<string, unknown> = {};
@@ -562,6 +719,14 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
       if (baseUrl !== undefined) updates.baseUrl = baseUrl;
       if (selectedModel !== undefined) updates.selectedModel = selectedModel;
       if (enabled !== undefined) updates.enabled = enabled;
+      if (family !== undefined) updates.family = family;
+      if (protocol !== undefined) updates.protocol = protocol;
+      if (priority !== undefined) updates.priority = priority;
+      if (defaultModel !== undefined) updates.defaultModel = defaultModel;
+      if (headers !== undefined) updates.headers = headers;
+      if (capabilities !== undefined) updates.capabilities = capabilities;
+      if (options !== undefined) updates.options = options;
+      if (models !== undefined) updates.models = models;
 
       if (Object.keys(updates).length === 0) {
         return reply.code(400).send(envelopeError('NO_UPDATES', 'No valid fields to update', request.requestId));
