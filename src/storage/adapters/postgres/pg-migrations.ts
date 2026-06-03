@@ -2313,6 +2313,31 @@ export const deepseekProviderTypeMigration: PgMigration = {
   `
 };
 
+export const extendProviderConfigsRuntimeMetadataMigration: PgMigration = {
+  version: 60,
+  name: 'extend_provider_configs_runtime_metadata',
+  up: `
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS family TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS protocol TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS headers_json TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS capabilities_json TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS models_json TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS default_model TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN IF NOT EXISTS options_json TEXT DEFAULT NULL
+  `,
+  down: `
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS options_json;
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS default_model;
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS models_json;
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS capabilities_json;
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS headers_json;
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS priority;
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS protocol;
+    ALTER TABLE provider_configs DROP COLUMN IF EXISTS family
+  `
+};
+
 export const pgStoreMigrations: PgMigration[] = [
   eventsTableMigration,
   runtimeActionsTableMigration,
@@ -2368,6 +2393,7 @@ export const pgStoreMigrations: PgMigration[] = [
   userOrganizationsTablePgMigration,
   addTenantIdPgMigration,
   deepseekProviderTypeMigration,
+  extendProviderConfigsRuntimeMetadataMigration,
 ];
 
 export function getLatestPgMigrationVersion(): number {

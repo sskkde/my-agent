@@ -2350,6 +2350,22 @@ export const deepseekProviderTypeMigration: Migration = {
   `
 };
 
+export const extendProviderConfigsRuntimeMetadataMigration: Migration = {
+  version: 60,
+  name: 'extend_provider_configs_runtime_metadata',
+  up: `
+    ALTER TABLE provider_configs ADD COLUMN family TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN protocol TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN priority INTEGER DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN headers_json TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN capabilities_json TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN models_json TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN default_model TEXT DEFAULT NULL;
+    ALTER TABLE provider_configs ADD COLUMN options_json TEXT DEFAULT NULL
+  `,
+  down: ``
+};
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration,                    // v1
@@ -2471,6 +2487,9 @@ export const allStoreMigrations: Migration[] = [
 
   // DeepSeek provider type
   deepseekProviderTypeMigration,              // v59
+
+  // Extend provider configs runtime metadata
+  extendProviderConfigsRuntimeMetadataMigration, // v60
 ];
 
 /**
