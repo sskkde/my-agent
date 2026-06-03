@@ -24,7 +24,15 @@ const CREATE_TABLE_SQL = `
     last_tested_at TEXT,
             tenant_id TEXT NOT NULL DEFAULT 'org_default',
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    family TEXT,
+    protocol TEXT,
+    priority INTEGER,
+    headers_json TEXT,
+    capabilities_json TEXT,
+    models_json TEXT,
+    default_model TEXT,
+    options_json TEXT
   )
 `;
 
