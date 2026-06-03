@@ -65,6 +65,7 @@ export interface ProviderConfigWithSecret extends ProviderConfig {
 export interface ProviderConfigSanitized extends ProviderConfig {
   configured: boolean;
   apiKeyLast4: string | null;
+  headersConfigured: boolean;
   family?: string | null;
   protocol?: string | null;
   priority?: number | null;
@@ -222,6 +223,7 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       updatedAt: now,
       configured: isConfiguredProvider(input.providerType, encryptedApiKey, input.baseUrl ?? null),
       apiKeyLast4,
+      headersConfigured: input.headers != null && Object.keys(input.headers).length > 0,
       family: input.family ?? null,
       protocol: input.protocol ?? null,
       priority: input.priority ?? null,
@@ -430,6 +432,7 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       updatedAt: row.updated_at,
       configured: isConfiguredProvider(row.provider_type, row.encrypted_api_key, row.base_url),
       apiKeyLast4: row.api_key_last4,
+      headersConfigured: row.headers_json != null && row.headers_json !== '{}' && row.headers_json !== 'null',
       family: row.family,
       protocol: row.protocol,
       priority: row.priority,

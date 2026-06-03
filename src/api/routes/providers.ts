@@ -39,7 +39,7 @@ function sanitizeProviderForResponse(provider: ProviderConfigSanitized): Provide
     capabilities: provider.capabilities,
     options: provider.options,
     models: provider.models,
-    headersConfigured: provider.headers !== null && Object.keys(provider.headers || {}).length > 0,
+    headersConfigured: provider.headersConfigured,
   };
 }
 
@@ -432,6 +432,42 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
       const summaries = providers.map(sanitizeProviderForResponse);
 
       return reply.code(200).send(success(summaries, request.requestId));
+    }
+  );
+
+  // GET /api/providers/:providerId - Get a specific provider
+  server.get<{ Params: { providerId: string } }>(
+    '/api/v1/providers/:providerId',
+    {
+      schema: {
+        params: providerIdParamsSchema,
+      },
+    },
+    async (request: FastifyRequest<{ Params: { providerId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission('provider' as ResourceType, Action.read)) {
+        return reply;
+      }
+      const userId = request.user?.userId;
+      if (!userId) {
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
+      }
+
+      if (!providerConfigStore) {
+        return reply.code(503).send(envelopeError('SERVICE_UNAVAILABLE', 'Provider configuration store not available', request.requestId));
+      }
+
+      const { providerId } = request.params;
+      const provider = providerConfigStore.getById(providerId);
+
+      if (!provider) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Provider not found', request.requestId));
+      }
+
+      if (provider.userId !== userId) {
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this provider', request.requestId));
+      }
+
+      return reply.code(200).send(success(sanitizeProviderForResponse(provider), request.requestId));
     }
   );
 
