@@ -5,6 +5,16 @@
  * ForegroundAgent.runTurn(), persists transcripts, and returns
  * channel-neutral output.
  *
+ * ## Architecture Flow
+ *
+ *   1. Hydrate session state via Gateway
+ *   2. Resolve LLM provider/model with fallback
+ *   3. Call ForegroundAgent.runTurn()
+ *      → AgentKernel.run() with projected tools
+ *      → Final response
+ *   4. Persist turn transcript
+ *   5. Schedule async memory extraction
+ *
  * This module is strictly channel-neutral — no WebUI, SSE, ChannelRegistry,
  * or route delivery concerns leak into processing logic.
  */

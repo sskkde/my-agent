@@ -1,38 +1,38 @@
 /**
- * Foreground Agent — User-facing conversation routing
+ * Foreground Agent — Kernel-driven user-facing conversation
  *
  * This module implements the foreground agent, which handles user-facing
- * interactions and produces routing decisions via the `foreground_decide`
- * internal tool or `routing_json` mode.
+ * interactions through the kernel-driven architecture.
  *
- * ForegroundAgent routing LLM requests are built exclusively by
- * ModelInputBuilder. There is no legacy prompt-builder dependency.
+ * ## Architecture Flow
  *
- * `routing_json` is a ModelInputBuilder mode, not legacy prompt-builder.
- * It produces JSON-in-text responses when function calling is unavailable.
+ * The canonical flow is:
+ *   ProcessorOrchestration → ForegroundAgent.runTurn() → AgentKernel.run()
+ *   → projected tools → final response
  *
- * `foreground_decide` remains internal-only — it is NOT registered in the
- * public tool catalog. When enabled, the LLM invokes this tool to produce
- * a structured routing decision instead of free-form JSON text.
+ * `runTurn()` is the main entry point. It:
+ *   1. Builds a context bundle from the foreground state
+ *   2. Projects safe tools via `buildForegroundToolProjection()` (read/search/internal)
+ *   3. Delegates to `AgentKernel.run()` for LLM execution
+ *   4. Maps kernel results to `ForegroundTurnResult`
  *
- * ## Fallback Chain
+ * ## Legacy Methods (deprecated)
  *
- * When foreground_decide is enabled, the fallback chain is:
- *   1. Kernel-backed `foreground_decide` (if agentKernel available)
- *   2. Direct `foreground_decide` with repair/retry
- *   3. Deterministic routing (pattern-based fallback)
- *   4. `answer_directly` (final fallback)
+ * `processMessage()` remains for backward compatibility. It uses the
+ * legacy routing path with `foreground_decide` tool or `routing_json` mode.
+ * This path is deprecated and will be removed in a future version.
  *
- * When foreground_decide is disabled, the fallback chain is:
- *   1. `routing_json` mode via ModelInputBuilder
- *   2. Deterministic routing (pattern-based fallback)
- *   3. `answer_directly` (final fallback)
+ * `ForegroundDecision` type is preserved for `decisionTrace` and backward compat,
+ * annotated `@deprecated`.
  *
- * ## Feature Flags
+ * ## Tool Projection
  *
- * | Flag | Default | Description |
- * |------|---------|-------------|
- * | `FOREGROUND_DECIDE_ENABLED` | `false` | Enable the decide tool path |
+ * `buildForegroundToolProjection()` only includes safe categories:
+ *   - `read`: File/content reading tools
+ *   - `search`: Search and lookup tools
+ *   - `internal`: Internal agent tools
+ *
+ * This ensures foreground agents cannot invoke unsafe tools directly.
  *
  * ## Security Invariant
  *
