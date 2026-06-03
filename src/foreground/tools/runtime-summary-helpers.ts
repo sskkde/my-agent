@@ -8,8 +8,8 @@ import type { ToolCallSummary } from '../../api/types.js';
 import type { TurnTranscript } from '../../storage/transcript-store.js';
 
 /**
- * Build runtime summary from kernel execution result
- * Extracted from ForegroundKernelRunner for reuse across foreground tools
+ * Build runtime summary from kernel execution result.
+ * Canonical location — also re-exported by the deprecated foreground-kernel-runner.
  */
 export function buildRuntimeSummary(
   kernelResult?: KernelRunResult

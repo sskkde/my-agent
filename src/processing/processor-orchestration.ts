@@ -1,9 +1,11 @@
 /**
  * Message Processor Orchestration
- * Full-pipeline implementation that hydrates state, runs ForegroundKernelRunner.turn(),
- * persists transcripts, and returns channel-neutral output.
  *
- * This module is strictly channel-neutral - no WebUI, SSE, ChannelRegistry,
+ * Full-pipeline implementation that hydrates state, runs
+ * ForegroundAgent.runTurn(), persists transcripts, and returns
+ * channel-neutral output.
+ *
+ * This module is strictly channel-neutral — no WebUI, SSE, ChannelRegistry,
  * or route delivery concerns leak into processing logic.
  */
 
@@ -29,7 +31,6 @@ import type { LongTermMemoryScheduler } from '../memory/long-term-memory-schedul
 import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js';
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js';
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js';
-import type { ForegroundKernelRunner } from '../foreground/foreground-kernel-runner.js';
 import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js';
 
 const CONVERSATION_HISTORY_TURN_LIMIT = 20;
@@ -42,8 +43,8 @@ export interface ProcessorOrchestrationDeps {
   gateway: Gateway;
   /** Stores for hydration and persistence */
   stores: Stores;
-  /** Foreground agent for message processing */
-  foregroundAgent: ForegroundAgent;
+  /** Foreground agent for message processing (optional during transition) */
+  foregroundAgent?: ForegroundAgent;
   /** Runtime dispatcher for action routing */
   runtimeDispatcher: RuntimeDispatcher;
   /** Planner runtime for planner operations */
@@ -71,8 +72,6 @@ export interface ProcessorOrchestrationDeps {
   };
   /** Scheduler for async long-term memory extraction after transcript persistence */
   memoryExtractionScheduler?: LongTermMemoryScheduler;
-  /** ForegroundKernelRunner for turn-based execution */
-  foregroundKernelRunner: ForegroundKernelRunner;
 }
 
 /**
@@ -236,7 +235,19 @@ export function createOrchestrationProcessor(
             agentConfig: agentConfig ?? undefined,
           };
 
-          const turnResult = await deps.foregroundKernelRunner.runTurn(turnInput);
+          const turnResult = await (deps.foregroundAgent?.runTurn?.(turnInput) ?? Promise.resolve({
+            status: 'failed' as const,
+            finalResponse: '',
+            decisionTrace: {
+              route: 'answer_directly' as const,
+              requiresPlanner: false,
+              reason: 'ForegroundAgent.runTurn not available',
+            },
+            error: {
+              code: 'RUNTURN_UNAVAILABLE',
+              message: 'ForegroundAgent.runTurn method not implemented',
+            },
+          }));
 
           if (turnResult.status === 'failed' || turnResult.error) {
             output = createErrorOutput(

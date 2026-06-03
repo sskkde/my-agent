@@ -1,32 +1,13 @@
 /**
- * Foreground Kernel Runner Types
- * Type definitions for the ForegroundKernelRunner architecture.
+ * Foreground Runner Types
  *
- * These types define the processor-facing contract for foreground turns.
+ * Processor-facing contract for foreground turns.
  * `ForegroundAgent.runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult>`
- * is the canonical entry point; `ForegroundKernelRunner` is the current
- * orchestrator that routes through the agent and executes side-effects.
+ * is the canonical entry point.
  *
- * ## Migration Notes
- *
- * The following imports MUST be updated when the foreground-agent.ts `runTurn()`
- * implementation is completed (Task 3 / Wave 3):
- *
- * - `src/processing/processor-orchestration.ts`: Currently calls
- *   `foregroundKernelRunner.runTurn(turnInput)`. After migration, processors
- *   should call `foregroundAgent.runTurn(turnInput)` directly.
- * - `src/foreground/foreground-kernel-runner.ts`: Current `runTurn()` owner.
- *   Will be refactored into internal helper once `ForegroundAgent.runTurn()`
- *   absorbs its responsibilities.
- *
- * Files that import `ForegroundDecision` (should migrate to `ForegroundTurnResult`):
- * - `src/foreground/foreground-kernel-runner.ts` (decisionTrace field)
- * - `src/foreground/foreground-decide-extractor.ts`
- * - `src/foreground/foreground-decision-validator.ts`
- * - `src/foreground/foreground-decide-tool.ts`
- * - `src/foreground/foreground-decision-schema.ts`
- * - `src/foreground/foreground-routing-json-parser.ts` (uses ForegroundDecisionRoute)
- * - `src/foreground/types.ts` (definition — will keep but deprecate)
+ * @deprecated `ForegroundKernelRunner` has been removed (T17). The processor
+ * pipeline calls `ForegroundAgent.runTurn()` directly. The runner types and
+ * interfaces remain for backward compatibility with test fixtures.
  */
 
 import type { ForegroundDecision, ForegroundSessionState } from './types.js';

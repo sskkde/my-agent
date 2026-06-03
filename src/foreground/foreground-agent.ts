@@ -86,8 +86,19 @@ import { FOREGROUND_DECIDE_SCHEMA } from './foreground-decision-schema.js';
 import { validateForegroundDecideParams } from './foreground-decision-validator.js';
 import type { AgentKernel } from '../kernel/agent-kernel.js';
 import type { ContextBundle, ContextItem } from '../context/types.js';
-import type { KernelRunResult, ToolUseRequest } from '../kernel/types.js';
-import type { ForegroundTurnInput, ForegroundTurnResult } from './foreground-runner-types.js';
+import type { KernelRunResult, KernelRunInput, ToolUseRequest } from '../kernel/types.js';
+import type { ForegroundTurnInput, ForegroundTurnResult, ToolCallSummary } from './foreground-runner-types.js';
+import {
+  DEFAULT_FOREGROUND_MAX_ITERATIONS,
+  DEFAULT_FOREGROUND_TIMEOUT_MS,
+  mapKernelErrorToForegroundResult,
+} from './kernel-guard-constants.js';
+import {
+  buildForegroundToolProjection,
+  toToolPlaneProjection,
+} from './tool-projection-mapper.js';
+import { buildContextBundleFromForegroundState } from './context-bundle-builder.js';
+import { mapKernelResultToTranscript } from './tools/transcript-redaction-mapper.js';
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 export function isMemorySemanticPolicyEnabled(): boolean {
@@ -139,6 +150,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private modelInputSnapshotStore?: ModelInputSnapshotStore;
   private promptProjectionResolver?: PromptProjectionResolver;
   private agentKernel?: AgentKernel;
+  private toolCatalog?: ReturnType<typeof getToolCatalog>;
+  private maxIterations: number;
+  private timeoutMs: number;
 
   constructor(
     _patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS,
@@ -148,6 +162,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
     modelInputSnapshotStore?: ModelInputSnapshotStore,
     promptProjectionResolver?: PromptProjectionResolver,
     agentKernel?: AgentKernel,
+    toolCatalog?: ReturnType<typeof getToolCatalog>,
+    maxIterations?: number,
+    timeoutMs?: number,
   ) {
     this.llmAdapter = llmAdapter;
     this.agentConfig = agentConfig;
@@ -155,6 +172,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.modelInputSnapshotStore = modelInputSnapshotStore;
     this.promptProjectionResolver = promptProjectionResolver;
     this.agentKernel = agentKernel;
+    this.toolCatalog = toolCatalog;
+    this.maxIterations = maxIterations ?? DEFAULT_FOREGROUND_MAX_ITERATIONS;
+    this.timeoutMs = timeoutMs ?? DEFAULT_FOREGROUND_TIMEOUT_MS;
   }
 
   setAgentKernel(kernel: AgentKernel): void {
@@ -162,21 +182,81 @@ class ForegroundAgentImpl implements ForegroundAgent {
   }
 
   async runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult> {
-    const fgMessageInput: ForegroundMessageInput = {
-      message: input.message,
+    if (!this.agentKernel) {
+      return {
+        status: 'failed',
+        finalResponse: 'The routing system is not configured. Please try again.',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'AgentKernel not available for runTurn',
+        },
+        error: {
+          code: 'KERNEL_UNAVAILABLE',
+          message: 'AgentKernel not injected',
+        },
+      };
+    }
+
+    const contextBundle = buildContextBundleFromForegroundState(input.foregroundState, input);
+
+    const allTools = this.toolCatalog ?? getToolCatalog();
+    const projectionResult = buildForegroundToolProjection(input, allTools);
+    const toolProjection = toToolPlaneProjection(projectionResult);
+
+    const effectiveConfig = input.agentConfig ?? this.agentConfig;
+    const resolvedModel = input.foregroundState.resolvedModel
+      ?? effectiveConfig?.model
+      ?? 'gpt-4o-mini';
+
+    const kernelInput: KernelRunInput = {
+      contextBundle,
+      runId: input.turnId,
+      agentId: input.agentId ?? 'foreground.default',
+      agentType: 'main',
       userId: input.userId,
       sessionId: input.sessionId,
-      turnId: input.turnId,
-      timestamp: input.timestamp,
+      toolProjection,
+      model: resolvedModel,
+      maxIterations: input.maxIterations ?? this.maxIterations,
+      timeoutMs: input.timeoutMs ?? this.timeoutMs,
     };
 
-    const decision = await this.processMessage(fgMessageInput, input.foregroundState);
+    const kernelResult = await this.agentKernel.run(kernelInput);
 
-    return {
-      status: 'completed',
-      finalResponse: decision.userVisibleResponse ?? '',
-      decisionTrace: decision,
-    };
+    return this.mapKernelResultToForegroundResult(kernelResult);
+  }
+
+  private mapKernelResultToForegroundResult(kernelResult: KernelRunResult): ForegroundTurnResult {
+    if (kernelResult.finalStatus === 'completed') {
+      return {
+        status: 'completed',
+        finalResponse: kernelResult.finalResponse ?? '',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'Kernel execution completed',
+        },
+        runtimeSummary: mapKernelResultToTranscript(kernelResult) ?? undefined,
+        toolCallSummaries: this.extractToolCallSummaries(kernelResult),
+        kernelResult: {
+          finalStatus: kernelResult.finalStatus,
+          finalResponse: kernelResult.finalResponse,
+          iterationsUsed: kernelResult.iterationsUsed,
+          toolCallCount: kernelResult.toolCalls.length,
+        },
+      };
+    }
+
+    return mapKernelErrorToForegroundResult(kernelResult);
+  }
+
+  private extractToolCallSummaries(kernelResult: KernelRunResult): ToolCallSummary[] {
+    return kernelResult.toolCalls.map(tc => ({
+      toolCallId: tc.toolCallId,
+      toolName: tc.toolName,
+      status: 'completed' as const,
+    }));
   }
 
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
@@ -1226,10 +1306,24 @@ export interface CreateForegroundAgentOptions {
   modelInputSnapshotStore?: ModelInputSnapshotStore;
   promptProjectionResolver?: PromptProjectionResolver;
   agentKernel?: AgentKernel;
+  toolCatalog?: ReturnType<typeof getToolCatalog>;
+  maxIterations?: number;
+  timeoutMs?: number;
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
-  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder, options?.modelInputSnapshotStore, options?.promptProjectionResolver, options?.agentKernel);
+  return new ForegroundAgentImpl(
+    options?.patterns,
+    options?.llmAdapter,
+    options?.agentConfig,
+    options?.modelInputBuilder,
+    options?.modelInputSnapshotStore,
+    options?.promptProjectionResolver,
+    options?.agentKernel,
+    options?.toolCatalog,
+    options?.maxIterations,
+    options?.timeoutMs,
+  );
 }
 
 export function mergeDelegationPolicies(
