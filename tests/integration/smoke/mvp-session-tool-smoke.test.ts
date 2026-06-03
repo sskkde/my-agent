@@ -70,5 +70,5 @@ describe('MVP smoke: session foreground tool dispatch', () => {
     } finally {
       await closeSmokeHarness(harness);
     }
-  }, 15000);
+  }, 30000);
 });

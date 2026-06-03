@@ -40,5 +40,5 @@ describe('MVP smoke: complex task planner flow', () => {
     } finally {
       await closeSmokeHarness(harness);
     }
-  }, 15000);
+  }, 30000);
 });

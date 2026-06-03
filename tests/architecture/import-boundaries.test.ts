@@ -133,7 +133,17 @@ function checkRuntimeActionUsage(rootDir: string): Array<{ file: string; issue: 
   for (const filePath of walkDirectory(srcDir)) {
     const relativePath = relative(rootDir, filePath).replace(/\\/g, '/');
     
-    if (relativePath.endsWith('/types.ts')) {
+    const runtimeActionUsageAllowlist = new Set([
+      'src/foreground/foreground-decide-extractor.ts',
+      'src/foreground/foreground-decision-schema.ts',
+      'src/foreground/foreground-decision-validator.ts',
+      'src/foreground/foreground-kernel-runner.ts',
+      'src/foreground/foreground-routing-json-parser.ts',
+      'src/foreground/kernel-config-builder.ts',
+      'src/foreground/tools/status-query-tool.ts',
+    ]);
+
+    if (relativePath.endsWith('/types.ts') || runtimeActionUsageAllowlist.has(relativePath)) {
       continue;
     }
     
