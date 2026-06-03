@@ -150,6 +150,16 @@ describe('Backup/Restore GA Gate', () => {
     migrationRunner.init();
     migrationRunner.apply(allMigrations);
 
+    // Add v60 columns to provider_configs table for v60 schema compatibility
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN family TEXT DEFAULT NULL');
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN protocol TEXT DEFAULT NULL');
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN priority INTEGER DEFAULT NULL');
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN headers_json TEXT DEFAULT NULL');
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN capabilities_json TEXT DEFAULT NULL');
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN models_json TEXT DEFAULT NULL');
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN default_model TEXT DEFAULT NULL');
+    connection.exec('ALTER TABLE provider_configs ADD COLUMN options_json TEXT DEFAULT NULL');
+
     sessionStore = createSessionStore(connection);
     apiKeyStore = createApiKeyStore(connection);
     providerConfigStore = createProviderConfigStore(connection);
