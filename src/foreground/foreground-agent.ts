@@ -87,6 +87,7 @@ import { validateForegroundDecideParams } from './foreground-decision-validator.
 import type { AgentKernel } from '../kernel/agent-kernel.js';
 import type { ContextBundle, ContextItem } from '../context/types.js';
 import type { KernelRunResult, ToolUseRequest } from '../kernel/types.js';
+import type { ForegroundTurnInput, ForegroundTurnResult } from './foreground-runner-types.js';
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 export function isMemorySemanticPolicyEnabled(): boolean {
@@ -113,6 +114,16 @@ function logForegroundDecideFallback(reason: string): void {
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
+  /**
+   * Processor-facing turn contract. Accepts a fully-hydrated turn input
+   * and returns a structured turn result with final response, tool summaries,
+   * and runtime diagnostics.
+   *
+   * This is the canonical entry point for foreground processing. The existing
+   * `processMessage()` method remains for backward compatibility until the
+   * migration is complete.
+   */
+  runTurn?(input: ForegroundTurnInput): Promise<ForegroundTurnResult>;
   /** Inject AgentKernel for kernel-backed foreground_decide routing. No-op if not supported. */
   setAgentKernel?(kernel: AgentKernel): void;
 }
@@ -148,6 +159,24 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
   setAgentKernel(kernel: AgentKernel): void {
     this.agentKernel = kernel;
+  }
+
+  async runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult> {
+    const fgMessageInput: ForegroundMessageInput = {
+      message: input.message,
+      userId: input.userId,
+      sessionId: input.sessionId,
+      turnId: input.turnId,
+      timestamp: input.timestamp,
+    };
+
+    const decision = await this.processMessage(fgMessageInput, input.foregroundState);
+
+    return {
+      status: 'completed',
+      finalResponse: decision.userVisibleResponse ?? '',
+      decisionTrace: decision,
+    };
   }
 
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {

@@ -1,6 +1,32 @@
 /**
  * Foreground Kernel Runner Types
- * Type definitions for the ForegroundKernelRunner architecture
+ * Type definitions for the ForegroundKernelRunner architecture.
+ *
+ * These types define the processor-facing contract for foreground turns.
+ * `ForegroundAgent.runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult>`
+ * is the canonical entry point; `ForegroundKernelRunner` is the current
+ * orchestrator that routes through the agent and executes side-effects.
+ *
+ * ## Migration Notes
+ *
+ * The following imports MUST be updated when the foreground-agent.ts `runTurn()`
+ * implementation is completed (Task 3 / Wave 3):
+ *
+ * - `src/processing/processor-orchestration.ts`: Currently calls
+ *   `foregroundKernelRunner.runTurn(turnInput)`. After migration, processors
+ *   should call `foregroundAgent.runTurn(turnInput)` directly.
+ * - `src/foreground/foreground-kernel-runner.ts`: Current `runTurn()` owner.
+ *   Will be refactored into internal helper once `ForegroundAgent.runTurn()`
+ *   absorbs its responsibilities.
+ *
+ * Files that import `ForegroundDecision` (should migrate to `ForegroundTurnResult`):
+ * - `src/foreground/foreground-kernel-runner.ts` (decisionTrace field)
+ * - `src/foreground/foreground-decide-extractor.ts`
+ * - `src/foreground/foreground-decision-validator.ts`
+ * - `src/foreground/foreground-decide-tool.ts`
+ * - `src/foreground/foreground-decision-schema.ts`
+ * - `src/foreground/foreground-routing-json-parser.ts` (uses ForegroundDecisionRoute)
+ * - `src/foreground/types.ts` (definition — will keep but deprecate)
  */
 
 import type { ForegroundDecision, ForegroundSessionState } from './types.js';
@@ -26,7 +52,22 @@ export interface RedactedKernelResult {
 }
 
 /**
- * Input for a foreground turn execution
+ * Summary of a single tool call within a foreground turn.
+ * Used by both `runtimeSummary.toolCallSummaries` and the top-level
+ * `ForegroundTurnResult.toolCallSummaries` for direct access.
+ */
+export interface ToolCallSummary {
+  toolCallId: string;
+  toolName: string;
+  status: 'completed' | 'failed' | 'skipped';
+  summary?: string;
+}
+
+/**
+ * Input for a foreground turn execution.
+ *
+ * This is the processor-facing contract. `ForegroundAgent.runTurn()` accepts
+ * this type as its sole argument.
  */
 export interface ForegroundTurnInput {
   /** User ID */
@@ -45,22 +86,53 @@ export interface ForegroundTurnInput {
   foregroundState: ForegroundSessionState;
   /** Effective agent configuration (merged global + user override) */
   agentConfig?: AgentConfig;
+  /**
+   * Agent ID for the foreground agent instance (e.g. 'foreground.default').
+   * Used for agent-scoped configuration and kernel routing.
+   */
+  agentId?: string;
+  /**
+   * Maximum iterations for kernel-backed tool loops.
+   * If not set, the kernel default applies.
+   */
+  maxIterations?: number;
+  /**
+   * Timeout in milliseconds for the entire turn.
+   * If not set, the configured routing timeout applies.
+   */
+  timeoutMs?: number;
 }
 
 /**
- * Result of a foreground turn execution
+ * Result of a foreground turn execution.
+ *
+ * This is the canonical output type for `ForegroundAgent.runTurn()`.
+ * Processors use this to build channel-neutral output.
  */
 export interface ForegroundTurnResult {
   /** Execution status */
   status: ForegroundTurnStatus;
   /** Final response to show the user */
   finalResponse: string;
-  /** Decision trace for this turn */
+  /**
+   * Decision trace for this turn.
+   *
+   * @deprecated The `decisionTrace` field references `ForegroundDecision` which
+   * is a historical type. New code should use `status`, `finalResponse`, and
+   * `toolCallSummaries` directly. The decision trace is preserved for backward
+   * compatibility and diagnostic logging only.
+   */
   decisionTrace: ForegroundDecision;
   /** Redacted kernel result if kernel was invoked - does NOT contain transcript or params */
   kernelResult?: RedactedKernelResult;
   /** Runtime summary for transcript */
   runtimeSummary?: TurnTranscript['runtimeSummary'];
+  /**
+   * Direct access to tool call summaries for this turn.
+   * Equivalent to `runtimeSummary?.toolCallSummaries` but always available
+   * at the top level for convenience.
+   */
+  toolCallSummaries?: ToolCallSummary[];
   /** Error details if failed */
   error?: { code: string; message: string };
 }
