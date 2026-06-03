@@ -45,4 +45,28 @@ describe('provider config migrations', () => {
     expect(customProviderTypeMigration.up).not.toContain('tenant_id');
     expect(customProviderTypeMigration.up).not.toContain('idx_provider_configs_tenant');
   });
+
+  /**
+   * v60 Migration: Runtime metadata columns for provider discovery
+   * Adds family, protocol, priority, and JSON columns for headers, capabilities, models, and options
+   */
+  it('should apply v60 migration adding runtime metadata columns', async () => {
+    const runner = createMigrationRunner(connection);
+    runner.init();
+    runner.apply(allStoreMigrations);
+
+    expect(runner.getCurrentVersion()).toBeGreaterThanOrEqual(60);
+
+    const columns = connection.query<{ name: string }>("PRAGMA table_info('provider_configs')");
+    const columnNames = columns.map(column => column.name);
+
+    expect(columnNames).toContain('family');
+    expect(columnNames).toContain('protocol');
+    expect(columnNames).toContain('priority');
+    expect(columnNames).toContain('headers_json');
+    expect(columnNames).toContain('capabilities_json');
+    expect(columnNames).toContain('models_json');
+    expect(columnNames).toContain('default_model');
+    expect(columnNames).toContain('options_json');
+  });
 });

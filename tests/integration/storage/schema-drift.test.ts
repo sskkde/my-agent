@@ -523,4 +523,43 @@ describe('Schema Drift', () => {
       expect(tableExists(connection, 'plan_patches')).toBe(true);
     });
   });
+
+  /**
+   * v60 Migration: Runtime metadata columns for provider discovery
+   */
+  describe('provider_configs v60 runtime metadata columns', () => {
+    const TABLE = 'provider_configs';
+
+    it('should have family column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'family')).toBe(true);
+    });
+
+    it('should have protocol column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'protocol')).toBe(true);
+    });
+
+    it('should have priority column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'priority')).toBe(true);
+    });
+
+    it('should have headers_json column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'headers_json')).toBe(true);
+    });
+
+    it('should have capabilities_json column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'capabilities_json')).toBe(true);
+    });
+
+    it('should have models_json column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'models_json')).toBe(true);
+    });
+
+    it('should have default_model column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'default_model')).toBe(true);
+    });
+
+    it('should have options_json column (v60)', () => {
+      expect(tableHasColumn(connection, TABLE, 'options_json')).toBe(true);
+    });
+  });
 });

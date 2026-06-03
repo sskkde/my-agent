@@ -608,4 +608,217 @@ describe('provider-config-store', () => {
       expect(result.providerType).toBe('ollama');
     });
   });
+
+  /**
+   * v60 Migration: Runtime metadata fields tests
+   */
+  describe('v60 runtime metadata fields', () => {
+    it('should create provider with new runtime metadata fields', () => {
+      const result = store.create({
+        providerId: 'prov-v60-001',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'OpenAI with Metadata',
+        family: 'openai',
+        protocol: 'openai-compatible',
+        priority: 10,
+        headers: { 'X-Custom-Header': 'value' },
+        capabilities: { streaming: true, function_calling: true },
+        models: [{ id: 'gpt-4', name: 'GPT-4' }],
+        defaultModel: 'gpt-4',
+        options: { maxTokens: 4096 }
+      });
+
+      expect(result.family).toBe('openai');
+      expect(result.protocol).toBe('openai-compatible');
+      expect(result.priority).toBe(10);
+      expect(result.capabilities).toEqual({ streaming: true, function_calling: true });
+      expect(result.models).toEqual([{ id: 'gpt-4', name: 'GPT-4' }]);
+      expect(result.defaultModel).toBe('gpt-4');
+      expect(result.options).toEqual({ maxTokens: 4096 });
+    });
+
+    it('should return new fields from getById', () => {
+      store.create({
+        providerId: 'prov-v60-002',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Test Provider',
+        family: 'test-family',
+        protocol: 'test-protocol',
+        priority: 5
+      });
+
+      const result = store.getById('prov-v60-002');
+
+      expect(result).not.toBeNull();
+      expect(result?.family).toBe('test-family');
+      expect(result?.protocol).toBe('test-protocol');
+      expect(result?.priority).toBe(5);
+    });
+
+    it('should return new fields from getByIdWithSecret', () => {
+      store.create({
+        providerId: 'prov-v60-003',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Test Provider',
+        apiKey: 'sk-test-1234',
+        family: 'secret-family',
+        capabilities: { test: true }
+      });
+
+      const result = store.getByIdWithSecret('prov-v60-003');
+
+      expect(result).not.toBeNull();
+      expect(result?.family).toBe('secret-family');
+      expect(result?.capabilities).toEqual({ test: true });
+    });
+
+    it('should update new runtime metadata fields', () => {
+      store.create({
+        providerId: 'prov-v60-004',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Test Provider'
+      });
+
+      store.update('prov-v60-004', {
+        family: 'updated-family',
+        protocol: 'updated-protocol',
+        priority: 100,
+        headers: { Authorization: 'Bearer test' },
+        capabilities: { updated: true },
+        models: [{ id: 'new-model' }],
+        defaultModel: 'new-model',
+        options: { temperature: 0.7 }
+      });
+
+      const result = store.getById('prov-v60-004');
+      expect(result?.family).toBe('updated-family');
+      expect(result?.protocol).toBe('updated-protocol');
+      expect(result?.priority).toBe(100);
+      expect(result?.capabilities).toEqual({ updated: true });
+      expect(result?.models).toEqual([{ id: 'new-model' }]);
+      expect(result?.defaultModel).toBe('new-model');
+      expect(result?.options).toEqual({ temperature: 0.7 });
+    });
+
+    it('should return new fields from listByUser', () => {
+      store.create({
+        providerId: 'prov-v60-005',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'List Test',
+        family: 'list-family',
+        defaultModel: 'list-model'
+      });
+
+      const results = store.listByUser('user-001');
+      const found = results.find(p => p.providerId === 'prov-v60-005');
+
+      expect(found).toBeDefined();
+      expect(found?.family).toBe('list-family');
+      expect(found?.defaultModel).toBe('list-model');
+    });
+  });
+
+  /**
+   * Malformed JSON fallback tests for safe error handling
+   */
+  describe('malformed JSON fallback', () => {
+    it('should handle malformed JSON in headers_json safely', () => {
+      store.create({
+        providerId: 'prov-malformed-001',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Malformed Headers'
+      });
+
+      connection.exec(
+        "UPDATE provider_configs SET headers_json = '{invalid json' WHERE provider_id = ?",
+        ['prov-malformed-001']
+      );
+
+      const result = store.getByIdWithSecret('prov-malformed-001');
+      expect(result).not.toBeNull();
+      expect(result?.headers).toBeNull();
+    });
+
+    it('should handle malformed JSON in capabilities_json safely', () => {
+      store.create({
+        providerId: 'prov-malformed-002',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Malformed Capabilities'
+      });
+
+      connection.exec(
+        "UPDATE provider_configs SET capabilities_json = 'not valid json' WHERE provider_id = ?",
+        ['prov-malformed-002']
+      );
+
+      const result = store.getById('prov-malformed-002');
+      expect(result).not.toBeNull();
+      expect(result?.capabilities).toBeNull();
+    });
+
+    it('should handle malformed JSON in models_json safely', () => {
+      store.create({
+        providerId: 'prov-malformed-003',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Malformed Models'
+      });
+
+      connection.exec(
+        "UPDATE provider_configs SET models_json = '[{broken' WHERE provider_id = ?",
+        ['prov-malformed-003']
+      );
+
+      const result = store.getById('prov-malformed-003');
+      expect(result).not.toBeNull();
+      expect(result?.models).toBeNull();
+    });
+
+    it('should handle malformed JSON in options_json safely', () => {
+      store.create({
+        providerId: 'prov-malformed-004',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Malformed Options'
+      });
+
+      connection.exec(
+        "UPDATE provider_configs SET options_json = '{{}}' WHERE provider_id = ?",
+        ['prov-malformed-004']
+      );
+
+      const result = store.getById('prov-malformed-004');
+      expect(result).not.toBeNull();
+      expect(result?.options).toBeNull();
+    });
+
+    it('should handle malformed JSON in getByIdWithSecret safely', () => {
+      store.create({
+        providerId: 'prov-malformed-005',
+        userId: 'user-001',
+        providerType: 'openai',
+        displayName: 'Malformed All',
+        apiKey: 'sk-test-1234'
+      });
+
+      connection.exec(
+        "UPDATE provider_configs SET headers_json = 'bad', capabilities_json = 'bad', models_json = 'bad', options_json = 'bad' WHERE provider_id = ?",
+        ['prov-malformed-005']
+      );
+
+      const result = store.getByIdWithSecret('prov-malformed-005');
+      expect(result).not.toBeNull();
+      expect(result?.headers).toBeNull();
+      expect(result?.capabilities).toBeNull();
+      expect(result?.models).toBeNull();
+      expect(result?.options).toBeNull();
+    });
+  });
 });
