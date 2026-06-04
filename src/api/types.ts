@@ -4,6 +4,7 @@ export interface ToolCallSummary {
   toolCallId: string;
   toolName: string;
   status: 'completed' | 'failed' | 'pending' | 'skipped';
+  summary?: string;
   transcriptSummary?: string;
   resultRef?: string;
 }

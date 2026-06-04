@@ -1,3 +1,10 @@
+/**
+ * @deprecated / @historical — these tests exercise the legacy ForegroundKernelRunner
+ * route-dispatch path which has been removed (T17). All scenarios are skipped.
+ *
+ * @see src/foreground/tools/ for the replacement tool implementations
+ * @see src/processing/processor-orchestration.ts for the replacement pipeline
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createForegroundKernelRunner,
@@ -84,7 +91,7 @@ function createMockLLMResponse(content: string): LLMResult {
   };
 }
 
-describe('ForegroundKernelRunner Integration Tests', () => {
+describe.skip('ForegroundKernelRunner Integration Tests [deprecated/historical]', () => {
   let mockForegroundAgent: ForegroundAgent;
   let mockAgentKernel: AgentKernel;
   let mockRuntimeDispatcher: RuntimeDispatcher;

@@ -6,8 +6,8 @@ import type { ApiContext } from '../../../src/api/context.js';
 import { generateSessionToken, hashToken, hashPassword } from '../../../src/storage/auth-crypto.js';
 import { randomUUID } from 'crypto';
 import type { Stores } from '../../../src/gateway/types.js';
-import type { ForegroundKernelRunner } from '../../../src/foreground/foreground-kernel-runner.js';
 import type { ForegroundTurnResult } from '../../../src/foreground/foreground-runner-types.js';
+import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js';
 
 describe('Processor orchestration SearchSubagent branch', () => {
   let server: FastifyInstance;
@@ -63,7 +63,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
 
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
 
-      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+      const mockForegroundAgent: ForegroundAgent = {
+        processMessage: vi.fn(),
         runTurn: vi.fn().mockResolvedValue({
           status: 'completed',
           finalResponse: 'TypeScript is a strongly typed programming language that builds on JavaScript.',
@@ -87,14 +88,13 @@ describe('Processor orchestration SearchSubagent branch', () => {
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: { processMessage: vi.fn() } as any,
+          foregroundAgent: mockForegroundAgent,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
           agentConfigStore: context.agentConfigStore,
-          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
 
@@ -110,7 +110,7 @@ describe('Processor orchestration SearchSubagent branch', () => {
       expect(result.success).toBe(true);
       expect(result.result?.text).toBe('TypeScript is a strongly typed programming language that builds on JavaScript.');
       expect(result.result?.route).toBe('dispatch_tool');
-      expect(mockForegroundKernelRunner.runTurn).toHaveBeenCalled();
+      expect(mockForegroundAgent.runTurn).toHaveBeenCalled();
     });
 
     it('includes runtimeSummary with search toolCallSummaries from runner', async () => {
@@ -125,7 +125,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
 
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
 
-      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+      const mockForegroundAgent: ForegroundAgent = {
+        processMessage: vi.fn(),
         runTurn: vi.fn().mockResolvedValue({
           status: 'completed',
           finalResponse: 'Based on the search results, here is the answer.',
@@ -149,14 +150,13 @@ describe('Processor orchestration SearchSubagent branch', () => {
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: { processMessage: vi.fn() } as any,
+          foregroundAgent: mockForegroundAgent,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
           agentConfigStore: context.agentConfigStore,
-          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
 
@@ -182,7 +182,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
     it('passes through non-search tool results from runner', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
 
-      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+      const mockForegroundAgent: ForegroundAgent = {
+        processMessage: vi.fn(),
         runTurn: vi.fn().mockResolvedValue({
           status: 'completed',
           finalResponse: 'Memory retrieved successfully.',
@@ -206,13 +207,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: { processMessage: vi.fn() } as any,
+          foregroundAgent: mockForegroundAgent,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
 
@@ -233,7 +233,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
     it('does not contain "Processing tool request..." in any response', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
 
-      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+      const mockForegroundAgent: ForegroundAgent = {
+        processMessage: vi.fn(),
         runTurn: vi.fn().mockResolvedValue({
           status: 'completed',
           finalResponse: 'The documentation shows that TypeScript interfaces can be extended.',
@@ -250,13 +251,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: { processMessage: vi.fn() } as any,
+          foregroundAgent: mockForegroundAgent,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
 
@@ -279,7 +279,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
     it('returns error when runner reports failure', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
 
-      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+      const mockForegroundAgent: ForegroundAgent = {
+        processMessage: vi.fn(),
         runTurn: vi.fn().mockResolvedValue({
           status: 'failed',
           finalResponse: 'Search failed.',
@@ -300,13 +301,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: { processMessage: vi.fn() } as any,
+          foregroundAgent: mockForegroundAgent,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
 
@@ -328,7 +328,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
     it('returns PROCESSING_ERROR when runner throws', async () => {
       const { createOrchestrationProcessor } = await import('../../../src/processing/processor-orchestration.js');
 
-      const mockForegroundKernelRunner: ForegroundKernelRunner = {
+      const mockForegroundAgent: ForegroundAgent = {
+        processMessage: vi.fn(),
         runTurn: vi.fn().mockRejectedValue(new Error('Runner crashed')),
       };
 
@@ -336,13 +337,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
         deps: {
           gateway: context.gateway,
           stores: context.stores as unknown as Stores,
-          foregroundAgent: { processMessage: vi.fn() } as any,
+          foregroundAgent: mockForegroundAgent,
           runtimeDispatcher: context.runtimeDispatcher,
           plannerRuntime: context.plannerRuntime,
           agentKernel: context.agentKernel,
           llmAdapter: context.llmAdapter,
           transcriptStore: context.stores.transcriptStore,
-          foregroundKernelRunner: mockForegroundKernelRunner,
         },
       });
 

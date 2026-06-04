@@ -1,3 +1,11 @@
+/**
+ * @deprecated / @historical — these tests exercise the legacy ForegroundKernelRunner
+ * route-dispatch path which has been removed (T17). All scenarios use the deprecated
+ * runner and are skipped.
+ *
+ * @see src/foreground/tools/ for the replacement tool implementations
+ * @see src/processing/processor-orchestration.ts for the replacement pipeline
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js';
 import {
@@ -192,7 +200,7 @@ function createMockModelInputBuilder(): ModelInputBuilder {
   } as unknown as ModelInputBuilder;
 }
 
-describe('foreground.decide Routing Integration Tests', () => {
+describe.skip('foreground.decide Routing Integration Tests [deprecated/historical]', () => {
   let originalDecideEnabled: string | undefined;
   let originalModelInputBuilder: string | undefined;
 

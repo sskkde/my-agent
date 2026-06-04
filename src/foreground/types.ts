@@ -122,6 +122,13 @@ export interface ForegroundTargetRef {
 /**
  * Foreground Decision
  * Result of processing a user message
+ *
+ * @deprecated This type is NOT the main foreground output. Use
+ * `ForegroundTurnResult` from `foreground-runner-types.ts` instead.
+ * `ForegroundDecision` is retained for backward compatibility with
+ * `processMessage()` internals, diagnostic logging, and test fixtures.
+ *
+ * @historical Pre-dates the kernel-driven turn architecture.
  */
 export interface ForegroundDecision {
   /** The decision route to take */
