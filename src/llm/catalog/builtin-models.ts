@@ -39,19 +39,38 @@ export const DEFAULT_LIMITS: ModelLimits = {
 export const BUILTIN_MODELS: ModelInfo[] = [
   {
     providerId: 'deepseek',
+    modelId: 'deepseek-v4-flash',
+    family: 'deepseek',
+    protocol: 'openai_chat',
+    displayName: 'DeepSeek V4 Flash',
+    capabilities: {
+      ...DEFAULT_TEXT_MODEL_CAPABILITIES,
+      streaming: true,
+      functionCalling: true,
+      jsonMode: true,
+      promptCache: true,
+    },
+    limits: {
+      contextTokens: 1000000,
+      outputTokens: 384000,
+    },
+  },
+  {
+    providerId: 'deepseek',
     modelId: 'deepseek-chat',
     family: 'deepseek',
     protocol: 'openai_chat',
     displayName: 'DeepSeek Chat',
     capabilities: {
       ...DEFAULT_TEXT_MODEL_CAPABILITIES,
+      streaming: true,
       functionCalling: true,
       jsonMode: true,
       promptCache: true,
     },
     limits: {
-      contextTokens: 128000,
-      outputTokens: 8192,
+      contextTokens: 1000000,
+      outputTokens: 384000,
     },
   },
   {
@@ -62,11 +81,14 @@ export const BUILTIN_MODELS: ModelInfo[] = [
     displayName: 'DeepSeek Reasoner',
     capabilities: {
       ...DEFAULT_TEXT_MODEL_CAPABILITIES,
+      streaming: true,
       reasoning: true,
+      jsonMode: true,
+      promptCache: true,
     },
     limits: {
-      contextTokens: 64000,
-      outputTokens: 8192,
+      contextTokens: 1000000,
+      outputTokens: 384000,
     },
   },
   {
@@ -77,6 +99,7 @@ export const BUILTIN_MODELS: ModelInfo[] = [
     displayName: 'GPT-4o mini',
     capabilities: {
       ...DEFAULT_TEXT_MODEL_CAPABILITIES,
+      streaming: true,
       functionCalling: true,
       jsonMode: true,
       vision: true,

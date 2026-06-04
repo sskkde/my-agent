@@ -11,6 +11,7 @@ describe('ProviderCatalog', () => {
     it('should have correct entry for openai', () => {
       const entry = BUILTIN_PROVIDER_CATALOG.find(e => e.providerType === 'openai');
       expect(entry).toBeDefined();
+      expect(entry?.displayName).toBe('OpenAI');
       expect(entry?.family).toBe('openai');
       expect(entry?.protocol).toBe('openai_chat');
       expect(entry?.requiresApiKey).toBe(true);
@@ -21,6 +22,7 @@ describe('ProviderCatalog', () => {
     it('should have correct entry for openrouter', () => {
       const entry = BUILTIN_PROVIDER_CATALOG.find(e => e.providerType === 'openrouter');
       expect(entry).toBeDefined();
+      expect(entry?.displayName).toBe('OpenRouter');
       expect(entry?.family).toBe('openai_compatible');
       expect(entry?.protocol).toBe('openai_chat');
       expect(entry?.requiresApiKey).toBe(true);
@@ -30,17 +32,19 @@ describe('ProviderCatalog', () => {
     it('should have correct entry for deepseek', () => {
       const entry = BUILTIN_PROVIDER_CATALOG.find(e => e.providerType === 'deepseek');
       expect(entry).toBeDefined();
+      expect(entry?.displayName).toBe('DeepSeek');
       expect(entry?.family).toBe('deepseek');
       expect(entry?.protocol).toBe('openai_chat');
       expect(entry?.requiresApiKey).toBe(true);
       expect(entry?.requiresBaseUrl).toBe(false);
       expect(entry?.defaultBaseUrl).toBe('https://api.deepseek.com');
-      expect(entry?.defaultModel).toBe('deepseek-chat');
+      expect(entry?.defaultModel).toBe('deepseek-v4-flash');
     });
 
     it('should have correct entry for ollama', () => {
       const entry = BUILTIN_PROVIDER_CATALOG.find(e => e.providerType === 'ollama');
       expect(entry).toBeDefined();
+      expect(entry?.displayName).toBe('Ollama');
       expect(entry?.family).toBe('ollama');
       expect(entry?.protocol).toBe('ollama_chat');
       expect(entry?.requiresApiKey).toBe(false);
@@ -51,10 +55,18 @@ describe('ProviderCatalog', () => {
     it('should have correct entry for custom', () => {
       const entry = BUILTIN_PROVIDER_CATALOG.find(e => e.providerType === 'custom');
       expect(entry).toBeDefined();
+      expect(entry?.displayName).toBe('Custom');
       expect(entry?.family).toBe('openai_compatible');
       expect(entry?.protocol).toBe('openai_chat');
       expect(entry?.requiresApiKey).toBe(true);
       expect(entry?.requiresBaseUrl).toBe(true);
+    });
+
+    it('should have displayName for all built-in providers', () => {
+      for (const entry of BUILTIN_PROVIDER_CATALOG) {
+        expect(entry.displayName).toBeDefined();
+        expect(entry.displayName.length).toBeGreaterThan(0);
+      }
     });
   });
 

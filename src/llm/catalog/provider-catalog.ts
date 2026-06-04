@@ -13,6 +13,8 @@ import type { ProviderType } from '../../storage/provider-config-store.js';
 export interface ProviderCatalogEntry {
   /** Provider type identifier */
   providerType: ProviderType;
+  /** Human-readable display name */
+  displayName: string;
   /** Provider family (architectural category) */
   family: ProviderFamily;
   /** Communication protocol */
@@ -36,6 +38,7 @@ export interface ProviderCatalogEntry {
 export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   {
     providerType: 'openai',
+    displayName: 'OpenAI',
     family: 'openai',
     protocol: 'openai_chat',
     promptFamily: 'openai',
@@ -44,6 +47,7 @@ export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   },
   {
     providerType: 'openrouter',
+    displayName: 'OpenRouter',
     family: 'openai_compatible',
     protocol: 'openai_chat',
     promptFamily: 'openai',
@@ -52,16 +56,18 @@ export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   },
   {
     providerType: 'deepseek',
+    displayName: 'DeepSeek',
     family: 'deepseek',
     protocol: 'openai_chat',
     promptFamily: 'deepseek',
     defaultBaseUrl: 'https://api.deepseek.com',
     requiresApiKey: true,
     requiresBaseUrl: false,
-    defaultModel: 'deepseek-chat',
+    defaultModel: 'deepseek-v4-flash',
   },
   {
     providerType: 'ollama',
+    displayName: 'Ollama',
     family: 'ollama',
     protocol: 'ollama_chat',
     promptFamily: 'ollama',
@@ -71,6 +77,7 @@ export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   },
   {
     providerType: 'custom',
+    displayName: 'Custom',
     family: 'openai_compatible',
     protocol: 'openai_chat',
     promptFamily: 'openai',

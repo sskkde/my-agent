@@ -180,6 +180,14 @@ export const authTokensTableMigration: Migration = {
   `
 };
 
+/**
+ * Provider configs table migration (Version 6).
+ *
+ * NOTE: This is the base schema. Runtime metadata fields (family, protocol, priority,
+ * headers_json, capabilities_json, models_json, default_model, options_json) were added
+ * in Version 60 via migration 019_extend_provider_configs_runtime_metadata.sql.
+ * The all-stores migrations already include Version 60 fields.
+ */
 export const providerConfigsTableMigration: Migration = {
   version: 6,
   name: 'create_provider_configs_table',
@@ -198,7 +206,15 @@ export const providerConfigsTableMigration: Migration = {
       last_test_status TEXT,
       last_tested_at TEXT,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      family TEXT DEFAULT NULL,
+      protocol TEXT DEFAULT NULL,
+      priority INTEGER DEFAULT NULL,
+      headers_json TEXT DEFAULT NULL,
+      capabilities_json TEXT DEFAULT NULL,
+      models_json TEXT DEFAULT NULL,
+      default_model TEXT DEFAULT NULL,
+      options_json TEXT DEFAULT NULL
     );
     CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)
   `,

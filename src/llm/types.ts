@@ -310,7 +310,7 @@ export const DEFAULT_REQUEST_REQUIREMENTS: RequestRequirements = {
 export interface FallbackPolicy {
   enabled: boolean;
   maxAttempts: number;
-  mode: 'sequential' | 'round_robin' | 'best_effort';
+  mode: 'same_model_only' | 'same_capability_only' | 'any_compatible';
 }
 
 /**
@@ -320,7 +320,7 @@ export interface FallbackPolicy {
 export const DEFAULT_FALLBACK_POLICY: FallbackPolicy = {
   enabled: true,
   maxAttempts: 3,
-  mode: 'best_effort',
+  mode: 'any_compatible',
 };
 
 /**
