@@ -277,7 +277,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
     // ─── Bypass 3: No ModelInputBuilder — deterministic fallback ──────────
     if (!this.modelInputBuilder) {
-      const deterministicDecision = this.routeDeterministically(input.message, state, toolCatalog);
+      const deterministicDecision = this.routeDeterministically(input, state, toolCatalog);
       if (deterministicDecision) {
         return deterministicDecision;
       }
@@ -314,7 +314,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
         // Decide failed — deterministic fallback → answer_directly
         logForegroundDecideFallback(`decide path failed (${decideResult.error?.code}), returning answer_directly`);
-        const deterministicDecision = this.routeDeterministically(input.message, state, toolCatalog);
+        const deterministicDecision = this.routeDeterministically(input, state, toolCatalog);
         if (deterministicDecision) {
           return deterministicDecision;
         }
@@ -340,7 +340,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
 
       // New path failed — deterministic fallback → answer_directly
-      const deterministicDecision = this.routeDeterministically(input.message, state, toolCatalog);
+      const deterministicDecision = this.routeDeterministically(input, state, toolCatalog);
       if (deterministicDecision) {
         return deterministicDecision;
       }
@@ -873,11 +873,11 @@ class ForegroundAgentImpl implements ForegroundAgent {
   }
 
   private routeDeterministically(
-    userMessage: string,
+    input: ForegroundMessageInput,
     state: ForegroundSessionState,
     toolCatalog: string[]
   ): ForegroundDecision | null {
-    const content = userMessage.toLowerCase().trim();
+    const content = input.message.toLowerCase().trim();
 
     const effectiveConfig = this.getEffectiveConfig(state);
     const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
@@ -906,6 +906,14 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
     }
 
+    if (this.isInterruptIntent(content)) {
+      return this.mapRouterOutputToDecision({
+        route: 'cancel_or_modify_task',
+        reason: 'Deterministic fallback: interrupt-related query detected',
+        userVisibleResponse: undefined,
+      }, input, state, toolCatalog);
+    }
+
     if (content.includes('plan') || content.includes('step') || content.includes('task') || content.includes('计划') || content.includes('步骤')) {
       return this.createDecision('spawn_planner', {
         reason: 'Deterministic fallback: planning-related query detected',
@@ -915,6 +923,25 @@ class ForegroundAgentImpl implements ForegroundAgent {
     }
 
     return null;
+  }
+
+  private isInterruptIntent(content: string): boolean {
+    return content.includes('cancel')
+      || content.includes('stop')
+      || content.includes('abort')
+      || content.includes('pause')
+      || content.includes('resume')
+      || content.includes('modify')
+      || content.includes('change')
+      || content.includes('update')
+      || content.includes('取消')
+      || content.includes('停止')
+      || content.includes('暂停')
+      || content.includes('继续')
+      || content.includes('恢复')
+      || content.includes('调整')
+      || content.includes('修改')
+      || content.includes('更改');
   }
 
   private getEffectiveConfig(state?: ForegroundSessionState): AgentConfig | undefined {

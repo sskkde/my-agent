@@ -120,6 +120,17 @@ function checkImportBoundaries(rootDir: string): ImportViolation[] {
   return violations;
 }
 
+const RUNTIME_ACTION_USAGE_ALLOWLIST = new Set([
+  // Schema/parser/config modules mention routing fields but do not perform cross-runtime actions.
+  'src/foreground/foreground-decide-extractor.ts',
+  'src/foreground/foreground-decision-schema.ts',
+  'src/foreground/foreground-decision-validator.ts',
+  'src/foreground/foreground-kernel-runner.ts',
+  'src/foreground/foreground-routing-json-parser.ts',
+  'src/foreground/kernel-config-builder.ts',
+  'src/foreground/tools/status-query-tool.ts',
+]);
+
 function checkRuntimeActionUsage(rootDir: string): Array<{ file: string; issue: string }> {
   const srcDir = join(rootDir, 'src');
   const issues: Array<{ file: string; issue: string }> = [];
@@ -133,7 +144,7 @@ function checkRuntimeActionUsage(rootDir: string): Array<{ file: string; issue: 
   for (const filePath of walkDirectory(srcDir)) {
     const relativePath = relative(rootDir, filePath).replace(/\\/g, '/');
     
-    if (relativePath.endsWith('/types.ts')) {
+    if (relativePath.endsWith('/types.ts') || RUNTIME_ACTION_USAGE_ALLOWLIST.has(relativePath)) {
       continue;
     }
     

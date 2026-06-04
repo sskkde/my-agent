@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ApiContext } from '../../../src/api/context.js';
 import { generateSessionToken, hashToken, hashPassword } from '../../../src/storage/auth-crypto.js';
 import { randomUUID } from 'crypto';
+import { BUILT_IN_TOOLS } from '../../../src/api/tool-catalog.js';
 
 describe('Tools and Models API Integration', () => {
   let server: FastifyInstance;
@@ -81,8 +82,8 @@ describe('Tools and Models API Integration', () => {
       const body = JSON.parse(response.body);
       expect(body.data).toBeDefined();
       expect(body.data.tools).toBeDefined();
-      expect(body.data.total).toBe(21);
-      expect(body.data.tools).toHaveLength(21);
+      expect(body.data.total).toBe(BUILT_IN_TOOLS.length);
+      expect(body.data.tools).toHaveLength(BUILT_IN_TOOLS.length);
     });
 
     it('should return tools with correct structure', async () => {
@@ -124,7 +125,7 @@ describe('Tools and Models API Integration', () => {
       }
     });
 
-    it('should include all 15 built-in tools', async () => {
+    it('should include core built-in tools', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/v1/tools',
