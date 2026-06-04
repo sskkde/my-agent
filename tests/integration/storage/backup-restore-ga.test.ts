@@ -151,14 +151,29 @@ describe('Backup/Restore GA Gate', () => {
     migrationRunner.apply(allMigrations);
 
     // Add v60 columns to provider_configs table for v60 schema compatibility
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN family TEXT DEFAULT NULL');
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN protocol TEXT DEFAULT NULL');
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN priority INTEGER DEFAULT NULL');
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN headers_json TEXT DEFAULT NULL');
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN capabilities_json TEXT DEFAULT NULL');
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN models_json TEXT DEFAULT NULL');
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN default_model TEXT DEFAULT NULL');
-    connection.exec('ALTER TABLE provider_configs ADD COLUMN options_json TEXT DEFAULT NULL');
+    // when running against older base schemas. Newer base schemas already include
+    // these runtime metadata columns, so guard each ALTER to avoid duplicate-column
+    // failures.
+    const providerConfigColumns = new Set(
+      connection
+        .query<{ name: string }>('PRAGMA table_info(provider_configs)')
+        .map((column) => column.name)
+    );
+    const addProviderConfigColumnIfMissing = (name: string, definition: string): void => {
+      if (!providerConfigColumns.has(name)) {
+        connection.exec(`ALTER TABLE provider_configs ADD COLUMN ${name} ${definition}`);
+        providerConfigColumns.add(name);
+      }
+    };
+
+    addProviderConfigColumnIfMissing('family', 'TEXT DEFAULT NULL');
+    addProviderConfigColumnIfMissing('protocol', 'TEXT DEFAULT NULL');
+    addProviderConfigColumnIfMissing('priority', 'INTEGER DEFAULT NULL');
+    addProviderConfigColumnIfMissing('headers_json', 'TEXT DEFAULT NULL');
+    addProviderConfigColumnIfMissing('capabilities_json', 'TEXT DEFAULT NULL');
+    addProviderConfigColumnIfMissing('models_json', 'TEXT DEFAULT NULL');
+    addProviderConfigColumnIfMissing('default_model', 'TEXT DEFAULT NULL');
+    addProviderConfigColumnIfMissing('options_json', 'TEXT DEFAULT NULL');
 
     sessionStore = createSessionStore(connection);
     apiKeyStore = createApiKeyStore(connection);
