@@ -66,6 +66,100 @@ const DEFAULT_CAPABILITIES: ProviderCapabilities = {
 };
 
 /**
+ * Merges boolean capability overrides from provider config into model capabilities
+ * Only boolean fields are merged; non-boolean fields are ignored
+ * 
+ * @param modelCapabilities - Base model capabilities
+ * @param providerCapabilities - Provider capability overrides (from capabilities_json)
+ * @returns Merged model capabilities
+ */
+function mergeCapabilityOverrides(
+  modelCapabilities: ModelInfo['capabilities'],
+  providerCapabilities: Record<string, unknown> | null | undefined
+): ModelInfo['capabilities'] {
+  if (!providerCapabilities) {
+    return modelCapabilities;
+  }
+
+  const booleanFields: Array<keyof ModelInfo['capabilities']> = [
+    'streaming',
+    'functionCalling',
+    'jsonMode',
+    'structuredOutput',
+    'reasoning',
+    'vision',
+    'audioInput',
+    'pdfInput',
+    'toolChoice',
+    'parallelToolCalls',
+    'promptCache',
+  ];
+
+  const merged = { ...modelCapabilities };
+
+  for (const field of booleanFields) {
+    const value = providerCapabilities[field];
+    if (typeof value === 'boolean') {
+      merged[field] = value;
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Applies model-specific overrides from provider.models array
+ * Finds matching model entry by modelId and applies overrides
+ * 
+ * @param model - Base model info
+ * @param providerModels - Provider models array (from models_json)
+ * @returns Model info with overrides applied
+ */
+function applyModelOverrides(
+  model: ModelInfo,
+  providerModels: Record<string, unknown>[] | null | undefined
+): ModelInfo {
+  if (!providerModels || providerModels.length === 0) {
+    return model;
+  }
+
+  const modelOverride = providerModels.find(
+    (entry) => entry.modelId === model.modelId
+  );
+
+  if (!modelOverride) {
+    return model;
+  }
+
+  const overridden = { ...model };
+
+  if (typeof modelOverride.displayName === 'string') {
+    overridden.displayName = modelOverride.displayName;
+  }
+
+  if (modelOverride.capabilities && typeof modelOverride.capabilities === 'object') {
+    overridden.capabilities = mergeCapabilityOverrides(
+      model.capabilities,
+      modelOverride.capabilities as Record<string, unknown>
+    );
+  }
+
+  if (modelOverride.limits && typeof modelOverride.limits === 'object') {
+    const limitsOverride = modelOverride.limits as Record<string, unknown>;
+    overridden.limits = { ...model.limits };
+
+    if (typeof limitsOverride.contextTokens === 'number') {
+      overridden.limits.contextTokens = limitsOverride.contextTokens;
+    }
+    if (typeof limitsOverride.outputTokens === 'number') {
+      overridden.limits.outputTokens = limitsOverride.outputTokens;
+    }
+  }
+
+  return overridden;
+}
+
+/**
  * Checks if a provider has usable credentials
  * Ollama requires baseUrl, all others require apiKey
  * 
@@ -228,18 +322,24 @@ export function resolveProviderCandidates(
     }
 
     const isPreferred = provider.providerId === preferredProviderId;
-    const priority = isPreferred ? 1 : dbPriority;
+    const priority = isPreferred ? 1 : (provider.priority ?? dbPriority);
 
     const catalog = getProviderCatalogEntry(provider.providerType);
     const modelId = provider.selectedModel ??
       catalog?.defaultModel ??
       'gpt-4o-mini';
-    const model = resolve(
-      provider.providerId,
+    let model = resolve(
+      provider.providerType,
       modelId,
       catalog?.family,
       catalog?.protocol
     );
+
+    model = applyModelOverrides(model, provider.models);
+    model = {
+      ...model,
+      capabilities: mergeCapabilityOverrides(model.capabilities, provider.capabilities),
+    };
 
     const config = buildProviderRuntimeConfig(provider, catalog, model);
 
@@ -253,8 +353,7 @@ export function resolveProviderCandidates(
 
     seen.add(provider.providerId);
     
-    // Only increment priority if not preferred
-    if (!isPreferred) {
+    if (!isPreferred && (provider.priority === null || provider.priority === undefined)) {
       dbPriority += 10;
     }
   }

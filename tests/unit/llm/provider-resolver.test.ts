@@ -156,7 +156,7 @@ describe('provider-resolver', () => {
 
       const config = buildProviderRuntimeConfig(provider, catalog, model);
 
-      expect(config.defaultModel).toBe('deepseek-chat');
+      expect(config.defaultModel).toBe('deepseek-v4-flash');
     });
 
     it('falls back to gpt-4o-mini when no model specified anywhere', () => {
@@ -634,6 +634,191 @@ describe('provider-resolver', () => {
       expect(openrouterConfig?.config.capabilities.supportsJsonMode).toBe(true);
       expect(deepseekConfig?.config.capabilities.supportsJsonMode).toBe(true);
       expect(ollamaConfig?.config.capabilities.supportsJsonMode).toBe(false);
+    });
+
+    it('Respects explicit DB priority over auto-increment', () => {
+      const providers = [
+        createMockProvider({ providerId: 'provider-1', priority: 5 }),
+        createMockProvider({ providerId: 'provider-2', priority: null }),
+        createMockProvider({ providerId: 'provider-3', priority: 15 }),
+      ];
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: providers,
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(3);
+      const provider1 = candidates.find((c) => c.providerId === 'provider-1');
+      const provider2 = candidates.find((c) => c.providerId === 'provider-2');
+      const provider3 = candidates.find((c) => c.providerId === 'provider-3');
+
+      expect(provider1?.priority).toBe(5);
+      expect(provider2?.priority).toBe(10);
+      expect(provider3?.priority).toBe(15);
+    });
+
+    it('Applies provider.capabilities boolean overrides to model', () => {
+      const provider = createMockProvider({
+        providerId: 'custom-provider',
+        capabilities: {
+          functionCalling: false,
+          jsonMode: true,
+          vision: true,
+        },
+      });
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].model.capabilities.functionCalling).toBe(false);
+      expect(candidates[0].model.capabilities.jsonMode).toBe(true);
+      expect(candidates[0].model.capabilities.vision).toBe(true);
+    });
+
+    it('Ignores non-boolean provider.capabilities fields', () => {
+      const provider = createMockProvider({
+        providerId: 'custom-provider',
+        capabilities: {
+          functionCalling: false,
+          invalidField: 'should-be-ignored',
+          anotherField: 123,
+        },
+      });
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].model.capabilities.functionCalling).toBe(false);
+    });
+
+    it('Applies provider.models displayName override', () => {
+      const provider = createMockProvider({
+        providerId: 'custom-provider',
+        selectedModel: 'test-model',
+        models: [
+          {
+            modelId: 'test-model',
+            displayName: 'Custom Display Name',
+          },
+        ],
+      });
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].model.displayName).toBe('Custom Display Name');
+    });
+
+    it('Applies provider.models capabilities override', () => {
+      const provider = createMockProvider({
+        providerId: 'custom-provider',
+        selectedModel: 'test-model',
+        models: [
+          {
+            modelId: 'test-model',
+            capabilities: {
+              functionCalling: false,
+              jsonMode: true,
+            },
+          },
+        ],
+      });
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].model.capabilities.functionCalling).toBe(false);
+      expect(candidates[0].model.capabilities.jsonMode).toBe(true);
+    });
+
+    it('Applies provider.models limits override', () => {
+      const provider = createMockProvider({
+        providerId: 'custom-provider',
+        selectedModel: 'test-model',
+        models: [
+          {
+            modelId: 'test-model',
+            limits: {
+              contextTokens: 64000,
+              outputTokens: 4096,
+            },
+          },
+        ],
+      });
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].model.limits.contextTokens).toBe(64000);
+      expect(candidates[0].model.limits.outputTokens).toBe(4096);
+    });
+
+    it('DB/global capabilities override model-specific override', () => {
+      const provider = createMockProvider({
+        providerId: 'custom-provider',
+        selectedModel: 'test-model',
+        capabilities: {
+          functionCalling: false,
+        },
+        models: [
+          {
+            modelId: 'test-model',
+            capabilities: {
+              functionCalling: true,
+              jsonMode: true,
+            },
+          },
+        ],
+      });
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].model.capabilities.functionCalling).toBe(false);
+      expect(candidates[0].model.capabilities.jsonMode).toBe(true);
+    });
+
+    it('DeepSeek default model is deepseek-v4-flash', () => {
+      const provider = createMockProvider({
+        providerType: 'deepseek',
+        apiKey: 'sk-deepseek',
+        selectedModel: null,
+      });
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].model.modelId).toBe('deepseek-v4-flash');
     });
   });
 });

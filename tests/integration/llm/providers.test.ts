@@ -86,6 +86,25 @@ function createTimeoutMockFetch(): typeof fetch {
   });
 }
 
+function firstFetchCall(fetchMock: typeof fetch): [string | URL | Request, RequestInit] {
+  const mocked = fetchMock as unknown as {
+    mock: { calls: Array<[string | URL | Request, RequestInit | undefined]> };
+  };
+  const call = mocked.mock.calls[0];
+  if (!call?.[1]) {
+    throw new Error('Expected fetch to be called with RequestInit');
+  }
+  return [call[0], call[1]];
+}
+
+function firstFetchHeaders(fetchMock: typeof fetch): Record<string, string> {
+  const [, init] = firstFetchCall(fetchMock);
+  if (!init.headers || init.headers instanceof Headers || Array.isArray(init.headers)) {
+    throw new Error('Expected fetch to be called with plain object headers');
+  }
+  return init.headers as Record<string, string>;
+}
+
 function createErrorMockFetch(
   status: number = 500,
   errorMessage: string = 'Internal Server Error'
@@ -709,6 +728,249 @@ describe('Multi-Provider LLM Adapter Integration', () => {
       if (!result.success) {
         expect(result.error.category).toBe('model_error');
         expect(result.error.code).toBe('PROVIDER_UNAVAILABLE');
+      }
+    });
+  });
+
+  describe('Header Merging and Protection', () => {
+    let mockFetch: ReturnType<typeof createMockFetch>;
+
+    beforeEach(() => {
+      vi.restoreAllMocks();
+      mockFetch = createMockFetch({
+        id: 'resp_header_test',
+        model: 'gpt-4',
+        choices: [
+          {
+            message: { role: 'assistant', content: 'Test response' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+      });
+      global.fetch = mockFetch;
+    });
+
+    it('should include custom headers from config.headers', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        headers: {
+          'X-Custom': 'custom-value',
+          'X-Request-ID': 'req-123',
+        },
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Custom': 'custom-value',
+            'X-Request-ID': 'req-123',
+          }),
+        })
+      );
+    });
+
+    it('should not allow overriding Authorization header', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        headers: {
+          Authorization: 'Bearer malicious-token',
+          authorization: 'Bearer another-malicious',
+        },
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should not allow overriding Content-Type header', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        headers: {
+          'Content-Type': 'text/plain',
+          'content-type': 'application/xml',
+        },
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('should protect headers case-insensitively', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        headers: {
+          AUTHORIZATION: 'Bearer malicious',
+          'CONTENT-TYPE': 'text/html',
+          Host: 'evil.com',
+          'content-length': '9999',
+          Cookie: 'session=hijacked',
+          'Set-Cookie': 'poisoned=true',
+        },
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+
+      const headers = firstFetchHeaders(mockFetch);
+      expect(headers['AUTHORIZATION']).toBeUndefined();
+      expect(headers['CONTENT-TYPE']).toBeUndefined();
+      expect(headers['Host']).toBeUndefined();
+      expect(headers['content-length']).toBeUndefined();
+      expect(headers['Cookie']).toBeUndefined();
+      expect(headers['Set-Cookie']).toBeUndefined();
+    });
+
+    it('should preserve original casing for allowed custom headers', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        headers: {
+          'X-Custom-Header': 'value1',
+          'x-another-header': 'value2',
+          'X-THIRD-Header': 'value3',
+        },
+      });
+
+      await adapter.complete(createTestRequest());
+
+      const headers = firstFetchHeaders(mockFetch);
+      expect(headers['X-Custom-Header']).toBe('value1');
+      expect(headers['x-another-header']).toBe('value2');
+      expect(headers['X-THIRD-Header']).toBe('value3');
+    });
+
+    it('should merge headers in OpenRouterAdapter', async () => {
+      const adapter = new OpenRouterAdapter({
+        ...createTestProviderConfig('openrouter', 1),
+        apiKey: 'test-key',
+        headers: {
+          'X-Custom': 'custom-value',
+          Authorization: 'Bearer malicious',
+        },
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Custom': 'custom-value',
+            Authorization: 'Bearer test-key',
+          }),
+        })
+      );
+    });
+
+    it('should merge headers in OllamaAdapter', async () => {
+      const adapter = new OllamaAdapter({
+        ...createTestProviderConfig('ollama', 1),
+        headers: {
+          'X-Ollama-Custom': 'ollama-value',
+          'Content-Type': 'text/plain',
+        },
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Ollama-Custom': 'ollama-value',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('should handle empty headers gracefully', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        headers: {},
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('should handle undefined headers gracefully', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+      });
+
+      await adapter.complete(createTestRequest());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-api-key',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('should not expose header values in API responses', async () => {
+      const adapter = new OpenAIAdapter({
+        ...createTestProviderConfig('openai', 1),
+        apiKey: 'test-api-key',
+        headers: {
+          'X-Secret': 'secret-value',
+        },
+      });
+
+      const result = await adapter.complete(createTestRequest());
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.response).not.toHaveProperty('headers');
+        expect(result.response).not.toHaveProperty('X-Secret');
       }
     });
   });

@@ -6,6 +6,59 @@
 import type { LLMRequest, LLMResponse, ToolCall } from '../types';
 
 /**
+ * List of protected HTTP headers that cannot be overridden by user configuration.
+ * Comparison is case-insensitive.
+ */
+const PROTECTED_HEADERS = new Set([
+  'authorization',
+  'content-type',
+  'host',
+  'content-length',
+  'cookie',
+  'set-cookie',
+]);
+
+/**
+ * Safely merges custom headers with base headers, preventing override of protected headers.
+ * Protected headers: authorization, content-type, host, content-length, cookie, set-cookie
+ * 
+ * @param baseHeaders - The base headers (typically system-provided, e.g., Authorization, Content-Type)
+ * @param customHeaders - Custom headers to merge (from user configuration)
+ * @returns Merged headers with protected headers preserved from base
+ * 
+ * @example
+ * ```typescript
+ * const merged = safeMergeHeaders(
+ *   { 'Content-Type': 'application/json', Authorization: 'Bearer token' },
+ *   { 'X-Custom': 'value', 'authorization': 'hacked' }
+ * );
+ * // Returns: { 'Content-Type': 'application/json', Authorization: 'Bearer token', 'X-Custom': 'value' }
+ * ```
+ */
+export function safeMergeHeaders(
+  baseHeaders: Record<string, string>,
+  customHeaders?: Record<string, string>
+): Record<string, string> {
+  if (!customHeaders || Object.keys(customHeaders).length === 0) {
+    return { ...baseHeaders };
+  }
+
+  const result: Record<string, string> = { ...baseHeaders };
+
+  for (const [key, value] of Object.entries(customHeaders)) {
+    const lowerKey = key.toLowerCase();
+    // Skip protected headers - they cannot be overridden
+    if (PROTECTED_HEADERS.has(lowerKey)) {
+      continue;
+    }
+    // Preserve original casing for non-protected headers
+    result[key] = value;
+  }
+
+  return result;
+}
+
+/**
  * Builds headers for OpenAI-compatible API requests
  *
  * @param input - Configuration object containing API key, base URL, and optional metadata
@@ -17,16 +70,17 @@ export function buildOpenAICompatibleHeaders(input: {
   providerId?: string;
   siteUrl?: string;
   appName?: string;
+  extraHeaders?: Record<string, string>;
 }): Record<string, string> {
-  const headers: Record<string, string> = {
+  const baseHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${input.apiKey}`,
   };
 
-  if (input.siteUrl) headers['HTTP-Referer'] = input.siteUrl;
-  if (input.appName) headers['X-Title'] = input.appName;
+  if (input.siteUrl) baseHeaders['HTTP-Referer'] = input.siteUrl;
+  if (input.appName) baseHeaders['X-Title'] = input.appName;
 
-  return headers;
+  return safeMergeHeaders(baseHeaders, input.extraHeaders);
 }
 
 /**

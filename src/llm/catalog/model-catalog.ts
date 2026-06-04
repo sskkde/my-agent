@@ -21,6 +21,14 @@ export function modelKey(providerId: string, modelId: string): string {
 }
 
 /**
+ * Pre-built Map for O(1) model lookup by provider/model key.
+ * Constructed once at module load time from BUILTIN_MODELS.
+ */
+const BUILTIN_MODELS_MAP: Map<string, ModelInfo> = new Map(
+  BUILTIN_MODELS.map((m) => [modelKey(m.providerId, m.modelId), m])
+);
+
+/**
  * Retrieves a built-in model by provider and model ID
  * @param providerId - The provider identifier
  * @param modelId - The model identifier
@@ -31,10 +39,7 @@ export function getBuiltinModel(
   modelId: string
 ): ModelInfo | null {
   const key = modelKey(providerId, modelId);
-  const model = BUILTIN_MODELS.find(
-    (m) => modelKey(m.providerId, m.modelId) === key
-  );
-  return model ?? null;
+  return BUILTIN_MODELS_MAP.get(key) ?? null;
 }
 
 /**

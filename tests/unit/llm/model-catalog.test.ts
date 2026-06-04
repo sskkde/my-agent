@@ -35,6 +35,18 @@ describe('Model Catalog', () => {
       expect(result!.capabilities.jsonMode).toBe(true);
     });
 
+    it('returns deepseek-v4-flash as current DeepSeek model', () => {
+      const result = getBuiltinModel('deepseek', 'deepseek-v4-flash');
+      expect(result).not.toBeNull();
+      expect(result!.providerId).toBe('deepseek');
+      expect(result!.modelId).toBe('deepseek-v4-flash');
+      expect(result!.capabilities.functionCalling).toBe(true);
+      expect(result!.capabilities.jsonMode).toBe(true);
+      expect(result!.capabilities.promptCache).toBe(true);
+      expect(result!.limits.contextTokens).toBe(1000000);
+      expect(result!.limits.outputTokens).toBe(384000);
+    });
+
     it('returns deepseek-reasoner with reasoning=true', () => {
       const result = getBuiltinModel('deepseek', 'deepseek-reasoner');
       expect(result).not.toBeNull();
@@ -151,6 +163,13 @@ describe('Model Catalog', () => {
         (m) => m.providerId === 'deepseek' && m.modelId === 'deepseek-chat'
       );
       expect(deepseekChat).toBeDefined();
+    });
+
+    it('contains deepseek-v4-flash', () => {
+      const deepseekV4Flash = BUILTIN_MODELS.find(
+        (m) => m.providerId === 'deepseek' && m.modelId === 'deepseek-v4-flash'
+      );
+      expect(deepseekV4Flash).toBeDefined();
     });
 
     it('contains deepseek-reasoner', () => {

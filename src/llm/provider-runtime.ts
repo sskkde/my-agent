@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import type { LLMAdapter } from './adapter.js';
 import { createLLMAdapter } from './adapter.js';
 import type { LLMProvider } from './provider.js';
-import type { ProviderCapabilities, ProviderConfig as RuntimeProviderConfig, ProviderCandidate, AllProvidersFailedError } from './types.js';
+import type { ProviderConfig as RuntimeProviderConfig, ProviderCandidate, AllProvidersFailedError } from './types.js';
 import { OllamaAdapter, OpenAIAdapter, OpenRouterAdapter } from './providers.js';
 import type {
   ProviderConfigStore,
@@ -13,17 +13,7 @@ import { resolveProviderCandidates, type EnvProviderDescriptor } from './routing
 import { deriveRequestRequirements, canServeRequest } from './routing/request-requirements.js';
 
 const DEFAULT_TIMEOUT_MS = 60000;
-const DEFAULT_RETRIES = 2;
 const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
-
-const DEFAULT_CAPABILITIES: ProviderCapabilities = {
-  supportsStreaming: false,
-  supportsFunctionCalling: true,
-  supportsJsonMode: true,
-  supportsVision: false,
-  maxTokens: 8192,
-  supportedModels: [],
-};
 
 interface RefreshLLMProvidersOptions {
   adapter: LLMAdapter;
@@ -37,50 +27,6 @@ export interface ProviderScopedLLMAdapter extends LLMAdapter {
 
 interface CreateProviderScopedLLMAdapterOptions {
   providerConfigStore: ProviderConfigStore;
-}
-
-function providerCapabilities(selectedModel: string | null, providerType?: ProviderType): ProviderCapabilities {
-  const supportsJsonMode = providerType === 'openai' || providerType === 'openrouter' || providerType === 'deepseek';
-  return {
-    ...DEFAULT_CAPABILITIES,
-    supportsJsonMode,
-    supportedModels: selectedModel ? [selectedModel] : [],
-  };
-}
-
-function hasUsableCredentials(provider: ProviderConfigWithSecret): boolean {
-  if (!provider.enabled) {
-    return false;
-  }
-
-  if (provider.providerType === 'ollama') {
-    return Boolean(provider.baseUrl);
-  }
-
-  return Boolean(provider.apiKey);
-}
-
-function createRuntimeConfig(
-  id: string,
-  name: string,
-  selectedModel: string | null,
-  providerType: ProviderType,
-  overrides: Partial<RuntimeProviderConfig>
-): RuntimeProviderConfig {
-  return {
-    id,
-    name,
-    enabled: true,
-    priority: overrides.priority ?? 100,
-    timeoutMs: overrides.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    retries: overrides.retries ?? DEFAULT_RETRIES,
-    capabilities: overrides.capabilities ?? providerCapabilities(selectedModel, providerType),
-    apiKey: overrides.apiKey,
-    baseUrl: overrides.baseUrl,
-    enableLogging: overrides.enableLogging,
-    siteUrl: overrides.siteUrl,
-    appName: overrides.appName,
-  };
 }
 
 function createProvider(providerType: ProviderType, config: RuntimeProviderConfig): LLMProvider {
@@ -150,67 +96,6 @@ function buildEnvProviderDescriptors(): EnvProviderDescriptor[] {
   return descriptors;
 }
 
-function createDatabaseProvider(provider: ProviderConfigWithSecret, priority: number): LLMProvider | null {
-  if (!hasUsableCredentials(provider)) {
-    return null;
-  }
-
-  const runtimeConfig = createRuntimeConfig(
-    provider.providerId,
-    provider.displayName,
-    provider.selectedModel,
-    provider.providerType,
-    {
-      priority,
-      apiKey: provider.apiKey ?? undefined,
-      baseUrl: provider.baseUrl ?? undefined,
-    }
-  );
-
-  return createProvider(provider.providerType, runtimeConfig);
-}
-
-function createEnvProviders(): LLMProvider[] {
-  if (process.env.NODE_ENV === 'test') {
-    return [];
-  }
-
-  const providers: LLMProvider[] = [];
-
-  if (process.env.OPENROUTER_API_KEY) {
-    providers.push(new OpenRouterAdapter(createRuntimeConfig('openrouter', 'OpenRouter (Env)', null, 'openrouter', {
-      priority: 10,
-      apiKey: process.env.OPENROUTER_API_KEY,
-      baseUrl: process.env.OPENROUTER_BASE_URL,
-    })));
-  }
-
-  if (process.env.OPENAI_API_KEY) {
-    providers.push(new OpenAIAdapter(createRuntimeConfig('openai', 'OpenAI (Env)', null, 'openai', {
-      priority: 20,
-      apiKey: process.env.OPENAI_API_KEY,
-      baseUrl: process.env.OPENAI_BASE_URL,
-    })));
-  }
-
-  if (process.env.OLLAMA_BASE_URL) {
-    providers.push(new OllamaAdapter(createRuntimeConfig('ollama', 'Ollama (Env)', null, 'ollama', {
-      priority: 30,
-      baseUrl: process.env.OLLAMA_BASE_URL,
-    })));
-  }
-
-  if (process.env.DEEPSEEK_API_KEY) {
-    providers.push(new OpenAIAdapter(createRuntimeConfig('deepseek', 'DeepSeek (Env)', DEFAULT_DEEPSEEK_MODEL, 'deepseek', {
-      priority: 40,
-      apiKey: process.env.DEEPSEEK_API_KEY,
-      baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
-    })));
-  }
-
-  return providers;
-}
-
 function replaceProviders(adapter: LLMAdapter, providers: LLMProvider[]): void {
   for (const provider of adapter.providers) {
     adapter.removeProvider(provider.id);
@@ -226,46 +111,22 @@ function buildLLMProvidersForUser(
   userId?: string,
   preferredProviderId?: string
 ): LLMProvider[] {
-  const providers: LLMProvider[] = [];
-
+  let dbProviders: ProviderConfigWithSecret[] = [];
   if (userId) {
     const storedProviders = providerConfigStore.listByUser(userId);
-    let priority = 10;
-
-    for (const storedProvider of storedProviders) {
-      const providerWithSecret = providerConfigStore.getByIdWithSecret(storedProvider.providerId);
-      if (!providerWithSecret) {
-        continue;
-      }
-
-      const isPreferred = storedProvider.providerId === preferredProviderId;
-      const effectivePriority = isPreferred ? 1 : priority;
-      
-      const provider = createDatabaseProvider(providerWithSecret, effectivePriority);
-      if (provider) {
-        providers.push(provider);
-        if (!isPreferred) {
-          priority += 10;
-        }
-      }
-    }
+    dbProviders = storedProviders
+      .map(p => providerConfigStore.getByIdWithSecret(p.providerId))
+      .filter((p): p is ProviderConfigWithSecret => p !== null);
   }
 
-  const envProviders = createEnvProviders();
-  for (const envProvider of envProviders) {
-    if (providers.some((provider) => provider.id === envProvider.id)) {
-      continue;
-    }
+  const candidates = resolveProviderCandidates({
+    dbProviders,
+    envProviders: buildEnvProviderDescriptors(),
+    preferredProviderId,
+    nodeEnv: process.env.NODE_ENV,
+  });
 
-    const envPriority = 100 + (envProvider.config.priority ?? 0);
-    const effectivePriority = envProvider.id === preferredProviderId ? 1 : envPriority;
-    envProvider.updateConfig({ ...envProvider.config, priority: effectivePriority });
-    providers.push(envProvider);
-  }
-
-  providers.sort((a, b) => a.config.priority - b.config.priority);
-
-  return providers;
+  return candidates.map(candidate => createProviderFromCandidate(candidate));
 }
 
 interface ScopeContext {
@@ -283,11 +144,6 @@ export function createProviderScopedLLMAdapter(
   options: CreateProviderScopedLLMAdapterOptions
 ): ProviderScopedLLMAdapter {
   const providerScope = new AsyncLocalStorage<ScopeContext>();
-
-  const currentProviders = (): LLMProvider[] => {
-    const ctx = providerScope.getStore();
-    return ctx?.providers ?? buildLLMProvidersForUser(options.providerConfigStore);
-  };
 
   const buildCapabilityCandidates = (): ProviderCandidate[] => {
     const ctx = providerScope.getStore();
@@ -309,6 +165,10 @@ export function createProviderScopedLLMAdapter(
     });
 
     return candidates;
+  };
+
+  const buildProvidersFromCandidates = (candidates: ProviderCandidate[]): LLMProvider[] => {
+    return candidates.map(candidate => createProviderFromCandidate(candidate));
   };
 
   const complete: LLMAdapter['complete'] = async (request) => {
@@ -353,11 +213,25 @@ export function createProviderScopedLLMAdapter(
       enableLogging: false,
     });
 
-    for (const provider of currentProviders()) {
-      scopedAdapter.addProvider(provider);
+    const candidates = buildCapabilityCandidates();
+
+    const requirements = deriveRequestRequirements(request);
+    const eligible = candidates.filter(c => canServeRequest(requirements, c.model));
+
+    if (eligible.length === 0) {
+      return;
+    }
+
+    for (const candidate of eligible) {
+      scopedAdapter.addProvider(createProviderFromCandidate(candidate));
     }
 
     yield* scopedAdapter.stream(request);
+  };
+
+  const currentProviders = (): LLMProvider[] => {
+    const candidates = buildCapabilityCandidates();
+    return buildProvidersFromCandidates(candidates);
   };
 
   return {
@@ -392,7 +266,15 @@ export function createProviderScopedLLMAdapter(
       throw new Error('Cannot update provider priority directly on a request-scoped adapter');
     },
     runWithUserProviders<T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string): Promise<T> {
-      const providers = buildLLMProvidersForUser(options.providerConfigStore, userId, preferredProviderId);
+      const candidates = resolveProviderCandidates({
+        dbProviders: options.providerConfigStore.listByUser(userId)
+          .map(p => options.providerConfigStore.getByIdWithSecret(p.providerId))
+          .filter((p): p is ProviderConfigWithSecret => p !== null),
+        envProviders: buildEnvProviderDescriptors(),
+        preferredProviderId,
+        nodeEnv: process.env.NODE_ENV,
+      });
+      const providers = buildProvidersFromCandidates(candidates);
       return providerScope.run({ userId, preferredProviderId, providers }, fn);
     },
   };

@@ -8,7 +8,7 @@ import type { LLMProvider, ProviderStats, ProviderHealthStatus } from './provide
 import type { CircuitBreaker, CircuitBreakerConfig } from './circuit-breaker';
 import { createCircuitBreaker } from './circuit-breaker';
 import type { RuntimeError, ErrorSource } from '../shared/errors';
-import { buildOpenAIChatRequestBody, mapOpenAIChatResponse, buildOpenAICompatibleHeaders } from './transform/openai-chat-transformer.js';
+import { buildOpenAIChatRequestBody, mapOpenAIChatResponse, buildOpenAICompatibleHeaders, safeMergeHeaders } from './transform/openai-chat-transformer.js';
 import { buildOllamaChatRequestBody, mapOllamaChatResponse } from './transform/ollama-transformer.js';
 import { createErrorFromResponse } from './transform/provider-errors.js';
 
@@ -19,6 +19,7 @@ interface ExtendedProviderConfig extends ProviderConfig {
   siteUrl?: string;
   appName?: string;
   circuitBreakerConfig?: Partial<CircuitBreakerConfig>;
+  headers?: Record<string, string>;
 }
 
 interface LLMAdapterConfig {
@@ -210,10 +211,11 @@ export class OpenAIAdapter extends BaseProvider {
 
     const startTime = Date.now();
     const url = `${this.baseUrl}/chat/completions`;
-    const headers: Record<string, string> = {
+    const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${this.apiKey}`,
     };
+    const headers = safeMergeHeaders(baseHeaders, this.config.headers);
 
     logRequest(url, headers, this.config.enableLogging || false);
 
@@ -308,6 +310,7 @@ export class OpenRouterAdapter extends BaseProvider {
       baseUrl: this.baseUrl,
       siteUrl: this.siteUrl,
       appName: this.appName,
+      extraHeaders: this.config.headers,
     });
 
     logRequest(url, headers, this.config.enableLogging || false);
@@ -390,9 +393,10 @@ export class OllamaAdapter extends BaseProvider {
 
     const startTime = Date.now();
     const url = `${this.baseUrl}/api/chat`;
-    const headers: Record<string, string> = {
+    const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
     };
+    const headers = safeMergeHeaders(baseHeaders, this.config.headers);
 
     logRequest(url, headers, this.config.enableLogging || false);
 

@@ -573,4 +573,212 @@ describe('provider-runtime', () => {
       });
     });
   });
+
+  describe('complete/stream/getters consistency', () => {
+    it('stream() applies capability filtering like complete()', async () => {
+      providerConfigStore.create({
+        providerId: 'ollama',
+        userId: 'user-1',
+        providerType: 'ollama',
+        displayName: 'Ollama No Function Calling',
+        baseUrl: 'http://localhost:11434',
+        selectedModel: 'llama2',
+      });
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const request = {
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user' as const, content: 'Use tools' }],
+          tools: [{
+            type: 'function' as const,
+            function: {
+              name: 'test_fn',
+              description: 'Test function',
+              parameters: { type: 'object' as const, properties: {} },
+            },
+          }],
+        };
+
+        const chunks: any[] = [];
+        for await (const chunk of adapter.stream(request)) {
+          chunks.push(chunk);
+        }
+
+        expect(chunks).toHaveLength(0);
+      });
+    });
+
+    it('providers getter returns resolver-based providers with correct priority', async () => {
+      providerConfigStore.create({
+        providerId: 'provider-1',
+        userId: 'user-1',
+        providerType: 'openai',
+        displayName: 'Provider 1',
+        apiKey: 'sk-1',
+        selectedModel: 'gpt-4o-mini',
+        priority: 5,
+      });
+
+      providerConfigStore.create({
+        providerId: 'provider-2',
+        userId: 'user-1',
+        providerType: 'openrouter',
+        displayName: 'Provider 2',
+        apiKey: 'sk-2',
+        selectedModel: 'anthropic/claude-3-opus',
+        priority: 10,
+      });
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const providers = adapter.providers;
+        expect(providers).toHaveLength(2);
+        expect(providers[0].id).toBe('provider-1');
+        expect(providers[0].config.priority).toBe(5);
+        expect(providers[1].id).toBe('provider-2');
+        expect(providers[1].config.priority).toBe(10);
+      });
+    });
+
+    it('getProvider() returns resolver-based provider', async () => {
+      providerConfigStore.create({
+        providerId: 'test-provider',
+        userId: 'user-1',
+        providerType: 'openai',
+        displayName: 'Test Provider',
+        apiKey: 'sk-test',
+        selectedModel: 'gpt-4o-mini',
+      });
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const provider = adapter.getProvider('test-provider');
+        expect(provider).toBeDefined();
+        expect(provider?.id).toBe('test-provider');
+        expect(provider?.config.capabilities.supportsJsonMode).toBe(true);
+      });
+    });
+
+    it('getHealthyProviders() returns resolver-based providers sorted by priority', async () => {
+      providerConfigStore.create({
+        providerId: 'provider-a',
+        userId: 'user-1',
+        providerType: 'openai',
+        displayName: 'Provider A',
+        apiKey: 'sk-a',
+        selectedModel: 'gpt-4o-mini',
+        priority: 20,
+      });
+
+      providerConfigStore.create({
+        providerId: 'provider-b',
+        userId: 'user-1',
+        providerType: 'openrouter',
+        displayName: 'Provider B',
+        apiKey: 'sk-b',
+        selectedModel: 'anthropic/claude-3-opus',
+        priority: 10,
+      });
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const healthyProviders = adapter.getHealthyProviders();
+        expect(healthyProviders).toHaveLength(2);
+        expect(healthyProviders[0].id).toBe('provider-b');
+        expect(healthyProviders[0].config.priority).toBe(10);
+        expect(healthyProviders[1].id).toBe('provider-a');
+        expect(healthyProviders[1].config.priority).toBe(20);
+      });
+    });
+
+    it('all methods use same provider ordering with preferred provider', async () => {
+      providerConfigStore.create({
+        providerId: 'provider-1',
+        userId: 'user-1',
+        providerType: 'openai',
+        displayName: 'Provider 1',
+        apiKey: 'sk-1',
+        selectedModel: 'gpt-4o-mini',
+      });
+
+      providerConfigStore.create({
+        providerId: 'provider-2',
+        userId: 'user-1',
+        providerType: 'openai',
+        displayName: 'Provider 2',
+        apiKey: 'sk-2',
+        selectedModel: 'gpt-4o-mini',
+      });
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const providers = adapter.providers;
+        const healthyProviders = adapter.getHealthyProviders();
+
+        expect(providers[0].id).toBe('provider-2');
+        expect(providers[0].config.priority).toBe(1);
+        expect(healthyProviders[0].id).toBe('provider-2');
+        expect(healthyProviders[0].config.priority).toBe(1);
+
+        const provider = adapter.getProvider('provider-2');
+        expect(provider?.config.priority).toBe(1);
+      }, 'provider-2');
+    });
+
+    it('stream() and complete() filter providers identically for tools request', async () => {
+      providerConfigStore.create({
+        providerId: 'ollama-no-fc',
+        userId: 'user-1',
+        providerType: 'ollama',
+        displayName: 'Ollama',
+        baseUrl: 'http://localhost:11434',
+        selectedModel: 'llama2',
+      });
+
+      providerConfigStore.create({
+        providerId: 'openai-fc',
+        userId: 'user-1',
+        providerType: 'openai',
+        displayName: 'OpenAI',
+        apiKey: 'sk-openai',
+        selectedModel: 'gpt-4o-mini',
+      });
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const request = {
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user' as const, content: 'Use tools' }],
+          tools: [{
+            type: 'function' as const,
+            function: {
+              name: 'test_fn',
+              description: 'Test function',
+              parameters: { type: 'object' as const, properties: {} },
+            },
+          }],
+        };
+
+        const completeResult = await adapter.complete(request);
+        expect(completeResult.success).toBe(false);
+        if (!completeResult.success) {
+          const completeAttemptedIds = completeResult.error.attempts?.map(a => a.providerId) ?? [];
+          expect(completeAttemptedIds).toContain('openai-fc');
+          expect(completeAttemptedIds).not.toContain('ollama-no-fc');
+        }
+        const streamChunks: any[] = [];
+        for await (const chunk of adapter.stream(request)) {
+          streamChunks.push(chunk);
+        }
+        expect(streamChunks).toHaveLength(0);
+      });
+    });
+  });
 });

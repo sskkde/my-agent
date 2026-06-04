@@ -1,7 +1,13 @@
 -- Migration: extend_provider_configs_runtime_metadata
--- Version: 60
+-- File Number: 019 (local sequence for standalone PostgreSQL migrations)
+-- Consolidated Version: 60 (corresponds to all-stores migration version)
 -- Created: 2026-06-04
 -- PostgreSQL Conversion
+--
+-- NOTE: This standalone migration file is numbered 019 in the local PostgreSQL
+-- migration sequence. The "Version: 60" refers to the consolidated schema version
+-- used in the all-stores migrations, which accumulate all changes up to v60.
+-- New deployments using all-stores migrations already have these columns.
 
 -- Up migration
 

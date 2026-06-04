@@ -267,6 +267,61 @@ describe('Provider API Integration', () => {
       expect(body.data.protocol).toBe('ollama_chat');
     });
 
+    it('should create provider with runtime metadata without leaking header values', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          providerType: 'custom',
+          displayName: 'Metadata Provider',
+          apiKey: 'custom-key-1234567890',
+          baseUrl: 'https://api.example.com/v1',
+          selectedModel: 'custom-model',
+          family: 'openai_compatible',
+          protocol: 'openai_chat',
+          priority: 7,
+          defaultModel: 'custom-model',
+          headers: { 'X-Gateway-Token': 'secret-token' },
+          capabilities: { functionCalling: true, jsonMode: true },
+          models: [{ modelId: 'custom-model', limits: { outputTokens: 8192 } }],
+          options: { tenant: 'enterprise' },
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.data).toMatchObject({
+        providerType: 'custom',
+        displayName: 'Metadata Provider',
+        selectedModel: 'custom-model',
+        family: 'openai_compatible',
+        protocol: 'openai_chat',
+        priority: 7,
+        defaultModel: 'custom-model',
+        headersConfigured: true,
+        capabilities: { functionCalling: true, jsonMode: true },
+        models: [{ modelId: 'custom-model', limits: { outputTokens: 8192 } }],
+        options: { tenant: 'enterprise' },
+      });
+      expect(body.data.headers).toBeUndefined();
+      expect(JSON.stringify(body.data)).not.toContain('secret-token');
+
+      const getResponse = await server.inject({
+        method: 'GET',
+        url: `/api/v1/providers/${body.data.providerId}`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      });
+      const getBody = JSON.parse(getResponse.body);
+      expect(getBody.data.headersConfigured).toBe(true);
+      expect(getBody.data.headers).toBeUndefined();
+      expect(JSON.stringify(getBody.data)).not.toContain('secret-token');
+    });
+
     it('should return 400 when custom provider missing apiKey', async () => {
       const response = await server.inject({
         method: 'POST',
@@ -343,6 +398,50 @@ describe('Provider API Integration', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.data.displayName).toBe('Updated Name');
+    });
+
+    it('should update runtime metadata fields', async () => {
+      const provider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId,
+        providerType: 'openai',
+        displayName: 'Metadata Update Provider',
+        apiKey: 'sk-test1234567890',
+        enabled: true,
+      });
+
+      const response = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/providers/${provider.providerId}`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          family: 'openai_compatible',
+          protocol: 'openai_chat',
+          priority: 3,
+          defaultModel: 'gpt-4o-mini',
+          headers: { 'X-Org-Id': 'org-secret' },
+          capabilities: { promptCache: true },
+          models: [{ modelId: 'gpt-4o-mini', displayName: 'GPT 4o Mini Override' }],
+          options: { routing: 'primary' },
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.data).toMatchObject({
+        family: 'openai_compatible',
+        protocol: 'openai_chat',
+        priority: 3,
+        defaultModel: 'gpt-4o-mini',
+        headersConfigured: true,
+        capabilities: { promptCache: true },
+        models: [{ modelId: 'gpt-4o-mini', displayName: 'GPT 4o Mini Override' }],
+        options: { routing: 'primary' },
+      });
+      expect(body.data.headers).toBeUndefined();
+      expect(JSON.stringify(body.data)).not.toContain('org-secret');
     });
 
     it('should return 404 for non-existent provider', async () => {
