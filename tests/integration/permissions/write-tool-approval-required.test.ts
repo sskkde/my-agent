@@ -268,9 +268,9 @@ describe('Write-tool approval required', () => {
   });
 
   describe('tool risk policy integration', () => {
-    it('all 21 built-in tools have a risk policy', () => {
+    it('all built-in tools have a risk policy', () => {
       const policies = buildDefaultRiskPolicies();
-      expect(policies).toHaveLength(21);
+      expect(policies).toHaveLength(BUILT_IN_TOOLS.length);
     });
 
     it('write-category tools all require approval per policy', () => {
@@ -285,14 +285,14 @@ describe('Write-tool approval required', () => {
       }
     });
 
-    it('non-write-category tools do NOT require approval per policy', () => {
+    it('non-action tools do NOT require approval per policy', () => {
       const policies = buildDefaultRiskPolicies();
-      const nonWrite = policies.filter((p) => {
+      const nonAction = policies.filter((p) => {
         const tool = getToolSummary(p.toolName);
-        return tool && tool.category !== 'write';
+        return tool && !['write', 'delete', 'send', 'execute'].includes(tool.category);
       });
 
-      for (const policy of nonWrite) {
+      for (const policy of nonAction) {
         expect(policy.requiresApproval).toBe(false);
       }
     });

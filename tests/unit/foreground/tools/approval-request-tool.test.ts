@@ -216,7 +216,9 @@ describe('ApprovalRequestTool', () => {
         requiresApproval: true,
       };
       const requestResult = await handleApprovalRequest(deps, requestInput);
-      const approvalId = requestResult.data?.approvalId!;
+      const approvalId = requestResult.data?.approvalId;
+      expect(approvalId).toBeTruthy();
+      if (!approvalId) throw new Error('Expected approvalId');
 
       // Now deny the approval
       const responseInput: ApprovalResponseInput = {
@@ -243,7 +245,9 @@ describe('ApprovalRequestTool', () => {
         requiresApproval: true,
       };
       const requestResult = await handleApprovalRequest(deps, requestInput);
-      const approvalId = requestResult.data?.approvalId!;
+      const approvalId = requestResult.data?.approvalId;
+      expect(approvalId).toBeTruthy();
+      if (!approvalId) throw new Error('Expected approvalId');
 
       // Now approve the request
       const responseInput: ApprovalResponseInput = {
@@ -285,7 +289,9 @@ describe('ApprovalRequestTool', () => {
         requiresApproval: true,
       };
       const requestResult = await handleApprovalRequest(deps, requestInput);
-      const approvalId = requestResult.data?.approvalId!;
+      const approvalId = requestResult.data?.approvalId;
+      expect(approvalId).toBeTruthy();
+      if (!approvalId) throw new Error('Expected approvalId');
 
       // First approval
       await handleApprovalResponse(deps, { approvalId, decision: 'approved' });
@@ -307,7 +313,9 @@ describe('ApprovalRequestTool', () => {
         requiresApproval: true,
       };
       const requestResult = await handleApprovalRequest(deps, requestInput);
-      const approvalId = requestResult.data?.approvalId!;
+      const approvalId = requestResult.data?.approvalId;
+      expect(approvalId).toBeTruthy();
+      if (!approvalId) throw new Error('Expected approvalId');
 
       // Make the store fail on update
       const failingStore = deps.approvalStore;
