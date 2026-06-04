@@ -1,3 +1,12 @@
+/**
+ * @deprecated / @historical — these tests exercise the legacy ForegroundKernelRunner
+ * route-dispatch path which has been removed (T17). The runner now delegates to
+ * ForegroundAgent.runTurn(). Route-specific scenarios are skipped; factory and
+ * utility tests remain active.
+ *
+ * @see src/foreground/tools/ for the replacement tool implementations
+ * @see src/processing/processor-orchestration.ts for the replacement pipeline
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   createForegroundKernelRunner,
@@ -175,7 +184,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 1: answer_directly returns finalResponse (never calls AgentKernel)', () => {
+  describe.skip('Scenario 1: answer_directly returns finalResponse (never calls AgentKernel) [deprecated route-dispatch]', () => {
     it('should return userVisibleResponse without calling AgentKernel', async () => {
       const userVisibleResponse = 'Hello! How can I help you today?';
 
@@ -244,7 +253,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 2: dispatch_tool calls AgentKernel.run()', () => {
+  describe.skip('Scenario 2: dispatch_tool calls AgentKernel.run() [deprecated route-dispatch]', () => {
     it('should call AgentKernel.run with correct parameters', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'dispatch_tool',
@@ -310,7 +319,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 3: Tool results are processed through LLM (not returned as raw JSON)', () => {
+  describe.skip('Scenario 3: Tool results are processed through LLM (not returned as raw JSON) [deprecated route-dispatch]', () => {
     it('should return finalResponse from kernelResult, not raw tool result JSON', async () => {
       const llmProcessedResponse = 'Based on the search results, here is the answer...';
 
@@ -389,7 +398,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 4: status_query creates server-side RuntimeAction', () => {
+  describe.skip('Scenario 4: status_query creates server-side RuntimeAction [deprecated route-dispatch]', () => {
     it('should dispatch server-created RuntimeAction for status_query', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'status_query',
@@ -460,7 +469,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 5: spawn_planner creates planner run', () => {
+  describe.skip('Scenario 5: spawn_planner creates planner run [deprecated route-dispatch]', () => {
     it('should call plannerRuntime.createPlannerRun with correct parameters', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'spawn_planner',
@@ -555,7 +564,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 6: LLM-provided runtimeAction is ignored (server creates all runtime actions)', () => {
+  describe.skip('Scenario 6: LLM-provided runtimeAction is ignored (server creates all runtime actions) [deprecated route-dispatch]', () => {
     it('should ignore runtimeAction from LLM and use server-created action', async () => {
       // ForegroundAgent strips runtimeAction from LLM output
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -586,7 +595,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 7: Disallowed suggestedTools are filtered', () => {
+  describe.skip('Scenario 7: Disallowed suggestedTools are filtered [deprecated route-dispatch]', () => {
     it('should filter out tools not in tool catalog', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'dispatch_tool',
@@ -643,7 +652,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Scenario 8: Route validation failure returns failed result', () => {
+  describe.skip('Scenario 8: Route validation failure returns failed result [deprecated route-dispatch]', () => {
     it('should return failed result on unhandled exception', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockRejectedValue(new Error('Agent crashed'));
 
@@ -684,7 +693,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Additional route handlers', () => {
+  describe.skip('Additional route handlers [deprecated route-dispatch]', () => {
     it('should handle cancel_or_modify_task route', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'cancel_or_modify_task',
@@ -870,7 +879,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Event emission on failures', () => {
+  describe.skip('Event emission on failures [deprecated route-dispatch]', () => {
     let mockEventStore: EventStore;
 
     beforeEach(() => {
@@ -1188,7 +1197,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Conversation history handling', () => {
+  describe.skip('Conversation history handling [deprecated route-dispatch]', () => {
     it('should include conversation history in direct answer LLM call', async () => {
       const state = createMockForegroundState();
       state.conversationHistory = [
@@ -1227,7 +1236,7 @@ describe('ForegroundKernelRunner', () => {
     });
   });
 
-  describe('Non-completed kernel statuses treated as failures', () => {
+  describe.skip('Non-completed kernel statuses treated as failures [deprecated route-dispatch]', () => {
     let mockEventStore: EventStore;
 
     beforeEach(() => {

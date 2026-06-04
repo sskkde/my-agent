@@ -128,6 +128,49 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     category: 'read',
     sensitivity: 'low',
   },
+  // Foreground tools (registered via registerAllForegroundTools)
+  {
+    name: 'search_subagent',
+    description: 'Search the web for information using a constrained subagent',
+    category: 'search',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'foreground_status_query',
+    description: 'Query active work status for the current user',
+    category: 'read',
+    sensitivity: 'low',
+  },
+  {
+    name: 'foreground_spawn_planner',
+    description: 'Create a new planner run to work on a task',
+    category: 'write',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'foreground_resume_planner',
+    description: 'Resume an existing planner run',
+    category: 'write',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'foreground_launch_subagent',
+    description: 'Launch a background subagent to perform a task',
+    category: 'execute',
+    sensitivity: 'medium',
+  },
+  {
+    name: 'foreground_cancel_or_modify_task',
+    description: 'Cancel, pause, resume, or modify an active task',
+    category: 'execute',
+    sensitivity: 'high',
+  },
+  {
+    name: 'foreground_handle_approval',
+    description: 'Handle approval requests and responses',
+    category: 'internal',
+    sensitivity: 'low',
+  },
 ];
 
 export function getToolCatalog(): ToolSummary[] {

@@ -408,7 +408,7 @@ The agent platform is built around a modular architecture with clear separation 
 **Core Components:**
 
 - **Gateway** - Entry point for all incoming requests
-- **Foreground** - Handles user-facing interactions and sessions
+- **Foreground** - Handles user-facing interactions and sessions via kernel-driven architecture
 - **Planner** - Plans and orchestrates task execution
 - **Dispatcher** - Routes tasks to appropriate subagents
 - **Kernel** - Core execution engine for agent logic
@@ -422,6 +422,20 @@ The agent platform is built around a modular architecture with clear separation 
 - **Connectors** - External system integrations
 - **Observability** - Metrics, tracing, and monitoring
 - **Storage** - Database connection and persistence layer
+
+**Foreground Processing Flow:**
+
+The foreground agent processes user messages through a kernel-driven architecture:
+
+```
+ProcessorOrchestration → ForegroundAgent.runTurn() → AgentKernel.run() → projected tools → final response
+```
+
+1. **ProcessorOrchestration** hydrates session state and resolves LLM provider/model
+2. **ForegroundAgent.runTurn()** builds context bundle and projects safe tools (read/search/internal)
+3. **AgentKernel.run()** executes LLM calls with tool loop
+4. **Tool Projection** ensures foreground agents only access safe tool categories
+5. **Response** is mapped back through the pipeline with transcript persistence
 
 ## Directory Structure
 

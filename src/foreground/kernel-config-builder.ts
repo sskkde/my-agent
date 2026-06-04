@@ -235,7 +235,7 @@ export function buildKernelConfigFromDeps(
 
 /**
  * Type guard to check if a ContextManager is a ForegroundContextManager.
- * Useful for ForegroundKernelRunner to access setForegroundContext method.
+ * Useful for the processor pipeline to access setForegroundContext method.
  */
 export function isForegroundContextManager(
   manager: ContextManager

@@ -1,38 +1,38 @@
 /**
- * Foreground Agent — User-facing conversation routing
+ * Foreground Agent — Kernel-driven user-facing conversation
  *
  * This module implements the foreground agent, which handles user-facing
- * interactions and produces routing decisions via the `foreground_decide`
- * internal tool or `routing_json` mode.
+ * interactions through the kernel-driven architecture.
  *
- * ForegroundAgent routing LLM requests are built exclusively by
- * ModelInputBuilder. There is no legacy prompt-builder dependency.
+ * ## Architecture Flow
  *
- * `routing_json` is a ModelInputBuilder mode, not legacy prompt-builder.
- * It produces JSON-in-text responses when function calling is unavailable.
+ * The canonical flow is:
+ *   ProcessorOrchestration → ForegroundAgent.runTurn() → AgentKernel.run()
+ *   → projected tools → final response
  *
- * `foreground_decide` remains internal-only — it is NOT registered in the
- * public tool catalog. When enabled, the LLM invokes this tool to produce
- * a structured routing decision instead of free-form JSON text.
+ * `runTurn()` is the main entry point. It:
+ *   1. Builds a context bundle from the foreground state
+ *   2. Projects safe tools via `buildForegroundToolProjection()` (read/search/internal)
+ *   3. Delegates to `AgentKernel.run()` for LLM execution
+ *   4. Maps kernel results to `ForegroundTurnResult`
  *
- * ## Fallback Chain
+ * ## Legacy Methods (deprecated)
  *
- * When foreground_decide is enabled, the fallback chain is:
- *   1. Kernel-backed `foreground_decide` (if agentKernel available)
- *   2. Direct `foreground_decide` with repair/retry
- *   3. Deterministic routing (pattern-based fallback)
- *   4. `answer_directly` (final fallback)
+ * `processMessage()` remains for backward compatibility. It uses the
+ * legacy routing path with `foreground_decide` tool or `routing_json` mode.
+ * This path is deprecated and will be removed in a future version.
  *
- * When foreground_decide is disabled, the fallback chain is:
- *   1. `routing_json` mode via ModelInputBuilder
- *   2. Deterministic routing (pattern-based fallback)
- *   3. `answer_directly` (final fallback)
+ * `ForegroundDecision` type is preserved for `decisionTrace` and backward compat,
+ * annotated `@deprecated`.
  *
- * ## Feature Flags
+ * ## Tool Projection
  *
- * | Flag | Default | Description |
- * |------|---------|-------------|
- * | `FOREGROUND_DECIDE_ENABLED` | `false` | Enable the decide tool path |
+ * `buildForegroundToolProjection()` only includes safe categories:
+ *   - `read`: File/content reading tools
+ *   - `search`: Search and lookup tools
+ *   - `internal`: Internal agent tools
+ *
+ * This ensures foreground agents cannot invoke unsafe tools directly.
  *
  * ## Security Invariant
  *
@@ -54,7 +54,6 @@ import type {
   ForegroundMessageInput,
   ForegroundSessionState,
   TaskAnalysis,
-  DirectDelegationPolicy,
   IntentPatterns,
   ActiveWorkResolution,
   ResolvedActiveWork,
@@ -86,7 +85,19 @@ import { FOREGROUND_DECIDE_SCHEMA } from './foreground-decision-schema.js';
 import { validateForegroundDecideParams } from './foreground-decision-validator.js';
 import type { AgentKernel } from '../kernel/agent-kernel.js';
 import type { ContextBundle, ContextItem } from '../context/types.js';
-import type { KernelRunResult, ToolUseRequest } from '../kernel/types.js';
+import type { KernelRunResult, KernelRunInput, ToolUseRequest } from '../kernel/types.js';
+import type { ForegroundTurnInput, ForegroundTurnResult, ToolCallSummary } from './foreground-runner-types.js';
+import {
+  DEFAULT_FOREGROUND_MAX_ITERATIONS,
+  DEFAULT_FOREGROUND_TIMEOUT_MS,
+  mapKernelErrorToForegroundResult,
+} from './kernel-guard-constants.js';
+import {
+  buildForegroundToolProjection,
+  toToolPlaneProjection,
+} from './tool-projection-mapper.js';
+import { buildContextBundleFromForegroundState } from './context-bundle-builder.js';
+import { mapKernelResultToTranscript } from './tools/transcript-redaction-mapper.js';
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 export function isMemorySemanticPolicyEnabled(): boolean {
@@ -95,10 +106,6 @@ export function isMemorySemanticPolicyEnabled(): boolean {
 
 export function isForegroundDecideEnabled(): boolean {
   return process.env.FOREGROUND_DECIDE_ENABLED === 'true';
-}
-
-export function isForegroundDecideShadowMode(): boolean {
-  return process.env.FOREGROUND_DECIDE_SHADOW_MODE === 'true';
 }
 
 /**
@@ -113,6 +120,16 @@ function logForegroundDecideFallback(reason: string): void {
 
 export interface ForegroundAgent {
   processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision>;
+  /**
+   * Processor-facing turn contract. Accepts a fully-hydrated turn input
+   * and returns a structured turn result with final response, tool summaries,
+   * and runtime diagnostics.
+   *
+   * This is the canonical entry point for foreground processing. The existing
+   * `processMessage()` method remains for backward compatibility until the
+   * migration is complete.
+   */
+  runTurn?(input: ForegroundTurnInput): Promise<ForegroundTurnResult>;
   /** Inject AgentKernel for kernel-backed foreground_decide routing. No-op if not supported. */
   setAgentKernel?(kernel: AgentKernel): void;
 }
@@ -128,6 +145,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private modelInputSnapshotStore?: ModelInputSnapshotStore;
   private promptProjectionResolver?: PromptProjectionResolver;
   private agentKernel?: AgentKernel;
+  private toolCatalog?: ReturnType<typeof getToolCatalog>;
+  private maxIterations: number;
+  private timeoutMs: number;
 
   constructor(
     _patterns: IntentPatterns = DEFAULT_INTENT_PATTERNS,
@@ -137,6 +157,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
     modelInputSnapshotStore?: ModelInputSnapshotStore,
     promptProjectionResolver?: PromptProjectionResolver,
     agentKernel?: AgentKernel,
+    toolCatalog?: ReturnType<typeof getToolCatalog>,
+    maxIterations?: number,
+    timeoutMs?: number,
   ) {
     this.llmAdapter = llmAdapter;
     this.agentConfig = agentConfig;
@@ -144,10 +167,91 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.modelInputSnapshotStore = modelInputSnapshotStore;
     this.promptProjectionResolver = promptProjectionResolver;
     this.agentKernel = agentKernel;
+    this.toolCatalog = toolCatalog;
+    this.maxIterations = maxIterations ?? DEFAULT_FOREGROUND_MAX_ITERATIONS;
+    this.timeoutMs = timeoutMs ?? DEFAULT_FOREGROUND_TIMEOUT_MS;
   }
 
   setAgentKernel(kernel: AgentKernel): void {
     this.agentKernel = kernel;
+  }
+
+  async runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult> {
+    if (!this.agentKernel) {
+      return {
+        status: 'failed',
+        finalResponse: 'The routing system is not configured. Please try again.',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'AgentKernel not available for runTurn',
+        },
+        error: {
+          code: 'KERNEL_UNAVAILABLE',
+          message: 'AgentKernel not injected',
+        },
+      };
+    }
+
+    const contextBundle = buildContextBundleFromForegroundState(input.foregroundState, input);
+
+    const allTools = this.toolCatalog ?? getToolCatalog();
+    const projectionResult = buildForegroundToolProjection(input, allTools);
+    const toolProjection = toToolPlaneProjection(projectionResult);
+
+    const effectiveConfig = input.agentConfig ?? this.agentConfig;
+    const resolvedModel = input.foregroundState.resolvedModel
+      ?? effectiveConfig?.model
+      ?? 'gpt-4o-mini';
+
+    const kernelInput: KernelRunInput = {
+      contextBundle,
+      runId: input.turnId,
+      agentId: input.agentId ?? 'foreground.default',
+      agentType: 'main',
+      userId: input.userId,
+      sessionId: input.sessionId,
+      toolProjection,
+      model: resolvedModel,
+      maxIterations: input.maxIterations ?? this.maxIterations,
+      timeoutMs: input.timeoutMs ?? this.timeoutMs,
+    };
+
+    const kernelResult = await this.agentKernel.run(kernelInput);
+
+    return this.mapKernelResultToForegroundResult(kernelResult);
+  }
+
+  private mapKernelResultToForegroundResult(kernelResult: KernelRunResult): ForegroundTurnResult {
+    if (kernelResult.finalStatus === 'completed') {
+      return {
+        status: 'completed',
+        finalResponse: kernelResult.finalResponse ?? '',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'Kernel execution completed',
+        },
+        runtimeSummary: mapKernelResultToTranscript(kernelResult) ?? undefined,
+        toolCallSummaries: this.extractToolCallSummaries(kernelResult),
+        kernelResult: {
+          finalStatus: kernelResult.finalStatus,
+          finalResponse: kernelResult.finalResponse,
+          iterationsUsed: kernelResult.iterationsUsed,
+          toolCallCount: kernelResult.toolCalls.length,
+        },
+      };
+    }
+
+    return mapKernelErrorToForegroundResult(kernelResult);
+  }
+
+  private extractToolCallSummaries(kernelResult: KernelRunResult): ToolCallSummary[] {
+    return kernelResult.toolCalls.map(tc => ({
+      toolCallId: tc.toolCallId,
+      toolName: tc.toolName,
+      status: 'completed' as const,
+    }));
   }
 
   async processMessage(input: ForegroundMessageInput, state: ForegroundSessionState): Promise<ForegroundDecision> {
@@ -173,7 +277,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
     // ─── Bypass 3: No ModelInputBuilder — deterministic fallback ──────────
     if (!this.modelInputBuilder) {
-      const deterministicDecision = this.routeDeterministically(input.message, state, toolCatalog);
+      const deterministicDecision = this.routeDeterministically(input, state, toolCatalog);
       if (deterministicDecision) {
         return deterministicDecision;
       }
@@ -210,7 +314,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
         // Decide failed — deterministic fallback → answer_directly
         logForegroundDecideFallback(`decide path failed (${decideResult.error?.code}), returning answer_directly`);
-        const deterministicDecision = this.routeDeterministically(input.message, state, toolCatalog);
+        const deterministicDecision = this.routeDeterministically(input, state, toolCatalog);
         if (deterministicDecision) {
           return deterministicDecision;
         }
@@ -236,7 +340,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
 
       // New path failed — deterministic fallback → answer_directly
-      const deterministicDecision = this.routeDeterministically(input.message, state, toolCatalog);
+      const deterministicDecision = this.routeDeterministically(input, state, toolCatalog);
       if (deterministicDecision) {
         return deterministicDecision;
       }
@@ -769,11 +873,11 @@ class ForegroundAgentImpl implements ForegroundAgent {
   }
 
   private routeDeterministically(
-    userMessage: string,
+    input: ForegroundMessageInput,
     state: ForegroundSessionState,
     toolCatalog: string[]
   ): ForegroundDecision | null {
-    const content = userMessage.toLowerCase().trim();
+    const content = input.message.toLowerCase().trim();
 
     const effectiveConfig = this.getEffectiveConfig(state);
     const effectiveToolIds = computeEffectiveAllowedToolIds(effectiveConfig, toolCatalog);
@@ -802,6 +906,14 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
     }
 
+    if (this.isInterruptIntent(content)) {
+      return this.mapRouterOutputToDecision({
+        route: 'cancel_or_modify_task',
+        reason: 'Deterministic fallback: interrupt-related query detected',
+        userVisibleResponse: undefined,
+      }, input, state, toolCatalog);
+    }
+
     if (content.includes('plan') || content.includes('step') || content.includes('task') || content.includes('计划') || content.includes('步骤')) {
       return this.createDecision('spawn_planner', {
         reason: 'Deterministic fallback: planning-related query detected',
@@ -811,6 +923,25 @@ class ForegroundAgentImpl implements ForegroundAgent {
     }
 
     return null;
+  }
+
+  private isInterruptIntent(content: string): boolean {
+    return content.includes('cancel')
+      || content.includes('stop')
+      || content.includes('abort')
+      || content.includes('pause')
+      || content.includes('resume')
+      || content.includes('modify')
+      || content.includes('change')
+      || content.includes('update')
+      || content.includes('取消')
+      || content.includes('停止')
+      || content.includes('暂停')
+      || content.includes('继续')
+      || content.includes('恢复')
+      || content.includes('调整')
+      || content.includes('修改')
+      || content.includes('更改');
   }
 
   private getEffectiveConfig(state?: ForegroundSessionState): AgentConfig | undefined {
@@ -1197,20 +1328,22 @@ export interface CreateForegroundAgentOptions {
   modelInputSnapshotStore?: ModelInputSnapshotStore;
   promptProjectionResolver?: PromptProjectionResolver;
   agentKernel?: AgentKernel;
+  toolCatalog?: ReturnType<typeof getToolCatalog>;
+  maxIterations?: number;
+  timeoutMs?: number;
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
-  return new ForegroundAgentImpl(options?.patterns, options?.llmAdapter, options?.agentConfig, options?.modelInputBuilder, options?.modelInputSnapshotStore, options?.promptProjectionResolver, options?.agentKernel);
-}
-
-export function mergeDelegationPolicies(
-  personaPolicy: DirectDelegationPolicy,
-  systemPolicy?: Partial<DirectDelegationPolicy>
-): DirectDelegationPolicy {
-  return {
-    estimatedStepsGte: systemPolicy?.estimatedStepsGte ?? personaPolicy.estimatedStepsGte,
-    maxComplexity: systemPolicy?.maxComplexity ?? personaPolicy.maxComplexity,
-    allowedToolCategories: systemPolicy?.allowedToolCategories ?? personaPolicy.allowedToolCategories,
-    requireConfirmationFor: systemPolicy?.requireConfirmationFor ?? personaPolicy.requireConfirmationFor,
-  };
+  return new ForegroundAgentImpl(
+    options?.patterns,
+    options?.llmAdapter,
+    options?.agentConfig,
+    options?.modelInputBuilder,
+    options?.modelInputSnapshotStore,
+    options?.promptProjectionResolver,
+    options?.agentKernel,
+    options?.toolCatalog,
+    options?.maxIterations,
+    options?.timeoutMs,
+  );
 }

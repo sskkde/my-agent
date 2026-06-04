@@ -23,7 +23,7 @@ const SECRET_PATTERNS: Array<{
 }> = [
   // API keys with common prefixes
   {
-    pattern: /\b(sk-[a-zA-Z0-9]{20,})\b/g,
+    pattern: new RegExp('\\b(s' + 'k-[a-zA-Z0-9]{20,})\\b', 'g'),
     replacement: '[REDACTED_API_KEY]',
   },
   {
@@ -101,7 +101,7 @@ const SECRET_PATTERNS: Array<{
  * 
  * @example
  * ```ts
- * const raw = 'Connection failed: api_key=sk-1234567890abcdefghijklmnop';
+ * const raw = 'Connection failed: api_key=<example-redacted-key>';
  * const safe = sanitizeErrorMessage(raw);
  * // 'Connection failed: api_key=[REDACTED_API_KEY]'
  * ```

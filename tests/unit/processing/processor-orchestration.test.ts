@@ -16,7 +16,6 @@ import type { LLMAdapter } from '../../../src/llm/adapter.js';
 import type { TranscriptStore, TurnTranscript } from '../../../src/storage/transcript-store.js';
 import type { AgentConfig, AgentConfigStore } from '../../../src/storage/agent-config-store.js';
 import type { ProviderConfigStore } from '../../../src/storage/provider-config-store.js';
-import type { ForegroundKernelRunner } from '../../../src/foreground/foreground-kernel-runner.js';
 import type { ForegroundTurnResult } from '../../../src/foreground/foreground-runner-types.js';
 
 describe('ProcessorOrchestration', () => {
@@ -30,7 +29,6 @@ describe('ProcessorOrchestration', () => {
   let mockLlmAdapter: LLMAdapter;
   let mockTranscriptStore: TranscriptStore;
   let savedTranscripts: TurnTranscript[];
-  let mockForegroundKernelRunner: ForegroundKernelRunner;
 
   let deps: ProcessorOrchestrationDeps;
 
@@ -82,6 +80,15 @@ describe('ProcessorOrchestration', () => {
 
     mockForegroundAgent = {
       processMessage: vi.fn(),
+      runTurn: vi.fn().mockResolvedValue({
+        status: 'completed',
+        finalResponse: 'Default mock response',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'Default mock response',
+        },
+      } as ForegroundTurnResult),
     };
 
     mockRuntimeDispatcher = {
@@ -127,18 +134,6 @@ describe('ProcessorOrchestration', () => {
       updateUserIdForSession: vi.fn().mockReturnValue(0),
     } as unknown as TranscriptStore;
 
-    mockForegroundKernelRunner = {
-      runTurn: vi.fn().mockResolvedValue({
-        status: 'completed',
-        finalResponse: 'Default mock response',
-        decisionTrace: {
-          route: 'answer_directly',
-          requiresPlanner: false,
-          reason: 'Default mock response',
-        },
-      } as ForegroundTurnResult),
-    };
-
     deps = {
       gateway: mockGateway,
       stores: mockStores,
@@ -148,7 +143,6 @@ describe('ProcessorOrchestration', () => {
       agentKernel: mockAgentKernel,
       llmAdapter: mockLlmAdapter,
       transcriptStore: mockTranscriptStore,
-      foregroundKernelRunner: mockForegroundKernelRunner,
     };
   });
 
@@ -157,7 +151,7 @@ describe('ProcessorOrchestration', () => {
       const correlationId = 'corr-abc-123';
       const userVisibleResponse = 'Hello! I understand your message.';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: userVisibleResponse,
         decisionTrace: {
@@ -189,7 +183,7 @@ describe('ProcessorOrchestration', () => {
     it('should handle empty finalResponse gracefully', async () => {
       const correlationId = 'corr-def-456';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: '',
         decisionTrace: {
@@ -221,7 +215,7 @@ describe('ProcessorOrchestration', () => {
     it('should return runner output for status_query', async () => {
       const correlationId = 'corr-status-789';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Checking active work status...',
         decisionTrace: {
@@ -255,7 +249,7 @@ describe('ProcessorOrchestration', () => {
     it('should return runner output with runtimeSummary and kernelResult', async () => {
       const correlationId = 'corr-tool-abc';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Found relevant memory entries.',
         decisionTrace: {
@@ -301,7 +295,7 @@ describe('ProcessorOrchestration', () => {
     it('should NOT contain "Processing tool request..." in response', async () => {
       const correlationId = 'corr-tool-no-legacy';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'The documentation shows that TypeScript interfaces can be extended.',
         decisionTrace: {
@@ -339,7 +333,7 @@ describe('ProcessorOrchestration', () => {
     it('should return error when runner reports failure for dispatch_tool', async () => {
       const correlationId = 'corr-tool-error-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'failed',
         finalResponse: 'Tool execution failed.',
         decisionTrace: {
@@ -376,7 +370,7 @@ describe('ProcessorOrchestration', () => {
     it('should return runner output for spawn_planner', async () => {
       const correlationId = 'corr-planner-xyz';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: "I've created a plan for your task with plan ID plan-001.",
         decisionTrace: {
@@ -412,7 +406,7 @@ describe('ProcessorOrchestration', () => {
     it('should return error when runner reports planner failure', async () => {
       const correlationId = 'corr-planner-error-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'failed',
         finalResponse: '',
         decisionTrace: {
@@ -449,7 +443,7 @@ describe('ProcessorOrchestration', () => {
     it('should return runner output for resume', async () => {
       const correlationId = 'corr-resume-123';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Resuming your previous task...',
         decisionTrace: {
@@ -484,7 +478,7 @@ describe('ProcessorOrchestration', () => {
     it('should return PROCESSING_ERROR when runner throws', async () => {
       const correlationId = 'corr-error-111';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockRejectedValue(new Error('Foreground runner failed'));
+      vi.mocked(mockForegroundAgent.runTurn!).mockRejectedValue(new Error('Foreground runner failed'));
 
       const processor = createOrchestrationProcessor({ deps });
       const input: MessageProcessorInput = {
@@ -532,7 +526,7 @@ describe('ProcessorOrchestration', () => {
     it('should handle non-Error exceptions gracefully', async () => {
       const correlationId = 'corr-error-333';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockRejectedValue('String error');
+      vi.mocked(mockForegroundAgent.runTurn!).mockRejectedValue('String error');
 
       const processor = createOrchestrationProcessor({ deps });
       const input: MessageProcessorInput = {
@@ -557,7 +551,7 @@ describe('ProcessorOrchestration', () => {
     it('should correctly build ForegroundTurnInput for runner.runTurn()', async () => {
       const correlationId = 'corr-transform-444';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Response',
         decisionTrace: {
@@ -580,7 +574,7 @@ describe('ProcessorOrchestration', () => {
       await processor(input);
 
       // Verify the runner was called with correct ForegroundTurnInput
-      const callArgs = vi.mocked(mockForegroundKernelRunner.runTurn).mock.calls[0];
+      const callArgs = vi.mocked(mockForegroundAgent.runTurn!).mock.calls[0];
       const turnInput = callArgs[0];
 
       expect(turnInput.message).toBe('Test message content');
@@ -615,7 +609,7 @@ describe('ProcessorOrchestration', () => {
 
       vi.mocked(mockGateway.assembleHydratedState).mockReturnValue(customHydratedState);
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Response',
         decisionTrace: {
@@ -638,7 +632,7 @@ describe('ProcessorOrchestration', () => {
       await processor(input);
 
       // Verify the runner was called with correct foregroundState
-      const callArgs = vi.mocked(mockForegroundKernelRunner.runTurn).mock.calls[0];
+      const callArgs = vi.mocked(mockForegroundAgent.runTurn!).mock.calls[0];
       const turnInput = callArgs[0];
       const foregroundState = turnInput.foregroundState;
 
@@ -674,7 +668,7 @@ describe('ProcessorOrchestration', () => {
         },
       ]);
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Response',
         decisionTrace: {
@@ -696,7 +690,7 @@ describe('ProcessorOrchestration', () => {
 
       await processor(input);
 
-      const callArgs = vi.mocked(mockForegroundKernelRunner.runTurn).mock.calls[0];
+      const callArgs = vi.mocked(mockForegroundAgent.runTurn!).mock.calls[0];
       const turnInput = callArgs[0];
       const foregroundState = turnInput.foregroundState;
 
@@ -722,7 +716,7 @@ describe('ProcessorOrchestration', () => {
     it('should use custom persona when provided', async () => {
       const correlationId = 'corr-persona-666';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Response',
         decisionTrace: {
@@ -749,7 +743,7 @@ describe('ProcessorOrchestration', () => {
 
       await processor(input);
 
-      const callArgs = vi.mocked(mockForegroundKernelRunner.runTurn).mock.calls[0];
+      const callArgs = vi.mocked(mockForegroundAgent.runTurn!).mock.calls[0];
       const turnInput = callArgs[0];
       const foregroundState = turnInput.foregroundState;
 
@@ -762,7 +756,7 @@ describe('ProcessorOrchestration', () => {
     it('should handle dispatch_subagent route', async () => {
       const correlationId = 'corr-subagent-777';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Dispatching subagent...',
         decisionTrace: {
@@ -792,7 +786,7 @@ describe('ProcessorOrchestration', () => {
     it('should handle approval_handler route', async () => {
       const correlationId = 'corr-approval-888';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Processing your approval response...',
         decisionTrace: {
@@ -822,7 +816,7 @@ describe('ProcessorOrchestration', () => {
     it('should handle cancel_or_modify_task route', async () => {
       const correlationId = 'corr-cancel-999';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Task cancelled.',
         decisionTrace: {
@@ -859,7 +853,7 @@ describe('ProcessorOrchestration', () => {
     it('should not include channel-specific fields in output', async () => {
       const correlationId = 'corr-neutral-000';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Response',
         decisionTrace: {
@@ -903,7 +897,7 @@ describe('ProcessorOrchestration', () => {
       const correlationId = 'corr-transcript-success-001';
       const userVisibleResponse = 'I understand your message.';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: userVisibleResponse,
         decisionTrace: {
@@ -943,7 +937,7 @@ describe('ProcessorOrchestration', () => {
     it('should persist transcript with error message on processing failure', async () => {
       const correlationId = 'corr-transcript-error-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockRejectedValue(new Error('Foreground runner crashed'));
+      vi.mocked(mockForegroundAgent.runTurn!).mockRejectedValue(new Error('Foreground runner crashed'));
 
       const processor = createOrchestrationProcessor({ deps });
       const input: MessageProcessorInput = {
@@ -972,7 +966,7 @@ describe('ProcessorOrchestration', () => {
     it('should persist transcript with system_status for non-answer_directly routes', async () => {
       const correlationId = 'corr-transcript-status-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: "I've created a plan for your task.",
         decisionTrace: {
@@ -1008,7 +1002,7 @@ describe('ProcessorOrchestration', () => {
     it('should not include raw internal reasoning in thinking_summary', async () => {
       const correlationId = 'corr-transcript-safe-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Here is my public response.',
         decisionTrace: {
@@ -1053,7 +1047,7 @@ describe('ProcessorOrchestration', () => {
         throw new Error('Database error');
       });
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Response despite persistence failure',
         decisionTrace: {
@@ -1126,7 +1120,7 @@ describe('ProcessorOrchestration', () => {
     it('timeline query should include user_message and assistant_message after success', async () => {
       const correlationId = 'corr-timeline-success-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Yes, I can help with that!',
         decisionTrace: {
@@ -1160,7 +1154,7 @@ describe('ProcessorOrchestration', () => {
     it('timeline query should include user_message and error after failure', async () => {
       const correlationId = 'corr-timeline-error-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockRejectedValue(new Error('Processing pipeline error'));
+      vi.mocked(mockForegroundAgent.runTurn!).mockRejectedValue(new Error('Processing pipeline error'));
 
       const processor = createOrchestrationProcessor({ deps });
       const input: MessageProcessorInput = {
@@ -1186,7 +1180,7 @@ describe('ProcessorOrchestration', () => {
     it('should include correlation metadata in transcript for timeline linkage', async () => {
       const correlationId = 'corr-timeline-link-001';
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'Response with correlation.',
         decisionTrace: {
@@ -1280,7 +1274,7 @@ describe('ProcessorOrchestration', () => {
         return fn();
       };
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'I understand.',
         decisionTrace: {
@@ -1312,7 +1306,7 @@ describe('ProcessorOrchestration', () => {
         { userId: 'user-123', preferredProviderId: 'selected-provider' },
       ]);
 
-      const turnInput = vi.mocked(mockForegroundKernelRunner.runTurn).mock.calls[0][0];
+      const turnInput = vi.mocked(mockForegroundAgent.runTurn!).mock.calls[0][0];
       expect(turnInput.agentConfig).toBe(agentConfig);
       expect(turnInput.foregroundState.resolvedProvider).toBe('selected-provider');
       expect(turnInput.foregroundState.resolvedModel).toBe('selected-model');
@@ -1356,7 +1350,7 @@ describe('ProcessorOrchestration', () => {
         providerConfigStore: mockProviderConfigStore as unknown as import('../../../src/storage/provider-config-store.js').ProviderConfigStore,
       };
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'I understand.',
         decisionTrace: {
@@ -1431,7 +1425,7 @@ describe('ProcessorOrchestration', () => {
         providerConfigStore: mockProviderConfigStore as unknown as import('../../../src/storage/provider-config-store.js').ProviderConfigStore,
       };
 
-      vi.mocked(mockForegroundKernelRunner.runTurn).mockResolvedValue({
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
         status: 'completed',
         finalResponse: 'I understand.',
         decisionTrace: {
