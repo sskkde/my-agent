@@ -5,11 +5,12 @@ import {
   requiresApprovalByRisk,
   determineRiskLevel,
 } from '../../../src/permissions/tool-risk-policy.js';
+import { BUILT_IN_TOOLS } from '../../../src/api/tool-catalog.js';
 
 describe('buildDefaultRiskPolicies', () => {
-  it('returns 21 policies for all built-in tools', () => {
+  it('returns one policy for each built-in tool', () => {
     const policies = buildDefaultRiskPolicies();
-    expect(policies).toHaveLength(21);
+    expect(policies).toHaveLength(BUILT_IN_TOOLS.length);
   });
 
   it('every policy has required fields', () => {
@@ -26,7 +27,7 @@ describe('buildDefaultRiskPolicies', () => {
   it('produces unique tool names', () => {
     const policies = buildDefaultRiskPolicies();
     const names = policies.map((p) => p.toolName);
-    expect(new Set(names).size).toBe(21);
+    expect(new Set(names).size).toBe(BUILT_IN_TOOLS.length);
   });
 });
 
