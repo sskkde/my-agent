@@ -35,7 +35,7 @@
     "test:tenancy": "vitest run tests/integration/tenancy/",
     "test:postgres": "vitest run tests/integration/postgres/",
     "test:prod-config": "vitest run tests/security/production-config-guard.test.ts --reporter=verbose",
-    "test:performance": "vitest run tests/performance",
+    "test:performance": "RUN_PERFORMANCE_SMOKE=1 vitest run tests/performance",
     "test:load": "tsx scripts/check-load-smoke.ts",
     "test:docker": "tsx scripts/check-docker-smoke.ts",
     "typecheck": "tsc --noEmit",
