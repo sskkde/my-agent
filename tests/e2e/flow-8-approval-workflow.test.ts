@@ -451,7 +451,7 @@ describe('Flow 8: Approval Workflow E2E Flows', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('PERMISSION_DENIED');
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED');
 
       const pendingApprovals = harness.stores.approvalStore.findPendingBySession(sessionId);
       expect(pendingApprovals.length).toBeGreaterThan(0);

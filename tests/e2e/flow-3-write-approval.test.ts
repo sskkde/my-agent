@@ -61,7 +61,7 @@ describe('Flow 3: Write Tool with Approval', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
-    expect(result.error?.code).toBe('PERMISSION_DENIED');
+    expect(result.error?.code).toBe('APPROVAL_REQUIRED');
 
     const pendingApprovals = harness.stores.approvalStore.findPendingBySession(sessionId);
     expect(pendingApprovals.length).toBeGreaterThan(0);
@@ -270,11 +270,11 @@ describe('Flow 3: Write Tool with Approval', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error?.code).toBe('PERMISSION_DENIED');
+    expect(result.error?.code).toBe('APPROVAL_REQUIRED');
 
     const toolExecution = harness.stores.toolExecutionStore.getById(toolCallId);
     expect(toolExecution).toBeDefined();
-    expect(toolExecution?.status).toBe('denied');
+    expect(toolExecution?.status).toBe('waiting_for_approval');
   });
 
   it('should reject write tool when approval is denied', async () => {
