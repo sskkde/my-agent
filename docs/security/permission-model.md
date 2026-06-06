@@ -15,8 +15,35 @@ When an agent attempts to execute a tool that requires approval, the following f
 1. **Tool Request**: Agent proposes tool execution with parameters
 2. **Permission Check**: System evaluates if approval is required
 3. **Approval Request**: If required, request is queued for user review
-4. **User Decision**: User approves or rejects the request
-5. **Execution**: On approval, tool executes; on rejection, agent is notified
+4. **User Decision**: User responds with one of three choices
+5. **Execution**: Based on decision, tool executes or agent is notified
+
+#### Tri-State Approval Choices
+
+Users can respond to approval requests with three distinct choices:
+
+| Response | Behavior | Grant Created | Use Case |
+|----------|----------|---------------|----------|
+| `reject` | Denies the request, no execution | None | Unsafe or unwanted operation |
+| `approve_once` | Approves this specific request | 60-minute precise grant | One-time operation |
+| `approve_always` | Approves and creates long-lived grant | 24-hour grant | Repeated safe operations |
+
+**MVP Implementation Note**: The `approve_once` response is implemented as a short-TTL (60-minute) precise grant, not a strict one-shot consumed grant. This allows for reasonable retry behavior while maintaining security. Future versions may implement strict one-shot semantics.
+
+#### Session Modal Integration
+
+When a session has pending approval requests, the session window displays an approval modal in the `SessionConsoleTab`. This provides immediate visibility and quick response capability without navigating to the dedicated Approvals tab.
+
+#### Backward Compatibility
+
+The API maintains backward compatibility with the legacy two-state approval system:
+
+- Legacy `decision` field: `approved` | `rejected`
+- Canonical `responseType` field: `reject` | `approve_once` | `approve_always`
+
+The system normalizes legacy values:
+- `approved` → `approve_once` (creates 60-minute grant)
+- `rejected` → `reject` (no grant)
 
 ### Permission Types
 
