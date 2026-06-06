@@ -137,8 +137,11 @@ export interface ApprovalsResponse {
   total: number;
 }
 
+export type ApprovalResponseType = 'reject' | 'approve_once' | 'approve_always';
+
 export interface ApprovalDecisionRequest {
-  decision: 'approved' | 'rejected';
+  decision?: 'approved' | 'rejected';           // legacy
+  responseType?: ApprovalResponseType;          // new canonical
   reason?: string;
 }
 
@@ -146,6 +149,9 @@ export interface ApprovalDecisionResponse {
   success: boolean;
   approvalId: string;
   status: 'approved' | 'rejected';
+  responseType?: ApprovalResponseType;
+  grantCreated?: boolean;
+  grantId?: string;
 }
 
 // =============================================================================
