@@ -52,6 +52,12 @@ coverage/
 
 # Playwright generated auth state
 web/playwright/.auth/*.json
+playwright/.auth/*.json
+e2e/auth-state.json
+
+# Playwright test results
+test-results/
+web/test-results/
 
 # Agent local state
 .sisyphus/
