@@ -3,332 +3,326 @@ name: CI
 on:
   push:
     branches: [main, master]
+    tags:
+      - 'v*'
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  WEB_SEARCH_BACKEND: none
 
 jobs:
-  lint:
+  typecheck:
     runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
 
-      - name: Run ESLint
-        run: npm run lint
-        continue-on-error: true
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+
+  format-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check
 
   npm-audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Run npm audit (root)
-        run: npm audit --audit-level=high
-        continue-on-error: true
-      
-      - name: Run npm audit (web)
-        run: npm --prefix web audit --audit-level=high
-        continue-on-error: true
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm audit --audit-level=high
+      - run: npm --prefix web audit --audit-level=high
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:unit
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:integration
 
   security-tests:
     runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run security tests
-        run: npm run test:unit -- tests/security/
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:security
 
   performance-tests:
     runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run performance tests
-        run: npm run test:unit -- tests/performance/
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:performance
 
-  test:
+  web-test:
     runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Install frontend dependencies
-        run: npm --prefix web ci --no-audit --no-fund
-      
-      - name: Run P7 verification suite
-        run: npm run test:p7
-
-  # P8 Test Suites
-  test-prod-config:
-    runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run production config tests
-        run: npm run test:prod-config
-
-  test-tenancy:
-    runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run multi-tenancy tests
-        run: npm run test:tenancy
-
-  test-postgres:
-    runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run PostgreSQL adapter tests (skips if no PG)
-        run: npm run test:postgres || echo "PostgreSQL tests skipped (no PG available)"
-
-  test-backup-restore:
-    runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run backup/restore tests
-        run: npm run test:backup-restore
-
-  test-load:
-    runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run load smoke tests
-        run: npm run test:load
-
-  test-dlq:
-    runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run DLQ reliability tests
-        run: npm run test:phase4
-
-  api-contract:
-    runs-on: ubuntu-latest
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Run API contract lock tests
-        run: npm run test:unit -- tests/integration/api/api-contract-lock.test.ts
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm --prefix web ci --no-audit --no-fund
+      - run: npm run test:web
 
   web-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Install frontend dependencies
-        run: npm --prefix web ci --no-audit --no-fund
-      
-      - name: Build web frontend
-        run: npm run build:web
-
-  test-p8:
-    runs-on: ubuntu-latest
-    needs: [test, test-prod-config, test-tenancy, security-tests, performance-tests, test-backup-restore, test-load, test-dlq, api-contract, web-build]
-    env:
-      WEB_SEARCH_BACKEND: none
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Install frontend dependencies
-        run: npm --prefix web ci --no-audit --no-fund
-      
-      - name: Run P8 GA readiness verification
-        run: npm run test:p8
-
-  docker-build:
-    runs-on: ubuntu-latest
-    needs: [test]
-    if: ${{ vars.DOCKER_ENABLED == 'true' || github.event_name == 'push' }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Check Docker availability
-        id: docker-check
-        run: |
-          if command -v docker &> /dev/null && docker info &> /dev/null; then
-            echo "docker-available=true" >> $GITHUB_OUTPUT
-          else
-            echo "docker-available=false" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Build Docker images
-        if: steps.docker-check.outputs.docker-available == 'true'
-        run: docker compose build
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm --prefix web ci --no-audit --no-fund
+      - run: npm run build:web
 
   e2e-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     env:
-      WEB_SEARCH_BACKEND: none
       DATABASE_PATH: ./data/e2e.db
       PORT: 3103
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Install root dependencies
-        run: npm ci --no-audit --no-fund
-      
-      - name: Install frontend dependencies
-        run: npm --prefix web ci --no-audit --no-fund
-      
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-      
-      - name: Reset E2E database
-        run: npm run reset:e2e-db
-      
-      - name: Run E2E tests
-        run: npm run test:e2e
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm --prefix web ci --no-audit --no-fund
+      - run: npx playwright install chromium --with-deps
+      - run: npm run reset:e2e-db
+      - run: npm run test:e2e
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - typecheck
+      - lint
+      - format-check
+      - unit-tests
+      - integration-tests
+      - security-tests
+      - performance-tests
+      - web-build
+      - e2e-test
+    steps:
+      - run: echo "P7 regression gate passed via split CI jobs. scripts/check-p7.ts remains available for local/manual verification."
+
+  test-prod-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:prod-config
+
+  test-tenancy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:tenancy
+
+  test-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: agent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d agent_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/agent_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:postgres
+
+  test-backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:backup-restore
+
+  test-load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:load
+
+  test-dlq:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:phase4
+
+  api-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:unit -- tests/integration/api/api-contract-lock.test.ts
+
+  test-p8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - test
+      - npm-audit
+      - web-test
+      - test-prod-config
+      - test-tenancy
+      - test-postgres
+      - test-backup-restore
+      - test-load
+      - test-dlq
+      - api-contract
+    steps:
+      - run: echo "P8 GA gate passed via split CI jobs. scripts/check-p8.ts remains available for release/manual verification."
+
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [test]
+    if: ${{ vars.DOCKER_ENABLED == 'true' || github.event_name == 'push' }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
