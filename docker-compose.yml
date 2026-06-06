@@ -29,7 +29,7 @@ services:
     environment:
       - BASE_URL=http://searxng:8080/
       - INSTANCE_NAME=agent-platform-search
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-agent-platform-local-searxng-secret-change-me}
+      - SEARXNG_SECRET=${SEARXNG_SECRET:?SEARXNG_SECRET env var is required}
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml
 

@@ -90,7 +90,7 @@ services:
       - APP_SECRET_KEY=dev-secret-key-change-in-production
       - WEB_SEARCH_BACKEND=auto
       - SEARXNG_BASE_URL=http://searxng:8080
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-agent-platform-local-searxng-secret-change-me}
+      - SEARXNG_SECRET=${SEARXNG_SECRET:?SEARXNG_SECRET env var is required}
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml
     healthcheck:
