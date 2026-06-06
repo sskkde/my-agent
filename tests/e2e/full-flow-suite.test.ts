@@ -262,7 +262,7 @@ describe('Task 50: Full End-to-End Flow Suite', () => {
 
       // Assert approval required
       expect(execResult.success).toBe(false);
-      expect(execResult.error?.code).toBe('PERMISSION_DENIED');
+      expect(execResult.error?.code).toBe('APPROVAL_REQUIRED');
 
       // Get pending approval
       const pendingApprovals = harness.stores.approvalStore.findPendingBySession(sessionId);
