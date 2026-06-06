@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createToolExecutor } from '../../../src/tools/tool-executor.js';
+import { createToolExecutor, _categoryToOperationTypeForTesting } from '../../../src/tools/tool-executor.js';
 import type {
   ToolDefinition,
   ToolRegistry,
@@ -291,6 +291,16 @@ describe('ToolExecutor', () => {
         allowed: false,
         reason: 'Operation requires approval',
         requestId: 'approval-123',
+        approvalRequest: {
+          id: 'approval-123',
+          userId: 'user-1',
+          sessionId: 'session-1',
+          status: 'pending',
+          actionType: 'tool:destructive-tool',
+          operationType: 'execute',
+          requestedBy: 'user-1',
+          requestedAt: new Date().toISOString(),
+        },
       } as PermissionDecision);
 
       const result = await executor.execute({
@@ -303,13 +313,16 @@ describe('ToolExecutor', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('PERMISSION_DENIED');
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED');
       expect(result.error?.message).toContain('requires approval');
+      expect(result.structuredContent?.status).toBe('requires_approval');
+      expect(result.structuredContent?.requestId).toBe('approval-123');
+      expect(result.structuredContent?.approvalRequest).toBeDefined();
       expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
         'call-1',
-        'denied',
+        'waiting_for_approval',
         undefined,
-        '[PERMISSION_DENIED] Operation requires approval'
+        '[APPROVAL_REQUIRED] Operation requires approval'
       );
     });
 
@@ -855,6 +868,48 @@ describe('ToolExecutor', () => {
         })
       );
     });
+  });
+});
+
+describe('categoryToOperationType mapping', () => {
+  it('should map read category to read operation', () => {
+    expect(_categoryToOperationTypeForTesting('read')).toBe('read');
+  });
+
+  it('should map search category to read operation', () => {
+    expect(_categoryToOperationTypeForTesting('search')).toBe('read');
+  });
+
+  it('should map internal category to read operation', () => {
+    expect(_categoryToOperationTypeForTesting('internal')).toBe('read');
+  });
+
+  it('should map write category to write operation', () => {
+    expect(_categoryToOperationTypeForTesting('write')).toBe('write');
+  });
+
+  it('should map send category to write operation', () => {
+    expect(_categoryToOperationTypeForTesting('send')).toBe('write');
+  });
+
+  it('should map delete category to delete operation', () => {
+    expect(_categoryToOperationTypeForTesting('delete')).toBe('delete');
+  });
+
+  it('should map execute category to execute operation', () => {
+    expect(_categoryToOperationTypeForTesting('execute')).toBe('execute');
+  });
+
+  it('should map automation category to execute operation', () => {
+    expect(_categoryToOperationTypeForTesting('automation')).toBe('execute');
+  });
+
+  it('should map admin category to admin operation', () => {
+    expect(_categoryToOperationTypeForTesting('admin')).toBe('admin');
+  });
+
+  it('should map connector category to admin operation', () => {
+    expect(_categoryToOperationTypeForTesting('connector')).toBe('admin');
   });
 });
 

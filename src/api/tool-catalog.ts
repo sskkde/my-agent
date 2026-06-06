@@ -1,5 +1,8 @@
 import type { ToolSummary } from './types.js';
 import type { ToolDefinition } from '../llm/types.js';
+import type { ToolRegistry } from '../tools/types.js';
+import type { CanonicalToolCatalogEntry } from '../tools/tool-catalog.js';
+import { getFallbackToolCatalog, buildRuntimeToolCatalog } from '../tools/tool-catalog.js';
 
 export const BUILT_IN_TOOLS: ToolSummary[] = [
   {
@@ -69,6 +72,24 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     sensitivity: 'medium',
   },
   {
+    name: 'file_write',
+    description: 'Write content to a file in the workspace',
+    category: 'write',
+    sensitivity: 'high',
+  },
+  {
+    name: 'file_edit',
+    description: 'Edit a file by replacing a specific string in the workspace',
+    category: 'write',
+    sensitivity: 'high',
+  },
+  {
+    name: 'file_apply_patch',
+    description: 'Apply a multi-file patch with add/update/delete operations',
+    category: 'write',
+    sensitivity: 'high',
+  },
+  {
     name: 'session_list',
     description: 'List sessions for the current user',
     category: 'read',
@@ -91,6 +112,30 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     description: 'Search the public web for information using an external search provider',
     category: 'search',
     sensitivity: 'medium',
+  },
+  {
+    name: 'exec',
+    description: 'Execute a shell command with security validation, timeout, and output management',
+    category: 'execute',
+    sensitivity: 'high',
+  },
+  {
+    name: 'bash',
+    description: 'Execute a bash command (alias for exec tool)',
+    category: 'execute',
+    sensitivity: 'high',
+  },
+  {
+    name: 'process',
+    description: 'Manage background process sessions: list, poll, log, write stdin, kill, clear',
+    category: 'execute',
+    sensitivity: 'high',
+  },
+  {
+    name: 'code_execution',
+    description: 'Execute code in JavaScript, TypeScript, or Bash with temp file cleanup',
+    category: 'execute',
+    sensitivity: 'high',
   },
   {
     name: 'email_search',
@@ -128,7 +173,6 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     category: 'read',
     sensitivity: 'low',
   },
-  // Foreground tools (registered via registerAllForegroundTools)
   {
     name: 'search_subagent',
     description: 'Search the web for information using a constrained subagent',
@@ -174,11 +218,25 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
 ];
 
 export function getToolCatalog(): ToolSummary[] {
-  return [...BUILT_IN_TOOLS];
+  const fallbackCatalog = getFallbackToolCatalog();
+  return fallbackCatalog.map(entry => ({
+    name: entry.name,
+    description: entry.description,
+    category: entry.category,
+    sensitivity: entry.sensitivity,
+  }));
+}
+
+export function getToolCatalogWithMetadata(registry?: ToolRegistry): CanonicalToolCatalogEntry[] {
+  if (registry) {
+    return buildRuntimeToolCatalog(registry, { includeMock: true });
+  }
+  return getFallbackToolCatalog();
 }
 
 export function getToolDefinitions(): ToolDefinition[] {
-  return BUILT_IN_TOOLS.map(tool => ({
+  const fallbackCatalog = getFallbackToolCatalog();
+  return fallbackCatalog.map(tool => ({
     type: 'function' as const,
     function: {
       name: tool.name,

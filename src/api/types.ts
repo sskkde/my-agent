@@ -491,14 +491,20 @@ export interface ModelsResponse {
 // Tool Catalog Types - Task 2
 // =============================================================================
 
-export type ToolCategory = 'read' | 'write' | 'delete' | 'execute' | 'search' | 'admin' | 'connector' | 'internal';
+export type ToolCategory = 'read' | 'write' | 'delete' | 'execute' | 'search' | 'admin' | 'connector' | 'internal' | 'send' | 'automation';
 export type ToolSensitivity = 'low' | 'medium' | 'high' | 'restricted';
+export type ToolExecutionPlane = 'standard' | 'foreground' | 'connector' | 'mock_connector' | 'catalog_only';
+export type ToolAvailability = 'registered' | 'foreground_only' | 'deferred' | 'disabled' | 'mock';
 
 export interface ToolSummary {
   name: string;
   description: string;
   category: ToolCategory;
   sensitivity: ToolSensitivity;
+  executionPlane?: ToolExecutionPlane;
+  availability?: ToolAvailability;
+  isMock?: boolean;
+  source?: string;
 }
 
 export interface ToolsResponse {

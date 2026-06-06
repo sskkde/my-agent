@@ -177,6 +177,19 @@ npm run test:web
 - Webhook 触发器
 - 连接器事件触发器
 
+### Runtime Tools
+
+平台提供运行时命令执行工具，支持 shell 命令执行、后台进程管理和代码执行：
+
+- **exec** - 执行 shell 命令，支持超时、后台执行和输出管理
+- **bash** - exec 工具的别名
+- **process** - 管理后台进程会话（list、poll、kill、clear）
+- **code_execution** - 执行 JavaScript/TypeScript/Bash 代码
+
+⚠️ **安全提示**：这些工具不提供沙箱隔离，在代理环境中执行命令。所有工具都需要审批，并具有硬性安全边界（超时限制、输出限制、工作区边界、危险命令拒绝列表）。
+
+详细文档请参阅 [docs/tools.md](docs/tools.md)。
+
 ### 连接器管理
 
 - 连接器列表和详情查看
@@ -436,6 +449,19 @@ ProcessorOrchestration → ForegroundAgent.runTurn() → AgentKernel.run() → p
 3. **AgentKernel.run()** executes LLM calls with tool loop
 4. **Tool Projection** ensures foreground agents only access safe tool categories
 5. **Response** is mapped back through the pipeline with transcript persistence
+
+## Runtime Tools
+
+The platform includes runtime command-execution tools for executing shell commands and code:
+
+- **exec** - Execute shell commands with validation, timeout, and output management
+- **bash** - Alias for exec tool
+- **process** - Manage background process sessions (list, poll, kill, clear)
+- **code_execution** - Execute JavaScript/TypeScript/Bash code with temp file cleanup
+
+These tools execute commands in the same environment as the agent with controlled execution, approval requirements, timeouts, and output caps. **They do NOT provide a sandbox.**
+
+For detailed documentation, security boundaries, and usage examples, see [docs/tools.md](docs/tools.md).
 
 ## Directory Structure
 

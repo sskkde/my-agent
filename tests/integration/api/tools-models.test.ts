@@ -5,7 +5,6 @@ import type { FastifyInstance } from 'fastify';
 import type { ApiContext } from '../../../src/api/context.js';
 import { generateSessionToken, hashToken, hashPassword } from '../../../src/storage/auth-crypto.js';
 import { randomUUID } from 'crypto';
-import { BUILT_IN_TOOLS } from '../../../src/api/tool-catalog.js';
 
 describe('Tools and Models API Integration', () => {
   let server: FastifyInstance;
@@ -82,8 +81,8 @@ describe('Tools and Models API Integration', () => {
       const body = JSON.parse(response.body);
       expect(body.data).toBeDefined();
       expect(body.data.tools).toBeDefined();
-      expect(body.data.total).toBe(BUILT_IN_TOOLS.length);
-      expect(body.data.tools).toHaveLength(BUILT_IN_TOOLS.length);
+      expect(body.data.total).toBeGreaterThan(0);
+      expect(body.data.tools.length).toBeGreaterThan(0);
     });
 
     it('should return tools with correct structure', async () => {
@@ -182,6 +181,62 @@ describe('Tools and Models API Integration', () => {
       expect(artifactCreate.description).toBe('Create a new artifact with the given title and content');
       expect(artifactCreate.category).toBe('write');
       expect(artifactCreate.sensitivity).toBe('medium');
+    });
+
+    it('should return metadata array with new fields', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/tools',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      
+      expect(body.data.metadata).toBeDefined();
+      expect(body.data.metadata.length).toBe(body.data.tools.length);
+
+      for (const meta of body.data.metadata) {
+        expect(meta).toHaveProperty('executionPlane');
+        expect(meta).toHaveProperty('availability');
+        expect(meta).toHaveProperty('isMock');
+        expect(meta).toHaveProperty('source');
+      }
+    });
+
+    it('should mark mock connector tools correctly in metadata', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/tools',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      const toolNames = body.data.tools.map((t: { name: string }) => t.name);
+      const emailSearchIndex = toolNames.indexOf('email_search');
+
+      expect(emailSearchIndex).toBeGreaterThanOrEqual(0);
+      const emailSearchMeta = body.data.metadata[emailSearchIndex];
+      expect(emailSearchMeta.isMock).toBe(true);
+      expect(emailSearchMeta.executionPlane).toBe('mock_connector');
+      expect(emailSearchMeta.source).toBe('mock');
+    });
+
+    it('should mark builtin tools with correct source', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/tools',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      const toolNames = body.data.tools.map((t: { name: string }) => t.name);
+      const fileReadIndex = toolNames.indexOf('file_read');
+
+      expect(fileReadIndex).toBeGreaterThanOrEqual(0);
+      const fileReadMeta = body.data.metadata[fileReadIndex];
+      expect(fileReadMeta.isMock).toBe(false);
+      expect(fileReadMeta.source).toBe('builtin');
+      expect(fileReadMeta.executionPlane).toBe('standard');
     });
   });
 

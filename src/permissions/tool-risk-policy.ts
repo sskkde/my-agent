@@ -1,5 +1,6 @@
 import type { RiskLevel } from './types.js';
-import { BUILT_IN_TOOLS } from '../api/tool-catalog.js';
+import type { CanonicalToolCatalogEntry } from '../tools/tool-catalog.js';
+import { getFallbackToolCatalog } from '../tools/tool-catalog.js';
 
 export interface ToolRiskPolicy {
   toolName: string;
@@ -51,30 +52,33 @@ export function determineRiskLevel(category: string, sensitivity: string): RiskL
   return 'medium';
 }
 
-export function buildDefaultRiskPolicies(): ToolRiskPolicy[] {
-  return BUILT_IN_TOOLS.map((tool) => {
-    const category: string = tool.category;
-    const sensitivity: string = tool.sensitivity;
-    const riskLevel = determineRiskLevel(category, sensitivity);
+export function buildRiskPoliciesFromCatalog(entries: CanonicalToolCatalogEntry[]): ToolRiskPolicy[] {
+  return entries.map((entry) => {
+    const riskLevel = determineRiskLevel(entry.category, entry.sensitivity);
     return {
-      toolName: tool.name,
+      toolName: entry.name,
       riskLevel,
       requiresApproval:
-        category === 'write' ||
-        category === 'delete' ||
-        category === 'send' ||
-        category === 'execute',
+        entry.category === 'write' ||
+        entry.category === 'delete' ||
+        entry.category === 'send' ||
+        entry.category === 'execute' ||
+        entry.requiresPermission === true,
       canAutoGrant:
-        sensitivity === 'low' ||
-        (sensitivity === 'medium' && category === 'read'),
+        entry.sensitivity === 'low' ||
+        (entry.sensitivity === 'medium' && entry.category === 'read'),
       auditLevel:
-        sensitivity === 'low'
+        entry.sensitivity === 'low'
           ? 'low'
-          : sensitivity === 'medium'
+          : entry.sensitivity === 'medium'
             ? 'medium'
             : 'high',
     };
   });
+}
+
+export function buildDefaultRiskPolicies(): ToolRiskPolicy[] {
+  return buildRiskPoliciesFromCatalog(getFallbackToolCatalog());
 }
 
 const defaultPolicies: ToolRiskPolicy[] = buildDefaultRiskPolicies();

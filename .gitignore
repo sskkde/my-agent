@@ -60,3 +60,6 @@ agent/.sisyphus/
 # Agent configuration (local only)
 AGENTS.md
 secrets/
+
+# OpenCode metadata
+.omo/
