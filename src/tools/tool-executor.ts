@@ -94,6 +94,26 @@ class ToolExecutorImpl implements ToolExecutor {
 
       if (!permissionDecision.allowed) {
         const rawErrorMessage = permissionDecision.reason || 'Permission denied';
+        
+        if (permissionDecision.status === 'requires_approval' || permissionDecision.status === 'pending_approval') {
+          const persistedErrorMessage = formatPersistedError('APPROVAL_REQUIRED', rawErrorMessage);
+          this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.WAITING_FOR_APPROVAL, undefined, persistedErrorMessage);
+          this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage));
+          return {
+            success: false,
+            error: {
+              code: 'APPROVAL_REQUIRED',
+              message: rawErrorMessage,
+              recoverable: true,
+            },
+            structuredContent: {
+              status: 'requires_approval',
+              requestId: permissionDecision.requestId,
+              approvalRequest: permissionDecision.approvalRequest,
+            },
+          };
+        }
+        
         const persistedErrorMessage = formatPersistedError('PERMISSION_DENIED', rawErrorMessage);
         this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.DENIED, undefined, persistedErrorMessage);
         this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage));
@@ -261,16 +281,18 @@ class ToolExecutorImpl implements ToolExecutor {
     switch (category) {
       case 'read':
       case 'search':
+      case 'internal':
         return 'read';
       case 'write':
+      case 'send':
         return 'write';
       case 'delete':
         return 'delete';
       case 'execute':
+      case 'automation':
         return 'execute';
       case 'admin':
       case 'connector':
-      case 'internal':
         return 'admin';
       default:
         return 'read';
@@ -308,7 +330,12 @@ class ToolExecutorImpl implements ToolExecutor {
     });
   }
 
-  private createErrorResult(code: string, message: string, recoverable: boolean): ToolExecutionResult {
+  private createErrorResult(
+    code: string,
+    message: string,
+    recoverable: boolean,
+    structuredContent?: Record<string, unknown>
+  ): ToolExecutionResult {
     return {
       success: false,
       error: {
@@ -316,10 +343,17 @@ class ToolExecutorImpl implements ToolExecutor {
         message,
         recoverable,
       },
+      structuredContent,
     };
   }
 }
 
 export function createToolExecutor(config: ToolExecutorConfig): ToolExecutor {
   return new ToolExecutorImpl(config);
+}
+
+// @internal - Exported for testing only
+export function _categoryToOperationTypeForTesting(category: ToolCategory): 'read' | 'write' | 'execute' | 'delete' | 'admin' {
+  const executor = new ToolExecutorImpl({} as ToolExecutorConfig);
+  return executor['categoryToOperationType'](category);
 }

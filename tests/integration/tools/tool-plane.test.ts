@@ -316,7 +316,7 @@ describe('Tool Plane Integration', () => {
       expect(result.data).toBe('file contents');
     });
 
-    it('should require permission for write tools in ask_on_write mode', async () => {
+    it('should require approval for write tools in ask_on_write mode', async () => {
       const registry = createToolRegistry();
 
       registry.register({
@@ -356,7 +356,9 @@ describe('Tool Plane Integration', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('PERMISSION_DENIED');
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED');
+      expect(result.error?.recoverable).toBe(true);
+      expect(result.structuredContent?.status).toBe('requires_approval');
     });
 
     it('should execute write tool with permission grant', async () => {
@@ -418,7 +420,7 @@ describe('Tool Plane Integration', () => {
       expect(result.data).toBe('written');
     });
 
-    it('should deny delete tools without permission', async () => {
+    it('should require approval for delete tools without permission', async () => {
       const registry = createToolRegistry();
 
       registry.register({
@@ -457,7 +459,9 @@ describe('Tool Plane Integration', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('PERMISSION_DENIED');
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED');
+      expect(result.error?.recoverable).toBe(true);
+      expect(result.structuredContent?.status).toBe('requires_approval');
     });
 
     it('should respect hard_deny mode', async () => {
