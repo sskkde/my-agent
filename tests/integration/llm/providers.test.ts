@@ -1,21 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type {
-  LLMRequest,
-  ProviderConfig,
-  ProviderCapabilities,
-} from '../../../src/llm';
-import type { RuntimeError } from '../../../src/shared/errors';
-import {
-  OpenAIAdapter,
-  OpenRouterAdapter,
-  OllamaAdapter,
-  MultiProviderLLMAdapter,
-} from '../../../src/llm/providers';
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import type { LLMRequest, ProviderConfig, ProviderCapabilities } from '../../../src/llm'
+import type { RuntimeError } from '../../../src/shared/errors'
+import { OpenAIAdapter, OpenRouterAdapter, OllamaAdapter, MultiProviderLLMAdapter } from '../../../src/llm/providers'
 
 function createTestProviderConfig(
   id: string,
   priority: number = 1,
-  overrides: Partial<ProviderConfig> = {}
+  overrides: Partial<ProviderConfig> = {},
 ): ProviderConfig {
   const capabilities: ProviderCapabilities = {
     supportsStreaming: false,
@@ -24,7 +15,7 @@ function createTestProviderConfig(
     supportsVision: false,
     maxTokens: 4096,
     supportedModels: ['gpt-4', 'gpt-3.5-turbo'],
-  };
+  }
 
   return {
     id,
@@ -35,7 +26,7 @@ function createTestProviderConfig(
     retries: 2,
     capabilities,
     ...overrides,
-  };
+  }
 }
 
 function createTestRequest(overrides: Partial<LLMRequest> = {}): LLMRequest {
@@ -45,17 +36,13 @@ function createTestRequest(overrides: Partial<LLMRequest> = {}): LLMRequest {
     temperature: 0.7,
     maxTokens: 100,
     ...overrides,
-  };
+  }
 }
 
-function createMockFetch(
-  response: object,
-  status: number = 200,
-  delayMs: number = 0
-): typeof fetch {
+function createMockFetch(response: object, status: number = 200, delayMs: number = 0): typeof fetch {
   return vi.fn().mockImplementation(async () => {
     if (delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
     return {
       ok: status >= 200 && status < 300,
@@ -63,8 +50,8 @@ function createMockFetch(
       statusText: status === 200 ? 'OK' : 'Error',
       json: async () => response,
       text: async () => JSON.stringify(response),
-    } as Response;
-  });
+    } as Response
+  })
 }
 
 function createTimeoutMockFetch(): typeof fetch {
@@ -72,43 +59,40 @@ function createTimeoutMockFetch(): typeof fetch {
     return new Promise((_, reject) => {
       if (init?.signal) {
         init.signal.addEventListener('abort', () => {
-          const error = new Error('The operation was aborted');
-          error.name = 'AbortError';
-          reject(error);
-        });
+          const error = new Error('The operation was aborted')
+          error.name = 'AbortError'
+          reject(error)
+        })
       }
       setTimeout(() => {
-        const error = new Error('The operation was aborted');
-        error.name = 'AbortError';
-        reject(error);
-      }, 50);
-    });
-  });
+        const error = new Error('The operation was aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }, 50)
+    })
+  })
 }
 
 function firstFetchCall(fetchMock: typeof fetch): [string | URL | Request, RequestInit] {
   const mocked = fetchMock as unknown as {
-    mock: { calls: Array<[string | URL | Request, RequestInit | undefined]> };
-  };
-  const call = mocked.mock.calls[0];
-  if (!call?.[1]) {
-    throw new Error('Expected fetch to be called with RequestInit');
+    mock: { calls: Array<[string | URL | Request, RequestInit | undefined]> }
   }
-  return [call[0], call[1]];
+  const call = mocked.mock.calls[0]
+  if (!call?.[1]) {
+    throw new Error('Expected fetch to be called with RequestInit')
+  }
+  return [call[0], call[1]]
 }
 
 function firstFetchHeaders(fetchMock: typeof fetch): Record<string, string> {
-  const [, init] = firstFetchCall(fetchMock);
+  const [, init] = firstFetchCall(fetchMock)
   if (!init.headers || init.headers instanceof Headers || Array.isArray(init.headers)) {
-    throw new Error('Expected fetch to be called with plain object headers');
+    throw new Error('Expected fetch to be called with plain object headers')
   }
-  return init.headers as Record<string, string>;
+  return init.headers as Record<string, string>
 }
 
-function createErrorMockFetch(
-  status: number = 500,
-  errorMessage: string = 'Internal Server Error'
-): typeof fetch {
+function createErrorMockFetch(status: number = 500, errorMessage: string = 'Internal Server Error'): typeof fetch {
   return vi.fn().mockImplementation(async () => {
     return {
       ok: false,
@@ -116,16 +100,16 @@ function createErrorMockFetch(
       statusText: errorMessage,
       json: async () => ({ error: { message: errorMessage } }),
       text: async () => errorMessage,
-    } as Response;
-  });
+    } as Response
+  })
 }
 
 describe('Multi-Provider LLM Adapter Integration', () => {
   describe('OpenAI Adapter', () => {
-    let mockFetch: ReturnType<typeof createMockFetch>;
+    let mockFetch: ReturnType<typeof createMockFetch>
 
     beforeEach(() => {
-      vi.restoreAllMocks();
+      vi.restoreAllMocks()
       mockFetch = createMockFetch({
         id: 'resp_123',
         object: 'chat.completion',
@@ -146,25 +130,25 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           completion_tokens: 5,
           total_tokens: 15,
         },
-      });
-      global.fetch = mockFetch;
-    });
+      })
+      global.fetch = mockFetch
+    })
 
     it('should make successful request to OpenAI-compatible API', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
         baseUrl: 'https://api.openai.com/v1',
-      });
+      })
 
-      const result = await adapter.complete(createTestRequest());
+      const result = await adapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.response.content).toBe('Hello from OpenAI!');
-        expect(result.response.model).toBe('gpt-4');
-        expect(result.response.role).toBe('assistant');
-        expect(result.providerId).toBe('openai');
+        expect(result.response.content).toBe('Hello from OpenAI!')
+        expect(result.response.model).toBe('gpt-4')
+        expect(result.response.role).toBe('assistant')
+        expect(result.providerId).toBe('openai')
       }
 
       expect(mockFetch).toHaveBeenCalledWith(
@@ -173,12 +157,12 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer test-api-key',
+            Authorization: 'Bearer test-api-key',
           }),
           body: expect.any(String),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should map OpenAI response format correctly', async () => {
       mockFetch = createMockFetch({
@@ -211,13 +195,13 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           completion_tokens: 15,
           total_tokens: 35,
         },
-      });
-      global.fetch = mockFetch;
+      })
+      global.fetch = mockFetch
 
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
-      });
+      })
 
       const request: LLMRequest = {
         model: 'gpt-4',
@@ -237,134 +221,134 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             },
           },
         ],
-      };
-
-      const result = await adapter.complete(request);
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.response.toolCalls).toHaveLength(1);
-        expect(result.response.toolCalls![0].function.name).toBe('get_weather');
-        expect(result.response.finishReason).toBe('tool_calls');
       }
-    });
+
+      const result = await adapter.complete(request)
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.response.toolCalls).toHaveLength(1)
+        expect(result.response.toolCalls![0].function.name).toBe('get_weather')
+        expect(result.response.finishReason).toBe('tool_calls')
+      }
+    })
 
     it('should handle OpenAI API errors correctly', async () => {
-      mockFetch = createErrorMockFetch(429, 'Rate limit exceeded');
-      global.fetch = mockFetch;
+      mockFetch = createErrorMockFetch(429, 'Rate limit exceeded')
+      global.fetch = mockFetch
 
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
-      });
+      })
 
-      const result = await adapter.complete(createTestRequest());
+      const result = await adapter.complete(createTestRequest())
 
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.category).toBe('connector_rate_limited');
-        expect(result.error.code).toBe('RATE_LIMIT_ERROR');
-        expect(result.error.recoverability).toBe('retryable_later');
+        expect(result.error.category).toBe('connector_rate_limited')
+        expect(result.error.code).toBe('RATE_LIMIT_ERROR')
+        expect(result.error.recoverability).toBe('retryable_later')
       }
-    });
+    })
 
     it('should handle timeout scenarios', async () => {
-      mockFetch = createTimeoutMockFetch();
-      global.fetch = mockFetch;
+      mockFetch = createTimeoutMockFetch()
+      global.fetch = mockFetch
 
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
         timeoutMs: 50,
-      });
+      })
 
-      const result = await adapter.complete(createTestRequest());
+      const result = await adapter.complete(createTestRequest())
 
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.category).toBe('timeout');
-        expect(result.error.code).toBe('PROVIDER_TIMEOUT');
+        expect(result.error.category).toBe('timeout')
+        expect(result.error.code).toBe('PROVIDER_TIMEOUT')
       }
-    });
+    })
 
     it('should load API key from environment variable', async () => {
-      process.env.OPENAI_API_KEY = 'env-api-key';
+      process.env.OPENAI_API_KEY = 'env-api-key'
 
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer env-api-key',
+            Authorization: 'Bearer env-api-key',
           }),
-        })
-      );
+        }),
+      )
 
-      delete process.env.OPENAI_API_KEY;
-    });
+      delete process.env.OPENAI_API_KEY
+    })
 
     it('should use redacted logging for API keys', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'sk-secret12345',
         enableLogging: true,
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
-      const logs = consoleSpy.mock.calls.flat().join(' ');
-      expect(logs).not.toContain('sk-secret12345');
-      expect(logs).toContain('***');
+      const logs = consoleSpy.mock.calls.flat().join(' ')
+      expect(logs).not.toContain('sk-secret12345')
+      expect(logs).toContain('***')
 
-      consoleSpy.mockRestore();
-    });
+      consoleSpy.mockRestore()
+    })
 
     it('should normalize base URL by trimming trailing slashes', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
         baseUrl: 'https://api.siliconflow.cn/v1/',
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.siliconflow.cn/v1/chat/completions',
         expect.objectContaining({
           method: 'POST',
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should normalize base URL with multiple trailing slashes', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
         baseUrl: 'https://api.siliconflow.cn/v1///',
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.siliconflow.cn/v1/chat/completions',
         expect.objectContaining({
           method: 'POST',
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should serialize assistant message toolCalls as tool_calls in request body', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
-      });
+      })
 
       const request: LLMRequest = {
         model: 'gpt-4',
@@ -390,22 +374,22 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             toolCallId: 'call_abc123',
           },
         ],
-      };
+      }
 
-      await adapter.complete(request);
+      await adapter.complete(request)
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           body: expect.any(String),
-        })
-      );
+        }),
+      )
 
-      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
-      const requestBody = JSON.parse(callArgs[1].body);
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0]
+      const requestBody = JSON.parse(callArgs[1].body)
 
-      expect(requestBody.messages[1]).toHaveProperty('tool_calls');
-      expect(requestBody.messages[1].tool_calls).toHaveLength(1);
+      expect(requestBody.messages[1]).toHaveProperty('tool_calls')
+      expect(requestBody.messages[1].tool_calls).toHaveLength(1)
       expect(requestBody.messages[1].tool_calls[0]).toEqual({
         id: 'call_abc123',
         type: 'function',
@@ -413,17 +397,17 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           name: 'get_weather',
           arguments: '{"location":"Paris"}',
         },
-      });
+      })
 
-      expect(requestBody.messages[2]).toHaveProperty('tool_call_id');
-      expect(requestBody.messages[2].tool_call_id).toBe('call_abc123');
-    });
+      expect(requestBody.messages[2]).toHaveProperty('tool_call_id')
+      expect(requestBody.messages[2].tool_call_id).toBe('call_abc123')
+    })
 
     it('should handle multiple tool calls in assistant message', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
-      });
+      })
 
       const request: LLMRequest = {
         model: 'gpt-4',
@@ -452,23 +436,23 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             ],
           },
         ],
-      };
+      }
 
-      await adapter.complete(request);
+      await adapter.complete(request)
 
-      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
-      const requestBody = JSON.parse(callArgs[1].body);
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0]
+      const requestBody = JSON.parse(callArgs[1].body)
 
-      expect(requestBody.messages[1].tool_calls).toHaveLength(2);
-      expect(requestBody.messages[1].tool_calls[0].id).toBe('call_1');
-      expect(requestBody.messages[1].tool_calls[1].id).toBe('call_2');
-    });
+      expect(requestBody.messages[1].tool_calls).toHaveLength(2)
+      expect(requestBody.messages[1].tool_calls[0].id).toBe('call_1')
+      expect(requestBody.messages[1].tool_calls[1].id).toBe('call_2')
+    })
 
     it('should omit tool_calls when assistant message has no toolCalls', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
-      });
+      })
 
       const request: LLMRequest = {
         model: 'gpt-4',
@@ -476,22 +460,22 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           { role: 'user', content: 'Hello' },
           { role: 'assistant', content: 'Hi there!' },
         ],
-      };
+      }
 
-      await adapter.complete(request);
+      await adapter.complete(request)
 
-      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
-      const requestBody = JSON.parse(callArgs[1].body);
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0]
+      const requestBody = JSON.parse(callArgs[1].body)
 
-      expect(requestBody.messages[1]).not.toHaveProperty('tool_calls');
-    });
-  });
+      expect(requestBody.messages[1]).not.toHaveProperty('tool_calls')
+    })
+  })
 
   describe('OpenRouter Adapter', () => {
-    let mockFetch: ReturnType<typeof createMockFetch>;
+    let mockFetch: ReturnType<typeof createMockFetch>
 
     beforeEach(() => {
-      vi.restoreAllMocks();
+      vi.restoreAllMocks()
       mockFetch = createMockFetch({
         id: 'resp_openrouter',
         model: 'anthropic/claude-3-opus',
@@ -509,23 +493,20 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           completion_tokens: 5,
           total_tokens: 15,
         },
-      });
-      global.fetch = mockFetch;
-    });
+      })
+      global.fetch = mockFetch
+    })
 
     it('should use OpenRouter-specific base URL', async () => {
       const adapter = new OpenRouterAdapter({
         ...createTestProviderConfig('openrouter', 1),
         apiKey: 'test-router-key',
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://openrouter.ai/api/v1/chat/completions',
-        expect.any(Object)
-      );
-    });
+      expect(mockFetch).toHaveBeenCalledWith('https://openrouter.ai/api/v1/chat/completions', expect.any(Object))
+    })
 
     it('should include OpenRouter-specific headers', async () => {
       const adapter = new OpenRouterAdapter({
@@ -533,63 +514,63 @@ describe('Multi-Provider LLM Adapter Integration', () => {
         apiKey: 'test-router-key',
         siteUrl: 'https://mysite.com',
         appName: 'MyApp',
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer test-router-key',
+            Authorization: 'Bearer test-router-key',
             'HTTP-Referer': 'https://mysite.com',
             'X-Title': 'MyApp',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should load API key from OPENROUTER_API_KEY environment variable', async () => {
-      process.env.OPENROUTER_API_KEY = 'router-env-key';
+      process.env.OPENROUTER_API_KEY = 'router-env-key'
 
       const adapter = new OpenRouterAdapter({
         ...createTestProviderConfig('openrouter', 1),
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer router-env-key',
+            Authorization: 'Bearer router-env-key',
           }),
-        })
-      );
+        }),
+      )
 
-      delete process.env.OPENROUTER_API_KEY;
-    });
+      delete process.env.OPENROUTER_API_KEY
+    })
 
     it('should normalize base URL by trimming trailing slashes', async () => {
       const adapter = new OpenRouterAdapter({
         ...createTestProviderConfig('openrouter', 1),
         apiKey: 'test-router-key',
         baseUrl: 'https://custom-openrouter.com/api/v1/',
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://custom-openrouter.com/api/v1/chat/completions',
-        expect.any(Object)
-      );
-    });
+        expect.any(Object),
+      )
+    })
 
     it('should serialize assistant message toolCalls as tool_calls in request body', async () => {
       const adapter = new OpenRouterAdapter({
         ...createTestProviderConfig('openrouter', 1),
         apiKey: 'test-router-key',
-      });
+      })
 
       const request: LLMRequest = {
         model: 'anthropic/claude-3-opus',
@@ -615,15 +596,15 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             toolCallId: 'call_xyz789',
           },
         ],
-      };
+      }
 
-      await adapter.complete(request);
+      await adapter.complete(request)
 
-      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
-      const requestBody = JSON.parse(callArgs[1].body);
+      const callArgs = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0]
+      const requestBody = JSON.parse(callArgs[1].body)
 
-      expect(requestBody.messages[1]).toHaveProperty('tool_calls');
-      expect(requestBody.messages[1].tool_calls).toHaveLength(1);
+      expect(requestBody.messages[1]).toHaveProperty('tool_calls')
+      expect(requestBody.messages[1].tool_calls).toHaveLength(1)
       expect(requestBody.messages[1].tool_calls[0]).toEqual({
         id: 'call_xyz789',
         type: 'function',
@@ -631,18 +612,18 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           name: 'get_weather',
           arguments: '{"location":"Tokyo"}',
         },
-      });
+      })
 
-      expect(requestBody.messages[2]).toHaveProperty('tool_call_id');
-      expect(requestBody.messages[2].tool_call_id).toBe('call_xyz789');
-    });
-  });
+      expect(requestBody.messages[2]).toHaveProperty('tool_call_id')
+      expect(requestBody.messages[2].tool_call_id).toBe('call_xyz789')
+    })
+  })
 
   describe('Ollama Adapter', () => {
-    let mockFetch: ReturnType<typeof createMockFetch>;
+    let mockFetch: ReturnType<typeof createMockFetch>
 
     beforeEach(() => {
-      vi.restoreAllMocks();
+      vi.restoreAllMocks()
       mockFetch = createMockFetch({
         model: 'llama2',
         created_at: new Date().toISOString(),
@@ -656,19 +637,19 @@ describe('Multi-Provider LLM Adapter Integration', () => {
         prompt_eval_count: 10,
         eval_count: 5,
         eval_duration: 500000000,
-      });
-      global.fetch = mockFetch;
-    });
+      })
+      global.fetch = mockFetch
+    })
 
     it('should use Ollama-specific endpoint and request format', async () => {
       const adapter = new OllamaAdapter({
         ...createTestProviderConfig('ollama', 1),
         baseUrl: 'http://localhost:11434',
-      });
+      })
 
-      const result = await adapter.complete(createTestRequest());
+      const result = await adapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:11434/api/chat',
         expect.objectContaining({
@@ -677,66 +658,63 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             'Content-Type': 'application/json',
           }),
           body: expect.any(String),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should map Ollama response format correctly', async () => {
       const adapter = new OllamaAdapter({
         ...createTestProviderConfig('ollama', 1),
-      });
+      })
 
-      const result = await adapter.complete(createTestRequest());
+      const result = await adapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.response.content).toBe('Hello from Ollama!');
-        expect(result.response.model).toBe('llama2');
-        expect(result.providerId).toBe('ollama');
+        expect(result.response.content).toBe('Hello from Ollama!')
+        expect(result.response.model).toBe('llama2')
+        expect(result.providerId).toBe('ollama')
       }
-    });
+    })
 
     it('should load base URL from OLLAMA_BASE_URL environment variable', async () => {
-      process.env.OLLAMA_BASE_URL = 'http://custom-ollama:11434';
+      process.env.OLLAMA_BASE_URL = 'http://custom-ollama:11434'
 
       const adapter = new OllamaAdapter({
         ...createTestProviderConfig('ollama', 1),
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://custom-ollama:11434/api/chat',
-        expect.any(Object)
-      );
+      expect(mockFetch).toHaveBeenCalledWith('http://custom-ollama:11434/api/chat', expect.any(Object))
 
-      delete process.env.OLLAMA_BASE_URL;
-    });
+      delete process.env.OLLAMA_BASE_URL
+    })
 
     it('should handle Ollama not running', async () => {
-      mockFetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
-      global.fetch = mockFetch;
+      mockFetch = vi.fn().mockRejectedValue(new Error('Connection refused'))
+      global.fetch = mockFetch
 
       const adapter = new OllamaAdapter({
         ...createTestProviderConfig('ollama', 1),
         baseUrl: 'http://localhost:11434',
-      });
+      })
 
-      const result = await adapter.complete(createTestRequest());
+      const result = await adapter.complete(createTestRequest())
 
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.category).toBe('model_error');
-        expect(result.error.code).toBe('PROVIDER_UNAVAILABLE');
+        expect(result.error.category).toBe('model_error')
+        expect(result.error.code).toBe('PROVIDER_UNAVAILABLE')
       }
-    });
-  });
+    })
+  })
 
   describe('Header Merging and Protection', () => {
-    let mockFetch: ReturnType<typeof createMockFetch>;
+    let mockFetch: ReturnType<typeof createMockFetch>
 
     beforeEach(() => {
-      vi.restoreAllMocks();
+      vi.restoreAllMocks()
       mockFetch = createMockFetch({
         id: 'resp_header_test',
         model: 'gpt-4',
@@ -747,9 +725,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           },
         ],
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
-      });
-      global.fetch = mockFetch;
-    });
+      })
+      global.fetch = mockFetch
+    })
 
     it('should include custom headers from config.headers', async () => {
       const adapter = new OpenAIAdapter({
@@ -759,9 +737,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           'X-Custom': 'custom-value',
           'X-Request-ID': 'req-123',
         },
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -770,9 +748,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             'X-Custom': 'custom-value',
             'X-Request-ID': 'req-123',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should not allow overriding Authorization header', async () => {
       const adapter = new OpenAIAdapter({
@@ -782,9 +760,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           Authorization: 'Bearer malicious-token',
           authorization: 'Bearer another-malicious',
         },
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -792,9 +770,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           headers: expect.objectContaining({
             Authorization: 'Bearer test-api-key',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should not allow overriding Content-Type header', async () => {
       const adapter = new OpenAIAdapter({
@@ -804,9 +782,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           'Content-Type': 'text/plain',
           'content-type': 'application/xml',
         },
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -814,9 +792,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should protect headers case-insensitively', async () => {
       const adapter = new OpenAIAdapter({
@@ -830,9 +808,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           Cookie: 'session=hijacked',
           'Set-Cookie': 'poisoned=true',
         },
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -841,17 +819,17 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             Authorization: 'Bearer test-api-key',
             'Content-Type': 'application/json',
           }),
-        })
-      );
+        }),
+      )
 
-      const headers = firstFetchHeaders(mockFetch);
-      expect(headers['AUTHORIZATION']).toBeUndefined();
-      expect(headers['CONTENT-TYPE']).toBeUndefined();
-      expect(headers['Host']).toBeUndefined();
-      expect(headers['content-length']).toBeUndefined();
-      expect(headers['Cookie']).toBeUndefined();
-      expect(headers['Set-Cookie']).toBeUndefined();
-    });
+      const headers = firstFetchHeaders(mockFetch)
+      expect(headers['AUTHORIZATION']).toBeUndefined()
+      expect(headers['CONTENT-TYPE']).toBeUndefined()
+      expect(headers['Host']).toBeUndefined()
+      expect(headers['content-length']).toBeUndefined()
+      expect(headers['Cookie']).toBeUndefined()
+      expect(headers['Set-Cookie']).toBeUndefined()
+    })
 
     it('should preserve original casing for allowed custom headers', async () => {
       const adapter = new OpenAIAdapter({
@@ -862,15 +840,15 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           'x-another-header': 'value2',
           'X-THIRD-Header': 'value3',
         },
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
-      const headers = firstFetchHeaders(mockFetch);
-      expect(headers['X-Custom-Header']).toBe('value1');
-      expect(headers['x-another-header']).toBe('value2');
-      expect(headers['X-THIRD-Header']).toBe('value3');
-    });
+      const headers = firstFetchHeaders(mockFetch)
+      expect(headers['X-Custom-Header']).toBe('value1')
+      expect(headers['x-another-header']).toBe('value2')
+      expect(headers['X-THIRD-Header']).toBe('value3')
+    })
 
     it('should merge headers in OpenRouterAdapter', async () => {
       const adapter = new OpenRouterAdapter({
@@ -880,9 +858,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           'X-Custom': 'custom-value',
           Authorization: 'Bearer malicious',
         },
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -891,9 +869,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             'X-Custom': 'custom-value',
             Authorization: 'Bearer test-key',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should merge headers in OllamaAdapter', async () => {
       const adapter = new OllamaAdapter({
@@ -902,9 +880,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           'X-Ollama-Custom': 'ollama-value',
           'Content-Type': 'text/plain',
         },
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -913,18 +891,18 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             'X-Ollama-Custom': 'ollama-value',
             'Content-Type': 'application/json',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should handle empty headers gracefully', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
         headers: {},
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -933,17 +911,17 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             Authorization: 'Bearer test-api-key',
             'Content-Type': 'application/json',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should handle undefined headers gracefully', async () => {
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'test-api-key',
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -952,9 +930,9 @@ describe('Multi-Provider LLM Adapter Integration', () => {
             Authorization: 'Bearer test-api-key',
             'Content-Type': 'application/json',
           }),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should not expose header values in API responses', async () => {
       const adapter = new OpenAIAdapter({
@@ -963,155 +941,155 @@ describe('Multi-Provider LLM Adapter Integration', () => {
         headers: {
           'X-Secret': 'secret-value',
         },
-      });
+      })
 
-      const result = await adapter.complete(createTestRequest());
+      const result = await adapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.response).not.toHaveProperty('headers');
-        expect(result.response).not.toHaveProperty('X-Secret');
+        expect(result.response).not.toHaveProperty('headers')
+        expect(result.response).not.toHaveProperty('X-Secret')
       }
-    });
-  });
+    })
+  })
 
   describe('Multi-Provider Adapter Fallback', () => {
     beforeEach(() => {
-      vi.restoreAllMocks();
-    });
+      vi.restoreAllMocks()
+    })
 
     it('should try providers in priority order until one succeeds', async () => {
-      const failingFetch = createErrorMockFetch(500, 'Server Error');
+      const failingFetch = createErrorMockFetch(500, 'Server Error')
       const succeedingFetch = createMockFetch({
         id: 'resp_2',
         choices: [{ message: { role: 'assistant', content: 'Success!' }, finish_reason: 'stop' }],
-      });
+      })
 
-      let fetchCallCount = 0;
+      let fetchCallCount = 0
       global.fetch = vi.fn().mockImplementation(() => {
-        fetchCallCount++;
+        fetchCallCount++
         if (fetchCallCount === 1) {
-          return failingFetch('url', {} as any);
+          return failingFetch('url', {} as any)
         }
-        return succeedingFetch('url', {} as any);
-      });
+        return succeedingFetch('url', {} as any)
+      })
 
       const multiAdapter = new MultiProviderLLMAdapter({
         defaultTimeoutMs: 5000,
         enableCircuitBreaker: true,
-      });
+      })
 
       const primary = new OpenAIAdapter({
         ...createTestProviderConfig('primary', 1),
         apiKey: 'key1',
-      });
+      })
 
       const secondary = new OpenAIAdapter({
         ...createTestProviderConfig('secondary', 2),
         apiKey: 'key2',
-      });
+      })
 
-      multiAdapter.addProvider(primary);
-      multiAdapter.addProvider(secondary);
+      multiAdapter.addProvider(primary)
+      multiAdapter.addProvider(secondary)
 
-      const result = await multiAdapter.complete(createTestRequest());
+      const result = await multiAdapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.providerId).toBe('secondary');
-        expect(result.response.content).toBe('Success!');
+        expect(result.providerId).toBe('secondary')
+        expect(result.response.content).toBe('Success!')
       }
-      expect(fetchCallCount).toBe(2);
-    });
+      expect(fetchCallCount).toBe(2)
+    })
 
     it('should fallback when primary times out', async () => {
-      const timeoutFetch = createTimeoutMockFetch();
+      const timeoutFetch = createTimeoutMockFetch()
       const succeedingFetch = createMockFetch({
         id: 'resp_2',
         choices: [{ message: { role: 'assistant', content: 'Fallback success!' }, finish_reason: 'stop' }],
-      });
+      })
 
-      let fetchCallCount = 0;
+      let fetchCallCount = 0
       global.fetch = vi.fn().mockImplementation(() => {
-        fetchCallCount++;
+        fetchCallCount++
         if (fetchCallCount === 1) {
-          return timeoutFetch('url', {} as any);
+          return timeoutFetch('url', {} as any)
         }
-        return succeedingFetch('url', {} as any);
-      });
+        return succeedingFetch('url', {} as any)
+      })
 
       const multiAdapter = new MultiProviderLLMAdapter({
         defaultTimeoutMs: 1000,
         enableCircuitBreaker: true,
-      });
+      })
 
       const primary = new OpenAIAdapter({
         ...createTestProviderConfig('primary', 1),
         apiKey: 'key1',
         timeoutMs: 100,
-      });
+      })
 
       const secondary = new OpenAIAdapter({
         ...createTestProviderConfig('secondary', 2),
         apiKey: 'key2',
-      });
+      })
 
-      multiAdapter.addProvider(primary);
-      multiAdapter.addProvider(secondary);
+      multiAdapter.addProvider(primary)
+      multiAdapter.addProvider(secondary)
 
-      const result = await multiAdapter.complete(createTestRequest());
+      const result = await multiAdapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.providerId).toBe('secondary');
-        expect(result.response.content).toBe('Fallback success!');
+        expect(result.providerId).toBe('secondary')
+        expect(result.response.content).toBe('Fallback success!')
       }
-    });
+    })
 
     it('should skip providers with open circuit breaker', async () => {
       const succeedingFetch = createMockFetch({
         id: 'resp_2',
         choices: [{ message: { role: 'assistant', content: 'Healthy response!' }, finish_reason: 'stop' }],
-      });
-      global.fetch = succeedingFetch;
+      })
+      global.fetch = succeedingFetch
 
       const multiAdapter = new MultiProviderLLMAdapter({
         defaultTimeoutMs: 5000,
         enableCircuitBreaker: true,
-      });
+      })
 
       const primary = new OpenAIAdapter({
         ...createTestProviderConfig('primary', 1),
         apiKey: 'key1',
-      });
+      })
 
       const secondary = new OpenAIAdapter({
         ...createTestProviderConfig('secondary', 2),
         apiKey: 'key2',
-      });
+      })
 
-      primary.circuitBreaker.forceOpen();
+      primary.circuitBreaker.forceOpen()
 
-      multiAdapter.addProvider(primary);
-      multiAdapter.addProvider(secondary);
+      multiAdapter.addProvider(primary)
+      multiAdapter.addProvider(secondary)
 
-      const result = await multiAdapter.complete(createTestRequest());
+      const result = await multiAdapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.providerId).toBe('secondary');
+        expect(result.providerId).toBe('secondary')
       }
-      expect(succeedingFetch).toHaveBeenCalledTimes(1);
-    });
+      expect(succeedingFetch).toHaveBeenCalledTimes(1)
+    })
 
     it('should open circuit breaker after repeated failures', async () => {
-      const errorFetch = createErrorMockFetch(500, 'Server Error');
-      global.fetch = errorFetch;
+      const errorFetch = createErrorMockFetch(500, 'Server Error')
+      global.fetch = errorFetch
 
       const multiAdapter = new MultiProviderLLMAdapter({
         defaultTimeoutMs: 5000,
         enableCircuitBreaker: true,
-      });
+      })
 
       const primary = new OpenAIAdapter({
         ...createTestProviderConfig('primary', 1),
@@ -1121,152 +1099,152 @@ describe('Multi-Provider LLM Adapter Integration', () => {
           resetTimeoutMs: 60000,
           successThreshold: 1,
         },
-      });
+      })
 
-      multiAdapter.addProvider(primary);
+      multiAdapter.addProvider(primary)
 
-      await multiAdapter.complete(createTestRequest());
-      await multiAdapter.complete(createTestRequest());
-      await multiAdapter.complete(createTestRequest());
+      await multiAdapter.complete(createTestRequest())
+      await multiAdapter.complete(createTestRequest())
+      await multiAdapter.complete(createTestRequest())
 
-      expect(primary.circuitBreaker.state).toBe('OPEN');
+      expect(primary.circuitBreaker.state).toBe('OPEN')
 
-      const result = await multiAdapter.complete(createTestRequest());
-      expect(result.success).toBe(false);
+      const result = await multiAdapter.complete(createTestRequest())
+      expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.code).toBe('ALL_PROVIDERS_FAILED');
-        const allFailedError = result.error as { attempts: Array<{ providerId: string; error: RuntimeError }> };
-        expect(allFailedError.attempts).toHaveLength(1);
-        expect(allFailedError.attempts[0].error.code).toBe('CIRCUIT_BREAKER_OPEN');
+        expect(result.error.code).toBe('ALL_PROVIDERS_FAILED')
+        const allFailedError = result.error as { attempts: Array<{ providerId: string; error: RuntimeError }> }
+        expect(allFailedError.attempts).toHaveLength(1)
+        expect(allFailedError.attempts[0].error.code).toBe('CIRCUIT_BREAKER_OPEN')
       }
-    });
+    })
 
     it('should return AllProvidersFailedError when all providers fail', async () => {
-      const errorFetch = createErrorMockFetch(500, 'Server Error');
-      global.fetch = errorFetch;
+      const errorFetch = createErrorMockFetch(500, 'Server Error')
+      global.fetch = errorFetch
 
       const multiAdapter = new MultiProviderLLMAdapter({
         defaultTimeoutMs: 5000,
         enableCircuitBreaker: false,
-      });
+      })
 
       const primary = new OpenAIAdapter({
         ...createTestProviderConfig('primary', 1),
         apiKey: 'key1',
-      });
+      })
 
       const secondary = new OpenAIAdapter({
         ...createTestProviderConfig('secondary', 2),
         apiKey: 'key2',
-      });
+      })
 
-      multiAdapter.addProvider(primary);
-      multiAdapter.addProvider(secondary);
+      multiAdapter.addProvider(primary)
+      multiAdapter.addProvider(secondary)
 
-      const result = await multiAdapter.complete(createTestRequest());
+      const result = await multiAdapter.complete(createTestRequest())
 
-      expect(result.success).toBe(false);
-      expect(result.providerId).toBe('none');
+      expect(result.success).toBe(false)
+      expect(result.providerId).toBe('none')
 
       if (!result.success) {
-        expect(result.error.category).toBe('model_error');
-        expect(result.error.code).toBe('ALL_PROVIDERS_FAILED');
-        expect('attempts' in result.error).toBe(true);
-        const allFailedError = result.error as { attempts: Array<{ providerId: string; error: RuntimeError }> };
-        expect(allFailedError.attempts).toHaveLength(2);
-        expect(allFailedError.attempts[0].providerId).toBe('primary');
-        expect(allFailedError.attempts[1].providerId).toBe('secondary');
+        expect(result.error.category).toBe('model_error')
+        expect(result.error.code).toBe('ALL_PROVIDERS_FAILED')
+        expect('attempts' in result.error).toBe(true)
+        const allFailedError = result.error as { attempts: Array<{ providerId: string; error: RuntimeError }> }
+        expect(allFailedError.attempts).toHaveLength(2)
+        expect(allFailedError.attempts[0].providerId).toBe('primary')
+        expect(allFailedError.attempts[1].providerId).toBe('secondary')
       }
-    });
+    })
 
     it('should support configuration from environment variables', async () => {
-      process.env.OPENAI_API_KEY = 'openai-env-key';
-      process.env.OPENROUTER_API_KEY = 'openrouter-env-key';
-      process.env.OLLAMA_BASE_URL = 'http://ollama-env:11434';
+      process.env.OPENAI_API_KEY = 'openai-env-key'
+      process.env.OPENROUTER_API_KEY = 'openrouter-env-key'
+      process.env.OLLAMA_BASE_URL = 'http://ollama-env:11434'
 
       const mockFetch = createMockFetch({
         id: 'resp_test',
         choices: [{ message: { role: 'assistant', content: 'Test' }, finish_reason: 'stop' }],
-      });
-      global.fetch = mockFetch;
+      })
+      global.fetch = mockFetch
 
-      const openaiAdapter = new OpenAIAdapter(createTestProviderConfig('openai', 1));
+      const openaiAdapter = new OpenAIAdapter(createTestProviderConfig('openai', 1))
 
-      await openaiAdapter.complete(createTestRequest());
+      await openaiAdapter.complete(createTestRequest())
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer openai-env-key',
+            Authorization: 'Bearer openai-env-key',
           }),
-        })
-      );
+        }),
+      )
 
-      delete process.env.OPENAI_API_KEY;
-      delete process.env.OPENROUTER_API_KEY;
-      delete process.env.OLLAMA_BASE_URL;
-    });
+      delete process.env.OPENAI_API_KEY
+      delete process.env.OPENROUTER_API_KEY
+      delete process.env.OLLAMA_BASE_URL
+    })
 
     it('should not expose provider-specific API shape in responses', async () => {
       const openaiFetch = createMockFetch({
         id: 'resp_openai',
         choices: [{ message: { role: 'assistant', content: 'OpenAI' }, finish_reason: 'stop' }],
-      });
-      global.fetch = openaiFetch;
+      })
+      global.fetch = openaiFetch
 
       const multiAdapter = new MultiProviderLLMAdapter({
         defaultTimeoutMs: 5000,
         enableCircuitBreaker: true,
-      });
+      })
 
       const openaiProvider = new OpenAIAdapter({
         ...createTestProviderConfig('openai', 1),
         apiKey: 'key',
-      });
+      })
 
-      multiAdapter.addProvider(openaiProvider);
+      multiAdapter.addProvider(openaiProvider)
 
-      const result = await multiAdapter.complete(createTestRequest());
+      const result = await multiAdapter.complete(createTestRequest())
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.response).toHaveProperty('id');
-        expect(result.response).toHaveProperty('model');
-        expect(result.response).toHaveProperty('content');
-        expect(result.response).toHaveProperty('role');
-        expect(result.response).toHaveProperty('finishReason');
-        expect(result.response).toHaveProperty('createdAt');
+        expect(result.response).toHaveProperty('id')
+        expect(result.response).toHaveProperty('model')
+        expect(result.response).toHaveProperty('content')
+        expect(result.response).toHaveProperty('role')
+        expect(result.response).toHaveProperty('finishReason')
+        expect(result.response).toHaveProperty('createdAt')
 
-        expect(result.response).not.toHaveProperty('object');
-        expect(result.response).not.toHaveProperty('choices');
+        expect(result.response).not.toHaveProperty('object')
+        expect(result.response).not.toHaveProperty('choices')
       }
-    });
-  });
+    })
+  })
 
   describe('Redacted Logging', () => {
     it('should redact sensitive information in logs', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
       const mockFetch = createMockFetch({
         id: 'resp_1',
         choices: [{ message: { role: 'assistant', content: 'Test' }, finish_reason: 'stop' }],
-      });
-      global.fetch = mockFetch;
+      })
+      global.fetch = mockFetch
 
       const adapter = new OpenAIAdapter({
         ...createTestProviderConfig('test', 1),
         apiKey: 'sk-supersecretkey12345',
         enableLogging: true,
-      });
+      })
 
-      await adapter.complete(createTestRequest());
+      await adapter.complete(createTestRequest())
 
-      const logs = consoleSpy.mock.calls.flat().join(' ');
-      expect(logs).not.toContain('sk-supersecretkey12345');
-      expect(logs).toContain('***');
+      const logs = consoleSpy.mock.calls.flat().join(' ')
+      expect(logs).not.toContain('sk-supersecretkey12345')
+      expect(logs).toContain('***')
 
-      consoleSpy.mockRestore();
-    });
-  });
-});
+      consoleSpy.mockRestore()
+    })
+  })
+})

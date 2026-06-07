@@ -1,38 +1,38 @@
-import type { ConnectionManager } from './connection.js';
-import type { MigrationRunner, Migration } from './migrations.js';
+import type { ConnectionManager } from './connection.js'
+import type { MigrationRunner, Migration } from './migrations.js'
 
-export type SensitivityLevel = 'low' | 'medium' | 'high' | 'restricted';
+export type SensitivityLevel = 'low' | 'medium' | 'high' | 'restricted'
 
 export interface ToolResultBlob {
-  id: string;
-  resultRef: string;
-  toolCallId: string;
-  toolName: string;
-  userId: string;
-  sessionId?: string;
-  preview?: string;
-  rawBlobRef?: string;
-  structuredContent?: Record<string, unknown>;
-  sensitivity: SensitivityLevel;
-  createdAt: string;
+  id: string
+  resultRef: string
+  toolCallId: string
+  toolName: string
+  userId: string
+  sessionId?: string
+  preview?: string
+  rawBlobRef?: string
+  structuredContent?: Record<string, unknown>
+  sensitivity: SensitivityLevel
+  createdAt: string
 }
 
 export interface ToolResultStore {
-  applyMigrations(runner: MigrationRunner): void;
-  create(data: Omit<ToolResultBlob, 'id' | 'createdAt'>): ToolResultBlob;
-  findById(id: string): ToolResultBlob | undefined;
-  findByToolCallId(toolCallId: string): ToolResultBlob[];
-  findBySessionId(sessionId: string): ToolResultBlob[];
-  findByToolName(toolName: string): ToolResultBlob[];
-  findBySensitivity(sensitivity: SensitivityLevel): ToolResultBlob[];
-  delete(id: string): boolean;
+  applyMigrations(runner: MigrationRunner): void
+  create(data: Omit<ToolResultBlob, 'id' | 'createdAt'>): ToolResultBlob
+  findById(id: string): ToolResultBlob | undefined
+  findByToolCallId(toolCallId: string): ToolResultBlob[]
+  findBySessionId(sessionId: string): ToolResultBlob[]
+  findByToolName(toolName: string): ToolResultBlob[]
+  findBySensitivity(sensitivity: SensitivityLevel): ToolResultBlob[]
+  delete(id: string): boolean
 }
 
 class ToolResultStoreImpl implements ToolResultStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   applyMigrations(runner: MigrationRunner): void {
@@ -65,15 +65,15 @@ class ToolResultStoreImpl implements ToolResultStore {
           DROP INDEX IF EXISTS idx_tool_results_session_id;
           DROP INDEX IF EXISTS idx_tool_results_tool_call_id;
           DROP TABLE IF EXISTS tool_results;
-        `
-      }
-    ];
-    runner.apply(migrations);
+        `,
+      },
+    ]
+    runner.apply(migrations)
   }
 
   create(data: Omit<ToolResultBlob, 'id' | 'createdAt'>): ToolResultBlob {
-    const id = crypto.randomUUID();
-    const createdAt = new Date().toISOString();
+    const id = crypto.randomUUID()
+    const createdAt = new Date().toISOString()
 
     this.connection.exec(
       `INSERT INTO tool_results (
@@ -91,132 +91,132 @@ class ToolResultStoreImpl implements ToolResultStore {
         data.rawBlobRef ?? null,
         data.structuredContent ? JSON.stringify(data.structuredContent) : null,
         data.sensitivity,
-        createdAt
-      ]
-    );
+        createdAt,
+      ],
+    )
 
     return {
       ...data,
       id,
-      createdAt
-    };
+      createdAt,
+    }
   }
 
   findById(id: string): ToolResultBlob | undefined {
     const rows = this.connection.query<{
-      id: string;
-      result_ref: string;
-      tool_call_id: string;
-      tool_name: string;
-      user_id: string;
-      session_id: string | null;
-      preview: string | null;
-      raw_blob_ref: string | null;
-      structured_content: string | null;
-      sensitivity: SensitivityLevel;
-      created_at: string;
-    }>('SELECT * FROM tool_results WHERE id = ?', [id]);
+      id: string
+      result_ref: string
+      tool_call_id: string
+      tool_name: string
+      user_id: string
+      session_id: string | null
+      preview: string | null
+      raw_blob_ref: string | null
+      structured_content: string | null
+      sensitivity: SensitivityLevel
+      created_at: string
+    }>('SELECT * FROM tool_results WHERE id = ?', [id])
 
     if (rows.length === 0) {
-      return undefined;
+      return undefined
     }
 
-    return this.mapRow(rows[0]);
+    return this.mapRow(rows[0])
   }
 
   findByToolCallId(toolCallId: string): ToolResultBlob[] {
     const rows = this.connection.query<{
-      id: string;
-      result_ref: string;
-      tool_call_id: string;
-      tool_name: string;
-      user_id: string;
-      session_id: string | null;
-      preview: string | null;
-      raw_blob_ref: string | null;
-      structured_content: string | null;
-      sensitivity: SensitivityLevel;
-      created_at: string;
-    }>('SELECT * FROM tool_results WHERE tool_call_id = ?', [toolCallId]);
+      id: string
+      result_ref: string
+      tool_call_id: string
+      tool_name: string
+      user_id: string
+      session_id: string | null
+      preview: string | null
+      raw_blob_ref: string | null
+      structured_content: string | null
+      sensitivity: SensitivityLevel
+      created_at: string
+    }>('SELECT * FROM tool_results WHERE tool_call_id = ?', [toolCallId])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   findBySessionId(sessionId: string): ToolResultBlob[] {
     const rows = this.connection.query<{
-      id: string;
-      result_ref: string;
-      tool_call_id: string;
-      tool_name: string;
-      user_id: string;
-      session_id: string | null;
-      preview: string | null;
-      raw_blob_ref: string | null;
-      structured_content: string | null;
-      sensitivity: SensitivityLevel;
-      created_at: string;
-    }>('SELECT * FROM tool_results WHERE session_id = ?', [sessionId]);
+      id: string
+      result_ref: string
+      tool_call_id: string
+      tool_name: string
+      user_id: string
+      session_id: string | null
+      preview: string | null
+      raw_blob_ref: string | null
+      structured_content: string | null
+      sensitivity: SensitivityLevel
+      created_at: string
+    }>('SELECT * FROM tool_results WHERE session_id = ?', [sessionId])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   findByToolName(toolName: string): ToolResultBlob[] {
     const rows = this.connection.query<{
-      id: string;
-      result_ref: string;
-      tool_call_id: string;
-      tool_name: string;
-      user_id: string;
-      session_id: string | null;
-      preview: string | null;
-      raw_blob_ref: string | null;
-      structured_content: string | null;
-      sensitivity: SensitivityLevel;
-      created_at: string;
-    }>('SELECT * FROM tool_results WHERE tool_name = ? ORDER BY created_at ASC', [toolName]);
+      id: string
+      result_ref: string
+      tool_call_id: string
+      tool_name: string
+      user_id: string
+      session_id: string | null
+      preview: string | null
+      raw_blob_ref: string | null
+      structured_content: string | null
+      sensitivity: SensitivityLevel
+      created_at: string
+    }>('SELECT * FROM tool_results WHERE tool_name = ? ORDER BY created_at ASC', [toolName])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   findBySensitivity(sensitivity: SensitivityLevel): ToolResultBlob[] {
     const rows = this.connection.query<{
-      id: string;
-      result_ref: string;
-      tool_call_id: string;
-      tool_name: string;
-      user_id: string;
-      session_id: string | null;
-      preview: string | null;
-      raw_blob_ref: string | null;
-      structured_content: string | null;
-      sensitivity: SensitivityLevel;
-      created_at: string;
-    }>('SELECT * FROM tool_results WHERE sensitivity = ?', [sensitivity]);
+      id: string
+      result_ref: string
+      tool_call_id: string
+      tool_name: string
+      user_id: string
+      session_id: string | null
+      preview: string | null
+      raw_blob_ref: string | null
+      structured_content: string | null
+      sensitivity: SensitivityLevel
+      created_at: string
+    }>('SELECT * FROM tool_results WHERE sensitivity = ?', [sensitivity])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   delete(id: string): boolean {
-    const before = this.findById(id);
+    const before = this.findById(id)
     if (!before) {
-      return false;
+      return false
     }
-    this.connection.exec('DELETE FROM tool_results WHERE id = ?', [id]);
-    return this.findById(id) === undefined;
+    this.connection.exec('DELETE FROM tool_results WHERE id = ?', [id])
+    return this.findById(id) === undefined
   }
 
   private mapRow(row: {
-    id: string;
-    result_ref: string;
-    tool_call_id: string;
-    tool_name: string;
-    user_id: string;
-    session_id: string | null;
-    preview: string | null;
-    raw_blob_ref: string | null;
-    structured_content: string | null;
-    sensitivity: SensitivityLevel;
-    created_at: string;
+    id: string
+    result_ref: string
+    tool_call_id: string
+    tool_name: string
+    user_id: string
+    session_id: string | null
+    preview: string | null
+    raw_blob_ref: string | null
+    structured_content: string | null
+    sensitivity: SensitivityLevel
+    created_at: string
   }): ToolResultBlob {
     return {
       id: row.id,
@@ -229,11 +229,11 @@ class ToolResultStoreImpl implements ToolResultStore {
       rawBlobRef: row.raw_blob_ref ?? undefined,
       structuredContent: row.structured_content ? JSON.parse(row.structured_content) : undefined,
       sensitivity: row.sensitivity,
-      createdAt: row.created_at
-    };
+      createdAt: row.created_at,
+    }
   }
 }
 
 export function createToolResultStore(connection: ConnectionManager): ToolResultStore {
-  return new ToolResultStoreImpl(connection);
+  return new ToolResultStoreImpl(connection)
 }

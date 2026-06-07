@@ -3012,7 +3012,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
     render(<SessionConsoleTab />);
 
     await waitFor(() => {
-      expect(screen.getByText('加载中...')).toBeInTheDocument();
+      expect(screen.getByText('加载会话列表...')).toBeInTheDocument();
     });
   });
 

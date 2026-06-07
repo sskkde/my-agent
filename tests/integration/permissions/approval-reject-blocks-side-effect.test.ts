@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js';
-import { createApprovalStore, type ApprovalStore, APPROVAL_STATES } from '../../../src/storage/approval-store.js';
-import { createPermissionGrantStore, type PermissionGrantStore } from '../../../src/storage/permission-grant-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { createPermissionEngine, type PermissionEngine } from '../../../src/permissions/permission-engine.js';
-import { createApprovalHandler, type ApprovalHandler } from '../../../src/permissions/approval-handler.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js'
+import { createApprovalStore, type ApprovalStore, APPROVAL_STATES } from '../../../src/storage/approval-store.js'
+import { createPermissionGrantStore, type PermissionGrantStore } from '../../../src/storage/permission-grant-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createPermissionEngine, type PermissionEngine } from '../../../src/permissions/permission-engine.js'
+import { createApprovalHandler, type ApprovalHandler } from '../../../src/permissions/approval-handler.js'
 import {
   createPermissionContext,
   type PermissionCheckRequest,
   createAllowedDecision,
   createDeniedDecision,
-} from '../../../src/permissions/types.js';
+} from '../../../src/permissions/types.js'
 
 const STORE_MIGRATIONS = [
   {
@@ -69,63 +69,63 @@ const STORE_MIGRATIONS = [
     `,
     down: 'DROP TABLE IF EXISTS events;',
   },
-];
+]
 
 describe('Approval rejection blocks side effects', () => {
-  let connection: ConnectionManager;
-  let migrationRunner: MigrationRunner;
-  let approvalStore: ApprovalStore;
-  let grantStore: PermissionGrantStore;
-  let eventStore: EventStore;
-  let permissionEngine: PermissionEngine;
-  let approvalHandler: ApprovalHandler;
+  let connection: ConnectionManager
+  let migrationRunner: MigrationRunner
+  let approvalStore: ApprovalStore
+  let grantStore: PermissionGrantStore
+  let eventStore: EventStore
+  let permissionEngine: PermissionEngine
+  let approvalHandler: ApprovalHandler
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrationRunner = createMigrationRunner(connection);
-    migrationRunner.init();
-    migrationRunner.apply(STORE_MIGRATIONS);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrationRunner = createMigrationRunner(connection)
+    migrationRunner.init()
+    migrationRunner.apply(STORE_MIGRATIONS)
 
-    approvalStore = createApprovalStore(connection);
-    grantStore = createPermissionGrantStore(connection);
-    eventStore = createEventStore(connection);
-    permissionEngine = createPermissionEngine({ approvalStore, grantStore, eventStore });
-    approvalHandler = createApprovalHandler({ approvalStore, grantStore, eventStore });
-  });
+    approvalStore = createApprovalStore(connection)
+    grantStore = createPermissionGrantStore(connection)
+    eventStore = createEventStore(connection)
+    permissionEngine = createPermissionEngine({ approvalStore, grantStore, eventStore })
+    approvalHandler = createApprovalHandler({ approvalStore, grantStore, eventStore })
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   it('write operation triggers approval request with allowed=false', () => {
-    const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
+    const ctx = createPermissionContext('u1', 's1', 'ask_on_write')
     const req: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'artifact_create',
+      actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/001',
-    };
+    }
 
-    const decision = permissionEngine.checkPermission(req);
-    expect(decision.status).toBe('requires_approval');
-    expect(decision.allowed).toBe(false);
-    expect(decision.requestId).toBeDefined();
-    expect(decision.approvalRequest).toBeDefined();
-    expect(decision.approvalRequest!.status).toBe('pending');
-  });
+    const decision = permissionEngine.checkPermission(req)
+    expect(decision.status).toBe('requires_approval')
+    expect(decision.allowed).toBe(false)
+    expect(decision.requestId).toBeDefined()
+    expect(decision.approvalRequest).toBeDefined()
+    expect(decision.approvalRequest!.status).toBe('pending')
+  })
 
   it('rejected approval is persisted with REJECTED status', () => {
-    const ctx = createPermissionContext('u_reject', 's_reject', 'ask_on_write');
+    const ctx = createPermissionContext('u_reject', 's_reject', 'ask_on_write')
     const req: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'artifact_create',
+      actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/reject-test',
-    };
+    }
 
-    const decision = permissionEngine.checkPermission(req);
-    const approvalId = decision.requestId!;
+    const decision = permissionEngine.checkPermission(req)
+    const approvalId = decision.requestId!
 
     const result = approvalHandler.processResponse({
       requestId: approvalId,
@@ -133,27 +133,27 @@ describe('Approval rejection blocks side effects', () => {
       respondedBy: 'admin',
       respondedAt: new Date().toISOString(),
       reason: 'Not authorized for this resource',
-    });
+    })
 
-    expect(result.success).toBe(true);
-    expect(result.approved).toBe(false);
+    expect(result.success).toBe(true)
+    expect(result.approved).toBe(false)
 
-    const updated = approvalStore.getById(approvalId);
-    expect(updated).toBeDefined();
-    expect(updated!.status).toBe(APPROVAL_STATES.REJECTED);
-    expect(updated!.responseReason).toContain('Not authorized');
-  });
+    const updated = approvalStore.getById(approvalId)
+    expect(updated).toBeDefined()
+    expect(updated!.status).toBe(APPROVAL_STATES.REJECTED)
+    expect(updated!.responseReason).toContain('Not authorized')
+  })
 
   it('rejected approval generates an audit event', () => {
-    const ctx = createPermissionContext('u_audit', 's_audit', 'ask_on_write');
+    const ctx = createPermissionContext('u_audit', 's_audit', 'ask_on_write')
     const req: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'artifact_create',
+      actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/audit-test',
-    };
+    }
 
-    const decision = permissionEngine.checkPermission(req);
+    const decision = permissionEngine.checkPermission(req)
 
     approvalHandler.processResponse({
       requestId: decision.requestId!,
@@ -161,28 +161,28 @@ describe('Approval rejection blocks side effects', () => {
       respondedBy: 'admin',
       respondedAt: new Date().toISOString(),
       reason: 'Blocked by policy',
-    });
+    })
 
     const rejectionEvents = eventStore.query({
       userId: 'u_audit',
       eventType: 'approval_responded',
-    });
+    })
 
-    expect(rejectionEvents.length).toBeGreaterThan(0);
-    const rejection = rejectionEvents[0];
-    expect(rejection.payload.decision).toBe('rejected');
-  });
+    expect(rejectionEvents.length).toBeGreaterThan(0)
+    const rejection = rejectionEvents[0]
+    expect(rejection.payload.decision).toBe('rejected')
+  })
 
   it('rejected approval does NOT create a grant', () => {
-    const ctx = createPermissionContext('u_nogrant', 's_nogrant', 'ask_on_write');
+    const ctx = createPermissionContext('u_nogrant', 's_nogrant', 'ask_on_write')
     const req: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'artifact_create',
+      actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/no-grant',
-    };
+    }
 
-    const decision = permissionEngine.checkPermission(req);
+    const decision = permissionEngine.checkPermission(req)
 
     const result = approvalHandler.processResponse({
       requestId: decision.requestId!,
@@ -190,54 +190,54 @@ describe('Approval rejection blocks side effects', () => {
       respondedBy: 'admin',
       respondedAt: new Date().toISOString(),
       reason: 'Denied',
-    });
+    })
 
-    expect(result.grant).toBeUndefined();
+    expect(result.grant).toBeUndefined()
 
-    const userId = 'u_nogrant';
-    const allGrants = grantStore.findActiveByUserAndScope(userId, 'default');
-    expect(allGrants.length).toBe(0);
-  });
+    const userId = 'u_nogrant'
+    const allGrants = grantStore.findActiveByUserAndScope(userId, 'default')
+    expect(allGrants.length).toBe(0)
+  })
 
   it('subsequent permission check after rejection still requires approval', () => {
-    const userId = 'u_again';
-    const sessionId = 's_again';
+    const userId = 'u_again'
+    const sessionId = 's_again'
 
-    const ctx = createPermissionContext(userId, sessionId, 'ask_on_write');
+    const ctx = createPermissionContext(userId, sessionId, 'ask_on_write')
     const req: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'artifact_create',
+      actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/again',
-    };
+    }
 
-    const first = permissionEngine.checkPermission(req);
+    const first = permissionEngine.checkPermission(req)
     approvalHandler.processResponse({
       requestId: first.requestId!,
       responseType: 'reject',
       respondedBy: 'admin',
       respondedAt: new Date().toISOString(),
       reason: 'Not allowed',
-    });
+    })
 
-    const second = permissionEngine.checkPermission(req);
-    expect(second.status).toBe('requires_approval');
-    expect(second.allowed).toBe(false);
-  });
+    const second = permissionEngine.checkPermission(req)
+    expect(second.status).toBe('requires_approval')
+    expect(second.allowed).toBe(false)
+  })
 
   it('approved approval with approve_always creates a grant for future use', () => {
-    const userId = 'u_always';
-    const sessionId = 's_always';
+    const userId = 'u_always'
+    const sessionId = 's_always'
 
-    const ctx = createPermissionContext(userId, sessionId, 'ask_on_write');
+    const ctx = createPermissionContext(userId, sessionId, 'ask_on_write')
     const req: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'artifact_create',
+      actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/always-test',
-    };
+    }
 
-    const decision = permissionEngine.checkPermission(req);
+    const decision = permissionEngine.checkPermission(req)
 
     const result = approvalHandler.processResponse({
       requestId: decision.requestId!,
@@ -246,51 +246,51 @@ describe('Approval rejection blocks side effects', () => {
       respondedAt: new Date().toISOString(),
       grantScope: 'session',
       grantDuration: 3600000,
-    });
+    })
 
-    expect(result.success).toBe(true);
-    expect(result.approved).toBe(true);
-    expect(result.grant).toBeDefined();
+    expect(result.success).toBe(true)
+    expect(result.approved).toBe(true)
+    expect(result.grant).toBeDefined()
 
-    const grants = grantStore.findActiveByUserAndScope(userId, 'session');
-    expect(grants.length).toBe(1);
-    expect(grants[0].action).toBe('artifact_create');
-  });
+    const grants = grantStore.findActiveByUserAndScope(userId, 'session')
+    expect(grants.length).toBe(1)
+    expect(grants[0].action).toBe('artifact_create')
+  })
 
   it('denied decision uses createDeniedDecision pattern', () => {
-    const denied = createDeniedDecision('Blocked for security', 'policy-1', 'audit-high');
-    expect(denied.status).toBe('denied');
-    expect(denied.allowed).toBe(false);
-    expect(denied.reason).toContain('security');
-    expect(denied.policyRef).toBe('policy-1');
-    expect(denied.auditLabel).toBe('audit-high');
-  });
+    const denied = createDeniedDecision('Blocked for security', 'policy-1', 'audit-high')
+    expect(denied.status).toBe('denied')
+    expect(denied.allowed).toBe(false)
+    expect(denied.reason).toContain('security')
+    expect(denied.policyRef).toBe('policy-1')
+    expect(denied.auditLabel).toBe('audit-high')
+  })
 
   it('allowed decision uses createAllowedDecision pattern', () => {
-    const allowed = createAllowedDecision('Safe operation');
-    expect(allowed.status).toBe('allowed');
-    expect(allowed.allowed).toBe(true);
-    expect(allowed.reason).toBe('Safe operation');
-  });
+    const allowed = createAllowedDecision('Safe operation')
+    expect(allowed.status).toBe('allowed')
+    expect(allowed.allowed).toBe(true)
+    expect(allowed.reason).toBe('Safe operation')
+  })
 
   it('hard_deny mode blocks all operations including reads', () => {
-    const ctx = createPermissionContext('u_hard', 's_hard', 'hard_deny');
+    const ctx = createPermissionContext('u_hard', 's_hard', 'hard_deny')
     const readReq: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'file_read',
+      actionType: 'file_read',
       operationType: 'read',
       resource: '/data/file.txt',
-    };
+    }
     const writeReq: PermissionCheckRequest = {
       context: ctx,
-        actionType: 'artifact_create',
+      actionType: 'artifact_create',
       operationType: 'write',
       resource: '/artifact/001',
-    };
+    }
 
-    expect(permissionEngine.checkPermission(readReq).allowed).toBe(false);
-    expect(permissionEngine.checkPermission(writeReq).allowed).toBe(false);
-    expect(permissionEngine.checkPermission(readReq).status).toBe('denied');
-    expect(permissionEngine.checkPermission(writeReq).status).toBe('denied');
-  });
-});
+    expect(permissionEngine.checkPermission(readReq).allowed).toBe(false)
+    expect(permissionEngine.checkPermission(writeReq).allowed).toBe(false)
+    expect(permissionEngine.checkPermission(readReq).status).toBe('denied')
+    expect(permissionEngine.checkPermission(writeReq).status).toBe('denied')
+  })
+})

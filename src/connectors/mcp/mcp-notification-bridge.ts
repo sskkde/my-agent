@@ -1,75 +1,75 @@
-import type { AuditRecorder } from '../../observability/audit-types.js';
-import type { RuntimeAction, RuntimeActionStore } from '../../storage/runtime-action-store.js';
-import type { EventStore } from '../../storage/event-store.js';
-import type { TriggerRegistration, TriggerStore, TriggerStatus } from '../../storage/trigger-store.js';
-import type { RuntimeTriggerEvent } from '../../triggers/types.js';
-import type { McpSessionManager } from './mcp-session-manager.js';
+import type { AuditRecorder } from '../../observability/audit-types.js'
+import type { RuntimeAction, RuntimeActionStore } from '../../storage/runtime-action-store.js'
+import type { EventStore } from '../../storage/event-store.js'
+import type { TriggerRegistration, TriggerStore, TriggerStatus } from '../../storage/trigger-store.js'
+import type { RuntimeTriggerEvent } from '../../triggers/types.js'
+import type { McpSessionManager } from './mcp-session-manager.js'
 
 export interface McpNotification {
-  id?: string;
-  idempotencyKey?: string;
-  method?: string;
-  params?: Record<string, unknown>;
-  payload?: Record<string, unknown>;
-  [key: string]: unknown;
+  id?: string
+  idempotencyKey?: string
+  method?: string
+  params?: Record<string, unknown>
+  payload?: Record<string, unknown>
+  [key: string]: unknown
 }
 
 export interface McpNotificationBridgeOptions {
-  sessionManager: McpSessionManager;
-  eventStore: EventStore;
-  triggerStore: TriggerStore;
-  runtimeActionStore: RuntimeActionStore;
-  auditRecorder?: AuditRecorder;
-  defaultUserId?: string;
+  sessionManager: McpSessionManager
+  eventStore: EventStore
+  triggerStore: TriggerStore
+  runtimeActionStore: RuntimeActionStore
+  auditRecorder?: AuditRecorder
+  defaultUserId?: string
 }
 
-const ACTIVE_TRIGGER_STATUS: TriggerStatus = 'active';
+const ACTIVE_TRIGGER_STATUS: TriggerStatus = 'active'
 
 export class McpNotificationBridge {
-  private readonly sessionManager: McpSessionManager;
-  private readonly eventStore: EventStore;
-  private readonly triggerStore: TriggerStore;
-  private readonly runtimeActionStore: RuntimeActionStore;
-  private readonly auditRecorder?: AuditRecorder;
-  private readonly defaultUserId: string;
-  private readonly dedupeCache = new Map<string, RuntimeTriggerEvent>();
+  private readonly sessionManager: McpSessionManager
+  private readonly eventStore: EventStore
+  private readonly triggerStore: TriggerStore
+  private readonly runtimeActionStore: RuntimeActionStore
+  private readonly auditRecorder?: AuditRecorder
+  private readonly defaultUserId: string
+  private readonly dedupeCache = new Map<string, RuntimeTriggerEvent>()
 
   constructor(options: McpNotificationBridgeOptions) {
-    this.sessionManager = options.sessionManager;
-    this.eventStore = options.eventStore;
-    this.triggerStore = options.triggerStore;
-    this.runtimeActionStore = options.runtimeActionStore;
-    this.auditRecorder = options.auditRecorder;
-    this.defaultUserId = options.defaultUserId ?? 'system';
+    this.sessionManager = options.sessionManager
+    this.eventStore = options.eventStore
+    this.triggerStore = options.triggerStore
+    this.runtimeActionStore = options.runtimeActionStore
+    this.auditRecorder = options.auditRecorder
+    this.defaultUserId = options.defaultUserId ?? 'system'
   }
 
   handleNotification(sessionId: string, notification: McpNotification): RuntimeTriggerEvent {
-    const session = this.sessionManager.getSession(sessionId);
+    const session = this.sessionManager.getSession(sessionId)
     if (!session) {
-      throw new Error(`MCP session not found: ${sessionId}`);
+      throw new Error(`MCP session not found: ${sessionId}`)
     }
 
-    const idempotencyKey = this.getIdempotencyKey(session.serverId, notification);
-    const cached = this.dedupeCache.get(idempotencyKey);
+    const idempotencyKey = this.getIdempotencyKey(session.serverId, notification)
+    const cached = this.dedupeCache.get(idempotencyKey)
     if (cached) {
-      return cached;
+      return cached
     }
 
-    const event = this.createEvent(sessionId, session.serverId, notification, idempotencyKey);
-    this.eventStore.append(event);
-    this.auditNotification(sessionId, session.serverId, notification, event);
-    this.fireMatchingTriggers(event);
-    this.dedupeCache.set(idempotencyKey, event);
-    return event;
+    const event = this.createEvent(sessionId, session.serverId, notification, idempotencyKey)
+    this.eventStore.append(event)
+    this.auditNotification(sessionId, session.serverId, notification, event)
+    this.fireMatchingTriggers(event)
+    this.dedupeCache.set(idempotencyKey, event)
+    return event
   }
 
   private createEvent(
     sessionId: string,
     serverId: string,
     notification: McpNotification,
-    idempotencyKey: string
+    idempotencyKey: string,
   ): RuntimeTriggerEvent {
-    const eventId = `evt_${crypto.randomUUID()}`;
+    const eventId = `evt_${crypto.randomUUID()}`
     return {
       eventId,
       eventType: 'mcp_notification',
@@ -92,46 +92,47 @@ export class McpNotificationBridge {
       sensitivity: 'medium',
       retentionClass: 'standard',
       createdAt: new Date().toISOString(),
-    };
+    }
   }
 
   private fireMatchingTriggers(event: RuntimeTriggerEvent): void {
-    const triggers = this.triggerStore.findByStatus(ACTIVE_TRIGGER_STATUS)
-      .filter(trigger => trigger.conditionType === 'event' && this.matches(trigger, event));
+    const triggers = this.triggerStore
+      .findByStatus(ACTIVE_TRIGGER_STATUS)
+      .filter((trigger) => trigger.conditionType === 'event' && this.matches(trigger, event))
 
     for (const trigger of triggers) {
-      const action = this.createResumeAction(trigger, event);
-      this.runtimeActionStore.save(action);
-      this.triggerStore.incrementTriggerCount(trigger.id);
+      const action = this.createResumeAction(trigger, event)
+      this.runtimeActionStore.save(action)
+      this.triggerStore.incrementTriggerCount(trigger.id)
     }
   }
 
   private matches(trigger: TriggerRegistration, event: RuntimeTriggerEvent): boolean {
     if (trigger.conditionPattern === '*' || trigger.conditionPattern === event.eventType) {
-      return true;
+      return true
     }
     try {
-      const pattern = JSON.parse(trigger.conditionPattern) as Record<string, unknown>;
-      return Object.entries(pattern).every(([key, value]) => this.eventField(event, key) === value);
+      const pattern = JSON.parse(trigger.conditionPattern) as Record<string, unknown>
+      return Object.entries(pattern).every(([key, value]) => this.eventField(event, key) === value)
     } catch {
-      return false;
+      return false
     }
   }
 
   private eventField(event: RuntimeTriggerEvent, key: string): unknown {
     if (key === 'eventType') {
-      return event.eventType;
+      return event.eventType
     }
-    return event.payload[key];
+    return event.payload[key]
   }
 
   private createResumeAction(trigger: TriggerRegistration, event: RuntimeTriggerEvent): RuntimeAction {
-    const existingKey = `${event.eventId}:${trigger.targetRef}`;
-    const existing = this.runtimeActionStore.findByIdempotencyKey(existingKey);
+    const existingKey = `${event.eventId}:${trigger.targetRef}`
+    const existing = this.runtimeActionStore.findByIdempotencyKey(existingKey)
     if (existing) {
-      return existing;
+      return existing
     }
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     return {
       actionId: `act_${crypto.randomUUID()}`,
       actionType: this.actionType(trigger.targetType),
@@ -153,14 +154,14 @@ export class McpNotificationBridge {
       status: 'created',
       createdAt: now,
       updatedAt: now,
-    };
+    }
   }
 
   private auditNotification(
     sessionId: string,
     serverId: string,
     notification: McpNotification,
-    event: RuntimeTriggerEvent
+    event: RuntimeTriggerEvent,
   ): void {
     this.auditRecorder?.recordConnectorAccess({
       userId: this.defaultUserId,
@@ -169,63 +170,63 @@ export class McpNotificationBridge {
       operation: `notification:${String(notification.method ?? notification.id ?? 'unknown')}`,
       status: 'success',
       correlationId: event.correlationId,
-    });
+    })
   }
 
   private getIdempotencyKey(serverId: string, notification: McpNotification): string {
-    const explicit = notification.idempotencyKey ?? notification.id;
-    return explicit ? `mcp.${serverId}.${explicit}` : `mcp.${serverId}.${JSON.stringify(notification)}`;
+    const explicit = notification.idempotencyKey ?? notification.id
+    return explicit ? `mcp.${serverId}.${explicit}` : `mcp.${serverId}.${JSON.stringify(notification)}`
   }
 
   private targetRuntime(targetType: string): string {
     if (targetType === 'background_run') {
-      return 'subagent_runtime';
+      return 'subagent_runtime'
     }
     if (targetType === 'planner_run') {
-      return 'planner_runtime';
+      return 'planner_runtime'
     }
     if (targetType === 'kernel_run') {
-      return 'agent_kernel';
+      return 'agent_kernel'
     }
-    return 'workflow_runtime';
+    return 'workflow_runtime'
   }
 
   private targetAction(targetType: string): string {
     if (targetType === 'background_run') {
-      return 'resume_subagent';
+      return 'resume_subagent'
     }
     if (targetType === 'planner_run') {
-      return 'resume_planner_run';
+      return 'resume_planner_run'
     }
     if (targetType === 'kernel_run') {
-      return 'resume_agent_run';
+      return 'resume_agent_run'
     }
-    return 'resume_workflow_step';
+    return 'resume_workflow_step'
   }
 
   private actionType(targetType: string): string {
     if (targetType === 'background_run') {
-      return 'resume_subagent';
+      return 'resume_subagent'
     }
     if (targetType === 'planner_run') {
-      return 'resume_planner_run';
+      return 'resume_planner_run'
     }
     if (targetType === 'kernel_run') {
-      return 'resume_agent_run';
+      return 'resume_agent_run'
     }
-    return 'resume_workflow_step';
+    return 'resume_workflow_step'
   }
 
   private targetRef(targetType: string, targetRef: string): RuntimeAction['targetRef'] {
     if (targetType === 'background_run') {
-      return { backgroundRunId: targetRef };
+      return { backgroundRunId: targetRef }
     }
     if (targetType === 'planner_run') {
-      return { plannerRunId: targetRef };
+      return { plannerRunId: targetRef }
     }
     if (targetType === 'kernel_run') {
-      return { runId: targetRef };
+      return { runId: targetRef }
     }
-    return { workflowStepRunId: targetRef };
+    return { workflowStepRunId: targetRef }
   }
 }

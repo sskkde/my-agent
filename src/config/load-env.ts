@@ -1,53 +1,50 @@
-import { existsSync, readFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync } from 'fs'
+import { resolve } from 'path'
 
 function parseEnvLine(line: string): [string, string] | null {
-  const trimmed = line.trim();
+  const trimmed = line.trim()
 
   if (!trimmed || trimmed.startsWith('#')) {
-    return null;
+    return null
   }
 
-  const separatorIndex = trimmed.indexOf('=');
+  const separatorIndex = trimmed.indexOf('=')
   if (separatorIndex === -1) {
-    return null;
+    return null
   }
 
-  const key = trimmed.slice(0, separatorIndex).trim();
-  let value = trimmed.slice(separatorIndex + 1).trim();
+  const key = trimmed.slice(0, separatorIndex).trim()
+  let value = trimmed.slice(separatorIndex + 1).trim()
 
   if (!key) {
-    return null;
+    return null
   }
 
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    value = value.slice(1, -1);
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    value = value.slice(1, -1)
   }
 
-  return [key, value];
+  return [key, value]
 }
 
 export function loadEnvFile(filePath = resolve(process.cwd(), '.env')): void {
   if (!existsSync(filePath)) {
-    return;
+    return
   }
 
-  const content = readFileSync(filePath, 'utf-8');
+  const content = readFileSync(filePath, 'utf-8')
 
   for (const line of content.split(/\r?\n/)) {
-    const parsed = parseEnvLine(line);
+    const parsed = parseEnvLine(line)
     if (!parsed) {
-      continue;
+      continue
     }
 
-    const [key, value] = parsed;
+    const [key, value] = parsed
     if (process.env[key] === undefined) {
-      process.env[key] = value;
+      process.env[key] = value
     }
   }
 }
 
-loadEnvFile();
+loadEnvFile()

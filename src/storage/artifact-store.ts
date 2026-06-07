@@ -1,42 +1,42 @@
-import type { ConnectionManager } from './connection.js';
-import type { MigrationRunner, Migration } from './migrations.js';
+import type { ConnectionManager } from './connection.js'
+import type { MigrationRunner, Migration } from './migrations.js'
 
-export type ArtifactType = 'document' | 'draft' | 'image' | 'report' | 'spreadsheet' | 'code' | 'workflow';
-export type ArtifactStatus = 'draft' | 'active' | 'archived' | 'deleted';
+export type ArtifactType = 'document' | 'draft' | 'image' | 'report' | 'spreadsheet' | 'code' | 'workflow'
+export type ArtifactStatus = 'draft' | 'active' | 'archived' | 'deleted'
 
 export interface Artifact {
-  id: string;
-  artifactId: string;
-  artifactType: ArtifactType;
-  name: string;
-  contentRef: string;
-  contentSummary?: string;
-  userId: string;
-  sessionId?: string;
-  status: ArtifactStatus;
-  metadata?: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  artifactId: string
+  artifactType: ArtifactType
+  name: string
+  contentRef: string
+  contentSummary?: string
+  userId: string
+  sessionId?: string
+  status: ArtifactStatus
+  metadata?: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ArtifactStore {
-  applyMigrations(runner: MigrationRunner): void;
-  create(data: Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>): Artifact;
-  findById(id: string): Artifact | undefined;
-  findByArtifactId(artifactId: string): Artifact | undefined;
-  findByUserId(userId: string): Artifact[];
-  findBySessionId(sessionId: string): Artifact[];
-  findByType(artifactType: ArtifactType): Artifact[];
-  findByStatus(status: ArtifactStatus): Artifact[];
-  update(id: string, data: Partial<Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>>): Artifact | undefined;
-  delete(id: string): boolean;
+  applyMigrations(runner: MigrationRunner): void
+  create(data: Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>): Artifact
+  findById(id: string): Artifact | undefined
+  findByArtifactId(artifactId: string): Artifact | undefined
+  findByUserId(userId: string): Artifact[]
+  findBySessionId(sessionId: string): Artifact[]
+  findByType(artifactType: ArtifactType): Artifact[]
+  findByStatus(status: ArtifactStatus): Artifact[]
+  update(id: string, data: Partial<Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>>): Artifact | undefined
+  delete(id: string): boolean
 }
 
 class ArtifactStoreImpl implements ArtifactStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   applyMigrations(runner: MigrationRunner): void {
@@ -72,15 +72,15 @@ class ArtifactStoreImpl implements ArtifactStore {
           DROP INDEX IF EXISTS idx_artifacts_user_id_updated;
           DROP INDEX IF EXISTS idx_artifacts_artifact_id;
           DROP TABLE IF EXISTS artifacts;
-        `
-      }
-    ];
-    runner.apply(migrations);
+        `,
+      },
+    ]
+    runner.apply(migrations)
   }
 
   create(data: Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>): Artifact {
-    const id = crypto.randomUUID();
-    const now = new Date().toISOString();
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
 
     this.connection.exec(
       `INSERT INTO artifacts (
@@ -99,225 +99,222 @@ class ArtifactStoreImpl implements ArtifactStore {
         data.status,
         data.metadata ? JSON.stringify(data.metadata) : null,
         now,
-        now
-      ]
-    );
+        now,
+      ],
+    )
 
     return {
       ...data,
       id,
       createdAt: now,
-      updatedAt: now
-    };
+      updatedAt: now,
+    }
   }
 
   findById(id: string): Artifact | undefined {
     const rows = this.connection.query<{
-      id: string;
-      artifact_id: string;
-      artifact_type: ArtifactType;
-      name: string;
-      content_ref: string;
-      content_summary: string | null;
-      user_id: string;
-      session_id: string | null;
-      status: ArtifactStatus;
-      metadata: string | null;
-      created_at: string;
-      updated_at: string;
-    }>('SELECT * FROM artifacts WHERE id = ?', [id]);
+      id: string
+      artifact_id: string
+      artifact_type: ArtifactType
+      name: string
+      content_ref: string
+      content_summary: string | null
+      user_id: string
+      session_id: string | null
+      status: ArtifactStatus
+      metadata: string | null
+      created_at: string
+      updated_at: string
+    }>('SELECT * FROM artifacts WHERE id = ?', [id])
 
     if (rows.length === 0) {
-      return undefined;
+      return undefined
     }
 
-    return this.mapRow(rows[0]);
+    return this.mapRow(rows[0])
   }
 
   findByArtifactId(artifactId: string): Artifact | undefined {
     const rows = this.connection.query<{
-      id: string;
-      artifact_id: string;
-      artifact_type: ArtifactType;
-      name: string;
-      content_ref: string;
-      content_summary: string | null;
-      user_id: string;
-      session_id: string | null;
-      status: ArtifactStatus;
-      metadata: string | null;
-      created_at: string;
-      updated_at: string;
-    }>('SELECT * FROM artifacts WHERE artifact_id = ?', [artifactId]);
+      id: string
+      artifact_id: string
+      artifact_type: ArtifactType
+      name: string
+      content_ref: string
+      content_summary: string | null
+      user_id: string
+      session_id: string | null
+      status: ArtifactStatus
+      metadata: string | null
+      created_at: string
+      updated_at: string
+    }>('SELECT * FROM artifacts WHERE artifact_id = ?', [artifactId])
 
     if (rows.length === 0) {
-      return undefined;
+      return undefined
     }
 
-    return this.mapRow(rows[0]);
+    return this.mapRow(rows[0])
   }
 
   findByUserId(userId: string): Artifact[] {
     const rows = this.connection.query<{
-      id: string;
-      artifact_id: string;
-      artifact_type: ArtifactType;
-      name: string;
-      content_ref: string;
-      content_summary: string | null;
-      user_id: string;
-      session_id: string | null;
-      status: ArtifactStatus;
-      metadata: string | null;
-      created_at: string;
-      updated_at: string;
-    }>('SELECT * FROM artifacts WHERE user_id = ? ORDER BY updated_at DESC', [userId]);
+      id: string
+      artifact_id: string
+      artifact_type: ArtifactType
+      name: string
+      content_ref: string
+      content_summary: string | null
+      user_id: string
+      session_id: string | null
+      status: ArtifactStatus
+      metadata: string | null
+      created_at: string
+      updated_at: string
+    }>('SELECT * FROM artifacts WHERE user_id = ? ORDER BY updated_at DESC', [userId])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   findBySessionId(sessionId: string): Artifact[] {
     const rows = this.connection.query<{
-      id: string;
-      artifact_id: string;
-      artifact_type: ArtifactType;
-      name: string;
-      content_ref: string;
-      content_summary: string | null;
-      user_id: string;
-      session_id: string | null;
-      status: ArtifactStatus;
-      metadata: string | null;
-      created_at: string;
-      updated_at: string;
-    }>('SELECT * FROM artifacts WHERE session_id = ?', [sessionId]);
+      id: string
+      artifact_id: string
+      artifact_type: ArtifactType
+      name: string
+      content_ref: string
+      content_summary: string | null
+      user_id: string
+      session_id: string | null
+      status: ArtifactStatus
+      metadata: string | null
+      created_at: string
+      updated_at: string
+    }>('SELECT * FROM artifacts WHERE session_id = ?', [sessionId])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   findByType(artifactType: ArtifactType): Artifact[] {
     const rows = this.connection.query<{
-      id: string;
-      artifact_id: string;
-      artifact_type: ArtifactType;
-      name: string;
-      content_ref: string;
-      content_summary: string | null;
-      user_id: string;
-      session_id: string | null;
-      status: ArtifactStatus;
-      metadata: string | null;
-      created_at: string;
-      updated_at: string;
-    }>('SELECT * FROM artifacts WHERE artifact_type = ?', [artifactType]);
+      id: string
+      artifact_id: string
+      artifact_type: ArtifactType
+      name: string
+      content_ref: string
+      content_summary: string | null
+      user_id: string
+      session_id: string | null
+      status: ArtifactStatus
+      metadata: string | null
+      created_at: string
+      updated_at: string
+    }>('SELECT * FROM artifacts WHERE artifact_type = ?', [artifactType])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   findByStatus(status: ArtifactStatus): Artifact[] {
     const rows = this.connection.query<{
-      id: string;
-      artifact_id: string;
-      artifact_type: ArtifactType;
-      name: string;
-      content_ref: string;
-      content_summary: string | null;
-      user_id: string;
-      session_id: string | null;
-      status: ArtifactStatus;
-      metadata: string | null;
-      created_at: string;
-      updated_at: string;
-    }>('SELECT * FROM artifacts WHERE status = ?', [status]);
+      id: string
+      artifact_id: string
+      artifact_type: ArtifactType
+      name: string
+      content_ref: string
+      content_summary: string | null
+      user_id: string
+      session_id: string | null
+      status: ArtifactStatus
+      metadata: string | null
+      created_at: string
+      updated_at: string
+    }>('SELECT * FROM artifacts WHERE status = ?', [status])
 
-    return rows.map(row => this.mapRow(row));
+    return rows.map((row) => this.mapRow(row))
   }
 
   update(id: string, data: Partial<Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>>): Artifact | undefined {
-    const existing = this.findById(id);
+    const existing = this.findById(id)
     if (!existing) {
-      return undefined;
+      return undefined
     }
 
-    const updates: string[] = [];
-    const values: unknown[] = [];
+    const updates: string[] = []
+    const values: unknown[] = []
 
     if (data.artifactId !== undefined) {
-      updates.push('artifact_id = ?');
-      values.push(data.artifactId);
+      updates.push('artifact_id = ?')
+      values.push(data.artifactId)
     }
     if (data.artifactType !== undefined) {
-      updates.push('artifact_type = ?');
-      values.push(data.artifactType);
+      updates.push('artifact_type = ?')
+      values.push(data.artifactType)
     }
     if (data.name !== undefined) {
-      updates.push('name = ?');
-      values.push(data.name);
+      updates.push('name = ?')
+      values.push(data.name)
     }
     if (data.contentRef !== undefined) {
-      updates.push('content_ref = ?');
-      values.push(data.contentRef);
+      updates.push('content_ref = ?')
+      values.push(data.contentRef)
     }
     if (data.contentSummary !== undefined) {
-      updates.push('content_summary = ?');
-      values.push(data.contentSummary);
+      updates.push('content_summary = ?')
+      values.push(data.contentSummary)
     }
     if (data.userId !== undefined) {
-      updates.push('user_id = ?');
-      values.push(data.userId);
+      updates.push('user_id = ?')
+      values.push(data.userId)
     }
     if (data.sessionId !== undefined) {
-      updates.push('session_id = ?');
-      values.push(data.sessionId);
+      updates.push('session_id = ?')
+      values.push(data.sessionId)
     }
     if (data.status !== undefined) {
-      updates.push('status = ?');
-      values.push(data.status);
+      updates.push('status = ?')
+      values.push(data.status)
     }
     if (data.metadata !== undefined) {
-      updates.push('metadata = ?');
-      values.push(JSON.stringify(data.metadata));
+      updates.push('metadata = ?')
+      values.push(JSON.stringify(data.metadata))
     }
 
     if (updates.length === 0) {
-      return existing;
+      return existing
     }
 
-    const updatedAt = new Date().toISOString();
-    updates.push('updated_at = ?');
-    values.push(updatedAt);
-    values.push(id);
+    const updatedAt = new Date().toISOString()
+    updates.push('updated_at = ?')
+    values.push(updatedAt)
+    values.push(id)
 
-    this.connection.exec(
-      `UPDATE artifacts SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
+    this.connection.exec(`UPDATE artifacts SET ${updates.join(', ')} WHERE id = ?`, values)
 
-    return this.findById(id);
+    return this.findById(id)
   }
 
   delete(id: string): boolean {
-    const before = this.findById(id);
+    const before = this.findById(id)
     if (!before) {
-      return false;
+      return false
     }
-    this.connection.exec('DELETE FROM artifacts WHERE id = ?', [id]);
-    return this.findById(id) === undefined;
+    this.connection.exec('DELETE FROM artifacts WHERE id = ?', [id])
+    return this.findById(id) === undefined
   }
 
   private mapRow(row: {
-    id: string;
-    artifact_id: string;
-    artifact_type: ArtifactType;
-    name: string;
-    content_ref: string;
-    content_summary: string | null;
-    user_id: string;
-    session_id: string | null;
-    status: ArtifactStatus;
-    metadata: string | null;
-    created_at: string;
-    updated_at: string;
+    id: string
+    artifact_id: string
+    artifact_type: ArtifactType
+    name: string
+    content_ref: string
+    content_summary: string | null
+    user_id: string
+    session_id: string | null
+    status: ArtifactStatus
+    metadata: string | null
+    created_at: string
+    updated_at: string
   }): Artifact {
     return {
       id: row.id,
@@ -331,11 +328,11 @@ class ArtifactStoreImpl implements ArtifactStore {
       status: row.status,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
+      updatedAt: row.updated_at,
+    }
   }
 }
 
 export function createArtifactStore(connection: ConnectionManager): ArtifactStore {
-  return new ArtifactStoreImpl(connection);
+  return new ArtifactStoreImpl(connection)
 }

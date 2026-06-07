@@ -11,13 +11,8 @@
  * as parameters rather than calling getToolCatalog() directly.
  */
 
-import type { ForegroundDecideParams } from './foreground-decision-schema.js';
-import type {
-  ForegroundDecision,
-  ForegroundDecisionRoute,
-  ForegroundTargetRef,
-  TaskComplexity,
-} from './types.js';
+import type { ForegroundDecideParams } from './foreground-decision-schema.js'
+import type { ForegroundDecision, ForegroundDecisionRoute, ForegroundTargetRef, TaskComplexity } from './types.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -33,18 +28,13 @@ const VALID_ROUTES: readonly ForegroundDecisionRoute[] = [
   'approval_handler',
   'cancel_or_modify_task',
   'status_query',
-] as const;
+] as const
 
 /** Valid task complexity levels */
-const VALID_COMPLEXITIES: readonly TaskComplexity[] = [
-  'low',
-  'medium',
-  'high',
-  'critical',
-] as const;
+const VALID_COMPLEXITIES: readonly TaskComplexity[] = ['low', 'medium', 'high', 'critical'] as const
 
 /** Maximum allowed length for the `reason` field */
-const MAX_REASON_LENGTH = 1000;
+const MAX_REASON_LENGTH = 1000
 
 /**
  * Tool alias map — resolves common shorthand names to canonical tool IDs.
@@ -62,7 +52,7 @@ const TOOL_ALIASES: Record<string, string[]> = {
   'memory.search': ['memory_retrieve'],
   memory: ['memory_retrieve'],
   status: ['status_query'],
-};
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,7 +66,7 @@ export type ForegroundDecideErrorCode =
   | 'INVALID_COMPLEXITY'
   | 'INVALID_ESTIMATED_STEPS'
   | 'INVALID_SCHEMA_VERSION'
-  | 'INVALID_TOOLS';
+  | 'INVALID_TOOLS'
 
 /**
  * Result of validating `ForegroundDecideParams`.
@@ -87,24 +77,24 @@ export type ForegroundDecideErrorCode =
  */
 export interface ForegroundDecideValidationResult {
   /** Whether validation passed */
-  valid: boolean;
+  valid: boolean
   /** The normalized decision (only present when `valid` is true) */
-  decision?: ForegroundDecision;
+  decision?: ForegroundDecision
   /** Structured error info (only present when `valid` is false) */
   error?: {
     /** Machine-readable error code */
-    code: ForegroundDecideErrorCode;
+    code: ForegroundDecideErrorCode
     /** Human-readable error message */
-    message: string;
-  };
+    message: string
+  }
 }
 
 /** Options for the validation function */
 export interface ValidateForegroundDecideOptions {
   /** Known tool names from the tool catalog (e.g. from getToolCatalog()) */
-  toolCatalog: string[];
+  toolCatalog: string[]
   /** Effective allowed tool IDs for this session (the allowlist) */
-  effectiveToolIds: string[];
+  effectiveToolIds: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -137,17 +127,14 @@ export function validateForegroundDecideParams(
 ): ForegroundDecideValidationResult {
   // ── 1. Must be a non-null, non-array object ──────────────────────────────
   if (typeof params !== 'object' || params === null || Array.isArray(params)) {
-    return invalid('INVALID_PARAMS', 'Parameters must be a non-null JSON object');
+    return invalid('INVALID_PARAMS', 'Parameters must be a non-null JSON object')
   }
 
-  const obj = params as Record<string, unknown>;
+  const obj = params as Record<string, unknown>
 
   // ── 2. Schema version ────────────────────────────────────────────────────
   if (obj.schemaVersion !== '1.0') {
-    return invalid(
-      'INVALID_SCHEMA_VERSION',
-      `schemaVersion must be "1.0", got: ${JSON.stringify(obj.schemaVersion)}`,
-    );
+    return invalid('INVALID_SCHEMA_VERSION', `schemaVersion must be "1.0", got: ${JSON.stringify(obj.schemaVersion)}`)
   }
 
   // ── 3. Route ─────────────────────────────────────────────────────────────
@@ -155,58 +142,51 @@ export function validateForegroundDecideParams(
     return invalid(
       'INVALID_ROUTE',
       `route must be one of: ${VALID_ROUTES.join(', ')}. Got: ${JSON.stringify(obj.route)}`,
-    );
+    )
   }
-  const route = obj.route as ForegroundDecisionRoute;
+  const route = obj.route as ForegroundDecisionRoute
 
   // ── 4. Reason ────────────────────────────────────────────────────────────
   if (typeof obj.reason !== 'string') {
-    return invalid('EMPTY_REASON', 'reason must be a string');
+    return invalid('EMPTY_REASON', 'reason must be a string')
   }
-  const trimmedReason = obj.reason.trim();
+  const trimmedReason = obj.reason.trim()
   if (trimmedReason.length === 0) {
-    return invalid('EMPTY_REASON', 'reason must be a non-empty string');
+    return invalid('EMPTY_REASON', 'reason must be a non-empty string')
   }
   if (trimmedReason.length > MAX_REASON_LENGTH) {
     return invalid(
       'EMPTY_REASON',
       `reason must be at most ${MAX_REASON_LENGTH} characters, got: ${trimmedReason.length}`,
-    );
+    )
   }
 
   // ── 5. requiresPlanner ───────────────────────────────────────────────────
   if (typeof obj.requiresPlanner !== 'boolean') {
-    return invalid('INVALID_PARAMS', 'requiresPlanner must be a boolean');
+    return invalid('INVALID_PARAMS', 'requiresPlanner must be a boolean')
   }
 
   // ── 6. userVisibleResponse (optional) ────────────────────────────────────
   if (obj.userVisibleResponse !== undefined && typeof obj.userVisibleResponse !== 'string') {
-    return invalid('INVALID_PARAMS', 'userVisibleResponse must be a string if present');
+    return invalid('INVALID_PARAMS', 'userVisibleResponse must be a string if present')
   }
 
   // ── 7. suggestedTools (optional) ─────────────────────────────────────────
-  let filteredTools: string[] | undefined;
+  let filteredTools: string[] | undefined
   if (obj.suggestedTools !== undefined) {
     if (!Array.isArray(obj.suggestedTools) || !obj.suggestedTools.every(isString)) {
-      return invalid('INVALID_TOOLS', 'suggestedTools must be an array of strings');
+      return invalid('INVALID_TOOLS', 'suggestedTools must be an array of strings')
     }
-    filteredTools = filterAllowedTools(
-      obj.suggestedTools as string[],
-      options.toolCatalog,
-      options.effectiveToolIds,
-    );
+    filteredTools = filterAllowedTools(obj.suggestedTools as string[], options.toolCatalog, options.effectiveToolIds)
   }
 
   // ── 8. estimatedSteps (optional) ─────────────────────────────────────────
   if (obj.estimatedSteps !== undefined) {
     if (typeof obj.estimatedSteps !== 'number' || !Number.isInteger(obj.estimatedSteps)) {
-      return invalid('INVALID_ESTIMATED_STEPS', 'estimatedSteps must be an integer');
+      return invalid('INVALID_ESTIMATED_STEPS', 'estimatedSteps must be an integer')
     }
     if (obj.estimatedSteps < 1 || obj.estimatedSteps > 50) {
-      return invalid(
-        'INVALID_ESTIMATED_STEPS',
-        `estimatedSteps must be between 1 and 50, got: ${obj.estimatedSteps}`,
-      );
+      return invalid('INVALID_ESTIMATED_STEPS', `estimatedSteps must be between 1 and 50, got: ${obj.estimatedSteps}`)
     }
   }
 
@@ -216,7 +196,7 @@ export function validateForegroundDecideParams(
       return invalid(
         'INVALID_COMPLEXITY',
         `complexity must be one of: ${VALID_COMPLEXITIES.join(', ')}. Got: ${JSON.stringify(obj.complexity)}`,
-      );
+      )
     }
   }
 
@@ -238,9 +218,9 @@ export function validateForegroundDecideParams(
       targetRef: obj.targetRef as ForegroundDecideParams['targetRef'],
     },
     filteredTools,
-  );
+  )
 
-  return { valid: true, decision };
+  return { valid: true, decision }
 }
 
 // ---------------------------------------------------------------------------
@@ -268,46 +248,46 @@ export function normalizeToForegroundDecision(
     route: params.route,
     requiresPlanner: params.requiresPlanner,
     reason: params.reason,
-  };
+  }
 
   // Optional string fields
   if (params.userVisibleResponse !== undefined) {
-    decision.userVisibleResponse = params.userVisibleResponse;
+    decision.userVisibleResponse = params.userVisibleResponse
   }
 
   // Optional numeric/enum fields
   if (params.estimatedSteps !== undefined) {
-    decision.estimatedSteps = params.estimatedSteps;
+    decision.estimatedSteps = params.estimatedSteps
   }
   if (params.complexity !== undefined) {
-    decision.complexity = params.complexity;
+    decision.complexity = params.complexity
   }
 
   // Suggested tools — use pre-filtered version if available
   if (filteredTools !== undefined) {
-    decision.suggestedTools = filteredTools;
+    decision.suggestedTools = filteredTools
   } else if (params.suggestedTools !== undefined) {
-    decision.suggestedTools = params.suggestedTools;
+    decision.suggestedTools = params.suggestedTools
   }
 
   // SECURITY: Only keep non-privileged targetRef fields
   if (params.targetRef) {
-    const safeRef: ForegroundTargetRef = {};
+    const safeRef: ForegroundTargetRef = {}
     if (params.targetRef.plannerRunId !== undefined) {
-      safeRef.plannerRunId = params.targetRef.plannerRunId;
+      safeRef.plannerRunId = params.targetRef.plannerRunId
     }
     if (params.targetRef.planId !== undefined) {
-      safeRef.planId = params.targetRef.planId;
+      safeRef.planId = params.targetRef.planId
     }
     // Intentionally omit: runtimeActionId, subagentRunId, workflowRunId
     // These are server-assigned and must not come from the LLM
-    decision.targetRef = safeRef;
+    decision.targetRef = safeRef
   }
 
   // SECURITY: NEVER include runtimeAction — server creates all runtime actions
   // Even if the LLM hallucinated one in params, it is not propagated.
 
-  return decision;
+  return decision
 }
 
 // ---------------------------------------------------------------------------
@@ -329,27 +309,23 @@ export function normalizeToForegroundDecision(
  * @param effectiveToolIds - Effective allowed tool IDs (allowlist)
  * @returns Filtered, deduplicated list of allowed tool IDs
  */
-function filterAllowedTools(
-  suggestedTools: string[],
-  toolCatalog: string[],
-  effectiveToolIds: string[],
-): string[] {
-  const catalogSet = new Set(toolCatalog);
-  const effectiveSet = new Set(effectiveToolIds);
+function filterAllowedTools(suggestedTools: string[], toolCatalog: string[], effectiveToolIds: string[]): string[] {
+  const catalogSet = new Set(toolCatalog)
+  const effectiveSet = new Set(effectiveToolIds)
 
-  const resolved: string[] = [];
+  const resolved: string[] = []
   for (const toolId of suggestedTools) {
     // If the tool is directly in the catalog, use it as-is
     if (catalogSet.has(toolId)) {
-      resolved.push(toolId);
-      continue;
+      resolved.push(toolId)
+      continue
     }
     // Otherwise, try to resolve via aliases
-    const aliases = TOOL_ALIASES[toolId];
+    const aliases = TOOL_ALIASES[toolId]
     if (aliases) {
       for (const alias of aliases) {
         if (catalogSet.has(alias)) {
-          resolved.push(alias);
+          resolved.push(alias)
         }
       }
     }
@@ -357,7 +333,7 @@ function filterAllowedTools(
   }
 
   // Deduplicate and filter against effective allowlist
-  return [...new Set(resolved)].filter((id) => effectiveSet.has(id));
+  return [...new Set(resolved)].filter((id) => effectiveSet.has(id))
 }
 
 // ---------------------------------------------------------------------------
@@ -366,23 +342,20 @@ function filterAllowedTools(
 
 /** Check if a string is a valid `ForegroundDecisionRoute` */
 function isValidRoute(value: string): value is ForegroundDecisionRoute {
-  return (VALID_ROUTES as readonly string[]).includes(value);
+  return (VALID_ROUTES as readonly string[]).includes(value)
 }
 
 /** Check if a string is a valid `TaskComplexity` */
 function isValidComplexity(value: string): value is TaskComplexity {
-  return (VALID_COMPLEXITIES as readonly string[]).includes(value);
+  return (VALID_COMPLEXITIES as readonly string[]).includes(value)
 }
 
 /** Type guard: check if a value is a string */
 function isString(value: unknown): value is string {
-  return typeof value === 'string';
+  return typeof value === 'string'
 }
 
 /** Create an invalid validation result */
-function invalid(
-  code: ForegroundDecideErrorCode,
-  message: string,
-): ForegroundDecideValidationResult {
-  return { valid: false, error: { code, message } };
+function invalid(code: ForegroundDecideErrorCode, message: string): ForegroundDecideValidationResult {
+  return { valid: false, error: { code, message } }
 }

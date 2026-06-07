@@ -1,8 +1,8 @@
-import type { ToolSummary } from './types.js';
-import type { ToolDefinition } from '../llm/types.js';
-import type { ToolRegistry } from '../tools/types.js';
-import type { CanonicalToolCatalogEntry } from '../tools/tool-catalog.js';
-import { getFallbackToolCatalog, buildRuntimeToolCatalog } from '../tools/tool-catalog.js';
+import type { ToolSummary } from './types.js'
+import type { ToolDefinition } from '../llm/types.js'
+import type { ToolRegistry } from '../tools/types.js'
+import type { CanonicalToolCatalogEntry } from '../tools/tool-catalog.js'
+import { getFallbackToolCatalog, buildRuntimeToolCatalog } from '../tools/tool-catalog.js'
 
 export const BUILT_IN_TOOLS: ToolSummary[] = [
   {
@@ -215,33 +215,33 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     category: 'internal',
     sensitivity: 'low',
   },
-];
+]
 
 export function getToolCatalog(): ToolSummary[] {
-  const fallbackCatalog = getFallbackToolCatalog();
-  return fallbackCatalog.map(entry => ({
+  const fallbackCatalog = getFallbackToolCatalog()
+  return fallbackCatalog.map((entry) => ({
     name: entry.name,
     description: entry.description,
     category: entry.category,
     sensitivity: entry.sensitivity,
-  }));
+  }))
 }
 
 export function getToolCatalogWithMetadata(registry?: ToolRegistry): CanonicalToolCatalogEntry[] {
   if (registry) {
-    return buildRuntimeToolCatalog(registry, { includeMock: true });
+    return buildRuntimeToolCatalog(registry, { includeMock: true })
   }
-  return getFallbackToolCatalog();
+  return getFallbackToolCatalog()
 }
 
 export function getToolDefinitions(): ToolDefinition[] {
-  const fallbackCatalog = getFallbackToolCatalog();
-  return fallbackCatalog.map(tool => ({
+  const fallbackCatalog = getFallbackToolCatalog()
+  return fallbackCatalog.map((tool) => ({
     type: 'function' as const,
     function: {
       name: tool.name,
       description: tool.description,
       parameters: { type: 'object', properties: {} },
     },
-  }));
+  }))
 }

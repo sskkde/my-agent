@@ -1,8 +1,8 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { SkillSummary } from '../types.js';
-import type { ApiContext } from '../context.js';
-import { success } from '../response-envelope.js';
-import { ResourceType, Action } from '../../permissions/rbac-types.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import type { SkillSummary } from '../types.js'
+import type { ApiContext } from '../context.js'
+import { success } from '../response-envelope.js'
+import { ResourceType, Action } from '../../permissions/rbac-types.js'
 
 const BUILTIN_SKILLS: SkillSummary[] = [
   {
@@ -59,13 +59,13 @@ const BUILTIN_SKILLS: SkillSummary[] = [
     type: 'builtin',
     enabled: true,
   },
-];
+]
 
 export function registerSkillRoutes(server: FastifyInstance, _context: ApiContext): void {
   server.get('/api/v1/skills', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!request.requirePermission(ResourceType.settings, Action.read)) {
-      return reply;
+      return reply
     }
-    return reply.code(200).send(success({ skills: BUILTIN_SKILLS }, request.requestId));
-  });
+    return reply.code(200).send(success({ skills: BUILTIN_SKILLS }, request.requestId))
+  })
 }

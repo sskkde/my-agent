@@ -1,9 +1,9 @@
-console.log('Agent Platform - Scaffold Ready');
+console.log('Agent Platform - Scaffold Ready')
 
 export async function main(): Promise<void> {
-  console.log('Platform initialized');
+  console.log('Platform initialized')
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
+  main().catch(console.error)
 }

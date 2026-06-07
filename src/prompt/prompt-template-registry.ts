@@ -7,38 +7,38 @@
  * @module prompt/prompt-template-registry
  */
 
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
-const DEFAULT_TEMPLATES_PATH = join(__dirname, 'templates');
+const DEFAULT_TEMPLATES_PATH = join(__dirname, 'templates')
 
 export interface PromptTemplateRecord {
   /** Template ID in format "category:name" */
-  id: string;
+  id: string
   /** Version string in YYYY-MM-DD format */
-  version: string;
+  version: string
   /** File path relative to templates directory */
-  path: string;
+  path: string
   /** Agent kind this template applies to ('*' for all) */
-  agentKind: string;
+  agentKind: string
   /** Provider family this template applies to ('*' for all) */
-  providerFamily: string;
+  providerFamily: string
   /** Layer number (1-4 for cached prefix, 5-7 for dynamic) */
-  layer: number;
+  layer: number
   /** Optional inline content (for testing) */
-  content?: string;
+  content?: string
   /** Human-readable description */
-  description: string;
+  description: string
 }
 
 export interface ResolvedTemplate {
   /** The template record */
-  record: PromptTemplateRecord;
+  record: PromptTemplateRecord
   /** The loaded template content */
-  content: string;
+  content: string
 }
 
 const PLATFORM_BASE_TEMPLATE: PromptTemplateRecord = {
@@ -49,7 +49,7 @@ const PLATFORM_BASE_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 1,
   description: 'Platform base template with core identity and rules',
-};
+}
 
 const PLATFORM_SAFETY_TEMPLATE: PromptTemplateRecord = {
   id: 'platform:safety',
@@ -59,7 +59,7 @@ const PLATFORM_SAFETY_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 1,
   description: 'Platform safety template with security boundaries',
-};
+}
 
 const PROVIDER_OPENAI_TEMPLATE: PromptTemplateRecord = {
   id: 'provider:openai',
@@ -69,7 +69,7 @@ const PROVIDER_OPENAI_TEMPLATE: PromptTemplateRecord = {
   providerFamily: 'openai',
   layer: 2,
   description: 'OpenAI provider template with JSON mode and function calling',
-};
+}
 
 const PROVIDER_DEEPSEEK_TEMPLATE: PromptTemplateRecord = {
   id: 'provider:deepseek',
@@ -79,7 +79,7 @@ const PROVIDER_DEEPSEEK_TEMPLATE: PromptTemplateRecord = {
   providerFamily: 'deepseek',
   layer: 2,
   description: 'DeepSeek provider template with KV cache optimization',
-};
+}
 
 const AGENTS_FOREGROUND_TEMPLATE: PromptTemplateRecord = {
   id: 'agents:foreground',
@@ -89,7 +89,7 @@ const AGENTS_FOREGROUND_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 3,
   description: 'Foreground agent template for message routing',
-};
+}
 
 const AGENTS_KERNEL_TEMPLATE: PromptTemplateRecord = {
   id: 'agents:kernel',
@@ -99,7 +99,7 @@ const AGENTS_KERNEL_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 3,
   description: 'Kernel agent template for execution engine',
-};
+}
 
 const AGENTS_MEMORY_TEMPLATE: PromptTemplateRecord = {
   id: 'agents:memory',
@@ -109,7 +109,7 @@ const AGENTS_MEMORY_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 3,
   description: 'Memory extraction prompt for long-term memory candidate extraction',
-};
+}
 
 const OUTPUT_FOREGROUND_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   id: 'output:foreground.schema',
@@ -119,7 +119,7 @@ const OUTPUT_FOREGROUND_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 4,
   description: 'Foreground output schema for routing JSON contract',
-};
+}
 
 const OUTPUT_PLANNER_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   id: 'output:planner.schema',
@@ -129,7 +129,7 @@ const OUTPUT_PLANNER_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 4,
   description: 'Planner output schema for execution plan JSON contract',
-};
+}
 
 const OUTPUT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   id: 'output:memory-candidate.schema',
@@ -139,7 +139,7 @@ const OUTPUT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 4,
   description: 'Memory candidate JSON schema for extracted memory structure',
-};
+}
 
 const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
   id: 'persona:default',
@@ -149,7 +149,7 @@ const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 5,
   description: 'Default assistant persona with style guidelines and constraints',
-};
+}
 
 const HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE: PromptTemplateRecord = {
   id: 'heuristics:tool-usage.common',
@@ -159,7 +159,7 @@ const HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 6,
   description: 'Common tool usage heuristics for tool selection policy',
-};
+}
 
 const CONTEXT_MEMORY_USE_RULES_TEMPLATE: PromptTemplateRecord = {
   id: 'context:memory-use-rules',
@@ -169,7 +169,7 @@ const CONTEXT_MEMORY_USE_RULES_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Memory usage rules for context bundle policy',
-};
+}
 
 const SUMMARY_SESSION_TEMPLATE: PromptTemplateRecord = {
   id: 'summary:session',
@@ -179,7 +179,7 @@ const SUMMARY_SESSION_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Session-level summary prompt for capturing decisions, actions, and state',
-};
+}
 
 const SUMMARY_DAILY_TEMPLATE: PromptTemplateRecord = {
   id: 'summary:daily',
@@ -189,7 +189,7 @@ const SUMMARY_DAILY_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Daily summary prompt for multi-session synthesis and patterns',
-};
+}
 
 const SUMMARY_WEEKLY_TEMPLATE: PromptTemplateRecord = {
   id: 'summary:weekly',
@@ -199,7 +199,7 @@ const SUMMARY_WEEKLY_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Weekly summary prompt for high-level progress and strategic insights',
-};
+}
 
 const SUMMARY_LONG_TERM_TEMPLATE: PromptTemplateRecord = {
   id: 'summary:long-term',
@@ -209,7 +209,7 @@ const SUMMARY_LONG_TERM_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Long-term profile prompt for user preferences, goals, and expertise',
-};
+}
 
 const SUMMARY_ATOMIC_FACTS_TEMPLATE: PromptTemplateRecord = {
   id: 'summary:atomic-facts',
@@ -219,7 +219,7 @@ const SUMMARY_ATOMIC_FACTS_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Atomic facts extraction prompt for independently-verifiable facts',
-};
+}
 
 export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new Map([
   ['platform:base', PLATFORM_BASE_TEMPLATE],
@@ -240,15 +240,15 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['summary:weekly', SUMMARY_WEEKLY_TEMPLATE],
   ['summary:long-term', SUMMARY_LONG_TERM_TEMPLATE],
   ['summary:atomic-facts', SUMMARY_ATOMIC_FACTS_TEMPLATE],
-]);
+])
 
 export class PromptTemplateRegistry {
-  private readonly templates: Map<string, PromptTemplateRecord>;
-  private readonly basePath: string;
+  private readonly templates: Map<string, PromptTemplateRecord>
+  private readonly basePath: string
 
   constructor(templates?: Map<string, PromptTemplateRecord>, basePath?: string) {
-    this.templates = templates ?? new Map(PROMPT_TEMPLATE_REGISTRY);
-    this.basePath = basePath ?? DEFAULT_TEMPLATES_PATH;
+    this.templates = templates ?? new Map(PROMPT_TEMPLATE_REGISTRY)
+    this.basePath = basePath ?? DEFAULT_TEMPLATES_PATH
   }
 
   /**
@@ -258,7 +258,7 @@ export class PromptTemplateRegistry {
    * @param record - Template record to register
    */
   register(id: string, record: PromptTemplateRecord): void {
-    this.templates.set(id, record);
+    this.templates.set(id, record)
   }
 
   /**
@@ -268,7 +268,7 @@ export class PromptTemplateRegistry {
    * @returns Template record or undefined if not found
    */
   getTemplate(id: string): PromptTemplateRecord | undefined {
-    return this.templates.get(id);
+    return this.templates.get(id)
   }
 
   /**
@@ -281,20 +281,18 @@ export class PromptTemplateRegistry {
    * @returns Array of resolved templates sorted by layer
    */
   resolveTemplate(agentKind: string, providerFamily: string): PromptTemplateRecord[] {
-    const matching: PromptTemplateRecord[] = [];
+    const matching: PromptTemplateRecord[] = []
 
     for (const record of this.templates.values()) {
-      const agentKindMatches =
-        record.agentKind === '*' || record.agentKind === agentKind;
-      const providerFamilyMatches =
-        record.providerFamily === '*' || record.providerFamily === providerFamily;
+      const agentKindMatches = record.agentKind === '*' || record.agentKind === agentKind
+      const providerFamilyMatches = record.providerFamily === '*' || record.providerFamily === providerFamily
 
       if (agentKindMatches && providerFamilyMatches) {
-        matching.push(record);
+        matching.push(record)
       }
     }
 
-    return matching.sort((a, b) => a.layer - b.layer);
+    return matching.sort((a, b) => a.layer - b.layer)
   }
 
   /**
@@ -303,7 +301,7 @@ export class PromptTemplateRegistry {
    * @returns Array of template IDs
    */
   getAllTemplateIds(): string[] {
-    return Array.from(this.templates.keys());
+    return Array.from(this.templates.keys())
   }
 
   /**
@@ -312,7 +310,7 @@ export class PromptTemplateRegistry {
    * @returns Base path string
    */
   getBasePath(): string {
-    return this.basePath;
+    return this.basePath
   }
 
   /**
@@ -322,7 +320,7 @@ export class PromptTemplateRegistry {
    * @returns True if template exists
    */
   hasTemplate(id: string): boolean {
-    return this.templates.has(id);
+    return this.templates.has(id)
   }
 
   /**
@@ -332,21 +330,21 @@ export class PromptTemplateRegistry {
    * @returns Array of templates in the layer
    */
   getTemplatesByLayer(layer: number): PromptTemplateRecord[] {
-    const matching: PromptTemplateRecord[] = [];
+    const matching: PromptTemplateRecord[] = []
 
     for (const record of this.templates.values()) {
       if (record.layer === layer) {
-        matching.push(record);
+        matching.push(record)
       }
     }
 
-    return matching;
+    return matching
   }
 }
 
 export function createPromptTemplateRegistry(
   templates?: Map<string, PromptTemplateRecord>,
-  basePath?: string
+  basePath?: string,
 ): PromptTemplateRegistry {
-  return new PromptTemplateRegistry(templates, basePath);
+  return new PromptTemplateRegistry(templates, basePath)
 }

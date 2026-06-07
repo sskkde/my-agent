@@ -7,8 +7,8 @@
  * @module foreground/kernel-guard-constants
  */
 
-import type { ForegroundTurnResult } from './foreground-runner-types.js';
-import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js';
+import type { ForegroundTurnResult } from './foreground-runner-types.js'
+import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js'
 
 // ─── Foreground Guard Constants ───────────────────────────────────────────────
 
@@ -16,13 +16,13 @@ import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js';
  * Default maximum iterations for foreground kernel execution.
  * This limit prevents runaway tool loops in user-facing interactions.
  */
-export const DEFAULT_FOREGROUND_MAX_ITERATIONS = 6;
+export const DEFAULT_FOREGROUND_MAX_ITERATIONS = 6
 
 /**
  * Default timeout in milliseconds for foreground kernel execution.
  * Limits total execution time to prevent long-running user-facing requests.
  */
-export const DEFAULT_FOREGROUND_TIMEOUT_MS = 60000;
+export const DEFAULT_FOREGROUND_TIMEOUT_MS = 60000
 
 // ─── User-Visible Error Messages ──────────────────────────────────────────────
 
@@ -31,26 +31,23 @@ export const DEFAULT_FOREGROUND_TIMEOUT_MS = 60000;
  * Does NOT expose internal iteration count or technical details.
  */
 export const MAX_ITERATION_EXCEEDED_USER_MESSAGE =
-  'I could not complete this in the allowed number of steps. Please try breaking it into a smaller request.';
+  'I could not complete this in the allowed number of steps. Please try breaking it into a smaller request.'
 
 /**
  * Safe user-visible message when timeout occurs.
  * Does NOT expose timeout duration or internal timing details.
  */
-export const TIMEOUT_USER_MESSAGE =
-  'The request took too long to process. Please try a simpler request.';
+export const TIMEOUT_USER_MESSAGE = 'The request took too long to process. Please try a simpler request.'
 
 /**
  * Safe user-visible message for generic LLM errors.
  */
-export const LLM_ERROR_USER_MESSAGE =
-  'The AI service encountered an issue. Please try again.';
+export const LLM_ERROR_USER_MESSAGE = 'The AI service encountered an issue. Please try again.'
 
 /**
  * Safe user-visible message for generic kernel errors.
  */
-export const GENERIC_ERROR_USER_MESSAGE =
-  'Something went wrong while processing your request. Please try again.';
+export const GENERIC_ERROR_USER_MESSAGE = 'Something went wrong while processing your request. Please try again.'
 
 // ─── Error Mapping Types ─────────────────────────────────────────────────────
 
@@ -58,11 +55,7 @@ export const GENERIC_ERROR_USER_MESSAGE =
  * Kernel error type for mapping purposes.
  * Represents the different failure modes of AgentKernel.run().
  */
-export type KernelErrorType =
-  | 'MAX_ITERATIONS_EXCEEDED'
-  | 'TIMEOUT'
-  | 'LLM_ERROR'
-  | 'GENERIC_ERROR';
+export type KernelErrorType = 'MAX_ITERATIONS_EXCEEDED' | 'TIMEOUT' | 'LLM_ERROR' | 'GENERIC_ERROR'
 
 /**
  * Runtime summary for failed foreground turn.
@@ -70,11 +63,11 @@ export type KernelErrorType =
  */
 export interface ForegroundErrorRuntimeSummary {
   /** Error code for classification */
-  code: KernelErrorType;
+  code: KernelErrorType
   /** Whether the error might be recoverable on retry */
-  recoverable: boolean;
+  recoverable: boolean
   /** Redacted error detail - safe for logging */
-  errorDetail: 'redacted';
+  errorDetail: 'redacted'
 }
 
 // ─── Error Mapping Function ──────────────────────────────────────────────────
@@ -88,11 +81,9 @@ export interface ForegroundErrorRuntimeSummary {
  * @param kernelResult - The kernel result with failure status
  * @returns A ForegroundTurnResult with safe user-visible response
  */
-export function mapKernelErrorToForegroundResult(
-  kernelResult: KernelRunResult
-): ForegroundTurnResult {
-  const errorType = classifyKernelError(kernelResult);
-  const userMessage = getUserVisibleMessage(errorType);
+export function mapKernelErrorToForegroundResult(kernelResult: KernelRunResult): ForegroundTurnResult {
+  const errorType = classifyKernelError(kernelResult)
+  const userMessage = getUserVisibleMessage(errorType)
 
   return {
     status: 'failed',
@@ -103,7 +94,7 @@ export function mapKernelErrorToForegroundResult(
       reason: `Kernel execution failed: ${errorType}`,
     },
     runtimeSummary: {
-      toolCallSummaries: kernelResult.toolCalls.map(tc => ({
+      toolCallSummaries: kernelResult.toolCalls.map((tc) => ({
         toolCallId: tc.toolCallId,
         toolName: tc.toolName,
         status: 'failed' as const,
@@ -114,26 +105,26 @@ export function mapKernelErrorToForegroundResult(
       code: errorType,
       message: kernelResult.error?.message ?? 'Kernel error',
     },
-  };
+  }
 }
 
 /**
  * Classifies a KernelRunResult into a KernelErrorType.
  */
 function classifyKernelError(result: KernelRunResult): KernelErrorType {
-  const status = result.finalStatus;
+  const status = result.finalStatus
 
   if (status === 'max_iterations_reached') {
-    return 'MAX_ITERATIONS_EXCEEDED';
+    return 'MAX_ITERATIONS_EXCEEDED'
   }
 
   if (status === 'timeout') {
-    return 'TIMEOUT';
+    return 'TIMEOUT'
   }
 
   // Check for LLM-specific error codes
   if (result.error?.code) {
-    const code = result.error.code;
+    const code = result.error.code
     if (
       code.includes('LLM') ||
       code.includes('PROVIDER') ||
@@ -141,11 +132,11 @@ function classifyKernelError(result: KernelRunResult): KernelErrorType {
       code.includes('AUTH') ||
       code.includes('MODEL')
     ) {
-      return 'LLM_ERROR';
+      return 'LLM_ERROR'
     }
   }
 
-  return 'GENERIC_ERROR';
+  return 'GENERIC_ERROR'
 }
 
 /**
@@ -154,13 +145,13 @@ function classifyKernelError(result: KernelRunResult): KernelErrorType {
 function getUserVisibleMessage(errorType: KernelErrorType): string {
   switch (errorType) {
     case 'MAX_ITERATIONS_EXCEEDED':
-      return MAX_ITERATION_EXCEEDED_USER_MESSAGE;
+      return MAX_ITERATION_EXCEEDED_USER_MESSAGE
     case 'TIMEOUT':
-      return TIMEOUT_USER_MESSAGE;
+      return TIMEOUT_USER_MESSAGE
     case 'LLM_ERROR':
-      return LLM_ERROR_USER_MESSAGE;
+      return LLM_ERROR_USER_MESSAGE
     default:
-      return GENERIC_ERROR_USER_MESSAGE;
+      return GENERIC_ERROR_USER_MESSAGE
   }
 }
 
@@ -169,7 +160,7 @@ function getUserVisibleMessage(errorType: KernelErrorType): string {
  */
 export function isRecoverableError(errorType: KernelErrorType): boolean {
   // Timeout and LLM errors may be transient
-  return errorType === 'TIMEOUT' || errorType === 'LLM_ERROR';
+  return errorType === 'TIMEOUT' || errorType === 'LLM_ERROR'
 }
 
 // ─── Helper to create synthetic kernel error result ───────────────────────────
@@ -178,16 +169,9 @@ export function isRecoverableError(errorType: KernelErrorType): boolean {
  * Creates a synthetic KernelRunResult for error scenarios.
  * Useful when the kernel did not complete a full run.
  */
-export function createSyntheticKernelErrorResult(
-  errorType: KernelErrorType,
-  message: string
-): KernelRunResult {
+export function createSyntheticKernelErrorResult(errorType: KernelErrorType, message: string): KernelRunResult {
   const status: KernelRunStatus =
-    errorType === 'MAX_ITERATIONS_EXCEEDED'
-      ? 'max_iterations_reached'
-      : errorType === 'TIMEOUT'
-        ? 'timeout'
-        : 'failed';
+    errorType === 'MAX_ITERATIONS_EXCEEDED' ? 'max_iterations_reached' : errorType === 'TIMEOUT' ? 'timeout' : 'failed'
 
   return {
     finalStatus: status,
@@ -198,5 +182,5 @@ export function createSyntheticKernelErrorResult(
       code: errorType,
       message,
     },
-  };
+  }
 }

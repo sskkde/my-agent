@@ -1,23 +1,23 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js';
-import type { PlanStore } from '../../storage/plan-store.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { PlanStore } from '../../storage/plan-store.js'
 
 export interface PlanPatchParams {
-  planId: string;
-  patch: string;
-  fromVersion: number;
-  toVersion: number;
+  planId: string
+  patch: string
+  fromVersion: number
+  toVersion: number
 }
 
 export interface PlanPatchResult {
-  planId: string;
-  currentVersion: number;
-  updatedAt: string;
-  [key: string]: unknown;
+  planId: string
+  currentVersion: number
+  updatedAt: string
+  [key: string]: unknown
 }
 
 export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
   const handler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
-    const typedParams = params as PlanPatchParams;
+    const typedParams = params as PlanPatchParams
 
     if (!typedParams.planId) {
       return {
@@ -27,7 +27,7 @@ export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
           message: 'Missing required field: planId',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (!typedParams.patch) {
@@ -38,10 +38,10 @@ export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
           message: 'Missing required field: patch',
           recoverable: true,
         },
-      };
+      }
     }
 
-    const existingPlan = planStore.getPlan(typedParams.planId);
+    const existingPlan = planStore.getPlan(typedParams.planId)
     if (!existingPlan) {
       return {
         success: false,
@@ -50,7 +50,7 @@ export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
           message: `Plan ${typedParams.planId} not found`,
           recoverable: false,
         },
-      };
+      }
     }
 
     try {
@@ -60,22 +60,22 @@ export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
         fromVersion: typedParams.fromVersion,
         toVersion: typedParams.toVersion,
         createdAt: new Date().toISOString(),
-      });
+      })
 
       const result: PlanPatchResult = {
         planId: updated.planId,
         currentVersion: updated.currentVersion,
         updatedAt: updated.updatedAt,
-      };
+      }
 
       return {
         success: true,
         data: result,
         resultPreview: `Patched plan ${updated.planId} to version ${updated.currentVersion}`,
         structuredContent: result,
-      };
+      }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error)
       return {
         success: false,
         error: {
@@ -83,9 +83,9 @@ export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
           message: `Failed to apply patch: ${errorMessage}`,
           recoverable: true,
         },
-      };
+      }
     }
-  };
+  }
 
   return {
     name: 'plan_patch',
@@ -103,5 +103,5 @@ export function createPlanPatchTool(planStore: PlanStore): ToolDefinition {
       required: ['planId', 'patch', 'fromVersion', 'toVersion'],
     },
     handler,
-  };
+  }
 }

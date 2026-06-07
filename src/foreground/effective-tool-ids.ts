@@ -10,7 +10,7 @@
  * - explicit list = intersection with known tools
  */
 
-import type { AgentConfig } from '../storage/agent-config-store.js';
+import type { AgentConfig } from '../storage/agent-config-store.js'
 
 /**
  * Compute effective allowed tool IDs for routing prompt.
@@ -39,27 +39,24 @@ import type { AgentConfig } from '../storage/agent-config-store.js';
  * computeEffectiveAllowedToolIds({ allowedToolIds: ['tool_a', 'tool_c'], ... }, ['tool_a', 'tool_b'])
  * // Returns: ['tool_a']
  */
-export function computeEffectiveAllowedToolIds(
-  agentConfig: AgentConfig | undefined,
-  knownToolIds: string[]
-): string[] {
-  const allowed = agentConfig?.allowedToolIds;
+export function computeEffectiveAllowedToolIds(agentConfig: AgentConfig | undefined, knownToolIds: string[]): string[] {
+  const allowed = agentConfig?.allowedToolIds
 
   // null means inherit - use all known tools
   if (allowed === null) {
-    return [...knownToolIds];
+    return [...knownToolIds]
   }
 
   // undefined (no config) - use all known tools
   if (allowed === undefined) {
-    return [...knownToolIds];
+    return [...knownToolIds]
   }
 
   // empty array means no tools allowed
   if (allowed.length === 0) {
-    return [];
+    return []
   }
 
   // explicit list - intersect with known tools
-  return knownToolIds.filter((id) => allowed.includes(id));
+  return knownToolIds.filter((id) => allowed.includes(id))
 }

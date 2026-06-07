@@ -3,15 +3,15 @@
  * Shared result shape for all foreground tools
  */
 
-import type { TurnTranscript } from '../../storage/transcript-store.js';
+import type { TurnTranscript } from '../../storage/transcript-store.js'
 
 /**
  * Error details for recoverable/non-recoverable errors
  */
 export interface ForegroundToolError {
-  code: string;
-  recoverable: boolean;
-  message: string;
+  code: string
+  recoverable: boolean
+  message: string
 }
 
 /**
@@ -19,11 +19,11 @@ export interface ForegroundToolError {
  * Provides consistent interface for success/error, user-visible summary, and runtime details
  */
 export interface ForegroundToolResult<T = unknown> {
-  success: boolean;
-  data?: T;
-  userVisibleSummary: string;
-  runtimeSummary: TurnTranscript['runtimeSummary'];
-  error?: ForegroundToolError;
+  success: boolean
+  data?: T
+  userVisibleSummary: string
+  runtimeSummary: TurnTranscript['runtimeSummary']
+  error?: ForegroundToolError
 }
 
 /**
@@ -32,14 +32,14 @@ export interface ForegroundToolResult<T = unknown> {
 export function createSuccessResult<T>(
   data: T,
   userVisibleSummary: string,
-  runtimeSummary: TurnTranscript['runtimeSummary'] = {}
+  runtimeSummary: TurnTranscript['runtimeSummary'] = {},
 ): ForegroundToolResult<T> {
   return {
     success: true,
     data,
     userVisibleSummary,
     runtimeSummary,
-  };
+  }
 }
 
 /**
@@ -50,7 +50,7 @@ export function createErrorResult<T = never>(
   errorMessage: string,
   recoverable: boolean = false,
   userVisibleSummary?: string,
-  runtimeSummary: TurnTranscript['runtimeSummary'] = {}
+  runtimeSummary: TurnTranscript['runtimeSummary'] = {},
 ): ForegroundToolResult<T> {
   return {
     success: false,
@@ -61,5 +61,5 @@ export function createErrorResult<T = never>(
       recoverable,
       message: errorMessage,
     },
-  };
+  }
 }

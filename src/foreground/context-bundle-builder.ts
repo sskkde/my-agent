@@ -5,16 +5,16 @@
  * @module foreground/context-bundle-builder
  */
 
-import type { ForegroundSessionState } from './types.js';
-import type { ForegroundTurnInput } from './foreground-runner-types.js';
-import type { ContextBundle, ContextItem } from '../context/types.js';
+import type { ForegroundSessionState } from './types.js'
+import type { ForegroundTurnInput } from './foreground-runner-types.js'
+import type { ContextBundle, ContextItem } from '../context/types.js'
 
 /**
  * Helper function to estimate token count from text.
  * Uses a simple heuristic: ~4 characters per token.
  */
 function estimateTokens(text: string): number {
-  return Math.max(1, Math.ceil(text.length / 4));
+  return Math.max(1, Math.ceil(text.length / 4))
 }
 
 /**
@@ -22,7 +22,7 @@ function estimateTokens(text: string): number {
  * Format: cb-{timestamp}
  */
 function generateBundleId(): string {
-  return `cb-${Date.now()}`;
+  return `cb-${Date.now()}`
 }
 
 /**
@@ -37,14 +37,14 @@ function generateBundleId(): string {
  */
 export function buildContextBundleFromForegroundState(
   state: ForegroundSessionState,
-  input: ForegroundTurnInput
+  input: ForegroundTurnInput,
 ): ContextBundle {
-  const pinnedItems: ContextItem[] = buildPinnedItems(state);
-  const orderedItems: ContextItem[] = buildOrderedItems(input);
+  const pinnedItems: ContextItem[] = buildPinnedItems(state)
+  const orderedItems: ContextItem[] = buildOrderedItems(input)
   const totalTokens =
     pinnedItems.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0) +
     orderedItems.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0) +
-    100;
+    100
 
   return {
     bundleId: generateBundleId(),
@@ -60,7 +60,7 @@ export function buildContextBundleFromForegroundState(
     workflowStepView: undefined,
     tokenEstimate: totalTokens,
     compactHints: undefined,
-  };
+  }
 }
 
 /**
@@ -68,9 +68,9 @@ export function buildContextBundleFromForegroundState(
  * Each history entry becomes a ContextItem representing past context.
  */
 function buildPinnedItems(state: ForegroundSessionState): ContextItem[] {
-  const history = state.conversationHistory;
+  const history = state.conversationHistory
   if (!history || history.length === 0) {
-    return [];
+    return []
   }
 
   return history.map((entry) => ({
@@ -80,7 +80,7 @@ function buildPinnedItems(state: ForegroundSessionState): ContextItem[] {
     content: entry.message,
     estimatedTokens: estimateTokens(entry.message),
     freshnessTs: entry.timestamp,
-  }));
+  }))
 }
 
 /**
@@ -96,5 +96,5 @@ function buildOrderedItems(input: ForegroundTurnInput): ContextItem[] {
       content: input.message,
       estimatedTokens: estimateTokens(input.message),
     },
-  ];
+  ]
 }

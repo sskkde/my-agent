@@ -1,18 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js';
-import { createWorkflowDefinitionStore, type WorkflowDefinitionStore } from '../../../src/storage/workflow-definition-store.js';
-import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js'
 import {
-  createWorkflowRuntime,
-  type WorkflowRuntime,
-} from '../../../src/workflows/workflow-runtime.js';
-import type {
-  WorkflowStep,
-} from '../../../src/workflows/types.js';
+  createWorkflowDefinitionStore,
+  type WorkflowDefinitionStore,
+} from '../../../src/storage/workflow-definition-store.js'
+import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js'
+import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createWorkflowRuntime, type WorkflowRuntime } from '../../../src/workflows/workflow-runtime.js'
+import type { WorkflowStep } from '../../../src/workflows/types.js'
 
 const workflowRuntimeMigrations: Migration[] = [
   {
@@ -31,7 +29,7 @@ const workflowRuntimeMigrations: Migration[] = [
         updated_at TEXT NOT NULL
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_drafts;`
+    down: `DROP TABLE IF EXISTS workflow_drafts;`,
   },
   {
     version: 2,
@@ -51,7 +49,7 @@ const workflowRuntimeMigrations: Migration[] = [
         tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_definitions;`
+    down: `DROP TABLE IF EXISTS workflow_definitions;`,
   },
   {
     version: 3,
@@ -75,7 +73,7 @@ const workflowRuntimeMigrations: Migration[] = [
         tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_runs;`
+    down: `DROP TABLE IF EXISTS workflow_runs;`,
   },
   {
     version: 4,
@@ -101,7 +99,7 @@ const workflowRuntimeMigrations: Migration[] = [
         tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_step_runs;`
+    down: `DROP TABLE IF EXISTS workflow_step_runs;`,
   },
   {
     version: 5,
@@ -135,7 +133,7 @@ const workflowRuntimeMigrations: Migration[] = [
         updated_at TEXT NOT NULL
       );
     `,
-    down: `DROP TABLE IF EXISTS runtime_actions;`
+    down: `DROP TABLE IF EXISTS runtime_actions;`,
   },
   {
     version: 6,
@@ -169,32 +167,32 @@ const workflowRuntimeMigrations: Migration[] = [
         tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS events;`
+    down: `DROP TABLE IF EXISTS events;`,
   },
-];
+]
 
 describe('Workflow Version Compatibility', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let draftStore: WorkflowDraftStore;
-  let definitionStore: WorkflowDefinitionStore;
-  let workflowRunStore: WorkflowRunStore;
-  let runtimeActionStore: RuntimeActionStore;
-  let eventStore: EventStore;
-  let workflowRuntime: WorkflowRuntime;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let draftStore: WorkflowDraftStore
+  let definitionStore: WorkflowDefinitionStore
+  let workflowRunStore: WorkflowRunStore
+  let runtimeActionStore: RuntimeActionStore
+  let eventStore: EventStore
+  let workflowRuntime: WorkflowRuntime
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply(workflowRuntimeMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply(workflowRuntimeMigrations)
 
-    draftStore = createWorkflowDraftStore(connection);
-    definitionStore = createWorkflowDefinitionStore(connection);
-    workflowRunStore = createWorkflowRunStore(connection);
-    runtimeActionStore = createRuntimeActionStore(connection);
-    eventStore = createEventStore(connection);
+    draftStore = createWorkflowDraftStore(connection)
+    definitionStore = createWorkflowDefinitionStore(connection)
+    workflowRunStore = createWorkflowRunStore(connection)
+    runtimeActionStore = createRuntimeActionStore(connection)
+    eventStore = createEventStore(connection)
 
     workflowRuntime = createWorkflowRuntime({
       draftStore,
@@ -202,12 +200,12 @@ describe('Workflow Version Compatibility', () => {
       workflowRunStore,
       runtimeActionStore,
       eventStore,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   it('should pin a workflow run to its definition version steps', () => {
     // Create v1 definition with step order A → B
@@ -225,30 +223,30 @@ describe('Workflow Version Compatibility', () => {
         name: 'Step B',
         config: { toolName: 'tool_b' },
       },
-    ];
+    ]
 
     const v1Draft = workflowRuntime.createDraft({
       name: 'Versioned Workflow',
       description: 'Version compatibility test',
       steps: v1Steps,
       ownerUserId: 'user_001',
-    });
-    workflowRuntime.validateDraft(v1Draft.draftId);
-    const v1Def = workflowRuntime.publishDraft(v1Draft.draftId);
-    expect(v1Def.version).toBe(1);
+    })
+    workflowRuntime.validateDraft(v1Draft.draftId)
+    const v1Def = workflowRuntime.publishDraft(v1Draft.draftId)
+    expect(v1Def.version).toBe(1)
 
     // Start a run with v1
     const v1Run = workflowRuntime.startWorkflowRun({
       definitionId: v1Def.workflowId,
       userId: 'user_001',
-    });
+    })
 
     // Verify v1 run uses v1 steps
-    expect(v1Run.version).toBe(1);
-    expect(v1Run.currentStepIds).toContain('step_a');
-    expect(v1Run.stepRuns).toHaveLength(2);
-    const v1RunStepIds = v1Run.stepRuns.map(sr => sr.stepId).sort();
-    expect(v1RunStepIds).toEqual(['step_a', 'step_b']);
+    expect(v1Run.version).toBe(1)
+    expect(v1Run.currentStepIds).toContain('step_a')
+    expect(v1Run.stepRuns).toHaveLength(2)
+    const v1RunStepIds = v1Run.stepRuns.map((sr) => sr.stepId).sort()
+    expect(v1RunStepIds).toEqual(['step_a', 'step_b'])
 
     // Publish v2 definition with different step order C → D
     const v2Steps: WorkflowStep[] = [
@@ -265,41 +263,41 @@ describe('Workflow Version Compatibility', () => {
         name: 'Step D',
         config: { toolName: 'tool_d' },
       },
-    ];
+    ]
 
     const v2Draft = workflowRuntime.createDraft({
       name: 'Versioned Workflow',
       steps: v2Steps,
       ownerUserId: 'user_001',
-    });
-    workflowRuntime.validateDraft(v2Draft.draftId);
-    const v2Def = workflowRuntime.publishDraft(v2Draft.draftId);
-    expect(v2Def.version).toBe(2);
+    })
+    workflowRuntime.validateDraft(v2Draft.draftId)
+    const v2Def = workflowRuntime.publishDraft(v2Draft.draftId)
+    expect(v2Def.version).toBe(2)
     // Verify v1 and v2 have different definition IDs
-    expect(v2Def.workflowId).not.toBe(v1Def.workflowId);
+    expect(v2Def.workflowId).not.toBe(v1Def.workflowId)
 
     // The running v1 run should still use v1 steps (not switch to v2)
-    const v1RunAfterV2 = workflowRuntime.getWorkflowRun(v1Run.workflowRunId);
-    expect(v1RunAfterV2).not.toBeNull();
-    expect(v1RunAfterV2?.version).toBe(1);
-    expect(v1RunAfterV2?.definitionId).toBe(v1Def.workflowId);
-    const v1RunStepIdsAfterV2 = v1RunAfterV2!.stepRuns.map(sr => sr.stepId).sort();
-    expect(v1RunStepIdsAfterV2).toEqual(['step_a', 'step_b']);
+    const v1RunAfterV2 = workflowRuntime.getWorkflowRun(v1Run.workflowRunId)
+    expect(v1RunAfterV2).not.toBeNull()
+    expect(v1RunAfterV2?.version).toBe(1)
+    expect(v1RunAfterV2?.definitionId).toBe(v1Def.workflowId)
+    const v1RunStepIdsAfterV2 = v1RunAfterV2!.stepRuns.map((sr) => sr.stepId).sort()
+    expect(v1RunStepIdsAfterV2).toEqual(['step_a', 'step_b'])
 
     // Complete step_a → should advance to step_b (v1 step)
-    const stepARun = v1Run.stepRuns.find(sr => sr.stepId === 'step_a');
-    expect(stepARun).toBeDefined();
+    const stepARun = v1Run.stepRuns.find((sr) => sr.stepId === 'step_a')
+    expect(stepARun).toBeDefined()
     workflowRuntime.handleStepCompletion(stepARun!.stepRunId, {
       success: true,
       output: { result: 'a_done' },
-    });
+    })
 
-    const v1RunAfterAdvance = workflowRuntime.getWorkflowRun(v1Run.workflowRunId);
-    expect(v1RunAfterAdvance?.currentStepIds).toContain('step_b');
+    const v1RunAfterAdvance = workflowRuntime.getWorkflowRun(v1Run.workflowRunId)
+    expect(v1RunAfterAdvance?.currentStepIds).toContain('step_b')
     // Should NOT contain v2 steps
-    expect(v1RunAfterAdvance?.currentStepIds).not.toContain('step_c');
-    expect(v1RunAfterAdvance?.currentStepIds).not.toContain('step_d');
-  });
+    expect(v1RunAfterAdvance?.currentStepIds).not.toContain('step_c')
+    expect(v1RunAfterAdvance?.currentStepIds).not.toContain('step_d')
+  })
 
   it('should start new runs with the latest definition version', () => {
     // Create v1
@@ -310,16 +308,16 @@ describe('Workflow Version Compatibility', () => {
         name: 'Step 1 v1',
         config: { toolName: 'tool_1' },
       },
-    ];
+    ]
 
     const v1Draft = workflowRuntime.createDraft({
       name: 'New Version Workflow',
       steps: v1Steps,
       ownerUserId: 'user_002',
-    });
-    workflowRuntime.validateDraft(v1Draft.draftId);
-    const v1Def = workflowRuntime.publishDraft(v1Draft.draftId);
-    expect(v1Def.version).toBe(1);
+    })
+    workflowRuntime.validateDraft(v1Draft.draftId)
+    const v1Def = workflowRuntime.publishDraft(v1Draft.draftId)
+    expect(v1Def.version).toBe(1)
 
     // Publish v2 with different steps
     const v2Steps: WorkflowStep[] = [
@@ -329,39 +327,39 @@ describe('Workflow Version Compatibility', () => {
         name: 'Step 2 v2',
         config: { toolName: 'tool_2' },
       },
-    ];
+    ]
 
     const v2Draft = workflowRuntime.createDraft({
       name: 'New Version Workflow',
       steps: v2Steps,
       ownerUserId: 'user_002',
-    });
-    workflowRuntime.validateDraft(v2Draft.draftId);
-    const v2Def = workflowRuntime.publishDraft(v2Draft.draftId);
-    expect(v2Def.version).toBe(2);
+    })
+    workflowRuntime.validateDraft(v2Draft.draftId)
+    const v2Def = workflowRuntime.publishDraft(v2Draft.draftId)
+    expect(v2Def.version).toBe(2)
 
     // Start a new run with v2
     const v2Run = workflowRuntime.startWorkflowRun({
       definitionId: v2Def.workflowId,
       userId: 'user_002',
-    });
+    })
 
-    expect(v2Run.version).toBe(2);
-    expect(v2Run.definitionId).toBe(v2Def.workflowId);
-    expect(v2Run.stepRuns).toHaveLength(1);
-    expect(v2Run.stepRuns[0]?.stepId).toBe('step_2');
-    expect(v2Run.currentStepIds).toContain('step_2');
+    expect(v2Run.version).toBe(2)
+    expect(v2Run.definitionId).toBe(v2Def.workflowId)
+    expect(v2Run.stepRuns).toHaveLength(1)
+    expect(v2Run.stepRuns[0]?.stepId).toBe('step_2')
+    expect(v2Run.currentStepIds).toContain('step_2')
 
     // Also verify we can still start runs from v1 definition
     const v1Run2 = workflowRuntime.startWorkflowRun({
       definitionId: v1Def.workflowId,
       userId: 'user_002',
-    });
+    })
 
-    expect(v1Run2.version).toBe(1);
-    expect(v1Run2.definitionId).toBe(v1Def.workflowId);
-    expect(v1Run2.stepRuns[0]?.stepId).toBe('step_1');
-  });
+    expect(v1Run2.version).toBe(1)
+    expect(v1Run2.definitionId).toBe(v1Def.workflowId)
+    expect(v1Run2.stepRuns[0]?.stepId).toBe('step_1')
+  })
 
   it('should persist version information in workflow run record', () => {
     const steps: WorkflowStep[] = [
@@ -371,31 +369,31 @@ describe('Workflow Version Compatibility', () => {
         name: 'Step X',
         config: { toolName: 'tool_x' },
       },
-    ];
+    ]
 
     const draft = workflowRuntime.createDraft({
       name: 'Version Record Workflow',
       steps,
       ownerUserId: 'user_003',
-    });
-    workflowRuntime.validateDraft(draft.draftId);
-    const definition = workflowRuntime.publishDraft(draft.draftId);
+    })
+    workflowRuntime.validateDraft(draft.draftId)
+    const definition = workflowRuntime.publishDraft(draft.draftId)
 
     const result = workflowRuntime.startWorkflowRun({
       definitionId: definition.workflowId,
       userId: 'user_003',
-    });
+    })
 
     // Verify version is correctly recorded in the store
-    const storedRun = workflowRunStore.getWorkflowRunById(result.workflowRunId);
-    expect(storedRun).not.toBeNull();
-    expect(storedRun?.workflowVersion).toBe(String(definition.version));
-    expect(storedRun?.workflowId).toBe(definition.workflowId);
+    const storedRun = workflowRunStore.getWorkflowRunById(result.workflowRunId)
+    expect(storedRun).not.toBeNull()
+    expect(storedRun?.workflowVersion).toBe(String(definition.version))
+    expect(storedRun?.workflowId).toBe(definition.workflowId)
 
     // Verify getWorkflowRun returns correct version
-    const retrieved = workflowRuntime.getWorkflowRun(result.workflowRunId);
-    expect(retrieved).not.toBeNull();
-    expect(retrieved?.version).toBe(definition.version);
-    expect(retrieved?.definitionId).toBe(definition.workflowId);
-  });
-});
+    const retrieved = workflowRuntime.getWorkflowRun(result.workflowRunId)
+    expect(retrieved).not.toBeNull()
+    expect(retrieved?.version).toBe(definition.version)
+    expect(retrieved?.definitionId).toBe(definition.workflowId)
+  })
+})

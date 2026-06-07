@@ -1,9 +1,14 @@
-import type { RuntimeActionState, Source, TargetRef, RuntimeAction as StorageRuntimeAction } from '../storage/runtime-action-store.js';
-import type { SourceModule, SensitivityLevel, RetentionClass, RelatedRefs } from '../storage/event-store.js';
-import type { TraceStore } from '../observability/types.js';
-import type { AuditRecorder } from '../observability/audit-types.js';
+import type {
+  RuntimeActionState,
+  Source,
+  TargetRef,
+  RuntimeAction as StorageRuntimeAction,
+} from '../storage/runtime-action-store.js'
+import type { SourceModule, SensitivityLevel, RetentionClass, RelatedRefs } from '../storage/event-store.js'
+import type { TraceStore } from '../observability/types.js'
+import type { AuditRecorder } from '../observability/audit-types.js'
 
-export { RuntimeActionState, Source, TargetRef, SourceModule, SensitivityLevel, RetentionClass, RelatedRefs };
+export { RuntimeActionState, Source, TargetRef, SourceModule, SensitivityLevel, RetentionClass, RelatedRefs }
 
 export type RuntimeActionType =
   | 'start_agent_run'
@@ -38,7 +43,7 @@ export type RuntimeActionType =
   | 'query_active_work'
   | 'pause_planner_run'
   | 'pause_background_run'
-  | 'resume_background_run';
+  | 'resume_background_run'
 
 export type TargetRuntime =
   | 'agent_kernel'
@@ -54,41 +59,41 @@ export type TargetRuntime =
   | 'summary_manager'
   | 'replay_service'
   | 'foreground_conversation_agent'
-  | 'planner_runtime';
+  | 'planner_runtime'
 
 export interface DispatchPolicy {
-  mode: 'sync' | 'async' | 'queued' | 'fire_and_forget';
-  priority: 'low' | 'normal' | 'high' | 'critical';
-  timeoutMs?: number;
+  mode: 'sync' | 'async' | 'queued' | 'fire_and_forget'
+  priority: 'low' | 'normal' | 'high' | 'critical'
+  timeoutMs?: number
   retryPolicy?: {
-    maxAttempts: number;
-    backoff: 'none' | 'fixed' | 'exponential';
-    initialDelayMs?: number;
-    maxDelayMs?: number;
-  };
+    maxAttempts: number
+    backoff: 'none' | 'fixed' | 'exponential'
+    initialDelayMs?: number
+    maxDelayMs?: number
+  }
   permissionPolicy?: {
-    requirePrecheck: boolean;
-    allowAskUser: boolean;
-    permissionMode?: string;
-  };
+    requirePrecheck: boolean
+    allowAskUser: boolean
+    permissionMode?: string
+  }
   idempotency?: {
-    enabled: boolean;
-    key: string;
-    duplicateBehavior: 'return_previous' | 'drop' | 'fail';
-  };
+    enabled: boolean
+    key: string
+    duplicateBehavior: 'return_previous' | 'drop' | 'fail'
+  }
   concurrency?: {
-    groupKey?: string;
-    maxConcurrent?: number;
-  };
+    groupKey?: string
+    maxConcurrent?: number
+  }
   audit?: {
-    required: boolean;
-    auditType?: string;
-  };
+    required: boolean
+    auditType?: string
+  }
 }
 
 export interface RuntimeAction extends StorageRuntimeAction {
-  actionType: RuntimeActionType;
-  policy?: DispatchPolicy;
+  actionType: RuntimeActionType
+  policy?: DispatchPolicy
 }
 
 export type DispatchStatus =
@@ -100,109 +105,109 @@ export type DispatchStatus =
   | 'duplicate'
   | 'failed'
   | 'timeout'
-  | 'cancelled';
+  | 'cancelled'
 
 export interface WaitingState {
-  waitingFor: 'approval' | 'external_event' | 'target_runtime' | 'queue';
-  approvalId?: string;
-  waitConditionId?: string;
+  waitingFor: 'approval' | 'external_event' | 'target_runtime' | 'queue'
+  approvalId?: string
+  waitConditionId?: string
 }
 
 export interface IdempotencyInfo {
-  key: string;
-  duplicateOfActionId?: string;
+  key: string
+  duplicateOfActionId?: string
 }
 
 export interface DispatchError {
-  code: string;
-  message: string;
-  recoverable: boolean;
+  code: string
+  message: string
+  recoverable: boolean
 }
 
 export interface TraceInfo {
-  traceId: string;
-  spanId: string;
+  traceId: string
+  spanId: string
 }
 
 export interface DispatchResult {
-  requestId: string;
-  actionId: string;
-  status: DispatchStatus;
-  targetRuntime: TargetRuntime;
-  targetResultRef?: string;
-  result?: unknown;
-  waitingState?: WaitingState;
-  idempotency?: IdempotencyInfo;
-  error?: DispatchError;
-  trace?: TraceInfo;
-  createdAt: string;
-  completedAt?: string;
+  requestId: string
+  actionId: string
+  status: DispatchStatus
+  targetRuntime: TargetRuntime
+  targetResultRef?: string
+  result?: unknown
+  waitingState?: WaitingState
+  idempotency?: IdempotencyInfo
+  error?: DispatchError
+  trace?: TraceInfo
+  createdAt: string
+  completedAt?: string
 }
 
 export interface DispatchContext {
-  userId?: string;
-  sessionId?: string;
-  traceId?: string;
-  parentSpanId?: string;
-  permissionContext?: PermissionContext;
-  callerModule: string;
+  userId?: string
+  sessionId?: string
+  traceId?: string
+  parentSpanId?: string
+  permissionContext?: PermissionContext
+  callerModule: string
 }
 
 export interface PermissionContext {
-  userId: string;
-  permissions: string[];
-  roles?: string[];
-  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
+  userId: string
+  permissions: string[]
+  roles?: string[]
+  riskLevel?: 'low' | 'medium' | 'high' | 'critical'
 }
 
 export interface DispatchRequest {
-  requestId: string;
-  action: RuntimeAction;
-  context: DispatchContext;
+  requestId: string
+  action: RuntimeAction
+  context: DispatchContext
   expectedResult?: {
-    resultType: string;
-    waitForCompletion?: boolean;
-  };
+    resultType: string
+    waitForCompletion?: boolean
+  }
 }
 
 export interface PermissionCheckResult {
-  allowed: boolean;
-  reason?: string;
-  approvalId?: string;
+  allowed: boolean
+  reason?: string
+  approvalId?: string
 }
 
-export type PermissionHook = (action: RuntimeAction) => Promise<PermissionCheckResult>;
+export type PermissionHook = (action: RuntimeAction) => Promise<PermissionCheckResult>
 
 export interface RuntimeAdapter {
-  execute(action: RuntimeAction): Promise<unknown>;
+  execute(action: RuntimeAction): Promise<unknown>
 }
 
 export interface AdapterRegistry {
-  register(runtimeType: TargetRuntime, adapter: RuntimeAdapter): void;
-  getAdapter(runtimeType: TargetRuntime): RuntimeAdapter | null;
-  unregister(runtimeType: TargetRuntime): void;
-  listAdapters(): TargetRuntime[];
+  register(runtimeType: TargetRuntime, adapter: RuntimeAdapter): void
+  getAdapter(runtimeType: TargetRuntime): RuntimeAdapter | null
+  unregister(runtimeType: TargetRuntime): void
+  listAdapters(): TargetRuntime[]
 }
 
 export interface RuntimeDispatcherConfig {
   actionStore: {
-    save(action: StorageRuntimeAction): void;
-    findById(actionId: string): StorageRuntimeAction | null;
-    findByIdempotencyKey(idempotencyKey: string): StorageRuntimeAction | null;
+    save(action: StorageRuntimeAction): void
+    findById(actionId: string): StorageRuntimeAction | null
+    findByIdempotencyKey(idempotencyKey: string): StorageRuntimeAction | null
     updateStatus(
       actionId: string,
       status: RuntimeActionState,
       statusMessage?: string,
-      result?: Record<string, unknown>
-    ): void;
-  };
+      result?: Record<string, unknown>,
+    ): void
+  }
   eventStore: {
-    append(event: unknown | unknown[]): void;
-  };
-  adapterRegistry: AdapterRegistry;
-  permissionHook?: PermissionHook;
-  traceStore?: TraceStore;
-  auditRecorder?: AuditRecorder;
+    append(event: unknown | unknown[]): void
+  }
+  adapterRegistry: AdapterRegistry
+  permissionHook?: PermissionHook
+  traceStore?: TraceStore
+  auditRecorder?: AuditRecorder
 }
 
 export type DispatchEventType =
@@ -215,28 +220,28 @@ export type DispatchEventType =
   | 'dispatch_denied'
   | 'dispatch_waiting_approval'
   | 'dispatch_duplicate'
-  | 'dispatch_cancelled';
+  | 'dispatch_cancelled'
 
 export interface DispatchEvent {
-  eventId: string;
-  eventType: DispatchEventType;
-  actionId: string;
-  requestId: string;
-  sourceModule: SourceModule;
-  targetRuntime: TargetRuntime;
-  actionType: RuntimeActionType;
-  userId?: string;
-  sessionId?: string;
-  runId?: string;
-  relatedRefs?: RelatedRefs;
-  correlationId?: string;
-  causationId?: string;
-  idempotencyKey?: string;
-  timestamp: string;
-  createdAt: string;
-  payload?: Record<string, unknown>;
-  sensitivity: SensitivityLevel;
-  retentionClass: RetentionClass;
+  eventId: string
+  eventType: DispatchEventType
+  actionId: string
+  requestId: string
+  sourceModule: SourceModule
+  targetRuntime: TargetRuntime
+  actionType: RuntimeActionType
+  userId?: string
+  sessionId?: string
+  runId?: string
+  relatedRefs?: RelatedRefs
+  correlationId?: string
+  causationId?: string
+  idempotencyKey?: string
+  timestamp: string
+  createdAt: string
+  payload?: Record<string, unknown>
+  sensitivity: SensitivityLevel
+  retentionClass: RetentionClass
 }
 
 export type DispatchFailureCode =
@@ -252,8 +257,8 @@ export type DispatchFailureCode =
   | 'concurrency_limited'
   | 'target_runtime_error'
   | 'policy_violation'
-  | 'cancelled';
+  | 'cancelled'
 
 export interface RuntimeDispatcher {
-  dispatch(request: DispatchRequest): Promise<DispatchResult>;
+  dispatch(request: DispatchRequest): Promise<DispatchResult>
 }

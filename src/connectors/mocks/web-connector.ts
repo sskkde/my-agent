@@ -1,15 +1,10 @@
-import type {
-  ConnectorAdapter,
-  ConnectorCapability,
-  ConnectorCallRequest,
-  ConnectorResponse,
-} from '../types.js';
-import type { ConnectorInstance } from '../../storage/connector-store.js';
+import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest, ConnectorResponse } from '../types.js'
+import type { ConnectorInstance } from '../../storage/connector-store.js'
 
 export interface WebConnectorConfig {
-  authState?: 'authenticated' | 'unauthenticated' | 'expired';
-  rateLimitMode?: 'none' | 'limited' | 'exhausted';
-  errorMode?: 'none' | 'transient' | 'permanent';
+  authState?: 'authenticated' | 'unauthenticated' | 'expired'
+  rateLimitMode?: 'none' | 'limited' | 'exhausted'
+  errorMode?: 'none' | 'transient' | 'permanent'
 }
 
 const mockWebPages = [
@@ -25,60 +20,57 @@ const mockWebPages = [
     content: 'Another example page with different content for testing purposes.',
     fetchedAt: '2024-01-15T11:00:00Z',
   },
-];
+]
 
 export interface WebFetchParams {
-  url: string;
+  url: string
 }
 
 export interface WebSearchParams {
-  query: string;
-  limit?: number;
+  query: string
+  limit?: number
 }
 
 export class WebConnectorAdapter implements ConnectorAdapter {
-  private authState: 'authenticated' | 'unauthenticated' | 'expired';
-  private rateLimitMode: 'none' | 'limited' | 'exhausted';
-  private errorMode: 'none' | 'transient' | 'permanent';
-  private callCount: number = 0;
+  private authState: 'authenticated' | 'unauthenticated' | 'expired'
+  private rateLimitMode: 'none' | 'limited' | 'exhausted'
+  private errorMode: 'none' | 'transient' | 'permanent'
+  private callCount: number = 0
 
   constructor(config: WebConnectorConfig = {}) {
-    this.authState = config.authState ?? 'authenticated';
-    this.rateLimitMode = config.rateLimitMode ?? 'none';
-    this.errorMode = config.errorMode ?? 'none';
+    this.authState = config.authState ?? 'authenticated'
+    this.rateLimitMode = config.rateLimitMode ?? 'none'
+    this.errorMode = config.errorMode ?? 'none'
   }
 
   setAuthState(state: 'authenticated' | 'unauthenticated' | 'expired'): void {
-    this.authState = state;
+    this.authState = state
   }
 
   setRateLimitMode(mode: 'none' | 'limited' | 'exhausted'): void {
-    this.rateLimitMode = mode;
+    this.rateLimitMode = mode
   }
 
   setErrorMode(mode: 'none' | 'transient' | 'permanent'): void {
-    this.errorMode = mode;
+    this.errorMode = mode
   }
 
-  async execute(
-    _instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown> {
-    this.callCount++;
-    const preconditionError = this.checkPreconditions(request);
+  async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
+    this.callCount++
+    const preconditionError = this.checkPreconditions(request)
     if (preconditionError) {
-      return preconditionError;
+      return preconditionError
     }
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'web_fetch':
-        return this.webFetch(params as unknown as WebFetchParams);
+        return this.webFetch(params as unknown as WebFetchParams)
       case 'web_search':
-        return this.webSearch(params as unknown as WebSearchParams);
+        return this.webSearch(params as unknown as WebSearchParams)
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation}`)
     }
   }
 
@@ -93,7 +85,7 @@ export class WebConnectorAdapter implements ConnectorAdapter {
           message: 'Authentication required',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (this.authState === 'expired') {
@@ -106,7 +98,7 @@ export class WebConnectorAdapter implements ConnectorAdapter {
           message: 'Authentication expired',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (this.rateLimitMode === 'exhausted') {
@@ -122,7 +114,7 @@ export class WebConnectorAdapter implements ConnectorAdapter {
         metadata: {
           retryAfterMs: 30000,
         },
-      };
+      }
     }
 
     if (this.errorMode === 'permanent') {
@@ -135,10 +127,10 @@ export class WebConnectorAdapter implements ConnectorAdapter {
           message: 'Permanent failure',
           recoverable: false,
         },
-      };
+      }
     }
 
-    return null;
+    return null
   }
 
   discoverCapabilities(_instance: ConnectorInstance): ConnectorCapability[] {
@@ -168,38 +160,38 @@ export class WebConnectorAdapter implements ConnectorAdapter {
         requiresAuth: false,
         supportedOperations: ['web_search'],
       },
-    ];
+    ]
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
     if (this.errorMode === 'permanent') {
-      return { healthy: false, message: 'Permanent error mode' };
+      return { healthy: false, message: 'Permanent error mode' }
     }
-    return { healthy: true, message: 'Web mock connector is healthy' };
+    return { healthy: true, message: 'Web mock connector is healthy' }
   }
 
   private webFetch(params: WebFetchParams): { url: string; title: string; content: string; fetchedAt: string } {
-    const { url } = params;
-    const mockPage = mockWebPages.find(p => p.url === url);
-    
+    const { url } = params
+    const mockPage = mockWebPages.find((p) => p.url === url)
+
     if (mockPage) {
-      return mockPage;
+      return mockPage
     }
-    
+
     return {
       url,
       title: `Fetched Page: ${url}`,
       content: `This is mock content fetched from ${url}. In a real implementation, this would be the actual page content.`,
       fetchedAt: new Date().toISOString(),
-    };
+    }
   }
 
   private webSearch(params: WebSearchParams): {
-    results: Array<{ url: string; title: string; snippet: string }>;
-    query: string;
-    totalResults: number;
+    results: Array<{ url: string; title: string; snippet: string }>
+    query: string
+    totalResults: number
   } {
-    const { query, limit = 10 } = params;
+    const { query, limit = 10 } = params
     const results = [
       {
         url: `https://example.com/search?q=${encodeURIComponent(query)}`,
@@ -211,16 +203,16 @@ export class WebConnectorAdapter implements ConnectorAdapter {
         title: `${query} - Example Results`,
         snippet: `Another mock result discussing ${query} and related topics.`,
       },
-    ];
+    ]
 
     return {
       results: results.slice(0, limit),
       query,
       totalResults: results.length,
-    };
+    }
   }
 }
 
 export function createWebConnectorAdapter(config?: WebConnectorConfig): WebConnectorAdapter {
-  return new WebConnectorAdapter(config);
+  return new WebConnectorAdapter(config)
 }

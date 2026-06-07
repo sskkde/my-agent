@@ -14,11 +14,7 @@
  * ```
  */
 
-import type {
-  MCPServerDefinition,
-  MCPSession,
-  MCPToolDescriptor,
-} from '../../src/connectors/types.js';
+import type { MCPServerDefinition, MCPSession, MCPToolDescriptor } from '../../src/connectors/types.js'
 
 // ============================================================================
 // Mock MCP Tool Definitions
@@ -133,25 +129,25 @@ export const MOCK_MCP_TOOLS: MCPToolDescriptor[] = [
       idempotentHint: false,
     },
   },
-];
+]
 
 // ============================================================================
 // Mock MCP Transport
 // ============================================================================
 
 export interface MockMcpTransportConfig {
-  serverId?: string;
-  name?: string;
-  version?: string;
-  tools?: MCPToolDescriptor[];
-  connectionDelay?: number;
-  failOnConnect?: boolean;
+  serverId?: string
+  name?: string
+  version?: string
+  tools?: MCPToolDescriptor[]
+  connectionDelay?: number
+  failOnConnect?: boolean
 }
 
 export class MockMcpTransport {
-  private config: Required<MockMcpTransportConfig>;
-  private connected: boolean = false;
-  private callHistory: Array<{ toolName: string; args: unknown; result: unknown }> = [];
+  private config: Required<MockMcpTransportConfig>
+  private connected: boolean = false
+  private callHistory: Array<{ toolName: string; args: unknown; result: unknown }> = []
 
   constructor(config: MockMcpTransportConfig = {}) {
     this.config = {
@@ -161,36 +157,36 @@ export class MockMcpTransport {
       tools: config.tools ?? MOCK_MCP_TOOLS,
       connectionDelay: config.connectionDelay ?? 0,
       failOnConnect: config.failOnConnect ?? false,
-    };
+    }
   }
 
   async connect(): Promise<void> {
     if (this.config.connectionDelay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.config.connectionDelay));
+      await new Promise((resolve) => setTimeout(resolve, this.config.connectionDelay))
     }
     if (this.config.failOnConnect) {
-      throw new Error('Mock connection failure');
+      throw new Error('Mock connection failure')
     }
-    this.connected = true;
+    this.connected = true
   }
 
   async disconnect(): Promise<void> {
-    this.connected = false;
+    this.connected = false
   }
 
   isConnected(): boolean {
-    return this.connected;
+    return this.connected
   }
 
   async listTools(): Promise<MCPToolDescriptor[]> {
-    this.ensureConnected();
-    return [...this.config.tools];
+    this.ensureConnected()
+    return [...this.config.tools]
   }
 
   async callTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
-    this.ensureConnected();
+    this.ensureConnected()
 
-    const tool = this.config.tools.find(t => t.name === toolName);
+    const tool = this.config.tools.find((t) => t.name === toolName)
     if (!tool) {
       return {
         isError: true,
@@ -198,25 +194,25 @@ export class MockMcpTransport {
           code: 'TOOL_NOT_FOUND',
           message: `Tool not found: ${toolName}`,
         },
-      };
+      }
     }
 
-    const result = this.executeMockTool(toolName, args);
-    this.callHistory.push({ toolName, args, result });
-    return result;
+    const result = this.executeMockTool(toolName, args)
+    this.callHistory.push({ toolName, args, result })
+    return result
   }
 
   getCallHistory(): Array<{ toolName: string; args: unknown; result: unknown }> {
-    return [...this.callHistory];
+    return [...this.callHistory]
   }
 
   clearCallHistory(): void {
-    this.callHistory = [];
+    this.callHistory = []
   }
 
   private ensureConnected(): void {
     if (!this.connected) {
-      throw new Error('Transport not connected');
+      throw new Error('Transport not connected')
     }
   }
 
@@ -226,11 +222,11 @@ export class MockMcpTransport {
         return {
           content: `Mock content of ${(args.path as string) ?? 'unknown'}`,
           encoding: 'utf-8',
-        };
+        }
       case 'write_file':
         return {
           bytesWritten: typeof args.content === 'string' ? args.content.length : 0,
-        };
+        }
       case 'list_directory':
         return {
           entries: [
@@ -238,17 +234,17 @@ export class MockMcpTransport {
             { name: 'file2.txt', type: 'file', size: 200 },
             { name: 'subdir', type: 'directory', size: 0 },
           ],
-        };
+        }
       case 'execute_command':
         return {
           stdout: `Mock output for: ${(args.command as string) ?? 'unknown'}`,
           stderr: '',
           exitCode: 0,
-        };
+        }
       default:
         return {
           result: `Mock result for ${toolName}`,
-        };
+        }
     }
   }
 }
@@ -258,7 +254,7 @@ export class MockMcpTransport {
 // ============================================================================
 
 export function createMockMcpServer(overrides?: Partial<MCPServerDefinition>): MCPServerDefinition {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString()
   return {
     serverId: 'mock_mcp_server',
     name: 'Mock MCP Server',
@@ -274,7 +270,7 @@ export function createMockMcpServer(overrides?: Partial<MCPServerDefinition>): M
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  };
+  }
 }
 
 // ============================================================================
@@ -282,7 +278,7 @@ export function createMockMcpServer(overrides?: Partial<MCPServerDefinition>): M
 // ============================================================================
 
 export function createMockMcpSession(overrides?: Partial<MCPSession>): MCPSession {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString()
   return {
     sessionId: 'mock_mcp_session',
     serverId: 'mock_mcp_server',
@@ -293,16 +289,14 @@ export function createMockMcpSession(overrides?: Partial<MCPSession>): MCPSessio
     connectedAt: now,
     lastActivityAt: now,
     ...overrides,
-  };
+  }
 }
 
 // ============================================================================
 // Mock MCP Tool Descriptor Factory
 // ============================================================================
 
-export function createMockMcpToolDescriptor(
-  overrides?: Partial<MCPToolDescriptor>
-): MCPToolDescriptor {
+export function createMockMcpToolDescriptor(overrides?: Partial<MCPToolDescriptor>): MCPToolDescriptor {
   return {
     toolId: 'mock_tool',
     name: 'mock_tool',
@@ -325,7 +319,7 @@ export function createMockMcpToolDescriptor(
       idempotentHint: true,
     },
     ...overrides,
-  };
+  }
 }
 
 // ============================================================================
@@ -333,29 +327,29 @@ export function createMockMcpToolDescriptor(
 // ============================================================================
 
 export interface MockMcpSetup {
-  server: MCPServerDefinition;
-  session: MCPSession;
-  transport: MockMcpTransport;
-  tools: MCPToolDescriptor[];
+  server: MCPServerDefinition
+  session: MCPSession
+  transport: MockMcpTransport
+  tools: MCPToolDescriptor[]
 }
 
 export function createMockMcpSetup(config?: MockMcpTransportConfig): MockMcpSetup {
-  const transport = new MockMcpTransport(config);
+  const transport = new MockMcpTransport(config)
   const server = createMockMcpServer({
     serverId: config?.serverId,
     name: config?.name,
     version: config?.version,
-  });
+  })
   const session = createMockMcpSession({
     serverId: server.serverId,
-  });
+  })
 
   return {
     server,
     session,
     transport,
     tools: config?.tools ?? MOCK_MCP_TOOLS,
-  };
+  }
 }
 
 // ============================================================================
@@ -366,18 +360,16 @@ export function createFileSystemMcpSetup(): MockMcpSetup {
   return createMockMcpSetup({
     serverId: 'filesystem_mcp',
     name: 'Filesystem MCP Server',
-    tools: MOCK_MCP_TOOLS.filter(t =>
-      ['read_file', 'write_file', 'list_directory'].includes(t.name)
-    ),
-  });
+    tools: MOCK_MCP_TOOLS.filter((t) => ['read_file', 'write_file', 'list_directory'].includes(t.name)),
+  })
 }
 
 export function createCommandMcpSetup(): MockMcpSetup {
   return createMockMcpSetup({
     serverId: 'command_mcp',
     name: 'Command Execution MCP Server',
-    tools: MOCK_MCP_TOOLS.filter(t => t.name === 'execute_command'),
-  });
+    tools: MOCK_MCP_TOOLS.filter((t) => t.name === 'execute_command'),
+  })
 }
 
 export function createFullMcpSetup(): MockMcpSetup {
@@ -385,5 +377,5 @@ export function createFullMcpSetup(): MockMcpSetup {
     serverId: 'full_mcp',
     name: 'Full MCP Server',
     tools: MOCK_MCP_TOOLS,
-  });
+  })
 }

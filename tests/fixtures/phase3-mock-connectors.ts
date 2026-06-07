@@ -19,30 +19,30 @@ import type {
   ConnectorCallRequest,
   ConnectorResponse,
   ConnectorAdapter,
-} from '../../src/connectors/types.js';
-import type { ConnectorInstance } from '../../src/storage/connector-store.js';
+} from '../../src/connectors/types.js'
+import type { ConnectorInstance } from '../../src/storage/connector-store.js'
 
 // ============================================================================
 // Mock Connector Configuration Types
 // ============================================================================
 
 export interface MockConnectorConfig {
-  userId: string;
-  instanceId?: string;
-  definitionId?: string;
-  name?: string;
-  authState?: 'authenticated' | 'unauthenticated' | 'expired';
-  rateLimitMode?: 'none' | 'limited' | 'exhausted';
-  errorMode?: 'none' | 'transient' | 'permanent';
-  deterministicData?: Record<string, unknown>;
+  userId: string
+  instanceId?: string
+  definitionId?: string
+  name?: string
+  authState?: 'authenticated' | 'unauthenticated' | 'expired'
+  rateLimitMode?: 'none' | 'limited' | 'exhausted'
+  errorMode?: 'none' | 'transient' | 'permanent'
+  deterministicData?: Record<string, unknown>
 }
 
 export interface MockConnectorAdapter extends ConnectorAdapter {
-  getCapabilities(): ConnectorCapability[];
-  setAuthState(state: 'authenticated' | 'unauthenticated' | 'expired'): void;
-  setRateLimitMode(mode: 'none' | 'limited' | 'exhausted'): void;
-  setErrorMode(mode: 'none' | 'transient' | 'permanent'): void;
-  setDeterministicData(data: Record<string, unknown>): void;
+  getCapabilities(): ConnectorCapability[]
+  setAuthState(state: 'authenticated' | 'unauthenticated' | 'expired'): void
+  setRateLimitMode(mode: 'none' | 'limited' | 'exhausted'): void
+  setErrorMode(mode: 'none' | 'transient' | 'permanent'): void
+  setDeterministicData(data: Record<string, unknown>): void
 }
 
 // ============================================================================
@@ -50,47 +50,44 @@ export interface MockConnectorAdapter extends ConnectorAdapter {
 // ============================================================================
 
 abstract class BaseMockConnector implements MockConnectorAdapter {
-  protected authState: 'authenticated' | 'unauthenticated' | 'expired' = 'authenticated';
-  protected rateLimitMode: 'none' | 'limited' | 'exhausted' = 'none';
-  protected errorMode: 'none' | 'transient' | 'permanent' = 'none';
-  protected deterministicData: Record<string, unknown> = {};
-  protected callCount: number = 0;
+  protected authState: 'authenticated' | 'unauthenticated' | 'expired' = 'authenticated'
+  protected rateLimitMode: 'none' | 'limited' | 'exhausted' = 'none'
+  protected errorMode: 'none' | 'transient' | 'permanent' = 'none'
+  protected deterministicData: Record<string, unknown> = {}
+  protected callCount: number = 0
 
-  abstract getCapabilities(): ConnectorCapability[];
-  abstract execute(
-    instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown>;
+  abstract getCapabilities(): ConnectorCapability[]
+  abstract execute(instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown>
 
   discoverCapabilities(_instance: ConnectorInstance): ConnectorCapability[] {
-    return this.getCapabilities();
+    return this.getCapabilities()
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
     if (this.errorMode === 'permanent') {
-      return { healthy: false, message: 'Permanent error mode' };
+      return { healthy: false, message: 'Permanent error mode' }
     }
-    return { healthy: true };
+    return { healthy: true }
   }
 
   setAuthState(state: 'authenticated' | 'unauthenticated' | 'expired'): void {
-    this.authState = state;
+    this.authState = state
   }
 
   setRateLimitMode(mode: 'none' | 'limited' | 'exhausted'): void {
-    this.rateLimitMode = mode;
+    this.rateLimitMode = mode
   }
 
   setErrorMode(mode: 'none' | 'transient' | 'permanent'): void {
-    this.errorMode = mode;
+    this.errorMode = mode
   }
 
   setDeterministicData(data: Record<string, unknown>): void {
-    this.deterministicData = { ...this.deterministicData, ...data };
+    this.deterministicData = { ...this.deterministicData, ...data }
   }
 
   protected checkPreconditions(): ConnectorResponse | null {
-    this.callCount++;
+    this.callCount++
 
     if (this.authState === 'unauthenticated') {
       return {
@@ -102,7 +99,7 @@ abstract class BaseMockConnector implements MockConnectorAdapter {
           message: 'Authentication required',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (this.authState === 'expired') {
@@ -115,7 +112,7 @@ abstract class BaseMockConnector implements MockConnectorAdapter {
           message: 'Authentication expired',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (this.rateLimitMode === 'exhausted') {
@@ -131,7 +128,7 @@ abstract class BaseMockConnector implements MockConnectorAdapter {
         metadata: {
           retryAfterMs: 60000,
         },
-      };
+      }
     }
 
     if (this.errorMode === 'transient' && this.callCount % 3 === 0) {
@@ -144,7 +141,7 @@ abstract class BaseMockConnector implements MockConnectorAdapter {
           message: 'Temporary failure',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (this.errorMode === 'permanent') {
@@ -157,10 +154,10 @@ abstract class BaseMockConnector implements MockConnectorAdapter {
           message: 'Permanent failure',
           recoverable: false,
         },
-      };
+      }
     }
 
-    return null;
+    return null
   }
 
   protected createSuccessResponse(data: unknown): ConnectorResponse {
@@ -169,10 +166,8 @@ abstract class BaseMockConnector implements MockConnectorAdapter {
       requestId: `req_${this.callCount}`,
       connectorInstanceId: 'mock',
       data,
-      metadata: this.rateLimitMode === 'limited'
-        ? { rateLimitRemaining: 10 - (this.callCount % 10) }
-        : undefined,
-    };
+      metadata: this.rateLimitMode === 'limited' ? { rateLimitRemaining: 10 - (this.callCount % 10) } : undefined,
+    }
   }
 }
 
@@ -182,17 +177,17 @@ abstract class BaseMockConnector implements MockConnectorAdapter {
 
 class MockEmailConnector extends BaseMockConnector {
   private emails: Array<{
-    id: string;
-    subject: string;
-    from: string;
-    to: string[];
-    body: string;
-    date: string;
-    read: boolean;
-  }>;
+    id: string
+    subject: string
+    from: string
+    to: string[]
+    body: string
+    date: string
+    read: boolean
+  }>
 
   constructor(config: MockConnectorConfig = { userId: 'user_001' }) {
-    super();
+    super()
     this.emails = [
       {
         id: 'email_001',
@@ -212,7 +207,7 @@ class MockEmailConnector extends BaseMockConnector {
         date: '2024-01-02T11:00:00Z',
         read: true,
       },
-    ];
+    ]
   }
 
   getCapabilities(): ConnectorCapability[] {
@@ -267,22 +262,22 @@ class MockEmailConnector extends BaseMockConnector {
         requiresAuth: true,
         supportedOperations: ['read'],
       },
-    ];
+    ]
   }
 
   async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
-    const preconditionError = this.checkPreconditions();
-    if (preconditionError) return preconditionError;
+    const preconditionError = this.checkPreconditions()
+    if (preconditionError) return preconditionError
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'search_emails':
-        return this.searchEmails(params as { query?: string; limit?: number });
+        return this.searchEmails(params as { query?: string; limit?: number })
       case 'send_email':
-        return this.sendEmail(params as { to: string[]; subject: string; body: string });
+        return this.sendEmail(params as { to: string[]; subject: string; body: string })
       case 'get_email':
-        return this.getEmail(params as { emailId: string });
+        return this.getEmail(params as { emailId: string })
       default:
         return {
           status: 'failed',
@@ -293,25 +288,21 @@ class MockEmailConnector extends BaseMockConnector {
             message: `Unknown operation: ${operation}`,
             recoverable: false,
           },
-        };
+        }
     }
   }
 
   private searchEmails(params: { query?: string; limit?: number }) {
-    const limit = params.limit ?? 10;
-    let results = this.emails;
+    const limit = params.limit ?? 10
+    let results = this.emails
     if (params.query) {
-      const query = params.query.toLowerCase();
-      results = results.filter(
-        e =>
-          e.subject.toLowerCase().includes(query) ||
-          e.body.toLowerCase().includes(query)
-      );
+      const query = params.query.toLowerCase()
+      results = results.filter((e) => e.subject.toLowerCase().includes(query) || e.body.toLowerCase().includes(query))
     }
     return this.createSuccessResponse({
       emails: results.slice(0, limit),
       total: results.length,
-    });
+    })
   }
 
   private sendEmail(params: { to: string[]; subject: string; body: string }) {
@@ -323,16 +314,16 @@ class MockEmailConnector extends BaseMockConnector {
       body: params.body,
       date: new Date().toISOString(),
       read: true,
-    };
-    this.emails.push(newEmail);
+    }
+    this.emails.push(newEmail)
     return this.createSuccessResponse({
       emailId: newEmail.id,
       status: 'sent',
-    });
+    })
   }
 
   private getEmail(params: { emailId: string }) {
-    const email = this.emails.find(e => e.id === params.emailId);
+    const email = this.emails.find((e) => e.id === params.emailId)
     if (!email) {
       return {
         status: 'failed',
@@ -343,9 +334,9 @@ class MockEmailConnector extends BaseMockConnector {
           message: `Email not found: ${params.emailId}`,
           recoverable: false,
         },
-      };
+      }
     }
-    return this.createSuccessResponse(email);
+    return this.createSuccessResponse(email)
   }
 }
 
@@ -355,16 +346,16 @@ class MockEmailConnector extends BaseMockConnector {
 
 class MockCalendarConnector extends BaseMockConnector {
   private events: Array<{
-    id: string;
-    title: string;
-    start: string;
-    end: string;
-    attendees: string[];
-    location?: string;
-  }>;
+    id: string
+    title: string
+    start: string
+    end: string
+    attendees: string[]
+    location?: string
+  }>
 
   constructor(config: MockConnectorConfig = { userId: 'user_001' }) {
-    super();
+    super()
     this.events = [
       {
         id: 'event_001',
@@ -381,7 +372,7 @@ class MockCalendarConnector extends BaseMockConnector {
         end: '2024-01-16T15:00:00Z',
         attendees: [config.userId, 'other@example.com'],
       },
-    ];
+    ]
   }
 
   getCapabilities(): ConnectorCapability[] {
@@ -441,22 +432,24 @@ class MockCalendarConnector extends BaseMockConnector {
         requiresAuth: true,
         supportedOperations: ['update'],
       },
-    ];
+    ]
   }
 
   async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
-    const preconditionError = this.checkPreconditions();
-    if (preconditionError) return preconditionError;
+    const preconditionError = this.checkPreconditions()
+    if (preconditionError) return preconditionError
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'search_events':
-        return this.searchEvents(params as { startDate?: string; endDate?: string });
+        return this.searchEvents(params as { startDate?: string; endDate?: string })
       case 'create_event':
-        return this.createEvent(params as { title: string; start: string; end: string; attendees?: string[]; location?: string });
+        return this.createEvent(
+          params as { title: string; start: string; end: string; attendees?: string[]; location?: string },
+        )
       case 'update_event':
-        return this.updateEvent(params as { eventId: string; [key: string]: unknown });
+        return this.updateEvent(params as { eventId: string; [key: string]: unknown })
       default:
         return {
           status: 'failed',
@@ -467,22 +460,22 @@ class MockCalendarConnector extends BaseMockConnector {
             message: `Unknown operation: ${operation}`,
             recoverable: false,
           },
-        };
+        }
     }
   }
 
   private searchEvents(params: { startDate?: string; endDate?: string }) {
-    let results = this.events;
+    let results = this.events
     if (params.startDate) {
-      results = results.filter(e => e.start >= params.startDate!);
+      results = results.filter((e) => e.start >= params.startDate!)
     }
     if (params.endDate) {
-      results = results.filter(e => e.end <= params.endDate!);
+      results = results.filter((e) => e.end <= params.endDate!)
     }
     return this.createSuccessResponse({
       events: results,
       total: results.length,
-    });
+    })
   }
 
   private createEvent(params: { title: string; start: string; end: string; attendees?: string[]; location?: string }) {
@@ -493,16 +486,16 @@ class MockCalendarConnector extends BaseMockConnector {
       end: params.end,
       attendees: params.attendees ?? [],
       location: params.location,
-    };
-    this.events.push(newEvent);
+    }
+    this.events.push(newEvent)
     return this.createSuccessResponse({
       eventId: newEvent.id,
       status: 'created',
-    });
+    })
   }
 
   private updateEvent(params: { eventId: string; [key: string]: unknown }) {
-    const index = this.events.findIndex(e => e.id === params.eventId);
+    const index = this.events.findIndex((e) => e.id === params.eventId)
     if (index === -1) {
       return {
         status: 'failed',
@@ -513,13 +506,13 @@ class MockCalendarConnector extends BaseMockConnector {
           message: `Event not found: ${params.eventId}`,
           recoverable: false,
         },
-      };
+      }
     }
-    this.events[index] = { ...this.events[index], ...params };
+    this.events[index] = { ...this.events[index], ...params }
     return this.createSuccessResponse({
       eventId: params.eventId,
       status: 'updated',
-    });
+    })
   }
 }
 
@@ -529,15 +522,15 @@ class MockCalendarConnector extends BaseMockConnector {
 
 class MockContactsConnector extends BaseMockConnector {
   private contacts: Array<{
-    id: string;
-    name: string;
-    email: string;
-    phone?: string;
-    organization?: string;
-  }>;
+    id: string
+    name: string
+    email: string
+    phone?: string
+    organization?: string
+  }>
 
   constructor(_config: MockConnectorConfig = { userId: 'user_001' }) {
-    super();
+    super()
     this.contacts = [
       {
         id: 'contact_001',
@@ -551,7 +544,7 @@ class MockContactsConnector extends BaseMockConnector {
         name: 'Jane Smith',
         email: 'jane@example.com',
       },
-    ];
+    ]
   }
 
   getCapabilities(): ConnectorCapability[] {
@@ -590,20 +583,20 @@ class MockContactsConnector extends BaseMockConnector {
         requiresAuth: true,
         supportedOperations: ['create'],
       },
-    ];
+    ]
   }
 
   async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
-    const preconditionError = this.checkPreconditions();
-    if (preconditionError) return preconditionError;
+    const preconditionError = this.checkPreconditions()
+    if (preconditionError) return preconditionError
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'search_contacts':
-        return this.searchContacts(params as { query?: string });
+        return this.searchContacts(params as { query?: string })
       case 'create_contact':
-        return this.createContact(params as { name: string; email: string; phone?: string; organization?: string });
+        return this.createContact(params as { name: string; email: string; phone?: string; organization?: string })
       default:
         return {
           status: 'failed',
@@ -614,24 +607,20 @@ class MockContactsConnector extends BaseMockConnector {
             message: `Unknown operation: ${operation}`,
             recoverable: false,
           },
-        };
+        }
     }
   }
 
   private searchContacts(params: { query?: string }) {
-    let results = this.contacts;
+    let results = this.contacts
     if (params.query) {
-      const query = params.query.toLowerCase();
-      results = results.filter(
-        c =>
-          c.name.toLowerCase().includes(query) ||
-          c.email.toLowerCase().includes(query)
-      );
+      const query = params.query.toLowerCase()
+      results = results.filter((c) => c.name.toLowerCase().includes(query) || c.email.toLowerCase().includes(query))
     }
     return this.createSuccessResponse({
       contacts: results,
       total: results.length,
-    });
+    })
   }
 
   private createContact(params: { name: string; email: string; phone?: string; organization?: string }) {
@@ -641,12 +630,12 @@ class MockContactsConnector extends BaseMockConnector {
       email: params.email,
       phone: params.phone,
       organization: params.organization,
-    };
-    this.contacts.push(newContact);
+    }
+    this.contacts.push(newContact)
     return this.createSuccessResponse({
       contactId: newContact.id,
       status: 'created',
-    });
+    })
   }
 }
 
@@ -656,18 +645,18 @@ class MockContactsConnector extends BaseMockConnector {
 
 class MockDocsConnector extends BaseMockConnector {
   private docs: Array<{
-    id: string;
-    title: string;
-    content: string;
-    createdAt: string;
-    updatedAt: string;
-    async?: boolean;
-  }>;
+    id: string
+    title: string
+    content: string
+    createdAt: string
+    updatedAt: string
+    async?: boolean
+  }>
 
-  private asyncOperations: Map<string, { status: string; progress: number; result?: unknown }>;
+  private asyncOperations: Map<string, { status: string; progress: number; result?: unknown }>
 
   constructor(_config: MockConnectorConfig = { userId: 'user_001' }) {
-    super();
+    super()
     this.docs = [
       {
         id: 'doc_001',
@@ -676,8 +665,8 @@ class MockDocsConnector extends BaseMockConnector {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       },
-    ];
-    this.asyncOperations = new Map();
+    ]
+    this.asyncOperations = new Map()
   }
 
   getCapabilities(): ConnectorCapability[] {
@@ -734,22 +723,22 @@ class MockDocsConnector extends BaseMockConnector {
           requestsPerMinute: 10,
         },
       },
-    ];
+    ]
   }
 
   async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
-    const preconditionError = this.checkPreconditions();
-    if (preconditionError) return preconditionError;
+    const preconditionError = this.checkPreconditions()
+    if (preconditionError) return preconditionError
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'search_docs':
-        return this.searchDocs(params as { query?: string });
+        return this.searchDocs(params as { query?: string })
       case 'create_doc':
-        return this.createDoc(params as { title: string; content?: string });
+        return this.createDoc(params as { title: string; content?: string })
       case 'export_doc':
-        return this.exportDoc(params as { docId: string; format?: string });
+        return this.exportDoc(params as { docId: string; format?: string })
       default:
         return {
           status: 'failed',
@@ -760,44 +749,40 @@ class MockDocsConnector extends BaseMockConnector {
             message: `Unknown operation: ${operation}`,
             recoverable: false,
           },
-        };
+        }
     }
   }
 
   private searchDocs(params: { query?: string }) {
-    let results = this.docs;
+    let results = this.docs
     if (params.query) {
-      const query = params.query.toLowerCase();
-      results = results.filter(
-        d =>
-          d.title.toLowerCase().includes(query) ||
-          d.content.toLowerCase().includes(query)
-      );
+      const query = params.query.toLowerCase()
+      results = results.filter((d) => d.title.toLowerCase().includes(query) || d.content.toLowerCase().includes(query))
     }
     return this.createSuccessResponse({
       docs: results,
       total: results.length,
-    });
+    })
   }
 
   private createDoc(params: { title: string; content?: string }) {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const newDoc = {
       id: `doc_${this.docs.length + 1}`,
       title: params.title,
       content: params.content ?? '',
       createdAt: now,
       updatedAt: now,
-    };
-    this.docs.push(newDoc);
+    }
+    this.docs.push(newDoc)
     return this.createSuccessResponse({
       docId: newDoc.id,
       status: 'created',
-    });
+    })
   }
 
   private exportDoc(params: { docId: string; format?: string }) {
-    const doc = this.docs.find(d => d.id === params.docId);
+    const doc = this.docs.find((d) => d.id === params.docId)
     if (!doc) {
       return {
         status: 'failed',
@@ -808,15 +793,15 @@ class MockDocsConnector extends BaseMockConnector {
           message: `Document not found: ${params.docId}`,
           recoverable: false,
         },
-      };
+      }
     }
 
     // Return async operation reference
-    const operationId = `op_${Date.now()}`;
+    const operationId = `op_${Date.now()}`
     this.asyncOperations.set(operationId, {
       status: 'pending',
       progress: 0,
-    });
+    })
 
     return {
       status: 'async_started',
@@ -825,7 +810,7 @@ class MockDocsConnector extends BaseMockConnector {
       metadata: {
         operationId,
       },
-    };
+    }
   }
 
   // Helper to simulate async operation completion
@@ -834,11 +819,11 @@ class MockDocsConnector extends BaseMockConnector {
       status: 'completed',
       progress: 100,
       result,
-    });
+    })
   }
 
   getAsyncOperationStatus(operationId: string) {
-    return this.asyncOperations.get(operationId);
+    return this.asyncOperations.get(operationId)
   }
 }
 
@@ -848,13 +833,13 @@ class MockDocsConnector extends BaseMockConnector {
 
 class MockSearchConnector extends BaseMockConnector {
   private searchResults: Array<{
-    title: string;
-    url: string;
-    snippet: string;
-  }>;
+    title: string
+    url: string
+    snippet: string
+  }>
 
   constructor(_config: MockConnectorConfig = { userId: 'user_001' }) {
-    super();
+    super()
     this.searchResults = [
       {
         title: 'Test Result 1',
@@ -866,7 +851,7 @@ class MockSearchConnector extends BaseMockConnector {
         url: 'https://example.com/2',
         snippet: 'Another test search result',
       },
-    ];
+    ]
   }
 
   getCapabilities(): ConnectorCapability[] {
@@ -905,19 +890,19 @@ class MockSearchConnector extends BaseMockConnector {
         requiresAuth: false,
         supportedOperations: ['search'],
       },
-    ];
+    ]
   }
 
   async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
-    const preconditionError = this.checkPreconditions();
-    if (preconditionError) return preconditionError;
+    const preconditionError = this.checkPreconditions()
+    if (preconditionError) return preconditionError
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'web_search':
       case 'news_search':
-        return this.search(params as { query: string; limit?: number });
+        return this.search(params as { query: string; limit?: number })
       default:
         return {
           status: 'failed',
@@ -928,23 +913,23 @@ class MockSearchConnector extends BaseMockConnector {
             message: `Unknown operation: ${operation}`,
             recoverable: false,
           },
-        };
+        }
     }
   }
 
   private search(params: { query: string; limit?: number }) {
-    const limit = params.limit ?? 10;
+    const limit = params.limit ?? 10
     // Return deterministic results based on query
     const results = this.searchResults.map((r, i) => ({
       ...r,
       title: `${r.title} - ${params.query}`,
       rank: i + 1,
-    }));
+    }))
     return this.createSuccessResponse({
       results: results.slice(0, limit),
       query: params.query,
       total: results.length,
-    });
+    })
   }
 }
 
@@ -953,16 +938,16 @@ class MockSearchConnector extends BaseMockConnector {
 // ============================================================================
 
 export interface WebConnectorDefinition {
-  connectorId: string;
-  name: string;
-  capabilities: string[];
+  connectorId: string
+  name: string
+  capabilities: string[]
 }
 
 export const WEB_CONNECTOR_DEFINITION: WebConnectorDefinition = {
   connectorId: 'web',
   name: 'Web Connector',
   capabilities: ['web_search', 'news_search', 'web_fetch'],
-};
+}
 
 // ============================================================================
 // Factory Functions
@@ -972,46 +957,46 @@ export const WEB_CONNECTOR_DEFINITION: WebConnectorDefinition = {
  * Create a mock email connector adapter
  */
 export function createMockEmailConnector(config?: MockConnectorConfig): MockConnectorAdapter {
-  return new MockEmailConnector(config);
+  return new MockEmailConnector(config)
 }
 
 /**
  * Create a mock calendar connector adapter
  */
 export function createMockCalendarConnector(config?: MockConnectorConfig): MockConnectorAdapter {
-  return new MockCalendarConnector(config);
+  return new MockCalendarConnector(config)
 }
 
 /**
  * Create a mock contacts connector adapter
  */
 export function createMockContactsConnector(config?: MockConnectorConfig): MockConnectorAdapter {
-  return new MockContactsConnector(config);
+  return new MockContactsConnector(config)
 }
 
 /**
  * Create a mock docs connector adapter (async capable)
  */
 export function createMockDocsConnector(config?: MockConnectorConfig): MockDocsConnector {
-  return new MockDocsConnector(config);
+  return new MockDocsConnector(config)
 }
 
 /**
  * Create a mock search connector adapter
  */
 export function createMockSearchConnector(config?: MockConnectorConfig): MockConnectorAdapter {
-  return new MockSearchConnector(config);
+  return new MockSearchConnector(config)
 }
 
 /**
  * Create all mock connectors at once
  */
 export function createAllMockConnectors(config?: MockConnectorConfig): {
-  email: MockConnectorAdapter;
-  calendar: MockConnectorAdapter;
-  contacts: MockConnectorAdapter;
-  docs: MockDocsConnector;
-  search: MockConnectorAdapter;
+  email: MockConnectorAdapter
+  calendar: MockConnectorAdapter
+  contacts: MockConnectorAdapter
+  docs: MockDocsConnector
+  search: MockConnectorAdapter
 } {
   return {
     email: createMockEmailConnector(config),
@@ -1019,7 +1004,7 @@ export function createAllMockConnectors(config?: MockConnectorConfig): {
     contacts: createMockContactsConnector(config),
     docs: createMockDocsConnector(config),
     search: createMockSearchConnector(config),
-  };
+  }
 }
 
 /**
@@ -1037,5 +1022,5 @@ export function createMockConnectorInstance(config: MockConnectorConfig): Connec
     status: 'active',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
+  }
 }

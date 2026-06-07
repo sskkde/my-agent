@@ -3,7 +3,7 @@
  * @module kernel/model-input/tenant-project-instruction-renderer
  */
 
-import type { InstructionProjection } from '../../instructions/instruction-types.js';
+import type { InstructionProjection } from '../../instructions/instruction-types.js'
 
 /**
  * Renders instruction blocks into a single string for Layer 5 (Segment B).
@@ -13,15 +13,15 @@ import type { InstructionProjection } from '../../instructions/instruction-types
  */
 export function renderInstructions(projection: InstructionProjection): string {
   if (projection.blocks.length === 0) {
-    return '';
+    return ''
   }
 
-  const parts: string[] = [];
+  const parts: string[] = []
 
   for (const block of projection.blocks) {
-    parts.push(`[Source: ${block.source}]`);
-    parts.push(block.content);
+    parts.push(`[Source: ${block.source}]`)
+    parts.push(block.content)
   }
 
-  return parts.join('\n');
+  return parts.join('\n')
 }

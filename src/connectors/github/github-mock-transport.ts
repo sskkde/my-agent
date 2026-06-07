@@ -10,7 +10,7 @@ import type {
   ListPullRequestsParams,
   GetPullRequestParams,
   CreateIssueCommentParams,
-} from './github-types.js';
+} from './github-types.js'
 
 const mockUser: GitHubUser = {
   id: 1,
@@ -18,13 +18,13 @@ const mockUser: GitHubUser = {
   avatarUrl: 'https://github.com/images/error/octocat_happy.gif',
   htmlUrl: 'https://github.com/octocat',
   type: 'User',
-};
+}
 
 const mockLabels: GitHubLabel[] = [
   { id: 1, name: 'bug', color: 'ff0000', description: 'Something is not working' },
   { id: 2, name: 'enhancement', color: '00ff00', description: 'New feature or request' },
   { id: 3, name: 'documentation', color: '0000ff', description: 'Improvements or additions to documentation' },
-];
+]
 
 const mockIssues: GitHubIssue[] = [
   {
@@ -75,7 +75,7 @@ const mockIssues: GitHubIssue[] = [
     closedAt: '2024-01-05T16:00:00Z',
     htmlUrl: 'https://github.com/octocat/Hello-World/issues/3',
   },
-];
+]
 
 const mockPullRequests: GitHubPullRequest[] = [
   {
@@ -156,119 +156,117 @@ const mockPullRequests: GitHubPullRequest[] = [
     closedAt: '2024-01-18T12:00:00Z',
     htmlUrl: 'https://github.com/octocat/Hello-World/pull/12',
   },
-];
+]
 
-const createdComments: Map<string, GitHubIssueComment> = new Map();
-let commentIdCounter = 1000;
+const createdComments: Map<string, GitHubIssueComment> = new Map()
+let commentIdCounter = 1000
 
 export class GitHubMockTransport implements GitHubTransport {
-  private validPat: string | null = null;
+  private validPat: string | null = null
 
   setValidPat(pat: string | null): void {
-    this.validPat = pat;
+    this.validPat = pat
   }
 
   async validateAuth(): Promise<boolean> {
-    return this.validPat !== null;
+    return this.validPat !== null
   }
 
   async listIssues(params: ListIssuesParams): Promise<{ issues: GitHubIssue[]; total: number }> {
-    this.checkAuth();
+    this.checkAuth()
 
-    let filtered = [...mockIssues];
+    let filtered = [...mockIssues]
 
     if (params.state && params.state !== 'all') {
-      filtered = filtered.filter(issue => issue.state === params.state);
+      filtered = filtered.filter((issue) => issue.state === params.state)
     }
 
     if (params.labels && params.labels.length > 0) {
-      filtered = filtered.filter(issue =>
-        params.labels!.some(label =>
-          issue.labels.some(l => l.name === label)
-        )
-      );
+      filtered = filtered.filter((issue) => params.labels!.some((label) => issue.labels.some((l) => l.name === label)))
     }
 
     if (params.sort === 'updated') {
-      filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     } else if (params.sort === 'comments') {
-      filtered.sort((a, b) => b.comments - a.comments);
+      filtered.sort((a, b) => b.comments - a.comments)
     } else {
-      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
 
     if (params.direction === 'asc') {
-      filtered.reverse();
+      filtered.reverse()
     }
 
-    const perPage = params.perPage ?? 30;
-    const page = params.page ?? 1;
-    const start = (page - 1) * perPage;
-    const paginated = filtered.slice(start, start + perPage);
+    const perPage = params.perPage ?? 30
+    const page = params.page ?? 1
+    const start = (page - 1) * perPage
+    const paginated = filtered.slice(start, start + perPage)
 
-    return { issues: paginated, total: filtered.length };
+    return { issues: paginated, total: filtered.length }
   }
 
   async getIssue(params: GetIssueParams): Promise<GitHubIssue | null> {
-    this.checkAuth();
+    this.checkAuth()
 
-    const issue = mockIssues.find(i => i.number === params.issueNumber);
-    return issue ?? null;
+    const issue = mockIssues.find((i) => i.number === params.issueNumber)
+    return issue ?? null
   }
 
-  async listPullRequests(params: ListPullRequestsParams): Promise<{ pullRequests: GitHubPullRequest[]; total: number }> {
-    this.checkAuth();
+  async listPullRequests(
+    params: ListPullRequestsParams,
+  ): Promise<{ pullRequests: GitHubPullRequest[]; total: number }> {
+    this.checkAuth()
 
-    let filtered = [...mockPullRequests];
+    let filtered = [...mockPullRequests]
 
     if (params.state && params.state !== 'all') {
-      filtered = filtered.filter(pr => pr.state === params.state);
+      filtered = filtered.filter((pr) => pr.state === params.state)
     }
 
     if (params.head) {
-      filtered = filtered.filter(pr => pr.head.ref === params.head);
+      filtered = filtered.filter((pr) => pr.head.ref === params.head)
     }
 
     if (params.base) {
-      filtered = filtered.filter(pr => pr.base.ref === params.base);
+      filtered = filtered.filter((pr) => pr.base.ref === params.base)
     }
 
     if (params.sort === 'updated') {
-      filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     } else if (params.sort === 'popularity') {
-      filtered.sort((a, b) => b.comments - a.comments);
+      filtered.sort((a, b) => b.comments - a.comments)
     } else {
-      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
 
     if (params.direction === 'asc') {
-      filtered.reverse();
+      filtered.reverse()
     }
 
-    const perPage = params.perPage ?? 30;
-    const page = params.page ?? 1;
-    const start = (page - 1) * perPage;
-    const paginated = filtered.slice(start, start + perPage);
+    const perPage = params.perPage ?? 30
+    const page = params.page ?? 1
+    const start = (page - 1) * perPage
+    const paginated = filtered.slice(start, start + perPage)
 
-    return { pullRequests: paginated, total: filtered.length };
+    return { pullRequests: paginated, total: filtered.length }
   }
 
   async getPullRequest(params: GetPullRequestParams): Promise<GitHubPullRequest | null> {
-    this.checkAuth();
+    this.checkAuth()
 
-    const pr = mockPullRequests.find(p => p.number === params.prNumber);
-    return pr ?? null;
+    const pr = mockPullRequests.find((p) => p.number === params.prNumber)
+    return pr ?? null
   }
 
   async createIssueComment(params: CreateIssueCommentParams): Promise<GitHubIssueComment> {
-    this.checkAuth();
+    this.checkAuth()
 
-    const issue = mockIssues.find(i => i.number === params.issueNumber);
+    const issue = mockIssues.find((i) => i.number === params.issueNumber)
     if (!issue) {
-      throw new Error(`Issue not found: ${params.issueNumber}`);
+      throw new Error(`Issue not found: ${params.issueNumber}`)
     }
 
-    const id = commentIdCounter++;
+    const id = commentIdCounter++
     const comment: GitHubIssueComment = {
       id,
       nodeId: `IC_${id}`,
@@ -278,31 +276,31 @@ export class GitHubMockTransport implements GitHubTransport {
       updatedAt: new Date().toISOString(),
       htmlUrl: `https://github.com/${params.owner}/${params.repo}/issues/${params.issueNumber}#issuecomment-${id}`,
       issueUrl: `https://github.com/${params.owner}/${params.repo}/issues/${params.issueNumber}`,
-    };
+    }
 
-    const key = `${params.owner}/${params.repo}/${params.issueNumber}/${id}`;
-    createdComments.set(key, comment);
+    const key = `${params.owner}/${params.repo}/${params.issueNumber}/${id}`
+    createdComments.set(key, comment)
 
-    return comment;
+    return comment
   }
 
   private checkAuth(): void {
     if (this.validPat === null) {
-      const error = new Error('Authentication required');
-      (error as unknown as Record<string, unknown>).code = 'AUTH_INVALID';
-      throw error;
+      const error = new Error('Authentication required')
+      ;(error as unknown as Record<string, unknown>).code = 'AUTH_INVALID'
+      throw error
     }
   }
 
   getCreatedComments(): Map<string, GitHubIssueComment> {
-    return createdComments;
+    return createdComments
   }
 
   clearCreatedComments(): void {
-    createdComments.clear();
+    createdComments.clear()
   }
 }
 
 export function createGitHubMockTransport(): GitHubMockTransport {
-  return new GitHubMockTransport();
+  return new GitHubMockTransport()
 }

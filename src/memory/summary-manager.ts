@@ -1,7 +1,7 @@
-import type { SummaryStore, SourceRefs, SummaryRecord, SummaryType } from '../storage/summary-store.js';
-import type { TranscriptStore } from '../storage/transcript-store.js';
-import type { TraceStore } from '../observability/types.js';
-import type { AuditRecorder } from '../observability/audit-types.js';
+import type { SummaryStore, SourceRefs, SummaryRecord, SummaryType } from '../storage/summary-store.js'
+import type { TranscriptStore } from '../storage/transcript-store.js'
+import type { TraceStore } from '../observability/types.js'
+import type { AuditRecorder } from '../observability/audit-types.js'
 import type {
   SummaryManager,
   WorkingSummaryRequest,
@@ -17,120 +17,117 @@ import type {
   WeeklySummaryContent,
   PlannerRunSummaryContent,
   SummaryVersionEntry,
-  SummaryWriteErrorCode
-} from './types.js';
-import { randomUUID } from 'crypto';
+  SummaryWriteErrorCode,
+} from './types.js'
+import { randomUUID } from 'crypto'
 
-export type { SummaryManager } from './types.js';
+export type { SummaryManager } from './types.js'
 
-const DETERMINISTIC_FIELDS = ['summaryId', 'userId', 'sessionId', 'runId', 'createdAt', 'sourceRefs'] as const;
+const DETERMINISTIC_FIELDS = ['summaryId', 'userId', 'sessionId', 'runId', 'createdAt', 'sourceRefs'] as const
 
 type VersionStore = {
-  getVersionEntries(summaryId: string, limit?: number): SummaryVersionEntry[];
-  addVersionEntry(entry: SummaryVersionEntry): void;
-  getCurrentVersion(summaryId: string): number;
-};
+  getVersionEntries(summaryId: string, limit?: number): SummaryVersionEntry[]
+  addVersionEntry(entry: SummaryVersionEntry): void
+  getCurrentVersion(summaryId: string): number
+}
 
 function createVersionStore(): VersionStore {
-  const versions = new Map<string, SummaryVersionEntry[]>();
-  
+  const versions = new Map<string, SummaryVersionEntry[]>()
+
   return {
     getVersionEntries(summaryId: string, limit?: number): SummaryVersionEntry[] {
-      const entries = versions.get(summaryId) ?? [];
-      return limit ? entries.slice(0, limit) : entries;
+      const entries = versions.get(summaryId) ?? []
+      return limit ? entries.slice(0, limit) : entries
     },
     addVersionEntry(entry: SummaryVersionEntry): void {
-      const existing = versions.get(entry.summaryId) ?? [];
-      versions.set(entry.summaryId, [entry, ...existing]);
+      const existing = versions.get(entry.summaryId) ?? []
+      versions.set(entry.summaryId, [entry, ...existing])
     },
     getCurrentVersion(summaryId: string): number {
-      const entries = versions.get(summaryId) ?? [];
-      return entries.length > 0 ? Math.max(...entries.map(e => e.version)) : 0;
-    }
-  };
+      const entries = versions.get(summaryId) ?? []
+      return entries.length > 0 ? Math.max(...entries.map((e) => e.version)) : 0
+    },
+  }
 }
 
 function validateSourceRefsOrThrow(sourceRefs: SourceRefs): void {
   if (!sourceRefs || typeof sourceRefs !== 'object') {
-    throw createWriteError('MISSING_SOURCE_REFS', 'sourceRefs is required and must be an object');
+    throw createWriteError('MISSING_SOURCE_REFS', 'sourceRefs is required and must be an object')
   }
 
-  const hasTranscriptRefs =
-    Array.isArray(sourceRefs.transcriptRefs) &&
-    sourceRefs.transcriptRefs.length > 0;
+  const hasTranscriptRefs = Array.isArray(sourceRefs.transcriptRefs) && sourceRefs.transcriptRefs.length > 0
 
   const hasEventRange =
     sourceRefs.eventRange &&
     typeof sourceRefs.eventRange.startEventId === 'string' &&
-    typeof sourceRefs.eventRange.endEventId === 'string';
+    typeof sourceRefs.eventRange.endEventId === 'string'
 
   const hasPreviousSummaryRefs =
-    Array.isArray(sourceRefs.previousSummaryRefs) &&
-    sourceRefs.previousSummaryRefs.length > 0;
+    Array.isArray(sourceRefs.previousSummaryRefs) && sourceRefs.previousSummaryRefs.length > 0
 
   if (!hasTranscriptRefs && !hasEventRange && !hasPreviousSummaryRefs) {
     throw createWriteError(
       'MISSING_SOURCE_REFS',
-      'sourceRefs must contain at least one of: transcriptRefs, eventRange, or previousSummaryRefs'
-    );
+      'sourceRefs must contain at least one of: transcriptRefs, eventRange, or previousSummaryRefs',
+    )
   }
 }
 
 function createWriteError(code: SummaryWriteErrorCode, message: string): Error {
-  const error = new Error(message);
-  (error as Error & { code: SummaryWriteErrorCode }).code = code;
-  return error;
+  const error = new Error(message)
+  ;(error as Error & { code: SummaryWriteErrorCode }).code = code
+  return error
 }
 
 function generateSummaryId(): string {
-  return `sum-${randomUUID()}`;
+  return `sum-${randomUUID()}`
 }
 
 function computeDiff(
   existing: SummaryRecord | null,
-  updates: Partial<SummaryRecord>
+  updates: Partial<SummaryRecord>,
 ): { changedFields: string[]; previousValues: Record<string, unknown> } {
   if (!existing) {
-    return { changedFields: Object.keys(updates), previousValues: {} };
+    return { changedFields: Object.keys(updates), previousValues: {} }
   }
 
-  const changedFields: string[] = [];
-  const previousValues: Record<string, unknown> = {};
+  const changedFields: string[] = []
+  const previousValues: Record<string, unknown> = {}
 
   for (const key of Object.keys(updates) as (keyof SummaryRecord)[]) {
     if (JSON.stringify(existing[key]) !== JSON.stringify(updates[key])) {
-      changedFields.push(key);
-      previousValues[key] = existing[key];
+      changedFields.push(key)
+      previousValues[key] = existing[key]
     }
   }
 
-  return { changedFields, previousValues };
+  return { changedFields, previousValues }
 }
 
 function protectDeterministicFields(
   existing: SummaryRecord | null,
   updates: Record<string, unknown>,
-  isLlmGenerated: boolean
+  isLlmGenerated: boolean,
 ): Record<string, unknown> {
   if (!isLlmGenerated || !existing) {
-    return updates;
+    return updates
   }
 
-  const protectedUpdates = { ...updates };
+  const protectedUpdates = { ...updates }
   for (const field of DETERMINISTIC_FIELDS) {
     if (field in protectedUpdates) {
-      delete protectedUpdates[field];
+      delete protectedUpdates[field]
     }
   }
-  return protectedUpdates;
+  return protectedUpdates
 }
 
 export function createSummaryManager(
   summaryStore: SummaryStore,
   _transcriptStore: TranscriptStore,
-  observability?: { traceStore?: TraceStore; auditRecorder?: AuditRecorder }
+  observability?: { traceStore?: TraceStore; auditRecorder?: AuditRecorder },
 ): SummaryManager {
-  const versionStore = createVersionStore();
+  const versionStore = createVersionStore()
 
   return {
     generateWorkingSummary,
@@ -146,14 +143,12 @@ export function createSummaryManager(
     writePlannerRunSummary,
     getVersionHistory,
     getCurrentVersion,
-    storeLowConfidenceFallback
-  };
+    storeLowConfidenceFallback,
+  }
 
   function generateWorkingSummary(request: WorkingSummaryRequest): WorkingSummary {
     if (!validateSourceRefs(request.sourceRefs)) {
-      throw new Error(
-        'sourceRefs must contain at least one of: transcriptRefs, eventRange, or previousSummaryRefs'
-      );
+      throw new Error('sourceRefs must contain at least one of: transcriptRefs, eventRange, or previousSummaryRefs')
     }
 
     const summary: WorkingSummary = {
@@ -169,10 +164,10 @@ export function createSummaryManager(
       status: 'active',
       retrieval: {
         keywords: extractKeywords(request),
-        importance: 'medium'
+        importance: 'medium',
       },
-      createdAt: new Date().toISOString()
-    };
+      createdAt: new Date().toISOString(),
+    }
 
     summaryStore.save({
       summaryId: summary.summaryId,
@@ -186,8 +181,8 @@ export function createSummaryManager(
       structuredState: summary.structuredState,
       status: summary.status,
       retrieval: summary.retrieval,
-      createdAt: summary.createdAt
-    });
+      createdAt: summary.createdAt,
+    })
 
     observability?.traceStore?.createSpan({
       spanId: `span_summary_${summary.summaryId}`,
@@ -204,7 +199,7 @@ export function createSummaryManager(
         sessionId: request.sessionId,
         runId: request.runId,
       },
-    });
+    })
 
     observability?.auditRecorder?.recordSummaryWrite({
       summaryId: summary.summaryId,
@@ -213,30 +208,27 @@ export function createSummaryManager(
       sessionId: request.sessionId,
       runId: request.runId,
       correlationId: request.runId,
-    });
+    })
 
-    return summary;
+    return summary
   }
 
   function validateSourceRefs(sourceRefs: SourceRefs): boolean {
     if (!sourceRefs || typeof sourceRefs !== 'object') {
-      return false;
+      return false
     }
 
-    const hasTranscriptRefs =
-      Array.isArray(sourceRefs.transcriptRefs) &&
-      sourceRefs.transcriptRefs.length > 0;
+    const hasTranscriptRefs = Array.isArray(sourceRefs.transcriptRefs) && sourceRefs.transcriptRefs.length > 0
 
     const hasEventRange =
       sourceRefs.eventRange &&
       typeof sourceRefs.eventRange.startEventId === 'string' &&
-      typeof sourceRefs.eventRange.endEventId === 'string';
+      typeof sourceRefs.eventRange.endEventId === 'string'
 
     const hasPreviousSummaryRefs =
-      Array.isArray(sourceRefs.previousSummaryRefs) &&
-      sourceRefs.previousSummaryRefs.length > 0;
+      Array.isArray(sourceRefs.previousSummaryRefs) && sourceRefs.previousSummaryRefs.length > 0
 
-    return hasTranscriptRefs || hasEventRange || hasPreviousSummaryRefs;
+    return hasTranscriptRefs || hasEventRange || hasPreviousSummaryRefs
   }
 
   async function writeWorkingSummary(
@@ -244,16 +236,16 @@ export function createSummaryManager(
     runId: string,
     userId: string,
     content: SummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<WorkingSummary>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -266,63 +258,63 @@ export function createSummaryManager(
       structuredState: content.structuredState,
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
+    summaryStore.save(record)
 
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
     return {
       success: true,
       data: record as WorkingSummary,
-      version
-    };
+      version,
+    }
   }
 
   async function writeSessionMemory(
     sessionId: string,
     userId: string,
     content: SummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SessionMemory>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const existing = summaryStore.getSessionMemory(sessionId);
-    const now = new Date().toISOString();
+    const existing = summaryStore.getSessionMemory(sessionId)
+    const now = new Date().toISOString()
 
     const updates: Record<string, unknown> = {
       summary: content.summary,
       structuredState: content.structuredState,
       retrieval: content.retrieval,
-      updatedAt: now
-    };
+      updatedAt: now,
+    }
 
-    const protectedUpdates = protectDeterministicFields(
-      existing,
-      updates,
-      options.isLlmGenerated ?? false
-    );
+    const protectedUpdates = protectDeterministicFields(existing, updates, options.isLlmGenerated ?? false)
 
-    let record: SummaryRecord;
+    let record: SummaryRecord
 
     if (existing) {
-      const { changedFields, previousValues } = computeDiff(existing, protectedUpdates);
-      
+      const { changedFields, previousValues } = computeDiff(existing, protectedUpdates)
+
       record = {
         ...existing,
         ...protectedUpdates,
-        updatedAt: now
-      };
+        updatedAt: now,
+      }
 
       if (changedFields.length > 0) {
-        summaryStore.save(record);
-        recordVersion(record, { changedFields, previousValues }, options.sourceRefs, 
-          options.isLlmGenerated ? 'llm' : 'system');
+        summaryStore.save(record)
+        recordVersion(
+          record,
+          { changedFields, previousValues },
+          options.sourceRefs,
+          options.isLlmGenerated ? 'llm' : 'system',
+        )
       }
     } else {
       record = {
@@ -335,18 +327,18 @@ export function createSummaryManager(
         structuredState: content.structuredState,
         status: 'active',
         retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-        createdAt: now
-      };
+        createdAt: now,
+      }
 
-      summaryStore.save(record);
-      recordVersion(record, null, options.sourceRefs, 'system');
+      summaryStore.save(record)
+      recordVersion(record, null, options.sourceRefs, 'system')
     }
 
     return {
       success: true,
       data: record as SessionMemory,
-      version: versionStore.getCurrentVersion(record.summaryId)
-    };
+      version: versionStore.getCurrentVersion(record.summaryId),
+    }
   }
 
   async function writeRollingSummary(
@@ -354,16 +346,16 @@ export function createSummaryManager(
     userId: string,
     summaryType: 'rolling_5_turns' | 'rolling_10_turns',
     content: RollingSummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SummaryRecord>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -374,32 +366,32 @@ export function createSummaryManager(
       summary: content.summary,
       structuredState: {
         ...content.structuredState,
-        turnRange: content.turnRange
+        turnRange: content.turnRange,
       },
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
-    return { success: true, data: record, version };
+    return { success: true, data: record, version }
   }
 
   async function writeDailySummary(
     userId: string,
     content: SummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SummaryRecord>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -410,28 +402,28 @@ export function createSummaryManager(
       structuredState: content.structuredState,
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
-    return { success: true, data: record, version };
+    return { success: true, data: record, version }
   }
 
   async function writeWeeklySummary(
     userId: string,
     content: WeeklySummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SummaryRecord>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -441,33 +433,33 @@ export function createSummaryManager(
       summary: content.summary,
       structuredState: {
         ...content.structuredState,
-        weekRange: content.weekRange
+        weekRange: content.weekRange,
       },
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
-    return { success: true, data: record, version };
+    return { success: true, data: record, version }
   }
 
   async function writeWorkflowRunSummary(
     workflowRunId: string,
     userId: string,
     content: WorkflowRunSummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SummaryRecord>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -479,33 +471,33 @@ export function createSummaryManager(
       structuredState: {
         ...content.structuredState,
         workflowStatus: content.workflowStatus,
-        stepSummary: content.stepSummary
+        stepSummary: content.stepSummary,
       },
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
-    return { success: true, data: record, version };
+    return { success: true, data: record, version }
   }
 
   async function writeBackgroundSubagentSummary(
     backgroundRunId: string,
     userId: string,
     content: BackgroundSubagentSummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SummaryRecord>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -517,33 +509,33 @@ export function createSummaryManager(
       structuredState: {
         ...content.structuredState,
         subagentType: content.subagentType,
-        taskDescription: content.taskDescription
+        taskDescription: content.taskDescription,
       },
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
-    return { success: true, data: record, version };
+    return { success: true, data: record, version }
   }
 
   async function writeCompactSummary(
     sessionId: string,
     userId: string,
     content: CompactSummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SummaryRecord>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -555,32 +547,32 @@ export function createSummaryManager(
       structuredState: {
         ...content.structuredState,
         compactedSummaryIds: content.compactedSummaryIds,
-        compressionRatio: content.compressionRatio
+        compressionRatio: content.compressionRatio,
       },
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
-    return { success: true, data: record, version };
+    return { success: true, data: record, version }
   }
 
   async function writePlannerRunSummary(
     userId: string,
     content: PlannerRunSummaryContent,
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): Promise<SummaryWriteResult<SummaryRecord>> {
     try {
-      validateSourceRefsOrThrow(options.sourceRefs);
+      validateSourceRefsOrThrow(options.sourceRefs)
     } catch (error) {
-      return errorToResult(error);
+      return errorToResult(error)
     }
 
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -592,25 +584,25 @@ export function createSummaryManager(
       structuredState: {
         ...content.structuredState,
         planStatus: content.planStatus,
-        stepSummary: content.stepSummary
+        stepSummary: content.stepSummary,
       },
       status: 'active',
       retrieval: content.retrieval ?? { keywords: [], importance: 'medium' },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    const version = recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    const version = recordVersion(record, null, options.sourceRefs, 'system')
 
-    return { success: true, data: record, version };
+    return { success: true, data: record, version }
   }
 
   function getVersionHistory(summaryId: string, limit?: number): SummaryVersionEntry[] {
-    return versionStore.getVersionEntries(summaryId, limit);
+    return versionStore.getVersionEntries(summaryId, limit)
   }
 
   function getCurrentVersion(summaryId: string): number {
-    return versionStore.getCurrentVersion(summaryId);
+    return versionStore.getCurrentVersion(summaryId)
   }
 
   function storeLowConfidenceFallback(
@@ -618,10 +610,10 @@ export function createSummaryManager(
     userId: string,
     rawContent: unknown,
     validationErrors: string[],
-    options: SummaryWriteOptions
+    options: SummaryWriteOptions,
   ): SummaryRecord {
-    const summaryId = generateSummaryId();
-    const now = new Date().toISOString();
+    const summaryId = generateSummaryId()
+    const now = new Date().toISOString()
 
     const record: SummaryRecord = {
       summaryId,
@@ -632,30 +624,30 @@ export function createSummaryManager(
       structuredState: {
         rawContent,
         validationErrors,
-        fallbackReason: 'schema_validation_failed'
+        fallbackReason: 'schema_validation_failed',
       },
       status: 'candidate',
       retrieval: {
         keywords: ['low_confidence', 'fallback'],
-        importance: 'low'
+        importance: 'low',
       },
-      createdAt: now
-    };
+      createdAt: now,
+    }
 
-    summaryStore.save(record);
-    recordVersion(record, null, options.sourceRefs, 'system');
+    summaryStore.save(record)
+    recordVersion(record, null, options.sourceRefs, 'system')
 
-    return record;
+    return record
   }
 
   function recordVersion(
     record: SummaryRecord,
     diff: { changedFields: string[]; previousValues: Record<string, unknown> } | null,
     sourceRefs: SourceRefs,
-    createdBy: 'llm' | 'system'
+    createdBy: 'llm' | 'system',
   ): number {
-    const currentVersion = versionStore.getCurrentVersion(record.summaryId);
-    const newVersion = currentVersion + 1;
+    const currentVersion = versionStore.getCurrentVersion(record.summaryId)
+    const newVersion = currentVersion + 1
 
     const entry: SummaryVersionEntry = {
       version: newVersion,
@@ -665,67 +657,67 @@ export function createSummaryManager(
       previousValues: diff?.previousValues ?? {},
       sourceRefs,
       createdAt: new Date().toISOString(),
-      createdBy
-    };
+      createdBy,
+    }
 
-    versionStore.addVersionEntry(entry);
-    return newVersion;
+    versionStore.addVersionEntry(entry)
+    return newVersion
   }
 
   function errorToResult(error: unknown): SummaryWriteResult<never> {
-    const code = (error as Error & { code?: SummaryWriteErrorCode }).code ?? 'INVALID_SCHEMA';
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, code, message };
+    const code = (error as Error & { code?: SummaryWriteErrorCode }).code ?? 'INVALID_SCHEMA'
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return { success: false, code, message }
   }
 
   function generateSummaryText(request: WorkingSummaryRequest): string {
-    const parts: string[] = [];
+    const parts: string[] = []
 
     if (request.sourceRefs.transcriptRefs && request.sourceRefs.transcriptRefs.length > 0) {
-      parts.push(`Based on ${request.sourceRefs.transcriptRefs.length} transcript references`);
+      parts.push(`Based on ${request.sourceRefs.transcriptRefs.length} transcript references`)
     }
 
     if (request.sourceRefs.eventRange) {
       parts.push(
-        `Covering events from ${request.sourceRefs.eventRange.startEventId} to ${request.sourceRefs.eventRange.endEventId}`
-      );
+        `Covering events from ${request.sourceRefs.eventRange.startEventId} to ${request.sourceRefs.eventRange.endEventId}`,
+      )
     }
 
     if (request.sourceRefs.previousSummaryRefs && request.sourceRefs.previousSummaryRefs.length > 0) {
-      parts.push(`Building on ${request.sourceRefs.previousSummaryRefs.length} previous summaries`);
+      parts.push(`Building on ${request.sourceRefs.previousSummaryRefs.length} previous summaries`)
     }
 
     if (request.structuredState) {
-      const stateKeys = Object.keys(request.structuredState);
+      const stateKeys = Object.keys(request.structuredState)
       if (stateKeys.length > 0) {
-        parts.push(`State: ${stateKeys.join(', ')}`);
+        parts.push(`State: ${stateKeys.join(', ')}`)
       }
     }
 
-    parts.push(`Turn count: ${request.currentTurnCount}`);
+    parts.push(`Turn count: ${request.currentTurnCount}`)
 
-    return parts.join('. ') + '.';
+    return parts.join('. ') + '.'
   }
 
   function extractKeywords(request: WorkingSummaryRequest): string[] {
-    const keywords: string[] = [];
+    const keywords: string[] = []
 
     if (request.sessionId) {
-      keywords.push('session');
+      keywords.push('session')
     }
 
     if (request.structuredState) {
-      keywords.push(...Object.keys(request.structuredState));
+      keywords.push(...Object.keys(request.structuredState))
     }
 
     if (request.sourceRefs.transcriptRefs) {
-      keywords.push('transcript');
+      keywords.push('transcript')
     }
 
     if (request.sourceRefs.previousSummaryRefs) {
-      keywords.push('summary');
+      keywords.push('summary')
     }
 
-    return [...new Set(keywords)];
+    return [...new Set(keywords)]
   }
 }

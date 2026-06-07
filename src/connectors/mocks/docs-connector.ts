@@ -1,15 +1,12 @@
-import type {
-  ConnectorAdapter,
-  ConnectorCapability,
-  ConnectorCallRequest,
-} from '../types.js';
-import type { ConnectorInstance } from '../../storage/connector-store.js';
+import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest } from '../types.js'
+import type { ConnectorInstance } from '../../storage/connector-store.js'
 
 const mockDocs = [
   {
     id: 'doc-001',
     title: 'Project Proposal',
-    content: 'This is the project proposal document.\n\n## Overview\nWe propose building a new system.\n\n## Timeline\nQ1 2024: Planning\nQ2 2024: Development',
+    content:
+      'This is the project proposal document.\n\n## Overview\nWe propose building a new system.\n\n## Timeline\nQ1 2024: Planning\nQ2 2024: Development',
     createdAt: '2024-01-10T10:00:00Z',
     updatedAt: '2024-01-12T14:30:00Z',
     owner: 'user@example.com',
@@ -18,7 +15,8 @@ const mockDocs = [
   {
     id: 'doc-002',
     title: 'Meeting Notes - Jan 15',
-    content: 'Meeting Notes\n\nAttendees: John, Jane, Bob\n\nAction Items:\n1. John to send follow-up email\n2. Jane to update project timeline',
+    content:
+      'Meeting Notes\n\nAttendees: John, Jane, Bob\n\nAction Items:\n1. John to send follow-up email\n2. Jane to update project timeline',
     createdAt: '2024-01-15T15:00:00Z',
     updatedAt: '2024-01-15T15:00:00Z',
     owner: 'user@example.com',
@@ -33,47 +31,44 @@ const mockDocs = [
     owner: 'finance@company.com',
     sharedWith: ['user@example.com'],
   },
-];
+]
 
 export interface DocsSearchParams {
-  query?: string;
-  maxResults?: number;
+  query?: string
+  maxResults?: number
 }
 
 export interface DocsReadParams {
-  docId: string;
+  docId: string
 }
 
 export interface DocsCreateParams {
-  title: string;
-  content?: string;
+  title: string
+  content?: string
 }
 
 export interface DocsUpdateParams {
-  docId: string;
-  content: string;
+  docId: string
+  content: string
 }
 
 export class DocsConnectorAdapter implements ConnectorAdapter {
-  private createdDocs: Array<(typeof mockDocs)[0]> = [];
+  private createdDocs: Array<(typeof mockDocs)[0]> = []
 
-  async execute(
-    _instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown> {
-    const { operation, params } = request;
+  async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
+    const { operation, params } = request
 
     switch (operation) {
       case 'search_docs':
-        return this.searchDocs(params as unknown as DocsSearchParams);
+        return this.searchDocs(params as unknown as DocsSearchParams)
       case 'read_doc':
-        return this.readDoc(params as unknown as DocsReadParams);
+        return this.readDoc(params as unknown as DocsReadParams)
       case 'create_doc':
-        return this.createDoc(params as unknown as DocsCreateParams);
+        return this.createDoc(params as unknown as DocsCreateParams)
       case 'update_doc':
-        return this.updateDoc(params as unknown as DocsUpdateParams);
+        return this.updateDoc(params as unknown as DocsUpdateParams)
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation}`)
     }
   }
 
@@ -130,29 +125,27 @@ export class DocsConnectorAdapter implements ConnectorAdapter {
         requiresAuth: true,
         supportedOperations: ['update_doc'],
       },
-    ];
+    ]
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
-    return { healthy: true, message: 'Docs mock connector is healthy' };
+    return { healthy: true, message: 'Docs mock connector is healthy' }
   }
 
   private searchDocs(params: DocsSearchParams): {
-    docs: Array<{ id: string; title: string; updatedAt: string; owner: string }>;
-    totalResults: number;
+    docs: Array<{ id: string; title: string; updatedAt: string; owner: string }>
+    totalResults: number
   } {
-    const { query, maxResults = 10 } = params;
+    const { query, maxResults = 10 } = params
 
-    const allDocs = [...mockDocs, ...this.createdDocs];
-    let results = [...allDocs];
+    const allDocs = [...mockDocs, ...this.createdDocs]
+    let results = [...allDocs]
 
     if (query) {
-      const lowerQuery = query.toLowerCase();
+      const lowerQuery = query.toLowerCase()
       results = results.filter(
-        (doc) =>
-          doc.title.toLowerCase().includes(lowerQuery) ||
-          doc.content.toLowerCase().includes(lowerQuery)
-      );
+        (doc) => doc.title.toLowerCase().includes(lowerQuery) || doc.content.toLowerCase().includes(lowerQuery),
+      )
     }
 
     return {
@@ -163,24 +156,24 @@ export class DocsConnectorAdapter implements ConnectorAdapter {
         owner: doc.owner,
       })),
       totalResults: results.length,
-    };
+    }
   }
 
   private readDoc(params: DocsReadParams): (typeof mockDocs)[0] | null {
-    const { docId } = params;
-    const allDocs = [...mockDocs, ...this.createdDocs];
-    const doc = allDocs.find((d) => d.id === docId);
-    return doc || null;
+    const { docId } = params
+    const allDocs = [...mockDocs, ...this.createdDocs]
+    const doc = allDocs.find((d) => d.id === docId)
+    return doc || null
   }
 
   private createDoc(params: DocsCreateParams): {
-    id: string;
-    title: string;
-    createdAt: string;
-    updatedAt: string;
+    id: string
+    title: string
+    createdAt: string
+    updatedAt: string
   } {
-    const { title, content = '' } = params;
-    const now = new Date().toISOString();
+    const { title, content = '' } = params
+    const now = new Date().toISOString()
 
     const newDoc = {
       id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -190,58 +183,58 @@ export class DocsConnectorAdapter implements ConnectorAdapter {
       updatedAt: now,
       owner: 'user@example.com',
       sharedWith: [],
-    };
+    }
 
-    this.createdDocs.push(newDoc);
+    this.createdDocs.push(newDoc)
 
     return {
       id: newDoc.id,
       title: newDoc.title,
       createdAt: newDoc.createdAt,
       updatedAt: newDoc.updatedAt,
-    };
+    }
   }
 
   private updateDoc(params: DocsUpdateParams): {
-    id: string;
-    title: string;
-    updatedAt: string;
-    success: boolean;
+    id: string
+    title: string
+    updatedAt: string
+    success: boolean
   } {
-    const { docId, content } = params;
+    const { docId, content } = params
 
-    const mockIndex = mockDocs.findIndex((d) => d.id === docId);
-    const createdIndex = this.createdDocs.findIndex((d) => d.id === docId);
+    const mockIndex = mockDocs.findIndex((d) => d.id === docId)
+    const createdIndex = this.createdDocs.findIndex((d) => d.id === docId)
 
     if (mockIndex === -1 && createdIndex === -1) {
-      throw new Error(`Document not found: ${docId}`);
+      throw new Error(`Document not found: ${docId}`)
     }
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     if (mockIndex !== -1) {
-      mockDocs[mockIndex].content = content;
-      mockDocs[mockIndex].updatedAt = now;
+      mockDocs[mockIndex].content = content
+      mockDocs[mockIndex].updatedAt = now
       return {
         id: docId,
         title: mockDocs[mockIndex].title,
         updatedAt: now,
         success: true,
-      };
+      }
     }
 
-    this.createdDocs[createdIndex].content = content;
-    this.createdDocs[createdIndex].updatedAt = now;
+    this.createdDocs[createdIndex].content = content
+    this.createdDocs[createdIndex].updatedAt = now
 
     return {
       id: docId,
       title: this.createdDocs[createdIndex].title,
       updatedAt: now,
       success: true,
-    };
+    }
   }
 }
 
 export function createDocsConnectorAdapter(): DocsConnectorAdapter {
-  return new DocsConnectorAdapter();
+  return new DocsConnectorAdapter()
 }

@@ -1,25 +1,25 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js';
-import type { ArtifactStore, ArtifactType } from '../../storage/artifact-store.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { ArtifactStore, ArtifactType } from '../../storage/artifact-store.js'
 
 export interface ArtifactCreateParams {
-  title: string;
-  content: string;
-  artifactType?: ArtifactType;
+  title: string
+  content: string
+  artifactType?: ArtifactType
 }
 
 export interface ArtifactCreateResult {
-  artifactId: string;
-  name: string;
-  artifactType: ArtifactType;
-  status: string;
-  createdAt: string;
-  [key: string]: unknown;
+  artifactId: string
+  name: string
+  artifactType: ArtifactType
+  status: string
+  createdAt: string
+  [key: string]: unknown
 }
 
 export function createArtifactCreateTool(artifactStore: ArtifactStore): ToolDefinition {
   const handler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
-    const typedParams = params as ArtifactCreateParams;
-    
+    const typedParams = params as ArtifactCreateParams
+
     if (!typedParams.title) {
       return {
         success: false,
@@ -28,9 +28,9 @@ export function createArtifactCreateTool(artifactStore: ArtifactStore): ToolDefi
           message: 'Missing required field: title',
           recoverable: true,
         },
-      };
+      }
     }
-    
+
     if (!typedParams.content) {
       return {
         success: false,
@@ -39,12 +39,12 @@ export function createArtifactCreateTool(artifactStore: ArtifactStore): ToolDefi
           message: 'Missing required field: content',
           recoverable: true,
         },
-      };
+      }
     }
 
-    const artifactId = `art_${crypto.randomUUID().replace(/-/g, '')}`;
-    const artifactType = typedParams.artifactType ?? 'document';
-    const contentRef = `content://${artifactId}`;
+    const artifactId = `art_${crypto.randomUUID().replace(/-/g, '')}`
+    const artifactType = typedParams.artifactType ?? 'document'
+    const contentRef = `content://${artifactId}`
 
     const artifact = artifactStore.create({
       artifactId,
@@ -58,7 +58,7 @@ export function createArtifactCreateTool(artifactStore: ArtifactStore): ToolDefi
         contentLength: typedParams.content.length,
         createdByTool: true,
       },
-    });
+    })
 
     const result: ArtifactCreateResult = {
       artifactId: artifact.artifactId,
@@ -66,15 +66,15 @@ export function createArtifactCreateTool(artifactStore: ArtifactStore): ToolDefi
       artifactType: artifact.artifactType,
       status: artifact.status,
       createdAt: artifact.createdAt,
-    };
+    }
 
     return {
       success: true,
       data: result,
       resultPreview: `Created artifact "${artifact.name}" (${artifact.artifactId}) of type ${artifactType}`,
       structuredContent: result,
-    };
-  };
+    }
+  }
 
   return {
     name: 'artifact_create',
@@ -86,14 +86,14 @@ export function createArtifactCreateTool(artifactStore: ArtifactStore): ToolDefi
       properties: {
         title: { type: 'string', description: 'Title of the artifact' },
         content: { type: 'string', description: 'Content of the artifact' },
-        artifactType: { 
-          type: 'string', 
+        artifactType: {
+          type: 'string',
           enum: ['document', 'draft', 'image', 'report', 'spreadsheet', 'code', 'workflow'],
-          description: 'Type of the artifact' 
+          description: 'Type of the artifact',
         },
       },
       required: ['title', 'content'],
     },
     handler,
-  };
+  }
 }

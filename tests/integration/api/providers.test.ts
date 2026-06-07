@@ -1,71 +1,71 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { createApiServer } from '../../../src/api/server.js';
-import { createApiContext } from '../../../src/api/context.js';
-import type { FastifyInstance } from 'fastify';
-import type { ApiContext } from '../../../src/api/context.js';
-import { generateSessionToken, hashToken, hashPassword } from '../../../src/storage/auth-crypto.js';
-import { randomUUID } from 'crypto';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { createApiServer } from '../../../src/api/server.js'
+import { createApiContext } from '../../../src/api/context.js'
+import type { FastifyInstance } from 'fastify'
+import type { ApiContext } from '../../../src/api/context.js'
+import { generateSessionToken, hashToken, hashPassword } from '../../../src/storage/auth-crypto.js'
+import { randomUUID } from 'crypto'
 
 describe('Provider API Integration', () => {
-  let server: FastifyInstance;
-  let context: ApiContext;
-  let authToken: string;
-  let userId: string;
-  const TEST_ENCRYPTION_KEY = 'test-encryption-key-for-testing-only-do-not-use-in-production';
+  let server: FastifyInstance
+  let context: ApiContext
+  let authToken: string
+  let userId: string
+  const TEST_ENCRYPTION_KEY = 'test-encryption-key-for-testing-only-do-not-use-in-production'
 
   beforeAll(async () => {
-    process.env.APP_SECRET_KEY = TEST_ENCRYPTION_KEY;
-    
-    const contextResult = createApiContext({ dbPath: ':memory:' });
-    if ('code' in contextResult) {
-      throw new Error(`Failed to create API context: ${contextResult.message}`);
-    }
-    context = contextResult;
+    process.env.APP_SECRET_KEY = TEST_ENCRYPTION_KEY
 
-    server = await createApiServer(context);
+    const contextResult = createApiContext({ dbPath: ':memory:' })
+    if ('code' in contextResult) {
+      throw new Error(`Failed to create API context: ${contextResult.message}`)
+    }
+    context = contextResult
+
+    server = await createApiServer(context)
 
     // Create a test user
-    userId = randomUUID();
+    userId = randomUUID()
     context.stores.userStore.create({
       userId,
       username: 'testuser',
       passwordHash: await hashPassword('testpassword'),
-    });
+    })
 
     // Create a session token for authentication
-    authToken = generateSessionToken();
-    const tokenHash = hashToken(authToken);
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    authToken = generateSessionToken()
+    const tokenHash = hashToken(authToken)
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     context.stores.authTokenStore.create({
       tokenHash,
       userId,
       expiresAt,
-    });
-  });
+    })
+  })
 
   afterAll(async () => {
-    delete process.env.APP_SECRET_KEY;
-    await server.close();
-    context.connection.close();
-  });
+    delete process.env.APP_SECRET_KEY
+    await server.close()
+    context.connection.close()
+  })
 
   beforeEach(() => {
     // Clean up providers before each test
-    const providers = context.providerConfigStore.listByUser(userId);
+    const providers = context.providerConfigStore.listByUser(userId)
     for (const provider of providers) {
-      context.providerConfigStore.remove(provider.providerId);
+      context.providerConfigStore.remove(provider.providerId)
     }
-  });
+  })
 
   describe('GET /api/providers', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/v1/providers',
-      });
+      })
 
-      expect(response.statusCode).toBe(401);
-    });
+      expect(response.statusCode).toBe(401)
+    })
 
     it('should return empty array when no providers exist', async () => {
       const response = await server.inject({
@@ -74,12 +74,12 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data).toEqual([]);
-    });
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data).toEqual([])
+    })
 
     it('should return list of providers for authenticated user', async () => {
       // Create a provider first
@@ -90,7 +90,7 @@ describe('Provider API Integration', () => {
         displayName: 'Test OpenAI',
         apiKey: 'sk-test1234567890',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'GET',
@@ -98,22 +98,22 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data).toHaveLength(1);
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data).toHaveLength(1)
       expect(body.data[0]).toMatchObject({
         providerType: 'openai',
         displayName: 'Test OpenAI',
         enabled: true,
         configured: true,
         apiKeyLast4: '7890',
-      });
-      expect(body.data[0].apiKey).toBeUndefined();
-      expect(body.data[0].encryptedApiKey).toBeUndefined();
-    });
-  });
+      })
+      expect(body.data[0].apiKey).toBeUndefined()
+      expect(body.data[0].encryptedApiKey).toBeUndefined()
+    })
+  })
 
   describe('POST /api/providers', () => {
     it('should return 401 without authentication', async () => {
@@ -124,10 +124,10 @@ describe('Provider API Integration', () => {
           providerType: 'openai',
           apiKey: 'sk-test1234567890',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(401);
-    });
+      expect(response.statusCode).toBe(401)
+    })
 
     it('should create a new OpenAI provider', async () => {
       const response = await server.inject({
@@ -141,20 +141,20 @@ describe('Provider API Integration', () => {
           displayName: 'My OpenAI',
           apiKey: 'sk-test1234567890',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
       expect(body.data).toMatchObject({
         providerType: 'openai',
         displayName: 'My OpenAI',
         enabled: true,
         configured: true,
         apiKeyLast4: '7890',
-      });
-      expect(body.data.providerId).toBeDefined();
-      expect(body.data.apiKey).toBeUndefined();
-    });
+      })
+      expect(body.data.providerId).toBeDefined()
+      expect(body.data.apiKey).toBeUndefined()
+    })
 
     it('should create a new Ollama provider', async () => {
       const response = await server.inject({
@@ -168,17 +168,17 @@ describe('Provider API Integration', () => {
           displayName: 'Local Ollama',
           baseUrl: 'http://localhost:11434',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
       expect(body.data).toMatchObject({
         providerType: 'ollama',
         displayName: 'Local Ollama',
         enabled: true,
         baseUrl: 'http://localhost:11434',
-      });
-    });
+      })
+    })
 
     it('should create a new custom provider', async () => {
       const response = await server.inject({
@@ -194,10 +194,10 @@ describe('Provider API Integration', () => {
           baseUrl: 'https://api.example.com/v1',
           selectedModel: 'custom-model',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
       expect(body.data).toMatchObject({
         providerType: 'custom',
         displayName: 'Custom Compatible API',
@@ -206,9 +206,9 @@ describe('Provider API Integration', () => {
         apiKeyLast4: '7890',
         baseUrl: 'https://api.example.com/v1',
         selectedModel: 'custom-model',
-      });
-      expect(body.data.apiKey).toBeUndefined();
-    });
+      })
+      expect(body.data.apiKey).toBeUndefined()
+    })
 
     it('should return 400 for invalid provider type', async () => {
       const response = await server.inject({
@@ -221,12 +221,12 @@ describe('Provider API Integration', () => {
           providerType: 'invalid',
           apiKey: 'test',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('INVALID_PROVIDER_TYPE');
-    });
+      expect(response.statusCode).toBe(400)
+      const body = JSON.parse(response.body)
+      expect(body.error.code).toBe('INVALID_PROVIDER_TYPE')
+    })
 
     it('should return 400 when OpenAI provider missing apiKey', async () => {
       const response = await server.inject({
@@ -239,12 +239,12 @@ describe('Provider API Integration', () => {
           providerType: 'openai',
           displayName: 'Test',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('API_KEY_REQUIRED');
-    });
+      expect(response.statusCode).toBe(400)
+      const body = JSON.parse(response.body)
+      expect(body.error.code).toBe('API_KEY_REQUIRED')
+    })
 
     it('should create Ollama provider with catalog default baseUrl when not provided', async () => {
       const response = await server.inject({
@@ -257,15 +257,15 @@ describe('Provider API Integration', () => {
           providerType: 'ollama',
           displayName: 'Test',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
-      expect(body.data.providerType).toBe('ollama');
-      expect(body.data.baseUrl).toBe('http://localhost:11434');
-      expect(body.data.family).toBe('ollama');
-      expect(body.data.protocol).toBe('ollama_chat');
-    });
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data.providerType).toBe('ollama')
+      expect(body.data.baseUrl).toBe('http://localhost:11434')
+      expect(body.data.family).toBe('ollama')
+      expect(body.data.protocol).toBe('ollama_chat')
+    })
 
     it('should create provider with runtime metadata without leaking header values', async () => {
       const response = await server.inject({
@@ -289,10 +289,10 @@ describe('Provider API Integration', () => {
           models: [{ modelId: 'custom-model', limits: { outputTokens: 8192 } }],
           options: { tenant: 'enterprise' },
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
       expect(body.data).toMatchObject({
         providerType: 'custom',
         displayName: 'Metadata Provider',
@@ -305,9 +305,9 @@ describe('Provider API Integration', () => {
         capabilities: { functionCalling: true, jsonMode: true },
         models: [{ modelId: 'custom-model', limits: { outputTokens: 8192 } }],
         options: { tenant: 'enterprise' },
-      });
-      expect(body.data.headers).toBeUndefined();
-      expect(JSON.stringify(body.data)).not.toContain('secret-token');
+      })
+      expect(body.data.headers).toBeUndefined()
+      expect(JSON.stringify(body.data)).not.toContain('secret-token')
 
       const getResponse = await server.inject({
         method: 'GET',
@@ -315,12 +315,12 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
-      const getBody = JSON.parse(getResponse.body);
-      expect(getBody.data.headersConfigured).toBe(true);
-      expect(getBody.data.headers).toBeUndefined();
-      expect(JSON.stringify(getBody.data)).not.toContain('secret-token');
-    });
+      })
+      const getBody = JSON.parse(getResponse.body)
+      expect(getBody.data.headersConfigured).toBe(true)
+      expect(getBody.data.headers).toBeUndefined()
+      expect(JSON.stringify(getBody.data)).not.toContain('secret-token')
+    })
 
     it('should return 400 when custom provider missing apiKey', async () => {
       const response = await server.inject({
@@ -334,12 +334,12 @@ describe('Provider API Integration', () => {
           displayName: 'Custom API',
           baseUrl: 'https://api.example.com/v1',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('API_KEY_REQUIRED');
-    });
+      expect(response.statusCode).toBe(400)
+      const body = JSON.parse(response.body)
+      expect(body.error.code).toBe('API_KEY_REQUIRED')
+    })
 
     it('should return 400 when custom provider missing baseUrl', async () => {
       const response = await server.inject({
@@ -353,13 +353,13 @@ describe('Provider API Integration', () => {
           displayName: 'Custom API',
           apiKey: 'custom-key-1234567890',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error.code).toBe('BASE_URL_REQUIRED');
-    });
-  });
+      expect(response.statusCode).toBe(400)
+      const body = JSON.parse(response.body)
+      expect(body.error.code).toBe('BASE_URL_REQUIRED')
+    })
+  })
 
   describe('PATCH /api/providers/:providerId', () => {
     it('should return 401 without authentication', async () => {
@@ -369,10 +369,10 @@ describe('Provider API Integration', () => {
         payload: {
           displayName: 'Updated',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(401);
-    });
+      expect(response.statusCode).toBe(401)
+    })
 
     it('should update provider display name', async () => {
       const provider = context.providerConfigStore.create({
@@ -382,7 +382,7 @@ describe('Provider API Integration', () => {
         displayName: 'Original Name',
         apiKey: 'sk-test1234567890',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'PATCH',
@@ -393,12 +393,12 @@ describe('Provider API Integration', () => {
         payload: {
           displayName: 'Updated Name',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data.displayName).toBe('Updated Name');
-    });
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.displayName).toBe('Updated Name')
+    })
 
     it('should update runtime metadata fields', async () => {
       const provider = context.providerConfigStore.create({
@@ -408,7 +408,7 @@ describe('Provider API Integration', () => {
         displayName: 'Metadata Update Provider',
         apiKey: 'sk-test1234567890',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'PATCH',
@@ -426,10 +426,10 @@ describe('Provider API Integration', () => {
           models: [{ modelId: 'gpt-4o-mini', displayName: 'GPT 4o Mini Override' }],
           options: { routing: 'primary' },
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
       expect(body.data).toMatchObject({
         family: 'openai_compatible',
         protocol: 'openai_chat',
@@ -439,10 +439,10 @@ describe('Provider API Integration', () => {
         capabilities: { promptCache: true },
         models: [{ modelId: 'gpt-4o-mini', displayName: 'GPT 4o Mini Override' }],
         options: { routing: 'primary' },
-      });
-      expect(body.data.headers).toBeUndefined();
-      expect(JSON.stringify(body.data)).not.toContain('org-secret');
-    });
+      })
+      expect(body.data.headers).toBeUndefined()
+      expect(JSON.stringify(body.data)).not.toContain('org-secret')
+    })
 
     it('should return 404 for non-existent provider', async () => {
       const response = await server.inject({
@@ -454,18 +454,18 @@ describe('Provider API Integration', () => {
         payload: {
           displayName: 'Updated',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(404);
-    });
+      expect(response.statusCode).toBe(404)
+    })
 
     it('should return 403 when accessing other user provider', async () => {
-      const otherUserId = randomUUID();
+      const otherUserId = randomUUID()
       context.stores.userStore.create({
         userId: otherUserId,
         username: 'otheruser',
         passwordHash: await hashPassword('password'),
-      });
+      })
 
       const otherProvider = context.providerConfigStore.create({
         providerId: randomUUID(),
@@ -474,7 +474,7 @@ describe('Provider API Integration', () => {
         displayName: 'Other Provider',
         apiKey: 'sk-other1234567890',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'PATCH',
@@ -485,21 +485,21 @@ describe('Provider API Integration', () => {
         payload: {
           displayName: 'Hacked',
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(403);
-    });
-  });
+      expect(response.statusCode).toBe(403)
+    })
+  })
 
   describe('DELETE /api/providers/:providerId', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'DELETE',
         url: '/api/v1/providers/test-id',
-      });
+      })
 
-      expect(response.statusCode).toBe(401);
-    });
+      expect(response.statusCode).toBe(401)
+    })
 
     it('should delete provider', async () => {
       const provider = context.providerConfigStore.create({
@@ -509,7 +509,7 @@ describe('Provider API Integration', () => {
         displayName: 'To Delete',
         apiKey: 'sk-test1234567890',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'DELETE',
@@ -517,9 +517,9 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(204);
+      expect(response.statusCode).toBe(204)
 
       const getResponse = await server.inject({
         method: 'GET',
@@ -527,10 +527,10 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
-      const body = JSON.parse(getResponse.body);
-      expect(body.data).toHaveLength(0);
-    });
+      })
+      const body = JSON.parse(getResponse.body)
+      expect(body.data).toHaveLength(0)
+    })
 
     it('should return 404 for non-existent provider', async () => {
       const response = await server.inject({
@@ -539,18 +539,18 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(404);
-    });
+      expect(response.statusCode).toBe(404)
+    })
 
     it('should return 403 when deleting other user provider', async () => {
-      const otherUserId = randomUUID();
+      const otherUserId = randomUUID()
       context.stores.userStore.create({
         userId: otherUserId,
         username: 'otheruser2',
         passwordHash: await hashPassword('password'),
-      });
+      })
 
       const otherProvider = context.providerConfigStore.create({
         providerId: randomUUID(),
@@ -559,7 +559,7 @@ describe('Provider API Integration', () => {
         displayName: 'Other Provider',
         apiKey: 'sk-other1234567890',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'DELETE',
@@ -567,21 +567,21 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(403);
-    });
-  });
+      expect(response.statusCode).toBe(403)
+    })
+  })
 
   describe('POST /api/providers/:providerId/test', () => {
     it('should return 401 without authentication', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/providers/test-id/test',
-      });
+      })
 
-      expect(response.statusCode).toBe(401);
-    });
+      expect(response.statusCode).toBe(401)
+    })
 
     it('should test connection and return result', async () => {
       const provider = context.providerConfigStore.create({
@@ -591,7 +591,7 @@ describe('Provider API Integration', () => {
         displayName: 'Test Ollama',
         baseUrl: 'http://invalid-host:11434',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -599,14 +599,14 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data).toHaveProperty('success');
-      expect(body.data).toHaveProperty('latencyMs');
-      expect(typeof body.data.latencyMs).toBe('number');
-    });
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data).toHaveProperty('success')
+      expect(body.data).toHaveProperty('latencyMs')
+      expect(typeof body.data.latencyMs).toBe('number')
+    })
 
     it('should test custom provider connection and return result', async () => {
       const provider = context.providerConfigStore.create({
@@ -617,7 +617,7 @@ describe('Provider API Integration', () => {
         apiKey: 'custom-key-1234567890',
         baseUrl: 'not-a-valid-url',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -625,16 +625,16 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
       expect(body.data).toMatchObject({
         success: false,
         latencyMs: 0,
         error: 'Invalid base URL format',
-      });
-    });
+      })
+    })
 
     it('should include network error details when custom provider connection fails', async () => {
       const provider = context.providerConfigStore.create({
@@ -645,7 +645,7 @@ describe('Provider API Integration', () => {
         apiKey: 'custom-key-1234567890',
         baseUrl: 'http://127.0.0.1:1/v1',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -653,15 +653,15 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data.success).toBe(false);
-      expect(body.data.error).toContain('Connection error:');
-      expect(body.data.error).toContain('127.0.0.1:1');
-      expect(body.data.error.length).toBeGreaterThan('Connection error:'.length);
-    });
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(false)
+      expect(body.data.error).toContain('Connection error:')
+      expect(body.data.error).toContain('127.0.0.1:1')
+      expect(body.data.error.length).toBeGreaterThan('Connection error:'.length)
+    })
 
     it('should use configured OpenAI base URL when testing connection', async () => {
       const provider = context.providerConfigStore.create({
@@ -672,7 +672,7 @@ describe('Provider API Integration', () => {
         apiKey: 'sk-test1234567890',
         baseUrl: 'http://127.0.0.1:1/v1',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -680,14 +680,14 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data.success).toBe(false);
-      expect(body.data.error).toContain('http://127.0.0.1:1/v1/models');
-      expect(body.data.error).not.toContain('api.openai.com');
-    });
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(false)
+      expect(body.data.error).toContain('http://127.0.0.1:1/v1/models')
+      expect(body.data.error).not.toContain('api.openai.com')
+    })
 
     it('should use configured OpenRouter base URL when testing connection', async () => {
       const provider = context.providerConfigStore.create({
@@ -698,7 +698,7 @@ describe('Provider API Integration', () => {
         apiKey: 'sk-or-test1234567890',
         baseUrl: 'http://127.0.0.1:1/api/v1',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -706,14 +706,14 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data.success).toBe(false);
-      expect(body.data.error).toContain('http://127.0.0.1:1/api/v1/models');
-      expect(body.data.error).not.toContain('openrouter.ai');
-    });
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(false)
+      expect(body.data.error).toContain('http://127.0.0.1:1/api/v1/models')
+      expect(body.data.error).not.toContain('openrouter.ai')
+    })
 
     it('should append models directly for custom versioned API paths', async () => {
       const provider = context.providerConfigStore.create({
@@ -724,7 +724,7 @@ describe('Provider API Integration', () => {
         apiKey: 'custom-key-1234567890',
         baseUrl: 'http://127.0.0.1:1/api/coding/v3',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -732,14 +732,14 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.data.success).toBe(false);
-      expect(body.data.error).toContain('http://127.0.0.1:1/api/coding/v3/models');
-      expect(body.data.error).not.toContain('/api/v1/coding/v3/v1/models');
-    });
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(false)
+      expect(body.data.error).toContain('http://127.0.0.1:1/api/coding/v3/models')
+      expect(body.data.error).not.toContain('/api/v1/coding/v3/v1/models')
+    })
 
     it('should return 404 for non-existent provider', async () => {
       const response = await server.inject({
@@ -748,18 +748,18 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(404);
-    });
+      expect(response.statusCode).toBe(404)
+    })
 
     it('should return 403 when testing other user provider', async () => {
-      const otherUserId = randomUUID();
+      const otherUserId = randomUUID()
       context.stores.userStore.create({
         userId: otherUserId,
         username: 'otheruser3',
         passwordHash: await hashPassword('password'),
-      });
+      })
 
       const otherProvider = context.providerConfigStore.create({
         providerId: randomUUID(),
@@ -768,7 +768,7 @@ describe('Provider API Integration', () => {
         displayName: 'Other Ollama',
         baseUrl: 'http://localhost:11434',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -776,10 +776,10 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(403);
-    });
+      expect(response.statusCode).toBe(403)
+    })
 
     it('should not include API key in error messages', async () => {
       const provider = context.providerConfigStore.create({
@@ -789,7 +789,7 @@ describe('Provider API Integration', () => {
         displayName: 'Test OpenAI',
         apiKey: 'sk-secretapikey123',
         enabled: true,
-      });
+      })
 
       const response = await server.inject({
         method: 'POST',
@@ -797,12 +797,12 @@ describe('Provider API Integration', () => {
         headers: {
           cookie: `agent-platform-session=${authToken}`,
         },
-      });
+      })
 
-      expect(response.statusCode).toBe(200);
-      const responseBody = response.body;
-      expect(responseBody).not.toContain('sk-secretapikey123');
-      expect(responseBody).not.toContain('secretapikey');
-    });
-  });
-});
+      expect(response.statusCode).toBe(200)
+      const responseBody = response.body
+      expect(responseBody).not.toContain('sk-secretapikey123')
+      expect(responseBody).not.toContain('secretapikey')
+    })
+  })
+})

@@ -4,32 +4,32 @@
  * for protecting the system against resource exhaustion.
  */
 
-import type { MetricRecord, MetricStore } from '../observability/types.js';
-import type { ConnectionManager } from '../storage/connection.js';
+import type { MetricRecord, MetricStore } from '../observability/types.js'
+import type { ConnectionManager } from '../storage/connection.js'
 
 // ============================================================================
 // Resource Limit Error
 // ============================================================================
 
 export interface ResourceLimitError {
-  code: 'resource_limit_exceeded';
-  message: string;
-  limitType: string;
-  currentValue: number;
-  maxValue: number;
+  code: 'resource_limit_exceeded'
+  message: string
+  limitType: string
+  currentValue: number
+  maxValue: number
 }
 
 export class ResourceLimitExceededError extends Error implements ResourceLimitError {
-  code: 'resource_limit_exceeded' = 'resource_limit_exceeded';
-  limitType: string;
-  currentValue: number;
-  maxValue: number;
+  code: 'resource_limit_exceeded' = 'resource_limit_exceeded'
+  limitType: string
+  currentValue: number
+  maxValue: number
 
   constructor(limitType: string, currentValue: number, maxValue: number, message?: string) {
-    super(message || `Resource limit exceeded: ${limitType} (${currentValue}/${maxValue})`);
-    this.limitType = limitType;
-    this.currentValue = currentValue;
-    this.maxValue = maxValue;
+    super(message || `Resource limit exceeded: ${limitType} (${currentValue}/${maxValue})`)
+    this.limitType = limitType
+    this.currentValue = currentValue
+    this.maxValue = maxValue
   }
 
   toJSON(): ResourceLimitError {
@@ -39,7 +39,7 @@ export class ResourceLimitExceededError extends Error implements ResourceLimitEr
       limitType: this.limitType,
       currentValue: this.currentValue,
       maxValue: this.maxValue,
-    };
+    }
   }
 }
 
@@ -48,16 +48,16 @@ export class ResourceLimitExceededError extends Error implements ResourceLimitEr
 // ============================================================================
 
 export interface ResourceConfig {
-  maxConcurrentForegroundTurns: number;
-  maxConcurrentPlannerRunsPerSession: number;
-  maxConcurrentPlannerRunsPerUser: number;
-  maxConcurrentBackgroundRuns: number;
-  maxConcurrentWorkflowRuns: number;
-  maxConcurrentLLMCalls: number;
-  maxConcurrentToolExecutions: number;
-  maxCacheSizeMB: number;
-  maxContextTokens: number;
-  sqliteQueueMaxDepth: number;
+  maxConcurrentForegroundTurns: number
+  maxConcurrentPlannerRunsPerSession: number
+  maxConcurrentPlannerRunsPerUser: number
+  maxConcurrentBackgroundRuns: number
+  maxConcurrentWorkflowRuns: number
+  maxConcurrentLLMCalls: number
+  maxConcurrentToolExecutions: number
+  maxCacheSizeMB: number
+  maxContextTokens: number
+  sqliteQueueMaxDepth: number
 }
 
 export const DEFAULT_RESOURCE_CONFIG: ResourceConfig = {
@@ -71,7 +71,7 @@ export const DEFAULT_RESOURCE_CONFIG: ResourceConfig = {
   maxCacheSizeMB: 256,
   maxContextTokens: 8000,
   sqliteQueueMaxDepth: 100,
-};
+}
 
 // ============================================================================
 // Budget Types
@@ -87,26 +87,26 @@ export type ResourceType =
   | 'tool_execution'
   | 'cache_memory'
   | 'context_tokens'
-  | 'sqlite_queue';
+  | 'sqlite_queue'
 
 export interface BudgetRequest {
-  resourceType: ResourceType;
-  sessionId?: string;
-  userId?: string;
-  requestedTokens?: number;
-  requestedMemoryMB?: number;
+  resourceType: ResourceType
+  sessionId?: string
+  userId?: string
+  requestedTokens?: number
+  requestedMemoryMB?: number
 }
 
 export interface BudgetCheckResult {
-  allowed: boolean;
-  error?: ResourceLimitError;
+  allowed: boolean
+  error?: ResourceLimitError
 }
 
 export interface BudgetUsage {
-  resourceType: ResourceType;
-  current: number;
-  max: number;
-  percentage: number;
+  resourceType: ResourceType
+  current: number
+  max: number
+  percentage: number
 }
 
 // ============================================================================
@@ -114,132 +114,132 @@ export interface BudgetUsage {
 // ============================================================================
 
 export interface ConcurrencyToken {
-  resourceType: ResourceType;
-  tokenId: string;
-  acquiredAt: string;
-  metadata?: Record<string, string>;
+  resourceType: ResourceType
+  tokenId: string
+  acquiredAt: string
+  metadata?: Record<string, string>
 }
 
 export interface ConcurrencyLimiter {
-  acquire(resourceType: ResourceType, metadata?: Record<string, string>): ConcurrencyToken;
-  release(token: ConcurrencyToken): void;
-  getActiveCount(resourceType: ResourceType): number;
-  getActiveCountForSession(resourceType: ResourceType, sessionId: string): number;
-  getActiveCountForUser(resourceType: ResourceType, userId: string): number;
+  acquire(resourceType: ResourceType, metadata?: Record<string, string>): ConcurrencyToken
+  release(token: ConcurrencyToken): void
+  getActiveCount(resourceType: ResourceType): number
+  getActiveCountForSession(resourceType: ResourceType, sessionId: string): number
+  getActiveCountForUser(resourceType: ResourceType, userId: string): number
 }
 
 interface ActiveSlot {
-  tokenId: string;
-  resourceType: ResourceType;
-  sessionId?: string;
-  userId?: string;
-  acquiredAt: string;
+  tokenId: string
+  resourceType: ResourceType
+  sessionId?: string
+  userId?: string
+  acquiredAt: string
 }
 
 class ConcurrencyLimiterImpl implements ConcurrencyLimiter {
-  private activeSlots: Map<string, ActiveSlot> = new Map();
-  private config: ResourceConfig;
+  private activeSlots: Map<string, ActiveSlot> = new Map()
+  private config: ResourceConfig
 
   constructor(config: ResourceConfig) {
-    this.config = config;
+    this.config = config
   }
 
   acquire(resourceType: ResourceType, metadata?: Record<string, string>): ConcurrencyToken {
-    const limit = this.getLimitForResourceType(resourceType);
-    const currentCount = this.getActiveCount(resourceType);
+    const limit = this.getLimitForResourceType(resourceType)
+    const currentCount = this.getActiveCount(resourceType)
 
     if (currentCount >= limit) {
       throw new ResourceLimitExceededError(
         resourceType,
         currentCount,
         limit,
-        `Concurrency limit exceeded for ${resourceType}`
-      );
+        `Concurrency limit exceeded for ${resourceType}`,
+      )
     }
 
-    const tokenId = `${resourceType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tokenId = `${resourceType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const slot: ActiveSlot = {
       tokenId,
       resourceType,
       sessionId: metadata?.sessionId,
       userId: metadata?.userId,
       acquiredAt: new Date().toISOString(),
-    };
+    }
 
-    this.activeSlots.set(tokenId, slot);
+    this.activeSlots.set(tokenId, slot)
 
     return {
       resourceType,
       tokenId,
       acquiredAt: slot.acquiredAt,
       metadata,
-    };
+    }
   }
 
   release(token: ConcurrencyToken): void {
-    this.activeSlots.delete(token.tokenId);
+    this.activeSlots.delete(token.tokenId)
   }
 
   getActiveCount(resourceType: ResourceType): number {
-    let count = 0;
+    let count = 0
     for (const slot of this.activeSlots.values()) {
       if (slot.resourceType === resourceType) {
-        count++;
+        count++
       }
     }
-    return count;
+    return count
   }
 
   getActiveCountForSession(resourceType: ResourceType, sessionId: string): number {
-    let count = 0;
+    let count = 0
     for (const slot of this.activeSlots.values()) {
       if (slot.resourceType === resourceType && slot.sessionId === sessionId) {
-        count++;
+        count++
       }
     }
-    return count;
+    return count
   }
 
   getActiveCountForUser(resourceType: ResourceType, userId: string): number {
-    let count = 0;
+    let count = 0
     for (const slot of this.activeSlots.values()) {
       if (slot.resourceType === resourceType && slot.userId === userId) {
-        count++;
+        count++
       }
     }
-    return count;
+    return count
   }
 
   private getLimitForResourceType(resourceType: ResourceType): number {
     switch (resourceType) {
       case 'foreground_turn':
-        return this.config.maxConcurrentForegroundTurns;
+        return this.config.maxConcurrentForegroundTurns
       case 'planner_run_session':
-        return this.config.maxConcurrentPlannerRunsPerSession;
+        return this.config.maxConcurrentPlannerRunsPerSession
       case 'planner_run_user':
-        return this.config.maxConcurrentPlannerRunsPerUser;
+        return this.config.maxConcurrentPlannerRunsPerUser
       case 'background_run':
-        return this.config.maxConcurrentBackgroundRuns;
+        return this.config.maxConcurrentBackgroundRuns
       case 'workflow_run':
-        return this.config.maxConcurrentWorkflowRuns;
+        return this.config.maxConcurrentWorkflowRuns
       case 'llm_call':
-        return this.config.maxConcurrentLLMCalls;
+        return this.config.maxConcurrentLLMCalls
       case 'tool_execution':
-        return this.config.maxConcurrentToolExecutions;
+        return this.config.maxConcurrentToolExecutions
       case 'cache_memory':
-        return this.config.maxCacheSizeMB;
+        return this.config.maxCacheSizeMB
       case 'context_tokens':
-        return this.config.maxContextTokens;
+        return this.config.maxContextTokens
       case 'sqlite_queue':
-        return this.config.sqliteQueueMaxDepth;
+        return this.config.sqliteQueueMaxDepth
       default:
-        return Number.MAX_SAFE_INTEGER;
+        return Number.MAX_SAFE_INTEGER
     }
   }
 }
 
 export function createConcurrencyLimiter(config: ResourceConfig): ConcurrencyLimiter {
-  return new ConcurrencyLimiterImpl(config);
+  return new ConcurrencyLimiterImpl(config)
 }
 
 // ============================================================================
@@ -247,120 +247,120 @@ export function createConcurrencyLimiter(config: ResourceConfig): ConcurrencyLim
 // ============================================================================
 
 export interface ResourceBudgetManager {
-  checkBudget(request: BudgetRequest): BudgetCheckResult;
-  getBudgetUsage(): BudgetUsage[];
-  getBudgetUsageForType(resourceType: ResourceType): BudgetUsage | null;
-  configureBudget(config: ResourceConfig): void;
-  getConfig(): ResourceConfig;
+  checkBudget(request: BudgetRequest): BudgetCheckResult
+  getBudgetUsage(): BudgetUsage[]
+  getBudgetUsageForType(resourceType: ResourceType): BudgetUsage | null
+  configureBudget(config: ResourceConfig): void
+  getConfig(): ResourceConfig
 }
 
 class ResourceBudgetManagerImpl implements ResourceBudgetManager {
-  private config: ResourceConfig;
-  private limiter: ConcurrencyLimiter;
-  private connection?: ConnectionManager;
-  private metricStore?: MetricStore;
+  private config: ResourceConfig
+  private limiter: ConcurrencyLimiter
+  private connection?: ConnectionManager
+  private metricStore?: MetricStore
 
   constructor(
     config: ResourceConfig,
     limiter: ConcurrencyLimiter,
     connection?: ConnectionManager,
-    metricStore?: MetricStore
+    metricStore?: MetricStore,
   ) {
-    this.config = config;
-    this.limiter = limiter;
-    this.connection = connection;
-    this.metricStore = metricStore;
+    this.config = config
+    this.limiter = limiter
+    this.connection = connection
+    this.metricStore = metricStore
   }
 
   checkBudget(request: BudgetRequest): BudgetCheckResult {
     if (request.resourceType === 'planner_run_session' && request.sessionId) {
-      const currentCount = this.limiter.getActiveCountForSession('planner_run_session', request.sessionId);
+      const currentCount = this.limiter.getActiveCountForSession('planner_run_session', request.sessionId)
       if (currentCount >= this.config.maxConcurrentPlannerRunsPerSession) {
-        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'planner_run_session', sessionId: request.sessionId });
+        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'planner_run_session', sessionId: request.sessionId })
         return {
           allowed: false,
           error: new ResourceLimitExceededError(
             'planner_run_session',
             currentCount,
             this.config.maxConcurrentPlannerRunsPerSession,
-            `Planner run limit exceeded for session ${request.sessionId}`
+            `Planner run limit exceeded for session ${request.sessionId}`,
           ),
-        };
+        }
       }
     }
 
     if (request.resourceType === 'planner_run_user' && request.userId) {
-      const currentCount = this.limiter.getActiveCountForUser('planner_run_user', request.userId);
+      const currentCount = this.limiter.getActiveCountForUser('planner_run_user', request.userId)
       if (currentCount >= this.config.maxConcurrentPlannerRunsPerUser) {
-        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'planner_run_user', userId: request.userId });
+        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'planner_run_user', userId: request.userId })
         return {
           allowed: false,
           error: new ResourceLimitExceededError(
             'planner_run_user',
             currentCount,
             this.config.maxConcurrentPlannerRunsPerUser,
-            `Planner run limit exceeded for user ${request.userId}`
+            `Planner run limit exceeded for user ${request.userId}`,
           ),
-        };
+        }
       }
     }
 
     if (request.resourceType === 'context_tokens' && request.requestedTokens) {
       if (request.requestedTokens > this.config.maxContextTokens) {
-        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'context_tokens' });
+        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'context_tokens' })
         return {
           allowed: false,
           error: new ResourceLimitExceededError(
             'context_tokens',
             request.requestedTokens,
             this.config.maxContextTokens,
-            `Context token limit exceeded: ${request.requestedTokens} > ${this.config.maxContextTokens}`
+            `Context token limit exceeded: ${request.requestedTokens} > ${this.config.maxContextTokens}`,
           ),
-        };
+        }
       }
     }
 
     if (request.resourceType === 'sqlite_queue' && this.connection) {
-      const queueDepth = this.getSQLiteQueueDepth();
+      const queueDepth = this.getSQLiteQueueDepth()
       if (queueDepth >= this.config.sqliteQueueMaxDepth) {
-        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'sqlite_queue' });
+        this.recordBudgetMetric('limit_exceeded', 1, { limitType: 'sqlite_queue' })
         return {
           allowed: false,
           error: new ResourceLimitExceededError(
             'sqlite_queue',
             queueDepth,
             this.config.sqliteQueueMaxDepth,
-            `SQLite queue depth limit exceeded`
+            `SQLite queue depth limit exceeded`,
           ),
-        };
+        }
       }
     }
 
     try {
-      const limit = this.getLimitForResourceType(request.resourceType);
-      const currentCount = this.limiter.getActiveCount(request.resourceType);
+      const limit = this.getLimitForResourceType(request.resourceType)
+      const currentCount = this.limiter.getActiveCount(request.resourceType)
       if (currentCount >= limit) {
-        this.recordBudgetMetric('limit_exceeded', 1, { limitType: request.resourceType });
+        this.recordBudgetMetric('limit_exceeded', 1, { limitType: request.resourceType })
         return {
           allowed: false,
           error: new ResourceLimitExceededError(
             request.resourceType,
             currentCount,
             limit,
-            `Concurrency limit exceeded for ${request.resourceType}`
+            `Concurrency limit exceeded for ${request.resourceType}`,
           ),
-        };
+        }
       }
     } catch (error) {
       if (error instanceof ResourceLimitExceededError) {
-        this.recordBudgetMetric('limit_exceeded', 1, { limitType: request.resourceType });
-        return { allowed: false, error };
+        this.recordBudgetMetric('limit_exceeded', 1, { limitType: request.resourceType })
+        return { allowed: false, error }
       }
-      throw error;
+      throw error
     }
 
-    this.recordBudgetMetric('check_allowed', 1, { resourceType: request.resourceType });
-    return { allowed: true };
+    this.recordBudgetMetric('check_allowed', 1, { resourceType: request.resourceType })
+    return { allowed: true }
   }
 
   getBudgetUsage(): BudgetUsage[] {
@@ -375,69 +375,69 @@ class ResourceBudgetManagerImpl implements ResourceBudgetManager {
       'cache_memory',
       'context_tokens',
       'sqlite_queue',
-    ];
+    ]
 
-    return types.map((type) => this.getBudgetUsageForType(type)).filter((usage): usage is BudgetUsage => usage !== null);
+    return types.map((type) => this.getBudgetUsageForType(type)).filter((usage): usage is BudgetUsage => usage !== null)
   }
 
   getBudgetUsageForType(resourceType: ResourceType): BudgetUsage | null {
-    const limit = this.getLimitForResourceType(resourceType);
-    const current = this.limiter.getActiveCount(resourceType);
+    const limit = this.getLimitForResourceType(resourceType)
+    const current = this.limiter.getActiveCount(resourceType)
 
     return {
       resourceType,
       current,
       max: limit,
       percentage: limit > 0 ? (current / limit) * 100 : 0,
-    };
+    }
   }
 
   configureBudget(config: ResourceConfig): void {
-    this.config = config;
+    this.config = config
   }
 
   getConfig(): ResourceConfig {
-    return { ...this.config };
+    return { ...this.config }
   }
 
   private getLimitForResourceType(resourceType: ResourceType): number {
     switch (resourceType) {
       case 'foreground_turn':
-        return this.config.maxConcurrentForegroundTurns;
+        return this.config.maxConcurrentForegroundTurns
       case 'planner_run_session':
-        return this.config.maxConcurrentPlannerRunsPerSession;
+        return this.config.maxConcurrentPlannerRunsPerSession
       case 'planner_run_user':
-        return this.config.maxConcurrentPlannerRunsPerUser;
+        return this.config.maxConcurrentPlannerRunsPerUser
       case 'background_run':
-        return this.config.maxConcurrentBackgroundRuns;
+        return this.config.maxConcurrentBackgroundRuns
       case 'workflow_run':
-        return this.config.maxConcurrentWorkflowRuns;
+        return this.config.maxConcurrentWorkflowRuns
       case 'llm_call':
-        return this.config.maxConcurrentLLMCalls;
+        return this.config.maxConcurrentLLMCalls
       case 'tool_execution':
-        return this.config.maxConcurrentToolExecutions;
+        return this.config.maxConcurrentToolExecutions
       case 'cache_memory':
-        return this.config.maxCacheSizeMB;
+        return this.config.maxCacheSizeMB
       case 'context_tokens':
-        return this.config.maxContextTokens;
+        return this.config.maxContextTokens
       case 'sqlite_queue':
-        return this.config.sqliteQueueMaxDepth;
+        return this.config.sqliteQueueMaxDepth
       default:
-        return Number.MAX_SAFE_INTEGER;
+        return Number.MAX_SAFE_INTEGER
     }
   }
 
   private getSQLiteQueueDepth(): number {
     if (!this.connection) {
-      return 0;
+      return 0
     }
     try {
       const result = this.connection.query<{ queue_depth: number }>(
-        "SELECT COUNT(*) as queue_depth FROM sqlite_master WHERE type='table'"
-      );
-      return result[0]?.queue_depth ?? 0;
+        "SELECT COUNT(*) as queue_depth FROM sqlite_master WHERE type='table'",
+      )
+      return result[0]?.queue_depth ?? 0
     } catch {
-      return 0;
+      return 0
     }
   }
 
@@ -451,8 +451,8 @@ class ResourceBudgetManagerImpl implements ResourceBudgetManager {
         value,
         timestamp: new Date().toISOString(),
         labels,
-      };
-      this.metricStore.recordMetric(metric);
+      }
+      this.metricStore.recordMetric(metric)
     }
   }
 }
@@ -461,9 +461,9 @@ export function createResourceBudgetManager(
   config: ResourceConfig,
   limiter: ConcurrencyLimiter,
   connection?: ConnectionManager,
-  metricStore?: MetricStore
+  metricStore?: MetricStore,
 ): ResourceBudgetManager {
-  return new ResourceBudgetManagerImpl(config, limiter, connection, metricStore);
+  return new ResourceBudgetManagerImpl(config, limiter, connection, metricStore)
 }
 
 // ============================================================================
@@ -471,74 +471,74 @@ export function createResourceBudgetManager(
 // ============================================================================
 
 export interface CacheEntry<T> {
-  key: string;
-  value: T;
-  sizeBytes: number;
-  insertedAt: string;
-  lastAccessedAt: number;
-  accessCount: number;
+  key: string
+  value: T
+  sizeBytes: number
+  insertedAt: string
+  lastAccessedAt: number
+  accessCount: number
 }
 
 export interface CacheStats {
-  totalSizeBytes: number;
-  totalSizeMB: number;
-  entryCount: number;
-  maxSizeMB: number;
-  hitCount: number;
-  missCount: number;
-  evictionCount: number;
+  totalSizeBytes: number
+  totalSizeMB: number
+  entryCount: number
+  maxSizeMB: number
+  hitCount: number
+  missCount: number
+  evictionCount: number
 }
 
 export interface MemorySafeCache<T> {
-  get(key: string): T | undefined;
-  set(key: string, value: T, sizeBytes: number): void;
-  has(key: string): boolean;
-  delete(key: string): boolean;
-  clear(): void;
-  getStats(): CacheStats;
-  keys(): string[];
-  getCurrentSizeMB(): number;
+  get(key: string): T | undefined
+  set(key: string, value: T, sizeBytes: number): void
+  has(key: string): boolean
+  delete(key: string): boolean
+  clear(): void
+  getStats(): CacheStats
+  keys(): string[]
+  getCurrentSizeMB(): number
 }
 
 class MemorySafeCacheImpl<T> implements MemorySafeCache<T> {
-  private entries: Map<string, CacheEntry<T>> = new Map();
-  private maxSizeBytes: number;
-  private hitCount = 0;
-  private missCount = 0;
-  private evictionCount = 0;
-  private metricStore?: MetricStore;
-  private cacheName: string;
-  private metricCounter = 0;
-  private accessSequence = 0;
+  private entries: Map<string, CacheEntry<T>> = new Map()
+  private maxSizeBytes: number
+  private hitCount = 0
+  private missCount = 0
+  private evictionCount = 0
+  private metricStore?: MetricStore
+  private cacheName: string
+  private metricCounter = 0
+  private accessSequence = 0
 
   constructor(maxSizeMB: number, cacheName: string, metricStore?: MetricStore) {
-    this.maxSizeBytes = maxSizeMB * 1024 * 1024;
-    this.cacheName = cacheName;
-    this.metricStore = metricStore;
+    this.maxSizeBytes = maxSizeMB * 1024 * 1024
+    this.cacheName = cacheName
+    this.metricStore = metricStore
   }
 
   get(key: string): T | undefined {
-    const entry = this.entries.get(key);
+    const entry = this.entries.get(key)
     if (entry) {
-      this.accessSequence++;
-      entry.lastAccessedAt = this.accessSequence;
-      entry.accessCount++;
-      this.hitCount++;
-      this.recordMetric('cache_hit', 1);
-      return entry.value;
+      this.accessSequence++
+      entry.lastAccessedAt = this.accessSequence
+      entry.accessCount++
+      this.hitCount++
+      this.recordMetric('cache_hit', 1)
+      return entry.value
     }
-    this.missCount++;
-    this.recordMetric('cache_miss', 1);
-    return undefined;
+    this.missCount++
+    this.recordMetric('cache_miss', 1)
+    return undefined
   }
 
   set(key: string, value: T, sizeBytes: number): void {
-    const currentSize = this.getCurrentSizeBytes();
+    const currentSize = this.getCurrentSizeBytes()
     if (currentSize + sizeBytes > this.maxSizeBytes) {
-      this.evictToMakeRoom(sizeBytes);
+      this.evictToMakeRoom(sizeBytes)
     }
 
-    this.accessSequence++;
+    this.accessSequence++
     const entry: CacheEntry<T> = {
       key,
       value,
@@ -546,36 +546,36 @@ class MemorySafeCacheImpl<T> implements MemorySafeCache<T> {
       insertedAt: new Date().toISOString(),
       lastAccessedAt: this.accessSequence,
       accessCount: 0,
-    };
+    }
 
-    this.entries.set(key, entry);
-    this.recordMetric('cache_set', 1);
-    this.recordMetric('cache_size_bytes', this.getCurrentSizeBytes(), 'bytes');
+    this.entries.set(key, entry)
+    this.recordMetric('cache_set', 1)
+    this.recordMetric('cache_size_bytes', this.getCurrentSizeBytes(), 'bytes')
   }
 
   has(key: string): boolean {
-    return this.entries.has(key);
+    return this.entries.has(key)
   }
 
   delete(key: string): boolean {
-    const existed = this.entries.delete(key);
+    const existed = this.entries.delete(key)
     if (existed) {
-      this.recordMetric('cache_delete', 1);
-      this.recordMetric('cache_size_bytes', this.getCurrentSizeBytes(), 'bytes');
+      this.recordMetric('cache_delete', 1)
+      this.recordMetric('cache_size_bytes', this.getCurrentSizeBytes(), 'bytes')
     }
-    return existed;
+    return existed
   }
 
   clear(): void {
-    const count = this.entries.size;
-    this.entries.clear();
-    this.evictionCount += count;
-    this.recordMetric('cache_clear', count);
-    this.recordMetric('cache_size_bytes', 0, 'bytes');
+    const count = this.entries.size
+    this.entries.clear()
+    this.evictionCount += count
+    this.recordMetric('cache_clear', count)
+    this.recordMetric('cache_size_bytes', 0, 'bytes')
   }
 
   getStats(): CacheStats {
-    const totalSizeBytes = this.getCurrentSizeBytes();
+    const totalSizeBytes = this.getCurrentSizeBytes()
     return {
       totalSizeBytes,
       totalSizeMB: totalSizeBytes / (1024 * 1024),
@@ -584,47 +584,45 @@ class MemorySafeCacheImpl<T> implements MemorySafeCache<T> {
       hitCount: this.hitCount,
       missCount: this.missCount,
       evictionCount: this.evictionCount,
-    };
+    }
   }
 
   keys(): string[] {
-    return Array.from(this.entries.keys());
+    return Array.from(this.entries.keys())
   }
 
   getCurrentSizeMB(): number {
-    return this.getCurrentSizeBytes() / (1024 * 1024);
+    return this.getCurrentSizeBytes() / (1024 * 1024)
   }
 
   private getCurrentSizeBytes(): number {
-    let total = 0;
+    let total = 0
     for (const entry of this.entries.values()) {
-      total += entry.sizeBytes;
+      total += entry.sizeBytes
     }
-    return total;
+    return total
   }
 
   private evictToMakeRoom(requiredBytes: number): void {
-    const sortedEntries = Array.from(this.entries.entries()).sort(
-      (a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt
-    );
+    const sortedEntries = Array.from(this.entries.entries()).sort((a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt)
 
-    let freedBytes = 0;
-    const targetBytes = requiredBytes + this.getCurrentSizeBytes() - this.maxSizeBytes;
+    let freedBytes = 0
+    const targetBytes = requiredBytes + this.getCurrentSizeBytes() - this.maxSizeBytes
 
     for (const [key, entry] of sortedEntries) {
       if (freedBytes >= targetBytes) {
-        break;
+        break
       }
-      this.entries.delete(key);
-      freedBytes += entry.sizeBytes;
-      this.evictionCount++;
-      this.recordMetric('cache_eviction', 1);
+      this.entries.delete(key)
+      freedBytes += entry.sizeBytes
+      this.evictionCount++
+      this.recordMetric('cache_eviction', 1)
     }
   }
 
   private recordMetric(name: string, value: number, unit?: string): void {
     if (this.metricStore) {
-      this.metricCounter++;
+      this.metricCounter++
       const metric: MetricRecord = {
         metricId: `${this.cacheName}_${name}_${Date.now()}_${this.metricCounter}_${Math.random().toString(36).substr(2, 9)}`,
         module: 'memory',
@@ -634,8 +632,8 @@ class MemorySafeCacheImpl<T> implements MemorySafeCache<T> {
         unit,
         timestamp: new Date().toISOString(),
         labels: { cacheName: this.cacheName },
-      };
-      this.metricStore.recordMetric(metric);
+      }
+      this.metricStore.recordMetric(metric)
     }
   }
 }
@@ -643,9 +641,9 @@ class MemorySafeCacheImpl<T> implements MemorySafeCache<T> {
 export function createMemorySafeCache<T>(
   maxSizeMB: number,
   cacheName: string,
-  metricStore?: MetricStore
+  metricStore?: MetricStore,
 ): MemorySafeCache<T> {
-  return new MemorySafeCacheImpl<T>(maxSizeMB, cacheName, metricStore);
+  return new MemorySafeCacheImpl<T>(maxSizeMB, cacheName, metricStore)
 }
 
 // ============================================================================
@@ -653,22 +651,22 @@ export function createMemorySafeCache<T>(
 // ============================================================================
 
 export interface ResourceLimits {
-  budgetManager: ResourceBudgetManager;
-  concurrencyLimiter: ConcurrencyLimiter;
-  createCache: <T>(name: string) => MemorySafeCache<T>;
+  budgetManager: ResourceBudgetManager
+  concurrencyLimiter: ConcurrencyLimiter
+  createCache: <T>(name: string) => MemorySafeCache<T>
 }
 
 export function createResourceLimits(
   config: ResourceConfig = DEFAULT_RESOURCE_CONFIG,
   connection?: ConnectionManager,
-  metricStore?: MetricStore
+  metricStore?: MetricStore,
 ): ResourceLimits {
-  const limiter = createConcurrencyLimiter(config);
-  const budgetManager = createResourceBudgetManager(config, limiter, connection, metricStore);
+  const limiter = createConcurrencyLimiter(config)
+  const budgetManager = createResourceBudgetManager(config, limiter, connection, metricStore)
 
   return {
     budgetManager,
     concurrencyLimiter: limiter,
     createCache: <T>(name: string) => createMemorySafeCache<T>(config.maxCacheSizeMB, name, metricStore),
-  };
+  }
 }

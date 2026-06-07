@@ -18,7 +18,7 @@ export type AuditSourceModule =
   | 'connector'
   | 'permission'
   | 'memory'
-  | 'system';
+  | 'system'
 
 // ============================================================================
 // Audit Type Values
@@ -40,51 +40,51 @@ export type AuditType =
   | 'memory_write'
   | 'memory_delete'
   | 'summary_write'
-  | 'dispatch';
+  | 'dispatch'
 
 // ============================================================================
 // Audit Status
 // ============================================================================
 
-export type AuditStatus = 'pending' | 'completed' | 'failed' | 'blocked';
+export type AuditStatus = 'pending' | 'completed' | 'failed' | 'blocked'
 
 // ============================================================================
 // Risk Level
 // ============================================================================
 
-export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical'
 
 // ============================================================================
 // Sensitivity Level
 // ============================================================================
 
-export type SensitivityLevel = 'low' | 'medium' | 'high' | 'restricted';
+export type SensitivityLevel = 'low' | 'medium' | 'high' | 'restricted'
 
 // ============================================================================
 // Audit Record
 // ============================================================================
 
 export interface AuditRecord {
-  auditId: string;
-  auditType: AuditType;
-  timestamp: string;
-  userId: string;
-  sessionId?: string;
-  sourceModule: AuditSourceModule;
-  sourceAction: string;
-  actionSummary: string;
-  targetType?: string;
-  targetRef?: string;
-  status: AuditStatus;
-  payload: Record<string, unknown>;
-  inputHash?: string;
-  correlationId?: string;
-  causationId?: string;
-  approvalId?: string;
-  toolCallId?: string;
-  permissionDecisionId?: string;
-  riskLevel: RiskLevel;
-  sensitivity: SensitivityLevel;
+  auditId: string
+  auditType: AuditType
+  timestamp: string
+  userId: string
+  sessionId?: string
+  sourceModule: AuditSourceModule
+  sourceAction: string
+  actionSummary: string
+  targetType?: string
+  targetRef?: string
+  status: AuditStatus
+  payload: Record<string, unknown>
+  inputHash?: string
+  correlationId?: string
+  causationId?: string
+  approvalId?: string
+  toolCallId?: string
+  permissionDecisionId?: string
+  riskLevel: RiskLevel
+  sensitivity: SensitivityLevel
 }
 
 // ============================================================================
@@ -92,21 +92,21 @@ export interface AuditRecord {
 // ============================================================================
 
 export interface AuditQuery {
-  userId?: string;
-  sessionId?: string;
-  auditType?: AuditType;
-  sourceModule?: AuditSourceModule;
-  status?: AuditStatus;
-  riskLevel?: RiskLevel;
-  sensitivity?: SensitivityLevel;
-  approvalId?: string;
-  toolCallId?: string;
-  permissionDecisionId?: string;
-  correlationId?: string;
-  startTime?: string;
-  endTime?: string;
-  limit?: number;
-  offset?: number;
+  userId?: string
+  sessionId?: string
+  auditType?: AuditType
+  sourceModule?: AuditSourceModule
+  status?: AuditStatus
+  riskLevel?: RiskLevel
+  sensitivity?: SensitivityLevel
+  approvalId?: string
+  toolCallId?: string
+  permissionDecisionId?: string
+  correlationId?: string
+  startTime?: string
+  endTime?: string
+  limit?: number
+  offset?: number
 }
 
 // ============================================================================
@@ -114,22 +114,22 @@ export interface AuditQuery {
 // ============================================================================
 
 export interface AuditPolicyRule {
-  id: string;
-  name: string;
-  description?: string;
-  enabled: boolean;
+  id: string
+  name: string
+  description?: string
+  enabled: boolean
   // Match conditions
-  auditTypes?: AuditType[];
-  sourceModules?: AuditSourceModule[];
-  riskLevels?: RiskLevel[];
-  sensitivityLevels?: SensitivityLevel[];
+  auditTypes?: AuditType[]
+  sourceModules?: AuditSourceModule[]
+  riskLevels?: RiskLevel[]
+  sensitivityLevels?: SensitivityLevel[]
   // Actions
-  shouldAudit: boolean;
-  shouldRedact: boolean;
-  redactFields?: string[];
-  redactPatterns?: RegExp[];
+  shouldAudit: boolean
+  shouldRedact: boolean
+  redactFields?: string[]
+  redactPatterns?: RegExp[]
   // Retention
-  retentionDays?: number;
+  retentionDays?: number
 }
 
 // ============================================================================
@@ -137,19 +137,19 @@ export interface AuditPolicyRule {
 // ============================================================================
 
 export interface AuditPolicy {
-  id: string;
-  name: string;
-  description?: string;
-  version: number;
-  enabled: boolean;
-  defaultShouldAudit: boolean;
-  defaultShouldRedact: boolean;
-  defaultRetentionDays: number;
-  rules: AuditPolicyRule[];
+  id: string
+  name: string
+  description?: string
+  version: number
+  enabled: boolean
+  defaultShouldAudit: boolean
+  defaultShouldRedact: boolean
+  defaultRetentionDays: number
+  rules: AuditPolicyRule[]
   // Global redaction patterns
-  sensitivePatterns?: Array<{ pattern: RegExp; replacement: string }>;
-  createdAt: string;
-  updatedAt: string;
+  sensitivePatterns?: Array<{ pattern: RegExp; replacement: string }>
+  createdAt: string
+  updatedAt: string
 }
 
 // ============================================================================
@@ -157,18 +157,18 @@ export interface AuditPolicy {
 // ============================================================================
 
 export interface AuditStore {
-  record(record: AuditRecord): void;
-  recordMany(records: AuditRecord[]): void;
-  get(auditId: string): AuditRecord | null;
-  query(query: AuditQuery): AuditRecord[];
-  findByUser(userId: string): AuditRecord[];
-  findBySession(sessionId: string): AuditRecord[];
-  findByCorrelationId(correlationId: string): AuditRecord[];
-  findByApprovalId(approvalId: string): AuditRecord[];
-  findByToolCallId(toolCallId: string): AuditRecord[];
-  findByPermissionDecisionId(permissionDecisionId: string): AuditRecord[];
-  count(query: AuditQuery): number;
-  deleteOlderThan(timestamp: string): number;
+  record(record: AuditRecord): void
+  recordMany(records: AuditRecord[]): void
+  get(auditId: string): AuditRecord | null
+  query(query: AuditQuery): AuditRecord[]
+  findByUser(userId: string): AuditRecord[]
+  findBySession(sessionId: string): AuditRecord[]
+  findByCorrelationId(correlationId: string): AuditRecord[]
+  findByApprovalId(approvalId: string): AuditRecord[]
+  findByToolCallId(toolCallId: string): AuditRecord[]
+  findByPermissionDecisionId(permissionDecisionId: string): AuditRecord[]
+  count(query: AuditQuery): number
+  deleteOlderThan(timestamp: string): number
 }
 
 // ============================================================================
@@ -176,13 +176,13 @@ export interface AuditStore {
 // ============================================================================
 
 export interface UserInputRequest {
-  userId: string;
-  sessionId?: string;
-  input: string;
-  inputType?: string;
-  metadata?: Record<string, unknown>;
-  correlationId?: string;
-  causationId?: string;
+  userId: string
+  sessionId?: string
+  input: string
+  inputType?: string
+  metadata?: Record<string, unknown>
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -190,13 +190,13 @@ export interface UserInputRequest {
 // ============================================================================
 
 export interface AssistantOutputResponse {
-  userId: string;
-  sessionId?: string;
-  output: string;
-  outputType?: string;
-  metadata?: Record<string, unknown>;
-  correlationId?: string;
-  causationId?: string;
+  userId: string
+  sessionId?: string
+  output: string
+  outputType?: string
+  metadata?: Record<string, unknown>
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -204,15 +204,15 @@ export interface AssistantOutputResponse {
 // ============================================================================
 
 export interface ToolCallAuditRequest {
-  toolCallId: string;
-  toolName: string;
-  userId: string;
-  sessionId?: string;
-  params: Record<string, unknown>;
-  result?: unknown;
-  status: 'success' | 'failure';
-  correlationId?: string;
-  causationId?: string;
+  toolCallId: string
+  toolName: string
+  userId: string
+  sessionId?: string
+  params: Record<string, unknown>
+  result?: unknown
+  status: 'success' | 'failure'
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -220,15 +220,15 @@ export interface ToolCallAuditRequest {
 // ============================================================================
 
 export interface ExternalWriteAuditRequest {
-  userId: string;
-  sessionId?: string;
-  targetType: string;
-  targetRef: string;
-  writeData: Record<string, unknown>;
-  approvalId?: string;
-  toolCallId?: string;
-  correlationId?: string;
-  causationId?: string;
+  userId: string
+  sessionId?: string
+  targetType: string
+  targetRef: string
+  writeData: Record<string, unknown>
+  approvalId?: string
+  toolCallId?: string
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -236,17 +236,17 @@ export interface ExternalWriteAuditRequest {
 // ============================================================================
 
 export interface PermissionDecisionAuditRequest {
-  decisionId: string;
-  userId: string;
-  sessionId?: string;
-  actionType: string;
-  resource?: string;
-  operationType: 'read' | 'write' | 'execute' | 'delete' | 'admin';
-  decision: 'allowed' | 'denied' | 'requires_approval' | 'pending_approval';
-  reason: string;
-  approvalId?: string;
-  correlationId?: string;
-  causationId?: string;
+  decisionId: string
+  userId: string
+  sessionId?: string
+  actionType: string
+  resource?: string
+  operationType: 'read' | 'write' | 'execute' | 'delete' | 'admin'
+  decision: 'allowed' | 'denied' | 'requires_approval' | 'pending_approval'
+  reason: string
+  approvalId?: string
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -254,15 +254,15 @@ export interface PermissionDecisionAuditRequest {
 // ============================================================================
 
 export interface ApprovalRequestAuditRequest {
-  requestId: string;
-  userId: string;
-  sessionId?: string;
-  actionType: string;
-  resource?: string;
-  riskLevel: RiskLevel;
-  justification?: string;
-  correlationId?: string;
-  causationId?: string;
+  requestId: string
+  userId: string
+  sessionId?: string
+  actionType: string
+  resource?: string
+  riskLevel: RiskLevel
+  justification?: string
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -270,14 +270,14 @@ export interface ApprovalRequestAuditRequest {
 // ============================================================================
 
 export interface ApprovalResponseAuditRequest {
-  requestId: string;
-  userId: string;
-  sessionId?: string;
-  responseType: 'approve_once' | 'approve_always' | 'reject';
-  respondedBy: string;
-  reason?: string;
-  correlationId?: string;
-  causationId?: string;
+  requestId: string
+  userId: string
+  sessionId?: string
+  responseType: 'approve_once' | 'approve_always' | 'reject'
+  respondedBy: string
+  reason?: string
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -285,13 +285,13 @@ export interface ApprovalResponseAuditRequest {
 // ============================================================================
 
 export interface WorkflowChangeAuditRequest {
-  userId: string;
-  sessionId?: string;
-  workflowId: string;
-  changeType: 'create' | 'update' | 'delete' | 'publish' | 'deprecate';
-  changeSummary: string;
-  correlationId?: string;
-  causationId?: string;
+  userId: string
+  sessionId?: string
+  workflowId: string
+  changeType: 'create' | 'update' | 'delete' | 'publish' | 'deprecate'
+  changeSummary: string
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -299,14 +299,14 @@ export interface WorkflowChangeAuditRequest {
 // ============================================================================
 
 export interface SubagentRunAuditRequest {
-  subagentRunId: string;
-  userId: string;
-  sessionId?: string;
-  agentType: string;
-  objective: string;
-  status: 'started' | 'completed' | 'failed';
-  correlationId?: string;
-  causationId?: string;
+  subagentRunId: string
+  userId: string
+  sessionId?: string
+  agentType: string
+  objective: string
+  status: 'started' | 'completed' | 'failed'
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -314,15 +314,15 @@ export interface SubagentRunAuditRequest {
 // ============================================================================
 
 export interface ConnectorAccessAuditRequest {
-  userId: string;
-  sessionId?: string;
-  connectorInstanceId: string;
-  operation: string;
-  status: 'success' | 'failure';
-  resourceRef?: string;
-  payloadSummary?: Record<string, unknown>;
-  correlationId?: string;
-  causationId?: string;
+  userId: string
+  sessionId?: string
+  connectorInstanceId: string
+  operation: string
+  status: 'success' | 'failure'
+  resourceRef?: string
+  payloadSummary?: Record<string, unknown>
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -330,23 +330,23 @@ export interface ConnectorAccessAuditRequest {
 // ============================================================================
 
 export interface MemoryWriteAuditRequest {
-  memoryId: string;
-  userId: string;
-  sessionId?: string;
-  operation: 'write' | 'delete';
-  contentSummary: string;
-  correlationId?: string;
-  causationId?: string;
+  memoryId: string
+  userId: string
+  sessionId?: string
+  operation: 'write' | 'delete'
+  contentSummary: string
+  correlationId?: string
+  causationId?: string
 }
 
 export interface SummaryWriteAuditRequest {
-  summaryId: string;
-  summaryType: string;
-  userId: string;
-  sessionId?: string;
-  runId?: string;
-  correlationId?: string;
-  causationId?: string;
+  summaryId: string
+  summaryType: string
+  userId: string
+  sessionId?: string
+  runId?: string
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -354,15 +354,15 @@ export interface SummaryWriteAuditRequest {
 // ============================================================================
 
 export interface DispatchAuditRequest {
-  actionId?: string;
-  userId: string;
-  sessionId?: string;
-  targetRuntime: string;
-  targetAction: string;
-  status?: 'pending' | 'completed' | 'failed' | 'blocked';
-  payloadSummary: string;
-  correlationId?: string;
-  causationId?: string;
+  actionId?: string
+  userId: string
+  sessionId?: string
+  targetRuntime: string
+  targetAction: string
+  status?: 'pending' | 'completed' | 'failed' | 'blocked'
+  payloadSummary: string
+  correlationId?: string
+  causationId?: string
 }
 
 // ============================================================================
@@ -370,22 +370,22 @@ export interface DispatchAuditRequest {
 // ============================================================================
 
 export interface AuditRecorder {
-  recordUserInput(request: UserInputRequest): AuditRecord;
-  recordAssistantOutput(response: AssistantOutputResponse): AuditRecord;
-  recordToolCall(toolCall: ToolCallAuditRequest): AuditRecord;
-  recordExternalWrite(write: ExternalWriteAuditRequest): AuditRecord;
-  recordPermissionDecision(decision: PermissionDecisionAuditRequest): AuditRecord;
-  recordApprovalRequest(request: ApprovalRequestAuditRequest): AuditRecord;
-  recordApprovalResponse(response: ApprovalResponseAuditRequest): AuditRecord;
-  recordWorkflowChange(change: WorkflowChangeAuditRequest): AuditRecord;
-  recordSubagentRun(run: SubagentRunAuditRequest): AuditRecord;
-  recordConnectorAccess(access: ConnectorAccessAuditRequest): AuditRecord;
-  recordMemoryWrite(write: MemoryWriteAuditRequest): AuditRecord;
-  recordSummaryWrite(write: SummaryWriteAuditRequest): AuditRecord;
-  recordDispatch(dispatch: DispatchAuditRequest): AuditRecord;
-  getStore(): AuditStore;
-  getPolicy(): AuditPolicy;
-  setPolicy(policy: AuditPolicy): void;
+  recordUserInput(request: UserInputRequest): AuditRecord
+  recordAssistantOutput(response: AssistantOutputResponse): AuditRecord
+  recordToolCall(toolCall: ToolCallAuditRequest): AuditRecord
+  recordExternalWrite(write: ExternalWriteAuditRequest): AuditRecord
+  recordPermissionDecision(decision: PermissionDecisionAuditRequest): AuditRecord
+  recordApprovalRequest(request: ApprovalRequestAuditRequest): AuditRecord
+  recordApprovalResponse(response: ApprovalResponseAuditRequest): AuditRecord
+  recordWorkflowChange(change: WorkflowChangeAuditRequest): AuditRecord
+  recordSubagentRun(run: SubagentRunAuditRequest): AuditRecord
+  recordConnectorAccess(access: ConnectorAccessAuditRequest): AuditRecord
+  recordMemoryWrite(write: MemoryWriteAuditRequest): AuditRecord
+  recordSummaryWrite(write: SummaryWriteAuditRequest): AuditRecord
+  recordDispatch(dispatch: DispatchAuditRequest): AuditRecord
+  getStore(): AuditStore
+  getPolicy(): AuditPolicy
+  setPolicy(policy: AuditPolicy): void
 }
 
 // ============================================================================
@@ -393,10 +393,10 @@ export interface AuditRecorder {
 // ============================================================================
 
 export interface AuditRecorderConfig {
-  auditStore: AuditStore;
-  policy?: AuditPolicy;
-  enabled?: boolean;
-  generateHash?: boolean;
+  auditStore: AuditStore
+  policy?: AuditPolicy
+  enabled?: boolean
+  generateHash?: boolean
 }
 
 // ============================================================================
@@ -404,7 +404,7 @@ export interface AuditRecorderConfig {
 // ============================================================================
 
 export interface RedactionResult {
-  redacted: Record<string, unknown>;
-  inputHash: string;
-  redactedFields: string[];
+  redacted: Record<string, unknown>
+  inputHash: string
+  redactedFields: string[]
 }

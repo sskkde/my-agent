@@ -9,7 +9,7 @@
  * @module prompt/template-hash
  */
 
-import { createHash } from 'node:crypto';
+import { createHash } from 'node:crypto'
 
 /**
  * Normalizes template content for consistent hashing.
@@ -24,7 +24,7 @@ export function normalizeContent(content: string): string {
     .split('\n')
     .map((line) => line.trimEnd())
     .join('\n')
-    .trim();
+    .trim()
 }
 
 /**
@@ -37,8 +37,8 @@ export function normalizeContent(content: string): string {
  * @returns Hex-encoded SHA-256 hash string
  */
 export function computeTemplateHash(content: string): string {
-  const normalized = normalizeContent(content);
-  return createHash('sha256').update(normalized, 'utf8').digest('hex');
+  const normalized = normalizeContent(content)
+  return createHash('sha256').update(normalized, 'utf8').digest('hex')
 }
 
 /**
@@ -50,9 +50,9 @@ export function computeTemplateHash(content: string): string {
  * @returns Hex-encoded SHA-256 hash string
  */
 export function computeStableHash(segments: string[]): string {
-  const SEGMENT_DELIMITER = '\n\n---TEMPLATE_SEGMENT---\n\n';
-  const combined = segments.join(SEGMENT_DELIMITER);
-  return computeTemplateHash(combined);
+  const SEGMENT_DELIMITER = '\n\n---TEMPLATE_SEGMENT---\n\n'
+  const combined = segments.join(SEGMENT_DELIMITER)
+  return computeTemplateHash(combined)
 }
 
 /**
@@ -65,7 +65,7 @@ export function computeStableHash(segments: string[]): string {
  * @returns First 16 characters of SHA-256 hash
  */
 export function computeShortHash(content: string): string {
-  return computeTemplateHash(content).slice(0, 16);
+  return computeTemplateHash(content).slice(0, 16)
 }
 
 /**
@@ -75,5 +75,5 @@ export function computeShortHash(content: string): string {
  * @returns First 16 characters of SHA-256 hash
  */
 export function computeShortStableHash(segments: string[]): string {
-  return computeStableHash(segments).slice(0, 16);
+  return computeStableHash(segments).slice(0, 16)
 }

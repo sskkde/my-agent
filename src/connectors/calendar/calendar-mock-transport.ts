@@ -7,7 +7,7 @@ import type {
   CreateEventParams,
   UpdateEventParams,
   DeleteEventParams,
-} from './calendar-types.js';
+} from './calendar-types.js'
 
 const mockEvents: CalendarEvent[] = [
   {
@@ -62,53 +62,53 @@ const mockEvents: CalendarEvent[] = [
     created: '2024-01-03T11:00:00Z',
     updated: '2024-01-16T12:00:00Z',
   },
-];
+]
 
 export class CalendarMockTransport implements CalendarTransport {
-  private validToken: string | null = null;
-  private createdEvents: CalendarEvent[] = [];
-  private nextId = 100;
+  private validToken: string | null = null
+  private createdEvents: CalendarEvent[] = []
+  private nextId = 100
 
   setValidToken(token: string | null): void {
-    this.validToken = token;
+    this.validToken = token
   }
 
   async validateAuth(): Promise<boolean> {
-    return this.validToken !== null;
+    return this.validToken !== null
   }
 
   async listEvents(params: ListEventsParams): Promise<CalendarListEventsResponse> {
-    this.checkAuth();
+    this.checkAuth()
 
-    const allEvents = [...mockEvents, ...this.createdEvents];
-    let filtered = allEvents.filter(e => e.status !== 'cancelled');
+    const allEvents = [...mockEvents, ...this.createdEvents]
+    let filtered = allEvents.filter((e) => e.status !== 'cancelled')
 
     if (params.timeMin) {
-      const minTime = new Date(params.timeMin).getTime();
-      filtered = filtered.filter(e => {
-        const eventStart = e.start.dateTime ? new Date(e.start.dateTime).getTime() : 0;
-        return eventStart >= minTime;
-      });
+      const minTime = new Date(params.timeMin).getTime()
+      filtered = filtered.filter((e) => {
+        const eventStart = e.start.dateTime ? new Date(e.start.dateTime).getTime() : 0
+        return eventStart >= minTime
+      })
     }
 
     if (params.timeMax) {
-      const maxTime = new Date(params.timeMax).getTime();
-      filtered = filtered.filter(e => {
-        const eventEnd = e.end.dateTime ? new Date(e.end.dateTime).getTime() : Infinity;
-        return eventEnd <= maxTime;
-      });
+      const maxTime = new Date(params.timeMax).getTime()
+      filtered = filtered.filter((e) => {
+        const eventEnd = e.end.dateTime ? new Date(e.end.dateTime).getTime() : Infinity
+        return eventEnd <= maxTime
+      })
     }
 
     if (params.q) {
-      const query = params.q.toLowerCase();
-      filtered = filtered.filter(e =>
-        e.summary.toLowerCase().includes(query) ||
-        (e.description && e.description.toLowerCase().includes(query))
-      );
+      const query = params.q.toLowerCase()
+      filtered = filtered.filter(
+        (e) =>
+          e.summary.toLowerCase().includes(query) || (e.description && e.description.toLowerCase().includes(query)),
+      )
     }
 
     if (params.maxResults) {
-      filtered = filtered.slice(0, params.maxResults);
+      filtered = filtered.slice(0, params.maxResults)
     }
 
     return {
@@ -117,19 +117,19 @@ export class CalendarMockTransport implements CalendarTransport {
       summary: 'primary',
       timeZone: 'UTC',
       updated: new Date().toISOString(),
-    };
+    }
   }
 
   async getEvent(params: GetEventParams): Promise<CalendarEvent | null> {
-    this.checkAuth();
+    this.checkAuth()
 
-    const allEvents = [...mockEvents, ...this.createdEvents];
-    const event = allEvents.find(e => e.id === params.eventId);
-    return event ?? null;
+    const allEvents = [...mockEvents, ...this.createdEvents]
+    const event = allEvents.find((e) => e.id === params.eventId)
+    return event ?? null
   }
 
   async createEvent(params: CreateEventParams): Promise<CalendarEvent> {
-    this.checkAuth();
+    this.checkAuth()
 
     const event: CalendarEvent = {
       id: `mock-event-${this.nextId++}`,
@@ -138,7 +138,7 @@ export class CalendarMockTransport implements CalendarTransport {
       location: params.location,
       start: params.start,
       end: params.end,
-      attendees: params.attendees?.map(a => ({
+      attendees: params.attendees?.map((a) => ({
         email: a.email,
         displayName: a.displayName,
         responseStatus: 'needsAction' as const,
@@ -148,20 +148,20 @@ export class CalendarMockTransport implements CalendarTransport {
       htmlLink: `https://calendar.google.com/event?eid=mock-event-${this.nextId - 1}`,
       created: new Date().toISOString(),
       updated: new Date().toISOString(),
-    };
+    }
 
-    this.createdEvents.push(event);
-    return event;
+    this.createdEvents.push(event)
+    return event
   }
 
   async updateEvent(params: UpdateEventParams): Promise<CalendarEvent> {
-    this.checkAuth();
+    this.checkAuth()
 
-    const allEvents = [...mockEvents, ...this.createdEvents];
-    const existing = allEvents.find(e => e.id === params.eventId);
+    const allEvents = [...mockEvents, ...this.createdEvents]
+    const existing = allEvents.find((e) => e.id === params.eventId)
 
     if (!existing) {
-      throw new Error(`Event not found: ${params.eventId}`);
+      throw new Error(`Event not found: ${params.eventId}`)
     }
 
     const updated: CalendarEvent = {
@@ -172,7 +172,7 @@ export class CalendarMockTransport implements CalendarTransport {
       ...(params.start !== undefined && { start: params.start }),
       ...(params.end !== undefined && { end: params.end }),
       ...(params.attendees !== undefined && {
-        attendees: params.attendees.map(a => ({
+        attendees: params.attendees.map((a) => ({
           email: a.email,
           displayName: a.displayName,
           responseStatus: 'needsAction' as const,
@@ -180,34 +180,34 @@ export class CalendarMockTransport implements CalendarTransport {
       }),
       ...(params.status !== undefined && { status: params.status }),
       updated: new Date().toISOString(),
-    };
-
-    const idx = this.createdEvents.findIndex(e => e.id === params.eventId);
-    if (idx >= 0) {
-      this.createdEvents[idx] = updated;
     }
 
-    return updated;
+    const idx = this.createdEvents.findIndex((e) => e.id === params.eventId)
+    if (idx >= 0) {
+      this.createdEvents[idx] = updated
+    }
+
+    return updated
   }
 
   async deleteEvent(params: DeleteEventParams): Promise<void> {
-    this.checkAuth();
+    this.checkAuth()
 
-    const idx = this.createdEvents.findIndex(e => e.id === params.eventId);
+    const idx = this.createdEvents.findIndex((e) => e.id === params.eventId)
     if (idx >= 0) {
-      this.createdEvents.splice(idx, 1);
+      this.createdEvents.splice(idx, 1)
     }
   }
 
   private checkAuth(): void {
     if (this.validToken === null) {
-      const error = new Error('Authentication required');
-      (error as unknown as Record<string, unknown>).code = 'AUTH_INVALID';
-      throw error;
+      const error = new Error('Authentication required')
+      ;(error as unknown as Record<string, unknown>).code = 'AUTH_INVALID'
+      throw error
     }
   }
 }
 
 export function createCalendarMockTransport(): CalendarMockTransport {
-  return new CalendarMockTransport();
+  return new CalendarMockTransport()
 }

@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createTriggerStore, type TriggerStore } from '../../../src/storage/trigger-store.js';
-import { createWaitConditionStore, type WaitConditionStore } from '../../../src/storage/wait-condition-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
-import { createEventTriggerRuntime, type EventTriggerRuntime } from '../../../src/triggers/event-trigger-runtime.js';
-import { createDeadLetterStore, type DeadLetterStore } from '../../../src/dead-letter/dead-letter-store.js';
-import { createDeadLetterQueue, type DeadLetterQueue } from '../../../src/dead-letter/dead-letter-queue.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createTriggerStore, type TriggerStore } from '../../../src/storage/trigger-store.js'
+import { createWaitConditionStore, type WaitConditionStore } from '../../../src/storage/wait-condition-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
+import { createEventTriggerRuntime, type EventTriggerRuntime } from '../../../src/triggers/event-trigger-runtime.js'
+import { createDeadLetterStore, type DeadLetterStore } from '../../../src/dead-letter/dead-letter-store.js'
+import { createDeadLetterQueue, type DeadLetterQueue } from '../../../src/dead-letter/dead-letter-queue.js'
 
 const migrations: Migration[] = [
   {
@@ -42,7 +42,7 @@ const migrations: Migration[] = [
       tenant_id TEXT NOT NULL DEFAULT 'org_default'
       )
     `,
-    down: 'DROP TABLE IF EXISTS events'
+    down: 'DROP TABLE IF EXISTS events',
   },
   {
     version: 2,
@@ -76,7 +76,7 @@ const migrations: Migration[] = [
         updated_at TEXT NOT NULL
       )
     `,
-    down: 'DROP TABLE IF EXISTS runtime_actions'
+    down: 'DROP TABLE IF EXISTS runtime_actions',
   },
   {
     version: 3,
@@ -99,7 +99,7 @@ const migrations: Migration[] = [
         updated_at TEXT NOT NULL
       )
     `,
-    down: 'DROP TABLE IF EXISTS trigger_registrations'
+    down: 'DROP TABLE IF EXISTS trigger_registrations',
   },
   {
     version: 4,
@@ -122,7 +122,7 @@ const migrations: Migration[] = [
         updated_at TEXT NOT NULL
       )
     `,
-    down: 'DROP TABLE IF EXISTS wait_conditions'
+    down: 'DROP TABLE IF EXISTS wait_conditions',
   },
   {
     version: 5,
@@ -143,34 +143,34 @@ const migrations: Migration[] = [
         resolved_at TEXT
       )
     `,
-    down: 'DROP TABLE IF EXISTS dead_letter'
-  }
-];
+    down: 'DROP TABLE IF EXISTS dead_letter',
+  },
+]
 
 describe('Webhook DLQ Integration', () => {
-  let connection: ConnectionManager;
-  let migrationRunner: MigrationRunner;
-  let triggerStore: TriggerStore;
-  let waitConditionStore: WaitConditionStore;
-  let eventStore: EventStore;
-  let runtimeActionStore: RuntimeActionStore;
-  let deadLetterStore: DeadLetterStore;
-  let dlq: DeadLetterQueue;
-  let eventTriggerRuntime: EventTriggerRuntime;
+  let connection: ConnectionManager
+  let migrationRunner: MigrationRunner
+  let triggerStore: TriggerStore
+  let waitConditionStore: WaitConditionStore
+  let eventStore: EventStore
+  let runtimeActionStore: RuntimeActionStore
+  let deadLetterStore: DeadLetterStore
+  let dlq: DeadLetterQueue
+  let eventTriggerRuntime: EventTriggerRuntime
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrationRunner = createMigrationRunner(connection);
-    migrationRunner.init();
-    migrationRunner.apply(migrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrationRunner = createMigrationRunner(connection)
+    migrationRunner.init()
+    migrationRunner.apply(migrations)
 
-    triggerStore = createTriggerStore(connection);
-    waitConditionStore = createWaitConditionStore(connection);
-    eventStore = createEventStore(connection);
-    runtimeActionStore = createRuntimeActionStore(connection);
-    deadLetterStore = createDeadLetterStore(connection);
-    dlq = createDeadLetterQueue(deadLetterStore, async () => ({ success: true }));
+    triggerStore = createTriggerStore(connection)
+    waitConditionStore = createWaitConditionStore(connection)
+    eventStore = createEventStore(connection)
+    runtimeActionStore = createRuntimeActionStore(connection)
+    deadLetterStore = createDeadLetterStore(connection)
+    dlq = createDeadLetterQueue(deadLetterStore, async () => ({ success: true }))
 
     eventTriggerRuntime = createEventTriggerRuntime({
       triggerStore,
@@ -178,69 +178,69 @@ describe('Webhook DLQ Integration', () => {
       eventStore,
       runtimeActionStore,
       dlq,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    connection.close();
-  });
+    connection.close()
+  })
 
   describe('webhook failure → DLQ', () => {
     it('should enqueue to DLQ after 3 signature failures', () => {
       const payload = {
         eventId: 'test-webhook-event',
         data: 'test-data',
-      };
+      }
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
 
-      const beforeThird = dlq.count({ module: 'trigger.webhook' });
-      expect(beforeThird).toBe(0);
+      const beforeThird = dlq.count({ module: 'trigger.webhook' })
+      expect(beforeThird).toBe(0)
 
-      eventTriggerRuntime.handleWebhook(payload, '');
+      eventTriggerRuntime.handleWebhook(payload, '')
 
-      const records = dlq.list({ module: 'trigger.webhook' });
-      expect(records.length).toBe(1);
-      expect(records[0]?.sourceModule).toBe('trigger.webhook');
-      expect(records[0]?.sourceId).toBe('test-webhook-event');
-      expect(records[0]?.reason).toBe('Invalid signature');
-      expect(records[0]?.status).toBe('pending');
-    });
+      const records = dlq.list({ module: 'trigger.webhook' })
+      expect(records.length).toBe(1)
+      expect(records[0]?.sourceModule).toBe('trigger.webhook')
+      expect(records[0]?.sourceId).toBe('test-webhook-event')
+      expect(records[0]?.reason).toBe('Invalid signature')
+      expect(records[0]?.status).toBe('pending')
+    })
 
     it('should not enqueue before reaching 3 failures', () => {
-      const payload = { eventId: 'gradual-fail' };
+      const payload = { eventId: 'gradual-fail' }
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      expect(dlq.count({ module: 'trigger.webhook' })).toBe(0);
+      eventTriggerRuntime.handleWebhook(payload, '')
+      expect(dlq.count({ module: 'trigger.webhook' })).toBe(0)
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      expect(dlq.count({ module: 'trigger.webhook' })).toBe(0);
-    });
+      eventTriggerRuntime.handleWebhook(payload, '')
+      expect(dlq.count({ module: 'trigger.webhook' })).toBe(0)
+    })
 
     it('should reset failure count after enqueue (4th failure creates new record)', () => {
-      const payload = { eventId: 'reset-test' };
+      const payload = { eventId: 'reset-test' }
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
 
-      expect(dlq.count({ module: 'trigger.webhook' })).toBe(1);
+      expect(dlq.count({ module: 'trigger.webhook' })).toBe(1)
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      expect(dlq.count({ module: 'trigger.webhook' })).toBe(1);
-    });
+      eventTriggerRuntime.handleWebhook(payload, '')
+      expect(dlq.count({ module: 'trigger.webhook' })).toBe(1)
+    })
 
     it('should record with correct source_module', () => {
-      const payload = { eventId: 'correct-module' };
+      const payload = { eventId: 'correct-module' }
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
 
-      const records = dlq.list({ module: 'trigger.webhook' });
-      expect(records[0]?.sourceModule).toBe('trigger.webhook');
-    });
+      const records = dlq.list({ module: 'trigger.webhook' })
+      expect(records[0]?.sourceModule).toBe('trigger.webhook')
+    })
 
     it('should not enqueue when no DLQ configured', () => {
       const runtimeWithoutDlq = createEventTriggerRuntime({
@@ -248,77 +248,77 @@ describe('Webhook DLQ Integration', () => {
         waitConditionStore,
         eventStore,
         runtimeActionStore,
-      });
+      })
 
-      const payload = { eventId: 'no-dlq-test' };
+      const payload = { eventId: 'no-dlq-test' }
 
-      runtimeWithoutDlq.handleWebhook(payload, '');
-      runtimeWithoutDlq.handleWebhook(payload, '');
-      runtimeWithoutDlq.handleWebhook(payload, '');
+      runtimeWithoutDlq.handleWebhook(payload, '')
+      runtimeWithoutDlq.handleWebhook(payload, '')
+      runtimeWithoutDlq.handleWebhook(payload, '')
 
-      expect(dlq.count({ module: 'trigger.webhook' })).toBe(0);
-    });
-  });
+      expect(dlq.count({ module: 'trigger.webhook' })).toBe(0)
+    })
+  })
 
   describe('DLQ record existence', () => {
     it('should persist DLQ record after 3 webhook failures', () => {
-      const payload = { eventId: 'persist-test' };
+      const payload = { eventId: 'persist-test' }
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
 
-      const records = dlq.list();
-      expect(records.length).toBe(1);
-    });
+      const records = dlq.list()
+      expect(records.length).toBe(1)
+    })
 
     it('should store original payload in DLQ record', () => {
-      const payload = { eventId: 'payload-test', customField: 'value', nested: { key: 'val' } };
+      const payload = { eventId: 'payload-test', customField: 'value', nested: { key: 'val' } }
 
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
-      eventTriggerRuntime.handleWebhook(payload, '');
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
+      eventTriggerRuntime.handleWebhook(payload, '')
 
-      const records = dlq.list();
-      expect(records[0]?.payload).toBeDefined();
-      expect(records[0]?.payload?.eventId).toBe('payload-test');
-      expect(records[0]?.payload?.failureCount).toBe(3);
-    });
-  });
+      const records = dlq.list()
+      expect(records[0]?.payload).toBeDefined()
+      expect(records[0]?.payload?.eventId).toBe('payload-test')
+      expect(records[0]?.payload?.failureCount).toBe(3)
+    })
+  })
 
   describe('retry from DLQ', () => {
     it('should re-dispatch retried record', async () => {
-      const retryFn = vi.fn().mockResolvedValue({ success: true });
-      const retryDlq = createDeadLetterQueue(deadLetterStore, retryFn);
+      const retryFn = vi.fn().mockResolvedValue({ success: true })
+      const retryDlq = createDeadLetterQueue(deadLetterStore, retryFn)
 
-      const record = retryDlq.enqueue('trigger.webhook', 'webhook-1', 'Signature mismatch');
-      const result = await retryDlq.retry(record.eventId);
+      const record = retryDlq.enqueue('trigger.webhook', 'webhook-1', 'Signature mismatch')
+      const result = await retryDlq.retry(record.eventId)
 
-      expect(result.success).toBe(true);
-      expect(retryFn).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true)
+      expect(retryFn).toHaveBeenCalledTimes(1)
 
-      const updated = retryDlq.getByEventId(record.eventId);
-      expect(updated?.status).toBe('resolved');
-    });
-  });
+      const updated = retryDlq.getByEventId(record.eventId)
+      expect(updated?.status).toBe('resolved')
+    })
+  })
 
   describe('discard from DLQ', () => {
     it('should mark record as discarded', () => {
-      const record = dlq.enqueue('trigger.webhook', 'webhook-2', 'Unrecoverable error');
-      dlq.discard(record.eventId);
+      const record = dlq.enqueue('trigger.webhook', 'webhook-2', 'Unrecoverable error')
+      dlq.discard(record.eventId)
 
-      const updated = dlq.getByEventId(record.eventId);
-      expect(updated?.status).toBe('discarded');
-      expect(updated?.discardedAt).toBeTruthy();
-    });
+      const updated = dlq.getByEventId(record.eventId)
+      expect(updated?.status).toBe('discarded')
+      expect(updated?.discardedAt).toBeTruthy()
+    })
 
     it('should keep discarded record for audit', () => {
-      const record = dlq.enqueue('trigger.webhook', 'webhook-3', 'Error');
-      dlq.discard(record.eventId);
+      const record = dlq.enqueue('trigger.webhook', 'webhook-3', 'Error')
+      dlq.discard(record.eventId)
 
-      const exists = dlq.getByEventId(record.eventId);
-      expect(exists).not.toBeNull();
-      expect(exists?.status).toBe('discarded');
-    });
-  });
-});
+      const exists = dlq.getByEventId(record.eventId)
+      expect(exists).not.toBeNull()
+      expect(exists?.status).toBe('discarded')
+    })
+  })
+})

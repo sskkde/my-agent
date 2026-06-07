@@ -1,8 +1,14 @@
-import * as crypto from 'crypto';
-import type { Importance, Sensitivity, Visibility, MemoryEntity, MemoryScope } from '../storage/long-term-memory-store.js';
-import { validateMemoryCandidate } from './memory-candidate-types.js';
-import { createTemplateLoader } from '../prompt/template-loader.js';
-import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
+import * as crypto from 'crypto'
+import type {
+  Importance,
+  Sensitivity,
+  Visibility,
+  MemoryEntity,
+  MemoryScope,
+} from '../storage/long-term-memory-store.js'
+import { validateMemoryCandidate } from './memory-candidate-types.js'
+import { createTemplateLoader } from '../prompt/template-loader.js'
+import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js'
 
 /**
  * Types allowed for auto-extraction from conversation transcripts.
@@ -13,7 +19,7 @@ export type AutoExtractedMemoryType =
   | 'user_profile'
   | 'user_safety_rule'
   | 'project_state'
-  | 'long_term_fact';
+  | 'long_term_fact'
 
 /**
  * All types allowed at the storage level, including gated/backcompat types
@@ -26,55 +32,55 @@ export type AllowedLongTermMemoryType =
   | 'durable_fact'
   | 'episodic_summary'
   | 'routine'
-  | 'workflow_preference';
+  | 'workflow_preference'
 
 export type ExtractionSourceRefs = {
-  transcriptRefs?: string[];
-  summaryRefs?: string[];
+  transcriptRefs?: string[]
+  summaryRefs?: string[]
   extraction?: {
-    windowHash: string;
-    triggerTurnId: string;
-    includedTurnIds: string[];
-  };
-};
+    windowHash: string
+    triggerTurnId: string
+    includedTurnIds: string[]
+  }
+}
 
 export type ExtractedMemoryCandidate = {
-  memoryType: AllowedLongTermMemoryType | string;
-  text: string;
-  structured?: Record<string, unknown>;
-  confidence: number;
-  importance: Importance | string;
-  sensitivity: Sensitivity;
-  keywords: string[];
-  entities?: MemoryEntity[];
-  scope: MemoryScope;
-  sourceRefs: ExtractionSourceRefs;
-  discardReason?: string;
-};
+  memoryType: AllowedLongTermMemoryType | string
+  text: string
+  structured?: Record<string, unknown>
+  confidence: number
+  importance: Importance | string
+  sensitivity: Sensitivity
+  keywords: string[]
+  entities?: MemoryEntity[]
+  scope: MemoryScope
+  sourceRefs: ExtractionSourceRefs
+  discardReason?: string
+}
 
 export type MemoryExtractionWindow = {
-  userId: string;
-  sessionId: string;
-  triggerTurnId: string;
-  includedTurnIds: string[];
-  windowHash: string;
-  sessionMemorySummaryId: string;
-  renderedInput: string;
-};
+  userId: string
+  sessionId: string
+  triggerTurnId: string
+  includedTurnIds: string[]
+  windowHash: string
+  sessionMemorySummaryId: string
+  renderedInput: string
+}
 
 export type ValidationResult = {
-  valid: boolean;
-  reason?: string;
-  normalizedCandidate?: ExtractedMemoryCandidate;
-};
+  valid: boolean
+  reason?: string
+  normalizedCandidate?: ExtractedMemoryCandidate
+}
 
 export type CanonicalizedCandidate = {
-  normalizedText: string;
-  normalizedStructured?: Record<string, unknown>;
-  normalizedEntities?: MemoryEntity[];
-};
+  normalizedText: string
+  normalizedStructured?: Record<string, unknown>
+  normalizedEntities?: MemoryEntity[]
+}
 
-export const VALID_IMPORTANCE: Importance[] = ['low', 'medium', 'high', 'critical'];
+export const VALID_IMPORTANCE: Importance[] = ['low', 'medium', 'high', 'critical']
 
 export const AUTO_EXTRACTED_MEMORY_TYPES: AutoExtractedMemoryType[] = [
   'user_preference',
@@ -82,12 +88,12 @@ export const AUTO_EXTRACTED_MEMORY_TYPES: AutoExtractedMemoryType[] = [
   'user_safety_rule',
   'project_state',
   'long_term_fact',
-];
+]
 
 /** @deprecated Use AUTO_EXTRACTED_MEMORY_TYPES instead */
-export const P0_MEMORY_TYPES: AllowedLongTermMemoryType[] = AUTO_EXTRACTED_MEMORY_TYPES as AllowedLongTermMemoryType[];
+export const P0_MEMORY_TYPES: AllowedLongTermMemoryType[] = AUTO_EXTRACTED_MEMORY_TYPES as AllowedLongTermMemoryType[]
 
-export const MIN_CONFIDENCE = 0.7;
+export const MIN_CONFIDENCE = 0.7
 
 const EPHEMERAL_PATTERNS = [
   /commit\s+[a-f0-9]{7,40}/i,
@@ -107,58 +113,58 @@ const EPHEMERAL_PATTERNS = [
   /git\s+(add|commit|push|pull|merge|checkout|branch)/i,
   /\bDEBUG\s*=/i,
   /\btrace\w*\s*:/i,
-];
+]
 
 function sortObjectKeys(obj: unknown): unknown {
   if (obj === null || typeof obj !== 'object') {
-    return obj;
+    return obj
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(sortObjectKeys);
+    return obj.map(sortObjectKeys)
   }
 
-  const sorted: Record<string, unknown> = {};
-  const keys = Object.keys(obj).sort();
+  const sorted: Record<string, unknown> = {}
+  const keys = Object.keys(obj).sort()
   for (const key of keys) {
-    sorted[key] = sortObjectKeys((obj as Record<string, unknown>)[key]);
+    sorted[key] = sortObjectKeys((obj as Record<string, unknown>)[key])
   }
-  return sorted;
+  return sorted
 }
 
 export function stableJsonHash(value: unknown): string {
-  const sorted = sortObjectKeys(value);
-  const json = JSON.stringify(sorted);
-  return crypto.createHash('sha256').update(json).digest('hex');
+  const sorted = sortObjectKeys(value)
+  const json = JSON.stringify(sorted)
+  return crypto.createHash('sha256').update(json).digest('hex')
 }
 
 export function canonicalizeMemoryCandidate(candidate: ExtractedMemoryCandidate): CanonicalizedCandidate {
-  const normalizedText = candidate.text.trim().toLowerCase();
-  
-  let normalizedStructured: Record<string, unknown> | undefined;
+  const normalizedText = candidate.text.trim().toLowerCase()
+
+  let normalizedStructured: Record<string, unknown> | undefined
   if (candidate.structured) {
-    normalizedStructured = sortObjectKeys(candidate.structured) as Record<string, unknown>;
+    normalizedStructured = sortObjectKeys(candidate.structured) as Record<string, unknown>
   }
 
-  let normalizedEntities: MemoryEntity[] | undefined;
+  let normalizedEntities: MemoryEntity[] | undefined
   if (candidate.entities && candidate.entities.length > 0) {
     normalizedEntities = [...candidate.entities].sort((a, b) => {
-      const typeCompare = a.entityType.localeCompare(b.entityType);
-      if (typeCompare !== 0) return typeCompare;
-      return a.displayName.localeCompare(b.displayName);
-    });
+      const typeCompare = a.entityType.localeCompare(b.entityType)
+      if (typeCompare !== 0) return typeCompare
+      return a.displayName.localeCompare(b.displayName)
+    })
   }
 
   return {
     normalizedText,
     normalizedStructured,
     normalizedEntities,
-  };
+  }
 }
 
 export function fingerprintMemoryCandidate(userId: string, candidate: ExtractedMemoryCandidate): string {
-  const canonical = canonicalizeMemoryCandidate(candidate);
-  
+  const canonical = canonicalizeMemoryCandidate(candidate)
+
   const fingerprintData = {
     userId,
     memoryType: candidate.memoryType,
@@ -166,46 +172,46 @@ export function fingerprintMemoryCandidate(userId: string, candidate: ExtractedM
     normalizedStructured: canonical.normalizedStructured,
     visibility: 'private_user' as const,
     normalizedEntities: canonical.normalizedEntities,
-  };
+  }
 
-  return stableJsonHash(fingerprintData);
+  return stableJsonHash(fingerprintData)
 }
 
 function detectEphemeralPattern(text: string): boolean {
-  return EPHEMERAL_PATTERNS.some(pattern => pattern.test(text));
+  return EPHEMERAL_PATTERNS.some((pattern) => pattern.test(text))
 }
 
 export function validateExtractedCandidate(
   candidate: ExtractedMemoryCandidate,
-  _window: MemoryExtractionWindow
+  _window: MemoryExtractionWindow,
 ): ValidationResult {
-  const baseValidation = validateMemoryCandidate(candidate);
+  const baseValidation = validateMemoryCandidate(candidate)
   if (!baseValidation.valid) {
     return {
       valid: false,
       reason: baseValidation.errors[0],
-    };
+    }
   }
 
   if (!candidate.sourceRefs.extraction?.windowHash) {
     return {
       valid: false,
       reason: 'missing_window_hash',
-    };
+    }
   }
 
   if (process.env.MEMORY_SEMANTIC_POLICY_ENABLED === 'true' && detectEphemeralPattern(candidate.text)) {
     return {
       valid: false,
       reason: 'ephemeral_pattern_detected',
-    };
+    }
   }
 
   if (candidate.discardReason) {
     return {
       valid: false,
       reason: `discard:${candidate.discardReason}`,
-    };
+    }
   }
 
   const normalizedCandidate: ExtractedMemoryCandidate = {
@@ -215,12 +221,12 @@ export function validateExtractedCandidate(
     scope: {
       visibility: 'private_user' as Visibility,
     },
-  };
+  }
 
   return {
     valid: true,
     normalizedCandidate,
-  };
+  }
 }
 
 /** Hardcoded fallback for buildLongTermMemoryExtractionPrompt when template loading fails */
@@ -247,7 +253,7 @@ DISCARD THE FOLLOWING:
 8. Collaboration workflow preferences
 9. Tool usage preferences
 10. One-time formatting requirements
-11. Assistant execution process details`;
+11. Assistant execution process details`
 
 const HARDCODED_SCHEMA_BODY = `RESPONSE FORMAT (JSON only, no markdown):
 {
@@ -290,48 +296,51 @@ REQUIREMENTS:
 - transcriptRefs must reference actual turns from the conversation
 - Include discardReason for any candidate that should not be stored
 
-Respond with JSON only.`;
+Respond with JSON only.`
 
 export async function buildLongTermMemoryExtractionPrompt(window: MemoryExtractionWindow): Promise<string> {
-  let stableRules: string;
-  let schemaSection: string;
-  let atomicFactsRules: string | null = null;
+  let stableRules: string
+  let schemaSection: string
+  let atomicFactsRules: string | null = null
 
   if (isPromptMemoryP0Enabled()) {
-    const templateLoader = createTemplateLoader();
+    const templateLoader = createTemplateLoader()
     try {
-      stableRules = await templateLoader.load('agents:memory');
+      stableRules = await templateLoader.load('agents:memory')
     } catch (e) {
-      console.warn('[memory-extraction] Failed to load agents:memory template, using hardcoded fallback', e);
-      stableRules = HARDCODED_EXTRACTION_PROMPT_BODY;
+      console.warn('[memory-extraction] Failed to load agents:memory template, using hardcoded fallback', e)
+      stableRules = HARDCODED_EXTRACTION_PROMPT_BODY
     }
     try {
-      schemaSection = await templateLoader.load('output:memory-candidate.schema');
+      schemaSection = await templateLoader.load('output:memory-candidate.schema')
     } catch (e) {
-      console.warn('[memory-extraction] Failed to load output:memory-candidate.schema template, using hardcoded fallback', e);
-      schemaSection = HARDCODED_SCHEMA_BODY;
+      console.warn(
+        '[memory-extraction] Failed to load output:memory-candidate.schema template, using hardcoded fallback',
+        e,
+      )
+      schemaSection = HARDCODED_SCHEMA_BODY
     }
     try {
-      atomicFactsRules = await templateLoader.load('summary:atomic-facts');
+      atomicFactsRules = await templateLoader.load('summary:atomic-facts')
     } catch (e) {
-      console.warn('[memory-extraction] Failed to load summary:atomic-facts template, skipping atomic-facts rules', e);
-      atomicFactsRules = null;
+      console.warn('[memory-extraction] Failed to load summary:atomic-facts template, skipping atomic-facts rules', e)
+      atomicFactsRules = null
     }
   } else {
-    stableRules = HARDCODED_EXTRACTION_PROMPT_BODY;
-    schemaSection = HARDCODED_SCHEMA_BODY;
+    stableRules = HARDCODED_EXTRACTION_PROMPT_BODY
+    schemaSection = HARDCODED_SCHEMA_BODY
   }
 
-  const dynamicWindow = buildMemoryExtractionDynamicWindow(window);
+  const dynamicWindow = buildMemoryExtractionDynamicWindow(window)
 
-  const promptParts = [stableRules];
+  const promptParts = [stableRules]
   if (atomicFactsRules) {
-    promptParts.push(`\n## Atomic Facts Extraction Rules\n${atomicFactsRules}`);
+    promptParts.push(`\n## Atomic Facts Extraction Rules\n${atomicFactsRules}`)
   }
-  promptParts.push(dynamicWindow);
-  promptParts.push(schemaSection);
+  promptParts.push(dynamicWindow)
+  promptParts.push(schemaSection)
 
-  return promptParts.join('\n\n');
+  return promptParts.join('\n\n')
 }
 
 export function buildMemoryExtractionDynamicWindow(window: MemoryExtractionWindow): string {
@@ -346,5 +355,5 @@ CONTEXT:
 
 CONVERSATION:
 ${window.renderedInput}
-`;
+`
 }

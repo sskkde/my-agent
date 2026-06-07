@@ -1,6 +1,6 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js';
-import type { ToolExecutionContext } from '../types.js';
-import { readFileSync, statSync, existsSync } from 'fs';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { ToolExecutionContext } from '../types.js'
+import { readFileSync, statSync, existsSync } from 'fs'
 import {
   validatePathSafety,
   getWorkspaceRoot,
@@ -8,49 +8,46 @@ import {
   MAX_FILE_READ_LINES,
   LARGE_RESULT_THRESHOLD,
   isBinaryByContent,
-} from './safe-paths.js';
+} from './safe-paths.js'
 
 export interface FileReadParams {
-  filePath: string;
-  offset?: number;
-  limit?: number;
+  filePath: string
+  offset?: number
+  limit?: number
 }
 
 export interface FileReadResult {
-  filePath: string;
-  content: string;
-  startLine: number;
-  returnedLines: number;
-  totalLines: number;
-  truncated: boolean;
+  filePath: string
+  content: string
+  startLine: number
+  returnedLines: number
+  totalLines: number
+  truncated: boolean
 }
 
 function countLines(text: string): number {
-  if (text.length === 0) return 0;
-  let count = 1;
+  if (text.length === 0) return 0
+  let count = 1
   for (let i = 0; i < text.length; i++) {
-    if (text[i] === '\n') count++;
+    if (text[i] === '\n') count++
   }
-  return count;
+  return count
 }
 
 function extractLines(text: string, offset: number, limit: number): { content: string; returnedLines: number } {
-  const lines = text.split('\n');
-  const startIdx = Math.max(0, offset - 1);
-  const endIdx = Math.min(lines.length, startIdx + limit);
-  const selectedLines = lines.slice(startIdx, endIdx);
+  const lines = text.split('\n')
+  const startIdx = Math.max(0, offset - 1)
+  const endIdx = Math.min(lines.length, startIdx + limit)
+  const selectedLines = lines.slice(startIdx, endIdx)
   return {
     content: selectedLines.join('\n'),
     returnedLines: selectedLines.length,
-  };
+  }
 }
 
 export function createFileReadTool(): ToolDefinition {
-  const handler: ToolHandler = async (
-    params: unknown,
-    context: ToolExecutionContext
-  ): Promise<ToolExecutionResult> => {
-    const typedParams = params as FileReadParams;
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+    const typedParams = params as FileReadParams
 
     if (!typedParams.filePath) {
       return {
@@ -60,11 +57,11 @@ export function createFileReadTool(): ToolDefinition {
           message: 'filePath parameter is required',
           recoverable: true,
         },
-      };
+      }
     }
 
-    const workspaceRoot = getWorkspaceRoot();
-    const safetyResult = validatePathSafety(typedParams.filePath, workspaceRoot);
+    const workspaceRoot = getWorkspaceRoot()
+    const safetyResult = validatePathSafety(typedParams.filePath, workspaceRoot)
 
     if (!safetyResult.safe) {
       return {
@@ -74,10 +71,10 @@ export function createFileReadTool(): ToolDefinition {
           message: safetyResult.error?.message ?? 'Path validation failed',
           recoverable: false,
         },
-      };
+      }
     }
 
-    const canonicalPath = safetyResult.canonicalPath!;
+    const canonicalPath = safetyResult.canonicalPath!
 
     if (!existsSync(canonicalPath)) {
       return {
@@ -87,10 +84,10 @@ export function createFileReadTool(): ToolDefinition {
           message: `File not found: ${safetyResult.relativePath}`,
           recoverable: true,
         },
-      };
+      }
     }
 
-    const stats = statSync(canonicalPath);
+    const stats = statSync(canonicalPath)
     if (!stats.isFile()) {
       return {
         success: false,
@@ -99,7 +96,7 @@ export function createFileReadTool(): ToolDefinition {
           message: `Path is not a file: ${safetyResult.relativePath}`,
           recoverable: false,
         },
-      };
+      }
     }
 
     if (stats.size > MAX_FILE_READ_BYTES) {
@@ -110,14 +107,14 @@ export function createFileReadTool(): ToolDefinition {
           message: `File exceeds maximum size of ${MAX_FILE_READ_BYTES} bytes (${stats.size} bytes)`,
           recoverable: false,
         },
-      };
+      }
     }
 
-    let buffer: Buffer;
+    let buffer: Buffer
     try {
-      buffer = readFileSync(canonicalPath);
+      buffer = readFileSync(canonicalPath)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error reading file';
+      const message = err instanceof Error ? err.message : 'Unknown error reading file'
       return {
         success: false,
         error: {
@@ -125,7 +122,7 @@ export function createFileReadTool(): ToolDefinition {
           message: `Failed to read file: ${message}`,
           recoverable: false,
         },
-      };
+      }
     }
 
     if (isBinaryByContent(buffer)) {
@@ -136,15 +133,15 @@ export function createFileReadTool(): ToolDefinition {
           message: 'File appears to be binary (contains null bytes)',
           recoverable: false,
         },
-      };
+      }
     }
 
-    const text = buffer.toString('utf-8');
-    const totalLines = countLines(text);
-    const offset = typedParams.offset ?? 1;
-    const limit = Math.min(typedParams.limit ?? MAX_FILE_READ_LINES, MAX_FILE_READ_LINES);
-    const { content, returnedLines } = extractLines(text, offset, limit);
-    const truncated = returnedLines < totalLines - (offset - 1);
+    const text = buffer.toString('utf-8')
+    const totalLines = countLines(text)
+    const offset = typedParams.offset ?? 1
+    const limit = Math.min(typedParams.limit ?? MAX_FILE_READ_LINES, MAX_FILE_READ_LINES)
+    const { content, returnedLines } = extractLines(text, offset, limit)
+    const truncated = returnedLines < totalLines - (offset - 1)
 
     const result: FileReadResult = {
       filePath: safetyResult.relativePath!,
@@ -153,15 +150,15 @@ export function createFileReadTool(): ToolDefinition {
       returnedLines,
       totalLines,
       truncated,
-    };
+    }
 
-    const resultJson = JSON.stringify(result);
+    const resultJson = JSON.stringify(result)
 
     if (resultJson.length > LARGE_RESULT_THRESHOLD && context.stores?.toolExecutionStore) {
       context.stores.toolExecutionStore.saveResult(context.toolCallId, {
         preview: content.slice(0, 500),
         structuredContent: result as unknown as Record<string, unknown>,
-      });
+      })
     }
 
     return {
@@ -169,8 +166,8 @@ export function createFileReadTool(): ToolDefinition {
       data: result,
       resultPreview: `Read ${returnedLines} line(s) from ${safetyResult.relativePath}${truncated ? ' (truncated)' : ''}`,
       structuredContent: result as unknown as Record<string, unknown>,
-    };
-  };
+    }
+  }
 
   return {
     name: 'file_read',
@@ -196,5 +193,5 @@ export function createFileReadTool(): ToolDefinition {
       required: ['filePath'],
     },
     handler,
-  };
+  }
 }

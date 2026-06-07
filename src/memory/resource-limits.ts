@@ -1,7 +1,7 @@
-import type { ResourceLimitType, ResourceLimit } from './limit-types.js';
+import type { ResourceLimitType, ResourceLimit } from './limit-types.js'
 
 export function checkResourceLimit(_type: ResourceLimitType, current: number, limit: number): boolean {
-  return current <= limit;
+  return current <= limit
 }
 
 export function enforceMemoryLimit(_sessionId: string, memoryLimitMb: number, currentMemoryMb: number): void {
@@ -10,16 +10,17 @@ export function enforceMemoryLimit(_sessionId: string, memoryLimitMb: number, cu
       type: 'memory_mb',
       limit: memoryLimitMb,
       current: currentMemoryMb,
-      resetAt: new Date().toISOString()
-    };
-    throw exceeded;
+      resetAt: new Date().toISOString(),
+    }
+    throw exceeded
   }
 }
 
-export function checkAllLimits(
-  limits: Array<{ type: ResourceLimitType; current: number; limit: number }>
-): { withinLimit: boolean; violations: ResourceLimit[] } {
-  const violations: ResourceLimit[] = [];
+export function checkAllLimits(limits: Array<{ type: ResourceLimitType; current: number; limit: number }>): {
+  withinLimit: boolean
+  violations: ResourceLimit[]
+} {
+  const violations: ResourceLimit[] = []
 
   for (const { type, current, limit } of limits) {
     if (!checkResourceLimit(type, current, limit)) {
@@ -27,13 +28,13 @@ export function checkAllLimits(
         type,
         limit,
         current,
-        resetAt: new Date().toISOString()
-      });
+        resetAt: new Date().toISOString(),
+      })
     }
   }
 
   return {
     withinLimit: violations.length === 0,
-    violations
-  };
+    violations,
+  }
 }

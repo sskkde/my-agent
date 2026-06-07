@@ -9,43 +9,21 @@
  * @module foreground/tools/index
  */
 
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../../tools/types.js';
-import {
-  STATUS_QUERY_TOOL_ID,
-  type StatusQueryData,
-} from './status-query-tool.js';
-import {
-  SPAWN_PLANNER_TOOL_ID,
-  type SpawnPlannerInput,
-  type SpawnPlannerData,
-} from './planner-spawn-tool.js';
-import {
-  RESUME_PLANNER_TOOL_ID,
-  type ResumePlannerInput,
-  type ResumePlannerData,
-} from './planner-resume-tool.js';
-import {
-  LAUNCH_SUBAGENT_TOOL_ID,
-  type LaunchSubagentInput,
-  type LaunchSubagentData,
-} from './subagent-launch-tool.js';
-import {
-  CANCEL_MODIFY_TOOL_ID,
-  type CancelModifyInput,
-  type CancelModifyData,
-} from './cancel-modify-task-tool.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../../tools/types.js'
+import { STATUS_QUERY_TOOL_ID, type StatusQueryData } from './status-query-tool.js'
+import { SPAWN_PLANNER_TOOL_ID, type SpawnPlannerInput, type SpawnPlannerData } from './planner-spawn-tool.js'
+import { RESUME_PLANNER_TOOL_ID, type ResumePlannerInput, type ResumePlannerData } from './planner-resume-tool.js'
+import { LAUNCH_SUBAGENT_TOOL_ID, type LaunchSubagentInput, type LaunchSubagentData } from './subagent-launch-tool.js'
+import { CANCEL_MODIFY_TOOL_ID, type CancelModifyInput, type CancelModifyData } from './cancel-modify-task-tool.js'
 import {
   APPROVAL_REQUEST_TOOL_ID,
   type ApprovalRequestInput,
   type ApprovalRequestData,
   type ApprovalResponseInput,
   type ApprovalResponseData,
-} from './approval-request-tool.js';
-import {
-  SEARCH_SUBAGENT_TOOL_ID,
-  type SearchSubagentToolInput,
-} from '../../search/search-subagent-tool.js';
-import type { ToolRegistry } from '../../tools/types.js';
+} from './approval-request-tool.js'
+import { SEARCH_SUBAGENT_TOOL_ID, type SearchSubagentToolInput } from '../../search/search-subagent-tool.js'
+import type { ToolRegistry } from '../../tools/types.js'
 
 // Re-export tool IDs
 export {
@@ -56,7 +34,7 @@ export {
   CANCEL_MODIFY_TOOL_ID,
   APPROVAL_REQUEST_TOOL_ID,
   SEARCH_SUBAGENT_TOOL_ID,
-};
+}
 
 // Re-export tool types
 export type {
@@ -74,19 +52,16 @@ export type {
   ApprovalResponseInput,
   ApprovalResponseData,
   SearchSubagentToolInput,
-};
+}
 
 // Re-export handlers (for testing and direct invocation)
-export { handleStatusQuery } from './status-query-tool.js';
-export { handleSpawnPlanner } from './planner-spawn-tool.js';
-export { handleResumePlanner } from './planner-resume-tool.js';
-export { handleLaunchSubagent } from './subagent-launch-tool.js';
-export { handleCancelOrModifyTask } from './cancel-modify-task-tool.js';
-export {
-  handleApprovalRequest,
-  handleApprovalResponse,
-} from './approval-request-tool.js';
-export { handleSearchSubagentTool } from '../../search/search-subagent-tool.js';
+export { handleStatusQuery } from './status-query-tool.js'
+export { handleSpawnPlanner } from './planner-spawn-tool.js'
+export { handleResumePlanner } from './planner-resume-tool.js'
+export { handleLaunchSubagent } from './subagent-launch-tool.js'
+export { handleCancelOrModifyTask } from './cancel-modify-task-tool.js'
+export { handleApprovalRequest, handleApprovalResponse } from './approval-request-tool.js'
+export { handleSearchSubagentTool } from '../../search/search-subagent-tool.js'
 
 /**
  * Placeholder handler for foreground tools.
@@ -103,8 +78,8 @@ const foregroundToolPlaceholderHandler: ToolHandler = async (): Promise<ToolExec
       recoverable: false,
     },
     resultPreview: 'Tool requires foreground kernel execution',
-  };
-};
+  }
+}
 
 /**
  * Create the search_subagent tool definition.
@@ -115,7 +90,8 @@ const foregroundToolPlaceholderHandler: ToolHandler = async (): Promise<ToolExec
 export function createSearchSubagentToolDefinition(): ToolDefinition {
   return {
     name: SEARCH_SUBAGENT_TOOL_ID,
-    description: 'Search the web for information. Returns structured search results with extracted facts and source URLs. Uses a constrained subagent for safe web searching.',
+    description:
+      'Search the web for information. Returns structured search results with extracted facts and source URLs. Uses a constrained subagent for safe web searching.',
     category: 'search',
     sensitivity: 'medium',
     requiresPermission: false,
@@ -146,7 +122,7 @@ export function createSearchSubagentToolDefinition(): ToolDefinition {
     metadata: {
       requiresApproval: false,
     },
-  };
+  }
 }
 
 /**
@@ -158,7 +134,8 @@ export function createSearchSubagentToolDefinition(): ToolDefinition {
 export function createForegroundStatusQueryToolDefinition(): ToolDefinition {
   return {
     name: STATUS_QUERY_TOOL_ID,
-    description: 'Query the status of active work including planner runs, background subagents, and pending approvals. Returns current status for all active tasks.',
+    description:
+      'Query the status of active work including planner runs, background subagents, and pending approvals. Returns current status for all active tasks.',
     category: 'read',
     sensitivity: 'low',
     requiresPermission: false,
@@ -171,7 +148,7 @@ export function createForegroundStatusQueryToolDefinition(): ToolDefinition {
     metadata: {
       requiresApproval: false,
     },
-  };
+  }
 }
 
 /**
@@ -183,7 +160,8 @@ export function createForegroundStatusQueryToolDefinition(): ToolDefinition {
 export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
   return {
     name: SPAWN_PLANNER_TOOL_ID,
-    description: 'Create a new planner run to work on a task. The planner will generate a plan and begin executing it in the background. Use this for complex, multi-step tasks.',
+    description:
+      'Create a new planner run to work on a task. The planner will generate a plan and begin executing it in the background. Use this for complex, multi-step tasks.',
     category: 'write',
     sensitivity: 'medium',
     requiresPermission: true,
@@ -214,7 +192,7 @@ export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
     metadata: {
       requiresApproval: true,
     },
-  };
+  }
 }
 
 /**
@@ -226,7 +204,8 @@ export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
 export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
   return {
     name: RESUME_PLANNER_TOOL_ID,
-    description: 'Resume an existing planner run that was paused or is waiting for input. Provide a message to continue the planning process.',
+    description:
+      'Resume an existing planner run that was paused or is waiting for input. Provide a message to continue the planning process.',
     category: 'write',
     sensitivity: 'medium',
     requiresPermission: true,
@@ -253,7 +232,7 @@ export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
     metadata: {
       requiresApproval: true,
     },
-  };
+  }
 }
 
 /**
@@ -265,7 +244,8 @@ export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
 export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
   return {
     name: LAUNCH_SUBAGENT_TOOL_ID,
-    description: 'Launch a background subagent to perform a specific task. Subagents run asynchronously and can be monitored via status queries.',
+    description:
+      'Launch a background subagent to perform a specific task. Subagents run asynchronously and can be monitored via status queries.',
     category: 'execute',
     sensitivity: 'medium',
     requiresPermission: true,
@@ -292,7 +272,7 @@ export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
     metadata: {
       requiresApproval: true,
     },
-  };
+  }
 }
 
 /**
@@ -304,7 +284,8 @@ export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
 export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefinition {
   return {
     name: CANCEL_MODIFY_TOOL_ID,
-    description: 'Cancel, pause, resume, or modify an active task (planner run or subagent). This is a high-risk operation that can interrupt ongoing work.',
+    description:
+      'Cancel, pause, resume, or modify an active task (planner run or subagent). This is a high-risk operation that can interrupt ongoing work.',
     category: 'execute',
     sensitivity: 'high',
     requiresPermission: true,
@@ -335,7 +316,7 @@ export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefiniti
     metadata: {
       requiresApproval: true,
     },
-  };
+  }
 }
 
 /**
@@ -347,7 +328,8 @@ export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefiniti
 export function createForegroundHandleApprovalToolDefinition(): ToolDefinition {
   return {
     name: APPROVAL_REQUEST_TOOL_ID,
-    description: 'Handle approval requests and responses for high-risk foreground operations. Use this to approve or deny pending approval requests.',
+    description:
+      'Handle approval requests and responses for high-risk foreground operations. Use this to approve or deny pending approval requests.',
     category: 'internal',
     sensitivity: 'low',
     requiresPermission: false,
@@ -397,7 +379,7 @@ export function createForegroundHandleApprovalToolDefinition(): ToolDefinition {
     metadata: {
       requiresApproval: false,
     },
-  };
+  }
 }
 
 /**
@@ -409,13 +391,13 @@ export function createForegroundHandleApprovalToolDefinition(): ToolDefinition {
  * @param registry - The tool registry to register tools with
  */
 export function registerAllForegroundTools(registry: ToolRegistry): void {
-  registry.register(createSearchSubagentToolDefinition());
-  registry.register(createForegroundStatusQueryToolDefinition());
-  registry.register(createForegroundSpawnPlannerToolDefinition());
-  registry.register(createForegroundResumePlannerToolDefinition());
-  registry.register(createForegroundLaunchSubagentToolDefinition());
-  registry.register(createForegroundCancelOrModifyTaskToolDefinition());
-  registry.register(createForegroundHandleApprovalToolDefinition());
+  registry.register(createSearchSubagentToolDefinition())
+  registry.register(createForegroundStatusQueryToolDefinition())
+  registry.register(createForegroundSpawnPlannerToolDefinition())
+  registry.register(createForegroundResumePlannerToolDefinition())
+  registry.register(createForegroundLaunchSubagentToolDefinition())
+  registry.register(createForegroundCancelOrModifyTaskToolDefinition())
+  registry.register(createForegroundHandleApprovalToolDefinition())
 }
 
 /**
@@ -431,7 +413,7 @@ export function getForegroundToolIds(): string[] {
     LAUNCH_SUBAGENT_TOOL_ID,
     CANCEL_MODIFY_TOOL_ID,
     APPROVAL_REQUEST_TOOL_ID,
-  ];
+  ]
 }
 
 /**
@@ -441,9 +423,9 @@ export function getForegroundToolIds(): string[] {
 export function getDefaultProjectionForegroundToolIds(): string[] {
   return [
     SEARCH_SUBAGENT_TOOL_ID, // search, medium
-    STATUS_QUERY_TOOL_ID,     // read, low
+    STATUS_QUERY_TOOL_ID, // read, low
     APPROVAL_REQUEST_TOOL_ID, // internal, low
-  ];
+  ]
 }
 
 /**
@@ -451,10 +433,5 @@ export function getDefaultProjectionForegroundToolIds(): string[] {
  * These are high-risk or side-effect tools.
  */
 export function getRequiresApprovalForegroundToolIds(): string[] {
-  return [
-    SPAWN_PLANNER_TOOL_ID,
-    RESUME_PLANNER_TOOL_ID,
-    LAUNCH_SUBAGENT_TOOL_ID,
-    CANCEL_MODIFY_TOOL_ID,
-  ];
+  return [SPAWN_PLANNER_TOOL_ID, RESUME_PLANNER_TOOL_ID, LAUNCH_SUBAGENT_TOOL_ID, CANCEL_MODIFY_TOOL_ID]
 }

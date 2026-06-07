@@ -12,11 +12,11 @@
  */
 export interface MessageProcessorError {
   /** Error code for programmatic handling */
-  code: string;
+  code: string
   /** Human-readable error message */
-  message: string;
+  message: string
   /** Optional additional error details */
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown>
 }
 
 /**
@@ -26,17 +26,17 @@ export interface MessageProcessorError {
  */
 export interface MessageProcessorInput {
   /** Correlation ID for tracing (maps from envelopeId) */
-  correlationId: string;
+  correlationId: string
   /** User identifier */
-  userId: string;
+  userId: string
   /** Session identifier */
-  sessionId: string;
+  sessionId: string
   /** Message text content */
-  text: string;
+  text: string
   /** ISO timestamp of the message */
-  timestamp: string;
+  timestamp: string
   /** Optional metadata for correlation/linkage (channel-specific keys are filtered out) */
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown>
 }
 
 /**
@@ -44,11 +44,11 @@ export interface MessageProcessorInput {
  */
 export interface MessageProcessorResult {
   /** Response text (if any) */
-  text?: string;
+  text?: string
   /** Decision route taken */
-  route?: string;
+  route?: string
   /** Additional result data */
-  data?: Record<string, unknown>;
+  data?: Record<string, unknown>
 }
 
 /**
@@ -57,15 +57,15 @@ export interface MessageProcessorResult {
  */
 export interface MessageProcessorOutput {
   /** Correlation ID matching the input */
-  correlationId: string;
+  correlationId: string
   /** Whether processing succeeded */
-  success: boolean;
+  success: boolean
   /** Result data (if success is true) */
-  result?: MessageProcessorResult;
+  result?: MessageProcessorResult
   /** Error details (if success is false) */
-  error?: MessageProcessorError;
+  error?: MessageProcessorError
   /** ISO timestamp of the output */
-  timestamp: string;
+  timestamp: string
 }
 
 /**
@@ -80,7 +80,7 @@ export interface MessageProcessor {
    * @param input - Channel-neutral message input
    * @returns Promise resolving to processing output with matching correlationId
    */
-  process(input: MessageProcessorInput): Promise<MessageProcessorOutput>;
+  process(input: MessageProcessorInput): Promise<MessageProcessorOutput>
 }
 
 /**
@@ -88,12 +88,12 @@ export interface MessageProcessor {
  */
 export interface MessageProcessorConfig {
   /** Timeout in milliseconds (default: 30000) */
-  timeoutMs: number;
+  timeoutMs: number
   /** Core processing function to wrap with timeout/error handling */
-  processorFn: (input: MessageProcessorInput) => Promise<MessageProcessorOutput>;
+  processorFn: (input: MessageProcessorInput) => Promise<MessageProcessorOutput>
 }
 
 /**
  * Factory function type for creating MessageProcessor instances
  */
-export type MessageProcessorFactory = (config: MessageProcessorConfig) => MessageProcessor;
+export type MessageProcessorFactory = (config: MessageProcessorConfig) => MessageProcessor

@@ -1,44 +1,44 @@
 /**
  * Exec Tool and Bash Tool
- * 
+ *
  * Execute shell commands with security validation, timeout, and output management.
  * Supports both foreground (with yield) and background execution modes.
  */
 
-import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js';
-import type { ProcessSessionStore } from './process-session-store.js';
-import { validateExecParams } from './command-safety.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js'
+import type { ProcessSessionStore } from './process-session-store.js'
+import { validateExecParams } from './command-safety.js'
 
 export interface ExecParams {
-  command: string;
-  workdir?: string;
-  env?: Record<string, string>;
-  timeoutMs?: number;
-  yieldMs?: number;
-  background?: boolean;
-  maxOutputChars?: number;
+  command: string
+  workdir?: string
+  env?: Record<string, string>
+  timeoutMs?: number
+  yieldMs?: number
+  background?: boolean
+  maxOutputChars?: number
 }
 
 export interface ExecResult {
-  status: 'completed' | 'running' | 'timeout' | 'failed' | 'killed';
-  sessionId?: string;
-  exitCode?: number | null;
-  signal?: string | null;
-  stdout: string;
-  stderr: string;
-  stdoutTruncated: boolean;
-  stderrTruncated: boolean;
-  durationMs: number;
-  timedOut: boolean;
+  status: 'completed' | 'running' | 'timeout' | 'failed' | 'killed'
+  sessionId?: string
+  exitCode?: number | null
+  signal?: string | null
+  stdout: string
+  stderr: string
+  stdoutTruncated: boolean
+  stderrTruncated: boolean
+  durationMs: number
+  timedOut: boolean
 }
 
 export function createExecTool(store: ProcessSessionStore): ToolDefinition {
   const handler: ToolHandler = async (
     params: unknown,
-    _context: ToolExecutionContext
+    _context: ToolExecutionContext,
   ): Promise<ToolExecutionResult> => {
-    const typedParams = params as ExecParams;
-    const startTime = Date.now();
+    const typedParams = params as ExecParams
+    const startTime = Date.now()
 
     const validation = validateExecParams({
       command: typedParams.command,
@@ -47,7 +47,7 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
       maxOutputChars: typedParams.maxOutputChars,
       workdir: typedParams.workdir,
       env: typedParams.env,
-    });
+    })
 
     if (!validation.valid) {
       return {
@@ -57,10 +57,10 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
           message: validation.error!.message,
           recoverable: false,
         },
-      };
+      }
     }
 
-    const normalized = validation.normalized!;
+    const normalized = validation.normalized!
 
     if (typedParams.background) {
       const sessionId = store.start({
@@ -70,7 +70,7 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
         env: normalized.env,
         timeoutMs: normalized.timeoutMs,
         maxOutputChars: normalized.maxOutputChars,
-      });
+      })
 
       const result: ExecResult = {
         status: 'running',
@@ -81,14 +81,14 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
         stderrTruncated: false,
         durationMs: 0,
         timedOut: false,
-      };
+      }
 
       return {
         success: true,
         data: result,
         resultPreview: `Started background process: ${sessionId}`,
         structuredContent: result as unknown as Record<string, unknown>,
-      };
+      }
     }
 
     const sessionId = store.start({
@@ -98,16 +98,16 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
       env: normalized.env,
       timeoutMs: normalized.timeoutMs,
       maxOutputChars: normalized.maxOutputChars,
-    });
+    })
 
-    const yieldMs = normalized.yieldMs;
-    const startTimeMs = Date.now();
+    const yieldMs = normalized.yieldMs
+    const startTimeMs = Date.now()
 
     return new Promise((resolve) => {
       const checkInterval = setInterval(() => {
-        const session = store.get(_context.userId, sessionId);
+        const session = store.get(_context.userId, sessionId)
         if (!session) {
-          clearInterval(checkInterval);
+          clearInterval(checkInterval)
           resolve({
             success: false,
             error: {
@@ -115,20 +115,25 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
               message: 'Process session disappeared',
               recoverable: false,
             },
-          });
-          return;
+          })
+          return
         }
 
-        const elapsed = Date.now() - startTimeMs;
+        const elapsed = Date.now() - startTimeMs
 
         if (session.status !== 'running') {
-          clearInterval(checkInterval);
-          const durationMs = Date.now() - startTime;
-          
+          clearInterval(checkInterval)
+          const durationMs = Date.now() - startTime
+
           const result: ExecResult = {
-            status: session.status === 'timeout' ? 'timeout' : 
-                   session.status === 'killed' ? 'killed' :
-                   session.status === 'failed' ? 'failed' : 'completed',
+            status:
+              session.status === 'timeout'
+                ? 'timeout'
+                : session.status === 'killed'
+                  ? 'killed'
+                  : session.status === 'failed'
+                    ? 'failed'
+                    : 'completed',
             exitCode: session.exitCode,
             signal: session.signal,
             stdout: session.output,
@@ -137,21 +142,21 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
             stderrTruncated: false,
             durationMs,
             timedOut: session.status === 'timeout',
-          };
+          }
 
-          store.clear(_context.userId, sessionId);
+          store.clear(_context.userId, sessionId)
 
           resolve({
             success: session.status === 'completed' || session.status === 'failed',
             data: result,
             resultPreview: `Process ${session.status}: exit code ${session.exitCode}, ${durationMs}ms`,
             structuredContent: result as unknown as Record<string, unknown>,
-          });
-          return;
+          })
+          return
         }
 
         if (elapsed >= yieldMs) {
-          clearInterval(checkInterval);
+          clearInterval(checkInterval)
           const result: ExecResult = {
             status: 'running',
             sessionId: sessionId,
@@ -161,22 +166,23 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
             stderrTruncated: false,
             durationMs: elapsed,
             timedOut: false,
-          };
+          }
 
           resolve({
             success: true,
             data: result,
             resultPreview: `Process still running after ${elapsed}ms, sessionId: ${sessionId}`,
             structuredContent: result as unknown as Record<string, unknown>,
-          });
+          })
         }
-      }, 50);
-    });
-  };
+      }, 50)
+    })
+  }
 
   return {
     name: 'exec',
-    description: 'Execute a shell command with security validation, timeout, and output management. Use background:true for async execution, then poll with process tool.',
+    description:
+      'Execute a shell command with security validation, timeout, and output management. Use background:true for async execution, then poll with process tool.',
     category: 'execute',
     sensitivity: 'high',
     requiresPermission: true,
@@ -216,15 +222,16 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
       required: ['command'],
     },
     handler,
-  };
+  }
 }
 
 export function createBashTool(store: ProcessSessionStore): ToolDefinition {
-  const execTool = createExecTool(store);
-  
+  const execTool = createExecTool(store)
+
   return {
     ...execTool,
     name: 'bash',
-    description: 'Execute a bash command (alias for exec tool). Supports background execution, timeout, and output truncation.',
-  };
+    description:
+      'Execute a bash command (alias for exec tool). Supports background execution, timeout, and output truncation.',
+  }
 }

@@ -1,34 +1,30 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js';
-import type { ToolExecutionContext } from '../types.js';
-import { existsSync } from 'fs';
-import {
-  validateWritePathSafety,
-  writeTextFileAtomic,
-  getWorkspaceRoot,
-} from './safe-file-write.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { ToolExecutionContext } from '../types.js'
+import { existsSync } from 'fs'
+import { validateWritePathSafety, writeTextFileAtomic, getWorkspaceRoot } from './safe-file-write.js'
 
 export interface FileWriteParams {
-  filePath: string;
-  content: string;
-  overwrite?: boolean;
-  createDirs?: boolean;
-  expectedHash?: string;
+  filePath: string
+  content: string
+  overwrite?: boolean
+  createDirs?: boolean
+  expectedHash?: string
 }
 
 export interface FileWriteResult {
-  filePath: string;
-  bytesWritten: number;
-  created: boolean;
-  previousHash?: string;
-  newHash: string;
+  filePath: string
+  bytesWritten: number
+  created: boolean
+  previousHash?: string
+  newHash: string
 }
 
 export function createFileWriteTool(): ToolDefinition {
   const handler: ToolHandler = async (
     params: unknown,
-    _context: ToolExecutionContext
+    _context: ToolExecutionContext,
   ): Promise<ToolExecutionResult> => {
-    const typedParams = params as FileWriteParams;
+    const typedParams = params as FileWriteParams
 
     if (!typedParams.filePath) {
       return {
@@ -38,7 +34,7 @@ export function createFileWriteTool(): ToolDefinition {
           message: 'filePath parameter is required',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (typedParams.content === undefined || typedParams.content === null) {
@@ -49,13 +45,13 @@ export function createFileWriteTool(): ToolDefinition {
           message: 'content parameter is required',
           recoverable: true,
         },
-      };
+      }
     }
 
-    const workspaceRoot = getWorkspaceRoot();
+    const workspaceRoot = getWorkspaceRoot()
 
     // Validate path safety
-    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, { allowNew: true });
+    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, { allowNew: true })
 
     if (!safetyResult.safe) {
       return {
@@ -65,11 +61,11 @@ export function createFileWriteTool(): ToolDefinition {
           message: safetyResult.error?.message ?? 'Path validation failed',
           recoverable: false,
         },
-      };
+      }
     }
 
-    const canonicalPath = safetyResult.canonicalPath!;
-    const fileExists = existsSync(canonicalPath);
+    const canonicalPath = safetyResult.canonicalPath!
+    const fileExists = existsSync(canonicalPath)
 
     // Check overwrite policy
     if (fileExists && typedParams.overwrite !== true) {
@@ -80,7 +76,7 @@ export function createFileWriteTool(): ToolDefinition {
           message: `File already exists: ${safetyResult.relativePath}. Use overwrite: true to replace it.`,
           recoverable: true,
         },
-      };
+      }
     }
 
     // Attempt atomic write
@@ -91,7 +87,7 @@ export function createFileWriteTool(): ToolDefinition {
         workspaceRoot,
         expectedHash: typedParams.expectedHash,
         createDirs: typedParams.createDirs,
-      });
+      })
 
       const writeResult: FileWriteResult = {
         filePath: result.filePath,
@@ -99,21 +95,21 @@ export function createFileWriteTool(): ToolDefinition {
         created: result.created,
         previousHash: result.previousHash,
         newHash: result.newHash,
-      };
+      }
 
       // Build result preview (MUST NOT include full content)
-      const hashPrefix = result.newHash.slice(0, 8);
-      const preview = `${result.filePath}: wrote ${result.bytesWritten} bytes, hash ${hashPrefix}`;
+      const hashPrefix = result.newHash.slice(0, 8)
+      const preview = `${result.filePath}: wrote ${result.bytesWritten} bytes, hash ${hashPrefix}`
 
       return {
         success: true,
         data: writeResult,
         resultPreview: preview,
         structuredContent: writeResult as unknown as Record<string, unknown>,
-      };
+      }
     } catch (err) {
-      const error = err as Error & { code?: string };
-      
+      const error = err as Error & { code?: string }
+
       return {
         success: false,
         error: {
@@ -121,9 +117,9 @@ export function createFileWriteTool(): ToolDefinition {
           message: error.message,
           recoverable: error.code === 'HASH_MISMATCH' || error.code === 'PARENT_DIR_NOT_FOUND',
         },
-      };
+      }
     }
-  };
+  }
 
   return {
     name: 'file_write',
@@ -152,11 +148,12 @@ export function createFileWriteTool(): ToolDefinition {
         },
         expectedHash: {
           type: 'string',
-          description: 'Expected SHA-256 hash of existing file. If provided, the write will fail if the hash does not match.',
+          description:
+            'Expected SHA-256 hash of existing file. If provided, the write will fail if the hash does not match.',
         },
       },
       required: ['filePath', 'content'],
     },
     handler,
-  };
+  }
 }

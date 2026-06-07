@@ -3,12 +3,12 @@
  * Based on foreground_conversation_agent_and_planner_agent_v1.md
  */
 
-import type { PermissionContext } from '../permissions/types.js';
-import type { ToolCategory } from '../tools/types.js';
-import type { TargetRuntime, RuntimeAction } from '../dispatcher/types.js';
-import type { Stores } from '../gateway/types.js';
-import type { HydratedSessionState, ActiveWorkRefs } from '../gateway/types.js';
-import type { AgentConfig } from '../storage/agent-config-store.js';
+import type { PermissionContext } from '../permissions/types.js'
+import type { ToolCategory } from '../tools/types.js'
+import type { TargetRuntime, RuntimeAction } from '../dispatcher/types.js'
+import type { Stores } from '../gateway/types.js'
+import type { HydratedSessionState, ActiveWorkRefs } from '../gateway/types.js'
+import type { AgentConfig } from '../storage/agent-config-store.js'
 
 /**
  * Decision routes for foreground conversation agent
@@ -21,12 +21,12 @@ export type ForegroundDecisionRoute =
   | 'resume_existing_planner'
   | 'approval_handler'
   | 'cancel_or_modify_task'
-  | 'status_query';
+  | 'status_query'
 
 /**
  * Complexity levels for tasks
  */
-export type TaskComplexity = 'low' | 'medium' | 'high' | 'critical';
+export type TaskComplexity = 'low' | 'medium' | 'high' | 'critical'
 
 /**
  * Direct Delegation Policy
@@ -34,13 +34,13 @@ export type TaskComplexity = 'low' | 'medium' | 'high' | 'critical';
  */
 export interface DirectDelegationPolicy {
   /** Threshold for spawning planner (default: 3 steps) */
-  estimatedStepsGte: number;
+  estimatedStepsGte: number
   /** Maximum complexity allowed for direct dispatch */
-  maxComplexity: TaskComplexity;
+  maxComplexity: TaskComplexity
   /** Which tool categories can be dispatched directly */
-  allowedToolCategories: ToolCategory[];
+  allowedToolCategories: ToolCategory[]
   /** Operation types requiring confirmation even within allowed categories */
-  requireConfirmationFor?: string[];
+  requireConfirmationFor?: string[]
 }
 
 /**
@@ -50,7 +50,7 @@ export const DEFAULT_DIRECT_DELEGATION_POLICY: DirectDelegationPolicy = {
   estimatedStepsGte: 3,
   maxComplexity: 'medium',
   allowedToolCategories: ['read', 'search', 'internal'],
-};
+}
 
 /**
  * Assistant Persona Profile
@@ -58,22 +58,22 @@ export const DEFAULT_DIRECT_DELEGATION_POLICY: DirectDelegationPolicy = {
  */
 export interface AssistantPersonaProfile {
   /** Unique identifier for this persona */
-  personaId: string;
+  personaId: string
   /** Display name of the assistant */
-  name: string;
+  name: string
   /** Optional description of the persona */
-  description?: string;
+  description?: string
   /** Direct delegation policy for this persona */
-  directDelegationPolicy: DirectDelegationPolicy;
+  directDelegationPolicy: DirectDelegationPolicy
   /** Constraints that cannot be overridden */
   constraints?: {
     /** Maximum tokens for direct responses */
-    maxDirectResponseTokens?: number;
+    maxDirectResponseTokens?: number
     /** Whether planner is required for multi-step tasks */
-    requirePlannerForMultiStep?: boolean;
+    requirePlannerForMultiStep?: boolean
     /** Whether approvals are required for certain operations */
-    requireApprovalsFor?: string[];
-  };
+    requireApprovalsFor?: string[]
+  }
 }
 
 /**
@@ -87,20 +87,20 @@ export const DEFAULT_ASSISTANT_PERSONA: AssistantPersonaProfile = {
   constraints: {
     requirePlannerForMultiStep: true,
   },
-};
+}
 
 /**
  * Foreground Agent Configuration
  */
 export interface ForegroundAgentConfig {
   /** The assistant persona to use */
-  persona: AssistantPersonaProfile;
+  persona: AssistantPersonaProfile
   /** Permission context for the session */
-  permissionContext: PermissionContext;
+  permissionContext: PermissionContext
   /** Available stores for state management */
-  stores: Stores;
+  stores: Stores
   /** System-level delegation policy (takes precedence over persona) */
-  systemDelegationPolicy?: Partial<DirectDelegationPolicy>;
+  systemDelegationPolicy?: Partial<DirectDelegationPolicy>
 }
 
 /**
@@ -108,15 +108,15 @@ export interface ForegroundAgentConfig {
  */
 export interface ForegroundTargetRef {
   /** Planner run ID if applicable */
-  plannerRunId?: string;
+  plannerRunId?: string
   /** Plan ID if applicable */
-  planId?: string;
+  planId?: string
   /** Runtime action ID for active work */
-  runtimeActionId?: string;
+  runtimeActionId?: string
   /** Subagent run ID if applicable */
-  subagentRunId?: string;
+  subagentRunId?: string
   /** Workflow run ID if applicable */
-  workflowRunId?: string;
+  workflowRunId?: string
 }
 
 /**
@@ -132,27 +132,27 @@ export interface ForegroundTargetRef {
  */
 export interface ForegroundDecision {
   /** The decision route to take */
-  route: ForegroundDecisionType;
+  route: ForegroundDecisionType
   /** Whether a planner is required for this task */
-  requiresPlanner: boolean;
+  requiresPlanner: boolean
   /** Target runtime for the action (if not answer_directly) */
-  targetRuntime?: TargetRuntime;
+  targetRuntime?: TargetRuntime
   /** Target action type (if not answer_directly) */
-  targetAction?: string;
+  targetAction?: string
   /** Reason for the decision */
-  reason: string;
+  reason: string
   /** Human-readable response to show the user immediately */
-  userVisibleResponse?: string;
+  userVisibleResponse?: string
   /** Reference to target objects */
-  targetRef?: ForegroundTargetRef;
+  targetRef?: ForegroundTargetRef
   /** Runtime action to dispatch (for non-direct routes) */
-  runtimeAction?: RuntimeAction;
+  runtimeAction?: RuntimeAction
   /** Estimated number of steps for this task */
-  estimatedSteps?: number;
+  estimatedSteps?: number
   /** Suggested tools for dispatch_tool route */
-  suggestedTools?: string[];
+  suggestedTools?: string[]
   /** Detected complexity level */
-  complexity?: TaskComplexity;
+  complexity?: TaskComplexity
 }
 
 /**
@@ -160,30 +160,30 @@ export interface ForegroundDecision {
  */
 export interface ForegroundMessageInput {
   /** User message text */
-  message: string;
+  message: string
   /** User ID */
-  userId: string;
+  userId: string
   /** Session ID */
-  sessionId: string;
+  sessionId: string
   /** Current turn ID */
-  turnId: string;
+  turnId: string
   /** Timestamp of the message */
-  timestamp: string;
+  timestamp: string
   /** Optional message metadata */
   metadata?: {
     /** Whether this is an approval response */
-    isApprovalResponse?: boolean;
+    isApprovalResponse?: boolean
     /** Approval response details if applicable */
     approvalResponse?: {
-      requestId: string;
-      approved: boolean;
-      reason?: string;
-    };
+      requestId: string
+      approved: boolean
+      reason?: string
+    }
     /** Referenced message IDs */
-    references?: string[];
+    references?: string[]
     /** Source channel */
-    channel?: string;
-  };
+    channel?: string
+  }
 }
 
 /**
@@ -191,32 +191,32 @@ export interface ForegroundMessageInput {
  */
 export interface ForegroundSessionState {
   /** Hydrated session state from gateway */
-  hydratedSession: HydratedSessionState;
+  hydratedSession: HydratedSessionState
   /** Active work references */
-  activeWorkRefs: ActiveWorkRefs;
+  activeWorkRefs: ActiveWorkRefs
   /** Current persona in use */
-  currentPersona: AssistantPersonaProfile;
+  currentPersona: AssistantPersonaProfile
   /** Effective delegation policy (system + persona merged) */
-  effectivePolicy: DirectDelegationPolicy;
+  effectivePolicy: DirectDelegationPolicy
   /** Effective agent configuration (merged global + user override) */
-  agentConfig?: AgentConfig;
+  agentConfig?: AgentConfig
   /** Resolved LLM provider ID from provider resolution */
-  resolvedProvider?: string;
+  resolvedProvider?: string
   /** Resolved LLM model from provider resolution */
-  resolvedModel?: string;
+  resolvedModel?: string
   /** Conversation history for context */
   conversationHistory?: Array<{
-    turnId: string;
-    role: 'user' | 'assistant';
-    message: string;
-    timestamp: string;
-  }>;
+    turnId: string
+    role: 'user' | 'assistant'
+    message: string
+    timestamp: string
+  }>
   /** Pending approvals waiting for user response */
   pendingApprovals?: Array<{
-    approvalId: string;
-    actionSummary: string;
-    requestedAt: string;
-  }>;
+    approvalId: string
+    actionSummary: string
+    requestedAt: string
+  }>
 }
 
 /**
@@ -224,170 +224,220 @@ export interface ForegroundSessionState {
  */
 export interface IntentPatterns {
   /** Words indicating cancellation */
-  cancelKeywords: string[];
+  cancelKeywords: string[]
   /** Words indicating status query */
-  statusKeywords: string[];
+  statusKeywords: string[]
   /** Words indicating approval responses */
-  approveKeywords: string[];
-  rejectKeywords: string[];
+  approveKeywords: string[]
+  rejectKeywords: string[]
   /** Question indicators */
-  questionIndicators: string[];
+  questionIndicators: string[]
   /** Action verbs that indicate non-question tasks */
-  actionVerbs: string[];
+  actionVerbs: string[]
   /** Complex task indicators */
-  complexTaskIndicators: string[];
+  complexTaskIndicators: string[]
   /** Multi-step indicators */
-  multiStepIndicators: string[];
+  multiStepIndicators: string[]
 }
 
 /**
  * Default intent patterns
  */
 export const DEFAULT_INTENT_PATTERNS: IntentPatterns = {
-  cancelKeywords: [
-    'cancel', 'stop', 'abort', 'terminate',
-    '取消', '停止', '中止', '终止'
-  ],
+  cancelKeywords: ['cancel', 'stop', 'abort', 'terminate', '取消', '停止', '中止', '终止'],
   statusKeywords: [
-    'status', 'progress', 'how is', 'what is the status',
-    'active work', 'my tasks', 'going', 'show me',
-    '状态', '进度', '进展', '情况'
+    'status',
+    'progress',
+    'how is',
+    'what is the status',
+    'active work',
+    'my tasks',
+    'going',
+    'show me',
+    '状态',
+    '进度',
+    '进展',
+    '情况',
   ],
-  approveKeywords: [
-    'approve', 'yes', 'ok', 'confirm', 'allow', 'proceed',
-    '批准', '同意', '确认', '允许', '好的'
-  ],
-  rejectKeywords: [
-    'reject', 'no', 'deny', 'decline', 'disallow',
-    '拒绝', '不同意', '不允许', '不行'
-  ],
+  approveKeywords: ['approve', 'yes', 'ok', 'confirm', 'allow', 'proceed', '批准', '同意', '确认', '允许', '好的'],
+  rejectKeywords: ['reject', 'no', 'deny', 'decline', 'disallow', '拒绝', '不同意', '不允许', '不行'],
   questionIndicators: [
-    '?', '？', '吗', '呢', 'what', 'how', 'why', 'when', 'where',
-    '什么', '怎么', '为什么', '什么时候', '哪里', '如何'
+    '?',
+    '？',
+    '吗',
+    '呢',
+    'what',
+    'how',
+    'why',
+    'when',
+    'where',
+    '什么',
+    '怎么',
+    '为什么',
+    '什么时候',
+    '哪里',
+    '如何',
   ],
   actionVerbs: [
-    'send', 'create', 'update', 'delete', 'search', 'find', 'get',
-    'make', 'build', 'write', 'generate', 'schedule', 'book',
-    '发送', '创建', '更新', '删除', '搜索', '查找', '获取',
-    '制作', '构建', '编写', '写', '生成', '安排', '预订'
+    'send',
+    'create',
+    'update',
+    'delete',
+    'search',
+    'find',
+    'get',
+    'make',
+    'build',
+    'write',
+    'generate',
+    'schedule',
+    'book',
+    '发送',
+    '创建',
+    '更新',
+    '删除',
+    '搜索',
+    '查找',
+    '获取',
+    '制作',
+    '构建',
+    '编写',
+    '写',
+    '生成',
+    '安排',
+    '预订',
   ],
   complexTaskIndicators: [
-    'plan', 'organize', 'prepare', 'coordinate', 'manage',
-    '规划', '安排', '准备', '协调', '管理'
+    'plan',
+    'organize',
+    'prepare',
+    'coordinate',
+    'manage',
+    '规划',
+    '安排',
+    '准备',
+    '协调',
+    '管理',
   ],
   multiStepIndicators: [
-    'and then', 'after that', 'next', 'first', 'second',
-    '和', '然后', '接着', '之后', '首先', '其次', '第一步', '第二步'
+    'and then',
+    'after that',
+    'next',
+    'first',
+    'second',
+    '和',
+    '然后',
+    '接着',
+    '之后',
+    '首先',
+    '其次',
+    '第一步',
+    '第二步',
   ],
-};
+}
 
 /**
  * Task analysis result
  */
 export interface TaskAnalysis {
   /** Estimated number of steps */
-  estimatedSteps: number;
+  estimatedSteps: number
   /** Detected complexity */
-  complexity: TaskComplexity;
+  complexity: TaskComplexity
   /** Whether this appears to be a question */
-  isQuestion: boolean;
+  isQuestion: boolean
   /** Whether this contains multiple actions */
-  hasMultipleActions: boolean;
+  hasMultipleActions: boolean
   /** Detected tool category if applicable */
-  toolCategory?: ToolCategory;
+  toolCategory?: ToolCategory
   /** Detected tool name if applicable */
-  toolName?: string;
+  toolName?: string
   /** Whether this is a simple read operation */
-  isSimpleRead: boolean;
+  isSimpleRead: boolean
 }
 
 /**
  * Foreground decision types
  * (Alias for backward compatibility)
  */
-export type ForegroundDecisionType = ForegroundDecisionRoute;
+export type ForegroundDecisionType = ForegroundDecisionRoute
 
 /**
  * Active work resolution result
  */
 export interface ActiveWorkResolution {
   /** Type of active work found */
-  workType: 'planner_run' | 'runtime_action' | 'subagent_run' | 'workflow_run' | 'approval' | null;
+  workType: 'planner_run' | 'runtime_action' | 'subagent_run' | 'workflow_run' | 'approval' | null
   /** ID of the active work */
-  workId?: string;
+  workId?: string
   /** Summary of the active work */
-  workSummary?: string;
+  workSummary?: string
   /** Whether the work can be cancelled/modified */
-  canCancel: boolean;
+  canCancel: boolean
   /** Current status of the work */
-  status?: string;
+  status?: string
 }
 
-export type InterruptActionType =
-  | 'cancel'
-  | 'modify'
-  | 'pause'
-  | 'resume'
-  | 'query';
+export type InterruptActionType = 'cancel' | 'modify' | 'pause' | 'resume' | 'query'
 
 export interface StatusQueryResult {
-  success: boolean;
+  success: boolean
   activePlannerRuns: Array<{
-    runId: string;
-    status: string;
-    objective?: string;
-    progress?: number;
-  }>;
+    runId: string
+    status: string
+    objective?: string
+    progress?: number
+  }>
   activeBackgroundRuns: Array<{
-    runId: string;
-    status: string;
-    objective?: string;
-  }>;
+    runId: string
+    status: string
+    objective?: string
+  }>
   pendingApprovals: Array<{
-    approvalId: string;
-    actionSummary: string;
-    requestedAt: string;
-  }>;
-  totalActive: number;
-  queriedAt: string;
-  error?: string;
+    approvalId: string
+    actionSummary: string
+    requestedAt: string
+  }>
+  totalActive: number
+  queriedAt: string
+  error?: string
 }
 
 export interface InterruptRequest {
-  actionType: InterruptActionType;
-  targetWorkType: 'planner_run' | 'runtime_action' | 'subagent_run' | 'workflow_run' | null;
-  targetWorkId?: string;
-  newObjective?: string;
-  reason: string;
-  userId: string;
-  sessionId: string;
+  actionType: InterruptActionType
+  targetWorkType: 'planner_run' | 'runtime_action' | 'subagent_run' | 'workflow_run' | null
+  targetWorkId?: string
+  newObjective?: string
+  reason: string
+  userId: string
+  sessionId: string
 }
 
 export interface InterruptResult {
-  success: boolean;
-  actionTaken: string;
-  targetWorkId?: string;
-  error?: string;
-  needsClarification?: boolean;
-  clarificationPrompt?: string;
+  success: boolean
+  actionTaken: string
+  targetWorkId?: string
+  error?: string
+  needsClarification?: boolean
+  clarificationPrompt?: string
   activeWorkOptions?: Array<{
-    workId: string;
-    workType: string;
-    description: string;
-  }>;
+    workId: string
+    workType: string
+    description: string
+  }>
 }
 
 export interface InterruptActionFactory {
-  createCancelAction(request: InterruptRequest): RuntimeAction;
-  createModifyAction(request: InterruptRequest): RuntimeAction;
-  createPauseAction(request: InterruptRequest): RuntimeAction;
-  createResumeAction(request: InterruptRequest): RuntimeAction;
-  createStatusQueryAction(userId: string, sessionId: string): RuntimeAction;
+  createCancelAction(request: InterruptRequest): RuntimeAction
+  createModifyAction(request: InterruptRequest): RuntimeAction
+  createPauseAction(request: InterruptRequest): RuntimeAction
+  createResumeAction(request: InterruptRequest): RuntimeAction
+  createStatusQueryAction(userId: string, sessionId: string): RuntimeAction
 }
 
 export interface ResolvedActiveWork {
-  isAmbiguous: boolean;
-  activeWorkCount: number;
-  targetWork?: ActiveWorkResolution;
-  allActiveWork?: ActiveWorkResolution[];
+  isAmbiguous: boolean
+  activeWorkCount: number
+  targetWork?: ActiveWorkResolution
+  allActiveWork?: ActiveWorkResolution[]
 }

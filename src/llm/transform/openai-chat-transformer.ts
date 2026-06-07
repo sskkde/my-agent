@@ -3,29 +3,22 @@
  * Transforms LLMRequest to OpenAI API format and maps responses back
  */
 
-import type { LLMRequest, LLMResponse, ToolCall } from '../types';
+import type { LLMRequest, LLMResponse, ToolCall } from '../types'
 
 /**
  * List of protected HTTP headers that cannot be overridden by user configuration.
  * Comparison is case-insensitive.
  */
-const PROTECTED_HEADERS = new Set([
-  'authorization',
-  'content-type',
-  'host',
-  'content-length',
-  'cookie',
-  'set-cookie',
-]);
+const PROTECTED_HEADERS = new Set(['authorization', 'content-type', 'host', 'content-length', 'cookie', 'set-cookie'])
 
 /**
  * Safely merges custom headers with base headers, preventing override of protected headers.
  * Protected headers: authorization, content-type, host, content-length, cookie, set-cookie
- * 
+ *
  * @param baseHeaders - The base headers (typically system-provided, e.g., Authorization, Content-Type)
  * @param customHeaders - Custom headers to merge (from user configuration)
  * @returns Merged headers with protected headers preserved from base
- * 
+ *
  * @example
  * ```typescript
  * const merged = safeMergeHeaders(
@@ -37,25 +30,25 @@ const PROTECTED_HEADERS = new Set([
  */
 export function safeMergeHeaders(
   baseHeaders: Record<string, string>,
-  customHeaders?: Record<string, string>
+  customHeaders?: Record<string, string>,
 ): Record<string, string> {
   if (!customHeaders || Object.keys(customHeaders).length === 0) {
-    return { ...baseHeaders };
+    return { ...baseHeaders }
   }
 
-  const result: Record<string, string> = { ...baseHeaders };
+  const result: Record<string, string> = { ...baseHeaders }
 
   for (const [key, value] of Object.entries(customHeaders)) {
-    const lowerKey = key.toLowerCase();
+    const lowerKey = key.toLowerCase()
     // Skip protected headers - they cannot be overridden
     if (PROTECTED_HEADERS.has(lowerKey)) {
-      continue;
+      continue
     }
     // Preserve original casing for non-protected headers
-    result[key] = value;
+    result[key] = value
   }
 
-  return result;
+  return result
 }
 
 /**
@@ -65,22 +58,22 @@ export function safeMergeHeaders(
  * @returns Record of HTTP headers for the request
  */
 export function buildOpenAICompatibleHeaders(input: {
-  apiKey: string;
-  baseUrl: string;
-  providerId?: string;
-  siteUrl?: string;
-  appName?: string;
-  extraHeaders?: Record<string, string>;
+  apiKey: string
+  baseUrl: string
+  providerId?: string
+  siteUrl?: string
+  appName?: string
+  extraHeaders?: Record<string, string>
 }): Record<string, string> {
   const baseHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${input.apiKey}`,
-  };
+  }
 
-  if (input.siteUrl) baseHeaders['HTTP-Referer'] = input.siteUrl;
-  if (input.appName) baseHeaders['X-Title'] = input.appName;
+  if (input.siteUrl) baseHeaders['HTTP-Referer'] = input.siteUrl
+  if (input.appName) baseHeaders['X-Title'] = input.appName
 
-  return safeMergeHeaders(baseHeaders, input.extraHeaders);
+  return safeMergeHeaders(baseHeaders, input.extraHeaders)
 }
 
 /**
@@ -109,35 +102,35 @@ export function buildOpenAIChatRequestBody(request: LLMRequest): Record<string, 
           })),
         }),
     })),
-  };
+  }
 
-  if (request.temperature !== undefined) body.temperature = request.temperature;
-  if (request.maxTokens !== undefined) body.max_tokens = request.maxTokens;
-  if (request.topP !== undefined) body.top_p = request.topP;
-  if (request.frequencyPenalty !== undefined) body.frequency_penalty = request.frequencyPenalty;
-  if (request.presencePenalty !== undefined) body.presence_penalty = request.presencePenalty;
-  if (request.stopSequences !== undefined) body.stop = request.stopSequences;
+  if (request.temperature !== undefined) body.temperature = request.temperature
+  if (request.maxTokens !== undefined) body.max_tokens = request.maxTokens
+  if (request.topP !== undefined) body.top_p = request.topP
+  if (request.frequencyPenalty !== undefined) body.frequency_penalty = request.frequencyPenalty
+  if (request.presencePenalty !== undefined) body.presence_penalty = request.presencePenalty
+  if (request.stopSequences !== undefined) body.stop = request.stopSequences
   if (request.tools !== undefined) {
     body.tools = request.tools.map((t) => ({
       type: t.type,
       function: t.function,
-    }));
+    }))
   }
   if (request.toolChoice !== undefined) {
     if (typeof request.toolChoice === 'string') {
-      body.tool_choice = request.toolChoice;
+      body.tool_choice = request.toolChoice
     } else {
       body.tool_choice = {
         type: 'function',
         function: { name: request.toolChoice.function.name },
-      };
+      }
     }
   }
   if (request.responseFormat !== undefined) {
-    body.response_format = { type: request.responseFormat.type };
+    body.response_format = { type: request.responseFormat.type }
   }
 
-  return body;
+  return body
 }
 
 /**
@@ -148,10 +141,10 @@ export function buildOpenAIChatRequestBody(request: LLMRequest): Record<string, 
  * @returns Structured LLMResponse
  */
 export function mapOpenAIChatResponse(data: Record<string, unknown>): LLMResponse {
-  const choices = data.choices as Array<Record<string, unknown>> | undefined;
-  const firstChoice = choices?.[0];
-  const message = firstChoice?.message as Record<string, unknown> | undefined;
-  const toolCalls = message?.tool_calls as Array<Record<string, unknown>> | undefined;
+  const choices = data.choices as Array<Record<string, unknown>> | undefined
+  const firstChoice = choices?.[0]
+  const message = firstChoice?.message as Record<string, unknown> | undefined
+  const toolCalls = message?.tool_calls as Array<Record<string, unknown>> | undefined
 
   const mappedToolCalls: ToolCall[] | undefined = toolCalls?.map((tc) => ({
     id: tc.id as string,
@@ -160,45 +153,45 @@ export function mapOpenAIChatResponse(data: Record<string, unknown>): LLMRespons
       name: (tc.function as Record<string, string>)?.name || '',
       arguments: (tc.function as Record<string, string>)?.arguments || '{}',
     },
-  }));
+  }))
 
-  const usage = data.usage as Record<string, unknown> | undefined;
-  const promptTokensDetails = usage?.prompt_tokens_details as Record<string, number> | undefined;
-  const cachedTokens = promptTokensDetails?.cached_tokens;
+  const usage = data.usage as Record<string, unknown> | undefined
+  const promptTokensDetails = usage?.prompt_tokens_details as Record<string, number> | undefined
+  const cachedTokens = promptTokensDetails?.cached_tokens
 
   let cacheMetrics: {
-    promptCacheHitTokens?: number;
-    promptCacheMissTokens?: number;
-    cacheHitRate?: number;
-  } = {};
+    promptCacheHitTokens?: number
+    promptCacheMissTokens?: number
+    cacheHitRate?: number
+  } = {}
 
   if (usage && typeof cachedTokens === 'number' && cachedTokens > 0) {
-    const promptTokens = (usage.prompt_tokens as number) || 0;
-    const promptCacheHitTokens = cachedTokens;
-    const promptCacheMissTokens = Math.max(0, promptTokens - cachedTokens);
-    const totalPromptTokens = promptCacheHitTokens + promptCacheMissTokens;
-    const cacheHitRate = totalPromptTokens > 0 ? promptCacheHitTokens / totalPromptTokens : 0;
+    const promptTokens = (usage.prompt_tokens as number) || 0
+    const promptCacheHitTokens = cachedTokens
+    const promptCacheMissTokens = Math.max(0, promptTokens - cachedTokens)
+    const totalPromptTokens = promptCacheHitTokens + promptCacheMissTokens
+    const cacheHitRate = totalPromptTokens > 0 ? promptCacheHitTokens / totalPromptTokens : 0
 
     cacheMetrics = {
       promptCacheHitTokens,
       promptCacheMissTokens,
       cacheHitRate,
-    };
+    }
   }
 
   // DeepSeek flat cache fields take priority over OpenAI nested format
   if (usage) {
-    const dsHit = usage.prompt_cache_hit_tokens;
-    const dsMiss = usage.prompt_cache_miss_tokens;
+    const dsHit = usage.prompt_cache_hit_tokens
+    const dsMiss = usage.prompt_cache_miss_tokens
     if (typeof dsHit === 'number' || typeof dsMiss === 'number') {
-      const promptCacheHitTokens = typeof dsHit === 'number' ? dsHit : 0;
-      const promptCacheMissTokens = typeof dsMiss === 'number' ? dsMiss : 0;
-      const totalPromptTokens = promptCacheHitTokens + promptCacheMissTokens;
+      const promptCacheHitTokens = typeof dsHit === 'number' ? dsHit : 0
+      const promptCacheMissTokens = typeof dsMiss === 'number' ? dsMiss : 0
+      const totalPromptTokens = promptCacheHitTokens + promptCacheMissTokens
       cacheMetrics = {
         promptCacheHitTokens,
         promptCacheMissTokens,
         cacheHitRate: totalPromptTokens > 0 ? promptCacheHitTokens / totalPromptTokens : undefined,
-      };
+      }
     }
   }
 
@@ -218,5 +211,5 @@ export function mapOpenAIChatResponse(data: Record<string, unknown>): LLMRespons
       : undefined,
     finishReason: (firstChoice?.finish_reason as LLMResponse['finishReason']) || 'stop',
     createdAt: new Date().toISOString(),
-  };
+  }
 }

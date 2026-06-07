@@ -1,5 +1,5 @@
-import type { PlanGenerationInput, PlanGenerationOutput } from './plan-schema.js';
+import type { PlanGenerationInput, PlanGenerationOutput } from './plan-schema.js'
 
 export interface PlanGenerator {
-  generate(input: PlanGenerationInput): PlanGenerationOutput;
+  generate(input: PlanGenerationInput): PlanGenerationOutput
 }

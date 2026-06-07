@@ -1,44 +1,40 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js';
-import type { ToolExecutionContext } from '../types.js';
-import { existsSync, unlinkSync } from 'fs';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { ToolExecutionContext } from '../types.js'
+import { existsSync, unlinkSync } from 'fs'
 import {
   validateWritePathSafety,
   writeTextFileAtomic,
   readTextFileForEdit,
   getWorkspaceRoot,
-} from './safe-file-write.js';
-import {
-  parsePatchText,
-  validateOperations,
-  type FilePatchOperation,
-} from './patch-parser.js';
+} from './safe-file-write.js'
+import { parsePatchText, validateOperations, type FilePatchOperation } from './patch-parser.js'
 
 export interface FileApplyPatchParams {
-  operations?: FilePatchOperation[];
-  patch?: string;
-  dryRun?: boolean;
+  operations?: FilePatchOperation[]
+  patch?: string
+  dryRun?: boolean
 }
 
 export interface OperationResult {
-  filePath: string;
-  type: string;
-  status: 'applied' | 'failed' | 'skipped';
-  error?: string;
+  filePath: string
+  type: string
+  status: 'applied' | 'failed' | 'skipped'
+  error?: string
 }
 
 export interface FileApplyPatchResult {
-  applied: number;
-  failed: number;
-  operations: OperationResult[];
-  dryRun: boolean;
+  applied: number
+  failed: number
+  operations: OperationResult[]
+  dryRun: boolean
 }
 
 export function createFileApplyPatchTool(): ToolDefinition {
   const handler: ToolHandler = async (
     params: unknown,
-    _context: ToolExecutionContext
+    _context: ToolExecutionContext,
   ): Promise<ToolExecutionResult> => {
-    const typedParams = params as FileApplyPatchParams;
+    const typedParams = params as FileApplyPatchParams
 
     // Check for conflicting input
     if (typedParams.operations && typedParams.patch) {
@@ -49,7 +45,7 @@ export function createFileApplyPatchTool(): ToolDefinition {
           message: 'Cannot specify both operations and patch parameters',
           recoverable: false,
         },
-      };
+      }
     }
 
     // Check for missing input
@@ -61,20 +57,20 @@ export function createFileApplyPatchTool(): ToolDefinition {
           message: 'Either operations or patch parameter is required',
           recoverable: true,
         },
-      };
+      }
     }
 
     // Parse patch text if provided
-    let operations: FilePatchOperation[];
+    let operations: FilePatchOperation[]
     try {
       if (typedParams.patch) {
-        const parsed = parsePatchText(typedParams.patch);
-        operations = parsed.operations;
+        const parsed = parsePatchText(typedParams.patch)
+        operations = parsed.operations
       } else {
-        operations = typedParams.operations!;
+        operations = typedParams.operations!
       }
     } catch (err) {
-      const error = err as Error & { code?: string };
+      const error = err as Error & { code?: string }
       return {
         success: false,
         error: {
@@ -82,42 +78,42 @@ export function createFileApplyPatchTool(): ToolDefinition {
           message: error.message,
           recoverable: false,
         },
-      };
+      }
     }
 
     // Validate all operations
-    const validation = validateOperations(operations);
+    const validation = validateOperations(operations)
     if (!validation.valid) {
       return {
         success: false,
         error: {
           code: 'VALIDATION_FAILED',
-          message: `Validation failed: ${validation.errors.map(e => e.message).join('; ')}`,
+          message: `Validation failed: ${validation.errors.map((e) => e.message).join('; ')}`,
           recoverable: false,
         },
-      };
+      }
     }
 
-    const workspaceRoot = getWorkspaceRoot();
-    const dryRun = typedParams.dryRun === true;
-    const results: OperationResult[] = [];
-    let applied = 0;
-    let failed = 0;
+    const workspaceRoot = getWorkspaceRoot()
+    const dryRun = typedParams.dryRun === true
+    const results: OperationResult[] = []
+    let applied = 0
+    let failed = 0
 
     // Execute operations
     for (const op of operations) {
       // Validate path safety
-      const safetyResult = validateWritePathSafety(op.filePath, workspaceRoot, { allowNew: true });
+      const safetyResult = validateWritePathSafety(op.filePath, workspaceRoot, { allowNew: true })
       if (!safetyResult.safe) {
         results.push({
           filePath: op.filePath,
           type: op.type,
           status: 'failed',
           error: safetyResult.error?.message ?? 'Path validation failed',
-        });
-        failed++;
+        })
+        failed++
         // Stop on first failure in MVP
-        break;
+        break
       }
 
       if (dryRun) {
@@ -127,15 +123,15 @@ export function createFileApplyPatchTool(): ToolDefinition {
           type: op.type,
           status: 'skipped',
           error: 'Dry run - no changes made',
-        });
-        continue;
+        })
+        continue
       }
 
       // Execute operation
       try {
         switch (op.type) {
           case 'add': {
-            const canonicalPath = safetyResult.canonicalPath!;
+            const canonicalPath = safetyResult.canonicalPath!
             if (existsSync(canonicalPath) && !op.expectedHash) {
               // File exists - reject unless expectedHash is provided
               results.push({
@@ -143,8 +139,8 @@ export function createFileApplyPatchTool(): ToolDefinition {
                 type: op.type,
                 status: 'failed',
                 error: 'File already exists',
-              });
-              failed++;
+              })
+              failed++
             } else {
               writeTextFileAtomic({
                 filePath: op.filePath,
@@ -152,15 +148,15 @@ export function createFileApplyPatchTool(): ToolDefinition {
                 workspaceRoot,
                 expectedHash: op.expectedHash,
                 createDirs: true,
-              });
+              })
               results.push({
                 filePath: op.filePath,
                 type: op.type,
                 status: 'applied',
-              });
-              applied++;
+              })
+              applied++
             }
-            break;
+            break
           }
 
           case 'update': {
@@ -168,7 +164,7 @@ export function createFileApplyPatchTool(): ToolDefinition {
             const readResult = readTextFileForEdit({
               filePath: op.filePath,
               workspaceRoot,
-            });
+            })
 
             if (!readResult.exists) {
               results.push({
@@ -176,9 +172,9 @@ export function createFileApplyPatchTool(): ToolDefinition {
                 type: op.type,
                 status: 'failed',
                 error: 'File not found',
-              });
-              failed++;
-              break;
+              })
+              failed++
+              break
             }
 
             // Check hash if provided
@@ -188,9 +184,9 @@ export function createFileApplyPatchTool(): ToolDefinition {
                 type: op.type,
                 status: 'failed',
                 error: 'Hash mismatch',
-              });
-              failed++;
-              break;
+              })
+              failed++
+              break
             }
 
             // Replace oldString with newString (no replaceAll for MVP)
@@ -200,73 +196,73 @@ export function createFileApplyPatchTool(): ToolDefinition {
                 type: op.type,
                 status: 'failed',
                 error: 'oldString not found in file',
-              });
-              failed++;
-              break;
+              })
+              failed++
+              break
             }
 
-            const newContent = readResult.content.replace(op.oldString!, op.newString!);
+            const newContent = readResult.content.replace(op.oldString!, op.newString!)
             writeTextFileAtomic({
               filePath: op.filePath,
               content: newContent,
               workspaceRoot,
               expectedHash: readResult.hash,
               createDirs: false,
-            });
+            })
 
             results.push({
               filePath: op.filePath,
               type: op.type,
               status: 'applied',
-            });
-            applied++;
-            break;
+            })
+            applied++
+            break
           }
 
           case 'delete': {
-            const canonicalPath = safetyResult.canonicalPath!;
+            const canonicalPath = safetyResult.canonicalPath!
             if (!existsSync(canonicalPath)) {
               results.push({
                 filePath: op.filePath,
                 type: op.type,
                 status: 'failed',
                 error: 'File not found',
-              });
-              failed++;
+              })
+              failed++
             } else {
               try {
-                unlinkSync(canonicalPath);
+                unlinkSync(canonicalPath)
                 results.push({
                   filePath: op.filePath,
                   type: op.type,
                   status: 'applied',
-                });
-                applied++;
+                })
+                applied++
               } catch (err) {
-                const error = err as Error;
+                const error = err as Error
                 results.push({
                   filePath: op.filePath,
                   type: op.type,
                   status: 'failed',
                   error: error.message,
-                });
-                failed++;
+                })
+                failed++
               }
             }
-            break;
+            break
           }
         }
       } catch (err) {
-        const error = err as Error & { code?: string };
+        const error = err as Error & { code?: string }
         results.push({
           filePath: op.filePath,
           type: op.type,
           status: 'failed',
           error: error.message,
-        });
-        failed++;
+        })
+        failed++
         // Stop on first failure in MVP
-        break;
+        break
       }
     }
 
@@ -275,20 +271,23 @@ export function createFileApplyPatchTool(): ToolDefinition {
       failed,
       operations: results,
       dryRun,
-    };
+    }
 
     return {
       success: failed === 0,
       data: result,
       resultPreview: `Applied ${applied} operation(s), failed ${failed}`,
       structuredContent: result as unknown as Record<string, unknown>,
-      error: failed > 0 ? {
-        code: 'OPERATIONS_FAILED',
-        message: `${failed} operation(s) failed`,
-        recoverable: true,
-      } : undefined,
-    };
-  };
+      error:
+        failed > 0
+          ? {
+              code: 'OPERATIONS_FAILED',
+              message: `${failed} operation(s) failed`,
+              recoverable: true,
+            }
+          : undefined,
+    }
+  }
 
   return {
     name: 'file_apply_patch',
@@ -345,5 +344,5 @@ export function createFileApplyPatchTool(): ToolDefinition {
       },
     },
     handler,
-  };
+  }
 }

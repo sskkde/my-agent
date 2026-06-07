@@ -1,24 +1,28 @@
-import type { AgentType, ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js';
-import type { LLMAdapter } from '../llm/adapter.js';
-import type { LLMRequest } from '../llm/types.js';
-import type { ModelInputBuilder } from './model-input/model-input-builder.js';
-import type { ModelInputBuildInput, ToolPlaneProjection, ToolSelectionPolicyProjection } from './model-input/model-input-types.js';
-import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js';
+import type { AgentType, ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js'
+import type { LLMAdapter } from '../llm/adapter.js'
+import type { LLMRequest } from '../llm/types.js'
+import type { ModelInputBuilder } from './model-input/model-input-builder.js'
+import type {
+  ModelInputBuildInput,
+  ToolPlaneProjection,
+  ToolSelectionPolicyProjection,
+} from './model-input/model-input-types.js'
+import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js'
 
 export interface ToolUseRequest {
-  toolCallId: string;
-  toolName: string;
-  params: Record<string, unknown>;
+  toolCallId: string
+  toolName: string
+  params: Record<string, unknown>
 }
 
 export interface ToolUseResult {
-  toolCallId: string;
-  result: unknown;
+  toolCallId: string
+  result: unknown
   error?: {
-    code: string;
-    message: string;
-    recoverable: boolean;
-  };
+    code: string
+    message: string
+    recoverable: boolean
+  }
 }
 
 /**
@@ -30,11 +34,11 @@ export interface ToolUseResult {
  */
 export interface InternalToolHandlerResult {
   /** Standard tool result — always required, even when stopping. */
-  toolResult: ToolUseResult;
+  toolResult: ToolUseResult
   /** When true, kernel stops the loop immediately after this tool result. */
-  stop?: boolean;
+  stop?: boolean
   /** Optional structured payload returned on the KernelRunResult when stop is true. */
-  structuredResult?: unknown;
+  structuredResult?: unknown
 }
 
 /**
@@ -44,169 +48,169 @@ export interface InternalToolHandlerResult {
  * Used by callers (e.g. ForegroundAgent) to intercept specific tool names
  * and handle them internally, bypassing the dispatcher.
  */
-export type InternalToolHandler = (request: ToolUseRequest) => Promise<InternalToolHandlerResult>;
+export type InternalToolHandler = (request: ToolUseRequest) => Promise<InternalToolHandlerResult>
 
 export interface KernelRunInput {
-  contextBundle: ContextBundle;
+  contextBundle: ContextBundle
   /** Run ID for this run - used for tool dispatch kernelRunId and transcript tracking.
    *  Falls back to contextBundle.runId if not provided at runtime. */
-  runId: string;
+  runId: string
   /** Agent ID for this run - identifies the agent instance executing this run. */
-  agentId: string;
+  agentId: string
   /** Agent type for this run - categorizes the agent (main, subagent, background, workflow_step, remote). */
-  agentType: AgentType;
+  agentType: AgentType
   /** User ID for this run - used for tool dispatch and permission context. */
-  userId: string;
+  userId: string
   /** Session ID for this run - optional, used for LLM request context. */
-  sessionId?: string;
+  sessionId?: string
   /** Per-run tool projection — takes priority over KernelConfig.toolProjection.
    *  Allows different tool visibility per tenant, workflow step, approval state, or connector scope. */
-  toolProjection?: ToolPlaneProjection;
+  toolProjection?: ToolPlaneProjection
   /** Per-run tool selection policy — injected when PROMPT_MEMORY_P0_ENABLED is true. */
-  toolSelectionPolicy?: ToolSelectionPolicyProjection;
-  maxIterations?: number;
-  timeoutMs?: number;
-  config?: Record<string, unknown>;
+  toolSelectionPolicy?: ToolSelectionPolicyProjection
+  maxIterations?: number
+  timeoutMs?: number
+  config?: Record<string, unknown>
   /** Internal tool handlers keyed by tool name — bypasses dispatcher when matched. */
-  internalToolHandlers?: Record<string, InternalToolHandler>;
+  internalToolHandlers?: Record<string, InternalToolHandler>
   /** Complete per-run ModelInputBuilder input. When supplied, kernel uses it instead of its default function_calling input. */
-  modelInputOverride?: ModelInputBuildInput;
+  modelInputOverride?: ModelInputBuildInput
   /** Per-run temperature override for the LLM request. */
-  temperature?: number;
+  temperature?: number
   /** Per-run maxTokens override for the LLM request. */
-  maxTokens?: number;
+  maxTokens?: number
   /** Per-run toolChoice override for the LLM request. */
-  toolChoice?: LLMRequest['toolChoice'];
+  toolChoice?: LLMRequest['toolChoice']
   /** Per-run model override for the LLM request. */
-  model?: string;
+  model?: string
 }
 
-export type KernelRunStatus = 'completed' | 'max_iterations_reached' | 'timeout' | 'failed';
+export type KernelRunStatus = 'completed' | 'max_iterations_reached' | 'timeout' | 'failed'
 
 export interface KernelRunResult {
-  finalStatus: KernelRunStatus;
-  finalResponse?: string;
-  iterationsUsed: number;
-  toolCalls: ToolUseRequest[];
-  transcript: KernelTranscriptEntry[];
+  finalStatus: KernelRunStatus
+  finalResponse?: string
+  iterationsUsed: number
+  toolCalls: ToolUseRequest[]
+  transcript: KernelTranscriptEntry[]
   error?: {
-    code: string;
-    message: string;
-  };
+    code: string
+    message: string
+  }
   /** Structured payload from an internal tool handler that signaled stop. */
-  structuredResult?: unknown;
+  structuredResult?: unknown
 }
 
 export interface KernelTranscriptEntry {
-  iteration: number;
-  timestamp: string;
-  type: 'llm_request' | 'llm_response' | 'tool_call' | 'tool_result' | 'compact' | 'error';
-  content: unknown;
+  iteration: number
+  timestamp: string
+  type: 'llm_request' | 'llm_response' | 'tool_call' | 'tool_result' | 'compact' | 'error'
+  content: unknown
 }
 
 export interface KernelRunState {
-  currentIteration: number;
-  status: 'running' | 'waiting' | 'completed' | 'failed';
-  contextItems: ContextItem[];
-  startTime: number;
-  toolCalls: ToolUseRequest[];
-  transcript: KernelTranscriptEntry[];
+  currentIteration: number
+  status: 'running' | 'waiting' | 'completed' | 'failed'
+  contextItems: ContextItem[]
+  startTime: number
+  toolCalls: ToolUseRequest[]
+  transcript: KernelTranscriptEntry[]
 }
 
 export interface ToolExecutor {
   execute(request: {
-    toolCallId: string;
-    toolName: string;
-    params: unknown;
-    userId: string;
-    sessionId?: string;
-    kernelRunId?: string;
+    toolCallId: string
+    toolName: string
+    params: unknown
+    userId: string
+    sessionId?: string
+    kernelRunId?: string
     permissionContext: {
-      userId: string;
-      permissions: string[];
-    };
+      userId: string
+      permissions: string[]
+    }
   }): Promise<{
-    success: boolean;
-    data?: unknown;
+    success: boolean
+    data?: unknown
     error?: {
-      code: string;
-      message: string;
-      recoverable: boolean;
-    };
-    resultPreview?: string;
-  }>;
+      code: string
+      message: string
+      recoverable: boolean
+    }
+    resultPreview?: string
+  }>
 }
 
 export interface ContextManager {
-  assembleBundle(): ContextBundle;
-  getItems(): ContextItem[];
-  addItem(item: ContextItem): void;
-  applyDelta(delta: RuntimeContextDelta): void;
+  assembleBundle(): ContextBundle
+  getItems(): ContextItem[]
+  addItem(item: ContextItem): void
+  applyDelta(delta: RuntimeContextDelta): void
 }
 
 export interface RuntimeDispatcher {
   dispatch(request: {
-    requestId: string;
+    requestId: string
     action: {
-      actionId: string;
-      actionType: string;
-      targetRuntime: string;
+      actionId: string
+      actionType: string
+      targetRuntime: string
       targetAction?: {
-        toolName?: string;
-        params?: unknown;
-        toolCallId?: string;
-        toolDispatchRequest?: import('../tools/runtime/tool-dispatch-contract.js').ToolDispatchRequest;
-      };
+        toolName?: string
+        params?: unknown
+        toolCallId?: string
+        toolDispatchRequest?: import('../tools/runtime/tool-dispatch-contract.js').ToolDispatchRequest
+      }
       source: {
-        sourceModule: string;
-        sourceAction: string;
-      };
-      userId: string;
-      createdAt: string;
-      status: string;
-    };
+        sourceModule: string
+        sourceAction: string
+      }
+      userId: string
+      createdAt: string
+      status: string
+    }
     context: {
-      callerModule: string;
-      userId?: string;
-      sessionId?: string;
-      kernelRunId?: string;
-      agentId?: string;
-      agentType?: AgentType;
-    };
+      callerModule: string
+      userId?: string
+      sessionId?: string
+      kernelRunId?: string
+      agentId?: string
+      agentType?: AgentType
+    }
   }): Promise<{
-    requestId: string;
-    actionId: string;
-    status: string;
-    targetRuntime: string;
-    result?: unknown;
+    requestId: string
+    actionId: string
+    status: string
+    targetRuntime: string
+    result?: unknown
     error?: {
-      code: string;
-      message: string;
-      recoverable: boolean;
-    };
-    createdAt: string;
-    completedAt?: string;
-  }>;
+      code: string
+      message: string
+      recoverable: boolean
+    }
+    createdAt: string
+    completedAt?: string
+  }>
 }
 
 export interface KernelConfig {
-  llmAdapter: LLMAdapter;
-  toolExecutor: ToolExecutor;
-  contextManager: ContextManager;
-  dispatcher: RuntimeDispatcher;
-  modelInputBuilder: ModelInputBuilder;
-  maxIterations: number;
-  timeoutMs: number;
-  compactThreshold?: number;
-  defaultModel?: string;
-  providerFamily?: string;
-  toolProjection?: ToolPlaneProjection;
-  modelInputSnapshotStore?: import('./model-input/model-input-snapshot-store.js').ModelInputSnapshotStore;
-  promptProjectionResolver?: PromptProjectionResolver;
+  llmAdapter: LLMAdapter
+  toolExecutor: ToolExecutor
+  contextManager: ContextManager
+  dispatcher: RuntimeDispatcher
+  modelInputBuilder: ModelInputBuilder
+  maxIterations: number
+  timeoutMs: number
+  compactThreshold?: number
+  defaultModel?: string
+  providerFamily?: string
+  toolProjection?: ToolPlaneProjection
+  modelInputSnapshotStore?: import('./model-input/model-input-snapshot-store.js').ModelInputSnapshotStore
+  promptProjectionResolver?: PromptProjectionResolver
 }
 
 export interface CompactTriggerResult {
-  shouldCompact: boolean;
-  candidateItemIds?: string[];
-  mustKeepItemIds?: string[];
+  shouldCompact: boolean
+  candidateItemIds?: string[]
+  mustKeepItemIds?: string[]
 }

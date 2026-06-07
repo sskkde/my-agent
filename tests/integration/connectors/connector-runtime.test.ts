@@ -1,24 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import type { ConnectionManager } from '../../../src/storage/connection.js';
-import { createConnectionManager } from '../../../src/storage/connection.js';
-import type { MigrationRunner, Migration } from '../../../src/storage/migrations.js';
-import { createMigrationRunner } from '../../../src/storage/migrations.js';
-import type { ConnectorStore } from '../../../src/storage/connector-store.js';
-import { createConnectorStore } from '../../../src/storage/connector-store.js';
-import type { EventStore } from '../../../src/storage/event-store.js';
-import { createEventStore } from '../../../src/storage/event-store.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import type { ConnectionManager } from '../../../src/storage/connection.js'
+import { createConnectionManager } from '../../../src/storage/connection.js'
+import type { MigrationRunner, Migration } from '../../../src/storage/migrations.js'
+import { createMigrationRunner } from '../../../src/storage/migrations.js'
+import type { ConnectorStore } from '../../../src/storage/connector-store.js'
+import { createConnectorStore } from '../../../src/storage/connector-store.js'
+import type { EventStore } from '../../../src/storage/event-store.js'
+import { createEventStore } from '../../../src/storage/event-store.js'
 import type {
   ConnectorRuntime,
   ConnectorCapability,
   ConnectorCallRequest,
   ConnectorResponse,
   MCPToolDescriptor,
-} from '../../../src/connectors/types.js';
-import { createConnectorRuntime } from '../../../src/connectors/connector-runtime.js';
+} from '../../../src/connectors/types.js'
+import { createConnectorRuntime } from '../../../src/connectors/connector-runtime.js'
 import {
   createConnectorToolBridge,
   mapMCPDescriptorToToolDefinition,
-} from '../../../src/connectors/connector-tool-bridge.js';
+} from '../../../src/connectors/connector-tool-bridge.js'
 
 // Migrations for connector runtime tables
 const connectorRuntimeMigrations: Migration[] = [
@@ -47,7 +47,7 @@ const connectorRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_connector_defs_status;
       DROP INDEX IF EXISTS idx_connector_defs_type;
       DROP TABLE IF EXISTS connector_definitions;
-    `
+    `,
   },
   {
     version: 2,
@@ -75,7 +75,7 @@ const connectorRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_connector_instances_status;
       DROP INDEX IF EXISTS idx_connector_instances_user_def;
       DROP TABLE IF EXISTS connector_instances;
-    `
+    `,
   },
   {
     version: 3,
@@ -100,7 +100,7 @@ const connectorRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_connector_events_processed;
       DROP INDEX IF EXISTS idx_connector_events_instance;
       DROP TABLE IF EXISTS connector_events;
-    `
+    `,
   },
   {
     version: 4,
@@ -146,39 +146,39 @@ const connectorRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_events_user;
       DROP INDEX IF EXISTS idx_events_session;
       DROP TABLE IF EXISTS events;
-    `
+    `,
   },
-];
+]
 
 describe('Connector Runtime Integration', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let connectorStore: ConnectorStore;
-  let eventStore: EventStore;
-  let connectorRuntime: ConnectorRuntime;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let connectorStore: ConnectorStore
+  let eventStore: EventStore
+  let connectorRuntime: ConnectorRuntime
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply(connectorRuntimeMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply(connectorRuntimeMigrations)
 
-    connectorStore = createConnectorStore(connection);
-    eventStore = createEventStore(connection);
+    connectorStore = createConnectorStore(connection)
+    eventStore = createEventStore(connection)
 
-    const toolBridge = createConnectorToolBridge();
+    const toolBridge = createConnectorToolBridge()
 
     connectorRuntime = createConnectorRuntime({
       connectorStore,
       toolBridge,
       eventStore,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('ConnectorDefinition/Instance Management', () => {
     it('should register a connector definition', () => {
@@ -191,18 +191,18 @@ describe('Connector Runtime Integration', () => {
         capabilities: ['read_data', 'write_data'],
         configSchema: { endpoint: { type: 'string' } },
         status: 'active',
-      });
+      })
 
-      expect(def.id).toBeDefined();
-      expect(def.connectorId).toBe('test-connector-001');
-      expect(def.name).toBe('Test Connector');
-      expect(def.connectorType).toBe('api');
-      expect(def.version).toBe('1.0.0');
-      expect(def.capabilities).toEqual(['read_data', 'write_data']);
-      expect(def.status).toBe('active');
-      expect(def.createdAt).toBeDefined();
-      expect(def.updatedAt).toBeDefined();
-    });
+      expect(def.id).toBeDefined()
+      expect(def.connectorId).toBe('test-connector-001')
+      expect(def.name).toBe('Test Connector')
+      expect(def.connectorType).toBe('api')
+      expect(def.version).toBe('1.0.0')
+      expect(def.capabilities).toEqual(['read_data', 'write_data'])
+      expect(def.status).toBe('active')
+      expect(def.createdAt).toBeDefined()
+      expect(def.updatedAt).toBeDefined()
+    })
 
     it('should persist definition to store', () => {
       connectorRuntime.registerDefinition({
@@ -212,12 +212,12 @@ describe('Connector Runtime Integration', () => {
         version: '2.0.0',
         capabilities: ['query', 'insert'],
         status: 'draft',
-      });
+      })
 
-      const retrieved = connectorStore.findDefinitionByConnectorId('test-connector-002');
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.name).toBe('Persisted Connector');
-    });
+      const retrieved = connectorStore.findDefinitionByConnectorId('test-connector-002')
+      expect(retrieved).toBeDefined()
+      expect(retrieved?.name).toBe('Persisted Connector')
+    })
 
     it('should create a connector instance', () => {
       const def = connectorRuntime.registerDefinition({
@@ -227,7 +227,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['fetch'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-001',
@@ -237,16 +237,16 @@ describe('Connector Runtime Integration', () => {
         authStateRef: 'auth-ref-001',
         config: { endpoint: 'https://api.example.com' },
         status: 'active',
-      });
+      })
 
-      expect(instance.id).toBeDefined();
-      expect(instance.connectorInstanceId).toBe('instance-001');
-      expect(instance.connectorDefinitionId).toBe(def.id);
-      expect(instance.userId).toBe('user-001');
-      expect(instance.name).toBe('My Instance');
-      expect(instance.authStateRef).toBe('auth-ref-001');
-      expect(instance.status).toBe('active');
-    });
+      expect(instance.id).toBeDefined()
+      expect(instance.connectorInstanceId).toBe('instance-001')
+      expect(instance.connectorDefinitionId).toBe(def.id)
+      expect(instance.userId).toBe('user-001')
+      expect(instance.name).toBe('My Instance')
+      expect(instance.authStateRef).toBe('auth-ref-001')
+      expect(instance.status).toBe('active')
+    })
 
     it('should persist instance to store', () => {
       const def = connectorRuntime.registerDefinition({
@@ -256,7 +256,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['fetch'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-002',
@@ -265,13 +265,13 @@ describe('Connector Runtime Integration', () => {
         name: 'Persisted Instance',
         authStateRef: 'auth-ref-002',
         status: 'active',
-      });
+      })
 
-      const retrieved = connectorStore.findInstanceById(instance.id);
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.connectorInstanceId).toBe('instance-002');
-    });
-  });
+      const retrieved = connectorStore.findInstanceById(instance.id)
+      expect(retrieved).toBeDefined()
+      expect(retrieved?.connectorInstanceId).toBe('instance-002')
+    })
+  })
 
   describe('Capability Discovery', () => {
     it('should discover capabilities from definition', () => {
@@ -282,7 +282,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['read_data', 'write_data', 'delete_data'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-003',
@@ -291,15 +291,15 @@ describe('Connector Runtime Integration', () => {
         name: 'Capability Instance',
         authStateRef: 'auth-ref-003',
         status: 'active',
-      });
+      })
 
-      const capabilities = connectorRuntime.discoverCapabilities(instance.id);
+      const capabilities = connectorRuntime.discoverCapabilities(instance.id)
 
-      expect(capabilities).toHaveLength(3);
-      expect(capabilities[0].capabilityId).toBe('read_data');
-      expect(capabilities[1].capabilityId).toBe('write_data');
-      expect(capabilities[2].capabilityId).toBe('delete_data');
-    });
+      expect(capabilities).toHaveLength(3)
+      expect(capabilities[0].capabilityId).toBe('read_data')
+      expect(capabilities[1].capabilityId).toBe('write_data')
+      expect(capabilities[2].capabilityId).toBe('delete_data')
+    })
 
     it('should return capabilities with proper structure', () => {
       const def = connectorRuntime.registerDefinition({
@@ -309,7 +309,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['fetch_users'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-004',
@@ -318,9 +318,9 @@ describe('Connector Runtime Integration', () => {
         name: 'Structured Instance',
         authStateRef: 'auth-ref-004',
         status: 'active',
-      });
+      })
 
-      const capabilities = connectorRuntime.discoverCapabilities(instance.id);
+      const capabilities = connectorRuntime.discoverCapabilities(instance.id)
 
       expect(capabilities[0]).toMatchObject({
         capabilityId: 'fetch_users',
@@ -330,15 +330,15 @@ describe('Connector Runtime Integration', () => {
         riskLevel: 'medium',
         requiresAuth: true,
         supportedOperations: ['execute'],
-      });
-    });
+      })
+    })
 
     it('should throw error for non-existent instance', () => {
       expect(() => {
-        connectorRuntime.discoverCapabilities('nonexistent-instance');
-      }).toThrow('Connector instance not found');
-    });
-  });
+        connectorRuntime.discoverCapabilities('nonexistent-instance')
+      }).toThrow('Connector instance not found')
+    })
+  })
 
   describe('ConnectorToolBridge Output', () => {
     it('should bridge capability to ToolDefinition', () => {
@@ -351,21 +351,21 @@ describe('Connector Runtime Integration', () => {
         inputSchema: { id: { type: 'string' } },
         requiresAuth: true,
         supportedOperations: ['execute'],
-      };
+      }
 
-      const toolBridge = createConnectorToolBridge();
-      const toolDef = toolBridge.bridgeCapabilityToToolDefinition(capability);
+      const toolBridge = createConnectorToolBridge()
+      const toolDef = toolBridge.bridgeCapabilityToToolDefinition(capability)
 
-      expect(toolDef.name).toBe('connector_test_execute');
-      expect(toolDef.description).toBe('Read data from external source');
-      expect(toolDef.category).toBe('read');
-      expect(toolDef.sensitivity).toBe('low');
-      expect(toolDef.schema.type).toBe('object');
-      expect(toolDef.metadata?.connectorCapabilityId).toBe('test.read_data');
-    });
+      expect(toolDef.name).toBe('connector_test_execute')
+      expect(toolDef.description).toBe('Read data from external source')
+      expect(toolDef.category).toBe('read')
+      expect(toolDef.sensitivity).toBe('low')
+      expect(toolDef.schema.type).toBe('object')
+      expect(toolDef.metadata?.connectorCapabilityId).toBe('test.read_data')
+    })
 
     it('should determine tool category from capability', () => {
-      const toolBridge = createConnectorToolBridge();
+      const toolBridge = createConnectorToolBridge()
 
       const readCapability: ConnectorCapability = {
         capabilityId: 'fetch',
@@ -376,7 +376,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
       const writeCapability: ConnectorCapability = {
         capabilityId: 'create',
@@ -387,7 +387,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: true,
         supportedOperations: ['execute'],
-      };
+      }
 
       const searchCapability: ConnectorCapability = {
         capabilityId: 'search',
@@ -398,7 +398,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
       const deleteCapability: ConnectorCapability = {
         capabilityId: 'delete',
@@ -409,7 +409,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: true,
         supportedOperations: ['execute'],
-      };
+      }
 
       const executeCapability: ConnectorCapability = {
         capabilityId: 'execute',
@@ -420,17 +420,17 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: true,
         supportedOperations: ['execute'],
-      };
+      }
 
-      expect(toolBridge.determineToolCategory(readCapability)).toBe('read');
-      expect(toolBridge.determineToolCategory(writeCapability)).toBe('write');
-      expect(toolBridge.determineToolCategory(searchCapability)).toBe('search');
-      expect(toolBridge.determineToolCategory(deleteCapability)).toBe('delete');
-      expect(toolBridge.determineToolCategory(executeCapability)).toBe('execute');
-    });
+      expect(toolBridge.determineToolCategory(readCapability)).toBe('read')
+      expect(toolBridge.determineToolCategory(writeCapability)).toBe('write')
+      expect(toolBridge.determineToolCategory(searchCapability)).toBe('search')
+      expect(toolBridge.determineToolCategory(deleteCapability)).toBe('delete')
+      expect(toolBridge.determineToolCategory(executeCapability)).toBe('execute')
+    })
 
     it('should infer category from capability name', () => {
-      const toolBridge = createConnectorToolBridge();
+      const toolBridge = createConnectorToolBridge()
 
       const fetchCapability: ConnectorCapability = {
         capabilityId: 'get_user',
@@ -441,7 +441,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
       const searchCapability: ConnectorCapability = {
         capabilityId: 'query_items',
@@ -452,7 +452,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
       const createCapability: ConnectorCapability = {
         capabilityId: 'add_record',
@@ -463,15 +463,15 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
-      expect(toolBridge.determineToolCategory(fetchCapability)).toBe('read');
-      expect(toolBridge.determineToolCategory(searchCapability)).toBe('search');
-      expect(toolBridge.determineToolCategory(createCapability)).toBe('write');
-    });
+      expect(toolBridge.determineToolCategory(fetchCapability)).toBe('read')
+      expect(toolBridge.determineToolCategory(searchCapability)).toBe('search')
+      expect(toolBridge.determineToolCategory(createCapability)).toBe('write')
+    })
 
     it('should determine risk level from capability', () => {
-      const toolBridge = createConnectorToolBridge();
+      const toolBridge = createConnectorToolBridge()
 
       const lowRiskCapability: ConnectorCapability = {
         capabilityId: 'read',
@@ -482,7 +482,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
       const mediumRiskCapability: ConnectorCapability = {
         capabilityId: 'write',
@@ -493,7 +493,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
       const highRiskCapability: ConnectorCapability = {
         capabilityId: 'delete',
@@ -504,15 +504,15 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
-      expect(toolBridge.determineRiskLevel(lowRiskCapability)).toBe('low');
-      expect(toolBridge.determineRiskLevel(mediumRiskCapability)).toBe('medium');
-      expect(toolBridge.determineRiskLevel(highRiskCapability)).toBe('high');
-    });
+      expect(toolBridge.determineRiskLevel(lowRiskCapability)).toBe('low')
+      expect(toolBridge.determineRiskLevel(mediumRiskCapability)).toBe('medium')
+      expect(toolBridge.determineRiskLevel(highRiskCapability)).toBe('high')
+    })
 
     it('should infer risk level from category when not specified', () => {
-      const toolBridge = createConnectorToolBridge();
+      const toolBridge = createConnectorToolBridge()
 
       const readCapability: ConnectorCapability = {
         capabilityId: 'read',
@@ -523,7 +523,7 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
       const deleteCapability: ConnectorCapability = {
         capabilityId: 'delete',
@@ -534,12 +534,12 @@ describe('Connector Runtime Integration', () => {
         inputSchema: {},
         requiresAuth: false,
         supportedOperations: ['execute'],
-      };
+      }
 
-      expect(toolBridge.determineRiskLevel(readCapability)).toBe('low');
-      expect(toolBridge.determineRiskLevel(deleteCapability)).toBe('high');
-    });
-  });
+      expect(toolBridge.determineRiskLevel(readCapability)).toBe('low')
+      expect(toolBridge.determineRiskLevel(deleteCapability)).toBe('high')
+    })
+  })
 
   describe('ConnectorCallRequest Routing', () => {
     it('should return error response for non-existent instance', async () => {
@@ -550,14 +550,14 @@ describe('Connector Runtime Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
+      const response = (await connectorRuntime.executeCall(request)) as ConnectorResponse
 
-      expect(response.status).toBe('failed');
-      expect(response.error?.code).toBe('INSTANCE_NOT_FOUND');
-      expect(response.error?.recoverable).toBe(false);
-    });
+      expect(response.status).toBe('failed')
+      expect(response.error?.code).toBe('INSTANCE_NOT_FOUND')
+      expect(response.error?.recoverable).toBe(false)
+    })
 
     it('should return error response when adapter not found', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -567,7 +567,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['test'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-005',
@@ -576,7 +576,7 @@ describe('Connector Runtime Integration', () => {
         name: 'No Adapter Instance',
         authStateRef: 'auth-ref-005',
         status: 'active',
-      });
+      })
 
       const request: ConnectorCallRequest = {
         requestId: 'req-002',
@@ -585,25 +585,25 @@ describe('Connector Runtime Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-005',
-      };
+      }
 
-      const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
+      const response = (await connectorRuntime.executeCall(request)) as ConnectorResponse
 
-      expect(response.status).toBe('failed');
-      expect(response.error?.code).toBe('ADAPTER_NOT_FOUND');
-    });
-  });
+      expect(response.status).toBe('failed')
+      expect(response.error?.code).toBe('ADAPTER_NOT_FOUND')
+    })
+  })
 
   describe('ConnectorResponse Normalization', () => {
     it('should normalize success response', () => {
-      const raw = { data: { id: '123', name: 'Test' } };
-      const response = connectorRuntime.normalizeResponse(raw, 'req-003', 'inst-001');
+      const raw = { data: { id: '123', name: 'Test' } }
+      const response = connectorRuntime.normalizeResponse(raw, 'req-003', 'inst-001')
 
-      expect(response.status).toBe('success');
-      expect(response.requestId).toBe('req-003');
-      expect(response.connectorInstanceId).toBe('inst-001');
-      expect(response.data).toEqual({ data: { id: '123', name: 'Test' } });
-    });
+      expect(response.status).toBe('success')
+      expect(response.requestId).toBe('req-003')
+      expect(response.connectorInstanceId).toBe('inst-001')
+      expect(response.data).toEqual({ data: { id: '123', name: 'Test' } })
+    })
 
     it('should normalize auth_required response', () => {
       const raw = {
@@ -612,14 +612,14 @@ describe('Connector Runtime Integration', () => {
           message: 'Authentication required',
           recoverable: true,
         },
-      };
-      const response = connectorRuntime.normalizeResponse(raw, 'req-004', 'inst-002');
+      }
+      const response = connectorRuntime.normalizeResponse(raw, 'req-004', 'inst-002')
 
-      expect(response.status).toBe('auth_required');
-      expect(response.requestId).toBe('req-004');
-      expect(response.connectorInstanceId).toBe('inst-002');
-      expect(response.error?.code).toBe('AUTH_ERROR');
-    });
+      expect(response.status).toBe('auth_required')
+      expect(response.requestId).toBe('req-004')
+      expect(response.connectorInstanceId).toBe('inst-002')
+      expect(response.error?.code).toBe('AUTH_ERROR')
+    })
 
     it('should normalize rate_limited response', () => {
       const raw = {
@@ -631,13 +631,13 @@ describe('Connector Runtime Integration', () => {
         metadata: {
           retryAfterMs: 60000,
         },
-      };
-      const response = connectorRuntime.normalizeResponse(raw, 'req-005', 'inst-003');
+      }
+      const response = connectorRuntime.normalizeResponse(raw, 'req-005', 'inst-003')
 
-      expect(response.status).toBe('rate_limited');
-      expect(response.requestId).toBe('req-005');
-      expect(response.error?.code).toBe('RATE_LIMIT_ERROR');
-    });
+      expect(response.status).toBe('rate_limited')
+      expect(response.requestId).toBe('req-005')
+      expect(response.error?.code).toBe('RATE_LIMIT_ERROR')
+    })
 
     it('should normalize failed response', () => {
       const raw = {
@@ -646,13 +646,13 @@ describe('Connector Runtime Integration', () => {
           message: 'Execution failed',
           recoverable: false,
         },
-      };
-      const response = connectorRuntime.normalizeResponse(raw, 'req-006', 'inst-004');
+      }
+      const response = connectorRuntime.normalizeResponse(raw, 'req-006', 'inst-004')
 
-      expect(response.status).toBe('failed');
-      expect(response.requestId).toBe('req-006');
-      expect(response.error?.code).toBe('EXECUTION_FAILED');
-    });
+      expect(response.status).toBe('failed')
+      expect(response.requestId).toBe('req-006')
+      expect(response.error?.code).toBe('EXECUTION_FAILED')
+    })
 
     it('should detect already normalized response', () => {
       const normalized: ConnectorResponse = {
@@ -660,22 +660,22 @@ describe('Connector Runtime Integration', () => {
         requestId: 'req-007',
         connectorInstanceId: 'inst-005',
         data: { result: 'ok' },
-      };
+      }
 
-      const response = connectorRuntime.normalizeResponse(normalized, 'other', 'other');
+      const response = connectorRuntime.normalizeResponse(normalized, 'other', 'other')
 
-      expect(response.status).toBe('success');
-      expect(response.requestId).toBe('req-007');
-      expect(response.connectorInstanceId).toBe('inst-005');
-    });
+      expect(response.status).toBe('success')
+      expect(response.requestId).toBe('req-007')
+      expect(response.connectorInstanceId).toBe('inst-005')
+    })
 
     it('should handle primitive data', () => {
-      const response = connectorRuntime.normalizeResponse('simple string', 'req-008', 'inst-006');
+      const response = connectorRuntime.normalizeResponse('simple string', 'req-008', 'inst-006')
 
-      expect(response.status).toBe('success');
-      expect(response.data).toBe('simple string');
-    });
-  });
+      expect(response.status).toBe('success')
+      expect(response.data).toBe('simple string')
+    })
+  })
 
   describe('MCP Tool Descriptor Mapping', () => {
     it('should map MCP descriptor to ToolDefinition', () => {
@@ -688,18 +688,18 @@ describe('Connector Runtime Integration', () => {
           properties: { userId: { type: 'string' } },
           required: ['userId'],
         },
-      };
+      }
 
-      const toolDef = mapMCPDescriptorToToolDefinition(descriptor);
+      const toolDef = mapMCPDescriptorToToolDefinition(descriptor)
 
-      expect(toolDef.name).toBe('mcp_get_user');
-      expect(toolDef.description).toBe('Get user by ID');
-      expect(toolDef.category).toBe('read');
-      expect(toolDef.sensitivity).toBe('low');
-      expect(toolDef.schema.type).toBe('object');
-      expect(toolDef.schema.required).toContain('userId');
-      expect(toolDef.metadata?.mcpToolId).toBe('mcp-tool-001');
-    });
+      expect(toolDef.name).toBe('mcp_get_user')
+      expect(toolDef.description).toBe('Get user by ID')
+      expect(toolDef.category).toBe('read')
+      expect(toolDef.sensitivity).toBe('low')
+      expect(toolDef.schema.type).toBe('object')
+      expect(toolDef.schema.required).toContain('userId')
+      expect(toolDef.metadata?.mcpToolId).toBe('mcp-tool-001')
+    })
 
     it('should infer category from MCP descriptor name', () => {
       const readDescriptor: MCPToolDescriptor = {
@@ -707,33 +707,33 @@ describe('Connector Runtime Integration', () => {
         name: 'read_file',
         description: 'Read file',
         inputSchema: { type: 'object', properties: {} },
-      };
+      }
 
       const writeDescriptor: MCPToolDescriptor = {
         toolId: 'write-001',
         name: 'write_file',
         description: 'Write file',
         inputSchema: { type: 'object', properties: {} },
-      };
+      }
 
       const deleteDescriptor: MCPToolDescriptor = {
         toolId: 'delete-001',
         name: 'delete_record',
         description: 'Delete record',
         inputSchema: { type: 'object', properties: {} },
-      };
+      }
 
-      const readTool = mapMCPDescriptorToToolDefinition(readDescriptor);
-      const writeTool = mapMCPDescriptorToToolDefinition(writeDescriptor);
-      const deleteTool = mapMCPDescriptorToToolDefinition(deleteDescriptor);
+      const readTool = mapMCPDescriptorToToolDefinition(readDescriptor)
+      const writeTool = mapMCPDescriptorToToolDefinition(writeDescriptor)
+      const deleteTool = mapMCPDescriptorToToolDefinition(deleteDescriptor)
 
-      expect(readTool.category).toBe('read');
-      expect(readTool.sensitivity).toBe('low');
-      expect(writeTool.category).toBe('write');
-      expect(writeTool.sensitivity).toBe('medium');
-      expect(deleteTool.category).toBe('delete');
-      expect(deleteTool.sensitivity).toBe('high');
-    });
+      expect(readTool.category).toBe('read')
+      expect(readTool.sensitivity).toBe('low')
+      expect(writeTool.category).toBe('write')
+      expect(writeTool.sensitivity).toBe('medium')
+      expect(deleteTool.category).toBe('delete')
+      expect(deleteTool.sensitivity).toBe('high')
+    })
 
     it('should respect MCP annotations', () => {
       const readOnlyDescriptor: MCPToolDescriptor = {
@@ -745,7 +745,7 @@ describe('Connector Runtime Integration', () => {
           readOnlyHint: true,
           idempotentHint: true,
         },
-      };
+      }
 
       const destructiveDescriptor: MCPToolDescriptor = {
         toolId: 'destructive-001',
@@ -755,18 +755,18 @@ describe('Connector Runtime Integration', () => {
         annotations: {
           destructiveHint: true,
         },
-      };
+      }
 
-      const readOnlyTool = mapMCPDescriptorToToolDefinition(readOnlyDescriptor);
-      const destructiveTool = mapMCPDescriptorToToolDefinition(destructiveDescriptor);
+      const readOnlyTool = mapMCPDescriptorToToolDefinition(readOnlyDescriptor)
+      const destructiveTool = mapMCPDescriptorToToolDefinition(destructiveDescriptor)
 
-      expect(readOnlyTool.category).toBe('read');
-      expect(readOnlyTool.sensitivity).toBe('low');
-      expect(readOnlyTool.idempotent).toBe(true);
-      expect(destructiveTool.category).toBe('delete');
-      expect(destructiveTool.sensitivity).toBe('high');
-    });
-  });
+      expect(readOnlyTool.category).toBe('read')
+      expect(readOnlyTool.sensitivity).toBe('low')
+      expect(readOnlyTool.idempotent).toBe(true)
+      expect(destructiveTool.category).toBe('delete')
+      expect(destructiveTool.sensitivity).toBe('high')
+    })
+  })
 
   describe('Async OperationRef Return', () => {
     it('should return AsyncOperationRef for async_started status', async () => {
@@ -777,7 +777,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-006',
@@ -786,12 +786,15 @@ describe('Connector Runtime Integration', () => {
         name: 'Async Instance',
         authStateRef: 'auth-ref-006',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true, operationId: 'async-op-001', data: { started: true } }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true, operationId: 'async-op-001', data: { started: true } }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ConnectorCallRequest = {
         requestId: 'req-009',
@@ -800,15 +803,15 @@ describe('Connector Runtime Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-006',
-      };
+      }
 
-      const result = await connectorRuntime.executeCall(request);
+      const result = await connectorRuntime.executeCall(request)
 
-      expect(result).toHaveProperty('operationId');
-      expect(result).toHaveProperty('connectorInstanceId');
-      expect(result).toHaveProperty('status', 'pending');
-      expect(result).toHaveProperty('createdAt');
-    });
+      expect(result).toHaveProperty('operationId')
+      expect(result).toHaveProperty('connectorInstanceId')
+      expect(result).toHaveProperty('status', 'pending')
+      expect(result).toHaveProperty('createdAt')
+    })
 
     it('should include operationId in AsyncOperationRef', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -818,7 +821,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['long_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-007',
@@ -827,12 +830,15 @@ describe('Connector Runtime Integration', () => {
         name: 'Async OpId Instance',
         authStateRef: 'auth-ref-007',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true, data: null }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true, data: null }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ConnectorCallRequest = {
         requestId: 'req-010',
@@ -841,15 +847,19 @@ describe('Connector Runtime Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-007',
-      };
+      }
 
-      const result = await connectorRuntime.executeCall(request) as { operationId: string; status: string; createdAt: string };
+      const result = (await connectorRuntime.executeCall(request)) as {
+        operationId: string
+        status: string
+        createdAt: string
+      }
 
-      expect(result.operationId).toMatch(/^op-/);
-      expect(result.status).toBe('pending');
-      expect(result.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    });
-  });
+      expect(result.operationId).toMatch(/^op-/)
+      expect(result.status).toBe('pending')
+      expect(result.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    })
+  })
 
   describe('Event Bridge Normalization', () => {
     it('should emit connector_definition_registered event', () => {
@@ -860,17 +870,17 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['test'],
         status: 'active',
-      });
+      })
 
-      const events = eventStore.query({ eventType: 'connector_definition_registered' });
-      expect(events.length).toBeGreaterThan(0);
+      const events = eventStore.query({ eventType: 'connector_definition_registered' })
+      expect(events.length).toBeGreaterThan(0)
       expect(events[0]?.payload).toMatchObject({
         connectorInstanceId: 'event-test-001',
         metadata: expect.objectContaining({
           connectorType: 'api',
         }),
-      });
-    });
+      })
+    })
 
     it('should emit connector_instance_created event', () => {
       const def = connectorRuntime.registerDefinition({
@@ -880,7 +890,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['test'],
         status: 'active',
-      });
+      })
 
       connectorRuntime.createInstance({
         connectorInstanceId: 'event-instance-001',
@@ -889,15 +899,15 @@ describe('Connector Runtime Integration', () => {
         name: 'Event Instance',
         authStateRef: 'auth-event-001',
         status: 'active',
-      });
+      })
 
-      const events = eventStore.query({ eventType: 'connector_instance_created' });
-      expect(events.length).toBeGreaterThan(0);
+      const events = eventStore.query({ eventType: 'connector_instance_created' })
+      expect(events.length).toBeGreaterThan(0)
       expect(events[0]?.payload).toMatchObject({
         connectorInstanceId: 'event-instance-001',
         userId: 'user-event-001',
-      });
-    });
+      })
+    })
 
     it('should emit connector_call_executed event on success', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -907,7 +917,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['test'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'event-instance-002',
@@ -916,12 +926,15 @@ describe('Connector Runtime Integration', () => {
         name: 'Event Call Instance',
         authStateRef: 'auth-event-002',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ success: true, data: 'result' }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ success: true, data: 'result' }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       await connectorRuntime.executeCall({
         requestId: 'event-req-001',
@@ -931,17 +944,17 @@ describe('Connector Runtime Integration', () => {
         params: {},
         userId: 'user-event-002',
         sessionId: 'session-event-001',
-      });
+      })
 
-      const events = eventStore.query({ eventType: 'connector_call_executed' });
-      expect(events.length).toBeGreaterThan(0);
+      const events = eventStore.query({ eventType: 'connector_call_executed' })
+      expect(events.length).toBeGreaterThan(0)
       expect(events[0]?.payload).toMatchObject({
         connectorInstanceId: 'event-instance-002',
         userId: 'user-event-002',
         sessionId: 'session-event-001',
         status: 'success',
-      });
-    });
+      })
+    })
 
     it('should emit connector_call_failed event on failure', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -951,7 +964,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['test'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'event-instance-003',
@@ -960,12 +973,17 @@ describe('Connector Runtime Integration', () => {
         name: 'Event Fail Instance',
         authStateRef: 'auth-event-003',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => { throw new Error('Test error'); },
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => {
+            throw new Error('Test error')
+          },
+          discoverCapabilities: () => [],
+        },
+      )
 
       await connectorRuntime.executeCall({
         requestId: 'event-req-002',
@@ -974,16 +992,16 @@ describe('Connector Runtime Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-event-003',
-      });
+      })
 
-      const events = eventStore.query({ eventType: 'connector_call_failed' });
-      expect(events.length).toBeGreaterThan(0);
+      const events = eventStore.query({ eventType: 'connector_call_failed' })
+      expect(events.length).toBeGreaterThan(0)
       expect(events[0]?.payload).toMatchObject({
         connectorInstanceId: 'event-instance-003',
         userId: 'user-event-003',
         errorCode: 'EXECUTION_ERROR',
-      });
-    });
+      })
+    })
 
     it('should emit connector_async_started event', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -993,7 +1011,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['async'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'event-instance-004',
@@ -1002,12 +1020,15 @@ describe('Connector Runtime Integration', () => {
         name: 'Event Async Instance',
         authStateRef: 'auth-event-004',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       await connectorRuntime.executeCall({
         requestId: 'event-req-003',
@@ -1016,18 +1037,18 @@ describe('Connector Runtime Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-event-004',
-      });
+      })
 
-      const events = eventStore.query({ eventType: 'connector_async_started' });
-      expect(events.length).toBeGreaterThan(0);
+      const events = eventStore.query({ eventType: 'connector_async_started' })
+      expect(events.length).toBeGreaterThan(0)
       expect(events[0]?.payload).toMatchObject({
         connectorInstanceId: 'event-instance-004',
         userId: 'user-event-004',
         metadata: expect.objectContaining({
           operationId: expect.any(String),
         }),
-      });
-    });
+      })
+    })
 
     it('should emit connector_capability_discovered event', () => {
       const def = connectorRuntime.registerDefinition({
@@ -1037,7 +1058,7 @@ describe('Connector Runtime Integration', () => {
         version: '1.0.0',
         capabilities: ['cap1', 'cap2'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'event-instance-005',
@@ -1046,18 +1067,18 @@ describe('Connector Runtime Integration', () => {
         name: 'Event Discovery Instance',
         authStateRef: 'auth-event-005',
         status: 'active',
-      });
+      })
 
-      connectorRuntime.discoverCapabilities(instance.id);
+      connectorRuntime.discoverCapabilities(instance.id)
 
-      const events = eventStore.query({ eventType: 'connector_capability_discovered' });
-      expect(events.length).toBeGreaterThan(0);
+      const events = eventStore.query({ eventType: 'connector_capability_discovered' })
+      expect(events.length).toBeGreaterThan(0)
       expect(events[0]?.payload).toMatchObject({
         connectorInstanceId: 'event-instance-005',
         metadata: {
           capabilityCount: 2,
         },
-      });
-    });
-  });
-});
+      })
+    })
+  })
+})

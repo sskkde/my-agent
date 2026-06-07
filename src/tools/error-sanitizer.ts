@@ -1,6 +1,6 @@
 /**
  * Error message sanitizer for safe persistence.
- * 
+ *
  * Redacts common secret patterns (tokens, API keys, passwords) and bounds message length
  * to prevent sensitive data from leaking into persisted storage.
  */
@@ -9,7 +9,7 @@
  * Maximum length for persisted error messages.
  * Truncates longer messages to prevent storage bloat and limit exposure.
  */
-const MAX_ERROR_MESSAGE_LENGTH = 500;
+const MAX_ERROR_MESSAGE_LENGTH = 500
 
 /**
  * Patterns that match common secret/sensitive values.
@@ -17,9 +17,9 @@ const MAX_ERROR_MESSAGE_LENGTH = 500;
  */
 const SECRET_PATTERNS: Array<{
   /** Regex pattern to match sensitive data */
-  pattern: RegExp;
+  pattern: RegExp
   /** Replacement template - uses captured groups to preserve structure */
-  replacement: string;
+  replacement: string
 }> = [
   // API keys with common prefixes
   {
@@ -86,19 +86,19 @@ const SECRET_PATTERNS: Array<{
     pattern: /(mongodb|postgres|mysql|redis):\/\/[^:]+:([^@]+)@/gi,
     replacement: '$1://[REDACTED_USER]:[REDACTED_PASSWORD]@',
   },
-];
+]
 
 /**
  * Sanitizes an error message for safe persistence.
- * 
+ *
  * This function:
  * 1. Redacts common secret patterns (API keys, tokens, passwords)
  * 2. Removes potentially sensitive parameter values
  * 3. Bounds the message length to prevent excessive storage
- * 
+ *
  * @param message - The raw error message to sanitize
  * @returns A safe string suitable for persistence and logging
- * 
+ *
  * @example
  * ```ts
  * const raw = 'Connection failed: api_key=<example-redacted-key>';
@@ -108,36 +108,36 @@ const SECRET_PATTERNS: Array<{
  */
 export function sanitizeErrorMessage(message: string): string {
   if (typeof message !== 'string') {
-    return '[SANITIZATION_ERROR]';
+    return '[SANITIZATION_ERROR]'
   }
 
   if (message === '') {
-    return '';
+    return ''
   }
 
-  let sanitized = message;
+  let sanitized = message
 
   // Apply each secret pattern replacement
   for (const { pattern, replacement } of SECRET_PATTERNS) {
-    sanitized = sanitized.replace(pattern, replacement);
+    sanitized = sanitized.replace(pattern, replacement)
   }
 
   // Truncate if too long, preserving the prefix which often has the most useful info
   if (sanitized.length > MAX_ERROR_MESSAGE_LENGTH) {
-    sanitized = sanitized.substring(0, MAX_ERROR_MESSAGE_LENGTH - 3) + '...';
+    sanitized = sanitized.substring(0, MAX_ERROR_MESSAGE_LENGTH - 3) + '...'
   }
 
-  return sanitized;
+  return sanitized
 }
 
 /**
  * Creates a formatted error message for persistence with sanitized content.
- * 
+ *
  * @param code - Error code (e.g., 'EXECUTION_FAILED', 'SCHEMA_VALIDATION_FAILED')
  * @param rawMessage - The raw error message that may contain secrets
  * @returns A formatted, sanitized error message suitable for persistence
  */
 export function formatPersistedError(code: string, rawMessage: string): string {
-  const sanitized = sanitizeErrorMessage(rawMessage);
-  return `[${code}] ${sanitized}`;
+  const sanitized = sanitizeErrorMessage(rawMessage)
+  return `[${code}] ${sanitized}`
 }

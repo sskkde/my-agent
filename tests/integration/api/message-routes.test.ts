@@ -1,23 +1,23 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createApiServer } from '../../../src/api/server.js';
-import { createApiContext, isApiContextError, type ApiContext } from '../../../src/api/context.js';
-import type { FastifyInstance } from 'fastify';
-import type { MessageProcessor, MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { createApiServer } from '../../../src/api/server.js'
+import { createApiContext, isApiContextError, type ApiContext } from '../../../src/api/context.js'
+import type { FastifyInstance } from 'fastify'
+import type { MessageProcessor, MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js'
 
 describe('Message Routes - Envelope/Correlation Preservation', () => {
-  let server: FastifyInstance;
-  let baseUrl: string;
-  let apiContext: ApiContext;
-  let authCookie: string;
-  let processorCalls: Array<{ input: MessageProcessorInput; timestamp: number }>;
-  let mockProcessor: MessageProcessor;
+  let server: FastifyInstance
+  let baseUrl: string
+  let apiContext: ApiContext
+  let authCookie: string
+  let processorCalls: Array<{ input: MessageProcessorInput; timestamp: number }>
+  let mockProcessor: MessageProcessor
 
   beforeAll(async () => {
-    processorCalls = [];
+    processorCalls = []
 
     mockProcessor = {
       process: async (input: MessageProcessorInput): Promise<MessageProcessorOutput> => {
-        processorCalls.push({ input, timestamp: Date.now() });
+        processorCalls.push({ input, timestamp: Date.now() })
         return {
           correlationId: input.correlationId,
           success: true,
@@ -26,241 +26,265 @@ describe('Message Routes - Envelope/Correlation Preservation', () => {
             route: 'test',
           },
           timestamp: new Date().toISOString(),
-        };
+        }
       },
-    };
+    }
 
     const ctx = createApiContext({
       dbPath: ':memory:',
       messageProcessor: mockProcessor,
-    });
+    })
     if (isApiContextError(ctx)) {
-      throw new Error(`Failed to create API context: ${ctx.message}`);
+      throw new Error(`Failed to create API context: ${ctx.message}`)
     }
-    apiContext = ctx;
-    server = await createApiServer(apiContext);
-    await server.listen();
-    const address = server.server.address();
-    baseUrl = `http://localhost:${(address as any).port}`;
+    apiContext = ctx
+    server = await createApiServer(apiContext)
+    await server.listen()
+    const address = server.server.address()
+    baseUrl = `http://localhost:${(address as any).port}`
 
     const setupResponse = await fetch(`${baseUrl}/api/v1/setup/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'testuser', password: 'password123' }),
-    });
+    })
 
-    expect(setupResponse.status).toBe(201);
-    authCookie = setupResponse.headers.get('set-cookie')!;
-  });
+    expect(setupResponse.status).toBe(201)
+    authCookie = setupResponse.headers.get('set-cookie')!
+  })
 
   afterAll(async () => {
-    await server.close();
+    await server.close()
     if (apiContext && 'connection' in apiContext) {
-      (apiContext as any).connection.close();
+      ;(apiContext as any).connection.close()
     }
-  });
+  })
 
   describe('POST /api/sessions/:sessionId/messages', () => {
     it('should call processor exactly once with converted envelope input', async () => {
-      processorCalls = [];
+      processorCalls = []
 
       const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({})
-      });
-      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const {
+        data: {
+          session: { sessionId },
+        },
+      } = (await createResponse.json()) as any
 
       const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({ text: 'Test message' })
-      });
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ text: 'Test message' }),
+      })
 
-      expect(response.status).toBe(202);
-      const body = await response.json() as { data: { accepted: boolean; correlationId: string; envelopeId: string } };
-      expect(body.data.accepted).toBe(true);
+      expect(response.status).toBe(202)
+      const body = (await response.json()) as { data: { accepted: boolean; correlationId: string; envelopeId: string } }
+      expect(body.data.accepted).toBe(true)
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
-      expect(processorCalls.length).toBe(1);
-      expect(processorCalls[0].input.text).toBe('Test message');
-      expect(processorCalls[0].input.sessionId).toBe(sessionId);
-      expect(processorCalls[0].input.correlationId).toBe(body.data.correlationId);
-    });
+      expect(processorCalls.length).toBe(1)
+      expect(processorCalls[0].input.text).toBe('Test message')
+      expect(processorCalls[0].input.sessionId).toBe(sessionId)
+      expect(processorCalls[0].input.correlationId).toBe(body.data.correlationId)
+    })
 
     it('should pass sourceChannel webui via envelope to processor metadata', async () => {
-      processorCalls = [];
+      processorCalls = []
 
       const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({})
-      });
-      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const {
+        data: {
+          session: { sessionId },
+        },
+      } = (await createResponse.json()) as any
 
       const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({ text: 'Channel test' })
-      });
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ text: 'Channel test' }),
+      })
 
-      expect(response.status).toBe(202);
-      await response.arrayBuffer();
+      expect(response.status).toBe(202)
+      await response.arrayBuffer()
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
-      expect(processorCalls.length).toBe(1);
-      const input = processorCalls[0].input;
+      expect(processorCalls.length).toBe(1)
+      const input = processorCalls[0].input
 
-      expect(input.metadata).toBeDefined();
-      expect(input.metadata?.envelopeEventType).toBe('human_message');
+      expect(input.metadata).toBeDefined()
+      expect(input.metadata?.envelopeEventType).toBe('human_message')
 
-      expect(input.metadata?.sourceChannel).toBeUndefined();
-      expect(input.metadata?.channel).toBeUndefined();
-    });
+      expect(input.metadata?.sourceChannel).toBeUndefined()
+      expect(input.metadata?.channel).toBeUndefined()
+    })
 
     it('should not call processor for invalid messages', async () => {
-      processorCalls = [];
+      processorCalls = []
 
       const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({})
-      });
-      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const {
+        data: {
+          session: { sessionId },
+        },
+      } = (await createResponse.json()) as any
 
       const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({ text: '' })
-      });
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ text: '' }),
+      })
 
-      expect(response.status).toBe(400);
-      await response.arrayBuffer();
+      expect(response.status).toBe(400)
+      await response.arrayBuffer()
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
-      expect(processorCalls.length).toBe(0);
-    });
+      expect(processorCalls.length).toBe(0)
+    })
 
     it('should return 202 without assistant content in response', async () => {
       const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({})
-      });
-      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const {
+        data: {
+          session: { sessionId },
+        },
+      } = (await createResponse.json()) as any
 
       const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({ text: 'No content test' })
-      });
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ text: 'No content test' }),
+      })
 
-      expect(response.status).toBe(202);
-      const body = await response.json() as { data: Record<string, unknown> };
+      expect(response.status).toBe(202)
+      const body = (await response.json()) as { data: Record<string, unknown> }
 
-      expect(body.data.accepted).toBe(true);
-      expect(body.data.status).toBe('accepted');
-      expect(body.data.correlationId).toBeDefined();
-      expect(body.data.envelopeId).toBeDefined();
+      expect(body.data.accepted).toBe(true)
+      expect(body.data.status).toBe('accepted')
+      expect(body.data.correlationId).toBeDefined()
+      expect(body.data.envelopeId).toBeDefined()
 
-      expect(body.data.message).toBeUndefined();
-      expect(body.data.turnId).toBeUndefined();
-      expect(body.data.assistantContent).toBeUndefined();
-      expect(body.data.response).toBeUndefined();
-    });
+      expect(body.data.message).toBeUndefined()
+      expect(body.data.turnId).toBeUndefined()
+      expect(body.data.assistantContent).toBeUndefined()
+      expect(body.data.response).toBeUndefined()
+    })
 
     it('should preserve correlationId matching envelopeId', async () => {
       const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({})
-      });
-      const { data: { session: { sessionId } } } = await createResponse.json() as any;
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const {
+        data: {
+          session: { sessionId },
+        },
+      } = (await createResponse.json()) as any
 
       const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({ text: 'Correlation test' })
-      });
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ text: 'Correlation test' }),
+      })
 
-      expect(response.status).toBe(202);
-      const body = await response.json() as { data: { correlationId: string; envelopeId: string } };
+      expect(response.status).toBe(202)
+      const body = (await response.json()) as { data: { correlationId: string; envelopeId: string } }
 
-      expect(body.data.correlationId).toBe(body.data.envelopeId);
-      expect(body.data.correlationId).toMatch(/^\d+-[a-z0-9]+$/);
-    });
+      expect(body.data.correlationId).toBe(body.data.envelopeId)
+      expect(body.data.correlationId).toMatch(/^\d+-[a-z0-9]+$/)
+    })
 
     it('should handle processor errors without blocking response', async () => {
       const errorProcessor: MessageProcessor = {
         process: async (): Promise<MessageProcessorOutput> => {
-          throw new Error('Simulated processor error');
+          throw new Error('Simulated processor error')
         },
-      };
+      }
 
       const errorCtx = createApiContext({
         dbPath: ':memory:',
         messageProcessor: errorProcessor,
-      });
+      })
       if (isApiContextError(errorCtx)) {
-        throw new Error(`Failed to create API context: ${errorCtx.message}`);
+        throw new Error(`Failed to create API context: ${errorCtx.message}`)
       }
 
-      const errorServer = await createApiServer(errorCtx);
-      await errorServer.listen();
-      const address = errorServer.server.address();
-      const errorBaseUrl = `http://localhost:${(address as any).port}`;
+      const errorServer = await createApiServer(errorCtx)
+      await errorServer.listen()
+      const address = errorServer.server.address()
+      const errorBaseUrl = `http://localhost:${(address as any).port}`
 
       try {
         const setupResponse = await fetch(`${errorBaseUrl}/api/v1/setup/user`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: 'erroruser', password: 'password123' }),
-        });
-        const errorAuthCookie = setupResponse.headers.get('set-cookie')!;
-        await setupResponse.arrayBuffer();
+        })
+        const errorAuthCookie = setupResponse.headers.get('set-cookie')!
+        await setupResponse.arrayBuffer()
 
         const createResponse = await fetch(`${errorBaseUrl}/api/v1/sessions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
-          body: JSON.stringify({})
-        });
-        const { data: { session: { sessionId } } } = await createResponse.json() as any;
+          headers: { 'Content-Type': 'application/json', Cookie: errorAuthCookie },
+          body: JSON.stringify({}),
+        })
+        const {
+          data: {
+            session: { sessionId },
+          },
+        } = (await createResponse.json()) as any
 
-        const startTime = Date.now();
+        const startTime = Date.now()
         const response = await fetch(`${errorBaseUrl}/api/v1/sessions/${sessionId}/messages`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Cookie': errorAuthCookie },
-          body: JSON.stringify({ text: 'Error test' })
-        });
-        const endTime = Date.now();
+          headers: { 'Content-Type': 'application/json', Cookie: errorAuthCookie },
+          body: JSON.stringify({ text: 'Error test' }),
+        })
+        const endTime = Date.now()
 
-        expect(response.status).toBe(202);
-        await response.arrayBuffer();
-        expect(endTime - startTime).toBeLessThan(500);
+        expect(response.status).toBe(202)
+        await response.arrayBuffer()
+        expect(endTime - startTime).toBeLessThan(500)
 
         await new Promise<void>((resolve, reject) => {
-          const deadline = Date.now() + 5000;
+          const deadline = Date.now() + 5000
           const poll = (): void => {
-            const events = errorCtx.stores.eventStore.query({ sessionId, eventType: 'gateway_error' });
+            const events = errorCtx.stores.eventStore.query({ sessionId, eventType: 'gateway_error' })
             if (events.length > 0) {
-              resolve();
-              return;
+              resolve()
+              return
             }
             if (Date.now() > deadline) {
-              reject(new Error('Timed out waiting for async processor error report'));
-              return;
+              reject(new Error('Timed out waiting for async processor error report'))
+              return
             }
-            setTimeout(poll, 25);
-          };
-          poll();
-        });
+            setTimeout(poll, 25)
+          }
+          poll()
+        })
       } finally {
-        await errorServer.close();
-        (errorCtx as any).connection.close();
+        await errorServer.close()
+        ;(errorCtx as any).connection.close()
       }
-    });
-  });
-});
+    })
+  })
+})

@@ -7,13 +7,9 @@
  * @module kernel/model-input/model-input-cache-key
  */
 
-import { createHash } from 'node:crypto';
+import { createHash } from 'node:crypto'
 
-export function computeCacheKey(
-  segmentAHash: string,
-  segmentBHash: string,
-  segmentCHash: string
-): string {
-  const combined = `${segmentAHash}|${segmentBHash}|${segmentCHash}`;
-  return createHash('sha256').update(combined, 'utf8').digest('hex');
+export function computeCacheKey(segmentAHash: string, segmentBHash: string, segmentCHash: string): string {
+  const combined = `${segmentAHash}|${segmentBHash}|${segmentCHash}`
+  return createHash('sha256').update(combined, 'utf8').digest('hex')
 }

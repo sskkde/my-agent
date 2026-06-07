@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js';
-import type { ForegroundMessageInput, ForegroundSessionState } from '../../../src/foreground/types.js';
-import type { AgentKernel } from '../../../src/kernel/agent-kernel.js';
-import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
-import type { LLMAdapter } from '../../../src/llm/adapter.js';
-import type { LLMProvider } from '../../../src/llm/provider.js';
-import type { KernelRunInput, KernelRunResult } from '../../../src/kernel/types.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js'
+import type { ForegroundMessageInput, ForegroundSessionState } from '../../../src/foreground/types.js'
+import type { AgentKernel } from '../../../src/kernel/agent-kernel.js'
+import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
+import type { LLMAdapter } from '../../../src/llm/adapter.js'
+import type { LLMProvider } from '../../../src/llm/provider.js'
+import type { KernelRunInput, KernelRunResult } from '../../../src/kernel/types.js'
 
 function healthyFunctionCallingProvider(): LLMProvider {
   return {
@@ -23,20 +23,20 @@ function healthyFunctionCallingProvider(): LLMProvider {
       },
     },
     status: 'healthy',
-  } as unknown as LLMProvider;
+  } as unknown as LLMProvider
 }
 
 function createMockLlmAdapter(): LLMAdapter {
   return {
     complete: vi.fn(async () => {
-      throw new Error('ForegroundAgent should route through AgentKernel in this test');
+      throw new Error('ForegroundAgent should route through AgentKernel in this test')
     }),
     getHealthyProviders: vi.fn(() => [healthyFunctionCallingProvider()]),
-  } as unknown as LLMAdapter;
+  } as unknown as LLMAdapter
 }
 
 function createMockModelInputBuilder(): ModelInputBuilder {
-  return {} as unknown as ModelInputBuilder;
+  return {} as unknown as ModelInputBuilder
 }
 
 function createMockState(): ForegroundSessionState {
@@ -77,7 +77,7 @@ function createMockState(): ForegroundSessionState {
     },
     resolvedProvider: 'test-provider',
     resolvedModel: 'test-model',
-  };
+  }
 }
 
 function createMockInput(): ForegroundMessageInput {
@@ -87,28 +87,28 @@ function createMockInput(): ForegroundMessageInput {
     sessionId: 'session-1',
     turnId: 'turn-1',
     timestamp: new Date().toISOString(),
-  };
+  }
 }
 
 describe('ForegroundAgent kernel-backed foreground_decide routing', () => {
-  const originalDecideEnabled = process.env.FOREGROUND_DECIDE_ENABLED;
-  const originalModelInputEnabled = process.env.MODEL_INPUT_BUILDER_ENABLED;
+  const originalDecideEnabled = process.env.FOREGROUND_DECIDE_ENABLED
+  const originalModelInputEnabled = process.env.MODEL_INPUT_BUILDER_ENABLED
 
   beforeEach(() => {
-    process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-    process.env.MODEL_INPUT_BUILDER_ENABLED = 'true';
-  });
+    process.env.FOREGROUND_DECIDE_ENABLED = 'true'
+    process.env.MODEL_INPUT_BUILDER_ENABLED = 'true'
+  })
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    if (originalDecideEnabled === undefined) delete process.env.FOREGROUND_DECIDE_ENABLED;
-    else process.env.FOREGROUND_DECIDE_ENABLED = originalDecideEnabled;
-    if (originalModelInputEnabled === undefined) delete process.env.MODEL_INPUT_BUILDER_ENABLED;
-    else process.env.MODEL_INPUT_BUILDER_ENABLED = originalModelInputEnabled;
-  });
+    vi.restoreAllMocks()
+    if (originalDecideEnabled === undefined) delete process.env.FOREGROUND_DECIDE_ENABLED
+    else process.env.FOREGROUND_DECIDE_ENABLED = originalDecideEnabled
+    if (originalModelInputEnabled === undefined) delete process.env.MODEL_INPUT_BUILDER_ENABLED
+    else process.env.MODEL_INPUT_BUILDER_ENABLED = originalModelInputEnabled
+  })
 
   it('calls AgentKernel with foreground_decide internal handler and returns the structured decision', async () => {
-    let capturedInput: KernelRunInput | undefined;
+    let capturedInput: KernelRunInput | undefined
     const kernelResult: KernelRunResult = {
       finalStatus: 'completed',
       iterationsUsed: 1,
@@ -122,35 +122,35 @@ describe('ForegroundAgent kernel-backed foreground_decide routing', () => {
           suggestedTools: ['docs_search'],
         },
       },
-    };
+    }
     const agentKernel = {
       run: vi.fn(async (input: KernelRunInput) => {
-        capturedInput = input;
-        return kernelResult;
+        capturedInput = input
+        return kernelResult
       }),
-    } as unknown as AgentKernel;
+    } as unknown as AgentKernel
 
     const agent = createForegroundAgent({
       llmAdapter: createMockLlmAdapter(),
       modelInputBuilder: createMockModelInputBuilder(),
       agentKernel,
-    });
+    })
 
-    const decision = await agent.processMessage(createMockInput(), createMockState());
+    const decision = await agent.processMessage(createMockInput(), createMockState())
 
-    expect(agentKernel.run).toHaveBeenCalledTimes(1);
-    expect(decision.route).toBe('dispatch_tool');
-    expect(decision.reason).toBe('Needs documentation search');
-    expect(decision.suggestedTools).toEqual(['docs_search']);
-    expect(capturedInput?.modelInputOverride?.mode).toBe('routing_tool_call');
-    expect(capturedInput?.modelInputOverride?.agentKind).toBe('foreground');
-    expect(capturedInput?.toolChoice).toEqual({ type: 'function', function: { name: 'foreground_decide' } });
-    expect(capturedInput?.temperature).toBe(0.1);
-    expect(capturedInput?.maxTokens).toBe(500);
-    expect(capturedInput?.model).toBe('test-model');
-    expect(capturedInput?.maxIterations).toBe(1);
-    expect(capturedInput?.internalToolHandlers?.['foreground_decide']).toBeTypeOf('function');
-    expect(capturedInput?.toolProjection?.tools?.[0].function.name).toBe('foreground_decide');
-    expect(capturedInput?.toolProjection?.toolIds).toContain('docs_search');
-  });
-});
+    expect(agentKernel.run).toHaveBeenCalledTimes(1)
+    expect(decision.route).toBe('dispatch_tool')
+    expect(decision.reason).toBe('Needs documentation search')
+    expect(decision.suggestedTools).toEqual(['docs_search'])
+    expect(capturedInput?.modelInputOverride?.mode).toBe('routing_tool_call')
+    expect(capturedInput?.modelInputOverride?.agentKind).toBe('foreground')
+    expect(capturedInput?.toolChoice).toEqual({ type: 'function', function: { name: 'foreground_decide' } })
+    expect(capturedInput?.temperature).toBe(0.1)
+    expect(capturedInput?.maxTokens).toBe(500)
+    expect(capturedInput?.model).toBe('test-model')
+    expect(capturedInput?.maxIterations).toBe(1)
+    expect(capturedInput?.internalToolHandlers?.['foreground_decide']).toBeTypeOf('function')
+    expect(capturedInput?.toolProjection?.tools?.[0].function.name).toBe('foreground_decide')
+    expect(capturedInput?.toolProjection?.toolIds).toContain('docs_search')
+  })
+})

@@ -1,157 +1,151 @@
-import type {
-  ToolCategory,
-  ToolExecutionRequest,
-  ToolExecutionResult,
-  ToolExecutor,
-  ToolRegistry,
-} from '../types.js';
+import type { ToolCategory, ToolExecutionRequest, ToolExecutionResult, ToolExecutor, ToolRegistry } from '../types.js'
 
 export type ToolUse = ToolExecutionRequest & {
-  timeoutMs?: number;
-};
+  timeoutMs?: number
+}
 
 export interface ToolOrchestratorOptions {
-  maxParallelReads?: number;
-  timeoutMs?: number;
-  signal?: AbortSignal;
+  maxParallelReads?: number
+  timeoutMs?: number
+  signal?: AbortSignal
 }
 
 export interface ToolOrchestratorConfig {
-  executor: ToolExecutor;
-  registry: ToolRegistry;
-  maxParallelReads?: number;
+  executor: ToolExecutor
+  registry: ToolRegistry
+  maxParallelReads?: number
 }
 
 export interface ToolOrchestrator {
-  executeBatch(toolUses: ToolUse[], options?: ToolOrchestratorOptions): Promise<ToolExecutionResult[]>;
+  executeBatch(toolUses: ToolUse[], options?: ToolOrchestratorOptions): Promise<ToolExecutionResult[]>
 }
 
-type TerminalStatus = 'cancelled' | 'timeout' | 'skipped';
+type TerminalStatus = 'cancelled' | 'timeout' | 'skipped'
 
 type IndexedToolUse = {
-  index: number;
-  toolUse: ToolUse;
-};
+  index: number
+  toolUse: ToolUse
+}
 
 class ToolOrchestratorImpl implements ToolOrchestrator {
-  private readonly executor: ToolExecutor;
-  private readonly registry: ToolRegistry;
-  private readonly defaultMaxParallelReads: number;
+  private readonly executor: ToolExecutor
+  private readonly registry: ToolRegistry
+  private readonly defaultMaxParallelReads: number
 
   constructor(config: ToolOrchestratorConfig) {
-    this.executor = config.executor;
-    this.registry = config.registry;
-    this.defaultMaxParallelReads = normalizeConcurrency(config.maxParallelReads ?? 5);
+    this.executor = config.executor
+    this.registry = config.registry
+    this.defaultMaxParallelReads = normalizeConcurrency(config.maxParallelReads ?? 5)
   }
 
   async executeBatch(toolUses: ToolUse[], options: ToolOrchestratorOptions = {}): Promise<ToolExecutionResult[]> {
-    if (toolUses.length === 0) return [];
+    if (toolUses.length === 0) return []
 
     if (toolUses.length === 1) {
-      return [await this.executeWithTerminalPolicy(toolUses[0], options)];
+      return [await this.executeWithTerminalPolicy(toolUses[0], options)]
     }
 
-    const results = new Array<ToolExecutionResult>(toolUses.length);
-    const readUses: IndexedToolUse[] = [];
-    const serialUses: IndexedToolUse[] = [];
+    const results = new Array<ToolExecutionResult>(toolUses.length)
+    const readUses: IndexedToolUse[] = []
+    const serialUses: IndexedToolUse[] = []
 
     toolUses.forEach((toolUse, index) => {
-      const category = this.registry.getTool(toolUse.toolName)?.category;
+      const category = this.registry.getTool(toolUse.toolName)?.category
       if (isReadLikeCategory(category)) {
-        readUses.push({ index, toolUse });
+        readUses.push({ index, toolUse })
       } else {
-        serialUses.push({ index, toolUse });
+        serialUses.push({ index, toolUse })
       }
-    });
+    })
 
     await Promise.all([
       this.executeReadGroup(readUses, results, options),
       this.executeSerialGroup(serialUses, results, options),
-    ]);
+    ])
 
-    return results;
+    return results
   }
 
   private async executeReadGroup(
     readUses: IndexedToolUse[],
     results: ToolExecutionResult[],
-    options: ToolOrchestratorOptions
+    options: ToolOrchestratorOptions,
   ): Promise<void> {
-    const maxParallelReads = normalizeConcurrency(options.maxParallelReads ?? this.defaultMaxParallelReads);
-    let nextIndex = 0;
+    const maxParallelReads = normalizeConcurrency(options.maxParallelReads ?? this.defaultMaxParallelReads)
+    let nextIndex = 0
 
     const workers = Array.from({ length: Math.min(maxParallelReads, readUses.length) }, async () => {
       while (nextIndex < readUses.length) {
-        const item = readUses[nextIndex];
-        nextIndex += 1;
-        results[item.index] = await this.executeWithTerminalPolicy(item.toolUse, options);
+        const item = readUses[nextIndex]
+        nextIndex += 1
+        results[item.index] = await this.executeWithTerminalPolicy(item.toolUse, options)
       }
-    });
+    })
 
-    await Promise.all(workers);
+    await Promise.all(workers)
   }
 
   private async executeSerialGroup(
     serialUses: IndexedToolUse[],
     results: ToolExecutionResult[],
-    options: ToolOrchestratorOptions
+    options: ToolOrchestratorOptions,
   ): Promise<void> {
-    let previousWriteFailed = false;
+    let previousWriteFailed = false
 
     for (const item of serialUses) {
       if (previousWriteFailed) {
         results[item.index] = createSyntheticResult(
           'skipped',
           'SIBLING_WRITE_FAILED',
-          'Skipped because an earlier serial tool in the batch failed.'
-        );
-        continue;
+          'Skipped because an earlier serial tool in the batch failed.',
+        )
+        continue
       }
 
-      const result = await this.executeWithTerminalPolicy(item.toolUse, options);
-      results[item.index] = result;
+      const result = await this.executeWithTerminalPolicy(item.toolUse, options)
+      results[item.index] = result
 
       if (!result.success) {
-        previousWriteFailed = true;
+        previousWriteFailed = true
       }
     }
   }
 
   private async executeWithTerminalPolicy(
     toolUse: ToolUse,
-    options: ToolOrchestratorOptions
+    options: ToolOrchestratorOptions,
   ): Promise<ToolExecutionResult> {
     if (options.signal?.aborted) {
-      return createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled before it started.');
+      return createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled before it started.')
     }
 
-    const timeoutMs = toolUse.timeoutMs ?? options.timeoutMs;
-    const execution = this.executor.execute(toolUse);
+    const timeoutMs = toolUse.timeoutMs ?? options.timeoutMs
+    const execution = this.executor.execute(toolUse)
 
     if (timeoutMs === undefined) {
-      return execution;
+      return execution
     }
 
-    return this.withTimeout(execution, timeoutMs);
+    return this.withTimeout(execution, timeoutMs)
   }
 
   private withTimeout(execution: Promise<ToolExecutionResult>, timeoutMs: number): Promise<ToolExecutionResult> {
     if (timeoutMs <= 0) {
-      return Promise.resolve(createSyntheticResult('timeout', 'TIMEOUT', 'Tool execution timed out.'));
+      return Promise.resolve(createSyntheticResult('timeout', 'TIMEOUT', 'Tool execution timed out.'))
     }
 
     return new Promise<ToolExecutionResult>((resolve) => {
       const timeout = setTimeout(() => {
-        resolve(createSyntheticResult('timeout', 'TIMEOUT', `Tool execution timed out after ${timeoutMs}ms.`));
-      }, timeoutMs);
+        resolve(createSyntheticResult('timeout', 'TIMEOUT', `Tool execution timed out after ${timeoutMs}ms.`))
+      }, timeoutMs)
 
       execution.then(
         (result) => {
-          clearTimeout(timeout);
-          resolve(result);
+          clearTimeout(timeout)
+          resolve(result)
         },
         (error: unknown) => {
-          clearTimeout(timeout);
+          clearTimeout(timeout)
           resolve({
             success: false,
             error: {
@@ -159,19 +153,19 @@ class ToolOrchestratorImpl implements ToolOrchestrator {
               message: error instanceof Error ? error.message : String(error),
               recoverable: false,
             },
-          });
-        }
-      );
-    });
+          })
+        },
+      )
+    })
   }
 }
 
 function isReadLikeCategory(category: ToolCategory | undefined): boolean {
-  return category === 'read' || category === 'search';
+  return category === 'read' || category === 'search'
 }
 
 function normalizeConcurrency(value: number): number {
-  return Math.max(1, Math.floor(value));
+  return Math.max(1, Math.floor(value))
 }
 
 function createSyntheticResult(status: TerminalStatus, code: string, message: string): ToolExecutionResult {
@@ -184,9 +178,9 @@ function createSyntheticResult(status: TerminalStatus, code: string, message: st
       message,
       recoverable: status !== 'skipped',
     },
-  };
+  }
 }
 
 export function createToolOrchestrator(config: ToolOrchestratorConfig): ToolOrchestrator {
-  return new ToolOrchestratorImpl(config);
+  return new ToolOrchestratorImpl(config)
 }

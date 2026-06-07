@@ -1,28 +1,24 @@
-import type { TranscriptStore, TurnTranscript } from '../storage/transcript-store.js';
-import type { EventStore, EventRecord } from '../storage/event-store.js';
-import type {
-  ConsoleTimelineEvent,
-  ConsoleTimelineEventType,
-  PaginationParams,
-} from './types.js';
+import type { TranscriptStore, TurnTranscript } from '../storage/transcript-store.js'
+import type { EventStore, EventRecord } from '../storage/event-store.js'
+import type { ConsoleTimelineEvent, ConsoleTimelineEventType, PaginationParams } from './types.js'
 
 export interface ConsoleTimelineStores {
-  transcriptStore: TranscriptStore;
-  eventStore: EventStore;
+  transcriptStore: TranscriptStore
+  eventStore: EventStore
 }
 
 export interface TimelineOptions extends PaginationParams {
   /** Optional filter for specific event types */
-  eventTypes?: ConsoleTimelineEventType[];
+  eventTypes?: ConsoleTimelineEventType[]
 }
 
 export interface TimelineResult {
-  events: ConsoleTimelineEvent[];
-  total: number;
+  events: ConsoleTimelineEvent[]
+  total: number
 }
 
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 200;
+const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 200
 
 /**
  * Maps a transcript turn to console timeline events.
@@ -35,14 +31,14 @@ const MAX_LIMIT = 200;
  * - artifact_created: for each artifactRef in output
  */
 function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
-  const events: ConsoleTimelineEvent[] = [];
+  const events: ConsoleTimelineEvent[] = []
   const baseMetadata: Record<string, unknown> = {
     turnId: turn.turnId,
     userId: turn.userId,
-  };
+  }
 
-  const userTimestamp = turn.input.inboundTimestamp ?? turn.createdAt;
-  const outputTimestamp = turn.createdAt;
+  const userTimestamp = turn.input.inboundTimestamp ?? turn.createdAt
+  const outputTimestamp = turn.createdAt
 
   // User message event from input
   if (turn.input.userMessageSummary) {
@@ -54,7 +50,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
       content: turn.input.userMessageSummary,
       metadata: { ...baseMetadata },
       actor: turn.userId,
-    });
+    })
   }
 
   // Assistant visible messages and thinking summaries
@@ -73,7 +69,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
             messageIndex: index,
           },
           actor: 'assistant',
-        });
+        })
       } else if (msg.role === 'thinking') {
         events.push({
           eventId: `turn-${turn.turnId}-thinking-${index}`,
@@ -87,7 +83,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
             messageIndex: index,
           },
           actor: 'assistant',
-        });
+        })
       } else if (msg.role === 'system_status') {
         events.push({
           eventId: `turn-${turn.turnId}-status-${index}`,
@@ -101,7 +97,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
             messageIndex: index,
           },
           actor: 'system',
-        });
+        })
       } else if (msg.role === 'approval') {
         events.push({
           eventId: `turn-${turn.turnId}-approval-decision-${index}`,
@@ -115,7 +111,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
             messageIndex: index,
           },
           actor: 'system',
-        });
+        })
       } else if (msg.role === 'tool') {
         events.push({
           eventId: `turn-${turn.turnId}-tool-result-${index}`,
@@ -129,7 +125,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
             messageIndex: index,
           },
           actor: 'system',
-        });
+        })
       } else if (msg.role === 'error') {
         events.push({
           eventId: `turn-${turn.turnId}-error-${index}`,
@@ -143,9 +139,9 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
             messageIndex: index,
           },
           actor: 'system',
-        });
+        })
       }
-    });
+    })
   }
 
   // Tool call summaries
@@ -163,8 +159,8 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           toolCallId: summary.toolCallId,
         },
         actor: 'system',
-      });
-    });
+      })
+    })
   }
 
   // Approval summaries
@@ -181,8 +177,8 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           approvalIndex: index,
         },
         actor: 'system',
-      });
-    });
+      })
+    })
   }
 
   // Artifact references
@@ -200,11 +196,11 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
           artifactIndex: index,
         },
         actor: 'system',
-      });
-    });
+      })
+    })
   }
 
-  return events;
+  return events
 }
 
 /**
@@ -216,11 +212,11 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
  * - Other events as system_status
  */
 function mapEventRecordToTimelineEvent(event: EventRecord): ConsoleTimelineEvent | null {
-  const eventType = event.eventType;
-  const sessionId = event.sessionId;
+  const eventType = event.eventType
+  const sessionId = event.sessionId
 
   if (!sessionId) {
-    return null;
+    return null
   }
 
   // Map run events
@@ -230,7 +226,7 @@ function mapEventRecordToTimelineEvent(event: EventRecord): ConsoleTimelineEvent
     'run_completed',
     'run_failed',
     'run_cancelled',
-  ];
+  ]
 
   if (runEventTypes.includes(eventType as ConsoleTimelineEventType)) {
     return {
@@ -245,7 +241,7 @@ function mapEventRecordToTimelineEvent(event: EventRecord): ConsoleTimelineEvent
         ...(event.relatedRefs || {}),
       },
       actor: event.sourceModule,
-    };
+    }
   }
 
   // Map error events
@@ -255,22 +251,23 @@ function mapEventRecordToTimelineEvent(event: EventRecord): ConsoleTimelineEvent
       eventType: 'error',
       sessionId,
       timestamp: event.createdAt,
-      content: typeof event.payload?.error === 'string'
-        ? event.payload.error
-        : typeof event.payload?.message === 'string'
-          ? event.payload.message
-          : 'An error occurred',
+      content:
+        typeof event.payload?.error === 'string'
+          ? event.payload.error
+          : typeof event.payload?.message === 'string'
+            ? event.payload.message
+            : 'An error occurred',
       metadata: {
         originalEventType: eventType,
         ...event.payload,
         sourceModule: event.sourceModule,
       },
       actor: event.sourceModule || 'system',
-    };
+    }
   }
 
   // Skip unknown/irrelevant event types for the console timeline
-  return null;
+  return null
 }
 
 /**
@@ -280,67 +277,67 @@ export interface ConsoleTimelineService {
   /**
    * Get timeline events for a session with pagination.
    */
-  getTimeline(sessionId: string, options?: TimelineOptions): TimelineResult;
+  getTimeline(sessionId: string, options?: TimelineOptions): TimelineResult
 }
 
 class ConsoleTimelineServiceImpl implements ConsoleTimelineService {
-  private stores: ConsoleTimelineStores;
+  private stores: ConsoleTimelineStores
 
   constructor(stores: ConsoleTimelineStores) {
-    this.stores = stores;
+    this.stores = stores
   }
 
   getTimeline(sessionId: string, options: TimelineOptions = {}): TimelineResult {
-    const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
-    const offset = options.offset ?? 0;
-    const eventTypesFilter = options.eventTypes;
+    const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT)
+    const offset = options.offset ?? 0
+    const eventTypesFilter = options.eventTypes
 
     // Collect all events from transcripts
-    const transcriptEvents: ConsoleTimelineEvent[] = [];
-    const turns = this.stores.transcriptStore.findBySession(sessionId);
+    const transcriptEvents: ConsoleTimelineEvent[] = []
+    const turns = this.stores.transcriptStore.findBySession(sessionId)
 
     for (const turn of turns) {
-      const events = mapTurnToTimelineEvents(turn);
-      transcriptEvents.push(...events);
+      const events = mapTurnToTimelineEvents(turn)
+      transcriptEvents.push(...events)
     }
 
     // Collect events from event store
-    const storeEvents: ConsoleTimelineEvent[] = [];
-    const eventRecords = this.stores.eventStore.query({ sessionId });
+    const storeEvents: ConsoleTimelineEvent[] = []
+    const eventRecords = this.stores.eventStore.query({ sessionId })
 
     for (const record of eventRecords) {
-      const event = mapEventRecordToTimelineEvent(record);
+      const event = mapEventRecordToTimelineEvent(record)
       if (event) {
-        storeEvents.push(event);
+        storeEvents.push(event)
       }
     }
 
     // Merge and sort all events
     // Primary: createdAt ASC, Secondary: eventId for deterministic ordering
-    const allEvents = [...transcriptEvents, ...storeEvents];
+    const allEvents = [...transcriptEvents, ...storeEvents]
     allEvents.sort((a, b) => {
-      const timeCompare = a.timestamp.localeCompare(b.timestamp);
+      const timeCompare = a.timestamp.localeCompare(b.timestamp)
       if (timeCompare !== 0) {
-        return timeCompare;
+        return timeCompare
       }
-      return a.eventId.localeCompare(b.eventId);
-    });
+      return a.eventId.localeCompare(b.eventId)
+    })
 
     // Apply event type filter if specified
-    let filteredEvents = allEvents;
+    let filteredEvents = allEvents
     if (eventTypesFilter && eventTypesFilter.length > 0) {
-      filteredEvents = allEvents.filter(e => eventTypesFilter.includes(e.eventType));
+      filteredEvents = allEvents.filter((e) => eventTypesFilter.includes(e.eventType))
     }
 
-    const total = filteredEvents.length;
+    const total = filteredEvents.length
 
     // Apply pagination
-    const paginatedEvents = filteredEvents.slice(offset, offset + limit);
+    const paginatedEvents = filteredEvents.slice(offset, offset + limit)
 
     return {
       events: paginatedEvents,
       total,
-    };
+    }
   }
 }
 
@@ -348,5 +345,5 @@ class ConsoleTimelineServiceImpl implements ConsoleTimelineService {
  * Factory function to create a ConsoleTimelineService.
  */
 export function createConsoleTimelineService(stores: ConsoleTimelineStores): ConsoleTimelineService {
-  return new ConsoleTimelineServiceImpl(stores);
+  return new ConsoleTimelineServiceImpl(stores)
 }

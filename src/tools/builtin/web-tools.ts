@@ -1,7 +1,7 @@
-import type { ToolDefinition, ToolRegistry } from '../types.js';
+import type { ToolDefinition, ToolRegistry } from '../types.js'
 
 export interface BuiltinToolDeps {
-  webSearchExecutor?: (params: { query: string; maxResults?: number }) => Promise<unknown>;
+  webSearchExecutor?: (params: { query: string; maxResults?: number }) => Promise<unknown>
 }
 
 export function createWebSearchTool(deps: BuiltinToolDeps): ToolDefinition {
@@ -21,7 +21,7 @@ export function createWebSearchTool(deps: BuiltinToolDeps): ToolDefinition {
     },
     idempotent: true,
     handler: async (params) => {
-      const { query, maxResults } = params as { query: string; maxResults?: number };
+      const { query, maxResults } = params as { query: string; maxResults?: number }
       if (!query || typeof query !== 'string') {
         return {
           success: false,
@@ -30,7 +30,7 @@ export function createWebSearchTool(deps: BuiltinToolDeps): ToolDefinition {
             message: 'query is required',
             recoverable: false,
           },
-        };
+        }
       }
       if (!deps.webSearchExecutor) {
         return {
@@ -40,14 +40,14 @@ export function createWebSearchTool(deps: BuiltinToolDeps): ToolDefinition {
             message: 'Web search executor not configured',
             recoverable: false,
           },
-        };
+        }
       }
       try {
-        const result: any = await deps.webSearchExecutor({ query, maxResults });
+        const result: any = await deps.webSearchExecutor({ query, maxResults })
         return {
           success: true,
           data: result,
-        };
+        }
       } catch (err: any) {
         return {
           success: false,
@@ -56,10 +56,10 @@ export function createWebSearchTool(deps: BuiltinToolDeps): ToolDefinition {
             message: err?.message || String(err),
             recoverable: false,
           },
-        };
+        }
       }
     },
-  };
+  }
 }
 
 export function createWebFetchTool(): ToolDefinition {
@@ -79,7 +79,7 @@ export function createWebFetchTool(): ToolDefinition {
     },
     idempotent: true,
     handler: async (params) => {
-      const { url, maxBytes } = params as { url: string; maxBytes?: number };
+      const { url, maxBytes } = params as { url: string; maxBytes?: number }
       if (!url || typeof url !== 'string') {
         return {
           success: false,
@@ -88,10 +88,10 @@ export function createWebFetchTool(): ToolDefinition {
             message: 'url is required',
             recoverable: false,
           },
-        };
+        }
       }
       try {
-        const parsed = new URL(url);
+        const parsed = new URL(url)
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
           return {
             success: false,
@@ -100,13 +100,13 @@ export function createWebFetchTool(): ToolDefinition {
               message: 'Only http and https URLs are allowed',
               recoverable: false,
             },
-          };
+          }
         }
-        const bytesLimit = typeof maxBytes === 'number' ? maxBytes : 12000;
-        const response = await fetch(url);
-        const text = await response.text();
-        const truncated = text.length > bytesLimit;
-        const preview = truncated ? text.slice(0, bytesLimit) : text;
+        const bytesLimit = typeof maxBytes === 'number' ? maxBytes : 12000
+        const response = await fetch(url)
+        const text = await response.text()
+        const truncated = text.length > bytesLimit
+        const preview = truncated ? text.slice(0, bytesLimit) : text
         return {
           success: true,
           data: {
@@ -117,7 +117,7 @@ export function createWebFetchTool(): ToolDefinition {
             truncated,
           },
           resultPreview: preview,
-        };
+        }
       } catch (err: any) {
         return {
           success: false,
@@ -126,13 +126,13 @@ export function createWebFetchTool(): ToolDefinition {
             message: err?.message || String(err),
             recoverable: false,
           },
-        };
+        }
       }
     },
-  };
+  }
 }
 
 export function registerBuiltinTools(registry: ToolRegistry, deps: BuiltinToolDeps): void {
-  registry.register(createWebSearchTool(deps));
-  registry.register(createWebFetchTool());
+  registry.register(createWebSearchTool(deps))
+  registry.register(createWebFetchTool())
 }

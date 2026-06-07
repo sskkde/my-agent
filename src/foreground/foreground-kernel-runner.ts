@@ -15,13 +15,9 @@
  * @see src/foreground/foreground-agent.ts        — canonical runTurn() owner
  */
 
-import type {
-  ForegroundTurnInput,
-  ForegroundTurnResult,
-  RedactedKernelResult,
-} from './foreground-runner-types.js';
-import type { ForegroundDecision } from './types.js';
-import type { KernelRunResult } from '../kernel/types.js';
+import type { ForegroundTurnInput, ForegroundTurnResult, RedactedKernelResult } from './foreground-runner-types.js'
+import type { ForegroundDecision } from './types.js'
+import type { KernelRunResult } from '../kernel/types.js'
 
 // ---------------------------------------------------------------------------
 // Deprecated interfaces — kept for type-compatibility with test fixtures
@@ -29,19 +25,19 @@ import type { KernelRunResult } from '../kernel/types.js';
 
 /** @deprecated No production code constructs these deps. Preserved for test fixtures. */
 export interface ForegroundKernelRunnerDeps {
-  foregroundAgent: import('./foreground-agent.js').ForegroundAgent;
-  agentKernel: import('../kernel/agent-kernel.js').AgentKernel;
-  runtimeDispatcher: import('../dispatcher/types.js').RuntimeDispatcher;
-  plannerRuntime: import('../planner/planner-runtime.js').PlannerRuntime;
-  llmAdapter: import('../llm/adapter.js').LLMAdapter;
-  searchSubagent?: import('../search/search-subagent.js').SearchSubagent;
-  agentConfig?: import('../storage/agent-config-store.js').AgentConfig;
-  eventStore?: import('../storage/event-store.js').EventStore;
+  foregroundAgent: import('./foreground-agent.js').ForegroundAgent
+  agentKernel: import('../kernel/agent-kernel.js').AgentKernel
+  runtimeDispatcher: import('../dispatcher/types.js').RuntimeDispatcher
+  plannerRuntime: import('../planner/planner-runtime.js').PlannerRuntime
+  llmAdapter: import('../llm/adapter.js').LLMAdapter
+  searchSubagent?: import('../search/search-subagent.js').SearchSubagent
+  agentConfig?: import('../storage/agent-config-store.js').AgentConfig
+  eventStore?: import('../storage/event-store.js').EventStore
 }
 
 /** @deprecated Use `ForegroundAgent.runTurn()` via the processor pipeline. */
 export interface ForegroundKernelRunner {
-  runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult>;
+  runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult>
 }
 
 // ---------------------------------------------------------------------------
@@ -54,10 +50,10 @@ export interface ForegroundKernelRunner {
  * Production code must use `ForegroundAgent.runTurn()` → processor pipeline.
  */
 export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
-  private _deps: ForegroundKernelRunnerDeps;
+  private _deps: ForegroundKernelRunnerDeps
 
   constructor(deps: ForegroundKernelRunnerDeps) {
-    this._deps = deps;
+    this._deps = deps
   }
 
   /**
@@ -70,14 +66,14 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
     // return a clear "deprecated" error.  This keeps the thin wrapper
     // functional for legacy test fixtures that call `runner.runTurn()`.
     if (this._deps.foregroundAgent?.runTurn) {
-      return this._deps.foregroundAgent.runTurn(input);
+      return this._deps.foregroundAgent.runTurn(input)
     }
 
     const fallbackDecision: ForegroundDecision = {
       route: 'answer_directly',
       requiresPlanner: false,
       reason: 'ForegroundKernelRunner.runTurn() is deprecated — no foreground agent available',
-    };
+    }
 
     return {
       status: 'failed',
@@ -89,7 +85,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
           'ForegroundKernelRunner.runTurn() has been removed. ' +
           'Use ForegroundAgent.runTurn() via the processor pipeline.',
       },
-    };
+    }
   }
 }
 
@@ -103,7 +99,7 @@ export class ForegroundKernelRunnerImpl implements ForegroundKernelRunner {
  * Re-exported from the canonical location `tools/runtime-summary-helpers.ts`.
  * @deprecated Import from `src/foreground/tools/runtime-summary-helpers.js` instead.
  */
-export { buildRuntimeSummary } from './tools/runtime-summary-helpers.js';
+export { buildRuntimeSummary } from './tools/runtime-summary-helpers.js'
 
 /**
  * Build a redacted kernel result for external exposure.
@@ -111,16 +107,14 @@ export { buildRuntimeSummary } from './tools/runtime-summary-helpers.js';
  * Does NOT include transcript or tool params which could contain sensitive data.
  * @deprecated The processor pipeline handles redaction internally.
  */
-export function buildRedactedKernelResult(
-  kernelResult?: KernelRunResult,
-): RedactedKernelResult | undefined {
-  if (!kernelResult) return undefined;
+export function buildRedactedKernelResult(kernelResult?: KernelRunResult): RedactedKernelResult | undefined {
+  if (!kernelResult) return undefined
   return {
     finalStatus: kernelResult.finalStatus,
     finalResponse: kernelResult.finalResponse,
     iterationsUsed: kernelResult.iterationsUsed,
     toolCallCount: kernelResult.toolCalls.length,
-  };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -131,8 +125,6 @@ export function buildRedactedKernelResult(
  * @deprecated Use `createForegroundAgent()` and the processor pipeline instead.
  * Preserved solely for test fixtures that exercise the legacy runner path.
  */
-export function createForegroundKernelRunner(
-  deps: ForegroundKernelRunnerDeps,
-): ForegroundKernelRunner {
-  return new ForegroundKernelRunnerImpl(deps);
+export function createForegroundKernelRunner(deps: ForegroundKernelRunnerDeps): ForegroundKernelRunner {
+  return new ForegroundKernelRunnerImpl(deps)
 }

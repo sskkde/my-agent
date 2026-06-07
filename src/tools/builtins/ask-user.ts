@@ -1,23 +1,23 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
 
 export interface AskUserParams {
-  question: string;
-  context?: string;
+  question: string
+  context?: string
 }
 
 export interface AskUserResult {
-  status: 'pending_approval';
-  question: string;
-  context?: string;
-  requestId: string;
-  timestamp: string;
-  [key: string]: unknown;
+  status: 'pending_approval'
+  question: string
+  context?: string
+  requestId: string
+  timestamp: string
+  [key: string]: unknown
 }
 
 export function createAskUserTool(): ToolDefinition {
   const handler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
-    const typedParams = params as AskUserParams;
-    
+    const typedParams = params as AskUserParams
+
     if (!typedParams.question) {
       return {
         success: false,
@@ -26,10 +26,10 @@ export function createAskUserTool(): ToolDefinition {
           message: 'Missing required field: question',
           recoverable: true,
         },
-      };
+      }
     }
 
-    const requestId = `ask_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const requestId = `ask_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
     const result: AskUserResult = {
       status: 'pending_approval',
@@ -37,7 +37,7 @@ export function createAskUserTool(): ToolDefinition {
       context: typedParams.context,
       requestId,
       timestamp: new Date().toISOString(),
-    };
+    }
 
     return {
       success: true,
@@ -55,8 +55,8 @@ export function createAskUserTool(): ToolDefinition {
           timestamp: result.timestamp,
         },
       ],
-    };
-  };
+    }
+  }
 
   return {
     name: 'ask_user',
@@ -72,5 +72,5 @@ export function createAskUserTool(): ToolDefinition {
       required: ['question'],
     },
     handler,
-  };
+  }
 }

@@ -1,8 +1,9 @@
-import { type DatabaseAdapter, DatabaseAdapterError } from '../../database-adapter.js';
-import { SqlDialect } from '../../sql-dialect.js';
-import { PostgresConnectionManager, type PostgresConnectionConfig } from './postgres-connection.js';
+import { type DatabaseAdapter, DatabaseAdapterError } from '../../database-adapter.js'
+import { SqlDialect } from '../../sql-dialect.js'
+import { PostgresConnectionManager, type PostgresConnectionConfig } from './postgres-connection.js'
 
-const SYNC_ERROR = 'Synchronous operations are not supported on PostgreSQL. Use async methods (asyncQuery, asyncExec, asyncTransaction) instead.';
+const SYNC_ERROR =
+  'Synchronous operations are not supported on PostgreSQL. Use async methods (asyncQuery, asyncExec, asyncTransaction) instead.'
 
 /**
  * PostgresAdapter — DatabaseAdapter implementation for PostgreSQL.
@@ -18,87 +19,87 @@ const SYNC_ERROR = 'Synchronous operations are not supported on PostgreSQL. Use 
  * on the underlying connection manager to verify connectivity.
  */
 export class PostgresAdapter implements DatabaseAdapter {
-  private connection: PostgresConnectionManager;
-  private dialect: SqlDialect;
+  private connection: PostgresConnectionManager
+  private dialect: SqlDialect
 
   constructor(config: PostgresConnectionConfig) {
-    this.connection = new PostgresConnectionManager(config);
-    this.dialect = SqlDialect.postgresql();
+    this.connection = new PostgresConnectionManager(config)
+    this.dialect = SqlDialect.postgresql()
   }
 
   // Sync methods — throw because PostgreSQL is async
 
   query<T = Record<string, unknown>>(_sql: string, _params?: unknown[]): T[] {
-    throw new DatabaseAdapterError(SYNC_ERROR);
+    throw new DatabaseAdapterError(SYNC_ERROR)
   }
 
   exec(_sql: string, _params?: unknown[]): void {
-    throw new DatabaseAdapterError(SYNC_ERROR);
+    throw new DatabaseAdapterError(SYNC_ERROR)
   }
 
   transaction<T>(_fn: () => T): () => T {
-    throw new DatabaseAdapterError(SYNC_ERROR);
+    throw new DatabaseAdapterError(SYNC_ERROR)
   }
 
   // Async methods — delegate to PostgresConnectionManager
 
   asyncQuery<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]> {
-    return this.connection.query<T>(sql, params);
+    return this.connection.query<T>(sql, params)
   }
 
   asyncExec(sql: string, params?: unknown[]): Promise<void> {
-    return this.connection.exec(sql, params);
+    return this.connection.exec(sql, params)
   }
 
   asyncTransaction<T>(fn: () => Promise<T>): Promise<T> {
-    return this.connection.transaction(fn);
+    return this.connection.transaction(fn)
   }
 
   // Lifecycle — sync per interface, pool creation is sync in pg
 
   open(): void {
     if (this.connection.isOpen()) {
-      return;
+      return
     }
-    void this.connection.open();
+    void this.connection.open()
   }
 
   close(): void {
     if (!this.connection.isOpen()) {
-      return;
+      return
     }
-    void this.connection.close();
+    void this.connection.close()
   }
 
   isOpen(): boolean {
-    return this.connection.isOpen();
+    return this.connection.isOpen()
   }
 
   getDialect(): SqlDialect {
-    return this.dialect;
+    return this.dialect
   }
 
   getType(): 'postgresql' {
-    return 'postgresql';
+    return 'postgresql'
   }
 
   async healthCheck(): Promise<boolean> {
-    return this.connection.healthCheck();
+    return this.connection.healthCheck()
   }
 
   getPoolMetrics(): { totalCount: number; idleCount: number; waitingCount: number } {
-    return this.connection.getPoolMetrics();
+    return this.connection.getPoolMetrics()
   }
 
   getConnection(): PostgresConnectionManager {
-    return this.connection;
+    return this.connection
   }
 }
 
 export function createPostgresAdapter(connectionString: string): DatabaseAdapter {
-  return new PostgresAdapter({ connectionString });
+  return new PostgresAdapter({ connectionString })
 }
 
 export function createPostgresAdapterWithConfig(config: PostgresConnectionConfig): DatabaseAdapter {
-  return new PostgresAdapter(config);
+  return new PostgresAdapter(config)
 }

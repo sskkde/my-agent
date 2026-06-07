@@ -3,7 +3,7 @@
  * Static model catalog with conservative defaults and known model capabilities
  */
 
-import type { ModelInfo, ModelCapabilities, ModelLimits } from '../types.js';
+import type { ModelInfo, ModelCapabilities, ModelLimits } from '../types.js'
 
 /**
  * Default text model capabilities
@@ -21,7 +21,7 @@ export const DEFAULT_TEXT_MODEL_CAPABILITIES: ModelCapabilities = {
   toolChoice: false,
   parallelToolCalls: false,
   promptCache: false,
-};
+}
 
 /**
  * Default model limits
@@ -30,7 +30,7 @@ export const DEFAULT_TEXT_MODEL_CAPABILITIES: ModelCapabilities = {
 export const DEFAULT_LIMITS: ModelLimits = {
   contextTokens: 8192,
   outputTokens: 4096,
-};
+}
 
 /**
  * Built-in model catalog
@@ -110,4 +110,4 @@ export const BUILTIN_MODELS: ModelInfo[] = [
       outputTokens: 16384,
     },
   },
-];
+]

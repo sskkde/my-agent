@@ -3,8 +3,8 @@
  * Centralized registry of built-in provider configurations
  */
 
-import type { ProviderFamily, ProviderProtocol, PromptProviderFamily } from '../types.js';
-import type { ProviderType } from '../../storage/provider-config-store.js';
+import type { ProviderFamily, ProviderProtocol, PromptProviderFamily } from '../types.js'
+import type { ProviderType } from '../../storage/provider-config-store.js'
 
 /**
  * Provider catalog entry
@@ -12,23 +12,23 @@ import type { ProviderType } from '../../storage/provider-config-store.js';
  */
 export interface ProviderCatalogEntry {
   /** Provider type identifier */
-  providerType: ProviderType;
+  providerType: ProviderType
   /** Human-readable display name */
-  displayName: string;
+  displayName: string
   /** Provider family (architectural category) */
-  family: ProviderFamily;
+  family: ProviderFamily
   /** Communication protocol */
-  protocol: ProviderProtocol;
+  protocol: ProviderProtocol
   /** Prompt template family */
-  promptFamily: PromptProviderFamily;
+  promptFamily: PromptProviderFamily
   /** Default base URL (optional) */
-  defaultBaseUrl?: string;
+  defaultBaseUrl?: string
   /** Whether API key is required */
-  requiresApiKey: boolean;
+  requiresApiKey: boolean
   /** Whether base URL is required */
-  requiresBaseUrl: boolean;
+  requiresBaseUrl: boolean
   /** Default model ID (optional) */
-  defaultModel?: string;
+  defaultModel?: string
 }
 
 /**
@@ -84,7 +84,7 @@ export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     requiresApiKey: true,
     requiresBaseUrl: true,
   },
-];
+]
 
 /**
  * Get provider catalog entry by type
@@ -92,7 +92,7 @@ export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
  * @returns Catalog entry or null if not found
  */
 export function getProviderCatalogEntry(providerType: string): ProviderCatalogEntry | null {
-  return BUILTIN_PROVIDER_CATALOG.find(entry => entry.providerType === providerType) ?? null;
+  return BUILTIN_PROVIDER_CATALOG.find((entry) => entry.providerType === providerType) ?? null
 }
 
 /**
@@ -101,7 +101,7 @@ export function getProviderCatalogEntry(providerType: string): ProviderCatalogEn
  * @returns True if provider type is in the catalog
  */
 export function isKnownProviderType(providerType: string): boolean {
-  return BUILTIN_PROVIDER_CATALOG.some(entry => entry.providerType === providerType);
+  return BUILTIN_PROVIDER_CATALOG.some((entry) => entry.providerType === providerType)
 }
 
 /**
@@ -109,5 +109,5 @@ export function isKnownProviderType(providerType: string): boolean {
  * @returns Array of all catalog entries
  */
 export function listProviderCatalogEntries(): ProviderCatalogEntry[] {
-  return [...BUILTIN_PROVIDER_CATALOG];
+  return [...BUILTIN_PROVIDER_CATALOG]
 }

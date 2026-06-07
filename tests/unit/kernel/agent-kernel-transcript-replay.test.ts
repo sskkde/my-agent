@@ -1,43 +1,39 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import type {
-  LLMResult,
-  LLMRequest,
-  ToolCall,
-} from '../../../src/llm/types.js';
-import type { ContextBundle } from '../../../src/context/types.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import type { LLMResult, LLMRequest, ToolCall } from '../../../src/llm/types.js'
+import type { ContextBundle } from '../../../src/context/types.js'
 import type {
   KernelRunInput,
   KernelConfig,
   ToolExecutor,
   ContextManager,
   RuntimeDispatcher,
-} from '../../../src/kernel/types.js';
-import { AgentKernel } from '../../../src/kernel/agent-kernel.js';
-import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js';
-import type { LLMProvider } from '../../../src/llm/provider.js';
-import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
-import { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js';
-import { TemplateLoader } from '../../../src/prompt/template-loader.js';
+} from '../../../src/kernel/types.js'
+import { AgentKernel } from '../../../src/kernel/agent-kernel.js'
+import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js'
+import type { LLMProvider } from '../../../src/llm/provider.js'
+import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
+import { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js'
+import { TemplateLoader } from '../../../src/prompt/template-loader.js'
 
 class FakeLLMAdapter implements LLMAdapter {
-  private responses: LLMRequest[] = [];
-  private responseQueue: Array<() => Promise<LLMResult>> = [];
+  private responses: LLMRequest[] = []
+  private responseQueue: Array<() => Promise<LLMResult>> = []
   config: LLMAdapterConfig = {
     providers: [],
     defaultTimeoutMs: 60000,
     enableCircuitBreaker: false,
-  };
-  providers: LLMProvider[] = [];
+  }
+  providers: LLMProvider[] = []
 
   setResponseQueue(queue: Array<() => Promise<LLMResult>>): void {
-    this.responseQueue = queue;
+    this.responseQueue = queue
   }
 
   async complete(request: LLMRequest): Promise<LLMResult> {
-    this.responses.push(request);
+    this.responses.push(request)
     if (this.responseQueue.length > 0) {
-      const handler = this.responseQueue.shift()!;
-      return handler();
+      const handler = this.responseQueue.shift()!
+      return handler()
     }
     return {
       success: true,
@@ -50,24 +46,36 @@ class FakeLLMAdapter implements LLMAdapter {
         createdAt: new Date().toISOString(),
       },
       providerId: 'fake',
-    };
+    }
   }
 
   async *stream(): AsyncGenerator<{ delta: string; providerId: string }> {}
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider); }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId); }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId); }
-  getHealthyProviders(): LLMProvider[] { return this.providers; }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(_providerId: string, _priority: number): void {}
 
-  getLastRequest(): LLMRequest | undefined { return this.responses[this.responses.length - 1]; }
-  getAllRequests(): LLMRequest[] { return this.responses; }
+  getLastRequest(): LLMRequest | undefined {
+    return this.responses[this.responses.length - 1]
+  }
+  getAllRequests(): LLMRequest[] {
+    return this.responses
+  }
 }
 
 class FakeToolExecutor implements ToolExecutor {
   async execute() {
-    return { success: true, data: { result: 'ok' } };
+    return { success: true, data: { result: 'ok' } }
   }
 }
 
@@ -83,9 +91,11 @@ class FakeContextManager implements ContextManager {
       pinnedItems: [],
       orderedItems: [],
       tokenEstimate: 100,
-    };
+    }
   }
-  getItems() { return []; }
+  getItems() {
+    return []
+  }
   addItem() {}
   applyDelta() {}
 }
@@ -99,39 +109,45 @@ class FakeDispatcher implements RuntimeDispatcher {
       targetRuntime: 'tool_plane',
       result: { ok: true },
       createdAt: new Date().toISOString(),
-    };
+    }
   }
 }
 
 function createModelInputBuilder(): ModelInputBuilder {
   const registry = new PromptTemplateRegistry(
     new Map([
-      ['platform:base', {
-        id: 'platform:base',
-        version: '2026-05-23',
-        path: 'platform/base.md',
-        agentKind: '*',
-        providerFamily: '*',
-        layer: 1,
-        description: 'Test base',
-        content: 'You are a helpful assistant.',
-      }],
-      ['agents:kernel', {
-        id: 'agents:kernel',
-        version: '2026-05-23',
-        path: 'agents/kernel.md',
-        agentKind: 'kernel',
-        providerFamily: '*',
-        layer: 3,
-        description: 'Kernel agent instructions.',
-        content: 'Execute tasks.',
-      }],
+      [
+        'platform:base',
+        {
+          id: 'platform:base',
+          version: '2026-05-23',
+          path: 'platform/base.md',
+          agentKind: '*',
+          providerFamily: '*',
+          layer: 1,
+          description: 'Test base',
+          content: 'You are a helpful assistant.',
+        },
+      ],
+      [
+        'agents:kernel',
+        {
+          id: 'agents:kernel',
+          version: '2026-05-23',
+          path: 'agents/kernel.md',
+          agentKind: 'kernel',
+          providerFamily: '*',
+          layer: 3,
+          description: 'Kernel agent instructions.',
+          content: 'Execute tasks.',
+        },
+      ],
     ]),
-  );
+  )
   return new ModelInputBuilder({
     templateRegistry: registry,
     templateLoader: new TemplateLoader(),
-  });
+  })
 }
 
 function makeBaseConfig(overrides?: Partial<KernelConfig>): KernelConfig {
@@ -144,7 +160,7 @@ function makeBaseConfig(overrides?: Partial<KernelConfig>): KernelConfig {
     maxIterations: 10,
     timeoutMs: 30000,
     ...overrides,
-  };
+  }
 }
 
 function makeRunInput(): KernelRunInput {
@@ -166,26 +182,26 @@ function makeRunInput(): KernelRunInput {
     userId: 'test-user',
     maxIterations: 5,
     timeoutMs: 5000,
-  };
+  }
 }
 
 describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
-  let originalEnv: string | undefined;
+  let originalEnv: string | undefined
 
   beforeEach(() => {
-    originalEnv = process.env.TOOL_LOOP_V2_ENABLED;
-  });
+    originalEnv = process.env.TOOL_LOOP_V2_ENABLED
+  })
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.TOOL_LOOP_V2_ENABLED;
+      delete process.env.TOOL_LOOP_V2_ENABLED
     } else {
-      process.env.TOOL_LOOP_V2_ENABLED = originalEnv;
+      process.env.TOOL_LOOP_V2_ENABLED = originalEnv
     }
-  });
+  })
 
   it('when TOOL_LOOP_V2 is OFF, toolCalls WITH RESULTS are still replayed to avoid orphan tool messages', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'false';
+    process.env.TOOL_LOOP_V2_ENABLED = 'false'
 
     const toolCalls: ToolCall[] = [
       {
@@ -193,9 +209,9 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
         type: 'function',
         function: { name: 'test_tool', arguments: '{}' },
       },
-    ];
+    ]
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => ({
         success: true,
@@ -210,32 +226,32 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
         },
         providerId: 'fake',
       }),
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
-    const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
+    const secondRequest = requests[1]
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
+    const hasToolCalls = assistantMessages.some((m) => m.toolCalls && m.toolCalls.length > 0)
     // NEW INVARIANT: toolCalls with results must always be replayed to avoid orphan tool messages
-    expect(hasToolCalls).toBe(true);
+    expect(hasToolCalls).toBe(true)
 
     // Verify no orphan tool messages - each tool message must have a preceding assistant with toolCalls
-    const toolMessages = secondRequest.messages.filter(m => m.role === 'tool');
-    expect(toolMessages.length).toBe(1);
-    expect(toolMessages[0].toolCallId).toBe('call-1');
+    const toolMessages = secondRequest.messages.filter((m) => m.role === 'tool')
+    expect(toolMessages.length).toBe(1)
+    expect(toolMessages[0].toolCallId).toBe('call-1')
 
-    const toolCallMessage = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
-    expect(toolCallMessage?.toolCalls).toEqual(toolCalls);
-  });
+    const toolCallMessage = assistantMessages.find((m) => m.toolCalls && m.toolCalls.length > 0)
+    expect(toolCallMessage?.toolCalls).toEqual(toolCalls)
+  })
 
   it('when TOOL_LOOP_V2 is ON, toolCalls ARE replayed in transcript messages', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'true';
+    process.env.TOOL_LOOP_V2_ENABLED = 'true'
 
     const toolCalls: ToolCall[] = [
       {
@@ -243,9 +259,9 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
         type: 'function',
         function: { name: 'test_tool', arguments: '{}' },
       },
-    ];
+    ]
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => ({
         success: true,
@@ -260,30 +276,30 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
         },
         providerId: 'fake',
       }),
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
-    const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
-    expect(hasToolCalls).toBe(true);
+    const secondRequest = requests[1]
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
+    const hasToolCalls = assistantMessages.some((m) => m.toolCalls && m.toolCalls.length > 0)
+    expect(hasToolCalls).toBe(true)
 
-    const toolCallMessage = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
-    expect(toolCallMessage?.toolCalls).toEqual(toolCalls);
-  });
+    const toolCallMessage = assistantMessages.find((m) => m.toolCalls && m.toolCalls.length > 0)
+    expect(toolCallMessage?.toolCalls).toEqual(toolCalls)
+  })
 
   it('when TOOL_LOOP_V2 is ON, empty toolCalls array is filtered (EC-1)', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'true';
+    process.env.TOOL_LOOP_V2_ENABLED = 'true'
 
-    const emptyToolCalls: ToolCall[] = [];
+    const emptyToolCalls: ToolCall[] = []
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => ({
         success: true,
@@ -298,25 +314,23 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
         },
         providerId: 'fake',
       }),
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
-    const hasEmptyToolCalls = assistantMessages.some(
-      m => m.toolCalls !== undefined && m.toolCalls.length === 0
-    );
-    expect(hasEmptyToolCalls).toBe(false);
-  });
+    const secondRequest = requests[1]
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
+    const hasEmptyToolCalls = assistantMessages.some((m) => m.toolCalls !== undefined && m.toolCalls.length === 0)
+    expect(hasEmptyToolCalls).toBe(false)
+  })
 
   it('when TOOL_LOOP_V2 is ON, assistant message with both content and toolCalls', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'true';
+    process.env.TOOL_LOOP_V2_ENABLED = 'true'
 
     const toolCalls: ToolCall[] = [
       {
@@ -324,9 +338,9 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
         type: 'function',
         function: { name: 'test_tool', arguments: '{}' },
       },
-    ];
+    ]
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => ({
         success: true,
@@ -341,44 +355,44 @@ describe('AgentKernel buildTranscriptMessages toolCalls replay', () => {
         },
         providerId: 'fake',
       }),
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
+    const secondRequest = requests[1]
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
 
-    const contentMessage = assistantMessages.find(m => m.content === 'Let me help you.');
-    expect(contentMessage).toBeDefined();
+    const contentMessage = assistantMessages.find((m) => m.content === 'Let me help you.')
+    expect(contentMessage).toBeDefined()
 
-    const toolCallMessage = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
-    expect(toolCallMessage).toBeDefined();
-    expect(toolCallMessage?.toolCalls).toEqual(toolCalls);
-  });
-});
+    const toolCallMessage = assistantMessages.find((m) => m.toolCalls && m.toolCalls.length > 0)
+    expect(toolCallMessage).toBeDefined()
+    expect(toolCallMessage?.toolCalls).toEqual(toolCalls)
+  })
+})
 
 describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
-  let originalEnv: string | undefined;
+  let originalEnv: string | undefined
 
   beforeEach(() => {
-    originalEnv = process.env.TOOL_LOOP_V2_ENABLED;
-  });
+    originalEnv = process.env.TOOL_LOOP_V2_ENABLED
+  })
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.TOOL_LOOP_V2_ENABLED;
+      delete process.env.TOOL_LOOP_V2_ENABLED
     } else {
-      process.env.TOOL_LOOP_V2_ENABLED = originalEnv;
+      process.env.TOOL_LOOP_V2_ENABLED = originalEnv
     }
-  });
+  })
 
   it('flag is read dynamically: if changed mid-run, new value is used', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'false';
+    process.env.TOOL_LOOP_V2_ENABLED = 'false'
 
     const toolCalls: ToolCall[] = [
       {
@@ -386,12 +400,12 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
         type: 'function',
         function: { name: 'test_tool', arguments: '{}' },
       },
-    ];
+    ]
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => {
-        process.env.TOOL_LOOP_V2_ENABLED = 'true';
+        process.env.TOOL_LOOP_V2_ENABLED = 'true'
         return {
           success: true,
           response: {
@@ -404,26 +418,26 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
             createdAt: new Date().toISOString(),
           },
           providerId: 'fake',
-        };
+        }
       },
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
-    const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
-    
-    expect(hasToolCalls).toBe(true);
-  });
+    const secondRequest = requests[1]
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
+    const hasToolCalls = assistantMessages.some((m) => m.toolCalls && m.toolCalls.length > 0)
+
+    expect(hasToolCalls).toBe(true)
+  })
 
   it('flag OFF: toolCalls WITH RESULTS still replayed when flag is OFF at buildTranscriptMessages time', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'true';
+    process.env.TOOL_LOOP_V2_ENABLED = 'true'
 
     const toolCalls: ToolCall[] = [
       {
@@ -431,12 +445,12 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
         type: 'function',
         function: { name: 'test_tool', arguments: '{}' },
       },
-    ];
+    ]
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => {
-        delete process.env.TOOL_LOOP_V2_ENABLED;
+        delete process.env.TOOL_LOOP_V2_ENABLED
         return {
           success: true,
           response: {
@@ -449,36 +463,36 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
             createdAt: new Date().toISOString(),
           },
           providerId: 'fake',
-        };
+        }
       },
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
-    const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
+    const secondRequest = requests[1]
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
+    const hasToolCalls = assistantMessages.some((m) => m.toolCalls && m.toolCalls.length > 0)
 
     // NEW INVARIANT: toolCalls with results are always replayed regardless of flag state
-    expect(hasToolCalls).toBe(true);
-  });
+    expect(hasToolCalls).toBe(true)
+  })
 
   it('flag state determines buildTranscriptMessages behavior consistently within run', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'true';
+    process.env.TOOL_LOOP_V2_ENABLED = 'true'
 
     const toolCalls1: ToolCall[] = [
       { id: 'call-consistent-1', type: 'function', function: { name: 'tool1', arguments: '{}' } },
-    ];
+    ]
     const toolCalls2: ToolCall[] = [
       { id: 'call-consistent-2', type: 'function', function: { name: 'tool2', arguments: '{}' } },
-    ];
+    ]
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => ({
         success: true,
@@ -506,40 +520,40 @@ describe('Flag evaluated at buildTranscriptMessages time (EC-6)', () => {
         },
         providerId: 'fake',
       }),
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM, maxIterations: 5 });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM, maxIterations: 5 })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(3);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(3)
 
     for (let i = 1; i < requests.length; i++) {
-      const assistantMessages = requests[i].messages.filter(m => m.role === 'assistant');
-      const hasToolCalls = assistantMessages.some(m => m.toolCalls && m.toolCalls.length > 0);
-      expect(hasToolCalls).toBe(true);
+      const assistantMessages = requests[i].messages.filter((m) => m.role === 'assistant')
+      const hasToolCalls = assistantMessages.some((m) => m.toolCalls && m.toolCalls.length > 0)
+      expect(hasToolCalls).toBe(true)
     }
-  });
-});
+  })
+})
 
 describe('Regression: no orphan tool messages when TOOL_LOOP_V2 is OFF', () => {
-  let originalEnv: string | undefined;
+  let originalEnv: string | undefined
 
   beforeEach(() => {
-    originalEnv = process.env.TOOL_LOOP_V2_ENABLED;
-  });
+    originalEnv = process.env.TOOL_LOOP_V2_ENABLED
+  })
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.TOOL_LOOP_V2_ENABLED;
+      delete process.env.TOOL_LOOP_V2_ENABLED
     } else {
-      process.env.TOOL_LOOP_V2_ENABLED = originalEnv;
+      process.env.TOOL_LOOP_V2_ENABLED = originalEnv
     }
-  });
+  })
 
   it('when flag is OFF/unset, tool messages are always paired with assistant toolCalls', async () => {
-    delete process.env.TOOL_LOOP_V2_ENABLED;
+    delete process.env.TOOL_LOOP_V2_ENABLED
 
     const toolCalls: ToolCall[] = [
       {
@@ -547,9 +561,9 @@ describe('Regression: no orphan tool messages when TOOL_LOOP_V2 is OFF', () => {
         type: 'function',
         function: { name: 'test_tool', arguments: '{}' },
       },
-    ];
+    ]
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => ({
         success: true,
@@ -564,31 +578,31 @@ describe('Regression: no orphan tool messages when TOOL_LOOP_V2 is OFF', () => {
         },
         providerId: 'fake',
       }),
-    ]);
+    ])
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
+    const secondRequest = requests[1]
 
-    const toolMessages = secondRequest.messages.filter(m => m.role === 'tool');
-    expect(toolMessages.length).toBe(1);
+    const toolMessages = secondRequest.messages.filter((m) => m.role === 'tool')
+    expect(toolMessages.length).toBe(1)
 
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
-    const assistantWithToolCalls = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
-    expect(assistantWithToolCalls).toBeDefined();
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
+    const assistantWithToolCalls = assistantMessages.find((m) => m.toolCalls && m.toolCalls.length > 0)
+    expect(assistantWithToolCalls).toBeDefined()
 
-    const toolCallIds = assistantWithToolCalls?.toolCalls?.map(tc => tc.id) ?? [];
-    expect(toolCallIds).toContain('call-regression-1');
-    expect(toolMessages[0].toolCallId).toBe('call-regression-1');
-  });
+    const toolCallIds = assistantWithToolCalls?.toolCalls?.map((tc) => tc.id) ?? []
+    expect(toolCallIds).toContain('call-regression-1')
+    expect(toolMessages[0].toolCallId).toBe('call-regression-1')
+  })
 
   it('after failed tool, second LLM request has no orphan tool messages (flag OFF)', async () => {
-    process.env.TOOL_LOOP_V2_ENABLED = 'false';
+    process.env.TOOL_LOOP_V2_ENABLED = 'false'
 
     const toolCalls: ToolCall[] = [
       {
@@ -596,7 +610,7 @@ describe('Regression: no orphan tool messages when TOOL_LOOP_V2 is OFF', () => {
         type: 'function',
         function: { name: 'failing_tool', arguments: '{}' },
       },
-    ];
+    ]
 
     class FailingDispatcher implements RuntimeDispatcher {
       async dispatch() {
@@ -607,11 +621,11 @@ describe('Regression: no orphan tool messages when TOOL_LOOP_V2 is OFF', () => {
           targetRuntime: 'tool_plane',
           error: { code: 'TOOL_FAILED', message: 'Tool execution failed', recoverable: true },
           createdAt: new Date().toISOString(),
-        };
+        }
       }
     }
 
-    const fakeLLM = new FakeLLMAdapter();
+    const fakeLLM = new FakeLLMAdapter()
     fakeLLM.setResponseQueue([
       async () => ({
         success: true,
@@ -626,27 +640,27 @@ describe('Regression: no orphan tool messages when TOOL_LOOP_V2 is OFF', () => {
         },
         providerId: 'fake',
       }),
-    ]);
+    ])
 
     const config = makeBaseConfig({
       llmAdapter: fakeLLM,
       dispatcher: new FailingDispatcher(),
-    });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const requests = fakeLLM.getAllRequests();
-    expect(requests.length).toBe(2);
+    const requests = fakeLLM.getAllRequests()
+    expect(requests.length).toBe(2)
 
-    const secondRequest = requests[1];
+    const secondRequest = requests[1]
 
-    const toolMessages = secondRequest.messages.filter(m => m.role === 'tool');
-    expect(toolMessages.length).toBe(1);
-    expect(toolMessages[0].toolCallId).toBe('call-fail-regression');
+    const toolMessages = secondRequest.messages.filter((m) => m.role === 'tool')
+    expect(toolMessages.length).toBe(1)
+    expect(toolMessages[0].toolCallId).toBe('call-fail-regression')
 
-    const assistantMessages = secondRequest.messages.filter(m => m.role === 'assistant');
-    const assistantWithToolCalls = assistantMessages.find(m => m.toolCalls && m.toolCalls.length > 0);
-    expect(assistantWithToolCalls).toBeDefined();
-    expect(assistantWithToolCalls?.toolCalls?.[0]?.id).toBe('call-fail-regression');
-  });
-});
+    const assistantMessages = secondRequest.messages.filter((m) => m.role === 'assistant')
+    const assistantWithToolCalls = assistantMessages.find((m) => m.toolCalls && m.toolCalls.length > 0)
+    expect(assistantWithToolCalls).toBeDefined()
+    expect(assistantWithToolCalls?.toolCalls?.[0]?.id).toBe('call-fail-regression')
+  })
+})

@@ -7,9 +7,9 @@
  */
 
 export interface CorsConfig {
-  origin: boolean | string[];
-  methods: string[];
-  allowedHeaders: string[];
+  origin: boolean | string[]
+  methods: string[]
+  allowedHeaders: string[]
 }
 
 /**
@@ -18,40 +18,34 @@ export interface CorsConfig {
  * @param env - Environment variables (defaults to process.env)
  * @returns CORS configuration object for @fastify/cors
  */
-export function getCorsOrigin(
-  env: Record<string, string | undefined> = process.env
-): CorsConfig {
+export function getCorsOrigin(env: Record<string, string | undefined> = process.env): CorsConfig {
   const baseConfig = {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-  };
+  }
 
   // Non-production: allow all origins (reflective)
   if (env.NODE_ENV !== 'production') {
-    return { origin: true, ...baseConfig };
+    return { origin: true, ...baseConfig }
   }
 
   // Production: use explicit allowlist
-  const allowedOrigins = env.ALLOWED_ORIGINS;
+  const allowedOrigins = env.ALLOWED_ORIGINS
 
   // This should be caught by production guard, but defend in depth
   if (!allowedOrigins || allowedOrigins.trim() === '*') {
-    throw new Error(
-      'ALLOWED_ORIGINS must be set to explicit comma-separated URLs in production'
-    );
+    throw new Error('ALLOWED_ORIGINS must be set to explicit comma-separated URLs in production')
   }
 
   // Parse and trim whitespace from each origin
   const origins = allowedOrigins
     .split(',')
     .map((origin) => origin.trim())
-    .filter((origin) => origin.length > 0);
+    .filter((origin) => origin.length > 0)
 
   if (origins.length === 0) {
-    throw new Error(
-      'ALLOWED_ORIGINS must contain at least one valid URL in production'
-    );
+    throw new Error('ALLOWED_ORIGINS must contain at least one valid URL in production')
   }
 
-  return { origin: origins, ...baseConfig };
+  return { origin: origins, ...baseConfig }
 }
