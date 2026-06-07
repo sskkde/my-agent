@@ -59,3 +59,13 @@ export {
   fetchToolActivityCardData,
   createEmptyMetadata,
 } from './data-adapters'
+
+// Card components
+export { default as ApprovalCard } from './ApprovalCard'
+export { default as MemoryCard } from './MemoryCard'
+export { default as RunsCard } from './RunsCard'
+export { default as ToolActivityCard } from './ToolActivityCard'
+
+// Panel component
+export { default as ContextDeskPanel } from './ContextDeskPanel'
+export type { ContextDeskPanelProps } from './ContextDeskPanel'

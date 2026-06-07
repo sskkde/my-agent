@@ -3,6 +3,7 @@ import React from 'react'
 export interface CardProps {
   children: React.ReactNode
   className?: string
+  'data-testid'?: string
 }
 
 export interface CardHeaderProps {
@@ -24,9 +25,9 @@ const Card: React.FC<CardProps> & {
   Header: React.FC<CardHeaderProps>
   Content: React.FC<CardContentProps>
   Footer: React.FC<CardFooterProps>
-} = ({ children, className = '' }) => {
+} = ({ children, className = '', 'data-testid': testId = 'ui-card' }) => {
   return (
-    <div className={`ui-card${className ? ` ${className}` : ''}`} data-testid="ui-card">
+    <div className={`ui-card${className ? ` ${className}` : ''}`} data-testid={testId}>
       {children}
     </div>
   )
