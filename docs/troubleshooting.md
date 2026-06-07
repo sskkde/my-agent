@@ -5,14 +5,14 @@
 
 ## Quick Reference
 
-| Issue | Section |
-|-------|---------|
-| Server won't start | [Startup Errors](#startup-errors) |
-| Database migration failed | [Database Migration Issues](#database-migration-issues) |
-| LLM not responding | [LLM Provider Connection Failures](#llm-provider-connection-failures) |
-| Webhooks not delivered | [Webhook Delivery Failures](#webhook-delivery-failures) |
-| Slow performance | [Memory and Performance Issues](#memory-and-performance-issues) |
-| Rate limit errors | [Rate Limiting Issues](#rate-limiting-issues) |
+| Issue                     | Section                                                               |
+| ------------------------- | --------------------------------------------------------------------- |
+| Server won't start        | [Startup Errors](#startup-errors)                                     |
+| Database migration failed | [Database Migration Issues](#database-migration-issues)               |
+| LLM not responding        | [LLM Provider Connection Failures](#llm-provider-connection-failures) |
+| Webhooks not delivered    | [Webhook Delivery Failures](#webhook-delivery-failures)               |
+| Slow performance          | [Memory and Performance Issues](#memory-and-performance-issues)       |
+| Rate limit errors         | [Rate Limiting Issues](#rate-limiting-issues)                         |
 
 ---
 
@@ -23,6 +23,7 @@
 **Cause**: The encryption key for API keys is not configured.
 
 **Solution**:
+
 ```bash
 # Generate a secure key
 openssl rand -hex 32
@@ -39,6 +40,7 @@ echo "APP_SECRET_KEY=<generated-key>" >> .env
 **Cause**: Another process is using the port.
 
 **Solution**:
+
 ```bash
 # Find the process
 lsof -i :3003
@@ -55,6 +57,7 @@ PORT=3004 npm run start:api
 **Cause**: Dependencies not installed.
 
 **Solution**:
+
 ```bash
 # Install dependencies
 npm install
@@ -68,6 +71,7 @@ cd web && npm install
 **Cause**: Another process has the database open, or improper shutdown.
 
 **Solution**:
+
 ```bash
 # Ensure no other processes are using the database
 lsof data/app.db
@@ -84,6 +88,7 @@ cp backups/app.db.YYYYMMDD data/app.db
 **Cause**: Port conflict in Docker environment.
 
 **Solution**:
+
 ```bash
 # Stop all containers
 docker compose down
@@ -107,6 +112,7 @@ docker compose up -d
 **Cause**: Migration script error or database corruption.
 
 **Solution**:
+
 ```bash
 # Check migration status
 npm run db:health
@@ -123,6 +129,7 @@ sqlite3 data/app.db "PRAGMA integrity_check;"
 **Cause**: Database schema is out of sync with code.
 
 **Solution**:
+
 ```bash
 # Check current version
 sqlite3 data/app.db "SELECT * FROM schema_version;"
@@ -142,6 +149,7 @@ npm run db:migrate
 **Cause**: Database not initialized or migration not run.
 
 **Solution**:
+
 ```bash
 # Run migrations
 npm run db:migrate
@@ -173,6 +181,7 @@ sqlite3 data/app.db < dump.sql
 **Cause**: Invalid or expired API key.
 
 **Solution**:
+
 1. Verify key at https://openrouter.ai/keys
 2. Update environment variable:
    ```bash
@@ -185,6 +194,7 @@ sqlite3 data/app.db < dump.sql
 **Cause**: Ollama not running or wrong URL.
 
 **Solution**:
+
 ```bash
 # Check if Ollama is running
 curl http://localhost:11434/api/tags
@@ -201,6 +211,7 @@ export OLLAMA_BASE_URL=http://your-ollama-host:11434
 **Cause**: Model response taking too long.
 
 **Solution**:
+
 ```bash
 # Increase timeout in agent config
 PATCH /api/agents/foreground.default/config
@@ -214,6 +225,7 @@ PATCH /api/agents/foreground.default/config
 **Cause**: No provider environment variables set.
 
 **Solution**:
+
 ```bash
 # Configure at least one provider
 export OPENROUTER_API_KEY=your-key
@@ -229,6 +241,7 @@ export MVP_USE_MOCK_LLM=true
 **Cause**: Specified model not available with provider.
 
 **Solution**:
+
 ```bash
 # List available models (OpenRouter)
 curl -H "Authorization: Bearer $OPENROUTER_API_KEY" \
@@ -250,6 +263,7 @@ PATCH /api/agents/foreground.default/config
 **Cause**: Target endpoint unreachable or returning errors.
 
 **Solution**:
+
 1. Check webhook logs in Observability tab
 2. Verify target endpoint is accessible
 3. Check for valid SSL certificates
@@ -259,6 +273,7 @@ PATCH /api/agents/foreground.default/config
 **Cause**: Webhook delivery failed and was moved to Dead Letter Queue.
 
 **Solution**:
+
 ```bash
 # View DLQ entries via API
 GET /api/dlq?status=pending
@@ -291,6 +306,7 @@ docker compose logs api | grep webhook
 **Cause**: Large conversation contexts or insufficient cleanup.
 
 **Solution**:
+
 ```bash
 # Reduce context window
 export MAX_CONTEXT_TOKENS=4000
@@ -306,6 +322,7 @@ export MAX_CONTEXT_TOKENS=4000
 **Cause**: Database bloat or network latency.
 
 **Solution**:
+
 ```bash
 # Check database size
 ls -lh data/app.db
@@ -322,6 +339,7 @@ sqlite3 data/app.db "SELECT * FROM sqlite_master;"
 **Cause**: Model complexity or provider latency.
 
 **Solution**:
+
 1. Use a faster/smaller model
 2. Check provider status page
 3. Consider local Ollama for lower latency
@@ -331,10 +349,11 @@ sqlite3 data/app.db "SELECT * FROM sqlite_master;"
 **Cause**: Accumulation of sessions, runs, and logs.
 
 **Solution**:
+
 ```bash
 # Check table sizes
 sqlite3 data/app.db "
-SELECT 
+SELECT
   name,
   (SELECT COUNT(*) FROM sqlite_master m WHERE m.name = t.name) as rows
 FROM sqlite_master t WHERE type='table';
@@ -353,6 +372,7 @@ FROM sqlite_master t WHERE type='table';
 **Cause**: Rate limit exceeded.
 
 **Solution**:
+
 1. Wait for rate limit window to reset
 2. Check rate limit headers in response:
    - `x-ratelimit-reset`: Reset timestamp
@@ -367,7 +387,7 @@ Rate limits are configured in `src/api/server.ts`. For Docker deployment:
 services:
   api:
     environment:
-      - RATE_LIMIT_MAX=200  # Increase limit
+      - RATE_LIMIT_MAX=200 # Increase limit
 ```
 
 ---
@@ -417,15 +437,15 @@ kubectl logs deployment/agent-api --previous
 
 ## Common Error Codes
 
-| Code | Description | Action |
-|------|-------------|--------|
+| Code               | Description               | Action                    |
+| ------------------ | ------------------------- | ------------------------- |
 | `VALIDATION_ERROR` | Request validation failed | Check request body format |
-| `BAD_REQUEST` | Invalid input | Check required fields |
-| `UNAUTHORIZED` | Authentication required | Provide valid credentials |
-| `FORBIDDEN` | Permission denied | Check user permissions |
-| `NOT_FOUND` | Resource not found | Verify resource ID |
-| `INTERNAL_ERROR` | Server error | Check server logs |
-| `PROVIDER_ERROR` | LLM provider error | Check provider config |
+| `BAD_REQUEST`      | Invalid input             | Check required fields     |
+| `UNAUTHORIZED`     | Authentication required   | Provide valid credentials |
+| `FORBIDDEN`        | Permission denied         | Check user permissions    |
+| `NOT_FOUND`        | Resource not found        | Verify resource ID        |
+| `INTERNAL_ERROR`   | Server error              | Check server logs         |
+| `PROVIDER_ERROR`   | LLM provider error        | Check provider config     |
 
 ---
 

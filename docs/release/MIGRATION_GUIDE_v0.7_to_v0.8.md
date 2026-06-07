@@ -25,13 +25,13 @@
 
 ### 1.1 系统要求 (System Requirements)
 
-| Requirement | v0.7.0-rc.1 | v0.8.0-ga-candidate |
-|-------------|-------------|---------------------|
-| Node.js | 20+ | 20+ (unchanged) |
-| SQLite | 3.x | 3.x (unchanged) |
-| PostgreSQL | - | 14+ (optional) |
-| Docker | Optional | Optional |
-| Memory | 512MB | 512MB (1GB recommended for PG) |
+| Requirement | v0.7.0-rc.1 | v0.8.0-ga-candidate            |
+| ----------- | ----------- | ------------------------------ |
+| Node.js     | 20+         | 20+ (unchanged)                |
+| SQLite      | 3.x         | 3.x (unchanged)                |
+| PostgreSQL  | -           | 14+ (optional)                 |
+| Docker      | Optional    | Optional                       |
+| Memory      | 512MB       | 512MB (1GB recommended for PG) |
 
 ### 1.2 备份数据库 (Backup Database)
 
@@ -130,12 +130,14 @@ tsx scripts/check-production-config.ts
 ### 2.2 CORS 配置迁移
 
 **变更前 (Before)**:
+
 ```
 # 开发环境使用宽松 CORS
 CORS_ORIGIN=*
 ```
 
 **变更后 (After)**:
+
 ```bash
 # 生产环境必须配置具体 origins
 ALLOWED_ORIGINS=https://app.yourdomain.com,https://admin.yourdomain.com
@@ -174,6 +176,7 @@ curl -I -X OPTIONS \
 **变更**: 生产环境自动添加 Secure 标记
 
 **迁移步骤**:
+
 1. 确保生产环境使用 HTTPS
 2. Cookie Secure 标记由系统自动添加，无需手动配置
 3. 验证：
@@ -192,11 +195,13 @@ curl -v -X POST \
 **变更**: 排除路径从 55 条减少到 22 条
 
 **可能影响的路由**:
+
 - 原本无需认证的路由可能现在需要认证
 
 **迁移步骤**:
 
 1. 检查客户端是否依赖以下路径的无认证访问：
+
    ```
    /api/v1/health          # 仍然公开
    /api/v1/health/ready    # 仍然公开
@@ -448,14 +453,14 @@ curl -X POST \
 
 所有 6 个连接器现在通过 GA 认证：
 
-| Connector | Auth Method | Configuration |
-|-----------|-------------|---------------|
-| GitHub | API Key / OAuth | `GITHUB_TOKEN` or OAuth |
-| Google Calendar | OAuth2 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
-| Google Contacts | OAuth2 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
-| Docs | OAuth2 | Provider-specific credentials |
-| Web Search | Multiple | `TAVILY_API_KEY`, `SEARXNG_BASE_URL`, etc. |
-| Generic HTTP | API Key / Basic / OAuth | Instance-specific configuration |
+| Connector       | Auth Method             | Configuration                              |
+| --------------- | ----------------------- | ------------------------------------------ |
+| GitHub          | API Key / OAuth         | `GITHUB_TOKEN` or OAuth                    |
+| Google Calendar | OAuth2                  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| Google Contacts | OAuth2                  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| Docs            | OAuth2                  | Provider-specific credentials              |
+| Web Search      | Multiple                | `TAVILY_API_KEY`, `SEARXNG_BASE_URL`, etc. |
+| Generic HTTP    | API Key / Basic / OAuth | Instance-specific configuration            |
 
 ### 6.2 连接器配置迁移
 
@@ -525,7 +530,7 @@ services:
       - agent_backups:/backups
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3003/api/v1/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3003/api/v1/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -729,6 +734,7 @@ A: 确保数据库迁移成功运行，检查 `schema_version` 表。
 ---
 
 **Need Help?**
+
 - See `docs/troubleshooting.md`
 - See `docs/release/ROLLBACK_RUNBOOK.md`
 - Check `.sisyphus/notepads/phase8-ga-readiness/learnings.md`

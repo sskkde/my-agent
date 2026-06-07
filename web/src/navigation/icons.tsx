@@ -1,6 +1,6 @@
-import React from 'react';
+import React from 'react'
 
-export type IconComponent = React.FC<React.SVGProps<SVGSVGElement>>;
+export type IconComponent = React.FC<React.SVGProps<SVGSVGElement>>
 
 const MessageSquareIcon: IconComponent = (props) => (
   <svg
@@ -15,7 +15,7 @@ const MessageSquareIcon: IconComponent = (props) => (
   >
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
-);
+)
 
 const LayoutDashboardIcon: IconComponent = (props) => (
   <svg
@@ -33,7 +33,7 @@ const LayoutDashboardIcon: IconComponent = (props) => (
     <rect x="14" y="12" width="7" height="9" />
     <rect x="3" y="16" width="7" height="5" />
   </svg>
-);
+)
 
 const InfoIcon: IconComponent = (props) => (
   <svg
@@ -50,7 +50,7 @@ const InfoIcon: IconComponent = (props) => (
     <line x1="12" y1="16" x2="12" y2="12" />
     <line x1="12" y1="8" x2="12.01" y2="8" />
   </svg>
-);
+)
 
 const ActivityIcon: IconComponent = (props) => (
   <svg
@@ -65,7 +65,7 @@ const ActivityIcon: IconComponent = (props) => (
   >
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
   </svg>
-);
+)
 
 const ChevronLeftIcon: IconComponent = (props) => (
   <svg
@@ -80,7 +80,7 @@ const ChevronLeftIcon: IconComponent = (props) => (
   >
     <polyline points="15 18 9 12 15 6" />
   </svg>
-);
+)
 
 const ListIcon: IconComponent = (props) => (
   <svg
@@ -100,7 +100,7 @@ const ListIcon: IconComponent = (props) => (
     <line x1="3" y1="12" x2="3.01" y2="12" />
     <line x1="3" y1="18" x2="3.01" y2="18" />
   </svg>
-);
+)
 
 const BarChartIcon: IconComponent = (props) => (
   <svg
@@ -117,7 +117,7 @@ const BarChartIcon: IconComponent = (props) => (
     <line x1="18" y1="20" x2="18" y2="4" />
     <line x1="6" y1="20" x2="6" y2="16" />
   </svg>
-);
+)
 
 const FileTextIcon: IconComponent = (props) => (
   <svg
@@ -136,7 +136,7 @@ const FileTextIcon: IconComponent = (props) => (
     <line x1="16" y1="17" x2="8" y2="17" />
     <line x1="10" y1="9" x2="8" y2="9" />
   </svg>
-);
+)
 
 const RadioIcon: IconComponent = (props) => (
   <svg
@@ -152,7 +152,7 @@ const RadioIcon: IconComponent = (props) => (
     <circle cx="12" cy="12" r="2" />
     <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
   </svg>
-);
+)
 
 const ServerIcon: IconComponent = (props) => (
   <svg
@@ -170,7 +170,7 @@ const ServerIcon: IconComponent = (props) => (
     <line x1="6" y1="6" x2="6.01" y2="6" />
     <line x1="6" y1="18" x2="6.01" y2="18" />
   </svg>
-);
+)
 
 const ZapIcon: IconComponent = (props) => (
   <svg
@@ -185,7 +185,7 @@ const ZapIcon: IconComponent = (props) => (
   >
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
   </svg>
-);
+)
 
 const SettingsIcon: IconComponent = (props) => (
   <svg
@@ -201,7 +201,7 @@ const SettingsIcon: IconComponent = (props) => (
     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
-);
+)
 
 const DatabaseIcon: IconComponent = (props) => (
   <svg
@@ -218,7 +218,7 @@ const DatabaseIcon: IconComponent = (props) => (
     <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
     <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
   </svg>
-);
+)
 
 const GitBranchIcon: IconComponent = (props) => (
   <svg
@@ -236,7 +236,7 @@ const GitBranchIcon: IconComponent = (props) => (
     <circle cx="6" cy="18" r="3" />
     <path d="M18 9a9 9 0 0 1-9 9" />
   </svg>
-);
+)
 
 export const ICONS: Record<string, IconComponent> = {
   messageSquare: MessageSquareIcon,
@@ -253,4 +253,4 @@ export const ICONS: Record<string, IconComponent> = {
   settings: SettingsIcon,
   gitBranch: GitBranchIcon,
   database: DatabaseIcon,
-};
+}

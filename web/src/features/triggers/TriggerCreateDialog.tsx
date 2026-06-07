@@ -1,149 +1,140 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import * as triggersApi from '../../api/triggers';
-import * as client from '../../api/client';
-import type { WorkflowDefinitionResponse } from '../../api/types';
+import React, { useState, useEffect, useCallback } from 'react'
+import * as triggersApi from '../../api/triggers'
+import * as client from '../../api/client'
+import type { WorkflowDefinitionResponse } from '../../api/types'
 
 interface TriggerCreateDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  isOpen: boolean
+  onClose: () => void
+  onSuccess: () => void
 }
 
-type TriggerType = 'schedule' | 'webhook';
+type TriggerType = 'schedule' | 'webhook'
 
 function parseCronExpression(expression: string): { valid: boolean; nextRun?: Date; error?: string } {
-  const parts = expression.trim().split(/\s+/);
+  const parts = expression.trim().split(/\s+/)
   if (parts.length !== 5) {
-    return { valid: false, error: 'Cron 表达式必须有5个字段' };
+    return { valid: false, error: 'Cron 表达式必须有5个字段' }
   }
   try {
-    const now = new Date();
-    const nextRun = new Date(now.getTime() + 60000);
-    nextRun.setMinutes(nextRun.getMinutes() + Math.floor(Math.random() * 60));
-    return { valid: true, nextRun };
+    const now = new Date()
+    const nextRun = new Date(now.getTime() + 60000)
+    nextRun.setMinutes(nextRun.getMinutes() + Math.floor(Math.random() * 60))
+    return { valid: true, nextRun }
   } catch {
-    return { valid: false, error: 'Cron 表达式格式无效' };
+    return { valid: false, error: 'Cron 表达式格式无效' }
   }
 }
 
-const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({
-  isOpen,
-  onClose,
-  onSuccess,
-}) => {
-  const [triggerType, setTriggerType] = useState<TriggerType>('schedule');
-  const [name, setName] = useState('');
-  const [cronExpression, setCronExpression] = useState('');
-  const [selectedWorkflow, setSelectedWorkflow] = useState('');
-  const [workflows, setWorkflows] = useState<WorkflowDefinitionResponse[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [cronPreview, setCronPreview] = useState<{ valid: boolean; nextRun?: Date; error?: string } | null>(null);
-  const [webhookResult, setWebhookResult] = useState<{ url: string; secret: string } | null>(null);
+const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({ isOpen, onClose, onSuccess }) => {
+  const [triggerType, setTriggerType] = useState<TriggerType>('schedule')
+  const [name, setName] = useState('')
+  const [cronExpression, setCronExpression] = useState('')
+  const [selectedWorkflow, setSelectedWorkflow] = useState('')
+  const [workflows, setWorkflows] = useState<WorkflowDefinitionResponse[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [cronPreview, setCronPreview] = useState<{ valid: boolean; nextRun?: Date; error?: string } | null>(null)
+  const [webhookResult, setWebhookResult] = useState<{ url: string; secret: string } | null>(null)
 
   const loadWorkflows = useCallback(async () => {
     try {
-      const data = await client.listWorkflowDefinitions();
-      setWorkflows(data);
+      const data = await client.listWorkflowDefinitions()
+      setWorkflows(data)
     } catch {
-      setWorkflows([]);
+      setWorkflows([])
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     if (isOpen) {
-      loadWorkflows();
-      resetForm();
+      loadWorkflows()
+      resetForm()
     }
-  }, [isOpen, loadWorkflows]);
+  }, [isOpen, loadWorkflows])
 
   useEffect(() => {
     if (triggerType === 'schedule' && cronExpression) {
-      const result = parseCronExpression(cronExpression);
-      setCronPreview(result);
+      const result = parseCronExpression(cronExpression)
+      setCronPreview(result)
     } else {
-      setCronPreview(null);
+      setCronPreview(null)
     }
-  }, [cronExpression, triggerType]);
+  }, [cronExpression, triggerType])
 
   const resetForm = () => {
-    setName('');
-    setCronExpression('');
-    setSelectedWorkflow('');
-    setError(null);
-    setValidationErrors([]);
-    setCronPreview(null);
-    setWebhookResult(null);
-    setTriggerType('schedule');
-  };
+    setName('')
+    setCronExpression('')
+    setSelectedWorkflow('')
+    setError(null)
+    setValidationErrors([])
+    setCronPreview(null)
+    setWebhookResult(null)
+    setTriggerType('schedule')
+  }
 
   const validate = (): boolean => {
-    const errors: string[] = [];
+    const errors: string[] = []
     if (!name.trim()) {
-      errors.push('请输入触发器名称');
+      errors.push('请输入触发器名称')
     }
     if (triggerType === 'schedule') {
       if (!cronExpression.trim()) {
-        errors.push('请输入 Cron 表达式');
+        errors.push('请输入 Cron 表达式')
       } else if (!parseCronExpression(cronExpression).valid) {
-        errors.push('Cron 表达式格式无效');
+        errors.push('Cron 表达式格式无效')
       }
     }
-    setValidationErrors(errors);
-    return errors.length === 0;
-  };
+    setValidationErrors(errors)
+    return errors.length === 0
+  }
 
   const handleSubmit = async () => {
-    if (!validate()) return;
+    if (!validate()) return
 
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
       if (triggerType === 'schedule') {
-        await triggersApi.createScheduleTrigger(name, cronExpression);
+        await triggersApi.createScheduleTrigger(name, cronExpression)
       } else {
-        const result = await triggersApi.createWebhookTrigger(name);
-        const baseUrl = window.location.origin;
+        const result = await triggersApi.createWebhookTrigger(name)
+        const baseUrl = window.location.origin
         setWebhookResult({
           url: `${baseUrl}/api/v1/webhooks/${result.webhookId}/deliver`,
           secret: result.secret,
-        });
+        })
       }
-      onSuccess();
-      onClose();
+      onSuccess()
+      onClose()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '创建失败';
-      setError(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : '创建失败'
+      setError(errorMessage)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleTabChange = (type: TriggerType) => {
-    setTriggerType(type);
-    setValidationErrors([]);
-    setError(null);
+    setTriggerType(type)
+    setValidationErrors([])
+    setError(null)
     if (type === 'webhook') {
-      setCronExpression('');
-      setCronPreview(null);
+      setCronExpression('')
+      setCronPreview(null)
     }
-  };
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="modal-overlay" data-testid="trigger-create-dialog">
       <div className="modal-content">
         <div className="modal-header">
           <h4>创建触发器</h4>
-          <button
-            className="modal-close"
-            data-testid="trigger-create-close"
-            onClick={onClose}
-            aria-label="关闭"
-          >
+          <button className="modal-close" data-testid="trigger-create-close" onClick={onClose} aria-label="关闭">
             ×
           </button>
         </div>
@@ -169,7 +160,9 @@ const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({
           {validationErrors.length > 0 && (
             <div className="form-errors" data-testid="validation-errors">
               {validationErrors.map((err, i) => (
-                <p key={i} className="form-error">{err}</p>
+                <p key={i} className="form-error">
+                  {err}
+                </p>
               ))}
             </div>
           )}
@@ -183,7 +176,9 @@ const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({
           {triggerType === 'schedule' && (
             <div className="trigger-form">
               <div className="form-group">
-                <label htmlFor="schedule-name">触发器名称 <span className="required-mark">*</span></label>
+                <label htmlFor="schedule-name">
+                  触发器名称 <span className="required-mark">*</span>
+                </label>
                 <input
                   id="schedule-name"
                   type="text"
@@ -196,7 +191,9 @@ const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({
               </div>
 
               <div className="form-group">
-                <label htmlFor="cron-expression">Cron 表达式 <span className="required-mark">*</span></label>
+                <label htmlFor="cron-expression">
+                  Cron 表达式 <span className="required-mark">*</span>
+                </label>
                 <input
                   id="cron-expression"
                   type="text"
@@ -239,7 +236,9 @@ const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({
           {triggerType === 'webhook' && (
             <div className="trigger-form">
               <div className="form-group">
-                <label htmlFor="webhook-name">触发器名称 <span className="required-mark">*</span></label>
+                <label htmlFor="webhook-name">
+                  触发器名称 <span className="required-mark">*</span>
+                </label>
                 <input
                   id="webhook-name"
                   type="text"
@@ -289,12 +288,7 @@ const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({
         </div>
 
         <div className="modal-actions">
-          <button
-            className="secondary-button"
-            onClick={onClose}
-            disabled={loading}
-            data-testid="trigger-create-cancel"
-          >
+          <button className="secondary-button" onClick={onClose} disabled={loading} data-testid="trigger-create-cancel">
             取消
           </button>
           <button
@@ -308,7 +302,7 @@ const TriggerCreateDialog: React.FC<TriggerCreateDialogProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default TriggerCreateDialog;
+export default TriggerCreateDialog

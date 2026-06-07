@@ -1,10 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  getAgentConfig,
-  updateAgentConfig,
-  resetAgentConfigOverride,
-  ApiClientError,
-} from './client';
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { getAgentConfig, updateAgentConfig, resetAgentConfigOverride, ApiClientError } from './client'
 import type {
   AgentConfig,
   AgentGlobalConfig,
@@ -12,16 +7,16 @@ import type {
   AgentEffectiveConfig,
   UpdateAgentGlobalConfigRequest,
   UpdateAgentUserOverrideRequest,
-} from './types';
+} from './types'
 
 // Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+const mockFetch = vi.fn()
+global.fetch = mockFetch
 
 describe('AgentConfig API', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-  });
+    vi.clearAllMocks()
+  })
 
   describe('getAgentConfig', () => {
     it('should fetch agent config successfully', async () => {
@@ -57,21 +52,18 @@ describe('AgentConfig API', () => {
           routingTimeoutMs: 30000,
           repairAttempts: 1,
         },
-      };
+      }
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: mockConfig }),
-      });
+      })
 
-      const result = await getAgentConfig('foreground.default');
+      const result = await getAgentConfig('foreground.default')
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/v1/agents/foreground.default/config',
-        { credentials: 'include' }
-      );
-      expect(result).toEqual(mockConfig);
-    });
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config', { credentials: 'include' })
+      expect(result).toEqual(mockConfig)
+    })
 
     it('should handle agent config with null user override', async () => {
       const mockConfig: AgentConfig = {
@@ -97,18 +89,18 @@ describe('AgentConfig API', () => {
           routingTimeoutMs: 30000,
           repairAttempts: 1,
         },
-      };
+      }
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: mockConfig }),
-      });
+      })
 
-      const result = await getAgentConfig('foreground.default');
+      const result = await getAgentConfig('foreground.default')
 
-      expect(result.userOverride).toBeNull();
-      expect(result.effective.providerId).toBe('openai');
-    });
+      expect(result.userOverride).toBeNull()
+      expect(result.effective.providerId).toBe('openai')
+    })
 
     it('should throw ApiClientError on API failure', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -121,11 +113,11 @@ describe('AgentConfig API', () => {
             message: 'Agent not found',
           },
         }),
-      });
+      })
 
-      await expect(getAgentConfig('unknown.agent')).rejects.toThrow(ApiClientError);
-    });
-  });
+      await expect(getAgentConfig('unknown.agent')).rejects.toThrow(ApiClientError)
+    })
+  })
 
   describe('updateAgentConfig', () => {
     it('should update global config successfully', async () => {
@@ -136,7 +128,7 @@ describe('AgentConfig API', () => {
         allowedSkillIds: ['git'],
         routingTimeoutMs: 60000,
         repairAttempts: 1,
-      };
+      }
 
       const mockResponse: AgentGlobalConfig = {
         providerId: 'openrouter',
@@ -147,26 +139,23 @@ describe('AgentConfig API', () => {
         allowedSkillIds: ['git'],
         routingTimeoutMs: 60000,
         repairAttempts: 1,
-      };
+      }
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: mockResponse }),
-      });
+      })
 
-      const result = await updateAgentConfig('foreground.default', 'global', updateRequest);
+      const result = await updateAgentConfig('foreground.default', 'global', updateRequest)
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/v1/agents/foreground.default/config/global',
-        {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updateRequest),
-        }
-      );
-      expect(result).toEqual(mockResponse);
-    });
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config/global', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateRequest),
+      })
+      expect(result).toEqual(mockResponse)
+    })
 
     it('should update user override successfully', async () => {
       const updateRequest: UpdateAgentUserOverrideRequest = {
@@ -176,7 +165,7 @@ describe('AgentConfig API', () => {
         allowedSkillIds: ['docker'],
         routingTimeoutMs: 30000,
         repairAttempts: 1,
-      };
+      }
 
       const mockResponse: AgentUserOverride = {
         providerId: 'ollama',
@@ -187,31 +176,28 @@ describe('AgentConfig API', () => {
         allowedSkillIds: ['docker'],
         routingTimeoutMs: 30000,
         repairAttempts: 1,
-      };
+      }
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: mockResponse }),
-      });
+      })
 
-      const result = await updateAgentConfig('foreground.default', 'override', updateRequest);
+      const result = await updateAgentConfig('foreground.default', 'override', updateRequest)
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/v1/agents/foreground.default/config/override',
-        {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updateRequest),
-        }
-      );
-      expect(result).toEqual(mockResponse);
-    });
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config/override', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateRequest),
+      })
+      expect(result).toEqual(mockResponse)
+    })
 
     it('should handle partial updates', async () => {
       const updateRequest: UpdateAgentGlobalConfigRequest = {
         providerId: 'openai',
-      };
+      }
 
       const mockResponse: AgentGlobalConfig = {
         providerId: 'openai',
@@ -222,22 +208,22 @@ describe('AgentConfig API', () => {
         allowedSkillIds: [],
         routingTimeoutMs: 30000,
         repairAttempts: 1,
-      };
+      }
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: mockResponse }),
-      });
+      })
 
-      const result = await updateAgentConfig('foreground.default', 'global', updateRequest);
+      const result = await updateAgentConfig('foreground.default', 'global', updateRequest)
 
-      expect(result.providerId).toBe('openai');
-    });
+      expect(result.providerId).toBe('openai')
+    })
 
     it('should throw ApiClientError on validation failure', async () => {
       const updateRequest: UpdateAgentGlobalConfigRequest = {
         providerId: 'invalid-provider',
-      };
+      }
 
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -249,32 +235,27 @@ describe('AgentConfig API', () => {
             message: 'Invalid provider ID',
           },
         }),
-      });
+      })
 
-      await expect(
-        updateAgentConfig('foreground.default', 'global', updateRequest)
-      ).rejects.toThrow(ApiClientError);
-    });
-  });
+      await expect(updateAgentConfig('foreground.default', 'global', updateRequest)).rejects.toThrow(ApiClientError)
+    })
+  })
 
   describe('resetAgentConfigOverride', () => {
     it('should reset user override successfully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: { success: true } }),
-      });
+      })
 
-      const result = await resetAgentConfigOverride('foreground.default');
+      const result = await resetAgentConfigOverride('foreground.default')
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/v1/agents/foreground.default/config/override',
-        {
-          method: 'DELETE',
-          credentials: 'include',
-        }
-      );
-      expect(result).toEqual({ success: true });
-    });
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config/override', {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      expect(result).toEqual({ success: true })
+    })
 
     it('should throw ApiClientError on API failure', async () => {
       mockFetch.mockResolvedValueOnce({
@@ -287,14 +268,12 @@ describe('AgentConfig API', () => {
             message: 'Failed to reset config',
           },
         }),
-      });
+      })
 
-      await expect(resetAgentConfigOverride('foreground.default')).rejects.toThrow(
-        ApiClientError
-      );
-    });
-  });
-});
+      await expect(resetAgentConfigOverride('foreground.default')).rejects.toThrow(ApiClientError)
+    })
+  })
+})
 
 describe('AgentConfig Types', () => {
   it('should have correct AgentGlobalConfig structure', () => {
@@ -307,15 +286,15 @@ describe('AgentConfig Types', () => {
       allowedSkillIds: ['git'],
       routingTimeoutMs: 30000,
       repairAttempts: 1,
-    };
+    }
 
-    expect(config.providerId).toBeTypeOf('string');
-    expect(config.model).toBeTypeOf('string');
-    expect(Array.isArray(config.allowedToolIds)).toBe(true);
-    expect(Array.isArray(config.allowedSkillIds)).toBe(true);
-    expect(config.routingTimeoutMs).toBeTypeOf('number');
-    expect(config.repairAttempts).toBeTypeOf('number');
-  });
+    expect(config.providerId).toBeTypeOf('string')
+    expect(config.model).toBeTypeOf('string')
+    expect(Array.isArray(config.allowedToolIds)).toBe(true)
+    expect(Array.isArray(config.allowedSkillIds)).toBe(true)
+    expect(config.routingTimeoutMs).toBeTypeOf('number')
+    expect(config.repairAttempts).toBeTypeOf('number')
+  })
 
   it('should have correct AgentUserOverride structure', () => {
     const override: AgentUserOverride = {
@@ -327,11 +306,11 @@ describe('AgentConfig Types', () => {
       allowedSkillIds: ['docker'],
       routingTimeoutMs: 30000,
       repairAttempts: 1,
-    };
+    }
 
-    expect(override.providerId).toBe('ollama');
-    expect(override.routingTimeoutMs).toBe(30000);
-  });
+    expect(override.providerId).toBe('ollama')
+    expect(override.routingTimeoutMs).toBe(30000)
+  })
 
   it('should allow inherited AgentUserOverride timing fields to be omitted', () => {
     const override: AgentUserOverride = {
@@ -341,11 +320,11 @@ describe('AgentConfig Types', () => {
       routingPrompt: '',
       allowedToolIds: ['read_file'],
       allowedSkillIds: ['docker'],
-    };
+    }
 
-    expect(override.routingTimeoutMs).toBeUndefined();
-    expect(override.repairAttempts).toBeUndefined();
-  });
+    expect(override.routingTimeoutMs).toBeUndefined()
+    expect(override.repairAttempts).toBeUndefined()
+  })
 
   it('should have correct AgentEffectiveConfig structure', () => {
     const effective: AgentEffectiveConfig = {
@@ -357,11 +336,11 @@ describe('AgentConfig Types', () => {
       allowedSkillIds: [],
       routingTimeoutMs: 60000,
       repairAttempts: 1,
-    };
+    }
 
-    expect(effective.providerId).toBe('openrouter');
-    expect(effective.allowedToolIds).toHaveLength(2);
-  });
+    expect(effective.providerId).toBe('openrouter')
+    expect(effective.allowedToolIds).toHaveLength(2)
+  })
 
   it('should have correct AgentConfig structure with all components', () => {
     const agentConfig: AgentConfig = {
@@ -387,24 +366,24 @@ describe('AgentConfig Types', () => {
         routingTimeoutMs: 30000,
         repairAttempts: 1,
       },
-    };
+    }
 
-    expect(agentConfig.agentId).toBe('foreground.default');
-    expect(agentConfig.global).toBeDefined();
-    expect(agentConfig.userOverride).toBeNull();
-    expect(agentConfig.effective).toBeDefined();
-  });
+    expect(agentConfig.agentId).toBe('foreground.default')
+    expect(agentConfig.global).toBeDefined()
+    expect(agentConfig.userOverride).toBeNull()
+    expect(agentConfig.effective).toBeDefined()
+  })
 
   it('should allow partial update requests', () => {
     const partialGlobal: UpdateAgentGlobalConfigRequest = {
       routingTimeoutMs: 60000,
-    };
+    }
 
     const partialOverride: UpdateAgentUserOverrideRequest = {
       model: 'gpt-3.5-turbo',
-    };
+    }
 
-    expect(partialGlobal.routingTimeoutMs).toBe(60000);
-    expect(partialOverride.model).toBe('gpt-3.5-turbo');
-  });
-});
+    expect(partialGlobal.routingTimeoutMs).toBe(60000)
+    expect(partialOverride.model).toBe('gpt-3.5-turbo')
+  })
+})

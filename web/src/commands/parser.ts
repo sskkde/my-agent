@@ -2,31 +2,31 @@ import {
   parseCommand as parseCommandCore,
   isCommand as isCommandCore,
   isEscapedCommand as isEscapedCommandCore,
-} from '../../../src/command-core/parser.js';
+} from '../../../src/command-core/parser.js'
 
-import type { ParsedCommand } from '../../../src/command-core/types.js';
+import type { ParsedCommand } from '../../../src/command-core/types.js'
 
 export function parseCommand(input: string): ParsedCommand | null {
-  return parseCommandCore(input);
+  return parseCommandCore(input)
 }
 
 export function isCommand(input: string): boolean {
-  return isCommandCore(input);
+  return isCommandCore(input)
 }
 
 export function isEscapedCommand(input: string): boolean {
-  return isEscapedCommandCore(input);
+  return isEscapedCommandCore(input)
 }
 
 export interface ParseResult {
-  isCommand: boolean;
-  isEscaped: boolean;
-  parsed: ParsedCommand | null;
-  escapedText?: string;
+  isCommand: boolean
+  isEscaped: boolean
+  parsed: ParsedCommand | null
+  escapedText?: string
 }
 
 export function parseInput(input: string): ParseResult {
-  const parsed = parseCommand(input);
+  const parsed = parseCommand(input)
 
   if (parsed?.isEscaped) {
     return {
@@ -34,7 +34,7 @@ export function parseInput(input: string): ParseResult {
       isEscaped: true,
       parsed: null,
       escapedText: parsed.rawInput,
-    };
+    }
   }
 
   if (parsed) {
@@ -42,17 +42,17 @@ export function parseInput(input: string): ParseResult {
       isCommand: true,
       isEscaped: false,
       parsed,
-    };
+    }
   }
 
   return {
     isCommand: false,
     isEscaped: false,
     parsed: null,
-  };
+  }
 }
 
 export function parseArgs(input: string): string[] {
-  const parsed = parseCommandCore('/dummy ' + input);
-  return parsed?.args ?? [];
+  const parsed = parseCommandCore('/dummy ' + input)
+  return parsed?.args ?? []
 }

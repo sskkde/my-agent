@@ -1,61 +1,61 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import * as api from '../../api/client';
-import type { RunInfo, PlannerRunEvent, PlannerRunSummary } from '../../api/types';
+import React, { useEffect, useState, useMemo } from 'react'
+import * as api from '../../api/client'
+import type { RunInfo, PlannerRunEvent, PlannerRunSummary } from '../../api/types'
 
 interface RunDetailViewProps {
-  run: RunInfo;
-  onClose?: () => void;
+  run: RunInfo
+  onClose?: () => void
 }
 
 const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
-  const [events, setEvents] = useState<PlannerRunEvent[]>([]);
-  const [summary, setSummary] = useState<PlannerRunSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [events, setEvents] = useState<PlannerRunEvent[]>([])
+  const [summary, setSummary] = useState<PlannerRunSummary | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const plannerRunId = useMemo(() => {
-    return (run as RunInfo & { plannerRunId?: string }).plannerRunId;
-  }, [run]);
+    return (run as RunInfo & { plannerRunId?: string }).plannerRunId
+  }, [run])
 
   useEffect(() => {
-    let mounted = true;
+    let mounted = true
 
     const fetchData = async () => {
       if (!plannerRunId) {
-        setLoading(false);
-        return;
+        setLoading(false)
+        return
       }
 
-      setLoading(true);
-      setError(null);
+      setLoading(true)
+      setError(null)
 
       try {
         const [eventsResponse, summaryResponse] = await Promise.all([
           api.getPlannerRunEvents(plannerRunId),
           api.getPlannerRunSummary(plannerRunId),
-        ]);
+        ])
 
         if (mounted) {
-          setEvents(eventsResponse.events);
-          setSummary(summaryResponse.summary);
+          setEvents(eventsResponse.events)
+          setSummary(summaryResponse.summary)
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : '加载运行详情失败');
+          setError(err instanceof Error ? err.message : '加载运行详情失败')
         }
       } finally {
         if (mounted) {
-          setLoading(false);
+          setLoading(false)
         }
       }
-    };
+    }
 
-    fetchData();
+    fetchData()
 
     return () => {
-      mounted = false;
-    };
-  }, [plannerRunId]);
+      mounted = false
+    }
+  }, [plannerRunId])
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -64,17 +64,17 @@ const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
       completed: '已完成',
       failed: '失败',
       cancelled: '已取消',
-    };
-    return labels[status] || status;
-  };
+    }
+    return labels[status] || status
+  }
 
   const getStatusClass = (status: string) => {
-    if (status === 'running') return 'status-running';
-    if (status === 'completed') return 'status-completed';
-    if (status === 'failed') return 'status-failed';
-    if (status === 'cancelled') return 'status-cancelled';
-    return 'status-pending';
-  };
+    if (status === 'running') return 'status-running'
+    if (status === 'completed') return 'status-completed'
+    if (status === 'failed') return 'status-failed'
+    if (status === 'cancelled') return 'status-cancelled'
+    return 'status-pending'
+  }
 
   const formatTimestamp = (timestamp: string) => {
     try {
@@ -84,11 +84,11 @@ const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-      });
+      })
     } catch {
-      return timestamp;
+      return timestamp
     }
-  };
+  }
 
   const getEventLabel = (eventType: string) => {
     const labels: Record<string, string> = {
@@ -101,9 +101,9 @@ const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
       step_failed: '步骤失败',
       plan_created: '计划创建',
       plan_updated: '计划更新',
-    };
-    return labels[eventType] || eventType;
-  };
+    }
+    return labels[eventType] || eventType
+  }
 
   const renderMetadata = () => (
     <div className="run-detail-metadata">
@@ -164,7 +164,7 @@ const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
         </div>
       )}
     </div>
-  );
+  )
 
   const renderTimeline = () => {
     if (events.length === 0) {
@@ -173,7 +173,7 @@ const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
           <div className="empty-icon">📋</div>
           <p>暂无时间线事件</p>
         </div>
-      );
+      )
     }
 
     return (
@@ -195,20 +195,15 @@ const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
           </div>
         ))}
       </div>
-    );
-  };
+    )
+  }
 
   return (
     <div className="run-detail-view" data-testid="run-detail-view">
       <div className="run-detail-header">
         <h3>运行详情</h3>
         {onClose && (
-          <button
-            className="run-detail-close"
-            onClick={onClose}
-            data-testid="run-detail-close"
-            aria-label="关闭"
-          >
+          <button className="run-detail-close" onClick={onClose} data-testid="run-detail-close" aria-label="关闭">
             ✕
           </button>
         )}
@@ -243,7 +238,7 @@ const RunDetailView: React.FC<RunDetailViewProps> = ({ run, onClose }) => {
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default RunDetailView;
+export default RunDetailView

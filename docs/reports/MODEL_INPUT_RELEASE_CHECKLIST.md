@@ -9,22 +9,22 @@
 
 ### 1.1 Code Quality Gates
 
-| Check | Command | Status |
-|-------|---------|--------|
-| TypeScript Check | `npm run typecheck` | Passed |
-| Unit Tests | `npm test` | Passed |
-| Model Input Tests | `npm test -- tests/unit/kernel/model-input` | Passed |
-| Prompt System Tests | `npm test -- tests/unit/prompt` | Passed |
-| Instruction Tests | `npm test -- tests/unit/instructions` | Passed |
+| Check                 | Command                                                     | Status |
+| --------------------- | ----------------------------------------------------------- | ------ |
+| TypeScript Check      | `npm run typecheck`                                         | Passed |
+| Unit Tests            | `npm test`                                                  | Passed |
+| Model Input Tests     | `npm test -- tests/unit/kernel/model-input`                 | Passed |
+| Prompt System Tests   | `npm test -- tests/unit/prompt`                             | Passed |
+| Instruction Tests     | `npm test -- tests/unit/instructions`                       | Passed |
 | Tool Projection Tests | `npm test -- tests/unit/tools/tool-plane-prompt-projection` | Passed |
 
 ### 1.2 P9-Specific Gates
 
-| Check | Command | Status |
-|-------|---------|--------|
-| Security Tests | `npm test -- tests/security/model-input` | Passed |
-| Cache Stability Tests | Verify Segment A hash stable | Passed |
-| Integration Tests | `npm run test:integration` | Passed |
+| Check                 | Command                                  | Status |
+| --------------------- | ---------------------------------------- | ------ |
+| Security Tests        | `npm test -- tests/security/model-input` | Passed |
+| Cache Stability Tests | Verify Segment A hash stable             | Passed |
+| Integration Tests     | `npm run test:integration`               | Passed |
 
 ---
 
@@ -32,32 +32,32 @@
 
 ### 2.1 Seven Layers
 
-| Layer | Name | Segment | Status |
-|-------|------|---------|--------|
-| 1 | Platform | A | Verified |
-| 2 | Provider | A | Verified |
-| 3 | Agent | A | Verified |
-| 4 | Output | A | Verified |
-| 5 | Instruction | B | Verified |
-| 6 | Tool Plane | C | Verified |
-| 7 | Context Bundle | D | Verified |
+| Layer | Name           | Segment | Status   |
+| ----- | -------------- | ------- | -------- |
+| 1     | Platform       | A       | Verified |
+| 2     | Provider       | A       | Verified |
+| 3     | Agent          | A       | Verified |
+| 4     | Output         | A       | Verified |
+| 5     | Instruction    | B       | Verified |
+| 6     | Tool Plane     | C       | Verified |
+| 7     | Context Bundle | D       | Verified |
 
 ### 2.2 Four Segments
 
-| Segment | Content | Cache Status | Status |
-|---------|---------|--------------|--------|
-| A | Layer 1-4 (static prefix) | Cached | Verified |
-| B | Layer 5 (tenant/project instructions) | Cached | Verified |
-| C | Layer 6 (tool plane) | Cached | Verified |
-| D | Layer 7 (context bundle + dynamic) | NOT cached | Verified |
+| Segment | Content                               | Cache Status | Status   |
+| ------- | ------------------------------------- | ------------ | -------- |
+| A       | Layer 1-4 (static prefix)             | Cached       | Verified |
+| B       | Layer 5 (tenant/project instructions) | Cached       | Verified |
+| C       | Layer 6 (tool plane)                  | Cached       | Verified |
+| D       | Layer 7 (context bundle + dynamic)    | NOT cached   | Verified |
 
 ### 2.3 Three Modes
 
-| Mode | Use Case | Tools in Request | Status |
-|------|----------|------------------|--------|
-| routing_json | ForegroundAgent | No (summaries only) | Verified |
-| function_calling | AgentKernel/SearchSubagent | Yes (full schemas) | Verified |
-| structured_json | MemoryExtractor | No | Verified |
+| Mode             | Use Case                   | Tools in Request    | Status   |
+| ---------------- | -------------------------- | ------------------- | -------- |
+| routing_json     | ForegroundAgent            | No (summaries only) | Verified |
+| function_calling | AgentKernel/SearchSubagent | Yes (full schemas)  | Verified |
+| structured_json  | MemoryExtractor            | No                  | Verified |
 
 ---
 
@@ -65,35 +65,35 @@
 
 ### 3.1 Prompt Injection Boundary
 
-| Check | Status |
-|-------|--------|
-| Dynamic fields isolated to Segment D | Verified |
-| User message never in Segments A/B/C | Verified |
+| Check                                    | Status   |
+| ---------------------------------------- | -------- |
+| Dynamic fields isolated to Segment D     | Verified |
+| User message never in Segments A/B/C     | Verified |
 | Template files contain no dynamic fields | Verified |
 
 ### 3.2 Secret Redaction
 
-| Check | Status |
-|-------|--------|
-| API keys redacted in snapshots | Verified |
-| Tokens redacted in snapshots | Verified |
+| Check                           | Status   |
+| ------------------------------- | -------- |
+| API keys redacted in snapshots  | Verified |
+| Tokens redacted in snapshots    | Verified |
 | Passwords redacted in snapshots | Verified |
-| PEM certificates redacted | Verified |
+| PEM certificates redacted       | Verified |
 
 ### 3.3 Tenant Isolation
 
-| Check | Status |
-|-------|--------|
+| Check                                                | Status   |
+| ---------------------------------------------------- | -------- |
 | Different tenants produce different Segment B hashes | Verified |
-| TenantId included in instruction hash | Verified |
+| TenantId included in instruction hash                | Verified |
 
 ### 3.4 Tool Escalation Prevention
 
-| Check | Status |
-|-------|--------|
-| Hidden tools not exposed to LLM | Verified |
+| Check                                 | Status   |
+| ------------------------------------- | -------- |
+| Hidden tools not exposed to LLM       | Verified |
 | Denied tools excluded from projection | Verified |
-| Tool exposure levels enforced | Verified |
+| Tool exposure levels enforced         | Verified |
 
 ---
 
@@ -101,27 +101,27 @@
 
 ### 4.1 Segment A Stability
 
-| Check | Status |
-|-------|--------|
-| Segment A hash constant across user messages | Verified |
+| Check                                                       | Status   |
+| ----------------------------------------------------------- | -------- |
+| Segment A hash constant across user messages                | Verified |
 | Segment A excludes currentDate, runId, messageId, requestId | Verified |
-| Template hash stable across loads | Verified |
+| Template hash stable across loads                           | Verified |
 
 ### 4.2 Cache Key Determinism
 
-| Check | Status |
-|-------|--------|
-| Cache key = SHA-256(A_hash | B_hash | C_hash) | Verified |
-| Segment D never in cache key | Verified |
+| Check                           | Status   |
+| ------------------------------- | -------- | ------- | -------- |
+| Cache key = SHA-256(A_hash      | B_hash   | C_hash) | Verified |
+| Segment D never in cache key    | Verified |
 | Canonical JSON for tool schemas | Verified |
 
 ### 4.3 DeepSeek Cache Metrics
 
-| Check | Status |
-|-------|--------|
-| promptCacheHitTokens recorded | Verified |
+| Check                          | Status   |
+| ------------------------------ | -------- |
+| promptCacheHitTokens recorded  | Verified |
 | promptCacheMissTokens recorded | Verified |
-| cacheHitRate computed | Verified |
+| cacheHitRate computed          | Verified |
 
 ---
 
@@ -129,21 +129,21 @@
 
 ### 5.1 LLM Request Paths
 
-| Path | Uses ModelInputBuilder | Status |
-|------|------------------------|--------|
-| ForegroundAgent | Yes (shadow mode) | Verified |
-| AgentKernel | Yes | Verified |
-| SearchSubagent | Yes | Verified |
-| LongTermMemoryExtractor | Yes | Verified |
+| Path                    | Uses ModelInputBuilder | Status   |
+| ----------------------- | ---------------------- | -------- |
+| ForegroundAgent         | Yes (shadow mode)      | Verified |
+| AgentKernel             | Yes                    | Verified |
+| SearchSubagent          | Yes                    | Verified |
+| LongTermMemoryExtractor | Yes                    | Verified |
 
 ### 5.2 Dependency Injection
 
-| Component | Injects ModelInputBuilder | Status |
-|-----------|---------------------------|--------|
-| AgentKernel | Via KernelConfig | Verified |
-| ForegroundAgent | Via constructor | Verified |
-| SearchSubagent | Via params | Verified |
-| MemoryExtractor | Via constructor | Verified |
+| Component       | Injects ModelInputBuilder | Status   |
+| --------------- | ------------------------- | -------- |
+| AgentKernel     | Via KernelConfig          | Verified |
+| ForegroundAgent | Via constructor           | Verified |
+| SearchSubagent  | Via params                | Verified |
+| MemoryExtractor | Via constructor           | Verified |
 
 ---
 
@@ -151,19 +151,19 @@
 
 ### 6.1 P9 Documentation
 
-| Document | Status |
-|----------|--------|
-| MODEL_INPUT_EXECUTION_REPORT.md | Complete |
+| Document                         | Status              |
+| -------------------------------- | ------------------- |
+| MODEL_INPUT_EXECUTION_REPORT.md  | Complete            |
 | MODEL_INPUT_RELEASE_CHECKLIST.md | Complete (this doc) |
-| MODEL_INPUT_ARCHITECTURE.md | Complete |
-| MODEL_INPUT_BASELINE_REPORT.md | Complete |
+| MODEL_INPUT_ARCHITECTURE.md      | Complete            |
+| MODEL_INPUT_BASELINE_REPORT.md   | Complete            |
 
 ### 6.2 Architecture Docs Updated
 
-| Document | Status |
-|----------|--------|
-| agent_kernel_responsibilities_io_and_compact_v4_runtime_aligned.md | Updated |
-| context_manager_responsibilities_io_and_summaries_v2_runtime_aligned.md | Updated |
+| Document                                                                         | Status  |
+| -------------------------------------------------------------------------------- | ------- |
+| agent_kernel_responsibilities_io_and_compact_v4_runtime_aligned.md               | Updated |
+| context_manager_responsibilities_io_and_summaries_v2_runtime_aligned.md          | Updated |
 | tool_plane_merged_responsibilities_io_and_exposure_policy_v2_async_operations.md | Updated |
 
 ---
@@ -204,15 +204,15 @@ All items from the plan's "Must NOT Have" section verified:
 
 ## 8.B Final Fix Verification
 
-| Fix | Status | Evidence |
-|-----|--------|----------|
-| DeepSeek cache usage mapping | ✅ Passed | `providers.ts:146-160` maps `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` |
-| Foreground deepseek providerFamily | ✅ Passed | `resolveProviderFamily` handles deepseek, ollama, openai (13 tests) |
-| Kernel toolProjection | ✅ Passed | `agent-kernel.ts:136` passes `this.config.toolProjection` to build input |
-| Snapshot chain | ✅ Passed | ForegroundAgent + AgentKernel record model input snapshots after LLM calls |
-| DeepSeek template alignment | ✅ Passed | Layer 5/6/7 descriptions match seven-layer design with constraints |
-| Release Checklist state | ✅ Passed | Final Fix Verification section added |
-| test:p9 script | ✅ Passed | Added to `package.json` scripts |
+| Fix                                | Status    | Evidence                                                                           |
+| ---------------------------------- | --------- | ---------------------------------------------------------------------------------- |
+| DeepSeek cache usage mapping       | ✅ Passed | `providers.ts:146-160` maps `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` |
+| Foreground deepseek providerFamily | ✅ Passed | `resolveProviderFamily` handles deepseek, ollama, openai (13 tests)                |
+| Kernel toolProjection              | ✅ Passed | `agent-kernel.ts:136` passes `this.config.toolProjection` to build input           |
+| Snapshot chain                     | ✅ Passed | ForegroundAgent + AgentKernel record model input snapshots after LLM calls         |
+| DeepSeek template alignment        | ✅ Passed | Layer 5/6/7 descriptions match seven-layer design with constraints                 |
+| Release Checklist state            | ✅ Passed | Final Fix Verification section added                                               |
+| test:p9 script                     | ✅ Passed | Added to `package.json` scripts                                                    |
 
 ---
 
@@ -220,16 +220,16 @@ All items from the plan's "Must NOT Have" section verified:
 
 ### 9.1 Technical Sign-Off
 
-| Role | Date | Status |
-|------|------|--------|
-| Lead Developer | 2026-05-23 | Complete |
-| QA | 2026-05-23 | Tests pass |
-| Security | 2026-05-23 | Boundary tests pass |
+| Role           | Date       | Status              |
+| -------------- | ---------- | ------------------- |
+| Lead Developer | 2026-05-23 | Complete            |
+| QA             | 2026-05-23 | Tests pass          |
+| Security       | 2026-05-23 | Boundary tests pass |
 
 ### 9.2 Release Approval
 
-| Approver | Date | Decision |
-|----------|------|----------|
+| Approver | Date       | Decision |
+| -------- | ---------- | -------- |
 | Sisyphus | 2026-05-23 | Approved |
 
 ---

@@ -1,135 +1,129 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import * as dlqApi from '../../api/dlq';
-import type { DeadLetterEntry } from '../../api/types';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import React, { useCallback, useEffect, useState } from 'react'
+import * as dlqApi from '../../api/dlq'
+import type { DeadLetterEntry } from '../../api/types'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import EmptyState from '../../components/EmptyState'
 
-type FilterStatus = 'all' | 'pending' | 'retrying' | 'discarded' | 'resolved';
+type FilterStatus = 'all' | 'pending' | 'retrying' | 'discarded' | 'resolved'
 
 const DLQTab: React.FC = () => {
-  const [entries, setEntries] = useState<DeadLetterEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [actionLoading, setActionLoading] = useState<Set<string>>(new Set());
+  const [entries, setEntries] = useState<DeadLetterEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [actionLoading, setActionLoading] = useState<Set<string>>(new Set())
 
   const loadEntries = useCallback(async (status?: string) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const data = await dlqApi.getDlqEntries(status === 'all' ? undefined : status);
-      setEntries(data.entries.sort((a, b) =>
-        new Date(b.enqueuedAt).getTime() - new Date(a.enqueuedAt).getTime()
-      ));
+      const data = await dlqApi.getDlqEntries(status === 'all' ? undefined : status)
+      setEntries(data.entries.sort((a, b) => new Date(b.enqueuedAt).getTime() - new Date(a.enqueuedAt).getTime()))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载死信队列失败');
+      setError(err instanceof Error ? err.message : '加载死信队列失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadEntries(filterStatus === 'all' ? undefined : filterStatus);
-  }, [filterStatus, loadEntries]);
+    loadEntries(filterStatus === 'all' ? undefined : filterStatus)
+  }, [filterStatus, loadEntries])
 
   const handleRetry = async (eventId: string) => {
-    setActionLoading(new Set([...actionLoading, eventId]));
+    setActionLoading(new Set([...actionLoading, eventId]))
     try {
-      const result = await dlqApi.retryDlqEntry(eventId);
+      const result = await dlqApi.retryDlqEntry(eventId)
       if (result.success) {
-        setEntries((prev) => prev.filter((e) => e.eventId !== eventId));
+        setEntries((prev) => prev.filter((e) => e.eventId !== eventId))
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '重试失败');
+      setError(err instanceof Error ? err.message : '重试失败')
     } finally {
-      const next = new Set(actionLoading);
-      next.delete(eventId);
-      setActionLoading(next);
+      const next = new Set(actionLoading)
+      next.delete(eventId)
+      setActionLoading(next)
     }
-  };
+  }
 
   const handleDiscard = async (eventId: string) => {
-    setActionLoading(new Set([...actionLoading, eventId]));
+    setActionLoading(new Set([...actionLoading, eventId]))
     try {
-      const result = await dlqApi.discardDlqEntry(eventId);
+      const result = await dlqApi.discardDlqEntry(eventId)
       if (result.success) {
-        setEntries((prev) => prev.filter((e) => e.eventId !== eventId));
+        setEntries((prev) => prev.filter((e) => e.eventId !== eventId))
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '丢弃失败');
+      setError(err instanceof Error ? err.message : '丢弃失败')
     } finally {
-      const next = new Set(actionLoading);
-      next.delete(eventId);
-      setActionLoading(next);
+      const next = new Set(actionLoading)
+      next.delete(eventId)
+      setActionLoading(next)
     }
-  };
+  }
 
   const handleBatchRetry = async () => {
-    const ids = Array.from(selectedIds);
+    const ids = Array.from(selectedIds)
     try {
-      const result = await dlqApi.batchRetryDlqEntries(ids);
-      const succeededIds = new Set(
-        result.results.filter((r) => r.success).map((r) => r.eventId)
-      );
-      setEntries((prev) => prev.filter((e) => !succeededIds.has(e.eventId)));
-      setSelectedIds(new Set());
+      const result = await dlqApi.batchRetryDlqEntries(ids)
+      const succeededIds = new Set(result.results.filter((r) => r.success).map((r) => r.eventId))
+      setEntries((prev) => prev.filter((e) => !succeededIds.has(e.eventId)))
+      setSelectedIds(new Set())
     } catch (err) {
-      setError(err instanceof Error ? err.message : '批量重试失败');
+      setError(err instanceof Error ? err.message : '批量重试失败')
     }
-  };
+  }
 
   const handleBatchDiscard = async () => {
-    const ids = Array.from(selectedIds);
+    const ids = Array.from(selectedIds)
     try {
-      const result = await dlqApi.batchDiscardDlqEntries(ids);
-      const succeededIds = new Set(
-        result.results.filter((r) => r.success).map((r) => r.eventId)
-      );
-      setEntries((prev) => prev.filter((e) => !succeededIds.has(e.eventId)));
-      setSelectedIds(new Set());
+      const result = await dlqApi.batchDiscardDlqEntries(ids)
+      const succeededIds = new Set(result.results.filter((r) => r.success).map((r) => r.eventId))
+      setEntries((prev) => prev.filter((e) => !succeededIds.has(e.eventId)))
+      setSelectedIds(new Set())
     } catch (err) {
-      setError(err instanceof Error ? err.message : '批量丢弃失败');
+      setError(err instanceof Error ? err.message : '批量丢弃失败')
     }
-  };
+  }
 
   const toggleSelect = (eventId: string) => {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev)
       if (next.has(eventId)) {
-        next.delete(eventId);
+        next.delete(eventId)
       } else {
-        next.add(eventId);
+        next.add(eventId)
       }
-      return next;
-    });
-  };
+      return next
+    })
+  }
 
   const toggleSelectAll = () => {
     if (selectedIds.size === entries.length) {
-      setSelectedIds(new Set());
+      setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(entries.map((e) => e.eventId)));
+      setSelectedIds(new Set(entries.map((e) => e.eventId)))
     }
-  };
+  }
 
   const toggleExpand = (eventId: string) => {
     setExpandedIds((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev)
       if (next.has(eventId)) {
-        next.delete(eventId);
+        next.delete(eventId)
       } else {
-        next.add(eventId);
+        next.add(eventId)
       }
-      return next;
-    });
-  };
+      return next
+    })
+  }
 
   const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
+    setSelectedIds(new Set())
+  }
 
   const formatTimestamp = (timestamp: string) => {
     try {
@@ -139,11 +133,11 @@ const DLQTab: React.FC = () => {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-      });
+      })
     } catch {
-      return timestamp;
+      return timestamp
     }
-  };
+  }
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -151,24 +145,24 @@ const DLQTab: React.FC = () => {
       retrying: '重试中',
       discarded: '已丢弃',
       resolved: '已解决',
-    };
-    return labels[status] || status;
-  };
+    }
+    return labels[status] || status
+  }
 
   const getStatusClass = (status: string) => {
-    if (status === 'pending') return 'dlq-status-pending';
-    if (status === 'retrying') return 'dlq-status-retrying';
-    if (status === 'discarded') return 'dlq-status-discarded';
-    if (status === 'resolved') return 'dlq-status-resolved';
-    return 'dlq-status-pending';
-  };
+    if (status === 'pending') return 'dlq-status-pending'
+    if (status === 'retrying') return 'dlq-status-retrying'
+    if (status === 'discarded') return 'dlq-status-discarded'
+    if (status === 'resolved') return 'dlq-status-resolved'
+    return 'dlq-status-pending'
+  }
 
   if (loading) {
     return (
       <div className="dlq-tab" data-testid="dlq-panel">
         <LoadingSpinner size="large" label="加载死信队列..." />
       </div>
-    );
+    )
   }
 
   if (error && entries.length === 0) {
@@ -180,7 +174,7 @@ const DLQTab: React.FC = () => {
           size="large"
         />
       </div>
-    );
+    )
   }
 
   if (entries.length === 0) {
@@ -204,13 +198,9 @@ const DLQTab: React.FC = () => {
             </select>
           </div>
         </div>
-        <EmptyState
-          icon="📭"
-          title="暂无死信事件"
-          description="所有事件处理正常，没有失败的事件"
-        />
+        <EmptyState icon="📭" title="暂无死信事件" description="所有事件处理正常，没有失败的事件" />
       </div>
-    );
+    )
   }
 
   return (
@@ -237,11 +227,7 @@ const DLQTab: React.FC = () => {
       {selectedIds.size > 0 && (
         <div className="dlq-batch-toolbar" data-testid="batch-toolbar">
           <span className="dlq-batch-count">已选择 {selectedIds.size} 项</span>
-          <button
-            className="primary-button"
-            onClick={handleBatchRetry}
-            data-testid="batch-retry-btn"
-          >
+          <button className="primary-button" onClick={handleBatchRetry} data-testid="batch-retry-btn">
             批量重试
           </button>
           <button
@@ -251,11 +237,7 @@ const DLQTab: React.FC = () => {
           >
             批量丢弃
           </button>
-          <button
-            className="secondary-button"
-            onClick={clearSelection}
-            data-testid="clear-selection"
-          >
+          <button className="secondary-button" onClick={clearSelection} data-testid="clear-selection">
             取消选择
           </button>
         </div>
@@ -279,9 +261,9 @@ const DLQTab: React.FC = () => {
         </div>
 
         {entries.map((entry) => {
-          const isSelected = selectedIds.has(entry.eventId);
-          const isExpanded = expandedIds.has(entry.eventId);
-          const isActionLoading = actionLoading.has(entry.eventId);
+          const isSelected = selectedIds.has(entry.eventId)
+          const isExpanded = expandedIds.has(entry.eventId)
+          const isActionLoading = actionLoading.has(entry.eventId)
 
           return (
             <div key={entry.eventId} className="dlq-entry-row" data-testid={`dlq-entry-${entry.eventId}`}>
@@ -296,9 +278,7 @@ const DLQTab: React.FC = () => {
                 <span className="dlq-col-source">{entry.sourceModule}</span>
                 <span className="dlq-col-id">{entry.sourceId}</span>
                 <span className="dlq-col-reason">{entry.reason}</span>
-                <span className={`dlq-col-status ${getStatusClass(entry.status)}`}>
-                  {getStatusLabel(entry.status)}
-                </span>
+                <span className={`dlq-col-status ${getStatusClass(entry.status)}`}>{getStatusLabel(entry.status)}</span>
                 <span className="dlq-col-time">{formatTimestamp(entry.enqueuedAt)}</span>
                 <div className="dlq-col-actions">
                   {entry.status === 'pending' && (
@@ -335,17 +315,11 @@ const DLQTab: React.FC = () => {
                 <div className="dlq-detail" data-testid={`dlq-detail-${entry.eventId}`}>
                   <div className="dlq-detail-section">
                     <h4>错误详情</h4>
-                    <pre className="dlq-error-stack">
-                      {entry.lastError || entry.reason}
-                    </pre>
+                    <pre className="dlq-error-stack">{entry.lastError || entry.reason}</pre>
                   </div>
                   <div className="dlq-detail-section">
                     <h4>原始事件数据</h4>
-                    <pre className="dlq-payload">
-                      {entry.payload
-                        ? JSON.stringify(entry.payload, null, 2)
-                        : '无'}
-                    </pre>
+                    <pre className="dlq-payload">{entry.payload ? JSON.stringify(entry.payload, null, 2) : '无'}</pre>
                   </div>
                   <div className="dlq-detail-meta">
                     <span>失败次数: {entry.failureCount}</span>
@@ -357,11 +331,11 @@ const DLQTab: React.FC = () => {
                 </div>
               )}
             </div>
-          );
+          )
         })}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default DLQTab;
+export default DLQTab

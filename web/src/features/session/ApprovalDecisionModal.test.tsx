@@ -1,7 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import { ApprovalDecisionModal } from './ApprovalDecisionModal';
-import { ApprovalInfo } from '../../api/types';
+import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { ApprovalDecisionModal } from './ApprovalDecisionModal'
+import { ApprovalInfo } from '../../api/types'
 
 describe('ApprovalDecisionModal', () => {
   const mockApproval: ApprovalInfo = {
@@ -15,7 +15,7 @@ describe('ApprovalDecisionModal', () => {
     requestedBy: 'agent-1',
     requestedAt: new Date().toISOString(),
     status: 'pending',
-  };
+  }
 
   it('renders nothing when approval is null', () => {
     const { container } = render(
@@ -27,12 +27,12 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={vi.fn()}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    expect(container.firstChild).toBeNull();
-    expect(screen.queryByTestId('approval-modal')).not.toBeInTheDocument();
-  });
+    expect(container.firstChild).toBeNull()
+    expect(screen.queryByTestId('approval-modal')).not.toBeInTheDocument()
+  })
 
   it('accepts correct prop signature', () => {
     const props = {
@@ -43,10 +43,10 @@ describe('ApprovalDecisionModal', () => {
       onApproveOnce: (reason?: string) => {},
       onApproveAlways: (reason?: string) => {},
       onClose: () => {},
-    };
+    }
 
-    render(<ApprovalDecisionModal {...props} />);
-  });
+    render(<ApprovalDecisionModal {...props} />)
+  })
 
   it('renders modal when approval is provided', () => {
     render(
@@ -58,16 +58,16 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={vi.fn()}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    expect(screen.getByTestId('approval-modal')).toBeInTheDocument();
-    expect(screen.getByText('审批请求')).toBeInTheDocument();
-    expect(screen.getByText('操作类型:')).toBeInTheDocument();
-  });
+    expect(screen.getByTestId('approval-modal')).toBeInTheDocument()
+    expect(screen.getByText('审批请求')).toBeInTheDocument()
+    expect(screen.getByText('操作类型:')).toBeInTheDocument()
+  })
 
   it('calls onApproveOnce with reason when approve-once button clicked with reason', () => {
-    const onApproveOnce = vi.fn();
+    const onApproveOnce = vi.fn()
     render(
       <ApprovalDecisionModal
         approval={mockApproval}
@@ -77,20 +77,20 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={onApproveOnce}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    const reasonInput = screen.getByTestId('approval-modal-reason');
-    fireEvent.change(reasonInput, { target: { value: 'This looks safe' } });
+    const reasonInput = screen.getByTestId('approval-modal-reason')
+    fireEvent.change(reasonInput, { target: { value: 'This looks safe' } })
 
-    const approveOnceBtn = screen.getByTestId('approval-modal-approve-once');
-    fireEvent.click(approveOnceBtn);
+    const approveOnceBtn = screen.getByTestId('approval-modal-approve-once')
+    fireEvent.click(approveOnceBtn)
 
-    expect(onApproveOnce).toHaveBeenCalledWith('This looks safe');
-  });
+    expect(onApproveOnce).toHaveBeenCalledWith('This looks safe')
+  })
 
   it('calls onReject with undefined when no reason typed', () => {
-    const onReject = vi.fn();
+    const onReject = vi.fn()
     render(
       <ApprovalDecisionModal
         approval={mockApproval}
@@ -100,14 +100,14 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={vi.fn()}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    const rejectBtn = screen.getByTestId('approval-modal-reject');
-    fireEvent.click(rejectBtn);
+    const rejectBtn = screen.getByTestId('approval-modal-reject')
+    fireEvent.click(rejectBtn)
 
-    expect(onReject).toHaveBeenCalledWith(undefined);
-  });
+    expect(onReject).toHaveBeenCalledWith(undefined)
+  })
 
   it('renders error message when error prop is provided', () => {
     render(
@@ -119,22 +119,22 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={vi.fn()}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    expect(screen.getByText('Network error occurred')).toBeInTheDocument();
-    expect(screen.getByText('Network error occurred')).toHaveClass('approval-error-message');
-  });
+    expect(screen.getByText('Network error occurred')).toBeInTheDocument()
+    expect(screen.getByText('Network error occurred')).toHaveClass('approval-error-message')
+  })
 
   it('shows expired message and disables action buttons when approval is expired', () => {
     const expiredApproval: ApprovalInfo = {
       ...mockApproval,
       expiresAt: new Date(Date.now() - 1000).toISOString(),
-    };
+    }
 
-    const onReject = vi.fn();
-    const onApproveOnce = vi.fn();
-    const onApproveAlways = vi.fn();
+    const onReject = vi.fn()
+    const onApproveOnce = vi.fn()
+    const onApproveAlways = vi.fn()
 
     render(
       <ApprovalDecisionModal
@@ -145,15 +145,15 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={onApproveOnce}
         onApproveAlways={onApproveAlways}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    expect(screen.getByText('此审批请求已过期，无法操作。')).toBeInTheDocument();
-    expect(screen.queryByTestId('approval-modal-reason')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('approval-modal-reject')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('approval-modal-approve-once')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('approval-modal-approve-always')).not.toBeInTheDocument();
-  });
+    expect(screen.getByText('此审批请求已过期，无法操作。')).toBeInTheDocument()
+    expect(screen.queryByTestId('approval-modal-reason')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('approval-modal-reject')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('approval-modal-approve-once')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('approval-modal-approve-always')).not.toBeInTheDocument()
+  })
 
   it('disables all action buttons when loading', () => {
     render(
@@ -165,14 +165,14 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={vi.fn()}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    expect(screen.getByTestId('approval-modal-reject')).toBeDisabled();
-    expect(screen.getByTestId('approval-modal-approve-once')).toBeDisabled();
-    expect(screen.getByTestId('approval-modal-approve-always')).toBeDisabled();
-    expect(screen.getByTestId('approval-modal-reason')).toBeDisabled();
-  });
+    expect(screen.getByTestId('approval-modal-reject')).toBeDisabled()
+    expect(screen.getByTestId('approval-modal-approve-once')).toBeDisabled()
+    expect(screen.getByTestId('approval-modal-approve-always')).toBeDisabled()
+    expect(screen.getByTestId('approval-modal-reason')).toBeDisabled()
+  })
 
   it('resets reason state when approval.id changes', () => {
     const { rerender } = render(
@@ -184,17 +184,17 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={vi.fn()}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    const reasonInput = screen.getByTestId('approval-modal-reason');
-    fireEvent.change(reasonInput, { target: { value: 'First reason' } });
-    expect(reasonInput).toHaveValue('First reason');
+    const reasonInput = screen.getByTestId('approval-modal-reason')
+    fireEvent.change(reasonInput, { target: { value: 'First reason' } })
+    expect(reasonInput).toHaveValue('First reason')
 
     const newApproval: ApprovalInfo = {
       ...mockApproval,
       id: 'approval-2',
-    };
+    }
 
     rerender(
       <ApprovalDecisionModal
@@ -205,11 +205,10 @@ describe('ApprovalDecisionModal', () => {
         onApproveOnce={vi.fn()}
         onApproveAlways={vi.fn()}
         onClose={vi.fn()}
-      />
-    );
+      />,
+    )
 
-    const updatedReasonInput = screen.getByTestId('approval-modal-reason');
-    expect(updatedReasonInput).toHaveValue('');
-  });
-});
-
+    const updatedReasonInput = screen.getByTestId('approval-modal-reason')
+    expect(updatedReasonInput).toHaveValue('')
+  })
+})

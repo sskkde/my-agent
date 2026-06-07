@@ -1,18 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { respondApproval } from './client';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { respondApproval } from './client'
 
 describe('respondApproval', () => {
-  const originalFetch = global.fetch;
-  const mockFetch = vi.fn();
+  const originalFetch = global.fetch
+  const mockFetch = vi.fn()
 
   beforeEach(() => {
-    global.fetch = mockFetch;
-    mockFetch.mockReset();
-  });
+    global.fetch = mockFetch
+    mockFetch.mockReset()
+  })
 
   afterEach(() => {
-    global.fetch = originalFetch;
-  });
+    global.fetch = originalFetch
+  })
 
   it('normalizes legacy "approved" to approve_once', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -20,27 +20,27 @@ describe('respondApproval', () => {
       json: async () => ({
         success: true,
         approvalId: 'test-id',
-        status: 'approved'
-      })
-    });
+        status: 'approved',
+      }),
+    })
 
-    await respondApproval('test-id', 'approved', 'test reason');
+    await respondApproval('test-id', 'approved', 'test reason')
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/approvals/test-id'),
       expect.objectContaining({
         method: 'PATCH',
-        body: expect.any(String)
-      })
-    );
+        body: expect.any(String),
+      }),
+    )
 
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(callBody).toEqual({
       decision: 'approved',
       responseType: 'approve_once',
-      reason: 'test reason'
-    });
-  });
+      reason: 'test reason',
+    })
+  })
 
   it('normalizes legacy "rejected" to reject', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -48,27 +48,27 @@ describe('respondApproval', () => {
       json: async () => ({
         success: true,
         approvalId: 'test-id',
-        status: 'rejected'
-      })
-    });
+        status: 'rejected',
+      }),
+    })
 
-    await respondApproval('test-id', 'rejected');
+    await respondApproval('test-id', 'rejected')
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/approvals/test-id'),
       expect.objectContaining({
         method: 'PATCH',
-        body: expect.any(String)
-      })
-    );
+        body: expect.any(String),
+      }),
+    )
 
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(callBody).toEqual({
       decision: 'rejected',
       responseType: 'reject',
-      reason: undefined
-    });
-  });
+      reason: undefined,
+    })
+  })
 
   it('passes "approve_once" directly', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -76,18 +76,18 @@ describe('respondApproval', () => {
       json: async () => ({
         success: true,
         approvalId: 'test-id',
-        status: 'approved'
-      })
-    });
+        status: 'approved',
+      }),
+    })
 
-    await respondApproval('test-id', 'approve_once');
+    await respondApproval('test-id', 'approve_once')
 
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(callBody).toEqual({
       responseType: 'approve_once',
-      reason: undefined
-    });
-  });
+      reason: undefined,
+    })
+  })
 
   it('passes "approve_always" directly', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -95,18 +95,18 @@ describe('respondApproval', () => {
       json: async () => ({
         success: true,
         approvalId: 'test-id',
-        status: 'approved'
-      })
-    });
+        status: 'approved',
+      }),
+    })
 
-    await respondApproval('test-id', 'approve_always', 'always approve');
+    await respondApproval('test-id', 'approve_always', 'always approve')
 
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(callBody).toEqual({
       responseType: 'approve_always',
-      reason: 'always approve'
-    });
-  });
+      reason: 'always approve',
+    })
+  })
 
   it('passes "reject" directly', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -114,16 +114,16 @@ describe('respondApproval', () => {
       json: async () => ({
         success: true,
         approvalId: 'test-id',
-        status: 'rejected'
-      })
-    });
+        status: 'rejected',
+      }),
+    })
 
-    await respondApproval('test-id', 'reject');
+    await respondApproval('test-id', 'reject')
 
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(callBody).toEqual({
       responseType: 'reject',
-      reason: undefined
-    });
-  });
-});
+      reason: undefined,
+    })
+  })
+})

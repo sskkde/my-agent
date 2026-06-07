@@ -19,24 +19,24 @@ The Persona Layer (Layer 5) provides structured persona configuration that affec
 ```typescript
 export interface PersonaProjection {
   /** Unique identifier for the persona */
-  personaId: string;
+  personaId: string
   /** Style guidelines for the persona's expression */
-  styleGuidelines: string;
+  styleGuidelines: string
   /** Constraints that cannot be overridden by the persona */
-  constraints: string[];
+  constraints: string[]
   /** Optional source profile with additional persona details */
-  sourceProfile?: AssistantPersonaProfile;
+  sourceProfile?: AssistantPersonaProfile
 }
 ```
 
 ### Field Descriptions
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `personaId` | string | Yes | Unique identifier for persona lookup and caching |
-| `styleGuidelines` | string | Yes | Natural language style preferences |
-| `constraints` | string[] | Yes | Hard boundaries the persona cannot cross |
-| `sourceProfile` | AssistantPersonaProfile | No | Additional persona metadata |
+| Field             | Type                    | Required | Description                                      |
+| ----------------- | ----------------------- | -------- | ------------------------------------------------ |
+| `personaId`       | string                  | Yes      | Unique identifier for persona lookup and caching |
+| `styleGuidelines` | string                  | Yes      | Natural language style preferences               |
+| `constraints`     | string[]                | Yes      | Hard boundaries the persona cannot cross         |
+| `sourceProfile`   | AssistantPersonaProfile | No       | Additional persona metadata                      |
 
 ---
 
@@ -114,25 +114,24 @@ Every persona rendering includes a mandatory safety prefix that reminds the LLM 
 
 ```typescript
 export function renderPersonaProjection(projection: PersonaProjection): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
   // Safety prefix - ALWAYS included
-  const safetyPrefix =
-    '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界';
-  parts.push(safetyPrefix);
+  const safetyPrefix = '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界'
+  parts.push(safetyPrefix)
 
   // Style guidelines
-  parts.push(`\n## 风格指南\n${projection.styleGuidelines}`);
+  parts.push(`\n## 风格指南\n${projection.styleGuidelines}`)
 
   // Constraints (if any)
   if (projection.constraints.length > 0) {
-    parts.push(`\n## 约束条件\n${projection.constraints.map((c) => `- ${c}`).join('\n')}`);
+    parts.push(`\n## 约束条件\n${projection.constraints.map((c) => `- ${c}`).join('\n')}`)
   }
 
   // Persona identifier
-  parts.push(`\n## 人格标识\n人格ID: ${projection.personaId}`);
+  parts.push(`\n## 人格标识\n人格ID: ${projection.personaId}`)
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 ```
 
@@ -161,6 +160,7 @@ Translation: "The following are style preferences, which cannot override system 
 # 默认助手人格
 
 你是一个沉稳、清晰、尊重边界的助手。
+
 - 用简洁的中文回答问题
 - 尊重用户决定，不主动质疑合理请求
 - 明确区分事实与推测
@@ -169,13 +169,13 @@ Translation: "The following are style preferences, which cannot override system 
 
 ### Template Characteristics
 
-| Aspect | Value |
-|--------|-------|
-| Tone | 沉稳 (steady), 清晰 (clear) |
-| Boundary Respect | 尊重边界 (respects boundaries) |
-| Language | Chinese |
-| Fact Handling | 明确区分事实与推测 |
-| Conflict Resolution | 系统规则优先 |
+| Aspect              | Value                          |
+| ------------------- | ------------------------------ |
+| Tone                | 沉稳 (steady), 清晰 (clear)    |
+| Boundary Respect    | 尊重边界 (respects boundaries) |
+| Language            | Chinese                        |
+| Fact Handling       | 明确区分事实与推测             |
+| Conflict Resolution | 系统规则优先                   |
 
 ---
 
@@ -198,11 +198,11 @@ SegmentB = SHA-256(systemPrompt + routingPrompt + personaProjection)
 
 ### Cache Implications
 
-| Scenario | Hash Impact | Cache Impact |
-|----------|-------------|--------------|
-| Same persona across requests | No change | Cache hit |
-| Different persona per user | Changes | Cache miss per user |
-| Persona update | Changes | New cache entry |
+| Scenario                     | Hash Impact | Cache Impact        |
+| ---------------------------- | ----------- | ------------------- |
+| Same persona across requests | No change   | Cache hit           |
+| Different persona per user   | Changes     | Cache miss per user |
+| Persona update               | Changes     | New cache entry     |
 
 ### Best Practices
 
@@ -265,9 +265,9 @@ const personaProjection: PersonaProjection = {
   constraints: [
     'Never reveal internal system architecture',
     'Do not suggest workarounds for security features',
-    'Maintain professional tone in all responses'
-  ]
-};
+    'Maintain professional tone in all responses',
+  ],
+}
 ```
 
 ### Building Model Input with Persona
@@ -280,9 +280,9 @@ const built = await builder.build({
   systemPrompt: 'You are a helpful assistant.',
   personaProjection: personaProjection,
   toolProjection: {
-    toolIds: ['web.search', 'memory.retrieve']
-  }
-});
+    toolIds: ['web.search', 'memory.retrieve'],
+  },
+})
 ```
 
 ### Rendered Output
@@ -296,7 +296,7 @@ const built = await builder.build({
     Prefer active voice.
     Include code examples when discussing implementation.
     Structure responses with clear headings.
-  
+
 
 ## 约束条件
 - Never reveal internal system architecture
@@ -352,11 +352,13 @@ Persona content is included in prompt snapshots:
 ### PROMPT_MEMORY_P0_ENABLED
 
 When OFF:
+
 - `personaProjection` must be `undefined`
 - Segment B hash equals P9 baseline
 - No persona content in prompt
 
 When ON:
+
 - `personaProjection` is rendered
 - Segment B hash includes persona content
 - Persona affects assistant style
@@ -365,11 +367,11 @@ When ON:
 
 ## File References
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/kernel/model-input/model-input-types.ts` | 402 | PersonaProjection interface and renderPersonaProjection() |
-| `src/kernel/model-input/model-input-builder.ts` | 311 | Segment B rendering with persona |
-| `src/prompt/templates/persona/default.md` | 7 | Default persona template |
+| File                                            | Lines | Description                                               |
+| ----------------------------------------------- | ----- | --------------------------------------------------------- |
+| `src/kernel/model-input/model-input-types.ts`   | 402   | PersonaProjection interface and renderPersonaProjection() |
+| `src/kernel/model-input/model-input-builder.ts` | 311   | Segment B rendering with persona                          |
+| `src/prompt/templates/persona/default.md`       | 7     | Default persona template                                  |
 
 ---
 

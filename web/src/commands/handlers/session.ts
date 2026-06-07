@@ -1,22 +1,17 @@
-import type { CommandContext, CommandHandler, FrontendCommandResult } from '../types.js';
-import type { ConsoleSessionInfo } from '../../api/types.js';
-import {
-  createSession,
-  getSession,
-  getSessions,
-  getSettings,
-} from '../../api/client.js';
+import type { CommandContext, CommandHandler, FrontendCommandResult } from '../types.js'
+import type { ConsoleSessionInfo } from '../../api/types.js'
+import { createSession, getSession, getSessions, getSettings } from '../../api/client.js'
 
 export const handleNew: CommandHandler = async (
   _args: string[],
-  context: CommandContext
+  context: CommandContext,
 ): Promise<FrontendCommandResult> => {
   try {
-    const response = await createSession();
-    const newSessionId = response.session.sessionId;
+    const response = await createSession()
+    const newSessionId = response.session.sessionId
 
-    await context.refreshSessions();
-    context.setSelectedSessionId(newSessionId);
+    await context.refreshSessions()
+    context.setSelectedSessionId(newSessionId)
 
     return {
       success: true,
@@ -25,7 +20,7 @@ export const handleNew: CommandHandler = async (
         content: `Created new session: ${newSessionId}`,
       },
       data: { sessionId: newSessionId },
-    };
+    }
   } catch (error) {
     return {
       success: false,
@@ -34,16 +29,16 @@ export const handleNew: CommandHandler = async (
         content: `Failed to create session: ${error instanceof Error ? error.message : String(error)}`,
       },
       error: error instanceof Error ? error.message : String(error),
-    };
+    }
   }
-};
+}
 
 export const handleSession: CommandHandler = async (
   args: string[],
-  context: CommandContext
+  context: CommandContext,
 ): Promise<FrontendCommandResult> => {
   if (args.length === 0) {
-    const currentSessionId = context.sessionId;
+    const currentSessionId = context.sessionId
 
     if (!currentSessionId) {
       return {
@@ -53,12 +48,12 @@ export const handleSession: CommandHandler = async (
           content: 'No session currently selected',
         },
         error: 'No session selected',
-      };
+      }
     }
 
     try {
-      const response = await getSession(currentSessionId);
-      const session = response.session;
+      const response = await getSession(currentSessionId)
+      const session = response.session
 
       return {
         success: true,
@@ -78,7 +73,7 @@ export const handleSession: CommandHandler = async (
           status: 'active',
           messageCount: session.messageCount,
         },
-      };
+      }
     } catch (error) {
       return {
         success: false,
@@ -87,17 +82,17 @@ export const handleSession: CommandHandler = async (
           content: `Failed to get session info: ${error instanceof Error ? error.message : String(error)}`,
         },
         error: error instanceof Error ? error.message : String(error),
-      };
+      }
     }
   }
 
-  const targetSessionId = args[0];
+  const targetSessionId = args[0]
 
   try {
-    const response = await getSession(targetSessionId);
-    const session = response.session;
+    const response = await getSession(targetSessionId)
+    const session = response.session
 
-    context.setSelectedSessionId(session.sessionId);
+    context.setSelectedSessionId(session.sessionId)
 
     return {
       success: true,
@@ -117,7 +112,7 @@ export const handleSession: CommandHandler = async (
         status: 'active',
         messageCount: session.messageCount,
       },
-    };
+    }
   } catch (error) {
     return {
       success: false,
@@ -126,17 +121,17 @@ export const handleSession: CommandHandler = async (
         content: `Session not found: ${targetSessionId}`,
       },
       error: `Session not found: ${targetSessionId}`,
-    };
+    }
   }
-};
+}
 
 export const handleSessions: CommandHandler = async (
   _args: string[],
-  _context: CommandContext
+  _context: CommandContext,
 ): Promise<FrontendCommandResult> => {
   try {
-    const response = await getSessions(undefined, 10, 0);
-    const sessions = response.sessions;
+    const response = await getSessions(undefined, 10, 0)
+    const sessions = response.sessions
 
     if (sessions.length === 0) {
       return {
@@ -146,15 +141,15 @@ export const handleSessions: CommandHandler = async (
           content: 'No sessions found',
         },
         data: { sessions: [], total: 0 },
-      };
+      }
     }
 
     const sessionList = sessions
       .map(
         (session: ConsoleSessionInfo) =>
-          `${session.sessionId} | ${session.title} | ${session.status} | ${session.messageCount} messages`
+          `${session.sessionId} | ${session.title} | ${session.status} | ${session.messageCount} messages`,
       )
-      .join('\n');
+      .join('\n')
 
     return {
       success: true,
@@ -180,7 +175,7 @@ export const handleSessions: CommandHandler = async (
         })),
         total: response.total,
       },
-    };
+    }
   } catch (error) {
     return {
       success: false,
@@ -189,20 +184,20 @@ export const handleSessions: CommandHandler = async (
         content: `Failed to get sessions: ${error instanceof Error ? error.message : String(error)}`,
       },
       error: error instanceof Error ? error.message : String(error),
-    };
+    }
   }
-};
+}
 
 export const handleSettings: CommandHandler = async (
   _args: string[],
-  context: CommandContext
+  context: CommandContext,
 ): Promise<FrontendCommandResult> => {
   try {
-    const response = await getSettings();
-    const settings = response.settings;
+    const response = await getSettings()
+    const settings = response.settings
 
     if (context.setActiveTab) {
-      context.setActiveTab('settings');
+      context.setActiveTab('settings')
 
       return {
         success: true,
@@ -212,14 +207,14 @@ export const handleSettings: CommandHandler = async (
         },
         data: settings,
         navigateTo: 'settings',
-      };
+      }
     }
 
     const settingsSummary = [
       `Local Only: ${settings.localOnly ? 'Yes' : 'No'}`,
       `Retention Days: ${settings.retentionDays}`,
       `Configured Providers: ${Object.keys(settings.providers).length}`,
-    ].join('\n');
+    ].join('\n')
 
     return {
       success: true,
@@ -229,7 +224,7 @@ export const handleSettings: CommandHandler = async (
         data: settings,
       },
       data: settings,
-    };
+    }
   } catch (error) {
     return {
       success: false,
@@ -238,13 +233,13 @@ export const handleSettings: CommandHandler = async (
         content: `Failed to get settings: ${error instanceof Error ? error.message : String(error)}`,
       },
       error: error instanceof Error ? error.message : String(error),
-    };
+    }
   }
-};
+}
 
 export const sessionHandlers = {
   new: handleNew,
   session: handleSession,
   sessions: handleSessions,
   settings: handleSettings,
-};
+}

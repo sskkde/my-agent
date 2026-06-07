@@ -39,6 +39,7 @@ cd web && npm run dev
 5. Verify steps appear in the session transcript
 
 **What to show**:
+
 - The planner breaks down the complex request into actionable steps
 - Each step has a clear description and assigned agent
 
@@ -56,6 +57,7 @@ cd web && npm run dev
 6. Click "Save"
 
 **What to show**:
+
 - Planner steps become workflow steps
 - Steps can be reordered or modified
 - Workflow is now persistent and reusable
@@ -72,6 +74,7 @@ cd web && npm run dev
 4. Observe step execution in real-time
 
 **What to show**:
+
 - Workflow runs as a WorkflowRun
 - Each step executes in order
 - Status updates in real-time
@@ -92,6 +95,7 @@ cd web && npm run dev
 5. Verify trigger appears in the list with status "Active"
 
 **What to show**:
+
 - Cron-based scheduling
 - Trigger status toggle (can pause/resume)
 - Trigger configuration is persisted
@@ -111,6 +115,7 @@ cd web && npm run dev
 3. Click "Create"
 
 **What to show**:
+
 - External systems can trigger workflows
 - Multiple trigger types supported (schedule, webhook, connector)
 - Event-driven automation
@@ -129,6 +134,7 @@ cd web && npm run dev
 6. Return to **Monitor** to see the workflow continue
 
 **What to show**:
+
 - Sensitive operations require explicit approval
 - Approval requests show full context (tool, parameters)
 - User has full control over external writes
@@ -149,6 +155,7 @@ cd web && npm run dev
    - Agent decisions
 
 **What to show**:
+
 - Full visibility into run execution
 - Timeline view for understanding sequence
 - Status filtering for quick navigation
@@ -168,6 +175,7 @@ cd web && npm run dev
 4. Close preview — no changes made to system
 
 **What to show**:
+
 - Read-only inspection of past runs
 - No side effects (guaranteed safe)
 - Useful for debugging and auditing
@@ -187,6 +195,7 @@ cd web && npm run dev
 4. Verify memory tombstones if any were deleted
 
 **What to show**:
+
 - Long-term memory extraction
 - Memory search and retrieval
 - Soft-delete with audit trail
@@ -206,6 +215,7 @@ cd web && npm run dev
 4. Optionally retry or discard failed entries
 
 **What to show**:
+
 - Failed operations are captured, not lost
 - Retry mechanism available
 - Full audit trail of failures
@@ -356,6 +366,7 @@ npm run test:p5
 **Goal**: Demonstrate 3-tier role system
 
 1. Create first user (auto-admin):
+
    ```bash
    curl -X POST http://localhost:3003/api/v1/setup/user \
      -H "Content-Type: application/json" \
@@ -363,13 +374,14 @@ npm run test:p5
    ```
 
 2. Login as admin and create API keys with different roles:
+
    ```bash
    # Create service role key
    curl -X POST http://localhost:3003/api/v1/api-keys \
      -H "Authorization: Bearer <session-cookie>" \
      -H "Content-Type: application/json" \
      -d '{"name":"CI Service","role":"service"}'
-   
+
    # Create user role key
    curl -X POST http://localhost:3003/api/v1/api-keys \
      -H "Authorization: Bearer <session-cookie>" \
@@ -378,12 +390,13 @@ npm run test:p5
    ```
 
 3. Test RBAC restrictions:
+
    ```bash
    # User role cannot access settings
    curl -H "Authorization: Bearer ak_user_key" \
      http://localhost:3003/api/v1/agents/foreground.default/config
    # Returns 403 FORBIDDEN
-   
+
    # Admin role can access settings
    curl -H "Authorization: Bearer ak_admin_key" \
      http://localhost:3003/api/v1/agents/foreground.default/config
@@ -391,6 +404,7 @@ npm run test:p5
    ```
 
 **What to show**:
+
 - 3-tier role hierarchy (admin > user > service)
 - Permission enforcement on all endpoints
 - Clear error messages for denied access
@@ -419,6 +433,7 @@ npm run test:p5
 9. Verify revoked key returns 401
 
 **What to show**:
+
 - Key creation with role selection
 - One-time key display (security best practice)
 - Key identification via prefix
@@ -459,6 +474,7 @@ npm run test:p5
    ```
 
 **What to show**:
+
 - Cron validation with preview
 - Webhook URL generation
 - HMAC signature verification
@@ -488,6 +504,7 @@ npm run test:p5
    - Metadata
 
 **What to show**:
+
 - Failed event capture
 - Retry mechanism
 - Discard with audit trail
@@ -519,6 +536,7 @@ npm run test:p5
    - Verify external system response
 
 **What to show**:
+
 - Multiple connector types
 - Tool and event discovery
 - OAuth/API key authentication
@@ -548,6 +566,7 @@ npm run test:p5
    - Verify BUDGET_EXCEEDED error
 
 **What to show**:
+
 - Real-time budget tracking
 - Period-based reset
 - Clear exceeded error
@@ -560,9 +579,11 @@ npm run test:p5
 **Goal**: Monitor platform health
 
 1. **Prometheus Metrics**:
+
    ```bash
    curl http://localhost:3003/api/v1/metrics
    ```
+
    View metrics:
    - `agent_platform_request_total`
    - `agent_platform_request_duration_seconds`
@@ -588,6 +609,7 @@ npm run test:p5
    - Clear condition to resolve alert
 
 **What to show**:
+
 - Prometheus-compatible metrics
 - Alert rule creation
 - State transitions (idle → firing → resolved)
@@ -602,6 +624,7 @@ npm run test:p6
 ```
 
 Or run individual test suites:
+
 ```bash
 # RBAC tests
 npm run test:api -- tests/integration/api/rbac

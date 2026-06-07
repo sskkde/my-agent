@@ -38,6 +38,7 @@ docker compose ps
 ### Access Points
 
 After successful deployment:
+
 - **API**: http://localhost:3003
 - **Web UI**: http://localhost:3002
 - **Swagger UI**: http://localhost:3003/api/docs
@@ -133,7 +134,7 @@ services:
       - LOG_LEVEL=debug
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     volumes:
-      - ./data:/data  # Use local directory instead of volume
+      - ./data:/data # Use local directory instead of volume
 
   web:
     environment:
@@ -148,11 +149,11 @@ Docker Compose automatically merges this with the base configuration.
 services:
   api:
     ports:
-      - "8080:3003"  # API on port 8080
+      - '8080:3003' # API on port 8080
 
   web:
     ports:
-      - "8000:3002"  # Web UI on port 8000
+      - '8000:3002' # Web UI on port 8000
 ```
 
 ### External Database Path
@@ -174,7 +175,7 @@ The API service includes a built-in health check:
 
 ```yaml
 healthcheck:
-  test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3003/api/health"]
+  test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:3003/api/health']
   interval: 10s
   timeout: 5s
   retries: 5
@@ -182,6 +183,7 @@ healthcheck:
 ```
 
 **Parameters:**
+
 - `interval`: Time between health checks
 - `timeout`: Maximum time to wait for response
 - `retries`: Failed checks before marking unhealthy
@@ -230,6 +232,7 @@ services:
 ### Backup and Restore
 
 **Backup:**
+
 ```bash
 # Stop services
 docker compose down
@@ -242,6 +245,7 @@ docker compose up -d
 ```
 
 **Restore:**
+
 ```bash
 # Stop services
 docker compose down
@@ -311,12 +315,14 @@ Docker Compose creates a default network for inter-service communication.
 ### Service Discovery
 
 Services can communicate using service names:
+
 - API accessible at `http://api:3003` from other containers
 - Web accessible at `http://web:3002` from other containers
 
 ### External Access
 
 Ports are exposed on the host:
+
 - API: `localhost:3003`
 - Web: `localhost:3002`
 
@@ -328,14 +334,14 @@ To use with a reverse proxy like Nginx or Traefik:
 services:
   api:
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`api.example.com`)"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.api.rule=Host(`api.example.com`)'
     # Remove ports mapping if using Traefik
 
   web:
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`app.example.com`)"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.web.rule=Host(`app.example.com`)'
 ```
 
 ---
@@ -443,17 +449,17 @@ Production uses Docker secrets for sensitive configuration:
 
 **Required Secrets:**
 
-| Secret | Description | Generate Command |
-|--------|-------------|------------------|
+| Secret           | Description                | Generate Command                                    |
+| ---------------- | -------------------------- | --------------------------------------------------- |
 | `app_secret_key` | Application encryption key | `openssl rand -hex 32 > secrets/app_secret_key.txt` |
 
 **Optional Secrets (OAuth):**
 
-| Secret | Description |
-|--------|-------------|
-| `google_client_id` | Google OAuth client ID |
+| Secret                 | Description                |
+| ---------------------- | -------------------------- |
+| `google_client_id`     | Google OAuth client ID     |
 | `google_client_secret` | Google OAuth client secret |
-| `postgres_password` | PostgreSQL password |
+| `postgres_password`    | PostgreSQL password        |
 
 **Directory Structure:**
 
@@ -493,21 +499,21 @@ OPENROUTER_API_KEY=sk-or-xxxxxxxxxxxx
 
 **Critical Settings:**
 
-| Setting | Description | Required |
-|---------|-------------|----------|
-| `ALLOWED_ORIGINS` | CORS allowed origins (no wildcards) | Yes |
-| `COOKIE_SECURE` | Enable secure cookies | Yes (HTTPS) |
-| `TRUST_PROXY` | Trust reverse proxy headers | If behind proxy |
-| `PUBLIC_BASE_URL` | Public URL for OAuth | If using OAuth |
+| Setting           | Description                         | Required        |
+| ----------------- | ----------------------------------- | --------------- |
+| `ALLOWED_ORIGINS` | CORS allowed origins (no wildcards) | Yes             |
+| `COOKIE_SECURE`   | Enable secure cookies               | Yes (HTTPS)     |
+| `TRUST_PROXY`     | Trust reverse proxy headers         | If behind proxy |
+| `PUBLIC_BASE_URL` | Public URL for OAuth                | If using OAuth  |
 
 ### Resource Limits
 
 Production configuration includes resource limits:
 
 | Service | CPU Limit | Memory Limit | CPU Reserved | Memory Reserved |
-|---------|-----------|--------------|--------------|-----------------|
-| api | 1.0 | 512M | 0.5 | 256M |
-| web | 0.5 | 256M | 0.25 | 128M |
+| ------- | --------- | ------------ | ------------ | --------------- |
+| api     | 1.0       | 512M         | 0.5          | 256M            |
+| web     | 0.5       | 256M         | 0.25         | 128M            |
 
 Adjust in `docker-compose.prod.yml` based on your workload:
 
@@ -649,9 +655,9 @@ server {
 services:
   web:
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`app.example.com`)"
-      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.web.rule=Host(`app.example.com`)'
+      - 'traefik.http.routers.web.tls.certresolver=letsencrypt'
 ```
 
 ### Updating Production

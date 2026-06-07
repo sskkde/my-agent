@@ -10,7 +10,7 @@ import type {
   CommandOutput as SharedCommandOutput,
   CommandRisk,
   CommandCategory,
-} from '../../../src/command-core/types.js';
+} from '../../../src/command-core/types.js'
 
 // Re-export shared types for convenience
 export type {
@@ -20,10 +20,10 @@ export type {
   SharedCommandOutput,
   CommandRisk,
   CommandCategory,
-};
+}
 
 // Export CommandResult as alias for convenience
-export type CommandResult = SharedCommandResult;
+export type CommandResult = SharedCommandResult
 
 /**
  * Command names available in the frontend
@@ -31,27 +31,21 @@ export type CommandResult = SharedCommandResult;
  */
 export type FrontendCommandName = Exclude<
   SharedCommandName,
-  | 'bash'
-  | 'mcp'
-  | 'plugins'
-  | 'config'
-  | 'restart'
-  | 'allowlist'
-  | 'tts'
->;
+  'bash' | 'mcp' | 'plugins' | 'config' | 'restart' | 'allowlist' | 'tts'
+>
 
 /**
  * UI-specific metadata for command display
  */
 export interface CommandUIMetadata {
   /** Icon identifier for the command (e.g., 'help', 'settings', 'logout') */
-  icon?: string;
+  icon?: string
   /** Color theme for the command category */
-  color?: string;
+  color?: string
   /** Whether to show the command in quick actions */
-  showInQuickActions?: boolean;
+  showInQuickActions?: boolean
   /** Keyboard shortcut if available */
-  keyboardShortcut?: string;
+  keyboardShortcut?: string
 }
 
 /**
@@ -59,7 +53,7 @@ export interface CommandUIMetadata {
  */
 export interface FrontendCommandDefinition extends SharedCommandDefinition {
   /** UI-specific display metadata */
-  ui?: CommandUIMetadata;
+  ui?: CommandUIMetadata
 }
 
 /**
@@ -67,9 +61,9 @@ export interface FrontendCommandDefinition extends SharedCommandDefinition {
  */
 export interface AuthContext {
   /** Whether user is authenticated */
-  isAuthenticated: boolean;
+  isAuthenticated: boolean
   /** Logout callback */
-  logout: () => void;
+  logout: () => void
 }
 
 /**
@@ -77,13 +71,13 @@ export interface AuthContext {
  */
 export interface ApiClient {
   /** GET request */
-  get: (path: string) => Promise<unknown>;
+  get: (path: string) => Promise<unknown>
   /** POST request */
-  post: (path: string, body?: unknown) => Promise<unknown>;
+  post: (path: string, body?: unknown) => Promise<unknown>
   /** PUT request */
-  put: (path: string, body?: unknown) => Promise<unknown>;
+  put: (path: string, body?: unknown) => Promise<unknown>
   /** DELETE request */
-  delete: (path: string) => Promise<unknown>;
+  delete: (path: string) => Promise<unknown>
 }
 
 /**
@@ -100,7 +94,7 @@ export type TabId =
   | 'channels'
   | 'instances'
   | 'skills'
-  | 'settings';
+  | 'settings'
 
 /**
  * Command execution context provided to all command handlers
@@ -108,28 +102,28 @@ export type TabId =
  */
 export interface CommandContext {
   /** Current session ID */
-  sessionId: string | null;
+  sessionId: string | null
   /** Set the selected session ID */
-  setSelectedSessionId: (sessionId: string | null) => void;
+  setSelectedSessionId: (sessionId: string | null) => void
   /** Refresh the sessions list */
-  refreshSessions: () => Promise<void>;
+  refreshSessions: () => Promise<void>
   /** Set the active tab */
-  setActiveTab: (tabId: TabId) => void;
+  setActiveTab: (tabId: TabId) => void
   /** Refresh providers list */
-  refreshProviders: () => Promise<void>;
+  refreshProviders: () => Promise<void>
   /** Authentication context */
-  auth: AuthContext;
+  auth: AuthContext
   /** API client for backend communication */
-  api: ApiClient;
+  api: ApiClient
 }
 
 /**
  * Frontend command output with type and content
  */
 export interface FrontendCommandOutput {
-  type: 'text' | 'error' | 'structured' | 'success';
-  content: string;
-  data?: unknown;
+  type: 'text' | 'error' | 'structured' | 'success'
+  content: string
+  data?: unknown
 }
 
 /**
@@ -137,17 +131,17 @@ export interface FrontendCommandOutput {
  */
 export interface FrontendCommandResult extends Omit<SharedCommandResult, 'output' | 'commandName'> {
   /** Command name - optional in frontend */
-  commandName?: string;
+  commandName?: string
   /** Output with type, content and optional data */
-  output?: FrontendCommandOutput;
+  output?: FrontendCommandOutput
   /** Additional data payload */
-  data?: unknown;
+  data?: unknown
   /** Whether to trigger a toast notification */
-  showToast?: boolean;
+  showToast?: boolean
   /** Toast message type */
-  toastType?: 'success' | 'error' | 'info';
+  toastType?: 'success' | 'error' | 'info'
   /** Whether to navigate to a different tab */
-  navigateTo?: TabId;
+  navigateTo?: TabId
 }
 
 /**
@@ -155,13 +149,13 @@ export interface FrontendCommandResult extends Omit<SharedCommandResult, 'output
  */
 export type CommandHandler = (
   args: string[],
-  context: CommandContext
-) => Promise<FrontendCommandResult> | FrontendCommandResult;
+  context: CommandContext,
+) => Promise<FrontendCommandResult> | FrontendCommandResult
 
 /**
  * Registered command with its handler
  */
 export interface RegisteredCommand {
-  definition: FrontendCommandDefinition;
-  handler: CommandHandler;
+  definition: FrontendCommandDefinition
+  handler: CommandHandler
 }

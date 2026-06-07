@@ -5,6 +5,7 @@ The Google Calendar connector enables integration with Google Calendar API for m
 ## Overview
 
 This connector provides read and write access to Google Calendar, allowing agents to:
+
 - List events within a date range
 - Get specific event details
 - Create new events
@@ -24,14 +25,15 @@ Google Calendar requires OAuth2 authentication. The connector supports the follo
 
 The connector uses least-privilege scopes for Google Calendar only:
 
-| Scope | Description | Required For |
-|-------|-------------|--------------|
-| `https://www.googleapis.com/auth/calendar.events.readonly` | Read calendar events | `list_events`, `get_event` |
-| `https://www.googleapis.com/auth/calendar.events` | Read and write events | All operations |
+| Scope                                                      | Description           | Required For               |
+| ---------------------------------------------------------- | --------------------- | -------------------------- |
+| `https://www.googleapis.com/auth/calendar.events.readonly` | Read calendar events  | `list_events`, `get_event` |
+| `https://www.googleapis.com/auth/calendar.events`          | Read and write events | All operations             |
 
 ### Token Storage
 
 OAuth2 tokens are encrypted at rest using AES-256-GCM before storage:
+
 - Access tokens are stored in `authStateRef` field
 - Encryption uses `APP_SECRET_KEY` environment variable
 - Tokens are never returned in API responses
@@ -55,6 +57,7 @@ List calendar events within a date range.
 | `q` | string | No | Search query |
 
 **Example:**
+
 ```typescript
 const result = await connector.execute(instance, {
   operation: 'list_events',
@@ -62,9 +65,9 @@ const result = await connector.execute(instance, {
     calendarId: 'primary',
     timeMin: '2024-01-01T00:00:00Z',
     timeMax: '2024-01-31T23:59:59Z',
-    maxResults: 50
-  }
-});
+    maxResults: 50,
+  },
+})
 ```
 
 ### calendar.get_event
@@ -78,13 +81,14 @@ Get a specific calendar event by ID.
 | `eventId` | string | Yes | Event ID to retrieve |
 
 **Example:**
+
 ```typescript
 const event = await connector.execute(instance, {
   operation: 'get_event',
   params: {
-    eventId: 'event-123'
-  }
-});
+    eventId: 'event-123',
+  },
+})
 ```
 
 ### calendar.create_event
@@ -104,6 +108,7 @@ Create a new calendar event.
 | `reminders` | object | No | Reminder settings |
 
 **Example:**
+
 ```typescript
 const event = await connector.execute(instance, {
   operation: 'create_event',
@@ -113,11 +118,9 @@ const event = await connector.execute(instance, {
     end: { dateTime: '2024-02-01T11:00:00Z' },
     description: 'Weekly team sync',
     location: 'Conference Room A',
-    attendees: [
-      { email: 'colleague@example.com' }
-    ]
-  }
-});
+    attendees: [{ email: 'colleague@example.com' }],
+  },
+})
 ```
 
 ### calendar.update_event
@@ -138,15 +141,16 @@ Update an existing calendar event.
 | `status` | string | No | Event status: `confirmed`, `tentative`, `cancelled` |
 
 **Example:**
+
 ```typescript
 const event = await connector.execute(instance, {
   operation: 'update_event',
   params: {
     eventId: 'event-123',
     summary: 'Updated Meeting Title',
-    location: 'Zoom'
-  }
-});
+    location: 'Zoom',
+  },
+})
 ```
 
 ### calendar.delete_event
@@ -160,24 +164,27 @@ Delete a calendar event.
 | `eventId` | string | Yes | Event ID to delete |
 
 **Example:**
+
 ```typescript
 await connector.execute(instance, {
   operation: 'delete_event',
   params: {
-    eventId: 'event-123'
-  }
-});
+    eventId: 'event-123',
+  },
+})
 ```
 
 ## Rate Limits
 
 Google Calendar API has the following rate limits:
+
 - **Per minute**: 1,500,000 requests per project
 - **Per user**: 1,500,000 requests per user per minute
 
 ### Rate Limit Handling
 
 The connector automatically handles rate limit errors:
+
 - Detects HTTP 429 responses
 - Implements exponential backoff retry
 - Default retry configuration: 3 retries with 1s base delay
@@ -189,20 +196,20 @@ const error = {
   recoverable: true,
   details: {
     statusCode: 429,
-    rateLimitResetAt: '2024-01-15T10:00:00Z'
-  }
-};
+    rateLimitResetAt: '2024-01-15T10:00:00Z',
+  },
+}
 ```
 
 ## Timeout Configuration
 
 The connector supports configurable timeouts:
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `timeout` | 30000ms | Request timeout |
-| `retries` | 3 | Number of retries on transient errors |
-| `retryDelay` | 1000ms | Base delay for exponential backoff |
+| Setting      | Default | Description                           |
+| ------------ | ------- | ------------------------------------- |
+| `timeout`    | 30000ms | Request timeout                       |
+| `retries`    | 3       | Number of retries on transient errors |
+| `retryDelay` | 1000ms  | Base delay for exponential backoff    |
 
 ### Per-Request Timeout
 
@@ -215,37 +222,37 @@ const request = {
   operation: 'list_events',
   params: { timeMin: '2024-01-01T00:00:00Z' },
   userId: 'user-001',
-  timeoutMs: 60000  // 60 second override
-};
+  timeoutMs: 60000, // 60 second override
+}
 ```
 
 ## Error Handling
 
 The connector uses a structured error taxonomy:
 
-| Code | Description | Recoverable | HTTP Status |
-|------|-------------|-------------|-------------|
-| `AUTH_INVALID` | Invalid or expired OAuth token | No | 401 |
-| `AUTH_EXPIRED` | Token has expired | Yes | 401 |
-| `FORBIDDEN` | Access denied to resource | No | 403 |
-| `NOT_FOUND` | Event or calendar not found | No | 404 |
-| `RATE_LIMITED` | Rate limit exceeded | Yes | 429 |
-| `VALIDATION_ERROR` | Invalid request parameters | No | 400 |
-| `NETWORK_ERROR` | Network connectivity issue | Yes | - |
-| `UNKNOWN_ERROR` | Unexpected error | No | - |
+| Code               | Description                    | Recoverable | HTTP Status |
+| ------------------ | ------------------------------ | ----------- | ----------- |
+| `AUTH_INVALID`     | Invalid or expired OAuth token | No          | 401         |
+| `AUTH_EXPIRED`     | Token has expired              | Yes         | 401         |
+| `FORBIDDEN`        | Access denied to resource      | No          | 403         |
+| `NOT_FOUND`        | Event or calendar not found    | No          | 404         |
+| `RATE_LIMITED`     | Rate limit exceeded            | Yes         | 429         |
+| `VALIDATION_ERROR` | Invalid request parameters     | No          | 400         |
+| `NETWORK_ERROR`    | Network connectivity issue     | Yes         | -           |
+| `UNKNOWN_ERROR`    | Unexpected error               | No          | -           |
 
 ### Error Response Structure
 
 ```typescript
 interface CalendarError {
-  code: CalendarErrorCode;
-  message: string;
-  recoverable: boolean;
+  code: CalendarErrorCode
+  message: string
+  recoverable: boolean
   details?: {
-    statusCode?: number;
-    rateLimitRemaining?: number;
-    rateLimitResetAt?: string;
-  };
+    statusCode?: number
+    rateLimitRemaining?: number
+    rateLimitResetAt?: string
+  }
 }
 ```
 
@@ -266,6 +273,7 @@ const adapter = createCalendarConnectorAdapter({ useMock: true });
 ### Mock Behavior
 
 The mock transport provides:
+
 - Pre-configured sample events
 - Simulated authentication
 - No real HTTP calls
@@ -274,6 +282,7 @@ The mock transport provides:
 ### Mock Data
 
 Default mock events include:
+
 - Team Standup (event-001)
 - Project Review (event-002)
 - Lunch with Sarah (event-003)
@@ -283,6 +292,7 @@ Default mock events include:
 ### Credential Encryption
 
 OAuth tokens are encrypted using AES-256-GCM:
+
 - Encryption key derived from `APP_SECRET_KEY`
 - Format: `aes-256-gcm:iv:authTag:encrypted`
 - Tokens never appear in logs or API responses
@@ -290,6 +300,7 @@ OAuth tokens are encrypted using AES-256-GCM:
 ### Audit Events
 
 All connector operations emit audit events:
+
 - `connector_call_executed` - Successful operation
 - `connector_call_failed` - Failed operation
 - `connector_instance_created` - Instance creation
@@ -297,6 +308,7 @@ All connector operations emit audit events:
 ### Token Redaction
 
 Sensitive data is redacted from:
+
 - Log output
 - API error responses
 - Audit payloads
@@ -305,10 +317,10 @@ Sensitive data is redacted from:
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `APP_SECRET_KEY` | Yes | Key for encrypting OAuth tokens |
-| `CALENDAR_MOCK_MODE` | No | Enable mock mode (`true`/`false`) |
+| Variable             | Required | Description                       |
+| -------------------- | -------- | --------------------------------- |
+| `APP_SECRET_KEY`     | Yes      | Key for encrypting OAuth tokens   |
+| `CALENDAR_MOCK_MODE` | No       | Enable mock mode (`true`/`false`) |
 
 ### Instance Configuration
 
@@ -318,12 +330,12 @@ const instance = {
   connectorDefinitionId: 'definition-id',
   userId: 'user-123',
   name: 'My Google Calendar',
-  authStateRef: encryptedToken,  // Encrypted OAuth token
+  authStateRef: encryptedToken, // Encrypted OAuth token
   config: {
-    defaultCalendarId: 'primary'
+    defaultCalendarId: 'primary',
   },
-  status: 'active'
-};
+  status: 'active',
+}
 ```
 
 ## Examples
@@ -331,9 +343,9 @@ const instance = {
 ### List Today's Events
 
 ```typescript
-const today = new Date();
-const timeMin = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-const timeMax = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+const today = new Date()
+const timeMin = new Date(today.setHours(0, 0, 0, 0)).toISOString()
+const timeMax = new Date(today.setHours(23, 59, 59, 999)).toISOString()
 
 const result = await connector.execute(instance, {
   operation: 'list_events',
@@ -341,11 +353,11 @@ const result = await connector.execute(instance, {
     timeMin,
     timeMax,
     orderBy: 'startTime',
-    singleEvents: true
-  }
-});
+    singleEvents: true,
+  },
+})
 
-console.log(`Found ${result.items.length} events today`);
+console.log(`Found ${result.items.length} events today`)
 ```
 
 ### Create a Recurring Meeting
@@ -358,11 +370,9 @@ const event = await connector.execute(instance, {
     start: { dateTime: '2024-02-05T10:00:00Z' },
     end: { dateTime: '2024-02-05T11:00:00Z' },
     recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR'],
-    attendees: [
-      { email: 'team@example.com' }
-    ]
-  }
-});
+    attendees: [{ email: 'team@example.com' }],
+  },
+})
 ```
 
 ### Search Events
@@ -373,7 +383,7 @@ const result = await connector.execute(instance, {
   params: {
     timeMin: '2024-01-01T00:00:00Z',
     timeMax: '2024-12-31T23:59:59Z',
-    q: 'important meeting'
-  }
-});
+    q: 'important meeting',
+  },
+})
 ```

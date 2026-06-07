@@ -19,21 +19,21 @@ The Tool Usage Heuristics architecture provides structured guidance for tool sel
 ```typescript
 export interface ToolSelectionPolicyProjection {
   /** Core heuristics for tool selection */
-  heuristics: string;
+  heuristics: string
   /** Priority rules for tool selection (optional) */
-  priorityRules?: string[];
+  priorityRules?: string[]
   /** Risk rules for tool selection (optional) */
-  riskRules?: string[];
+  riskRules?: string[]
 }
 ```
 
 ### Field Descriptions
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `heuristics` | string | Yes | Core heuristic rules for tool selection |
-| `priorityRules` | string[] | No | Ordered priority rules |
-| `riskRules` | string[] | No | Risk assessment rules |
+| Field           | Type     | Required | Description                             |
+| --------------- | -------- | -------- | --------------------------------------- |
+| `heuristics`    | string   | Yes      | Core heuristic rules for tool selection |
+| `priorityRules` | string[] | No       | Ordered priority rules                  |
+| `riskRules`     | string[] | No       | Risk assessment rules                   |
 
 ---
 
@@ -55,15 +55,15 @@ export interface ToolSelectionPolicyProjection {
 
 ### Heuristic Explanations
 
-| Heuristic | Chinese | English | Rationale |
-|-----------|---------|---------|-----------|
-| 1 | 直接回答优先于工具调用 | Direct answer over tool call | Avoid unnecessary tool invocations |
-| 2 | 读/查优先于写/改 | Read/query over write/modify | Prefer non-destructive operations |
-| 3 | 低风险优先 | Low risk first | Minimize potential harm |
-| 4 | 精确读取优先于搜索 | Precise read over search | Targeted access is more efficient |
-| 5 | 跨系统写入需审批 | Cross-system writes need approval | Enforce change control |
-| 6 | 同类选便宜快稳的 | Among similar, pick cheap/fast/stable | Optimize resource usage |
-| 7 | 整合结果不倾倒 | Integrate results, don't dump | Synthesize, don't overwhelm |
+| Heuristic | Chinese                | English                               | Rationale                          |
+| --------- | ---------------------- | ------------------------------------- | ---------------------------------- |
+| 1         | 直接回答优先于工具调用 | Direct answer over tool call          | Avoid unnecessary tool invocations |
+| 2         | 读/查优先于写/改       | Read/query over write/modify          | Prefer non-destructive operations  |
+| 3         | 低风险优先             | Low risk first                        | Minimize potential harm            |
+| 4         | 精确读取优先于搜索     | Precise read over search              | Targeted access is more efficient  |
+| 5         | 跨系统写入需审批       | Cross-system writes need approval     | Enforce change control             |
+| 6         | 同类选便宜快稳的       | Among similar, pick cheap/fast/stable | Optimize resource usage            |
+| 7         | 整合结果不倾倒         | Integrate results, don't dump         | Synthesize, don't overwhelm        |
 
 ---
 
@@ -73,25 +73,25 @@ export interface ToolSelectionPolicyProjection {
 
 ```typescript
 export function renderToolSelectionPolicy(policy: ToolSelectionPolicyProjection): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
   // Core heuristics
-  parts.push('Tool Selection Policy:');
-  parts.push(policy.heuristics);
+  parts.push('Tool Selection Policy:')
+  parts.push(policy.heuristics)
 
   // Priority rules (optional)
   if (policy.priorityRules && policy.priorityRules.length > 0) {
-    parts.push('\nPriority Rules:');
-    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'));
+    parts.push('\nPriority Rules:')
+    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'))
   }
 
   // Risk rules (optional)
   if (policy.riskRules && policy.riskRules.length > 0) {
-    parts.push('\nRisk Rules:');
-    parts.push(policy.riskRules.map((r) => `- ${r}`).join('\n'));
+    parts.push('\nRisk Rules:')
+    parts.push(policy.riskRules.map((r) => `- ${r}`).join('\n'))
   }
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 ```
 
@@ -122,30 +122,30 @@ Risk Rules:
 
 ### Web Tools
 
-| Heuristic | Description |
-|-----------|-------------|
-| Cache before fetch | Check local cache before web requests |
-| Rate limit awareness | Respect API rate limits |
-| Result pagination | Handle paginated results efficiently |
-| Error fallback | Graceful degradation on network errors |
+| Heuristic            | Description                            |
+| -------------------- | -------------------------------------- |
+| Cache before fetch   | Check local cache before web requests  |
+| Rate limit awareness | Respect API rate limits                |
+| Result pagination    | Handle paginated results efficiently   |
+| Error fallback       | Graceful degradation on network errors |
 
 ### File Tools
 
-| Heuristic | Description |
-|-----------|-------------|
-| Read before write | Verify file state before modification |
-| Backup critical files | Create backups for important changes |
-| Path validation | Validate paths before access |
-| Encoding detection | Handle various file encodings |
+| Heuristic             | Description                           |
+| --------------------- | ------------------------------------- |
+| Read before write     | Verify file state before modification |
+| Backup critical files | Create backups for important changes  |
+| Path validation       | Validate paths before access          |
+| Encoding detection    | Handle various file encodings         |
 
 ### Memory Tools (Planned)
 
-| Heuristic | Description |
-|-----------|-------------|
-| Recent first | Prefer recent memories over old |
+| Heuristic         | Description                        |
+| ----------------- | ---------------------------------- |
+| Recent first      | Prefer recent memories over old    |
 | Relevance scoring | Use relevance scores for retrieval |
-| Deduplication | Avoid redundant memory storage |
-| Privacy respect | Honor user privacy preferences |
+| Deduplication     | Avoid redundant memory storage     |
+| Privacy respect   | Honor user privacy preferences     |
 
 ---
 
@@ -163,11 +163,11 @@ ModelInputBuildInput
 
 ### Why Separate?
 
-| Aspect | ToolSelectionPolicy | ToolPlaneProjection |
-|--------|---------------------|---------------------|
-| Content | Rules and heuristics | Tool IDs and schemas |
-| Purpose | Guide selection | Enable execution |
-| Mutability | Rarely changes | Changes per request |
+| Aspect       | ToolSelectionPolicy    | ToolPlaneProjection       |
+| ------------ | ---------------------- | ------------------------- |
+| Content      | Rules and heuristics   | Tool IDs and schemas      |
+| Purpose      | Guide selection        | Enable execution          |
+| Mutability   | Rarely changes         | Changes per request       |
 | Cache Impact | Affects Segment C hash | Part of Segment C content |
 
 ---
@@ -214,11 +214,11 @@ SegmentC = SHA-256(toolProjection + toolSelectionPolicy)
 
 ### Hash Stability
 
-| Scenario | Hash Impact | Cache Impact |
-|----------|-------------|--------------|
-| Same policy across requests | No change | Cache hit |
-| Different policy per agent | Changes | Cache miss per agent |
-| Policy update | Changes | New cache entry |
+| Scenario                    | Hash Impact | Cache Impact         |
+| --------------------------- | ----------- | -------------------- |
+| Same policy across requests | No change   | Cache hit            |
+| Different policy per agent  | Changes     | Cache miss per agent |
+| Policy update               | Changes     | New cache entry      |
 
 ### Best Practices
 
@@ -246,14 +246,14 @@ const toolSelectionPolicy: ToolSelectionPolicyProjection = {
   priorityRules: [
     'web.search before file.glob for external information',
     'memory.retrieve before web.search for user-specific data',
-    'file.read before file.glob when path is known'
+    'file.read before file.glob when path is known',
   ],
   riskRules: [
     'file.write requires user confirmation',
     'web.search with PII requires sanitization',
-    'memory.store with sensitive data requires encryption'
-  ]
-};
+    'memory.store with sensitive data requires encryption',
+  ],
+}
 ```
 
 ### Building Model Input with Policy
@@ -265,10 +265,12 @@ const built = await builder.build({
   providerFamily: 'openai',
   toolProjection: {
     toolIds: ['web.search', 'file.read', 'file.write', 'memory.retrieve'],
-    tools: [/* full schemas */]
+    tools: [
+      /* full schemas */
+    ],
   },
-  toolSelectionPolicy: toolSelectionPolicy
-});
+  toolSelectionPolicy: toolSelectionPolicy,
+})
 ```
 
 ---
@@ -278,11 +280,13 @@ const built = await builder.build({
 ### PROMPT_MEMORY_P0_ENABLED
 
 When OFF:
+
 - `toolSelectionPolicy` must be `undefined`
 - Segment C hash equals P9 baseline
 - No policy content in prompt
 
 When ON:
+
 - `toolSelectionPolicy` is rendered
 - Segment C hash includes policy content
 - Policy affects tool selection behavior
@@ -358,11 +362,11 @@ All heuristics are logged in prompt snapshots:
 
 ## File References
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/kernel/model-input/model-input-types.ts` | 402 | ToolSelectionPolicyProjection interface and renderer |
-| `src/kernel/model-input/model-input-builder.ts` | 311 | Segment C rendering with policy |
-| `src/prompt/templates/heuristics/tool-usage.common.md` | 9 | Common tool usage heuristics |
+| File                                                   | Lines | Description                                          |
+| ------------------------------------------------------ | ----- | ---------------------------------------------------- |
+| `src/kernel/model-input/model-input-types.ts`          | 402   | ToolSelectionPolicyProjection interface and renderer |
+| `src/kernel/model-input/model-input-builder.ts`        | 311   | Segment C rendering with policy                      |
+| `src/prompt/templates/heuristics/tool-usage.common.md` | 9     | Common tool usage heuristics                         |
 
 ---
 

@@ -7,10 +7,12 @@
 ## 1. API 启动失败
 
 ### 症状
+
 - 启动时报错 `EADDRINUSE: address already in use`
 - 服务无法在预期端口启动
 
 ### 诊断命令
+
 ```bash
 # 检查端口占用
 lsof -i :3003
@@ -20,6 +22,7 @@ netstat -tlnp | grep 3003
 ```
 
 ### 解决方案
+
 1. 终止占用端口的进程：
    ```bash
    kill -9 <PID>
@@ -30,10 +33,12 @@ netstat -tlnp | grep 3003
    ```
 
 ### 症状：数据库路径错误
+
 - 报错 `Unable to open database file`
 - 启动失败提示 DATABASE_PATH 相关错误
 
 ### 诊断命令
+
 ```bash
 # 检查数据目录是否存在
 ls -la data/
@@ -43,6 +48,7 @@ stat data/app.db
 ```
 
 ### 解决方案
+
 1. 创建数据目录：
    ```bash
    mkdir -p data
@@ -55,11 +61,13 @@ stat data/app.db
 ## 2. better-sqlite3 编译失败
 
 ### 症状
+
 - `npm install` 报错 `gyp ERR!`
 - 报错 `Cannot find module 'better-sqlite3'`
 - 本地编译 native 模块失败
 
 ### 诊断命令
+
 ```bash
 # 检查 Node.js 版本
 node --version
@@ -71,11 +79,13 @@ which g++
 ```
 
 ### 解决方案
+
 1. 确保 Node.js 版本 >= 20：
    ```bash
    nvm use 20
    ```
 2. 安装编译依赖：
+
    ```bash
    # Ubuntu/Debian
    sudo apt-get install build-essential python3
@@ -83,6 +93,7 @@ which g++
    # macOS
    xcode-select --install
    ```
+
 3. 清理并重新安装：
    ```bash
    rm -rf node_modules package-lock.json
@@ -92,11 +103,13 @@ which g++
 ## 3. 数据库迁移失败
 
 ### 症状
+
 - 迁移脚本报错 `SQLITE_ERROR: table already exists`
 - 报错 `migration failed`
 - 数据库状态不一致
 
 ### 诊断命令
+
 ```bash
 # 检查当前迁移状态
 sqlite3 data/app.db "SELECT * FROM migrations ORDER BY id;"
@@ -106,6 +119,7 @@ sqlite3 data/app.db "PRAGMA integrity_check;"
 ```
 
 ### 解决方案
+
 1. 迁移是幂等的，可安全重新运行：
    ```bash
    npm run db:migrate
@@ -123,10 +137,12 @@ sqlite3 data/app.db "PRAGMA integrity_check;"
 ## 4. P0 测试失败诊断
 
 ### 症状
+
 - `npm run test:p0` 报错
 - 测试超时或断言失败
 
 ### 诊断命令
+
 ```bash
 # 运行 P0 测试并查看详细输出
 npm run test:p0
@@ -139,6 +155,7 @@ DEBUG=* npx vitest run tests/e2e/full-flow-suite.test.ts
 ```
 
 ### 解决方案
+
 1. 确保环境变量已配置：
    ```bash
    cat .env | grep -E "(APP_SECRET_KEY|OPENROUTER_API_KEY|OLLAMA_BASE_URL)"
@@ -155,11 +172,13 @@ DEBUG=* npx vitest run tests/e2e/full-flow-suite.test.ts
 ## 5. 环境变量缺失
 
 ### 症状
+
 - 启动时报错 `APP_SECRET_KEY is required`
 - LLM 调用失败
 - 认证相关错误
 
 ### 诊断命令
+
 ```bash
 # 检查 .env 文件是否存在
 ls -la .env
@@ -169,6 +188,7 @@ grep -E "^(APP_SECRET_KEY|OPENROUTER_API_KEY|OLLAMA_BASE_URL)" .env
 ```
 
 ### 解决方案
+
 1. 从示例文件创建配置：
    ```bash
    cp .env.example .env
@@ -183,10 +203,12 @@ grep -E "^(APP_SECRET_KEY|OPENROUTER_API_KEY|OLLAMA_BASE_URL)" .env
 ## 6. npm registry 不可达
 
 ### 症状
+
 - `npm install` 报错 `ETIMEDOUT`
 - 包下载失败或极慢
 
 ### 诊断命令
+
 ```bash
 # 测试 registry 连接
 npm ping
@@ -196,6 +218,7 @@ npm config get registry
 ```
 
 ### 解决方案
+
 1. 切换到国内镜像：
    ```bash
    npm config set registry https://registry.npmmirror.com
@@ -213,11 +236,13 @@ npm config get registry
 ## 7. Foreground 路由返回空
 
 ### 症状
+
 - 消息发送后响应为空
 - LLM 路由返回 `route: null`
 - 无工具调用被触发
 
 ### 诊断命令
+
 ```bash
 # 启用调试日志
 LOG_LEVEL=debug npm run start:api
@@ -227,6 +252,7 @@ curl http://localhost:3003/api/providers
 ```
 
 ### 解决方案
+
 1. 检查 agent 配置：
    ```bash
    curl http://localhost:3003/api/agents/foreground.default/config
@@ -237,11 +263,13 @@ curl http://localhost:3003/api/providers
 ## 8. 审批流程未触发
 
 ### 症状
+
 - 工具调用未进入审批流程
 - 审批请求未生成
 - 自动批准了本应人工审批的操作
 
 ### 诊断命令
+
 ```bash
 # 检查审批配置
 curl http://localhost:3003/api/agents/foreground.default/config | jq '.allowedToolIds'
@@ -251,6 +279,7 @@ curl http://localhost:3003/api/sessions/<session-id>/transcript | jq '.[] | sele
 ```
 
 ### 解决方案
+
 1. 确认工具 ID 在 allowedToolIds 列表中
 2. 检查权限配置是否正确
 3. 查看日志中的审批流程细节：
@@ -262,12 +291,12 @@ curl http://localhost:3003/api/sessions/<session-id>/transcript | jq '.[] | sele
 
 ## 快速参考
 
-| 问题 | 快速诊断命令 |
-|------|-------------|
-| 端口占用 | `lsof -i :3003` |
-| 数据库问题 | `npm run db:health` |
-| 测试失败 | `npm run test:p0` |
-| 类型错误 | `npm run typecheck` |
-| 依赖问题 | `npm ls better-sqlite3` |
+| 问题       | 快速诊断命令            |
+| ---------- | ----------------------- |
+| 端口占用   | `lsof -i :3003`         |
+| 数据库问题 | `npm run db:health`     |
+| 测试失败   | `npm run test:p0`       |
+| 类型错误   | `npm run typecheck`     |
+| 依赖问题   | `npm ls better-sqlite3` |
 
 更多运维细节请参阅 [RUNBOOK.md](../RUNBOOK.md)。

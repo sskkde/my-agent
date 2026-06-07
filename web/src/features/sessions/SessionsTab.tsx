@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { getSessions, updateSession } from '../../api/client';
-import type { ConsoleSessionInfo, SessionsResponse } from '../../api/types';
-import ErrorMessage from '../../components/ErrorMessage';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import React, { useEffect, useState, useCallback } from 'react'
+import { getSessions, updateSession } from '../../api/client'
+import type { ConsoleSessionInfo, SessionsResponse } from '../../api/types'
+import ErrorMessage from '../../components/ErrorMessage'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
-type SessionStatus = 'active' | 'archived' | 'closed';
+type SessionStatus = 'active' | 'archived' | 'closed'
 
 interface SessionsState {
-  sessions: ConsoleSessionInfo[];
-  total: number;
-  loading: boolean;
-  error: Error | null;
+  sessions: ConsoleSessionInfo[]
+  total: number
+  loading: boolean
+  error: Error | null
 }
 
 const SessionsTab: React.FC = () => {
@@ -19,149 +19,139 @@ const SessionsTab: React.FC = () => {
     total: 0,
     loading: true,
     error: null,
-  });
-  const [statusFilter, setStatusFilter] = useState<SessionStatus | ''>('');
-  const [currentPage, setCurrentPage] = useState(0);
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
+  })
+  const [statusFilter, setStatusFilter] = useState<SessionStatus | ''>('')
+  const [currentPage, setCurrentPage] = useState(0)
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
 
-  const limit = 10;
+  const limit = 10
 
   const fetchSessions = useCallback(async () => {
-    setSessionsState((prev) => ({ ...prev, loading: true, error: null }));
+    setSessionsState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const result: SessionsResponse = await getSessions(
-        statusFilter || undefined,
-        limit,
-        currentPage * limit
-      );
+      const result: SessionsResponse = await getSessions(statusFilter || undefined, limit, currentPage * limit)
       setSessionsState({
         sessions: result.sessions,
         total: result.total,
         loading: false,
         error: null,
-      });
+      })
     } catch (err) {
       setSessionsState({
         sessions: [],
         total: 0,
         loading: false,
         error: err instanceof Error ? err : new Error('Failed to load sessions'),
-      });
+      })
     }
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage])
 
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    fetchSessions()
+  }, [fetchSessions])
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value as SessionStatus | '');
-    setCurrentPage(0);
-  };
+    setStatusFilter(e.target.value as SessionStatus | '')
+    setCurrentPage(0)
+  }
 
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-  };
+    setCurrentPage(newPage)
+  }
 
   const handleArchiveSession = async (sessionId: string) => {
     try {
-      await updateSession(sessionId, { status: 'archived' });
+      await updateSession(sessionId, { status: 'archived' })
       setSessionsState((prev) => ({
         ...prev,
-        sessions: prev.sessions.map((s) =>
-          s.sessionId === sessionId ? { ...s, status: 'archived' } : s
-        ),
-      }));
+        sessions: prev.sessions.map((s) => (s.sessionId === sessionId ? { ...s, status: 'archived' } : s)),
+      }))
     } catch (err) {
       setSessionsState((prev) => ({
         ...prev,
         error: err instanceof Error ? err : new Error('Failed to archive session'),
-      }));
+      }))
     }
-  };
+  }
 
   const handleCloseSession = async (sessionId: string) => {
     try {
-      await updateSession(sessionId, { status: 'closed' });
+      await updateSession(sessionId, { status: 'closed' })
       setSessionsState((prev) => ({
         ...prev,
-        sessions: prev.sessions.map((s) =>
-          s.sessionId === sessionId ? { ...s, status: 'closed' } : s
-        ),
-      }));
+        sessions: prev.sessions.map((s) => (s.sessionId === sessionId ? { ...s, status: 'closed' } : s)),
+      }))
     } catch (err) {
       setSessionsState((prev) => ({
         ...prev,
         error: err instanceof Error ? err : new Error('Failed to close session'),
-      }));
+      }))
     }
-  };
+  }
 
   const handleStartEditing = (session: ConsoleSessionInfo) => {
-    setEditingSessionId(session.sessionId);
-    setEditingTitle(session.title);
-  };
+    setEditingSessionId(session.sessionId)
+    setEditingTitle(session.title)
+  }
 
   const handleSaveTitle = async () => {
-    if (!editingSessionId) return;
+    if (!editingSessionId) return
 
     try {
-      await updateSession(editingSessionId, { title: editingTitle });
+      await updateSession(editingSessionId, { title: editingTitle })
       setSessionsState((prev) => ({
         ...prev,
-        sessions: prev.sessions.map((s) =>
-          s.sessionId === editingSessionId ? { ...s, title: editingTitle } : s
-        ),
-      }));
-      setEditingSessionId(null);
-      setEditingTitle('');
+        sessions: prev.sessions.map((s) => (s.sessionId === editingSessionId ? { ...s, title: editingTitle } : s)),
+      }))
+      setEditingSessionId(null)
+      setEditingTitle('')
     } catch (err) {
       setSessionsState((prev) => ({
         ...prev,
         error: err instanceof Error ? err : new Error('Failed to update title'),
-      }));
+      }))
     }
-  };
+  }
 
   const handleCancelEditing = () => {
-    setEditingSessionId(null);
-    setEditingTitle('');
-  };
+    setEditingSessionId(null)
+    setEditingTitle('')
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSaveTitle();
+      handleSaveTitle()
     } else if (e.key === 'Escape') {
-      handleCancelEditing();
+      handleCancelEditing()
     }
-  };
+  }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = new Date(dateString)
     return date.toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-    });
-  };
+    })
+  }
 
   const getStatusBadgeClass = (status: SessionStatus) => {
     switch (status) {
       case 'active':
-        return 'status-badge status-active';
+        return 'status-badge status-active'
       case 'archived':
-        return 'status-badge status-archived';
+        return 'status-badge status-archived'
       case 'closed':
-        return 'status-badge status-closed';
+        return 'status-badge status-closed'
       default:
-        return 'status-badge';
+        return 'status-badge'
     }
-  };
+  }
 
-  const totalPages = Math.ceil(sessionsState.total / limit);
+  const totalPages = Math.ceil(sessionsState.total / limit)
 
   return (
     <div data-testid="sessions-panel" className="sessions-panel">
@@ -190,11 +180,7 @@ const SessionsTab: React.FC = () => {
           </div>
 
           {sessionsState.error && (
-            <ErrorMessage
-              error={sessionsState.error}
-              retry={{ onClick: fetchSessions }}
-              size="small"
-            />
+            <ErrorMessage error={sessionsState.error} retry={{ onClick: fetchSessions }} size="small" />
           )}
 
           {sessionsState.loading ? (
@@ -254,9 +240,7 @@ const SessionsTab: React.FC = () => {
                         </span>
                       </td>
                       <td className="col-messages">{session.messageCount}</td>
-                      <td className="col-activity">
-                        {formatDate(session.lastActivityAt)}
-                      </td>
+                      <td className="col-activity">{formatDate(session.lastActivityAt)}</td>
                       <td className="col-actions">
                         <div className="action-buttons">
                           {session.status !== 'archived' && (
@@ -366,8 +350,7 @@ const SessionsTab: React.FC = () => {
                     上一页
                   </button>
                   <span className="pagination-info">
-                    第 {currentPage + 1} / {totalPages} 页
-                    (共 {sessionsState.total} 条)
+                    第 {currentPage + 1} / {totalPages} 页 (共 {sessionsState.total} 条)
                   </span>
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
@@ -383,7 +366,7 @@ const SessionsTab: React.FC = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SessionsTab;
+export default SessionsTab

@@ -83,11 +83,13 @@ PRAGMA integrity_check;
 ```
 
 **优点**:
+
 - SQLite 原生支持
 - 自动处理 WAL 文件
 - 内置完整性验证
 
 **适用场景**:
+
 - 备份文件较小（< 1GB）
 - 目标数据库已存在
 
@@ -113,10 +115,12 @@ chmod 644 "$DATABASE_PATH"
 ```
 
 **优点**:
+
 - 操作简单快速
 - 无需 SQLite 交互
 
 **适用场景**:
+
 - 灾难恢复（数据库完全丢失）
 - 迁移到新服务器
 - 备份文件较大
@@ -136,6 +140,7 @@ sqlite3 "$DATABASE_PATH" "PRAGMA integrity_check;"
 ```
 
 **适用场景**:
+
 - SQL 文本备份
 - 需要检查备份内容
 - 跨版本迁移
@@ -247,12 +252,14 @@ journalctl -u agent-platform -f
 ### 问题 1：备份文件损坏
 
 **症状**:
+
 ```
 Error: file is not a database
 PRAGMA integrity_check: *** in database main ***
 ```
 
 **解决**:
+
 ```bash
 # 检查文件类型
 file data/backups/backup-*.db
@@ -269,11 +276,13 @@ cp data/backups/backup-OLDER-DATE.db "$DATABASE_PATH"
 ### 问题 2：版本不匹配
 
 **症状**:
+
 ```
 Error: Migration version mismatch
 ```
 
 **解决**:
+
 ```bash
 # 检查备份的迁移版本
 sqlite3 data/backups/backup-*.db "SELECT * FROM schema_version;"
@@ -290,12 +299,14 @@ git checkout v0.6.0  # 或其他匹配版本
 ### 问题 3：权限问题
 
 **症状**:
+
 ```
 Error: unable to open database file
 Error: disk I/O error
 ```
 
 **解决**:
+
 ```bash
 # 检查文件权限
 ls -la "$DATABASE_PATH"
@@ -314,11 +325,13 @@ ls -la "$(dirname $DATABASE_PATH)"
 ### 问题 4：WAL 文件冲突
 
 **症状**:
+
 ```
 Error: database is locked
 ```
 
 **解决**:
+
 ```bash
 # 确保服务已停止
 docker compose down  # 或 systemctl stop agent-platform
@@ -338,11 +351,13 @@ cp data/backups/backup-*.db "$DATABASE_PATH"
 ### 问题 5：磁盘空间不足
 
 **症状**:
+
 ```
 Error: database or disk is full
 ```
 
 **解决**:
+
 ```bash
 # 检查磁盘空间
 df -h "$(dirname $DATABASE_PATH)"
@@ -363,6 +378,7 @@ rm -f "${DATABASE_PATH}.pre-restore-*"
 **症状**: 恢复后表数据少于预期
 
 **解决**:
+
 ```bash
 # 检查备份文件中的数据
 sqlite3 data/backups/backup-*.db "SELECT COUNT(*) FROM sessions;"

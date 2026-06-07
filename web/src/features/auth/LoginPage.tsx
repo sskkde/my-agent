@@ -1,71 +1,71 @@
-import React, { useState, FormEvent } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import ErrorMessage from '../../components/ErrorMessage';
-import './Auth.css';
+import React, { useState, FormEvent } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import ErrorMessage from '../../components/ErrorMessage'
+import './Auth.css'
 
 interface LoginPageProps {
-  mode: 'setup' | 'login';
+  mode: 'setup' | 'login'
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ mode }) => {
-  const { login, setupUser } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<Error | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, setupUser } = useAuth()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<Error | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
+    e.preventDefault()
+    setError(null)
 
     if (!username.trim()) {
-      setError(new Error('用户名不能为空'));
-      return;
+      setError(new Error('用户名不能为空'))
+      return
     }
 
     if (!password) {
-      setError(new Error('密码不能为空'));
-      return;
+      setError(new Error('密码不能为空'))
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
 
     try {
       if (mode === 'setup') {
-        await setupUser(username.trim(), password);
+        await setupUser(username.trim(), password)
       } else {
-        await login(username.trim(), password);
+        await login(username.trim(), password)
       }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('操作失败，请重试'));
+      setError(err instanceof Error ? err : new Error('操作失败，请重试'))
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
-  const title = mode === 'setup' ? '初次设置' : '登录';
-  const subtitle = mode === 'setup'
-    ? '创建管理员账户以开始使用 Agent Platform'
-    : '请输入您的凭据以继续';
-  const submitButtonText = mode === 'setup' ? '创建账户' : '登录';
-  const usernameTestId = mode === 'setup' ? 'setup-username' : 'login-username';
-  const passwordTestId = mode === 'setup' ? 'setup-password' : 'login-password';
-  const submitTestId = mode === 'setup' ? 'setup-submit' : 'login-submit';
-  const errorTestId = mode === 'setup' ? 'setup-error' : 'login-error';
+  const title = mode === 'setup' ? '初次设置' : '登录'
+  const subtitle = mode === 'setup' ? '创建管理员账户以开始使用 Agent Platform' : '请输入您的凭据以继续'
+  const submitButtonText = mode === 'setup' ? '创建账户' : '登录'
+  const usernameTestId = mode === 'setup' ? 'setup-username' : 'login-username'
+  const passwordTestId = mode === 'setup' ? 'setup-password' : 'login-password'
+  const submitTestId = mode === 'setup' ? 'setup-submit' : 'login-submit'
+  const errorTestId = mode === 'setup' ? 'setup-error' : 'login-error'
 
   return (
     <div className="auth-page" data-testid="login-page">
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <h1 className="auth-title" data-testid="auth-title">{title}</h1>
-            <p className="auth-subtitle" data-testid="auth-subtitle">{subtitle}</p>
+            <h1 className="auth-title" data-testid="auth-title">
+              {title}
+            </h1>
+            <p className="auth-subtitle" data-testid="auth-subtitle">
+              {subtitle}
+            </p>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
-            {error && (
-              <ErrorMessage error={error} size="small" data-testid={errorTestId} />
-            )}
+            {error && <ErrorMessage error={error} size="small" data-testid={errorTestId} />}
 
             <div className="auth-field">
               <label htmlFor={usernameTestId} className="auth-label">
@@ -101,19 +101,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ mode }) => {
               />
             </div>
 
-            <button
-              type="submit"
-              className="auth-submit-button"
-              disabled={isSubmitting}
-              data-testid={submitTestId}
-            >
+            <button type="submit" className="auth-submit-button" disabled={isSubmitting} data-testid={submitTestId}>
               {isSubmitting ? '处理中...' : submitButtonText}
             </button>
           </form>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default LoginPage;
+export default LoginPage

@@ -34,12 +34,14 @@ The AI assistant will process your request and respond. Complex requests may tri
 Sessions are the primary way to interact with the AI assistant. Each session maintains its own conversation history and context.
 
 **Key capabilities:**
+
 - Create unlimited sessions for different topics or projects
 - Session history is preserved across browser sessions
 - Real-time message streaming via Server-Sent Events
 - Context is maintained within each session
 
 **Tips:**
+
 - Use descriptive session names for easier navigation
 - Create separate sessions for unrelated topics to avoid context mixing
 
@@ -48,10 +50,12 @@ Sessions are the primary way to interact with the AI assistant. Each session mai
 Runs represent background task executions. When you submit a complex request, the platform may create a PlannerRun or WorkflowRun.
 
 **Types of runs:**
+
 - **PlannerRun** — Created when the AI plans a multi-step task
 - **WorkflowRun** — Created when a saved workflow is executed
 
 **Monitoring runs:**
+
 1. Go to the **Monitor** tab
 2. View all active and completed runs
 3. Click on a run to see detailed progress
@@ -61,12 +65,14 @@ Runs represent background task executions. When you submit a complex request, th
 Some operations require your explicit approval before execution. This is a safety mechanism for sensitive actions.
 
 **Approval workflow:**
+
 1. When an approval is needed, you'll see a notification
 2. Navigate to the **Approvals** tab
 3. Review the requested action and its parameters
 4. Click **Approve** to allow or **Reject** to deny
 
 **Common approval scenarios:**
+
 - Writing to external systems (Slack, GitHub, etc.)
 - Executing potentially destructive operations
 - Accessing sensitive data
@@ -76,12 +82,14 @@ Some operations require your explicit approval before execution. This is a safet
 Workflows are reusable multi-step processes. You can save a successful PlannerRun as a workflow for future use.
 
 **Creating a workflow:**
+
 1. After a successful PlannerRun, navigate to **Workflows**
 2. Find the run and click **Save as Workflow**
 3. Give it a descriptive name
 4. Review and adjust steps if needed
 
 **Running a workflow:**
+
 1. Go to **Workflows** tab
 2. Find your saved workflow
 3. Click **Run Now**
@@ -92,6 +100,7 @@ Workflows are reusable multi-step processes. You can save a successful PlannerRu
 Triggers automate workflow execution based on schedules or external events.
 
 **Trigger types:**
+
 - **Schedule Trigger** — Run workflows on a cron schedule
 - **Webhook Trigger** — Run workflows when an HTTP request is received
 - **Connector Trigger** — Run workflows based on external system events
@@ -124,6 +133,7 @@ The platform validates your cron expression and shows a preview of the next exec
 5. Click **Create**
 
 After creation, you'll receive:
+
 - **Webhook URL**: Unique endpoint URL
 - **HMAC Secret**: Secret for request signature verification
 
@@ -141,11 +151,13 @@ Use these to configure external systems to trigger your workflow.
 The platform maintains long-term memory of important information extracted from conversations.
 
 **What's stored:**
+
 - Key decisions made during conversations
 - Important facts and preferences you've shared
 - Task outcomes and learnings
 
 **Managing memory:**
+
 1. Go to **Memory** tab
 2. Browse or search stored memories
 3. Delete outdated or incorrect entries
@@ -157,11 +169,13 @@ Memory helps the assistant provide more contextual and personalized responses ov
 Memory budgets control resource consumption to ensure fair platform usage.
 
 **Budget types:**
+
 - **Token Budget** — LLM token consumption per period
 - **Request Budget** — API request count per period
 - **Storage Budget** — Memory storage size limit
 
 **Budget periods:**
+
 - **Daily** — Resets at midnight UTC
 - **Monthly** — Resets on the 1st of each month
 - **Per Session** — Session lifetime (never resets)
@@ -180,11 +194,13 @@ Memory budgets control resource consumption to ensure fair platform usage.
 #### When Budget is Exceeded
 
 If you exceed your budget:
+
 1. You'll see a `BUDGET_EXCEEDED` error
 2. The request will not be processed
 3. Budget resets automatically at the end of the period
 
 **Tips for budget management:**
+
 - Monitor usage regularly in Settings
 - Use shorter conversations for simple tasks
 - Close unused sessions to free storage
@@ -195,12 +211,14 @@ If you exceed your budget:
 The Observability Console provides visibility into all platform operations.
 
 **Features:**
+
 - Run history with status filtering
 - Timeline view of run execution
 - Replay Preview for detailed inspection
 - Dead Letter Queue (DLQ) for failed operations
 
 **Using Replay Preview:**
+
 1. Navigate to **Observability** tab
 2. Find a completed run
 3. Click **Replay Preview**
@@ -213,6 +231,7 @@ Replay Preview is read-only and has no side effects, making it safe for auditing
 The DLQ captures failed operations that couldn't be processed normally.
 
 **What appears in DLQ:**
+
 - Failed workflow step executions
 - Connector request failures
 - Timeout events
@@ -246,6 +265,7 @@ The DLQ captures failed operations that couldn't be processed normally.
   - Failure metadata
 
 **DLQ best practices:**
+
 - Review DLQ regularly to catch systemic issues
 - Retry transient failures (network timeouts, rate limits)
 - Discard permanent failures after investigation
@@ -256,11 +276,13 @@ The DLQ captures failed operations that couldn't be processed normally.
 Connectors enable integration with external systems like GitHub, Slack, Jira, and more.
 
 **Viewing connectors:**
+
 1. Go to **Connectors** tab
 2. See all available connector types
 3. Click on a connector to see its tools and events
 
 **Connector operations:**
+
 - View available tools (actions the connector can perform)
 - View available events (triggers the connector can emit)
 - Configure connector instances
@@ -274,6 +296,7 @@ Connectors enable integration with external systems like GitHub, Slack, Jira, an
 The Sessions tab is your main workspace for conversations.
 
 **What you see:**
+
 - List of all sessions on the left
 - Active session conversation in the center
 - Message input at the bottom
@@ -281,6 +304,7 @@ The Sessions tab is your main workspace for conversations.
 **Screenshot placeholder:** Sessions tab showing session list and conversation view
 
 **Actions:**
+
 - Click a session to open it
 - Click **New Session** to start fresh
 - Use the session menu to rename or delete
@@ -290,6 +314,7 @@ The Sessions tab is your main workspace for conversations.
 Track the progress of running tasks.
 
 **What you see:**
+
 - List of runs with status indicators (Running, Completed, Failed)
 - Progress bars for active runs
 - Execution details on selection
@@ -301,6 +326,7 @@ Track the progress of running tasks.
 Review and respond to approval requests.
 
 **What you see:**
+
 - Pending approvals at the top
 - Approval history below
 - Detailed context for each request
@@ -312,6 +338,7 @@ Review and respond to approval requests.
 Manage saved workflows.
 
 **What you see:**
+
 - List of saved workflows
 - Run history for each workflow
 - Quick actions (Run Now, Edit, Delete)
@@ -323,6 +350,7 @@ Manage saved workflows.
 Configure automation triggers.
 
 **What you see:**
+
 - List of configured triggers
 - Trigger type, status, and schedule
 - Create new trigger button
@@ -334,6 +362,7 @@ Configure automation triggers.
 Review and manage stored memories.
 
 **What you see:**
+
 - Searchable list of memories
 - Memory content and metadata
 - Filter by session or run
@@ -345,6 +374,7 @@ Review and manage stored memories.
 Inspect platform operations.
 
 **What you see:**
+
 - Run list with filtering
 - Timeline view for selected run
 - DLQ entries if any failures occurred
@@ -356,6 +386,7 @@ Inspect platform operations.
 View and configure external integrations.
 
 **What you see:**
+
 - Available connector types
 - Connector tools and events
 - Instance configurations
@@ -366,12 +397,12 @@ View and configure external integrations.
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Enter` | Send message (when input is focused) |
-| `Shift + Enter` | New line in message input |
-| `Esc` | Close modals and drawers |
-| `?` | Open keyboard shortcuts help |
+| Shortcut        | Action                               |
+| --------------- | ------------------------------------ |
+| `Enter`         | Send message (when input is focused) |
+| `Shift + Enter` | New line in message input            |
+| `Esc`           | Close modals and drawers             |
+| `?`             | Open keyboard shortcuts help         |
 
 ---
 
@@ -404,6 +435,7 @@ Data is stored in a SQLite database on the server. Conversations, memories, and 
 ### Why am I seeing errors?
 
 Check the Observability tab for details on failed operations. Common causes include:
+
 - LLM provider issues
 - Network connectivity problems
 - External service unavailability

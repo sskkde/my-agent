@@ -1,49 +1,49 @@
-import { useState, useCallback } from 'react';
-import * as client from '../../api/client';
+import { useState, useCallback } from 'react'
+import * as client from '../../api/client'
 
 export interface ApprovalActionsResult {
-  approve: (approvalRequestId: string) => Promise<void>;
-  reject: (approvalRequestId: string, reason?: string) => Promise<void>;
-  isSubmitting: boolean;
-  error: string | null;
+  approve: (approvalRequestId: string) => Promise<void>
+  reject: (approvalRequestId: string, reason?: string) => Promise<void>
+  isSubmitting: boolean
+  error: string | null
 }
 
 export function useApprovalActions(): ApprovalActionsResult {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const approve = useCallback(async (approvalRequestId: string): Promise<void> => {
-    setIsSubmitting(true);
-    setError(null);
+    setIsSubmitting(true)
+    setError(null)
     try {
-      await client.respondApproval(approvalRequestId, 'approve_once');
+      await client.respondApproval(approvalRequestId, 'approve_once')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to approve';
-      setError(message);
-      throw err;
+      const message = err instanceof Error ? err.message : 'Failed to approve'
+      setError(message)
+      throw err
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  }, []);
+  }, [])
 
   const reject = useCallback(async (approvalRequestId: string, reason?: string): Promise<void> => {
-    setIsSubmitting(true);
-    setError(null);
+    setIsSubmitting(true)
+    setError(null)
     try {
-      await client.respondApproval(approvalRequestId, 'reject', reason);
+      await client.respondApproval(approvalRequestId, 'reject', reason)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to reject';
-      setError(message);
-      throw err;
+      const message = err instanceof Error ? err.message : 'Failed to reject'
+      setError(message)
+      throw err
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  }, []);
+  }, [])
 
   return {
     approve,
     reject,
     isSubmitting,
     error,
-  };
+  }
 }

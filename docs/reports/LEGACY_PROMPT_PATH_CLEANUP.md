@@ -16,17 +16,17 @@ The legacy prompt-builder and prompt-registry modules have been successfully rem
 
 ### Source Files
 
-| File | Lines | Purpose | Replacement |
-|------|-------|---------|-------------|
-| `src/agents/prompt-builder.ts` | ~290 | Legacy message builder | `ModelInputBuilder` |
-| `src/agents/prompt-registry.ts` | ~360 | Legacy prompt registry | `PromptTemplateRegistry` |
+| File                            | Lines | Purpose                | Replacement              |
+| ------------------------------- | ----- | ---------------------- | ------------------------ |
+| `src/agents/prompt-builder.ts`  | ~290  | Legacy message builder | `ModelInputBuilder`      |
+| `src/agents/prompt-registry.ts` | ~360  | Legacy prompt registry | `PromptTemplateRegistry` |
 
 ### Test Files
 
-| File | Lines | Purpose | Replacement |
-|------|-------|---------|-------------|
-| `tests/unit/agents/prompt-builder.test.ts` | ~120 | Legacy builder tests | ModelInputBuilder tests |
-| `tests/unit/agents/prompt-registry.test.ts` | ~150 | Legacy registry tests | Template registry tests |
+| File                                        | Lines | Purpose               | Replacement             |
+| ------------------------------------------- | ----- | --------------------- | ----------------------- |
+| `tests/unit/agents/prompt-builder.test.ts`  | ~120  | Legacy builder tests  | ModelInputBuilder tests |
+| `tests/unit/agents/prompt-registry.test.ts` | ~150  | Legacy registry tests | Template registry tests |
 
 **Total lines removed**: ~920 lines
 
@@ -64,24 +64,24 @@ The legacy prompt-builder and prompt-registry modules have been successfully rem
 
 ### Dead Code Methods
 
-| Method | Lines | Reason |
-|--------|-------|--------|
-| `callLLMRouter()` | ~73 | Legacy routing_json path via prompt-builder |
-| `processRouterResult()` | ~35 | Handler for callLLMRouter results |
-| `logShadowDiff()` | ~27 | Debug logging for shadow mode comparison |
-| `filterAllowedTools()` | ~15 | Moved to routing-json-parser module |
-| `parseRouterOutput()` | ~73 | Moved to routing-json-parser module |
+| Method                  | Lines | Reason                                      |
+| ----------------------- | ----- | ------------------------------------------- |
+| `callLLMRouter()`       | ~73   | Legacy routing_json path via prompt-builder |
+| `processRouterResult()` | ~35   | Handler for callLLMRouter results           |
+| `logShadowDiff()`       | ~27   | Debug logging for shadow mode comparison    |
+| `filterAllowedTools()`  | ~15   | Moved to routing-json-parser module         |
+| `parseRouterOutput()`   | ~73   | Moved to routing-json-parser module         |
 
 **Total methods removed**: 5
 
 ### Feature Flags
 
-| Flag | Default | Status | Removal Date |
-|------|---------|--------|--------------|
-| `MODEL_INPUT_BUILDER_ENABLED` | `true` | Removed | 2026-06-01 (Task 4) |
-| `MODEL_INPUT_SHADOW_MODE` | `false` | Removed | 2026-06-01 (Task 4) |
-| `MODEL_INPUT_LEGACY_FALLBACK` | `true` | Removed | 2026-06-01 (Task 4) |
-| `FOREGROUND_DECIDE_LEGACY_FALLBACK` | `true` | Removed | 2026-06-01 (Task 6) |
+| Flag                                | Default | Status  | Removal Date        |
+| ----------------------------------- | ------- | ------- | ------------------- |
+| `MODEL_INPUT_BUILDER_ENABLED`       | `true`  | Removed | 2026-06-01 (Task 4) |
+| `MODEL_INPUT_SHADOW_MODE`           | `false` | Removed | 2026-06-01 (Task 4) |
+| `MODEL_INPUT_LEGACY_FALLBACK`       | `true`  | Removed | 2026-06-01 (Task 4) |
+| `FOREGROUND_DECIDE_LEGACY_FALLBACK` | `true`  | Removed | 2026-06-01 (Task 6) |
 
 **Rationale**: ModelInputBuilder is now the sole mechanism. No fallback or shadow mode needed.
 
@@ -101,21 +101,22 @@ The legacy prompt-builder and prompt-registry modules have been successfully rem
 ```typescript
 function resolvePrompt(
   promptType: string,
-  version?: string | null
+  version?: string | null,
 ): {
-  record: { id: string; version: string };
-  fallbackReason?: 'UNKNOWN_PROMPT_VERSION' | 'UNKNOWN_PROMPT_TYPE';
+  record: { id: string; version: string }
+  fallbackReason?: 'UNKNOWN_PROMPT_VERSION' | 'UNKNOWN_PROMPT_TYPE'
 } {
   return {
     record: {
       id: promptType,
       version: version ?? 'default',
     },
-  };
+  }
 }
 ```
 
 **Why Not Use New PromptTemplateRegistry?**
+
 - Old API: `resolvePrompt(promptType, version)` → single record
 - New API: `resolveTemplate(agentKind, providerFamily)` → array of templates
 - Old prompt types don't map cleanly to new system
@@ -239,6 +240,7 @@ parseForegroundRoutingJsonOutput() ← routing-json-parser.ts (EXTRACTED)
 ### 1. Test Files Still Reference Legacy Flags
 
 **Files**:
+
 - `tests/integration/foreground/foreground-decide.integration.test.ts`
 - `tests/integration/memory/prompt-memory-p0-flag.test.ts`
 - `tests/unit/foreground/shadow-mode.test.ts`
@@ -252,7 +254,8 @@ parseForegroundRoutingJsonOutput() ← routing-json-parser.ts (EXTRACTED)
 
 ### 2. Historical Documentation May Be Inconsistent
 
-**Files**: 
+**Files**:
+
 - `agent_architecture_docs/foreground_conversation_agent_and_planner_agent_v1.md`
 
 **Risk**: Documentation mentions legacy paths that no longer exist.
@@ -271,18 +274,18 @@ parseForegroundRoutingJsonOutput() ← routing-json-parser.ts (EXTRACTED)
 
 ## Timeline
 
-| Task | Date | Description |
-|------|------|-------------|
-| Task 1 | 2026-06-01 | Repository scan and baseline verification |
-| Task 2 | 2026-06-01 | Dependency install and baseline tests |
-| Task 3 | 2026-06-01 | Migrate computeEffectiveAllowedToolIds |
-| Task 4 | 2026-06-01 | Force ModelInputBuilder as sole mechanism |
-| Task 5 | 2026-06-01 | MODEL_INPUT_* flag documentation cleanup |
-| Task 6 | 2026-06-01 | Refactor decide fallback (no legacy) |
-| Task 7 | 2026-06-01 | Extract routing JSON parser |
-| Task 8 | 2026-06-01 | Delete legacy files |
-| Task 9 | Future | Update test files |
-| Task 10 | Future | Integration testing |
+| Task    | Date       | Description                                      |
+| ------- | ---------- | ------------------------------------------------ |
+| Task 1  | 2026-06-01 | Repository scan and baseline verification        |
+| Task 2  | 2026-06-01 | Dependency install and baseline tests            |
+| Task 3  | 2026-06-01 | Migrate computeEffectiveAllowedToolIds           |
+| Task 4  | 2026-06-01 | Force ModelInputBuilder as sole mechanism        |
+| Task 5  | 2026-06-01 | MODEL*INPUT*\* flag documentation cleanup        |
+| Task 6  | 2026-06-01 | Refactor decide fallback (no legacy)             |
+| Task 7  | 2026-06-01 | Extract routing JSON parser                      |
+| Task 8  | 2026-06-01 | Delete legacy files                              |
+| Task 9  | Future     | Update test files                                |
+| Task 10 | Future     | Integration testing                              |
 | Task 11 | 2026-06-01 | Documentation and cleanup report (this document) |
 
 ---

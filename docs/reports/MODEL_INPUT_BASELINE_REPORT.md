@@ -10,11 +10,11 @@
 
 ### 1.1 Active Prompts
 
-| Prompt ID | Version | Runtime Enabled | Description |
-|-----------|---------|-----------------|-------------|
-| `foreground.router` | 2026-05-05 | ✅ Yes | Foreground routing agent that classifies user messages |
-| `planner.executor` | 2026-05-05 | ❌ No (spec-only) | Planning agent for multi-step execution plans |
-| `subagent.executor` | 2026-05-05 | ❌ No (spec-only) | Background task executor |
+| Prompt ID           | Version    | Runtime Enabled   | Description                                            |
+| ------------------- | ---------- | ----------------- | ------------------------------------------------------ |
+| `foreground.router` | 2026-05-05 | ✅ Yes            | Foreground routing agent that classifies user messages |
+| `planner.executor`  | 2026-05-05 | ❌ No (spec-only) | Planning agent for multi-step execution plans          |
+| `subagent.executor` | 2026-05-05 | ❌ No (spec-only) | Background task executor                               |
 
 ### 1.2 FOREGROUND_ROUTER_PROMPT Structure
 
@@ -49,30 +49,30 @@ Your only job is to classify the user's latest message into the platform's routi
 
 Location: `src/agents/prompt-builder.ts:173-226`
 
-| Layer | Source | Role | Condition |
-|-------|--------|------|-----------|
-| 1 | `promptRecord.baseSystemPrompt` | system | Always |
-| 2 | `promptRecord.routingOverlayPrompt` | system | If defined |
-| 3 | `agentConfig.routingPrompt` | system | If defined |
-| 3b | `agentConfig.systemPrompt` | system | If defined |
-| 4 | `buildDynamicRoutingPrompt()` | user | Always |
+| Layer | Source                              | Role   | Condition  |
+| ----- | ----------------------------------- | ------ | ---------- |
+| 1     | `promptRecord.baseSystemPrompt`     | system | Always     |
+| 2     | `promptRecord.routingOverlayPrompt` | system | If defined |
+| 3     | `agentConfig.routingPrompt`         | system | If defined |
+| 3b    | `agentConfig.systemPrompt`          | system | If defined |
+| 4     | `buildDynamicRoutingPrompt()`       | user   | Always     |
 
 ### 2.2 Message Assembly Order
 
 ```typescript
 messages = [
-  { role: 'system', content: promptRecord.baseSystemPrompt },      // Layer 1
-  { role: 'system', content: promptRecord.routingOverlayPrompt },  // Layer 2 (optional)
-  { role: 'system', content: agentConfig.routingPrompt },          // Layer 3 (optional)
-  { role: 'system', content: agentConfig.systemPrompt },           // Layer 3b (optional)
-  { role: 'user', content: dynamicPrompt }                         // Layer 4
+  { role: 'system', content: promptRecord.baseSystemPrompt }, // Layer 1
+  { role: 'system', content: promptRecord.routingOverlayPrompt }, // Layer 2 (optional)
+  { role: 'system', content: agentConfig.routingPrompt }, // Layer 3 (optional)
+  { role: 'system', content: agentConfig.systemPrompt }, // Layer 3b (optional)
+  { role: 'user', content: dynamicPrompt }, // Layer 4
 ]
 ```
 
 ### 2.3 Effective Tool IDs Computation
 
 ```typescript
-const effectiveToolIds = computeEffectiveAllowedToolIds(agentConfig, toolCatalog);
+const effectiveToolIds = computeEffectiveAllowedToolIds(agentConfig, toolCatalog)
 // Intersection of: agentConfig.allowedToolIds ∩ toolCatalog
 ```
 
@@ -86,18 +86,18 @@ Location: `src/kernel/agent-kernel.ts:119-153`
 
 ```typescript
 messages = [
-  ...pinnedItems.map(contextItemToMessage),      // Pinned context items
-  ...orderedItems.map(contextItemToMessage),     // Ordered context items
-  ...transcriptEntries.map(toLLMMessage)         // Transcript history
+  ...pinnedItems.map(contextItemToMessage), // Pinned context items
+  ...orderedItems.map(contextItemToMessage), // Ordered context items
+  ...transcriptEntries.map(toLLMMessage), // Transcript history
 ]
 ```
 
 ### 3.2 Transcript Entry Conversion
 
-| Entry Type | Converted To |
-|------------|--------------|
-| `llm_response` | `{ role: 'assistant', content: entry.content }` |
-| `tool_result` | `{ role: 'tool', content: result/error, toolCallId }` |
+| Entry Type     | Converted To                                          |
+| -------------- | ----------------------------------------------------- |
+| `llm_response` | `{ role: 'assistant', content: entry.content }`       |
+| `tool_result`  | `{ role: 'tool', content: result/error, toolCallId }` |
 
 ### 3.3 Default Parameters
 
@@ -117,50 +117,50 @@ messages = [
 
 Location: `src/context/types.ts:349-366`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `bundleId` | string | Unique bundle identifier |
-| `runId` | string | Associated run ID |
-| `agentId` | string | Agent identifier |
-| `agentType` | string | Agent type classification |
-| `invocationSource` | InvocationSource | How this run was invoked |
-| `pinnedItems` | ContextItem[] | Always-included context items |
-| `orderedItems` | ContextItem[] | Priority-ordered context items |
-| `summaryBlocks` | ContextItem[]? | Optional summary blocks |
-| `planView` | PlanContextView? | Active plan context |
-| `workflowStepView` | WorkflowStepContextView? | Workflow step context |
-| `backgroundRunView` | BackgroundRunContextView? | Background run context |
-| `triggerView` | TriggerContextView? | Trigger event context |
-| `artifactRefs` | ArtifactRef[]? | Artifact references |
-| `attachmentRefs` | AttachmentRef[]? | Attachment references |
-| `tokenEstimate` | number | Estimated token count |
-| `compactHints` | CompactHints? | Compaction recommendations |
+| Field               | Type                      | Description                    |
+| ------------------- | ------------------------- | ------------------------------ |
+| `bundleId`          | string                    | Unique bundle identifier       |
+| `runId`             | string                    | Associated run ID              |
+| `agentId`           | string                    | Agent identifier               |
+| `agentType`         | string                    | Agent type classification      |
+| `invocationSource`  | InvocationSource          | How this run was invoked       |
+| `pinnedItems`       | ContextItem[]             | Always-included context items  |
+| `orderedItems`      | ContextItem[]             | Priority-ordered context items |
+| `summaryBlocks`     | ContextItem[]?            | Optional summary blocks        |
+| `planView`          | PlanContextView?          | Active plan context            |
+| `workflowStepView`  | WorkflowStepContextView?  | Workflow step context          |
+| `backgroundRunView` | BackgroundRunContextView? | Background run context         |
+| `triggerView`       | TriggerContextView?       | Trigger event context          |
+| `artifactRefs`      | ArtifactRef[]?            | Artifact references            |
+| `attachmentRefs`    | AttachmentRef[]?          | Attachment references          |
+| `tokenEstimate`     | number                    | Estimated token count          |
+| `compactHints`      | CompactHints?             | Compaction recommendations     |
 
 ### 4.2 ContextItem Fields (18 fields)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `itemId` | string | Unique identifier |
-| `sourceType` | SourceType | Origin source type |
-| `sourceRef` | string? | Source reference |
-| `semanticType` | SemanticType | Semantic classification |
-| `content` | string | Item content |
-| `structuredPayload` | Record? | Optional structured data |
-| `relatedRefs` | RelatedRefs? | Related entity references |
-| `priority` | number? | Priority score |
-| `recencyScore` | number? | Recency score |
-| `relevanceScore` | number? | Relevance score |
-| `authorityScore` | number? | Authority score |
-| `estimatedTokens` | number? | Token estimate |
-| `dedupeKey` | string? | Deduplication key |
-| `freshnessTs` | string? | Freshness timestamp |
-| `isPinned` | boolean? | Pinned flag |
-| `isCompressible` | boolean? | Compressible flag |
-| `isReplaceableByRef` | boolean? | Replaceable flag |
-| `requiresPairIntegrity` | boolean? | Pair integrity flag |
-| `pairId` | string? | Pair identifier |
-| `validUntil` | string? | Expiry timestamp |
-| `supersedesKey` | string? | Supersedes key |
+| Field                   | Type         | Description               |
+| ----------------------- | ------------ | ------------------------- |
+| `itemId`                | string       | Unique identifier         |
+| `sourceType`            | SourceType   | Origin source type        |
+| `sourceRef`             | string?      | Source reference          |
+| `semanticType`          | SemanticType | Semantic classification   |
+| `content`               | string       | Item content              |
+| `structuredPayload`     | Record?      | Optional structured data  |
+| `relatedRefs`           | RelatedRefs? | Related entity references |
+| `priority`              | number?      | Priority score            |
+| `recencyScore`          | number?      | Recency score             |
+| `relevanceScore`        | number?      | Relevance score           |
+| `authorityScore`        | number?      | Authority score           |
+| `estimatedTokens`       | number?      | Token estimate            |
+| `dedupeKey`             | string?      | Deduplication key         |
+| `freshnessTs`           | string?      | Freshness timestamp       |
+| `isPinned`              | boolean?     | Pinned flag               |
+| `isCompressible`        | boolean?     | Compressible flag         |
+| `isReplaceableByRef`    | boolean?     | Replaceable flag          |
+| `requiresPairIntegrity` | boolean?     | Pair integrity flag       |
+| `pairId`                | string?      | Pair identifier           |
+| `validUntil`            | string?      | Expiry timestamp          |
+| `supersedesKey`         | string?      | Supersedes key            |
 
 ---
 
@@ -170,19 +170,19 @@ Location: `src/context/types.ts:349-366`
 
 Location: `src/tools/schema/tool-schema-provider.ts`
 
-| Mode | Description | Token Threshold |
-|------|-------------|-----------------|
-| `full` | Complete schema with all properties | ≤ 300 tokens |
-| `simplified` | Essential properties only | ≤ 1200 tokens |
-| `card_only` | Minimal card (name, description, category) | > 1200 tokens |
-| `hidden` | Not exposed to LLM | N/A |
+| Mode         | Description                                | Token Threshold |
+| ------------ | ------------------------------------------ | --------------- |
+| `full`       | Complete schema with all properties        | ≤ 300 tokens    |
+| `simplified` | Essential properties only                  | ≤ 1200 tokens   |
+| `card_only`  | Minimal card (name, description, category) | > 1200 tokens   |
+| `hidden`     | Not exposed to LLM                         | N/A             |
 
 ### 5.2 Token Thresholds
 
 ```typescript
 TOKEN_THRESHOLDS = {
-  FULL_MAX: 300,      // Maximum tokens for full exposure
-  SIMPLIFIED_MAX: 1200 // Maximum tokens for simplified exposure
+  FULL_MAX: 300, // Maximum tokens for full exposure
+  SIMPLIFIED_MAX: 1200, // Maximum tokens for simplified exposure
 }
 ```
 
@@ -200,9 +200,9 @@ Location: `src/llm/types.ts:85-89`
 
 ```typescript
 interface TokenUsage {
-  promptTokens: number;      // Input tokens
-  completionTokens: number;  // Output tokens
-  totalTokens: number;       // Total tokens
+  promptTokens: number // Input tokens
+  completionTokens: number // Output tokens
+  totalTokens: number // Total tokens
 }
 ```
 
@@ -270,12 +270,12 @@ Location: `src/memory/long-term-memory-extractor-service.ts:177-181`
 
 ### 7.5 Summary Table
 
-| Path | Temperature | MaxTokens | Notes |
-|------|-------------|-----------|-------|
-| ForegroundAgent | 0.1 | 500 | Low for consistent routing |
-| AgentKernel | 0.7 | undefined | Moderate for execution |
-| SearchSubagent | undefined | undefined | Provider defaults |
-| LongTermMemoryExtractor | undefined | undefined | Provider defaults |
+| Path                    | Temperature | MaxTokens | Notes                      |
+| ----------------------- | ----------- | --------- | -------------------------- |
+| ForegroundAgent         | 0.1         | 500       | Low for consistent routing |
+| AgentKernel             | 0.7         | undefined | Moderate for execution     |
+| SearchSubagent          | undefined   | undefined | Provider defaults          |
+| LongTermMemoryExtractor | undefined   | undefined | Provider defaults          |
 
 ---
 
@@ -286,6 +286,7 @@ Location: `src/memory/long-term-memory-extractor-service.ts:177-181`
 **Purpose**: Classify user messages into routing JSON contracts.
 
 **Flow**:
+
 ```
 User Message
   → buildRoutingMessages() [4 layers]
@@ -295,6 +296,7 @@ User Message
 ```
 
 **Key Characteristics**:
+
 - Low temperature (0.1) for deterministic routing
 - Small maxTokens (500) - routing JSON is compact
 - JSON mode enforced for structured output
@@ -305,6 +307,7 @@ User Message
 **Purpose**: Execute agent logic with full context.
 
 **Flow**:
+
 ```
 ContextBundle
   → buildLLMRequest()
@@ -314,6 +317,7 @@ ContextBundle
 ```
 
 **Key Characteristics**:
+
 - Moderate temperature (0.7) for balanced creativity
 - Context from pinnedItems + orderedItems + transcript
 - Tool execution loop
@@ -324,6 +328,7 @@ ContextBundle
 **Purpose**: Execute web search with tool calling.
 
 **Flow**:
+
 ```
 Search Query
   → LLMRequest { tools: [web.search], toolChoice: forced }
@@ -332,6 +337,7 @@ Search Query
 ```
 
 **Key Characteristics**:
+
 - Forced tool choice (web.search)
 - Simple system prompt
 - No temperature/maxTokens specified
@@ -342,6 +348,7 @@ Search Query
 **Purpose**: Extract long-term memories from conversation.
 
 **Flow**:
+
 ```
 Conversation Window
   → buildLongTermMemoryExtractionPrompt()
@@ -351,6 +358,7 @@ Conversation Window
 ```
 
 **Key Characteristics**:
+
 - JSON mode for structured extraction
 - Uses gpt-4o-mini by default
 - No temperature/maxTokens specified
@@ -362,37 +370,37 @@ Conversation Window
 
 ### 9.1 Temperature Choices
 
-| Decision | Rationale | Locked |
-|----------|-----------|--------|
-| ForegroundAgent uses 0.1 | Ensures consistent routing classification | ✅ Yes |
-| AgentKernel uses 0.7 | Balances creativity and coherence | ✅ Yes |
-| SearchSubagent uses provider default | Search summarization benefits from default | ✅ Yes |
-| MemoryExtractor uses provider default | Memory extraction benefits from default | ✅ Yes |
+| Decision                              | Rationale                                  | Locked |
+| ------------------------------------- | ------------------------------------------ | ------ |
+| ForegroundAgent uses 0.1              | Ensures consistent routing classification  | ✅ Yes |
+| AgentKernel uses 0.7                  | Balances creativity and coherence          | ✅ Yes |
+| SearchSubagent uses provider default  | Search summarization benefits from default | ✅ Yes |
+| MemoryExtractor uses provider default | Memory extraction benefits from default    | ✅ Yes |
 
 ### 9.2 MaxTokens Choices
 
-| Decision | Rationale | Locked |
-|----------|-----------|--------|
-| ForegroundAgent uses 500 | Routing JSON is compact (< 500 tokens) | ✅ Yes |
-| AgentKernel uses provider default | Execution needs full response | ✅ Yes |
-| SearchSubagent uses provider default | Search summary varies in length | ✅ Yes |
-| MemoryExtractor uses provider default | Memory extraction varies in length | ✅ Yes |
+| Decision                              | Rationale                              | Locked |
+| ------------------------------------- | -------------------------------------- | ------ |
+| ForegroundAgent uses 500              | Routing JSON is compact (< 500 tokens) | ✅ Yes |
+| AgentKernel uses provider default     | Execution needs full response          | ✅ Yes |
+| SearchSubagent uses provider default  | Search summary varies in length        | ✅ Yes |
+| MemoryExtractor uses provider default | Memory extraction varies in length     | ✅ Yes |
 
 ### 9.3 Prompt Architecture
 
-| Decision | Rationale | Locked |
-|----------|-----------|--------|
-| 4-layer prompt assembly | Separates concerns: base, overlay, config, dynamic | ✅ Yes |
-| Registry-first resolution | Immutable prompts with version control | ✅ Yes |
-| JSON mode for routing | Structured output parsing reliability | ✅ Yes |
+| Decision                  | Rationale                                          | Locked |
+| ------------------------- | -------------------------------------------------- | ------ |
+| 4-layer prompt assembly   | Separates concerns: base, overlay, config, dynamic | ✅ Yes |
+| Registry-first resolution | Immutable prompts with version control             | ✅ Yes |
+| JSON mode for routing     | Structured output parsing reliability              | ✅ Yes |
 
 ### 9.4 Context Architecture
 
-| Decision | Rationale | Locked |
-|----------|-----------|--------|
-| 17-field ContextBundle | Comprehensive context representation | ✅ Yes |
-| pinnedItems + orderedItems | Priority-based context selection | ✅ Yes |
-| Token estimation | Budget-aware context assembly | ✅ Yes |
+| Decision                   | Rationale                            | Locked |
+| -------------------------- | ------------------------------------ | ------ |
+| 17-field ContextBundle     | Comprehensive context representation | ✅ Yes |
+| pinnedItems + orderedItems | Priority-based context selection     | ✅ Yes |
+| Token estimation           | Budget-aware context assembly        | ✅ Yes |
 
 ---
 
@@ -400,14 +408,14 @@ Conversation Window
 
 ### 10.1 Identified from Metis Review
 
-| Gap | Severity | Status |
-|-----|----------|--------|
-| No prompt token logging | Medium | 🔨 This task addresses |
-| No buildLLMRequest logging | Medium | 🔨 This task addresses |
-| No prompt hash stability verification | Low | 🔨 This task addresses |
-| Temperature/maxTokens not configurable per-path | Low | Future consideration |
-| No token budget enforcement in ForegroundAgent | Medium | Out of scope (P9-T3) |
-| No context compaction triggers logged | Low | Future consideration |
+| Gap                                             | Severity | Status                 |
+| ----------------------------------------------- | -------- | ---------------------- |
+| No prompt token logging                         | Medium   | 🔨 This task addresses |
+| No buildLLMRequest logging                      | Medium   | 🔨 This task addresses |
+| No prompt hash stability verification           | Low      | 🔨 This task addresses |
+| Temperature/maxTokens not configurable per-path | Low      | Future consideration   |
+| No token budget enforcement in ForegroundAgent  | Medium   | Out of scope (P9-T3)   |
+| No context compaction triggers logged           | Low      | Future consideration   |
 
 ### 10.2 Future Improvements (Out of Scope)
 
@@ -431,6 +439,7 @@ Conversation Window
 ### 12.1 ForegroundAgent callLLMRouter()
 
 Added logging (only when `NODE_ENV !== 'production'`):
+
 - Prompt token estimation
 - Message count
 - Effective config details
@@ -438,6 +447,7 @@ Added logging (only when `NODE_ENV !== 'production'`):
 ### 12.2 AgentKernel buildLLMRequest()
 
 Added logging (only when `NODE_ENV !== 'production'`):
+
 - Token estimation
 - Context item counts
 - Compact trigger info

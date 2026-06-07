@@ -11,21 +11,21 @@
 
 ### 1.1 环境信息
 
-| 项目 | 值 |
-|------|-----|
-| 基线 Commit SHA | `26f5b59` |
-| 基线分支 | `master` |
-| 新分支 | `feat/phase3-runtime-hardening-beta` |
-| Node 版本 | v22.22.2 |
-| npm 版本 | 10.9.7 |
+| 项目            | 值                                   |
+| --------------- | ------------------------------------ |
+| 基线 Commit SHA | `26f5b59`                            |
+| 基线分支        | `master`                             |
+| 新分支          | `feat/phase3-runtime-hardening-beta` |
+| Node 版本       | v22.22.2                             |
+| npm 版本        | 10.9.7                               |
 
 ### 1.2 P0 状态
 
-| 项目 | 状态 |
-|------|------|
+| 项目     | 状态       |
+| -------- | ---------- |
 | P0 Phase | **Closed** |
 | P1 Phase | **Closed** |
-| 当前阶段 | Phase 3 |
+| 当前阶段 | Phase 3    |
 
 > P0 于 2026-05-06 正式关闭。所有 P0-1 至 P0-6 工作项已完成。详见 `docs/architecture/P0_SCOPE.md`。
 
@@ -37,21 +37,22 @@
 
 ### 2.1 构建与静态检查
 
-| 检查项 | 命令 | 结果 |
-|--------|------|------|
-| 类型检查 | `npm run typecheck` | ✅ 通过 |
-| P0 聚合测试 | `npm run test:p0` | ✅ 14 用例通过 |
-| 全量后端测试 | `npm test` | ✅ 3587 测试通过 |
+| 检查项       | 命令                | 结果             |
+| ------------ | ------------------- | ---------------- |
+| 类型检查     | `npm run typecheck` | ✅ 通过          |
+| P0 聚合测试  | `npm run test:p0`   | ✅ 14 用例通过   |
+| 全量后端测试 | `npm test`          | ✅ 3587 测试通过 |
 
 ### 2.2 数据库验证
 
-| 检查项 | 结果 |
-|--------|------|
+| 检查项     | 结果       |
+| ---------- | ---------- |
 | 数据库迁移 | ✅ 版本 14 |
 
 ### 2.3 黄金路径覆盖
 
 P0 验收覆盖 11 条黄金路径（100%）：
+
 1. Direct Chat
 2. Read Tool + ResultRef
 3. Write Tool + Approval
@@ -74,23 +75,23 @@ P0 验收覆盖 11 条黄金路径（100%）：
 
 ### 3.2 IN SCOPE
 
-| 加固线 | 目标 | 优先级 |
-|--------|------|--------|
-| Dispatcher 幂等性 | in-flight 检测 + 全终态检测 + WriteActionClass | 高 |
-| Recovery 孤儿扫描 | 孤儿运行扫描器 + 统一超时策略 + auto resume | 高 |
-| Tool Risk Policy | tool-risk-policy.ts 标准化 + 写安全测试 | 高 |
-| Architecture 测试 | 5 个 contract tests 补缺 | 中 |
-| E2E 测试 | flow-11-cancel-cascade | 中 |
-| Planner 验证 | tool-failure replan 专项测试 | 中 |
+| 加固线            | 目标                                           | 优先级 |
+| ----------------- | ---------------------------------------------- | ------ |
+| Dispatcher 幂等性 | in-flight 检测 + 全终态检测 + WriteActionClass | 高     |
+| Recovery 孤儿扫描 | 孤儿运行扫描器 + 统一超时策略 + auto resume    | 高     |
+| Tool Risk Policy  | tool-risk-policy.ts 标准化 + 写安全测试        | 高     |
+| Architecture 测试 | 5 个 contract tests 补缺                       | 中     |
+| E2E 测试          | flow-11-cancel-cascade                         | 中     |
+| Planner 验证      | tool-failure replan 专项测试                   | 中     |
 
 ### 3.3 OUT OF SCOPE (降级到 Phase 3-B)
 
-| 降级项 | 原因 |
-|--------|------|
-| Web UI 产品化 | 核心运行时加固优先 |
-| Storage 强化 | 核心运行时加固优先 |
+| 降级项           | 原因               |
+| ---------------- | ------------------ |
+| Web UI 产品化    | 核心运行时加固优先 |
+| Storage 强化     | 核心运行时加固优先 |
 | Retention Policy | 核心运行时加固优先 |
-| Connector 扩展 | 核心运行时加固优先 |
+| Connector 扩展   | 核心运行时加固优先 |
 
 ---
 
@@ -98,12 +99,12 @@ P0 验收覆盖 11 条黄金路径（100%）：
 
 基于深度代码审计，Phase 3-A 计划从"从零构建"校准为"增量加固"：
 
-| 领域 | 审计结论 | 真正缺口 |
-|------|---------|---------|
-| Dispatcher 幂等 | idempotencyKey 存储 + completed 检测已实现 | in-flight 检测、全终态检测、专项测试 |
-| Cancel/Recovery | CancellationCoordinator 级联 + Bootstrap 恢复已实现 | 孤儿扫描器、统一超时策略 |
-| Permission/Tool Safety | PermissionEngine 强制调用已实现 | tool-risk-policy 标准化、riskLevel 字段 |
-| Planner Validation | inline validation + replan 已实现 | tool failure replan 专项测试 |
+| 领域                   | 审计结论                                            | 真正缺口                                |
+| ---------------------- | --------------------------------------------------- | --------------------------------------- |
+| Dispatcher 幂等        | idempotencyKey 存储 + completed 检测已实现          | in-flight 检测、全终态检测、专项测试    |
+| Cancel/Recovery        | CancellationCoordinator 级联 + Bootstrap 恢复已实现 | 孤儿扫描器、统一超时策略                |
+| Permission/Tool Safety | PermissionEngine 强制调用已实现                     | tool-risk-policy 标准化、riskLevel 字段 |
+| Planner Validation     | inline validation + replan 已实现                   | tool failure replan 专项测试            |
 
 ---
 

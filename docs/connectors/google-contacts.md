@@ -13,6 +13,7 @@ This connector provides read and write access to Google Contacts through the Peo
 The connector uses OAuth2 for authentication with Google's People API.
 
 **Required OAuth2 Scope:**
+
 ```
 https://www.googleapis.com/auth/contacts
 ```
@@ -25,18 +26,18 @@ OAuth2 access tokens are stored encrypted using AES-256-GCM in the `authStateRef
 
 ```typescript
 // Token encryption example
-const encrypted = ContactsConnectorAdapter.encryptAccessToken(accessToken);
+const encrypted = ContactsConnectorAdapter.encryptAccessToken(accessToken)
 // Format: "aes-256-gcm:<iv>:<authTag>:<encrypted>"
 ```
 
 ## Capabilities
 
-| Capability | Category | Risk Level | Description |
-|------------|----------|------------|-------------|
-| `contacts.list_contacts` | read | low | List all contacts with pagination |
-| `contacts.get_contact` | read | low | Retrieve a specific contact by resource name |
-| `contacts.search_contacts` | read | low | Search contacts by name, email, or other fields |
-| `contacts.create_contact` | write | medium | Create a new contact |
+| Capability                 | Category | Risk Level | Description                                     |
+| -------------------------- | -------- | ---------- | ----------------------------------------------- |
+| `contacts.list_contacts`   | read     | low        | List all contacts with pagination               |
+| `contacts.get_contact`     | read     | low        | Retrieve a specific contact by resource name    |
+| `contacts.search_contacts` | read     | low        | Search contacts by name, email, or other fields |
+| `contacts.create_contact`  | write    | medium     | Create a new contact                            |
 
 ### List Contacts
 
@@ -49,13 +50,14 @@ const result = await connector.executeCall({
   params: {
     pageSize: 50,
     pageToken: undefined, // Optional: for pagination
-    personFields: 'names,emailAddresses,phoneNumbers,organizations'
+    personFields: 'names,emailAddresses,phoneNumbers,organizations',
   },
-  userId: 'user-001'
-});
+  userId: 'user-001',
+})
 ```
 
 **Response:**
+
 ```typescript
 {
   contacts: Contact[];
@@ -75,10 +77,10 @@ const result = await connector.executeCall({
   operation: 'get_contact',
   params: {
     resourceName: 'people/123456789',
-    personFields: 'names,emailAddresses,phoneNumbers'
+    personFields: 'names,emailAddresses,phoneNumbers',
   },
-  userId: 'user-001'
-});
+  userId: 'user-001',
+})
 ```
 
 ### Search Contacts
@@ -92,10 +94,10 @@ const result = await connector.executeCall({
   params: {
     query: 'john doe',
     pageSize: 10,
-    readMask: 'names,emailAddresses,phoneNumbers'
+    readMask: 'names,emailAddresses,phoneNumbers',
   },
-  userId: 'user-001'
-});
+  userId: 'user-001',
+})
 ```
 
 ### Create Contact
@@ -111,19 +113,19 @@ const result = await connector.executeCall({
       names: [{ givenName: 'John', familyName: 'Doe' }],
       emailAddresses: [{ value: 'john.doe@example.com', type: 'work' }],
       phoneNumbers: [{ value: '+1-555-0100', type: 'mobile' }],
-      organizations: [{ name: 'Acme Corp', title: 'Engineer' }]
-    }
+      organizations: [{ name: 'Acme Corp', title: 'Engineer' }],
+    },
   },
-  userId: 'user-001'
-});
+  userId: 'user-001',
+})
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
+| Variable             | Description                    | Default |
+| -------------------- | ------------------------------ | ------- |
 | `CONTACTS_MOCK_MODE` | Use mock transport for testing | `false` |
 
 ### Mock Mode
@@ -137,23 +139,23 @@ export CONTACTS_MOCK_MODE=true
 Or configure programmatically:
 
 ```typescript
-const adapter = createContactsConnectorAdapter({ useMock: true });
+const adapter = createContactsConnectorAdapter({ useMock: true })
 ```
 
 ## Error Handling
 
 ### Error Codes
 
-| Code | Description | Recoverable |
-|------|-------------|-------------|
-| `AUTH_INVALID` | Invalid or missing authentication | No |
-| `AUTH_EXPIRED` | OAuth token has expired | No |
-| `RATE_LIMITED` | API rate limit exceeded | Yes |
-| `NOT_FOUND` | Contact not found | No |
-| `FORBIDDEN` | Insufficient permissions | No |
-| `VALIDATION_ERROR` | Invalid request parameters | No |
-| `NETWORK_ERROR` | Network/timeout error | Yes |
-| `UNKNOWN_ERROR` | Unexpected error | No |
+| Code               | Description                       | Recoverable |
+| ------------------ | --------------------------------- | ----------- |
+| `AUTH_INVALID`     | Invalid or missing authentication | No          |
+| `AUTH_EXPIRED`     | OAuth token has expired           | No          |
+| `RATE_LIMITED`     | API rate limit exceeded           | Yes         |
+| `NOT_FOUND`        | Contact not found                 | No          |
+| `FORBIDDEN`        | Insufficient permissions          | No          |
+| `VALIDATION_ERROR` | Invalid request parameters        | No          |
+| `NETWORK_ERROR`    | Network/timeout error             | Yes         |
+| `UNKNOWN_ERROR`    | Unexpected error                  | No          |
 
 ### Rate Limiting
 
@@ -168,7 +170,7 @@ The connector handles HTTP 429 (rate limit) responses automatically:
 Default timeout is 30 seconds. Configure via transport options:
 
 ```typescript
-const transport = new GooglePeopleApiTransport(accessToken);
+const transport = new GooglePeopleApiTransport(accessToken)
 // BaseHttpTransport uses 30000ms default
 ```
 
@@ -192,6 +194,7 @@ https://www.googleapis.com/auth/contacts
 ```
 
 Additional scopes are NOT requested:
+
 - No Gmail access
 - No Drive access
 - No Calendar access
@@ -208,8 +211,7 @@ https://people.googleapis.com/v1
 ### Default Person Fields
 
 ```typescript
-const DEFAULT_PERSON_FIELDS = 
-  'names,emailAddresses,phoneNumbers,organizations,addresses,photos,urls,biographies';
+const DEFAULT_PERSON_FIELDS = 'names,emailAddresses,phoneNumbers,organizations,addresses,photos,urls,biographies'
 ```
 
 ## Testing
@@ -254,6 +256,7 @@ The connector passes all GA (General Availability) certification requirements:
 **Problem:** Contact data missing expected fields
 
 **Solution:** Ensure `personFields` or `readMask` includes the required fields:
+
 ```typescript
 personFields: 'names,emailAddresses,phoneNumbers,organizations,addresses'
 ```

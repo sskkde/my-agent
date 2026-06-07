@@ -1,59 +1,53 @@
-import React, { useState, useMemo } from 'react';
-import EmptyState from './EmptyState';
-import LoadingSpinner from './LoadingSpinner';
+import React, { useState, useMemo } from 'react'
+import EmptyState from './EmptyState'
+import LoadingSpinner from './LoadingSpinner'
 
 export interface TimelineViewEvent {
-  eventId: string;
-  eventType: string;
-  timestamp: string;
-  description: string;
-  status: string;
-  module: string;
+  eventId: string
+  eventType: string
+  timestamp: string
+  description: string
+  status: string
+  module: string
 }
 
 export interface TimelineViewProps {
-  events: TimelineViewEvent[];
-  onEventClick?: (eventId: string) => void;
-  loading?: boolean;
+  events: TimelineViewEvent[]
+  onEventClick?: (eventId: string) => void
+  loading?: boolean
 }
 
-const TimelineView: React.FC<TimelineViewProps> = ({
-  events,
-  onEventClick,
-  loading = false,
-}) => {
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+const TimelineView: React.FC<TimelineViewProps> = ({ events, onEventClick, loading = false }) => {
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
 
   const sortedEvents = useMemo(() => {
-    return [...events].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-  }, [events]);
+    return [...events].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [events])
 
   const formatTime = (timestamp: string): string => {
     try {
-      const date = new Date(timestamp);
+      const date = new Date(timestamp)
       return date.toLocaleTimeString('zh-CN', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-      });
+      })
     } catch {
-      return timestamp;
+      return timestamp
     }
-  };
+  }
 
   const formatDate = (timestamp: string): string => {
     try {
-      const date = new Date(timestamp);
+      const date = new Date(timestamp)
       return date.toLocaleDateString('zh-CN', {
         month: 'short',
         day: 'numeric',
-      });
+      })
     } catch {
-      return '';
+      return ''
     }
-  };
+  }
 
   const getEventTypeClass = (eventType: string): string => {
     const typeMap: Record<string, string> = {
@@ -70,9 +64,9 @@ const TimelineView: React.FC<TimelineViewProps> = ({
       run_cancelled: 'cancelled',
       error: 'error',
       system_status: 'system',
-    };
-    return typeMap[eventType] || 'default';
-  };
+    }
+    return typeMap[eventType] || 'default'
+  }
 
   const getEventTypeLabel = (eventType: string): string => {
     const labels: Record<string, string> = {
@@ -90,18 +84,18 @@ const TimelineView: React.FC<TimelineViewProps> = ({
       run_cancelled: '运行取消',
       error: '错误',
       system_status: '系统状态',
-    };
-    return labels[eventType] || eventType;
-  };
+    }
+    return labels[eventType] || eventType
+  }
 
   const handleEventClick = (eventId: string) => {
     if (expandedEventId === eventId) {
-      setExpandedEventId(null);
+      setExpandedEventId(null)
     } else {
-      setExpandedEventId(eventId);
+      setExpandedEventId(eventId)
     }
-    onEventClick?.(eventId);
-  };
+    onEventClick?.(eventId)
+  }
 
   if (loading) {
     return (
@@ -110,19 +104,15 @@ const TimelineView: React.FC<TimelineViewProps> = ({
           <LoadingSpinner label="加载时间线..." />
         </div>
       </div>
-    );
+    )
   }
 
   if (events.length === 0) {
     return (
       <div className="timeline-view" data-testid="timeline-view">
-        <EmptyState
-          icon="📅"
-          title="暂无时间线事件"
-          description="当前没有任何事件记录"
-        />
+        <EmptyState icon="📅" title="暂无时间线事件" description="当前没有任何事件记录" />
       </div>
-    );
+    )
   }
 
   return (
@@ -130,17 +120,13 @@ const TimelineView: React.FC<TimelineViewProps> = ({
       <div className="timeline-view__line" aria-hidden="true" />
       <ul className="timeline-view__list" role="list">
         {sortedEvents.map((event, index) => {
-          const isExpanded = expandedEventId === event.eventId;
-          const prevEvent = sortedEvents[index + 1];
-          const showDateHeader = !prevEvent || formatDate(event.timestamp) !== formatDate(prevEvent.timestamp);
+          const isExpanded = expandedEventId === event.eventId
+          const prevEvent = sortedEvents[index + 1]
+          const showDateHeader = !prevEvent || formatDate(event.timestamp) !== formatDate(prevEvent.timestamp)
 
           return (
             <li key={event.eventId} className="timeline-view__item">
-              {showDateHeader && (
-                <div className="timeline-view__date-header">
-                  {formatDate(event.timestamp)}
-                </div>
-              )}
+              {showDateHeader && <div className="timeline-view__date-header">{formatDate(event.timestamp)}</div>}
               <div
                 className={`timeline-view__event timeline-view__event--${getEventTypeClass(event.eventType)} ${isExpanded ? 'timeline-view__event--expanded' : ''}`}
                 onClick={() => handleEventClick(event.eventId)}
@@ -148,8 +134,8 @@ const TimelineView: React.FC<TimelineViewProps> = ({
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleEventClick(event.eventId);
+                    e.preventDefault()
+                    handleEventClick(event.eventId)
                   }
                 }}
                 data-testid={`timeline-event-${event.eventId}`}
@@ -197,11 +183,11 @@ const TimelineView: React.FC<TimelineViewProps> = ({
                 </div>
               </div>
             </li>
-          );
+          )
         })}
       </ul>
     </div>
-  );
-};
+  )
+}
 
-export default TimelineView;
+export default TimelineView

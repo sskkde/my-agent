@@ -29,12 +29,12 @@ PRERELEASE: 预发布标识（如 rc.1, beta.2）
 
 ### 1.2 版本类型定义
 
-| 版本类型 | 示例 | 说明 | 破坏性变更 |
-|----------|------|------|------------|
-| Major | 1.0.0 → 2.0.0 | 主要版本升级 | 是 |
-| Minor | 1.0.0 → 1.1.0 | 功能更新 | 否 |
-| Patch | 1.0.0 → 1.0.1 | Bug 修复 | 否 |
-| Pre-release | 1.0.0-rc.1 | 预发布版本 | 可能 |
+| 版本类型    | 示例          | 说明         | 破坏性变更 |
+| ----------- | ------------- | ------------ | ---------- |
+| Major       | 1.0.0 → 2.0.0 | 主要版本升级 | 是         |
+| Minor       | 1.0.0 → 1.1.0 | 功能更新     | 否         |
+| Patch       | 1.0.0 → 1.0.1 | Bug 修复     | 否         |
+| Pre-release | 1.0.0-rc.1    | 预发布版本   | 可能       |
 
 ### 1.3 API 版本前缀
 
@@ -46,6 +46,7 @@ PRERELEASE: 预发布标识（如 rc.1, beta.2）
 ```
 
 旧版路径重定向规则：
+
 - `/api/` → `/api/v1/`（HTTP 307）
 
 ---
@@ -58,44 +59,44 @@ PRERELEASE: 预发布标识（如 rc.1, beta.2）
 
 #### API 契约变更
 
-| 变更类型 | 示例 | 破坏性 |
-|----------|------|--------|
-| 删除端点 | 删除 `/api/v1/sessions/{id}` | 是 |
-| 重命名端点 | `/sessions` → `/conversations` | 是 |
-| 更改 HTTP 方法 | GET → POST | 是 |
-| 删除请求参数 | 删除 `limit` 参数 | 是 |
-| 更改参数类型 | `limit: number` → `limit: string` | 是 |
-| 添加必需参数 | 添加必需的 `userId` 参数 | 是 |
+| 变更类型       | 示例                              | 破坏性 |
+| -------------- | --------------------------------- | ------ |
+| 删除端点       | 删除 `/api/v1/sessions/{id}`      | 是     |
+| 重命名端点     | `/sessions` → `/conversations`    | 是     |
+| 更改 HTTP 方法 | GET → POST                        | 是     |
+| 删除请求参数   | 删除 `limit` 参数                 | 是     |
+| 更改参数类型   | `limit: number` → `limit: string` | 是     |
+| 添加必需参数   | 添加必需的 `userId` 参数          | 是     |
 
 #### 响应格式变更
 
-| 变更类型 | 示例 | 破坏性 |
-|----------|------|--------|
-| 删除响应字段 | 删除 `items` 字段 | 是 |
-| 更改字段类型 | `id: number` → `id: string` | 是 |
-| 更改错误码 | 404 → 410 | 是 |
-| 更改错误格式 | 改变 Error Envelope 结构 | 是 |
+| 变更类型     | 示例                        | 破坏性 |
+| ------------ | --------------------------- | ------ |
+| 删除响应字段 | 删除 `items` 字段           | 是     |
+| 更改字段类型 | `id: number` → `id: string` | 是     |
+| 更改错误码   | 404 → 410                   | 是     |
+| 更改错误格式 | 改变 Error Envelope 结构    | 是     |
 
 #### 认证/授权变更
 
-| 变更类型 | 示例 | 破坏性 |
-|----------|------|--------|
-| 更改认证方式 | Token → OAuth | 是 |
-| 更改权限模型 | 删除角色 | 是 |
-| 强制新认证 | 可选认证 → 必需认证 | 是 |
+| 变更类型     | 示例                | 破坏性 |
+| ------------ | ------------------- | ------ |
+| 更改认证方式 | Token → OAuth       | 是     |
+| 更改权限模型 | 删除角色            | 是     |
+| 强制新认证   | 可选认证 → 必需认证 | 是     |
 
 ### 2.2 非破坏性变更
 
 以下变更不被视为破坏性变更：
 
-| 变更类型 | 示例 | 破坏性 |
-|----------|------|--------|
-| 添加新端点 | 新增 `/api/v1/analytics` | 否 |
-| 添加可选参数 | 添加可选 `filter` 参数 | 否 |
-| 添加响应字段 | 添加 `nextCursor` 字段 | 否 |
-| 扩展枚举值 | `status: ["active"]` → `["active", "paused"]` | 否 |
-| Bug 修复 | 修复错误响应格式 | 否 |
-| 性能优化 | 减少响应延迟 | 否 |
+| 变更类型     | 示例                                          | 破坏性 |
+| ------------ | --------------------------------------------- | ------ |
+| 添加新端点   | 新增 `/api/v1/analytics`                      | 否     |
+| 添加可选参数 | 添加可选 `filter` 参数                        | 否     |
+| 添加响应字段 | 添加 `nextCursor` 字段                        | 否     |
+| 扩展枚举值   | `status: ["active"]` → `["active", "paused"]` | 否     |
+| Bug 修复     | 修复错误响应格式                              | 否     |
+| 性能优化     | 减少响应延迟                                  | 否     |
 
 ---
 
@@ -109,12 +110,12 @@ PRERELEASE: 预发布标识（如 rc.1, beta.2）
 活跃 → 废弃通知 → 废弃警告 → 移除
 ```
 
-| 阶段 | 持续时间 | 行为 |
-|------|----------|------|
-| 活跃 | — | 功能正常使用 |
+| 阶段     | 持续时间        | 行为                                         |
+| -------- | --------------- | -------------------------------------------- |
+| 活跃     | —               | 功能正常使用                                 |
 | 废弃通知 | 2 个 Minor 版本 | 文档标注废弃，响应头添加 `Deprecation: true` |
-| 废弃警告 | 1 个 Minor 版本 | 日志警告，响应头添加 `Warning: 299` |
-| 移除 | Major 版本 | 功能移除 |
+| 废弃警告 | 1 个 Minor 版本 | 日志警告，响应头添加 `Warning: 299`          |
+| 移除     | Major 版本      | 功能移除                                     |
 
 ### 3.2 废弃时间线示例
 
@@ -161,10 +162,10 @@ Link: </api/v2/sessions>; rel="successor-version"
 ### GET /api/v1/sessions
 
 > ⚠️ **已废弃**
-> 
+>
 > 此端点将在 v2.0.0 中移除。
 > 请使用 [`GET /api/v2/sessions`](#get-apiv2sessions) 替代。
-> 
+>
 > 废弃时间：v1.1.0  
 > 移除时间：v2.0.0（预计 2026-12-31）
 ```
@@ -175,20 +176,20 @@ Link: </api/v2/sessions>; rel="successor-version"
 
 ### 4.1 通知渠道
 
-| 渠道 | 用途 | 频率 |
-|------|------|------|
-| Release Notes | 详细变更说明 | 每次发布 |
-| CHANGELOG | 变更历史 | 每次发布 |
-| API 响应头 | 运行时通知 | 每次请求 |
-| 文档 | 废弃标注 | 持续 |
-| 邮件通知 | 重大变更 | Major 版本 |
-| GitHub Issues | 变更讨论 | 按需 |
+| 渠道          | 用途         | 频率       |
+| ------------- | ------------ | ---------- |
+| Release Notes | 详细变更说明 | 每次发布   |
+| CHANGELOG     | 变更历史     | 每次发布   |
+| API 响应头    | 运行时通知   | 每次请求   |
+| 文档          | 废弃标注     | 持续       |
+| 邮件通知      | 重大变更     | Major 版本 |
+| GitHub Issues | 变更讨论     | 按需       |
 
 ### 4.2 通知内容模板
 
 #### Release Notes 模板
 
-```markdown
+````markdown
 ## 破坏性变更
 
 ### 已移除
@@ -209,15 +210,19 @@ Link: </api/v2/sessions>; rel="successor-version"
 #### 从 `old-endpoint` 迁移到 `new-endpoint`
 
 **之前：**
+
 ```javascript
-const response = await fetch('/api/v1/old-endpoint');
+const response = await fetch('/api/v1/old-endpoint')
 ```
+````
 
 **之后：**
+
 ```javascript
-const response = await fetch('/api/v1/new-endpoint');
+const response = await fetch('/api/v1/new-endpoint')
 ```
-```
+
+````
 
 ### 4.3 提前通知周期
 
@@ -281,7 +286,7 @@ v0.7.0-rc.1 起，API 契约锁定测试确保：
 ```bash
 # 运行 API 契约锁定测试
 npx vitest run tests/integration/api/api-contract-lock.test.ts
-```
+````
 
 ### 6.3 版本共存
 
@@ -316,7 +321,7 @@ npx vitest run tests/integration/api/api-contract-lock.test.ts
 
 ```markdown
 > ⚠️ **实验性功能**
-> 
+>
 > 此功能处于实验阶段，可能随时变更或移除。
 > 不建议在生产环境使用。
 ```
@@ -342,12 +347,12 @@ npx vitest run tests/integration/api/api-contract-lock.test.ts
 ```typescript
 // src/api/routes/legacy-search.ts
 server.get('/api/v1/legacy-search', async (request, reply) => {
-  reply.header('Deprecation', 'true');
-  reply.header('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
-  reply.header('Link', '</api/v1/search>; rel="successor-version"');
-  
+  reply.header('Deprecation', 'true')
+  reply.header('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT')
+  reply.header('Link', '</api/v1/search>; rel="successor-version"')
+
   // ... 原有逻辑
-});
+})
 ```
 
 #### 步骤 2：更新文档
@@ -356,7 +361,7 @@ server.get('/api/v1/legacy-search', async (request, reply) => {
 ### GET /api/v1/legacy-search
 
 > ⚠️ **已废弃**
-> 
+>
 > 请使用 [`GET /api/v1/search`](#get-apiv1search) 替代。
 > 移除时间：v2.0.0（预计 2026-12-31）
 ```
@@ -418,12 +423,12 @@ server.get('/api/v1/legacy-search', async (request, reply) => {
 
 ## 附录：术语表
 
-| 术语 | 定义 |
-|------|------|
-| 破坏性变更 | 可能导致现有客户端失效的变更 |
-| 废弃 | 标记为即将移除，但仍可使用 |
-| 移除 | 完全删除，不再可用 |
-| 向后兼容 | 新版本不影响现有客户端 |
-| 迁移指南 | 帮助用户迁移到新版本的文档 |
-| Response Envelope | 标准响应格式 `{ data, meta, error }` |
-| Error Envelope | 标准错误格式 `{ code, message, details }` |
+| 术语              | 定义                                      |
+| ----------------- | ----------------------------------------- |
+| 破坏性变更        | 可能导致现有客户端失效的变更              |
+| 废弃              | 标记为即将移除，但仍可使用                |
+| 移除              | 完全删除，不再可用                        |
+| 向后兼容          | 新版本不影响现有客户端                    |
+| 迁移指南          | 帮助用户迁移到新版本的文档                |
+| Response Envelope | 标准响应格式 `{ data, meta, error }`      |
+| Error Envelope    | 标准错误格式 `{ code, message, details }` |

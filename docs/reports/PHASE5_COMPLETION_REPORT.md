@@ -2,39 +2,40 @@
 
 ## 1. Completion Summary
 
-| Area | Status | Evidence |
-|---|---|---|
-| API Response Envelope | ✅ Complete | response-envelope-contract.test.ts |
-| API Error Format | ✅ Complete | error-format-contract.test.ts |
-| API Pagination | ✅ Complete | pagination-contract.test.ts |
-| API Rate Limit | ✅ Complete | rate-limit.test.ts |
-| API Auth Token | ✅ Complete | auth-token.test.ts |
-| API Compression | ✅ Complete | compression.test.ts |
-| API Health/Readiness | ✅ Complete | health-check.test.ts |
-| OpenAPI / Swagger | ✅ Complete | swagger-ui.test.ts |
-| Web Chat UI | ✅ Complete | SessionConsoleTab (1094 lines, SSE streaming) |
-| Web Approval UI | ✅ Complete | ApprovalCard + ApprovalsTab |
-| Web Runs Console | ✅ Complete | RunList + RunDetailDrawer + AgentMonitorTab |
-| Web Timeline | ✅ Complete | TimelineView + ObservabilityTab |
-| Web Settings | ✅ Complete | SettingsTab + ProviderManager |
-| Web Workflows | ✅ Complete | WorkflowsTab (595 lines, draft/definition/run) |
-| P5 E2E Journey | ✅ Complete | flow-17-p5-product-journey.test.ts |
-| Demo Script | ✅ Complete | docs/product/demo-script.md |
-| Auth Token Middleware | ✅ Complete | src/api/middleware/auth-token.ts |
+| Area                  | Status      | Evidence                                       |
+| --------------------- | ----------- | ---------------------------------------------- |
+| API Response Envelope | ✅ Complete | response-envelope-contract.test.ts             |
+| API Error Format      | ✅ Complete | error-format-contract.test.ts                  |
+| API Pagination        | ✅ Complete | pagination-contract.test.ts                    |
+| API Rate Limit        | ✅ Complete | rate-limit.test.ts                             |
+| API Auth Token        | ✅ Complete | auth-token.test.ts                             |
+| API Compression       | ✅ Complete | compression.test.ts                            |
+| API Health/Readiness  | ✅ Complete | health-check.test.ts                           |
+| OpenAPI / Swagger     | ✅ Complete | swagger-ui.test.ts                             |
+| Web Chat UI           | ✅ Complete | SessionConsoleTab (1094 lines, SSE streaming)  |
+| Web Approval UI       | ✅ Complete | ApprovalCard + ApprovalsTab                    |
+| Web Runs Console      | ✅ Complete | RunList + RunDetailDrawer + AgentMonitorTab    |
+| Web Timeline          | ✅ Complete | TimelineView + ObservabilityTab                |
+| Web Settings          | ✅ Complete | SettingsTab + ProviderManager                  |
+| Web Workflows         | ✅ Complete | WorkflowsTab (595 lines, draft/definition/run) |
+| P5 E2E Journey        | ✅ Complete | flow-17-p5-product-journey.test.ts             |
+| Demo Script           | ✅ Complete | docs/product/demo-script.md                    |
+| Auth Token Middleware | ✅ Complete | src/api/middleware/auth-token.ts               |
 
 ## 2. Commands Run
 
-| Command | Result |
-|---|---|
-| npm run typecheck | PASS |
-| npm run test:api | PASS |
-| npm run test:web | PASS |
-| npm run build:web | PASS |
-| npm run test:p5 | PASS |
+| Command           | Result |
+| ----------------- | ------ |
+| npm run typecheck | PASS   |
+| npm run test:api  | PASS   |
+| npm run test:web  | PASS   |
+| npm run build:web | PASS   |
+| npm run test:p5   | PASS   |
 
 ## 3. P5 Deliverables
 
 ### API Productization
+
 - Standard response envelope (ok/data/error/requestId)
 - Unified error format with codes
 - Pagination with hasMore
@@ -45,6 +46,7 @@
 - OpenAPI specification and Swagger UI
 
 ### Web Product Experience
+
 - 18 feature tabs all implemented with data-testid
 - Chat with SSE streaming and command support
 - Approval workflow with approve/reject
@@ -54,6 +56,7 @@
 - Workflow builder with validation and publish
 
 ### Documentation
+
 - User Guide
 - Admin Guide (with auth token configuration)
 - Demo Script (with P5 demo paths)

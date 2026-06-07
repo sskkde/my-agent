@@ -1,49 +1,49 @@
-import React, { useEffect, useState } from 'react';
-import * as client from '../../api/client';
-import type { ApprovalsResponse, ApprovalInfo } from '../../api/types';
-import type { TabId } from '../../navigation/navigation-config';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import React, { useEffect, useState } from 'react'
+import * as client from '../../api/client'
+import type { ApprovalsResponse, ApprovalInfo } from '../../api/types'
+import type { TabId } from '../../navigation/navigation-config'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 interface ApprovalsTabProps {
-  onTabChange: (tab: TabId) => void;
+  onTabChange: (tab: TabId) => void
 }
 
 const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
-  const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null);
-  const [approvalsError, setApprovalsError] = useState(false);
-  const [selectedApproval, setSelectedApproval] = useState<ApprovalInfo | null>(null);
-  const [reason, setReason] = useState('');
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null)
+  const [approvalsError, setApprovalsError] = useState(false)
+  const [selectedApproval, setSelectedApproval] = useState<ApprovalInfo | null>(null)
+  const [reason, setReason] = useState('')
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const fetchApprovals = async () => {
     try {
-      const approvalsData = await client.getApprovals();
-      setApprovals(approvalsData);
-      setApprovalsError(false);
+      const approvalsData = await client.getApprovals()
+      setApprovals(approvalsData)
+      setApprovalsError(false)
     } catch {
-      setApprovalsError(true);
+      setApprovalsError(true)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchApprovals();
-  }, []);
+    fetchApprovals()
+  }, [])
 
-  const pendingCount = approvals?.approvals.filter((a) => a.status === 'pending').length ?? 0;
+  const pendingCount = approvals?.approvals.filter((a) => a.status === 'pending').length ?? 0
 
   const handleApprovalAction = async (approvalId: string, decision: 'approve_once' | 'reject') => {
-    setActionLoading(approvalId);
+    setActionLoading(approvalId)
     try {
-      await client.respondApproval(approvalId, decision, reason || undefined);
-      await fetchApprovals();
-      setSelectedApproval(null);
-      setReason('');
+      await client.respondApproval(approvalId, decision, reason || undefined)
+      await fetchApprovals()
+      setSelectedApproval(null)
+      setReason('')
     } catch (error) {
-      console.error('Failed to respond to approval:', error);
+      console.error('Failed to respond to approval:', error)
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  };
+  }
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -52,24 +52,24 @@ const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
       rejected: '已拒绝',
       expired: '已过期',
       cancelled: '已取消',
-    };
-    return labels[status] || status;
-  };
+    }
+    return labels[status] || status
+  }
 
   const getStatusClass = (status: string) => {
-    if (status === 'pending') return 'status-pending';
-    if (status === 'approved') return 'status-approved';
-    if (status === 'rejected') return 'status-rejected';
-    return 'status-other';
-  };
+    if (status === 'pending') return 'status-pending'
+    if (status === 'approved') return 'status-approved'
+    if (status === 'rejected') return 'status-rejected'
+    return 'status-other'
+  }
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString('zh-CN');
+      return new Date(dateStr).toLocaleString('zh-CN')
     } catch {
-      return dateStr;
+      return dateStr
     }
-  };
+  }
 
   return (
     <div data-testid="approvals-panel" className="approvals-panel">
@@ -170,10 +170,7 @@ const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
                     )}
 
                     {approval.status === 'pending' && selectedApproval?.id !== approval.id && (
-                      <button
-                        className="expand-btn"
-                        onClick={() => setSelectedApproval(approval)}
-                      >
+                      <button className="expand-btn" onClick={() => setSelectedApproval(approval)}>
                         查看详情
                       </button>
                     )}
@@ -189,7 +186,7 @@ const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
         )}
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default ApprovalsTab;
+export default ApprovalsTab

@@ -6,13 +6,13 @@
 
 审计日志保留策略通过 `RetentionPolicy` 类实现，支持对五类数据实体进行生命周期管理：
 
-| 实体类型 | 说明 | 默认保留期 |
-|----------|------|-----------|
-| `audit` | 审计记录 | 90 天 |
-| `traces` | 分布式追踪数据 | 90 天 |
-| `metrics` | 指标数据 | 90 天 |
-| `memory` | 长期记忆数据 | 90 天 |
-| `blobs` | 工具结果二进制数据 | 90 天 |
+| 实体类型  | 说明               | 默认保留期 |
+| --------- | ------------------ | ---------- |
+| `audit`   | 审计记录           | 90 天      |
+| `traces`  | 分布式追踪数据     | 90 天      |
+| `metrics` | 指标数据           | 90 天      |
+| `memory`  | 长期记忆数据       | 90 天      |
+| `blobs`   | 工具结果二进制数据 | 90 天      |
 
 ## 保留期配置
 
@@ -33,18 +33,18 @@ CREATE TABLE retention_config (
 
 ### 保留动作类型
 
-| 动作 | 说明 |
-|------|------|
+| 动作          | 说明                             |
+| ------------- | -------------------------------- |
 | `soft_delete` | 软删除，标记为已删除但保留元数据 |
-| `archive` | 归档，压缩存储以节省空间 |
-| `hard_delete` | 硬删除，永久移除数据 |
+| `archive`     | 归档，压缩存储以节省空间         |
+| `hard_delete` | 硬删除，永久移除数据             |
 
 ### 敏感数据保护
 
 具有 `high` 或 `restricted` 敏感级别的记录**不受保留策略影响**，将永久保留：
 
 ```typescript
-const PROTECTED_SENSITIVITY_LEVELS = ['high', 'restricted'];
+const PROTECTED_SENSITIVITY_LEVELS = ['high', 'restricted']
 ```
 
 这确保了敏感操作（如外部写入、权限决策）的完整审计追踪。
@@ -57,13 +57,13 @@ const PROTECTED_SENSITIVITY_LEVELS = ['high', 'restricted'];
 
 ```typescript
 // 预览模式：仅统计符合条件的记录数
-const report = retentionPolicy.dryRun('audit');
+const report = retentionPolicy.dryRun('audit')
 
 // 实际执行：应用保留策略
-const result = retentionPolicy.apply('audit');
+const result = retentionPolicy.apply('audit')
 
 // 批量执行所有实体类型
-const allResults = retentionPolicy.applyAll();
+const allResults = retentionPolicy.applyAll()
 ```
 
 ### 自动清理流程
@@ -93,17 +93,17 @@ const allResults = retentionPolicy.applyAll();
 
 根据合规要求，不同审计类型的保留期建议如下：
 
-| 审计类型 | 典型场景 | 建议保留期 | 敏感级别 |
-|----------|----------|-----------|----------|
-| `user_input` | 用户输入 | 90 天 | low |
-| `assistant_output` | 助手响应 | 90 天 | low |
-| `tool_call` | 工具调用 | 180 天 | medium |
-| `external_write` | 外部写入 | 永久保留 | high |
-| `permission_decision` | 权限决策 | 永久保留 | high |
-| `approval_request` | 审批请求 | 1 年 | high |
-| `approval_response` | 审批响应 | 1 年 | medium |
-| `workflow_change` | 工作流变更 | 1 年 | medium |
-| `connector_access` | 连接器访问 | 180 天 | high |
+| 审计类型              | 典型场景   | 建议保留期 | 敏感级别 |
+| --------------------- | ---------- | ---------- | -------- |
+| `user_input`          | 用户输入   | 90 天      | low      |
+| `assistant_output`    | 助手响应   | 90 天      | low      |
+| `tool_call`           | 工具调用   | 180 天     | medium   |
+| `external_write`      | 外部写入   | 永久保留   | high     |
+| `permission_decision` | 权限决策   | 永久保留   | high     |
+| `approval_request`    | 审批请求   | 1 年       | high     |
+| `approval_response`   | 审批响应   | 1 年       | medium   |
+| `workflow_change`     | 工作流变更 | 1 年       | medium   |
+| `connector_access`    | 连接器访问 | 180 天     | high     |
 
 ## 合规性参考
 

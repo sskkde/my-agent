@@ -124,6 +124,12 @@ export class PostgresConnectionManager implements AsyncConnectionManager {
     if (!this.pool) {
       throw new Error('PostgreSQL connection pool is not open')
     }
+
+    const transactionClient = this.transactionClient.getStore()
+    if (transactionClient) {
+      return fn()
+    }
+
     const client = await this.pool.connect()
     try {
       await client.query('BEGIN')

@@ -5,6 +5,7 @@ GitHub connector provides integration with GitHub API for managing issues, pull 
 ## Overview
 
 The GitHub connector enables your agent to:
+
 - List and view issues in repositories
 - List and view pull requests
 - Create comments on issues (with approval workflow)
@@ -39,11 +40,11 @@ OAuth2 authentication is planned for future releases, allowing users to authoriz
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GITHUB_CONNECTOR_TIMEOUT_MS` | Request timeout in milliseconds | `30000` |
-| `GITHUB_CONNECTOR_MAX_TIMEOUT_MS` | Maximum allowed timeout | `120000` |
-| `MOCK_MODE` | Use mock transport for testing | `false` |
+| Variable                          | Description                     | Default  |
+| --------------------------------- | ------------------------------- | -------- |
+| `GITHUB_CONNECTOR_TIMEOUT_MS`     | Request timeout in milliseconds | `30000`  |
+| `GITHUB_CONNECTOR_MAX_TIMEOUT_MS` | Maximum allowed timeout         | `120000` |
+| `MOCK_MODE`                       | Use mock transport for testing  | `false`  |
 
 ### Connector Instance Configuration
 
@@ -73,6 +74,7 @@ List issues in a GitHub repository.
 **Requires Auth**: yes
 
 **Input Schema**:
+
 ```typescript
 {
   owner: string;        // Repository owner
@@ -87,26 +89,28 @@ List issues in a GitHub repository.
 ```
 
 **Output**:
+
 ```typescript
 {
   issues: Array<{
-    id: number;
-    number: number;
-    title: string;
-    body: string | null;
-    state: 'open' | 'closed';
-    user: { login: string; avatarUrl: string };
-    labels: Array<{ name: string; color: string }>;
-    comments: number;
-    createdAt: string;
-    updatedAt: string;
-    htmlUrl: string;
-  }>;
-  total: number;
+    id: number
+    number: number
+    title: string
+    body: string | null
+    state: 'open' | 'closed'
+    user: { login: string; avatarUrl: string }
+    labels: Array<{ name: string; color: string }>
+    comments: number
+    createdAt: string
+    updatedAt: string
+    htmlUrl: string
+  }>
+  total: number
 }
 ```
 
 **Example**:
+
 ```typescript
 const result = await connector.execute(instance, {
   operation: 'list_issues',
@@ -114,9 +118,9 @@ const result = await connector.execute(instance, {
     owner: 'octocat',
     repo: 'Hello-World',
     state: 'open',
-    labels: ['bug']
-  }
-});
+    labels: ['bug'],
+  },
+})
 ```
 
 ### github.get_issue
@@ -128,26 +132,28 @@ Get a specific issue by number.
 **Requires Auth**: yes
 
 **Input Schema**:
+
 ```typescript
 {
-  owner: string;        // Repository owner
-  repo: string;         // Repository name
-  issueNumber: number;  // Issue number
+  owner: string // Repository owner
+  repo: string // Repository name
+  issueNumber: number // Issue number
 }
 ```
 
 **Output**: Issue object or `null` if not found.
 
 **Example**:
+
 ```typescript
 const issue = await connector.execute(instance, {
   operation: 'get_issue',
   params: {
     owner: 'octocat',
     repo: 'Hello-World',
-    issueNumber: 42
-  }
-});
+    issueNumber: 42,
+  },
+})
 ```
 
 ### github.list_pull_requests
@@ -159,6 +165,7 @@ List pull requests in a GitHub repository.
 **Requires Auth**: yes
 
 **Input Schema**:
+
 ```typescript
 {
   owner: string;        // Repository owner
@@ -174,27 +181,28 @@ List pull requests in a GitHub repository.
 ```
 
 **Output**:
+
 ```typescript
 {
   pullRequests: Array<{
-    id: number;
-    number: number;
-    title: string;
-    body: string | null;
-    state: 'open' | 'closed';
-    user: { login: string };
-    draft: boolean;
-    merged: boolean;
-    head: { ref: string; sha: string };
-    base: { ref: string; sha: string };
-    additions: number;
-    deletions: number;
-    changedFiles: number;
-    createdAt: string;
-    updatedAt: string;
-    htmlUrl: string;
-  }>;
-  total: number;
+    id: number
+    number: number
+    title: string
+    body: string | null
+    state: 'open' | 'closed'
+    user: { login: string }
+    draft: boolean
+    merged: boolean
+    head: { ref: string; sha: string }
+    base: { ref: string; sha: string }
+    additions: number
+    deletions: number
+    changedFiles: number
+    createdAt: string
+    updatedAt: string
+    htmlUrl: string
+  }>
+  total: number
 }
 ```
 
@@ -207,11 +215,12 @@ Get a specific pull request by number.
 **Requires Auth**: yes
 
 **Input Schema**:
+
 ```typescript
 {
-  owner: string;
-  repo: string;
-  prNumber: number;
+  owner: string
+  repo: string
+  prNumber: number
 }
 ```
 
@@ -227,32 +236,37 @@ Create a comment on a GitHub issue. This is a **write operation** that requires 
 **Requires Approval**: yes
 
 **Input Schema**:
+
 ```typescript
 {
-  owner: string;
-  repo: string;
-  issueNumber: number;
-  body: string;  // Comment body (markdown supported)
+  owner: string
+  repo: string
+  issueNumber: number
+  body: string // Comment body (markdown supported)
 }
 ```
 
 **Output**:
+
 ```typescript
 {
-  requiresApproval: true;
-  approvalId: string;  // Use this to track approval status
+  requiresApproval: true
+  approvalId: string // Use this to track approval status
 }
 ```
 
 After approval is granted, the comment is created:
+
 ```typescript
 {
-  id: number;
-  nodeId: string;
-  body: string;
-  user: { login: string };
-  createdAt: string;
-  htmlUrl: string;
+  id: number
+  nodeId: string
+  body: string
+  user: {
+    login: string
+  }
+  createdAt: string
+  htmlUrl: string
 }
 ```
 
@@ -260,11 +274,11 @@ After approval is granted, the comment is created:
 
 GitHub API has the following rate limits:
 
-| Authentication | Rate Limit |
-|----------------|------------|
-| Unauthenticated | 60 requests/hour |
-| Authenticated (PAT) | 5,000 requests/hour |
-| GitHub App | 15,000 requests/hour |
+| Authentication      | Rate Limit           |
+| ------------------- | -------------------- |
+| Unauthenticated     | 60 requests/hour     |
+| Authenticated (PAT) | 5,000 requests/hour  |
+| GitHub App          | 15,000 requests/hour |
 
 ### Rate Limit Handling
 
@@ -276,6 +290,7 @@ The connector handles rate limits (HTTP 429) with:
 4. **Retry Strategy**: Caller can implement exponential backoff retry
 
 **Rate Limit Error Example**:
+
 ```typescript
 {
   code: 'RATE_LIMITED',
@@ -293,28 +308,29 @@ The connector handles rate limits (HTTP 429) with:
 
 All errors are mapped to the `GitHubError` type with consistent error codes:
 
-| Code | Description | Recoverable |
-|------|-------------|-------------|
-| `AUTH_INVALID` | Invalid or missing authentication | No |
-| `AUTH_EXPIRED` | Authentication token has expired | Yes |
-| `RATE_LIMITED` | Rate limit exceeded | Yes |
-| `NOT_FOUND` | Resource not found | No |
-| `FORBIDDEN` | Permission denied | No |
-| `VALIDATION_ERROR` | Invalid input parameters | No |
-| `NETWORK_ERROR` | Network connectivity issue | Yes |
-| `UNKNOWN_ERROR` | Unexpected error | No |
+| Code               | Description                       | Recoverable |
+| ------------------ | --------------------------------- | ----------- |
+| `AUTH_INVALID`     | Invalid or missing authentication | No          |
+| `AUTH_EXPIRED`     | Authentication token has expired  | Yes         |
+| `RATE_LIMITED`     | Rate limit exceeded               | Yes         |
+| `NOT_FOUND`        | Resource not found                | No          |
+| `FORBIDDEN`        | Permission denied                 | No          |
+| `VALIDATION_ERROR` | Invalid input parameters          | No          |
+| `NETWORK_ERROR`    | Network connectivity issue        | Yes         |
+| `UNKNOWN_ERROR`    | Unexpected error                  | No          |
 
 **Error Structure**:
+
 ```typescript
 interface GitHubError {
-  code: GitHubErrorCode;
-  message: string;
-  recoverable: boolean;
+  code: GitHubErrorCode
+  message: string
+  recoverable: boolean
   details?: {
-    statusCode?: number;
-    rateLimitRemaining?: number;
-    rateLimitResetAt?: string;
-  };
+    statusCode?: number
+    rateLimitRemaining?: number
+    rateLimitResetAt?: string
+  }
 }
 ```
 
@@ -331,8 +347,8 @@ Or when creating the connector:
 ```typescript
 const adapter = createGitHubConnectorAdapter({
   approvalStore,
-  useMock: true
-});
+  useMock: true,
+})
 ```
 
 ### Mock Transport Behavior
@@ -345,6 +361,7 @@ const adapter = createGitHubConnectorAdapter({
 ### Mock Data
 
 The mock transport provides:
+
 - 3 test issues (open and closed)
 - 3 test pull requests (open, closed, merged)
 - Comment creation simulation
@@ -362,11 +379,11 @@ const result = await connector.execute(instance, {
     owner: 'myorg',
     repo: 'myrepo',
     issueNumber: 123,
-    body: 'This is a comment'
+    body: 'This is a comment',
   },
   userId: 'user-123',
-  sessionId: 'session-456'
-});
+  sessionId: 'session-456',
+})
 
 // result: { requiresApproval: true, approvalId: 'github-approval-...' }
 ```
@@ -374,7 +391,7 @@ const result = await connector.execute(instance, {
 ### 2. Track Approval
 
 ```typescript
-const approval = approvalStore.getById(approvalId);
+const approval = approvalStore.getById(approvalId)
 // approval.status: 'pending' | 'approved' | 'rejected'
 ```
 
@@ -385,26 +402,27 @@ const approval = approvalStore.getById(approvalId);
 approvalStore.update(approvalId, {
   status: 'approved',
   respondedAt: new Date().toISOString(),
-  responseBy: 'admin'
-});
+  responseBy: 'admin',
+})
 
 // Execute the comment
-const comment = await adapter.executeApprovedComment(approvalId);
+const comment = await adapter.executeApprovedComment(approvalId)
 ```
 
 ## Timeout Configuration
 
-| Setting | Default | Maximum |
-|---------|---------|---------|
+| Setting         | Default    | Maximum     |
+| --------------- | ---------- | ----------- |
 | Request timeout | 30 seconds | 120 seconds |
 
 Configure per-request:
+
 ```typescript
 const result = await connector.execute(instance, {
   operation: 'list_issues',
   params: { owner: 'myorg', repo: 'myrepo' },
-  timeoutMs: 60000  // 60 seconds
-});
+  timeoutMs: 60000, // 60 seconds
+})
 ```
 
 ## Security
@@ -419,17 +437,18 @@ const result = await connector.execute(instance, {
 
 Required scopes for each capability:
 
-| Capability | Minimum Scopes |
-|------------|----------------|
-| `github.list_issues` | `public_repo` (public) / `repo` (private) |
-| `github.get_issue` | `public_repo` / `repo` |
-| `github.list_pull_requests` | `public_repo` / `repo` |
-| `github.get_pull_request` | `public_repo` / `repo` |
-| `github.create_issue_comment` | `repo` |
+| Capability                    | Minimum Scopes                            |
+| ----------------------------- | ----------------------------------------- |
+| `github.list_issues`          | `public_repo` (public) / `repo` (private) |
+| `github.get_issue`            | `public_repo` / `repo`                    |
+| `github.list_pull_requests`   | `public_repo` / `repo`                    |
+| `github.get_pull_request`     | `public_repo` / `repo`                    |
+| `github.create_issue_comment` | `repo`                                    |
 
 ### Audit Trail
 
 All connector calls generate audit records:
+
 - Operation type and parameters
 - User and session context
 - Timestamp and resource identifier
@@ -438,6 +457,7 @@ All connector calls generate audit records:
 ### Sensitive Data Redaction
 
 The connector ensures:
+
 - PATs never appear in logs
 - PATs never appear in API responses
 - PATs never appear in audit records
@@ -450,10 +470,10 @@ The connector ensures:
 ```typescript
 const adapter = createGitHubConnectorAdapter({
   approvalStore,
-  transport: mockTransport
-});
+  transport: mockTransport,
+})
 
-const encryptedPat = GitHubConnectorAdapter.encryptPat(process.env.GITHUB_PAT);
+const encryptedPat = GitHubConnectorAdapter.encryptPat(process.env.GITHUB_PAT)
 
 const result = await adapter.execute(instance, {
   requestId: 'req-001',
@@ -466,15 +486,15 @@ const result = await adapter.execute(instance, {
     state: 'open',
     sort: 'updated',
     direction: 'desc',
-    perPage: 10
+    perPage: 10,
   },
-  userId: 'user-123'
-});
+  userId: 'user-123',
+})
 
-console.log(`Found ${result.total} issues`);
-result.issues.forEach(issue => {
-  console.log(`#${issue.number}: ${issue.title}`);
-});
+console.log(`Found ${result.total} issues`)
+result.issues.forEach((issue) => {
+  console.log(`#${issue.number}: ${issue.title}`)
+})
 ```
 
 ### Create Comment with Approval
@@ -487,43 +507,43 @@ const approvalResult = await adapter.execute(instance, {
     owner: 'myorg',
     repo: 'myrepo',
     issueNumber: 42,
-    body: '## Summary\n\nThis issue has been resolved in PR #123.'
+    body: '## Summary\n\nThis issue has been resolved in PR #123.',
   },
   userId: 'user-123',
-  sessionId: 'session-001'
-});
+  sessionId: 'session-001',
+})
 
 // Step 2: Get approval
-const approvalId = approvalResult.approvalId;
+const approvalId = approvalResult.approvalId
 
 // Step 3: Admin approves
 approvalStore.update(approvalId, {
   status: 'approved',
   responseBy: 'admin',
-  respondedAt: new Date().toISOString()
-});
+  respondedAt: new Date().toISOString(),
+})
 
 // Step 4: Execute the approved action
-const comment = await adapter.executeApprovedComment(approvalId);
-console.log(`Comment created: ${comment.htmlUrl}`);
+const comment = await adapter.executeApprovedComment(approvalId)
+console.log(`Comment created: ${comment.htmlUrl}`)
 ```
 
 ## Health Check
 
 ```typescript
-const health = adapter.checkHealth(instance);
+const health = adapter.checkHealth(instance)
 // { healthy: true, message: 'GitHub connector is healthy' }
 ```
 
 ## Capability Discovery
 
 ```typescript
-const capabilities = adapter.discoverCapabilities(instance);
+const capabilities = adapter.discoverCapabilities(instance)
 
-capabilities.forEach(cap => {
-  console.log(`${cap.capabilityId}: ${cap.name}`);
-  console.log(`  Category: ${cap.category}`);
-  console.log(`  Risk Level: ${cap.riskLevel}`);
-  console.log(`  Requires Auth: ${cap.requiresAuth}`);
-});
+capabilities.forEach((cap) => {
+  console.log(`${cap.capabilityId}: ${cap.name}`)
+  console.log(`  Category: ${cap.category}`)
+  console.log(`  Risk Level: ${cap.riskLevel}`)
+  console.log(`  Requires Auth: ${cap.requiresAuth}`)
+})
 ```
