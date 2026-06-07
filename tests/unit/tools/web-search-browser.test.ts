@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
@@ -9,6 +9,10 @@ async function loadHtmlFixture(filename: string): Promise<string> {
 }
 
 describe('web-search-browser DuckDuckGo Playwright extractor', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   describe('DOM extraction', () => {
     it('extracts results from DuckDuckGo success HTML', async () => {
       const html = await loadHtmlFixture('duckduckgo-browser-success.html')
@@ -69,7 +73,7 @@ describe('web-search-browser DuckDuckGo Playwright extractor', () => {
 
       await searchWithDuckDuckGoBrowser({
         query: 'test query',
-        browser: mockBrowser as unknown as import('playwright').Browser,
+        browser: mockBrowser as unknown as import('playwright-core').Browser,
         timeoutMs: 5000,
       })
 
@@ -97,7 +101,7 @@ describe('web-search-browser DuckDuckGo Playwright extractor', () => {
 
       await searchWithDuckDuckGoBrowser({
         query: 'test query',
-        browser: mockBrowser as unknown as import('playwright').Browser,
+        browser: mockBrowser as unknown as import('playwright-core').Browser,
         timeoutMs: 5000,
       })
 
@@ -130,7 +134,7 @@ describe('web-search-browser DuckDuckGo Playwright extractor', () => {
 
       await searchWithDuckDuckGoBrowser({
         query: 'test query',
-        browser: mockBrowser as unknown as import('playwright').Browser,
+        browser: mockBrowser as unknown as import('playwright-core').Browser,
         timeoutMs: 50,
       })
 
@@ -158,13 +162,65 @@ describe('web-search-browser DuckDuckGo Playwright extractor', () => {
 
       const result = await searchWithDuckDuckGoBrowser({
         query: 'test query',
-        browser: mockBrowser as unknown as import('playwright').Browser,
+        browser: mockBrowser as unknown as import('playwright-core').Browser,
         timeoutMs: 5000,
       })
 
       expect(mockContext.close).toHaveBeenCalled()
       expect(result.success).toBe(false)
       expect(result.errorCode).toBe('BROWSER_SEARCH_CAPTCHA')
+    })
+  })
+
+  describe('CloakBrowser-backed web_search injection', () => {
+    it('uses the configured browser provider for playwright backend searches', async () => {
+      vi.stubEnv('WEB_SEARCH_BACKEND', 'playwright')
+
+      const mockContext = {
+        newPage: vi.fn().mockResolvedValue({
+          goto: vi.fn().mockResolvedValue(undefined),
+          content: vi.fn().mockResolvedValue(await loadHtmlFixture('duckduckgo-browser-success.html')),
+          close: vi.fn().mockResolvedValue(undefined),
+        }),
+        close: vi.fn().mockResolvedValue(undefined),
+      }
+
+      const mockBrowser = {
+        newContext: vi.fn().mockResolvedValue(mockContext),
+        close: vi.fn().mockResolvedValue(undefined),
+      }
+
+      const browserProvider = vi.fn().mockResolvedValue(mockBrowser as unknown as import('playwright-core').Browser)
+      const { createWebSearchTool } = await import('../../../src/tools/builtins/web-search.js')
+      const tool = createWebSearchTool({ browserProvider })
+
+      const result = await tool.handler(
+        { query: 'test query', limit: 1 },
+        {
+          toolCallId: 'tc-browser-search',
+          toolName: 'web_search',
+          userId: 'user-123',
+          sessionId: 'session-123',
+          permissionContext: {
+            userId: 'user-123',
+            sessionId: 'session-123',
+            mode: 'ask_on_write',
+            grants: [],
+          },
+          executionStartTime: new Date().toISOString(),
+          stores: {
+            toolExecutionStore: {
+              updateStatus: () => {},
+              saveResult: () => {},
+            },
+          },
+        },
+      )
+
+      expect(result.success).toBe(true)
+      expect(browserProvider).toHaveBeenCalledOnce()
+      expect(mockBrowser.newContext).toHaveBeenCalledOnce()
+      expect(mockContext.close).toHaveBeenCalledOnce()
     })
   })
 
@@ -190,7 +246,7 @@ describe('web-search-browser DuckDuckGo Playwright extractor', () => {
 
       const result = await searchWithDuckDuckGoBrowser({
         query: 'test query',
-        browser: mockBrowser as unknown as import('playwright').Browser,
+        browser: mockBrowser as unknown as import('playwright-core').Browser,
         timeoutMs: 5000,
       })
 

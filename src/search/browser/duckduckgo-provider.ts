@@ -1,6 +1,6 @@
 import type { BrowserSearchResult } from '../types.js'
 import { extractDuckDuckGoResults } from './duckduckgo-extractor.js'
-import type { Browser, BrowserContext, Page } from 'playwright'
+import type { Browser, BrowserContext, Page } from 'playwright-core'
 
 interface DuckDuckGoBrowserSearchParams {
   query: string
