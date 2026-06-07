@@ -88,9 +88,9 @@ describe('ApprovalsTab', () => {
     fireEvent.click(screen.getByTestId('approval-approve-approval-1'))
 
     await waitFor(() => {
-      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined);
-    });
-  });
+      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined)
+    })
+  })
 
   it('click reject calls respondApproval with reject', async () => {
     vi.mocked(client.getApprovals).mockResolvedValue({
@@ -132,9 +132,9 @@ describe('ApprovalsTab', () => {
     fireEvent.click(screen.getByTestId('approval-reject-approval-1'))
 
     await waitFor(() => {
-      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'reject', 'not authorized');
-    });
-  });
+      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'reject', 'not authorized')
+    })
+  })
 
   it('shows empty state when list is empty', async () => {
     vi.mocked(client.getApprovals).mockResolvedValue({
@@ -294,8 +294,8 @@ describe('ApprovalsTab', () => {
     fireEvent.click(screen.getByTestId('approval-approve-approval-1'))
 
     await waitFor(() => {
-      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined);
-    });
+      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined)
+    })
 
     // Verify getApprovals was called again after approval
     expect(client.getApprovals).toHaveBeenCalledTimes(2)

@@ -157,25 +157,25 @@ export async function getApprovalDetail(approvalId: string): Promise<ApprovalDet
 export async function respondApproval(
   approvalId: string,
   response: 'approved' | 'rejected' | 'approve_once' | 'approve_always' | 'reject',
-  reason?: string
+  reason?: string,
 ): Promise<ApprovalDecisionResponse> {
-  let requestBody: ApprovalDecisionRequest;
-  
+  let requestBody: ApprovalDecisionRequest
+
   if (response === 'approved') {
-    requestBody = { decision: 'approved', responseType: 'approve_once', reason };
+    requestBody = { decision: 'approved', responseType: 'approve_once', reason }
   } else if (response === 'rejected') {
-    requestBody = { decision: 'rejected', responseType: 'reject', reason };
+    requestBody = { decision: 'rejected', responseType: 'reject', reason }
   } else {
-    requestBody = { responseType: response, reason };
+    requestBody = { responseType: response, reason }
   }
-  
+
   const httpResponse = await fetch(`${API_BASE}/approvals/${approvalId}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
-  });
-  return parseResponse<ApprovalDecisionResponse>(httpResponse);
+  })
+  return parseResponse<ApprovalDecisionResponse>(httpResponse)
 }
 
 export type RunEventCallback = (event: SseRunEvent) => void

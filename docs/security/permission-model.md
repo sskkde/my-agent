@@ -22,11 +22,11 @@ When an agent attempts to execute a tool that requires approval, the following f
 
 Users can respond to approval requests with three distinct choices:
 
-| Response | Behavior | Grant Created | Use Case |
-|----------|----------|---------------|----------|
-| `reject` | Denies the request, no execution | None | Unsafe or unwanted operation |
-| `approve_once` | Approves this specific request | 60-minute precise grant | One-time operation |
-| `approve_always` | Approves and creates long-lived grant | 24-hour grant | Repeated safe operations |
+| Response         | Behavior                              | Grant Created           | Use Case                     |
+| ---------------- | ------------------------------------- | ----------------------- | ---------------------------- |
+| `reject`         | Denies the request, no execution      | None                    | Unsafe or unwanted operation |
+| `approve_once`   | Approves this specific request        | 60-minute precise grant | One-time operation           |
+| `approve_always` | Approves and creates long-lived grant | 24-hour grant           | Repeated safe operations     |
 
 **MVP Implementation Note**: The `approve_once` response is implemented as a short-TTL (60-minute) precise grant, not a strict one-shot consumed grant. This allows for reasonable retry behavior while maintaining security. Future versions may implement strict one-shot semantics.
 
@@ -42,6 +42,7 @@ The API maintains backward compatibility with the legacy two-state approval syst
 - Canonical `responseType` field: `reject` | `approve_once` | `approve_always`
 
 The system normalizes legacy values:
+
 - `approved` → `approve_once` (creates 60-minute grant)
 - `rejected` → `reject` (no grant)
 

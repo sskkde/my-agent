@@ -319,9 +319,9 @@ describe('StatusTab', () => {
       fireEvent.click(screen.getByTestId('approval-approve-approval-1'))
 
       await waitFor(() => {
-        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined);
-      });
-    });
+        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined)
+      })
+    })
 
     it('calls respondApproval with reject decision and reason', async () => {
       vi.mocked(client.getHealth).mockResolvedValue({
@@ -368,9 +368,9 @@ describe('StatusTab', () => {
       fireEvent.click(screen.getByTestId('approval-reject-approval-1'))
 
       await waitFor(() => {
-        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'reject', 'not authorized');
-      });
-    });
+        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'reject', 'not authorized')
+      })
+    })
 
     it('shows resolution info for resolved approvals', async () => {
       vi.mocked(client.getHealth).mockResolvedValue({

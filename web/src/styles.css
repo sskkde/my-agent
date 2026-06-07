@@ -8531,3 +8531,254 @@ body {
   transition: all 0.15s ease;
 }
 
+/* ==========================================================================
+   UI Primitives
+   ========================================================================== */
+
+/* Button */
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ui-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-button--small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.ui-button--medium {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.ui-button--large {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.ui-button--primary {
+  background: var(--accent);
+  color: white;
+}
+
+.ui-button--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.ui-button--secondary {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.ui-button--secondary:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.ui-button--ghost {
+  background: transparent;
+  color: var(--text);
+}
+
+.ui-button--ghost:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.ui-button__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ui-button-spin 0.6s linear infinite;
+}
+
+@keyframes ui-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Card */
+.ui-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ui-card__header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.ui-card__content {
+  padding: 16px;
+}
+
+.ui-card__footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* Badge */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+.ui-badge--small {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.ui-badge--medium {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.ui-badge--default {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.ui-badge--success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ui-badge--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ui-badge--error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ui-badge--info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* TextArea */
+.ui-textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.ui-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ui-textarea::placeholder {
+  color: var(--muted);
+}
+
+.ui-textarea--resize-none {
+  resize: none;
+}
+
+.ui-textarea--resize-vertical {
+  resize: vertical;
+}
+
+.ui-textarea--resize-horizontal {
+  resize: horizontal;
+}
+
+.ui-textarea--resize-both {
+  resize: both;
+}
+
+/* ==========================================================================
+   Agent Shell Layout
+   ========================================================================== */
+
+.agent-shell-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--warm-paper-bg, var(--bg));
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Product Navigation Bar
+   ========================================================================== */
+
+.product-nav {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
+  border-bottom: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, var(--border));
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.product-nav__item {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--warm-paper-text-secondary, var(--muted));
+  background: transparent;
+  border: none;
+  border-radius: var(--warm-paper-radius-sm, 4px);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.product-nav__item:hover {
+  color: var(--warm-paper-text, var(--text));
+  background: var(--warm-paper-hover-overlay, rgba(0, 0, 0, 0.02));
+}
+
+.product-nav__item--active {
+  color: var(--warm-paper-accent, var(--accent));
+  background: var(--warm-paper-accent-subtle, rgba(91, 140, 133, 0.08));
+  font-weight: 600;
+}
+
+.product-nav__item--active:hover {
+  background: var(--warm-paper-accent-subtle, rgba(91, 140, 133, 0.12));
+}
+
+/* ==========================================================================
+   Center Stage (Main Content Area)
+   ========================================================================== */
+
+.center-stage {
+  flex: 1;
+  overflow: auto;
+  background: var(--warm-paper-bg, var(--bg));
+}
+

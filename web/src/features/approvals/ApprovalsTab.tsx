@@ -32,7 +32,7 @@ const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
   const pendingCount = approvals?.approvals.filter((a) => a.status === 'pending').length ?? 0
 
   const handleApprovalAction = async (approvalId: string, decision: 'approve_once' | 'reject') => {
-    setActionLoading(approvalId);
+    setActionLoading(approvalId)
     try {
       await client.respondApproval(approvalId, decision, reason || undefined)
       await fetchApprovals()

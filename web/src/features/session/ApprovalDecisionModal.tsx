@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
-import { ApprovalInfo } from '../../api/types';
+import { useState, useEffect } from 'react'
+import { ApprovalInfo } from '../../api/types'
 
 export interface ApprovalDecisionModalProps {
-  approval: ApprovalInfo | null;
-  loading: boolean;
-  error: string | null;
-  onReject: (reason?: string) => void;
-  onApproveOnce: (reason?: string) => void;
-  onApproveAlways: (reason?: string) => void;
-  onClose: () => void;
+  approval: ApprovalInfo | null
+  loading: boolean
+  error: string | null
+  onReject: (reason?: string) => void
+  onApproveOnce: (reason?: string) => void
+  onApproveAlways: (reason?: string) => void
+  onClose: () => void
 }
 
 export function ApprovalDecisionModal({
@@ -20,33 +20,31 @@ export function ApprovalDecisionModal({
   onApproveAlways,
   onClose,
 }: ApprovalDecisionModalProps): JSX.Element | null {
-  const [reason, setReason] = useState<string>('');
+  const [reason, setReason] = useState<string>('')
 
   useEffect(() => {
     if (approval?.id) {
-      setReason('');
+      setReason('')
     }
-  }, [approval?.id]);
+  }, [approval?.id])
 
   if (!approval) {
-    return null;
+    return null
   }
 
-  const isExpired = approval.expiresAt
-    ? new Date(approval.expiresAt) < new Date()
-    : false;
+  const isExpired = approval.expiresAt ? new Date(approval.expiresAt) < new Date() : false
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   return (
     <div
@@ -59,12 +57,7 @@ export function ApprovalDecisionModal({
       <div className="modal-content approval-modal">
         <div className="modal-header">
           <h4>审批请求</h4>
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="modal-close"
-            aria-label="关闭"
-          >
+          <button onClick={onClose} disabled={loading} className="modal-close" aria-label="关闭">
             ×
           </button>
         </div>
@@ -109,17 +102,9 @@ export function ApprovalDecisionModal({
             )}
           </div>
 
-          {error && (
-            <div className="approval-error-message">
-              {error}
-            </div>
-          )}
+          {error && <div className="approval-error-message">{error}</div>}
 
-          {isExpired && (
-            <div className="approval-expired-message">
-              此审批请求已过期，无法操作。
-            </div>
-          )}
+          {isExpired && <div className="approval-expired-message">此审批请求已过期，无法操作。</div>}
 
           {!isExpired && (
             <textarea
@@ -134,10 +119,7 @@ export function ApprovalDecisionModal({
 
           <div className="approval-action-buttons">
             {isExpired ? (
-              <button
-                onClick={onClose}
-                className="modal-close"
-              >
+              <button onClick={onClose} className="modal-close">
                 关闭
               </button>
             ) : (
@@ -172,5 +154,5 @@ export function ApprovalDecisionModal({
         </div>
       </div>
     </div>
-  );
+  )
 }
