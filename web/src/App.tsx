@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import AgentShell from './layout/AgentShell'
+import WorkspacePage from './features/workspace/WorkspacePage'
+import OperationsPage from './features/operations/OperationsPage'
+import AdminPage from './features/admin/AdminPage'
+import { getProductSection } from './navigation/product-navigation'
 import AgentMonitorTab from './features/monitor/AgentMonitorTab'
 import DashboardTab from './features/dashboard/DashboardTab'
 import SessionWorkspace from './features/session/SessionWorkspace'
@@ -53,6 +57,24 @@ function AppContent() {
   }
 
   const renderContent = () => {
+    const section = getProductSection(activeTab)
+
+    if (section === 'chat') {
+      return <SessionWorkspace />
+    }
+
+    if (section === 'workspace') {
+      return <WorkspacePage activeTab={activeTab} onTabChange={setActiveTab} />
+    }
+
+    if (section === 'operations') {
+      return <OperationsPage activeTab={activeTab} onTabChange={setActiveTab} />
+    }
+
+    if (section === 'admin') {
+      return <AdminPage activeTab={activeTab} onTabChange={setActiveTab} />
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return <DashboardTab />
