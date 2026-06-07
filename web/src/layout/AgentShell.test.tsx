@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import AgentShell from './AgentShell'
 import type { TabId } from '../components/TabNav'
+import { ready, loading, empty, error } from '../features/context/card-state'
 
 const renderWithRouter = (ui: React.ReactElement) => {
   return render(<BrowserRouter>{ui}</BrowserRouter>)
@@ -325,6 +326,195 @@ describe('AgentShell', () => {
 
       expect(screen.getByTestId('tab-session-console')).toHaveAttribute('aria-selected', 'true')
       expect(screen.getByTestId('tab-dashboard')).toHaveAttribute('aria-selected', 'false')
+    })
+  })
+
+  // =============================================================================
+  // Context Desk Tests (Task 7)
+  // =============================================================================
+
+  describe('Context Desk Integration', () => {
+    it('has context desk toggle button', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const toggle = screen.getByTestId('context-desk-toggle')
+      expect(toggle).toBeInTheDocument()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('opens context desk panel when toggle is clicked', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const toggle = screen.getByTestId('context-desk-toggle')
+      fireEvent.click(toggle)
+
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('has close button inside context desk panel', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      expect(screen.getByTestId('context-desk-close')).toBeInTheDocument()
+    })
+
+    it('closes context desk when close button is clicked', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const toggle = screen.getByTestId('context-desk-toggle')
+      fireEvent.click(toggle)
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+
+      const closeButton = screen.getByTestId('context-desk-close')
+      fireEvent.click(closeButton)
+
+      expect(screen.queryByTestId('context-desk-panel')).not.toBeInTheDocument()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('toggles context desk open and closed', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const toggle = screen.getByTestId('context-desk-toggle')
+      
+      fireEvent.click(toggle)
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      
+      fireEvent.click(toggle)
+      expect(screen.queryByTestId('context-desk-panel')).not.toBeInTheDocument()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('renders ContextDeskPanel with default loading states when no cards provided', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+    })
+
+    it('renders ContextDeskPanel with provided card states', () => {
+      const contextDeskCards = {
+        approvalState: ready({ approvals: [], totalCount: 0, sessionScope: 'none' }),
+        memoryState: ready({ memories: [], totalCount: 0 }),
+        runsState: ready({ runs: [], totalCount: 0, sessionScope: 'none', streaming: false }),
+        toolActivityState: ready({ events: [], totalCount: 0, sessionId: 'test-session', streaming: false }),
+      }
+
+      renderWithRouter(
+        <AgentShell
+          activeTab="dashboard"
+          onTabChange={mockOnTabChange}
+          contextDeskCards={contextDeskCards}
+          sessionId="test-session"
+        >
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('context-card-approvals')).toBeInTheDocument()
+      expect(screen.getByTestId('context-card-memory')).toBeInTheDocument()
+      expect(screen.getByTestId('context-card-runs')).toBeInTheDocument()
+      expect(screen.getByTestId('context-card-tools')).toBeInTheDocument()
+    })
+
+    it('passes sessionId to ContextDeskPanel', () => {
+      const contextDeskCards = {
+        approvalState: loading(),
+        memoryState: loading(),
+        runsState: loading(),
+        toolActivityState: loading(),
+      }
+
+      renderWithRouter(
+        <AgentShell
+          activeTab="session-console"
+          onTabChange={mockOnTabChange}
+          contextDeskCards={contextDeskCards}
+          sessionId="session-123"
+        >
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+    })
+
+    it('handles missing sessionId gracefully', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+    })
+
+    it('preserves existing shell selectors when context desk is open', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      
+      expect(screen.getByTestId('agent-shell')).toBeInTheDocument()
+      expect(screen.getByTestId('app-shell')).toBeInTheDocument()
+      expect(screen.getByTestId('center-stage')).toBeInTheDocument()
+      expect(screen.getByTestId('sidebar')).toBeInTheDocument()
+    })
+
+    it('does not break non-Chat pages when context desk is opened', () => {
+      const contextDeskCards = {
+        approvalState: empty('No approval requests', 'Approvals will appear here when tools require permission'),
+        memoryState: empty('No memory entries', 'Memory will be populated as sessions progress'),
+        runsState: empty('No runs', 'Background runs will appear here'),
+        toolActivityState: error('Session context unavailable'),
+      }
+
+      renderWithRouter(
+        <AgentShell
+          activeTab="settings"
+          onTabChange={mockOnTabChange}
+          contextDeskCards={contextDeskCards}
+        >
+          <div>Settings Content</div>
+        </AgentShell>,
+      )
+
+      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+      expect(screen.getByText('Settings Content')).toBeInTheDocument()
     })
   })
 })

@@ -73,20 +73,14 @@ class CardErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
 // =============================================================================
 
 export interface ContextDeskPanelProps {
-  /** Approval card state */
   approvalState: CardState<ApprovalCardData>
-  /** Memory card state */
   memoryState: CardState<MemoryCardData>
-  /** Runs card state */
   runsState: CardState<RunsCardData>
-  /** Tool activity card state */
   toolActivityState: CardState<ToolActivityCardData>
-  /** Optional session ID for filtering */
   sessionId?: string | null
-  /** Optional max items per card */
   maxItems?: number
-  /** Optional CSS class */
   className?: string
+  testId?: string
 }
 
 // =============================================================================
@@ -128,11 +122,12 @@ const ContextDeskPanel: React.FC<ContextDeskPanelProps> = ({
   sessionId,
   maxItems = 5,
   className = '',
+  testId = 'context-desk-panel',
 }) => {
   return (
     <div
       className={`context-desk-panel ${className}`}
-      data-testid="context-desk-panel"
+      data-testid={testId}
     >
       <div className="context-desk-panel__grid">
         {/* Approvals Card */}

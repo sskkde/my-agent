@@ -9,6 +9,15 @@ import {
   type ProductSection,
 } from '../navigation/product-navigation'
 import type { UserMetadata } from '../api/types'
+import ContextDeskPanel from '../features/context/ContextDeskPanel'
+import type {
+  ApprovalCardData,
+  MemoryCardData,
+  RunsCardData,
+  ToolActivityCardData,
+} from '../features/context/card-contracts'
+import type { CardState } from '../features/context/card-state'
+import { loading } from '../features/context/card-state'
 import '../styles.css'
 
 interface AgentShellProps {
@@ -19,6 +28,13 @@ interface AgentShellProps {
   isNavCollapsed?: boolean
   user?: UserMetadata | null
   onLogout?: () => void
+  sessionId?: string | null
+  contextDeskCards?: {
+    approvalState: CardState<ApprovalCardData>
+    memoryState: CardState<MemoryCardData>
+    runsState: CardState<RunsCardData>
+    toolActivityState: CardState<ToolActivityCardData>
+  }
 }
 
 const AgentShell: React.FC<AgentShellProps> = ({
@@ -29,12 +45,24 @@ const AgentShell: React.FC<AgentShellProps> = ({
   isNavCollapsed: controlledNavCollapsed,
   user,
   onLogout,
+  sessionId,
+  contextDeskCards,
 }) => {
   const [internalNavCollapsed, setInternalNavCollapsed] = useState(false)
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [isContextDeskOpen, setIsContextDeskOpen] = useState(false)
 
   const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed
+
+  const defaultContextDeskCards = {
+    approvalState: loading(),
+    memoryState: loading(),
+    runsState: loading(),
+    toolActivityState: loading(),
+  }
+
+  const cards = contextDeskCards || defaultContextDeskCards
 
   // Determine active product section
   const activeProductSection = useMemo(() => getProductSection(activeTab), [activeTab])
@@ -87,9 +115,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
   }
 
   const handleProductSectionClick = (section: ProductSection) => {
-    // Navigate to the first tab in the clicked product section
-    // For now, this is a placeholder - the actual navigation
-    // will be determined by the product section's first tab
     switch (section) {
       case 'chat':
         onTabChange('session-console')
@@ -104,6 +129,14 @@ const AgentShell: React.FC<AgentShellProps> = ({
         onTabChange('settings')
         break
     }
+  }
+
+  const handleToggleContextDesk = () => {
+    setIsContextDeskOpen((prev) => !prev)
+  }
+
+  const handleCloseContextDesk = () => {
+    setIsContextDeskOpen(false)
   }
 
   const breadcrumb = useMemo(() => {
@@ -131,6 +164,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
     isNavCollapsed ? 'shell--nav-collapsed' : '',
     isNavDrawerOpen ? 'shell--nav-drawer-open' : '',
     isMobile ? 'shell--mobile' : '',
+    isContextDeskOpen ? 'shell--context-desk-open' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -158,6 +192,22 @@ const AgentShell: React.FC<AgentShellProps> = ({
       <div data-testid="app-shell" className={shellClasses}>
         <header data-testid="topbar" className="shell__topbar">
           <div className="topbar__breadcrumb">{breadcrumb}</div>
+
+          <button
+            data-testid="context-desk-toggle"
+            className="context-desk-toggle"
+            onClick={handleToggleContextDesk}
+            aria-expanded={isContextDeskOpen}
+            aria-label={isContextDeskOpen ? 'Close context desk' : 'Open context desk'}
+            title="Context Desk"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="9" y1="9" x2="15" y2="9" />
+              <line x1="9" y1="12" x2="15" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
+          </button>
 
           {user && (
             <div className="topbar__user" data-testid="topbar-user">
@@ -238,6 +288,35 @@ const AgentShell: React.FC<AgentShellProps> = ({
         <main data-testid="center-stage" className="shell__content center-stage">
           {children}
         </main>
+
+        {/* Context Desk Panel - side panel */}
+        {isContextDeskOpen && (
+          <aside data-testid="context-desk-panel" className="context-desk">
+            <div className="context-desk__header">
+              <h2 className="context-desk__title">Context Desk</h2>
+              <button
+                data-testid="context-desk-close"
+                className="context-desk__close"
+                onClick={handleCloseContextDesk}
+                aria-label="Close context desk"
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="context-desk__body">
+              <ContextDeskPanel
+                approvalState={cards.approvalState}
+                memoryState={cards.memoryState}
+                runsState={cards.runsState}
+                toolActivityState={cards.toolActivityState}
+                sessionId={sessionId}
+                maxItems={5}
+                testId="context-desk-panel-content"
+              />
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   )
