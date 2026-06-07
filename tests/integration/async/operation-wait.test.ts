@@ -1,16 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createConnectorStore, type ConnectorStore } from '../../../src/storage/connector-store.js';
-import { createWaitConditionStore, type WaitConditionStore, WAIT_CONDITION_STATES } from '../../../src/storage/wait-condition-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
-import { createConnectorRuntime } from '../../../src/connectors/connector-runtime.js';
-import type { ConnectorRuntime } from '../../../src/connectors/types.js';
-import { createConnectorToolBridge } from '../../../src/connectors/connector-tool-bridge.js';
-import { createAsyncIntegration, createFakeEventSourceAdapter, FakeEventSourceAdapter } from '../../../src/async/async-integration.js';
-import type { AsyncIntegration } from '../../../src/async/types.js';
-import type { ExecuteAsyncToolRequest, AsyncOperationEvent } from '../../../src/async/types.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createConnectorStore, type ConnectorStore } from '../../../src/storage/connector-store.js'
+import {
+  createWaitConditionStore,
+  type WaitConditionStore,
+  WAIT_CONDITION_STATES,
+} from '../../../src/storage/wait-condition-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
+import { createConnectorRuntime } from '../../../src/connectors/connector-runtime.js'
+import type { ConnectorRuntime } from '../../../src/connectors/types.js'
+import { createConnectorToolBridge } from '../../../src/connectors/connector-tool-bridge.js'
+import {
+  createAsyncIntegration,
+  createFakeEventSourceAdapter,
+  FakeEventSourceAdapter,
+} from '../../../src/async/async-integration.js'
+import type { AsyncIntegration } from '../../../src/async/types.js'
+import type { ExecuteAsyncToolRequest, AsyncOperationEvent } from '../../../src/async/types.js'
 
 const asyncIntegrationMigrations: Migration[] = [
   {
@@ -38,7 +46,7 @@ const asyncIntegrationMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_connector_defs_status;
       DROP INDEX IF EXISTS idx_connector_defs_type;
       DROP TABLE IF EXISTS connector_definitions;
-    `
+    `,
   },
   {
     version: 2,
@@ -66,7 +74,7 @@ const asyncIntegrationMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_connector_instances_status;
       DROP INDEX IF EXISTS idx_connector_instances_user_def;
       DROP TABLE IF EXISTS connector_instances;
-    `
+    `,
   },
   {
     version: 3,
@@ -110,7 +118,7 @@ const asyncIntegrationMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_events_event_type;
       DROP INDEX IF EXISTS idx_events_source_module;
       DROP TABLE IF EXISTS events;
-    `
+    `,
   },
   {
     version: 4,
@@ -153,7 +161,7 @@ const asyncIntegrationMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_runtime_actions_status;
       DROP INDEX IF EXISTS idx_runtime_actions_correlation;
       DROP TABLE IF EXISTS runtime_actions;
-    `
+    `,
   },
   {
     version: 5,
@@ -185,41 +193,41 @@ const asyncIntegrationMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_wait_conditions_status;
       DROP INDEX IF EXISTS idx_wait_conditions_timeout;
       DROP TABLE IF EXISTS wait_conditions;
-    `
+    `,
   },
-];
+]
 
 describe('Async OperationRef + WaitCondition Integration', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let connectorStore: ConnectorStore;
-  let waitConditionStore: WaitConditionStore;
-  let eventStore: EventStore;
-  let runtimeActionStore: RuntimeActionStore;
-  let connectorRuntime: ConnectorRuntime;
-  let asyncIntegration: AsyncIntegration;
-  let fakeEventSource: FakeEventSourceAdapter;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let connectorStore: ConnectorStore
+  let waitConditionStore: WaitConditionStore
+  let eventStore: EventStore
+  let runtimeActionStore: RuntimeActionStore
+  let connectorRuntime: ConnectorRuntime
+  let asyncIntegration: AsyncIntegration
+  let fakeEventSource: FakeEventSourceAdapter
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply(asyncIntegrationMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply(asyncIntegrationMigrations)
 
-    connectorStore = createConnectorStore(connection);
-    waitConditionStore = createWaitConditionStore(connection);
-    eventStore = createEventStore(connection);
-    runtimeActionStore = createRuntimeActionStore(connection);
+    connectorStore = createConnectorStore(connection)
+    waitConditionStore = createWaitConditionStore(connection)
+    eventStore = createEventStore(connection)
+    runtimeActionStore = createRuntimeActionStore(connection)
 
-    const toolBridge = createConnectorToolBridge();
+    const toolBridge = createConnectorToolBridge()
     connectorRuntime = createConnectorRuntime({
       connectorStore,
       toolBridge,
       eventStore,
-    });
+    })
 
-    fakeEventSource = createFakeEventSourceAdapter() as FakeEventSourceAdapter;
+    fakeEventSource = createFakeEventSourceAdapter() as FakeEventSourceAdapter
 
     asyncIntegration = createAsyncIntegration(
       {
@@ -228,13 +236,13 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         eventStore,
         runtimeActionStore,
       },
-      fakeEventSource
-    );
-  });
+      fakeEventSource,
+    )
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('Async operation execution', () => {
     it('should return status pending and OperationRef when async tool is started', async () => {
@@ -245,7 +253,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-async-001',
@@ -254,12 +262,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Async Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true, operationId: 'async-op-123', data: { started: true } }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true, operationId: 'async-op-123', data: { started: true } }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-001',
@@ -269,16 +280,16 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: { input: 'test' },
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
-      expect(result.operationRef).toBeDefined();
-      expect(result.operationRef.status).toBe('pending');
-      expect(result.operationRef.operationId).toBeDefined();
-      expect(result.operationRef.toolName).toBe('async_tool');
-      expect(result.operationRef.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    });
+      expect(result.operationRef).toBeDefined()
+      expect(result.operationRef.status).toBe('pending')
+      expect(result.operationRef.operationId).toBeDefined()
+      expect(result.operationRef.toolName).toBe('async_tool')
+      expect(result.operationRef.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    })
 
     it('should include operationId, connectorInstanceId, and toolName in OperationRef', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -288,7 +299,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-async-002',
@@ -297,12 +308,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Async Instance 2',
         authStateRef: 'auth-002',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true, operationId: 'op-custom-456' }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true, operationId: 'op-custom-456' }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-002',
@@ -312,15 +326,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-002',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
-      expect(result.operationRef.operationId).toBe('op-custom-456');
-      expect(result.operationRef.connectorInstanceId).toBe(instance.connectorInstanceId);
-      expect(result.operationRef.toolName).toBe('my_async_tool');
-    });
-  });
+      expect(result.operationRef.operationId).toBe('op-custom-456')
+      expect(result.operationRef.connectorInstanceId).toBe(instance.connectorInstanceId)
+      expect(result.operationRef.toolName).toBe('my_async_tool')
+    })
+  })
 
   describe('WaitCondition registration and persistence', () => {
     it('should register WaitCondition when async operation is started', async () => {
@@ -331,7 +345,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-wait-001',
@@ -340,12 +354,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Wait Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-003',
@@ -355,16 +372,16 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
-      expect(result.waitCondition).toBeDefined();
-      expect(result.waitCondition.waitType).toBe('operation_completion');
-      expect(result.waitCondition.targetType).toBe('workflow_step_run');
-      expect(result.waitCondition.conditionPattern).toBe(result.operationRef.operationId);
-      expect(result.waitCondition.status).toBe(WAIT_CONDITION_STATES.ACTIVE);
-    });
+      expect(result.waitCondition).toBeDefined()
+      expect(result.waitCondition.waitType).toBe('operation_completion')
+      expect(result.waitCondition.targetType).toBe('workflow_step_run')
+      expect(result.waitCondition.conditionPattern).toBe(result.operationRef.operationId)
+      expect(result.waitCondition.status).toBe(WAIT_CONDITION_STATES.ACTIVE)
+    })
 
     it('should persist WaitCondition to store', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -374,7 +391,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-wait-002',
@@ -383,12 +400,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Wait Instance 2',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-004',
@@ -398,15 +418,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
-      const persisted = waitConditionStore.getById(result.waitCondition.id);
-      expect(persisted).not.toBeNull();
-      expect(persisted?.waitType).toBe('operation_completion');
-      expect(persisted?.conditionPattern).toBe(result.operationRef.operationId);
-    });
+      const persisted = waitConditionStore.getById(result.waitCondition.id)
+      expect(persisted).not.toBeNull()
+      expect(persisted?.waitType).toBe('operation_completion')
+      expect(persisted?.conditionPattern).toBe(result.operationRef.operationId)
+    })
 
     it('should store operation metadata in WaitCondition', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -416,7 +436,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-wait-003',
@@ -425,12 +445,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Wait Instance 3',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-005',
@@ -440,15 +463,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
-      const persisted = waitConditionStore.getById(result.waitCondition.id);
-      expect(persisted?.metadata).toContain('special_tool');
-      expect(persisted?.metadata).toContain(result.operationRef.operationId);
-    });
-  });
+      const persisted = waitConditionStore.getById(result.waitCondition.id)
+      expect(persisted?.metadata).toContain('special_tool')
+      expect(persisted?.metadata).toContain(result.operationRef.operationId)
+    })
+  })
 
   describe('Success event handling', () => {
     it('should resume target once when operation_completed event is received', async () => {
@@ -459,7 +482,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-resume-001',
@@ -468,12 +491,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Resume Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true, operationId: 'resume-op-001' }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true, operationId: 'resume-op-001' }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-006',
@@ -483,9 +509,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -495,15 +521,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: { data: 'success' },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const handleResult = asyncIntegration.handleOperationEvent(event);
+      const handleResult = asyncIntegration.handleOperationEvent(event)
 
-      expect(handleResult.matched).toBe(true);
-      expect(handleResult.waitCondition?.status).toBe(WAIT_CONDITION_STATES.SATISFIED);
-      expect(handleResult.event).toBeDefined();
-      expect(handleResult.action).toBeDefined();
-    });
+      expect(handleResult.matched).toBe(true)
+      expect(handleResult.waitCondition?.status).toBe(WAIT_CONDITION_STATES.SATISFIED)
+      expect(handleResult.event).toBeDefined()
+      expect(handleResult.action).toBeDefined()
+    })
 
     it('should mark wait condition as satisfied on success', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -513,7 +539,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-sat-001',
@@ -522,12 +548,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Satisfied Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-007',
@@ -537,9 +566,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -549,15 +578,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: { output: 'done' },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      asyncIntegration.handleOperationEvent(event);
+      asyncIntegration.handleOperationEvent(event)
 
-      const updated = waitConditionStore.getById(result.waitCondition.id);
-      expect(updated?.status).toBe(WAIT_CONDITION_STATES.SATISFIED);
-      expect(updated?.satisfiedAt).toBeDefined();
-      expect(updated?.satisfiedBy).toBe('async_integration');
-    });
+      const updated = waitConditionStore.getById(result.waitCondition.id)
+      expect(updated?.status).toBe(WAIT_CONDITION_STATES.SATISFIED)
+      expect(updated?.satisfiedAt).toBeDefined()
+      expect(updated?.satisfiedBy).toBe('async_integration')
+    })
 
     it('should create RuntimeTriggerEvent for operation completion', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -567,7 +596,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-evt-001',
@@ -576,12 +605,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Event Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-008',
@@ -591,9 +623,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -603,15 +635,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: { data: 'test' },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const handleResult = asyncIntegration.handleOperationEvent(event);
+      const handleResult = asyncIntegration.handleOperationEvent(event)
 
-      expect(handleResult.event?.eventType).toBe('wait_condition_satisfied');
-      expect(handleResult.event?.sourceModule).toBe('trigger');
-      expect(handleResult.event?.payload.operationId).toBe(result.operationRef.operationId);
-      expect(handleResult.event?.payload.status).toBe('completed');
-    });
+      expect(handleResult.event?.eventType).toBe('wait_condition_satisfied')
+      expect(handleResult.event?.sourceModule).toBe('trigger')
+      expect(handleResult.event?.payload.operationId).toBe(result.operationRef.operationId)
+      expect(handleResult.event?.payload.status).toBe('completed')
+    })
 
     it('should create RuntimeAction to resume workflow_step_run', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -621,7 +653,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-act-001',
@@ -630,12 +662,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Action Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-009',
@@ -645,9 +680,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -657,15 +692,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: { success: true },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const handleResult = asyncIntegration.handleOperationEvent(event);
+      const handleResult = asyncIntegration.handleOperationEvent(event)
 
-      expect(handleResult.action?.targetRuntime).toBe('workflow_runtime');
-      expect(handleResult.action?.targetAction).toBe('resume_workflow_step');
-      expect(handleResult.action?.actionType).toBe('resume_workflow_step');
-      expect(handleResult.action?.payload.conditionResult).toBe('success');
-    });
+      expect(handleResult.action?.targetRuntime).toBe('workflow_runtime')
+      expect(handleResult.action?.targetAction).toBe('resume_workflow_step')
+      expect(handleResult.action?.actionType).toBe('resume_workflow_step')
+      expect(handleResult.action?.payload.conditionResult).toBe('success')
+    })
 
     it('should persist RuntimeTriggerEvent to event store', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -675,7 +710,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-persist-001',
@@ -684,12 +719,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Persist Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-010',
@@ -699,9 +737,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -711,14 +749,14 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: { data: 'persisted' },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      asyncIntegration.handleOperationEvent(event);
+      asyncIntegration.handleOperationEvent(event)
 
-      const events = eventStore.query({ eventType: 'wait_condition_satisfied' });
-      expect(events.length).toBeGreaterThan(0);
-      expect(events[0]?.payload.operationId).toBe(result.operationRef.operationId);
-    });
+      const events = eventStore.query({ eventType: 'wait_condition_satisfied' })
+      expect(events.length).toBeGreaterThan(0)
+      expect(events[0]?.payload.operationId).toBe(result.operationRef.operationId)
+    })
 
     it('should persist RuntimeAction to action store', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -728,7 +766,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-act-persist-001',
@@ -737,12 +775,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Action Persist Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-011',
@@ -752,9 +793,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -764,16 +805,16 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: {},
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const handleResult = asyncIntegration.handleOperationEvent(event);
+      const handleResult = asyncIntegration.handleOperationEvent(event)
 
-      const persisted = runtimeActionStore.findById(handleResult.action!.actionId);
-      expect(persisted).not.toBeNull();
-      expect(persisted?.targetRuntime).toBe('workflow_runtime');
-      expect(persisted?.status).toBe('created');
-    });
-  });
+      const persisted = runtimeActionStore.findById(handleResult.action!.actionId)
+      expect(persisted).not.toBeNull()
+      expect(persisted?.targetRuntime).toBe('workflow_runtime')
+      expect(persisted?.status).toBe('created')
+    })
+  })
 
   describe('Duplicate event idempotency', () => {
     it('should ignore duplicate operation event', async () => {
@@ -784,7 +825,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-dup-001',
@@ -793,12 +834,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Duplicate Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-012',
@@ -808,9 +852,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -820,18 +864,18 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: {},
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const firstResult = asyncIntegration.handleOperationEvent(event);
-      const secondResult = asyncIntegration.handleOperationEvent(event);
+      const firstResult = asyncIntegration.handleOperationEvent(event)
+      const secondResult = asyncIntegration.handleOperationEvent(event)
 
-      expect(firstResult.matched).toBe(true);
-      expect(firstResult.duplicate).toBeUndefined();
-      expect(secondResult.matched).toBe(true);
-      expect(secondResult.duplicate).toBe(true);
-      expect(secondResult.action).toBeUndefined();
-      expect(secondResult.event).toBeUndefined();
-    });
+      expect(firstResult.matched).toBe(true)
+      expect(firstResult.duplicate).toBeUndefined()
+      expect(secondResult.matched).toBe(true)
+      expect(secondResult.duplicate).toBe(true)
+      expect(secondResult.action).toBeUndefined()
+      expect(secondResult.event).toBeUndefined()
+    })
 
     it('should use idempotency key to prevent duplicate RuntimeActions', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -841,7 +885,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-idemp-001',
@@ -850,12 +894,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Idempotency Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-013',
@@ -865,9 +912,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event1: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -877,14 +924,14 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: {},
         timestamp: new Date().toISOString(),
-      };
+      }
 
       const event2: AsyncOperationEvent = {
         ...event1,
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const firstResult = asyncIntegration.handleOperationEvent(event1);
+      const firstResult = asyncIntegration.handleOperationEvent(event1)
 
       const newAsyncIntegration = createAsyncIntegration(
         {
@@ -893,17 +940,17 @@ describe('Async OperationRef + WaitCondition Integration', () => {
           eventStore,
           runtimeActionStore,
         },
-        fakeEventSource
-      );
+        fakeEventSource,
+      )
 
-      const secondResult = newAsyncIntegration.handleOperationEvent(event2);
+      const secondResult = newAsyncIntegration.handleOperationEvent(event2)
 
-      expect(firstResult.action).toBeDefined();
+      expect(firstResult.action).toBeDefined()
       if (secondResult.action && firstResult.action) {
-        expect(secondResult.action.actionId).toBe(firstResult.action.actionId);
+        expect(secondResult.action.actionId).toBe(firstResult.action.actionId)
       }
-    });
-  });
+    })
+  })
 
   describe('Timeout handling', () => {
     it('should resume target with condition_timeout when timeout event is received', async () => {
@@ -914,7 +961,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-tout-001',
@@ -923,12 +970,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Timeout Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-014',
@@ -938,9 +988,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_timeout',
@@ -949,15 +999,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'timeout',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const handleResult = asyncIntegration.handleOperationEvent(event);
+      const handleResult = asyncIntegration.handleOperationEvent(event)
 
-      expect(handleResult.matched).toBe(true);
-      expect(handleResult.waitCondition?.status).toBe(WAIT_CONDITION_STATES.TIMEOUT);
-      expect(handleResult.action?.payload.conditionResult).toBe('timeout');
-      expect(handleResult.event?.eventType).toBe('wait_condition_timeout');
-    });
+      expect(handleResult.matched).toBe(true)
+      expect(handleResult.waitCondition?.status).toBe(WAIT_CONDITION_STATES.TIMEOUT)
+      expect(handleResult.action?.payload.conditionResult).toBe('timeout')
+      expect(handleResult.event?.eventType).toBe('wait_condition_timeout')
+    })
 
     it('should mark wait condition as timeout', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -967,7 +1017,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-tout-002',
@@ -976,12 +1026,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Timeout Instance 2',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-015',
@@ -991,9 +1044,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_timeout',
@@ -1002,13 +1055,13 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'timeout',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      asyncIntegration.handleOperationEvent(event);
+      asyncIntegration.handleOperationEvent(event)
 
-      const updated = waitConditionStore.getById(result.waitCondition.id);
-      expect(updated?.status).toBe(WAIT_CONDITION_STATES.TIMEOUT);
-    });
+      const updated = waitConditionStore.getById(result.waitCondition.id)
+      expect(updated?.status).toBe(WAIT_CONDITION_STATES.TIMEOUT)
+    })
 
     it('should create proper event and action for timeout', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -1018,7 +1071,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-tout-003',
@@ -1027,12 +1080,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Timeout Instance 3',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-016',
@@ -1042,9 +1098,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_timeout',
@@ -1053,15 +1109,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'timeout',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const handleResult = asyncIntegration.handleOperationEvent(event);
+      const handleResult = asyncIntegration.handleOperationEvent(event)
 
-      expect(handleResult.event?.payload.status).toBe('timeout');
-      expect(handleResult.action?.payload.status).toBe('timeout');
-      expect(handleResult.action?.targetRuntime).toBe('workflow_runtime');
-    });
-  });
+      expect(handleResult.event?.payload.status).toBe('timeout')
+      expect(handleResult.action?.payload.status).toBe('timeout')
+      expect(handleResult.action?.targetRuntime).toBe('workflow_runtime')
+    })
+  })
 
   describe('Failure handling', () => {
     it('should handle operation_failed event', async () => {
@@ -1072,7 +1128,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-fail-001',
@@ -1081,12 +1137,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Failure Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-017',
@@ -1096,9 +1155,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_failed',
@@ -1111,16 +1170,16 @@ describe('Async OperationRef + WaitCondition Integration', () => {
           message: 'Tool execution failed',
         },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const handleResult = asyncIntegration.handleOperationEvent(event);
+      const handleResult = asyncIntegration.handleOperationEvent(event)
 
-      expect(handleResult.matched).toBe(true);
-      expect(handleResult.waitCondition?.status).toBe(WAIT_CONDITION_STATES.FAILED);
-      expect(handleResult.action?.payload.conditionResult).toBe('failure');
-      expect(handleResult.event?.eventType).toBe('wait_condition_failed');
-      expect((handleResult.action?.payload.error as { code: string } | undefined)?.code).toBe('EXECUTION_ERROR');
-    });
+      expect(handleResult.matched).toBe(true)
+      expect(handleResult.waitCondition?.status).toBe(WAIT_CONDITION_STATES.FAILED)
+      expect(handleResult.action?.payload.conditionResult).toBe('failure')
+      expect(handleResult.event?.eventType).toBe('wait_condition_failed')
+      expect((handleResult.action?.payload.error as { code: string } | undefined)?.code).toBe('EXECUTION_ERROR')
+    })
 
     it('should mark wait condition as failed', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -1130,7 +1189,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-fail-002',
@@ -1139,12 +1198,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Failure Instance 2',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-018',
@@ -1154,9 +1216,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_failed',
@@ -1169,14 +1231,14 @@ describe('Async OperationRef + WaitCondition Integration', () => {
           message: 'Operation timed out',
         },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      asyncIntegration.handleOperationEvent(event);
+      asyncIntegration.handleOperationEvent(event)
 
-      const updated = waitConditionStore.getById(result.waitCondition.id);
-      expect(updated?.status).toBe(WAIT_CONDITION_STATES.FAILED);
-    });
-  });
+      const updated = waitConditionStore.getById(result.waitCondition.id)
+      expect(updated?.status).toBe(WAIT_CONDITION_STATES.FAILED)
+    })
+  })
 
   describe('Target type variations', () => {
     it('should create resume action for background_run target', async () => {
@@ -1187,7 +1249,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-bg-001',
@@ -1196,12 +1258,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Background Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const operationRef = {
         operationId: 'op-bg-001',
@@ -1209,9 +1274,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      asyncIntegration.registerWaitForOperation(operationRef, 'background_run', 'bg_run_123');
+      asyncIntegration.registerWaitForOperation(operationRef, 'background_run', 'bg_run_123')
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -1221,20 +1286,20 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: {},
         timestamp: new Date().toISOString(),
-      };
+      }
 
       const action = asyncIntegration.createResumeAction({
         targetType: 'background_run',
         targetRef: 'bg_run_123',
         event,
         waitConditionId: 'wait_001',
-      });
+      })
 
-      expect(action.targetRuntime).toBe('subagent_runtime');
-      expect(action.targetAction).toBe('resume_subagent');
-      expect(action.actionType).toBe('resume_subagent');
-      expect(action.targetRef?.backgroundRunId).toBe('bg_run_123');
-    });
+      expect(action.targetRuntime).toBe('subagent_runtime')
+      expect(action.targetAction).toBe('resume_subagent')
+      expect(action.actionType).toBe('resume_subagent')
+      expect(action.targetRef?.backgroundRunId).toBe('bg_run_123')
+    })
 
     it('should create resume action for planner_run target', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -1244,7 +1309,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-planner-001',
@@ -1253,12 +1318,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Planner Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const operationRef = {
         operationId: 'op-planner-001',
@@ -1266,9 +1334,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      asyncIntegration.registerWaitForOperation(operationRef, 'planner_run', 'planner_run_123');
+      asyncIntegration.registerWaitForOperation(operationRef, 'planner_run', 'planner_run_123')
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -1278,19 +1346,19 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: {},
         timestamp: new Date().toISOString(),
-      };
+      }
 
       const action = asyncIntegration.createResumeAction({
         targetType: 'planner_run',
         targetRef: 'planner_run_123',
         event,
         waitConditionId: 'wait_002',
-      });
+      })
 
-      expect(action.targetRuntime).toBe('planner_runtime');
-      expect(action.targetAction).toBe('resume_planner_run');
-      expect(action.targetRef?.plannerRunId).toBe('planner_run_123');
-    });
+      expect(action.targetRuntime).toBe('planner_runtime')
+      expect(action.targetAction).toBe('resume_planner_run')
+      expect(action.targetRef?.plannerRunId).toBe('planner_run_123')
+    })
 
     it('should create resume action for kernel_run target', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -1300,7 +1368,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-kernel-001',
@@ -1309,12 +1377,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Kernel Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const operationRef = {
         operationId: 'op-kernel-001',
@@ -1322,9 +1393,9 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      asyncIntegration.registerWaitForOperation(operationRef, 'kernel_run', 'run_123');
+      asyncIntegration.registerWaitForOperation(operationRef, 'kernel_run', 'run_123')
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -1334,20 +1405,20 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: {},
         timestamp: new Date().toISOString(),
-      };
+      }
 
       const action = asyncIntegration.createResumeAction({
         targetType: 'kernel_run',
         targetRef: 'run_123',
         event,
         waitConditionId: 'wait_003',
-      });
+      })
 
-      expect(action.targetRuntime).toBe('agent_kernel');
-      expect(action.targetAction).toBe('resume_agent_run');
-      expect(action.targetRef?.runId).toBe('run_123');
-    });
-  });
+      expect(action.targetRuntime).toBe('agent_kernel')
+      expect(action.targetAction).toBe('resume_agent_run')
+      expect(action.targetRef?.runId).toBe('run_123')
+    })
+  })
 
   describe('EventSourceAdapter', () => {
     it('should subscribe to operation events', async () => {
@@ -1358,7 +1429,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-evt-src-001',
@@ -1367,12 +1438,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Event Source Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true, operationId: 'op-evt-001' }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true, operationId: 'op-evt-001' }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-019',
@@ -1382,14 +1456,14 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
-      const receivedEvents: AsyncOperationEvent[] = [];
+      const receivedEvents: AsyncOperationEvent[] = []
       const unsubscribe = fakeEventSource.subscribe(result.operationRef.operationId, (event) => {
-        receivedEvents.push(event);
-      });
+        receivedEvents.push(event)
+      })
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -1399,29 +1473,29 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         status: 'completed',
         result: { success: true },
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      fakeEventSource.emit(event);
+      fakeEventSource.emit(event)
 
-      expect(receivedEvents.length).toBe(1);
-      expect(receivedEvents[0]?.operationId).toBe(result.operationRef.operationId);
+      expect(receivedEvents.length).toBe(1)
+      expect(receivedEvents[0]?.operationId).toBe(result.operationRef.operationId)
 
-      unsubscribe();
-    });
+      unsubscribe()
+    })
 
     it('should emit events to multiple subscribers', async () => {
-      const operationId = 'op-multi-001';
+      const operationId = 'op-multi-001'
 
-      const events1: AsyncOperationEvent[] = [];
-      const events2: AsyncOperationEvent[] = [];
+      const events1: AsyncOperationEvent[] = []
+      const events2: AsyncOperationEvent[] = []
 
       const unsubscribe1 = fakeEventSource.subscribe(operationId, (event) => {
-        events1.push(event);
-      });
+        events1.push(event)
+      })
 
       const unsubscribe2 = fakeEventSource.subscribe(operationId, (event) => {
-        events2.push(event);
-      });
+        events2.push(event)
+      })
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -1430,26 +1504,26 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'completed',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      fakeEventSource.emit(event);
+      fakeEventSource.emit(event)
 
-      expect(events1.length).toBe(1);
-      expect(events2.length).toBe(1);
+      expect(events1.length).toBe(1)
+      expect(events2.length).toBe(1)
 
-      unsubscribe1();
-      unsubscribe2();
-    });
+      unsubscribe1()
+      unsubscribe2()
+    })
 
     it('should unsubscribe correctly', async () => {
-      const operationId = 'op-unsub-001';
+      const operationId = 'op-unsub-001'
 
-      const events: AsyncOperationEvent[] = [];
+      const events: AsyncOperationEvent[] = []
       const unsubscribe = fakeEventSource.subscribe(operationId, (event) => {
-        events.push(event);
-      });
+        events.push(event)
+      })
 
-      unsubscribe();
+      unsubscribe()
 
       const event: AsyncOperationEvent = {
         eventType: 'operation_completed',
@@ -1458,13 +1532,13 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         toolName: 'async_tool',
         status: 'completed',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      fakeEventSource.emit(event);
+      fakeEventSource.emit(event)
 
-      expect(events.length).toBe(0);
-    });
-  });
+      expect(events.length).toBe(0)
+    })
+  })
 
   describe('Operation tracking', () => {
     it('should get operation by ID', async () => {
@@ -1475,7 +1549,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-track-001',
@@ -1484,12 +1558,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Tracking Instance',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request: ExecuteAsyncToolRequest = {
         requestId: 'req-020',
@@ -1499,17 +1576,17 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      const result = await asyncIntegration.executeAsyncTool(request);
+      const result = await asyncIntegration.executeAsyncTool(request)
 
-      const trackedOp = asyncIntegration.getOperation(result.operationRef.operationId);
+      const trackedOp = asyncIntegration.getOperation(result.operationRef.operationId)
 
-      expect(trackedOp).not.toBeNull();
-      expect(trackedOp?.operationId).toBe(result.operationRef.operationId);
-      expect(trackedOp?.toolName).toBe('async_tool');
-      expect(trackedOp?.waitConditionId).toBe(result.waitCondition.id);
-    });
+      expect(trackedOp).not.toBeNull()
+      expect(trackedOp?.operationId).toBe(result.operationRef.operationId)
+      expect(trackedOp?.toolName).toBe('async_tool')
+      expect(trackedOp?.waitConditionId).toBe(result.waitCondition.id)
+    })
 
     it('should get pending operations for target', async () => {
       const def = connectorRuntime.registerDefinition({
@@ -1519,7 +1596,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         version: '1.0.0',
         capabilities: ['async_task'],
         status: 'active',
-      });
+      })
 
       const instance = connectorRuntime.createInstance({
         connectorInstanceId: 'instance-track-002',
@@ -1528,12 +1605,15 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         name: 'Tracking Instance 2',
         authStateRef: 'auth-001',
         status: 'active',
-      });
+      })
 
-      (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter('api', {
-        execute: async () => ({ async: true }),
-        discoverCapabilities: () => [],
-      });
+      ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+        'api',
+        {
+          execute: async () => ({ async: true }),
+          discoverCapabilities: () => [],
+        },
+      )
 
       const request1: ExecuteAsyncToolRequest = {
         requestId: 'req-021',
@@ -1543,7 +1623,7 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
       const request2: ExecuteAsyncToolRequest = {
         requestId: 'req-022',
@@ -1553,14 +1633,14 @@ describe('Async OperationRef + WaitCondition Integration', () => {
         operation: 'execute',
         params: {},
         userId: 'user-001',
-      };
+      }
 
-      await asyncIntegration.executeAsyncTool(request1);
-      await asyncIntegration.executeAsyncTool(request2);
+      await asyncIntegration.executeAsyncTool(request1)
+      await asyncIntegration.executeAsyncTool(request2)
 
-      const pendingOps = asyncIntegration.getPendingOperations('workflow_step_run', 'req-021');
+      const pendingOps = asyncIntegration.getPendingOperations('workflow_step_run', 'req-021')
 
-      expect(pendingOps.length).toBeGreaterThan(0);
-    });
-  });
-});
+      expect(pendingOps.length).toBeGreaterThan(0)
+    })
+  })
+})

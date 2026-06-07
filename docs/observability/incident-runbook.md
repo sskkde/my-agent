@@ -6,17 +6,17 @@ This runbook covers common incident scenarios and response procedures for Agent 
 
 ## Incident Severity Levels | 事件严重级别
 
-| Level | Name | Description | Response Time |
-|-------|------|-------------|---------------|
-| P0 | Critical | Service completely unavailable, data loss risk | < 5 minutes |
-| P1 | High | Major functionality impaired, significant user impact | < 15 minutes |
-| P2 | Medium | Minor functionality issues, limited user impact | < 1 hour |
+| Level | Name     | Description                                           | Response Time |
+| ----- | -------- | ----------------------------------------------------- | ------------- |
+| P0    | Critical | Service completely unavailable, data loss risk        | < 5 minutes   |
+| P1    | High     | Major functionality impaired, significant user impact | < 15 minutes  |
+| P2    | Medium   | Minor functionality issues, limited user impact       | < 1 hour      |
 
-| 级别 | 名称 | 描述 | 响应时间 |
-|------|------|------|----------|
-| P0 | 紧急 | 服务完全不可用，存在数据丢失风险 | < 5 分钟 |
-| P1 | 高 | 主要功能受损，影响大量用户 | < 15 分钟 |
-| P2 | 中 | 次要功能问题，影响有限用户 | < 1 小时 |
+| 级别 | 名称 | 描述                             | 响应时间  |
+| ---- | ---- | -------------------------------- | --------- |
+| P0   | 紧急 | 服务完全不可用，存在数据丢失风险 | < 5 分钟  |
+| P1   | 高   | 主要功能受损，影响大量用户       | < 15 分钟 |
+| P2   | 中   | 次要功能问题，影响有限用户       | < 1 小时  |
 
 ---
 
@@ -78,13 +78,13 @@ journalctl -u agent-platform --since "10 minutes ago"
 
 ### Resolution Steps | 解决步骤
 
-| Scenario | Action |
-|----------|--------|
-| Process crashed | `systemctl restart agent-platform` |
-| Port conflict | Identify and kill conflicting process |
-| Out of memory | Free memory, add swap, or increase resources |
-| Database locked | See Incident 2 |
-| Config error | Revert config, restart service |
+| Scenario        | Action                                       |
+| --------------- | -------------------------------------------- |
+| Process crashed | `systemctl restart agent-platform`           |
+| Port conflict   | Identify and kill conflicting process        |
+| Out of memory   | Free memory, add swap, or increase resources |
+| Database locked | See Incident 2                               |
+| Config error    | Revert config, restart service               |
 
 ### Post-Mortem Checklist | 复盘清单
 
@@ -154,13 +154,13 @@ tail -f /var/log/agent-platform/*.log | grep -i "locked"
 
 ### Resolution Steps | 解决步骤
 
-| Scenario | Action |
-|----------|--------|
-| WAL mode not enabled | `sqlite3 data/app.db "PRAGMA journal_mode=WAL;"` |
-| Busy timeout too low | Increase `busy_timeout` in config |
-| Long transaction holding lock | Identify and terminate the transaction |
-| Corrupted WAL file | Stop service, delete `.wal` and `.shm`, restart |
-| Persistent lock | Restart the service |
+| Scenario                      | Action                                           |
+| ----------------------------- | ------------------------------------------------ |
+| WAL mode not enabled          | `sqlite3 data/app.db "PRAGMA journal_mode=WAL;"` |
+| Busy timeout too low          | Increase `busy_timeout` in config                |
+| Long transaction holding lock | Identify and terminate the transaction           |
+| Corrupted WAL file            | Stop service, delete `.wal` and `.shm`, restart  |
+| Persistent lock               | Restart the service                              |
 
 ```bash
 # Enable WAL mode (recommended)
@@ -240,13 +240,13 @@ curl -s http://localhost:3003/api/v1/connectors | jq '.[] | {id, status}'
 
 ### Resolution Steps | 解决步骤
 
-| Error Type | Action |
-|------------|--------|
+| Error Type          | Action                                          |
+| ------------------- | ----------------------------------------------- |
 | LLM provider errors | Check provider status, enable fallback provider |
-| Database errors | See Incident 2 |
-| Network errors | Check firewall, DNS, connectivity |
-| Validation errors | Review recent input changes |
-| Timeout errors | Increase timeout, optimize queries |
+| Database errors     | See Incident 2                                  |
+| Network errors      | Check firewall, DNS, connectivity               |
+| Validation errors   | Review recent input changes                     |
+| Timeout errors      | Increase timeout, optimize queries              |
 
 ```bash
 # Enable fallback provider
@@ -289,7 +289,7 @@ curl -s http://localhost:3003/api/v1/metrics | grep duration_seconds
 # Prometheus alert
 ALERT HighLatency {
   expr: |
-    histogram_quantile(0.95, 
+    histogram_quantile(0.95,
       sum(rate(agent_platform_request_duration_seconds_bucket[5m])) by (le)
     ) > 5
   for: 5m
@@ -323,13 +323,13 @@ tail -f /var/log/agent-platform/*.log | grep -i "slow\|timeout"
 
 ### Resolution Steps | 解决步骤
 
-| Cause | Action |
-|-------|--------|
-| Slow LLM responses | Reduce prompt size, use faster model |
-| Database slow queries | Add indexes, optimize queries |
-| Memory pressure | Free memory, add resources |
-| High CPU usage | Scale horizontally, optimize code |
-| Network latency | Check network path, use CDN |
+| Cause                 | Action                               |
+| --------------------- | ------------------------------------ |
+| Slow LLM responses    | Reduce prompt size, use faster model |
+| Database slow queries | Add indexes, optimize queries        |
+| Memory pressure       | Free memory, add resources           |
+| High CPU usage        | Scale horizontally, optimize code    |
+| Network latency       | Check network path, use CDN          |
 
 ```bash
 # Check for missing indexes
@@ -408,13 +408,13 @@ curl -s -I https://api.github.com/user | grep -i "x-ratelimit"
 
 ### Resolution Steps | 解决步骤
 
-| Issue | Action |
-|-------|--------|
-| OAuth token expired | Re-authenticate through UI or API |
-| Rate limited | Wait for reset, or use different credentials |
-| API endpoint changed | Update connector configuration |
-| Service down | Wait for provider recovery, notify users |
-| Credentials invalid | Re-configure connector credentials |
+| Issue                | Action                                       |
+| -------------------- | -------------------------------------------- |
+| OAuth token expired  | Re-authenticate through UI or API            |
+| Rate limited         | Wait for reset, or use different credentials |
+| API endpoint changed | Update connector configuration               |
+| Service down         | Wait for provider recovery, notify users     |
+| Credentials invalid  | Re-configure connector credentials           |
 
 ```bash
 # Re-authenticate connector
@@ -490,12 +490,12 @@ grep -i "dlq\|dead letter" /var/log/agent-platform/*.log | tail -50
 
 ### Resolution Steps | 解决步骤
 
-| Action | Command |
-|--------|---------|
+| Action             | Command                                                         |
+| ------------------ | --------------------------------------------------------------- |
 | Retry single event | `curl -X POST http://localhost:3003/api/v1/dlq/{eventId}/retry` |
-| Retry all events | `curl -X POST http://localhost:3003/api/v1/dlq/retry-all` |
-| Discard event | `curl -X DELETE http://localhost:3003/api/v1/dlq/{eventId}` |
-| Fix and retry | Modify event payload, then retry |
+| Retry all events   | `curl -X POST http://localhost:3003/api/v1/dlq/retry-all`       |
+| Discard event      | `curl -X DELETE http://localhost:3003/api/v1/dlq/{eventId}`     |
+| Fix and retry      | Modify event payload, then retry                                |
 
 ```bash
 # Bulk retry with filtering
@@ -567,12 +567,12 @@ grep -i "budget\|rate limit" /var/log/agent-platform/*.log | tail -100
 
 ### Resolution Steps | 解决步骤
 
-| Scenario | Action |
-|----------|--------|
-| Legitimate usage increase | Increase budget limit |
-| Budget period reset due | Wait for reset or manually reset |
-| Abuse detected | Suspend user, review activity |
-| Configuration error | Fix budget settings |
+| Scenario                  | Action                           |
+| ------------------------- | -------------------------------- |
+| Legitimate usage increase | Increase budget limit            |
+| Budget period reset due   | Wait for reset or manually reset |
+| Abuse detected            | Suspend user, review activity    |
+| Configuration error       | Fix budget settings              |
 
 ```bash
 # Increase user budget
@@ -650,12 +650,12 @@ sqlite3 data/app.db "PRAGMA integrity_check;"
 
 ### Resolution Steps | 解决步骤
 
-| Issue | Action |
-|-------|--------|
-| Disk full | Free space or change backup location |
-| Database locked | See Incident 2 |
-| Permission denied | Fix file permissions |
-| Database corrupted | Restore from last good backup |
+| Issue              | Action                               |
+| ------------------ | ------------------------------------ |
+| Disk full          | Free space or change backup location |
+| Database locked    | See Incident 2                       |
+| Permission denied  | Fix file permissions                 |
+| Database corrupted | Restore from last good backup        |
 
 ```bash
 # Manual backup
@@ -728,12 +728,12 @@ curl -s http://localhost:3003/api/v1/admin/security/audit | jq '.recentEvents'
 
 ### Resolution Steps | 解决步骤
 
-| Action | Command |
-|--------|---------|
-| Revoke API key | `curl -X DELETE http://localhost:3003/api/v1/api-keys/{keyId}` |
-| Revoke all user keys | `curl -X DELETE http://localhost:3003/api/v1/admin/users/{userId}/api-keys` |
+| Action               | Command                                                                      |
+| -------------------- | ---------------------------------------------------------------------------- |
+| Revoke API key       | `curl -X DELETE http://localhost:3003/api/v1/api-keys/{keyId}`               |
+| Revoke all user keys | `curl -X DELETE http://localhost:3003/api/v1/admin/users/{userId}/api-keys`  |
 | Force password reset | `curl -X POST http://localhost:3003/api/v1/admin/users/{userId}/force-reset` |
-| Invalidate sessions | `curl -X DELETE http://localhost:3003/api/v1/admin/users/{userId}/sessions` |
+| Invalidate sessions  | `curl -X DELETE http://localhost:3003/api/v1/admin/users/{userId}/sessions`  |
 
 ```bash
 # Revoke compromised key immediately
@@ -773,14 +773,14 @@ curl -X POST http://localhost:3003/api/v1/api-keys \
 
 ### Decision Criteria | 决策标准
 
-| Criteria | Rollback? |
-|----------|-----------|
-| User data loss | Yes - Immediate |
-| Security vulnerability | Yes - Immediate |
-| Service unavailable | Yes - Immediate |
-| Performance 2x worse | Yes - Within 1 hour |
+| Criteria                 | Rollback?             |
+| ------------------------ | --------------------- |
+| User data loss           | Yes - Immediate       |
+| Security vulnerability   | Yes - Immediate       |
+| Service unavailable      | Yes - Immediate       |
+| Performance 2x worse     | Yes - Within 1 hour   |
 | Feature partially broken | Consider hotfix first |
-| Minor bugs | No - Hotfix |
+| Minor bugs               | No - Hotfix           |
 
 ### Detection Method | 检测方法
 
@@ -838,12 +838,12 @@ curl -s http://localhost:3003/api/v1/health | jq '.version'
 
 ### Post-Rollback Verification | 回滚后验证
 
-| Check | Command |
-|-------|---------|
-| Health check | `curl http://localhost:3003/api/v1/health` |
-| Error rate | Check Grafana for error rate drop |
-| Latency | Check P95/P99 latency recovery |
-| User confirmation | Test critical user flows |
+| Check             | Command                                    |
+| ----------------- | ------------------------------------------ |
+| Health check      | `curl http://localhost:3003/api/v1/health` |
+| Error rate        | Check Grafana for error rate drop          |
+| Latency           | Check P95/P99 latency recovery             |
+| User confirmation | Test critical user flows                   |
 
 ### Post-Mortem Checklist | 复盘清单
 
@@ -876,30 +876,30 @@ curl http://localhost:3003/api/v1/metrics
 
 ### Key Log Locations | 关键日志位置
 
-| Log | Path |
-|-----|------|
-| Application | `/var/log/agent-platform/app.log` |
-| Access | `/var/log/agent-platform/access.log` |
-| Error | `/var/log/agent-platform/error.log` |
-| Audit | `/var/log/agent-platform/audit.log` |
+| Log         | Path                                 |
+| ----------- | ------------------------------------ |
+| Application | `/var/log/agent-platform/app.log`    |
+| Access      | `/var/log/agent-platform/access.log` |
+| Error       | `/var/log/agent-platform/error.log`  |
+| Audit       | `/var/log/agent-platform/audit.log`  |
 
 ### Key Files | 关键文件
 
-| File | Purpose |
-|------|---------|
-| `data/app.db` | SQLite database |
-| `backups/` | Database backups |
-| `.env` | Environment configuration |
-| `migrations/` | Database migrations |
+| File          | Purpose                   |
+| ------------- | ------------------------- |
+| `data/app.db` | SQLite database           |
+| `backups/`    | Database backups          |
+| `.env`        | Environment configuration |
+| `migrations/` | Database migrations       |
 
 ### Contact Escalation | 联系升级
 
-| Level | Contact | Response |
-|-------|---------|----------|
-| L1 | On-call engineer | 5 minutes |
-| L2 | Team lead | 15 minutes |
-| L3 | Engineering manager | 30 minutes |
-| L4 | VP Engineering | 1 hour |
+| Level | Contact             | Response   |
+| ----- | ------------------- | ---------- |
+| L1    | On-call engineer    | 5 minutes  |
+| L2    | Team lead           | 15 minutes |
+| L3    | Engineering manager | 30 minutes |
+| L4    | VP Engineering      | 1 hour     |
 
 ---
 

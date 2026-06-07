@@ -1,37 +1,37 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { LogEntry, DebugReplayResponse } from '../../api/types';
-import { getLogs, getDebugReplay } from '../../api/client';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import React, { useState, useEffect, useCallback } from 'react'
+import type { LogEntry, DebugReplayResponse } from '../../api/types'
+import { getLogs, getDebugReplay } from '../../api/client'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 interface FiltersState {
-  sessionId: string;
-  sourceModule: string;
-  eventType: string;
-  runRef: string;
+  sessionId: string
+  sourceModule: string
+  eventType: string
+  runRef: string
 }
 
 const severityIcons: Record<string, string> = {
   info: 'ℹ️',
   warn: '⚠️',
   error: '❌',
-};
+}
 
 const LogsDebugTab: React.FC = () => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [total, setTotal] = useState(0);
-const [filters, setFilters] = useState<FiltersState>({
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [total, setTotal] = useState(0)
+  const [filters, setFilters] = useState<FiltersState>({
     sessionId: '',
     sourceModule: '',
     eventType: '',
     runRef: '',
-  });
-  const [debugReplay, setDebugReplay] = useState<DebugReplayResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  })
+  const [debugReplay, setDebugReplay] = useState<DebugReplayResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-const fetchLogs = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchLogs = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
     try {
       const result = await getLogs(
         filters.sessionId || undefined,
@@ -39,44 +39,44 @@ const fetchLogs = useCallback(async () => {
         filters.eventType || undefined,
         50,
         undefined,
-        filters.runRef || undefined
-      );
-      setLogs(result.logs);
-      setTotal(result.total);
+        filters.runRef || undefined,
+      )
+      setLogs(result.logs)
+      setTotal(result.total)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch logs');
+      setError(err instanceof Error ? err.message : 'Failed to fetch logs')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  }, [filters]);
+  }, [filters])
 
   const fetchDebugReplay = useCallback(async () => {
     if (!filters.sessionId) {
-      setDebugReplay(null);
-      return;
+      setDebugReplay(null)
+      return
     }
     try {
-      const result = await getDebugReplay(filters.sessionId);
-      setDebugReplay(result);
+      const result = await getDebugReplay(filters.sessionId)
+      setDebugReplay(result)
     } catch {
-      setDebugReplay(null);
+      setDebugReplay(null)
     }
-  }, [filters.sessionId]);
+  }, [filters.sessionId])
 
   useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+    fetchLogs()
+  }, [fetchLogs])
 
   useEffect(() => {
-    fetchDebugReplay();
-  }, [fetchDebugReplay]);
+    fetchDebugReplay()
+  }, [fetchDebugReplay])
 
   const handleFilterChange = (key: keyof FiltersState, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const formatTimestamp = (timestamp: string): string => {
-    const date = new Date(timestamp);
+    const date = new Date(timestamp)
     return date.toLocaleString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
@@ -84,16 +84,16 @@ const fetchLogs = useCallback(async () => {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-    });
-  };
+    })
+  }
 
   const renderPayloadPreview = (preview: string | undefined): React.ReactNode => {
-    if (!preview) return null;
+    if (!preview) return null
     if (preview === '[redacted]') {
-      return <span className="logs-debug-redacted">[redacted]</span>;
+      return <span className="logs-debug-redacted">[redacted]</span>
     }
-    return <span className="logs-debug-preview">{preview}</span>;
-  };
+    return <span className="logs-debug-preview">{preview}</span>
+  }
 
   return (
     <div data-testid="logs-debug-panel" className="logs-debug-panel">
@@ -142,7 +142,7 @@ const fetchLogs = useCallback(async () => {
           </select>
         </div>
 
-<div className="logs-filter-group" data-testid="logs-filter-eventType">
+        <div className="logs-filter-group" data-testid="logs-filter-eventType">
           <label htmlFor="eventType-filter">事件类型</label>
           <input
             id="eventType-filter"
@@ -182,7 +182,7 @@ const fetchLogs = useCallback(async () => {
         </div>
       )}
 
-{debugReplay && (
+      {debugReplay && (
         <div className="debug-replay-summary" data-testid="debug-replay-summary">
           <h4>调试回放摘要</h4>
           <div className="debug-replay-stats">
@@ -196,29 +196,23 @@ const fetchLogs = useCallback(async () => {
             </div>
             <div className="debug-replay-stat">
               <span className="debug-replay-label">最后事件ID</span>
-              <span className="debug-replay-value">
-                {debugReplay.lastEventId || '无'}
-              </span>
+              <span className="debug-replay-value">{debugReplay.lastEventId || '无'}</span>
             </div>
           </div>
-          
+
           {debugReplay.runRefs.length > 0 && (
             <div className="debug-replay-refs-section">
               <span className="debug-replay-label">运行引用:</span>
               <div className="debug-replay-refs-list">
                 {debugReplay.runRefs.map((runId) => (
-                  <span
-                    key={runId}
-                    className="debug-replay-ref-badge"
-                    data-testid={`debug-replay-run-ref-${runId}`}
-                  >
+                  <span key={runId} className="debug-replay-ref-badge" data-testid={`debug-replay-run-ref-${runId}`}>
                     {runId}
                   </span>
                 ))}
               </div>
             </div>
           )}
-          
+
           {debugReplay.approvalRefs.length > 0 && (
             <div className="debug-replay-refs-section">
               <span className="debug-replay-label">审批引用:</span>
@@ -269,42 +263,24 @@ const fetchLogs = useCallback(async () => {
               data-testid={`log-row-${log.eventId}`}
             >
               <div className="logs-debug-row-header">
-                <span
-                  className="logs-debug-event-type-badge"
-                  data-testid={`log-event-type-${log.eventId}`}
-                >
+                <span className="logs-debug-event-type-badge" data-testid={`log-event-type-${log.eventId}`}>
                   {log.eventType}
                 </span>
-                <span
-                  className="logs-debug-source-module"
-                  data-testid={`log-source-module-${log.eventId}`}
-                >
+                <span className="logs-debug-source-module" data-testid={`log-source-module-${log.eventId}`}>
                   {log.sourceModule}
                 </span>
-                <span
-                  className="logs-debug-severity"
-                  data-testid={`log-severity-${log.eventId}`}
-                >
+                <span className="logs-debug-severity" data-testid={`log-severity-${log.eventId}`}>
                   {severityIcons[log.severity] || 'ℹ️'} {log.severity}
                 </span>
-                <span
-                  className="logs-debug-timestamp"
-                  data-testid={`log-timestamp-${log.eventId}`}
-                >
+                <span className="logs-debug-timestamp" data-testid={`log-timestamp-${log.eventId}`}>
                   {formatTimestamp(log.createdAt)}
                 </span>
               </div>
-              <div
-                className="logs-debug-summary"
-                data-testid={`log-summary-${log.eventId}`}
-              >
+              <div className="logs-debug-summary" data-testid={`log-summary-${log.eventId}`}>
                 {log.summary}
               </div>
               {log.payloadPreview && (
-                <div
-                  className="logs-debug-payload-preview"
-                  data-testid={`log-payload-${log.eventId}`}
-                >
+                <div className="logs-debug-payload-preview" data-testid={`log-payload-${log.eventId}`}>
                   {renderPayloadPreview(log.payloadPreview)}
                 </div>
               )}
@@ -313,7 +289,7 @@ const fetchLogs = useCallback(async () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default LogsDebugTab;
+export default LogsDebugTab

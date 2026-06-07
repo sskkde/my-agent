@@ -117,16 +117,16 @@ Sends: `Authorization: Bearer your-access-token`
 
 ### Template Structure
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `operationId` | string | Yes | Unique identifier for the operation |
-| `method` | string | Yes | HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE` |
-| `path` | string | Yes | URL path with `{{variable}}` placeholders |
-| `headers` | object | No | Additional headers with `{{variable}}` placeholders |
-| `bodyTemplate` | object | No | JSON body template with `{{variable}}` placeholders |
-| `description` | string | No | Human-readable description |
-| `category` | string | No | Operation category: `read`, `write`, `execute`, `admin` |
-| `riskLevel` | string | No | Risk level: `low`, `medium`, `high`, `restricted` |
+| Field          | Type   | Required | Description                                             |
+| -------------- | ------ | -------- | ------------------------------------------------------- |
+| `operationId`  | string | Yes      | Unique identifier for the operation                     |
+| `method`       | string | Yes      | HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`    |
+| `path`         | string | Yes      | URL path with `{{variable}}` placeholders               |
+| `headers`      | object | No       | Additional headers with `{{variable}}` placeholders     |
+| `bodyTemplate` | object | No       | JSON body template with `{{variable}}` placeholders     |
+| `description`  | string | No       | Human-readable description                              |
+| `category`     | string | No       | Operation category: `read`, `write`, `execute`, `admin` |
+| `riskLevel`    | string | No       | Risk level: `low`, `medium`, `high`, `restricted`       |
 
 ### Variable Substitution
 
@@ -144,6 +144,7 @@ Variables in `{{variable}}` format are replaced with values from the request par
 ```
 
 When called with `{ "user_id": "123", "post_id": "456", "request_id": "abc" }`:
+
 - Path becomes: `/users/123/posts/456`
 - Header `X-Request-ID` becomes: `abc`
 
@@ -243,37 +244,37 @@ OpenAPI imported operations are merged with manually defined `requestTemplates`:
 
 ## Configuration Options
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `baseURL` | string | Required | Base URL for all requests |
-| `defaultHeaders` | object | `{}` | Headers applied to all requests |
-| `auth` | object | None | Authentication configuration |
-| `requestTemplates` | array | Required | Operation definitions |
-| `responseMappings` | object | `{}` | JSONPath extraction rules |
-| `openApiImport` | object | None | OpenAPI import configuration |
-| `timeout` | number | 30000 | Request timeout in milliseconds |
-| `retries` | number | 3 | Number of retry attempts |
-| `retryDelay` | number | 1000 | Base delay between retries (ms) |
-| `healthCheckPath` | string | `/health` | Health check endpoint |
+| Field              | Type   | Default   | Description                     |
+| ------------------ | ------ | --------- | ------------------------------- |
+| `baseURL`          | string | Required  | Base URL for all requests       |
+| `defaultHeaders`   | object | `{}`      | Headers applied to all requests |
+| `auth`             | object | None      | Authentication configuration    |
+| `requestTemplates` | array  | Required  | Operation definitions           |
+| `responseMappings` | object | `{}`      | JSONPath extraction rules       |
+| `openApiImport`    | object | None      | OpenAPI import configuration    |
+| `timeout`          | number | 30000     | Request timeout in milliseconds |
+| `retries`          | number | 3         | Number of retry attempts        |
+| `retryDelay`       | number | 1000      | Base delay between retries (ms) |
+| `healthCheckPath`  | string | `/health` | Health check endpoint           |
 
 ## Error Handling
 
 The connector returns structured errors:
 
-| Code | Description | Recoverable |
-|------|-------------|-------------|
-| `AUTH_ERROR` | Authentication failed (401/403) | No |
-| `TRANSPORT_ERROR` | Network/server error | Depends on error type |
+| Code              | Description                     | Recoverable           |
+| ----------------- | ------------------------------- | --------------------- |
+| `AUTH_ERROR`      | Authentication failed (401/403) | No                    |
+| `TRANSPORT_ERROR` | Network/server error            | Depends on error type |
 
 ### HTTP Status Code Mapping
 
-| Status | Error Type | Retryable |
-|--------|------------|-----------|
-| 401, 403 | `auth` | No |
-| 429 | `rate_limit` | Yes |
-| 500-503 | `server` | Yes |
-| Timeout | `timeout` | Yes |
-| Network | `network` | Yes |
+| Status   | Error Type   | Retryable |
+| -------- | ------------ | --------- |
+| 401, 403 | `auth`       | No        |
+| 429      | `rate_limit` | Yes       |
+| 500-503  | `server`     | Yes       |
+| Timeout  | `timeout`    | Yes       |
+| Network  | `network`    | Yes       |
 
 ## Security
 
@@ -284,6 +285,7 @@ API keys and tokens are encrypted at rest using AES-256-GCM. Credentials are sto
 ### Least Privilege
 
 The Generic HTTP connector does not use OAuth scopes. Instead:
+
 - Define per-operation `riskLevel` to control access
 - Use `category` to classify operations (read/write/execute/admin)
 - Configure approval requirements in connector policy
@@ -291,6 +293,7 @@ The Generic HTTP connector does not use OAuth scopes. Instead:
 ### Redaction
 
 Sensitive headers are automatically redacted in logs:
+
 - `Authorization`
 - `X-API-Key`
 - `Cookie`
@@ -305,13 +308,13 @@ GENERIC_HTTP_MOCK_MODE=true
 
 Mock responses by HTTP method:
 
-| Method | Mock Response |
-|--------|---------------|
-| GET | `{ "status": "ok", "data": [], "mock": true }` |
-| POST | `{ "status": "created", "id": "mock-001", "mock": true }` |
-| PUT | `{ "status": "updated", "mock": true }` |
-| PATCH | `{ "status": "patched", "mock": true }` |
-| DELETE | `{ "status": "deleted", "mock": true }` |
+| Method | Mock Response                                             |
+| ------ | --------------------------------------------------------- |
+| GET    | `{ "status": "ok", "data": [], "mock": true }`            |
+| POST   | `{ "status": "created", "id": "mock-001", "mock": true }` |
+| PUT    | `{ "status": "updated", "mock": true }`                   |
+| PATCH  | `{ "status": "patched", "mock": true }`                   |
+| DELETE | `{ "status": "deleted", "mock": true }`                   |
 
 ## Capabilities
 

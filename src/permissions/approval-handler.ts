@@ -1,50 +1,50 @@
-import type { ApprovalStore, CreateApprovalRequest } from '../storage/approval-store.js';
-import type { PermissionGrantStore } from '../storage/permission-grant-store.js';
-import type { EventStore } from '../storage/event-store.js';
-import { APPROVAL_STATES } from '../storage/approval-store.js';
+import type { ApprovalStore, CreateApprovalRequest } from '../storage/approval-store.js'
+import type { PermissionGrantStore } from '../storage/permission-grant-store.js'
+import type { EventStore } from '../storage/event-store.js'
+import { APPROVAL_STATES } from '../storage/approval-store.js'
 import {
   type ApprovalRequest,
   type ApprovalResponse,
   type ApprovalResponseResult,
   type CreateApprovalRequest as DomainCreateApprovalRequest,
   fromStorageApprovalRequest,
-} from './types.js';
+} from './types.js'
 
 export interface ApprovalHandler {
-  createApproval(params: DomainCreateApprovalRequest): ApprovalRequest;
-  processResponse(response: ApprovalResponse): ApprovalResponseResult;
+  createApproval(params: DomainCreateApprovalRequest): ApprovalRequest
+  processResponse(response: ApprovalResponse): ApprovalResponseResult
 }
 
 export interface ApprovalHandlerDeps {
-  approvalStore: ApprovalStore;
-  grantStore: PermissionGrantStore;
-  eventStore: EventStore;
+  approvalStore: ApprovalStore
+  grantStore: PermissionGrantStore
+  eventStore: EventStore
 }
 
 export interface ApprovalHandlerConfig {
-  defaultExpiryMs: number;
+  defaultExpiryMs: number
 }
 
 const DEFAULT_CONFIG: ApprovalHandlerConfig = {
   defaultExpiryMs: 3600000,
-};
+}
 
 export function createApprovalHandler(
   deps: ApprovalHandlerDeps,
-  config: Partial<ApprovalHandlerConfig> = {}
+  config: Partial<ApprovalHandlerConfig> = {},
 ): ApprovalHandler {
-  const fullConfig = { ...DEFAULT_CONFIG, ...config };
+  const fullConfig = { ...DEFAULT_CONFIG, ...config }
 
   function emitAuditEvent(params: {
-    eventType: string;
-    userId: string;
-    sessionId: string;
-    actionType: string;
-    resource?: string;
-    decision: string;
-    reason: string;
-    requestId?: string;
-    grantId?: string;
+    eventType: string
+    userId: string
+    sessionId: string
+    actionType: string
+    resource?: string
+    decision: string
+    reason: string
+    requestId?: string
+    grantId?: string
   }): void {
     deps.eventStore.append({
       eventId: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -64,14 +64,14 @@ export function createApprovalHandler(
       sensitivity: 'medium',
       retentionClass: 'standard',
       createdAt: new Date().toISOString(),
-    });
+    })
   }
 
   return {
     createApproval(params: DomainCreateApprovalRequest): ApprovalRequest {
-      const id = `appr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const now = new Date().toISOString();
-      const expiresAt = params.expiresAt ?? new Date(Date.now() + fullConfig.defaultExpiryMs).toISOString();
+      const id = `appr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      const now = new Date().toISOString()
+      const expiresAt = params.expiresAt ?? new Date(Date.now() + fullConfig.defaultExpiryMs).toISOString()
 
       const storageRequest: CreateApprovalRequest = {
         id,
@@ -88,9 +88,9 @@ export function createApprovalHandler(
           operationType: params.operationType,
           correlationId: params.correlationId ?? `corr_${Date.now()}`,
         }),
-      };
+      }
 
-      const created = deps.approvalStore.create(storageRequest);
+      const created = deps.approvalStore.create(storageRequest)
 
       emitAuditEvent({
         eventType: 'approval_requested',
@@ -101,20 +101,20 @@ export function createApprovalHandler(
         decision: 'pending',
         reason: 'Approval request created',
         requestId: created.id,
-      });
+      })
 
-      return fromStorageApprovalRequest(created);
+      return fromStorageApprovalRequest(created)
     },
 
     processResponse(response: ApprovalResponse): ApprovalResponseResult {
-      const approval = deps.approvalStore.getById(response.requestId);
-      
+      const approval = deps.approvalStore.getById(response.requestId)
+
       if (!approval) {
         return {
           success: false,
           approved: false,
           error: `Approval request not found: ${response.requestId}`,
-        };
+        }
       }
 
       if (approval.status !== APPROVAL_STATES.PENDING) {
@@ -122,10 +122,10 @@ export function createApprovalHandler(
           success: false,
           approved: false,
           error: `Approval request is not pending: ${approval.status}`,
-        };
+        }
       }
 
-      const now = new Date().toISOString();
+      const now = new Date().toISOString()
 
       if (response.responseType === 'reject') {
         deps.approvalStore.update(response.requestId, {
@@ -133,7 +133,7 @@ export function createApprovalHandler(
           respondedAt: response.respondedAt,
           responseBy: response.respondedBy,
           responseReason: response.reason ?? 'No reason provided',
-        });
+        })
 
         emitAuditEvent({
           eventType: 'approval_responded',
@@ -144,12 +144,12 @@ export function createApprovalHandler(
           decision: 'rejected',
           reason: response.reason ?? 'Approval rejected',
           requestId: response.requestId,
-        });
+        })
 
         return {
           success: true,
           approved: false,
-        };
+        }
       }
 
       deps.approvalStore.update(response.requestId, {
@@ -157,15 +157,15 @@ export function createApprovalHandler(
         respondedAt: response.respondedAt,
         responseBy: response.respondedBy,
         responseReason: response.reason,
-      });
+      })
 
-      let grant: ReturnType<PermissionGrantStore['create']> | undefined;
+      let grant: ReturnType<PermissionGrantStore['create']> | undefined
 
       if (response.responseType === 'approve_always') {
-        const grantId = `grant_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const expiresAt = response.grantDuration 
+        const grantId = `grant_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+        const expiresAt = response.grantDuration
           ? new Date(Date.now() + response.grantDuration).toISOString()
-          : undefined;
+          : undefined
 
         grant = deps.grantStore.create({
           id: grantId,
@@ -179,7 +179,7 @@ export function createApprovalHandler(
             approvedAt: now,
           }),
           expiresAt,
-        });
+        })
 
         emitAuditEvent({
           eventType: 'grant_created',
@@ -191,7 +191,7 @@ export function createApprovalHandler(
           reason: 'Permanent grant created from approval',
           requestId: response.requestId,
           grantId: grant.id,
-        });
+        })
       }
 
       emitAuditEvent({
@@ -204,13 +204,13 @@ export function createApprovalHandler(
         reason: response.reason ?? 'Approval granted',
         requestId: response.requestId,
         grantId: grant?.id,
-      });
+      })
 
       return {
         success: true,
         approved: true,
         grant,
-      };
+      }
     },
-  };
+  }
 }

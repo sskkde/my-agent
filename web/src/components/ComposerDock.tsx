@@ -1,29 +1,29 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react'
 
 interface ComposerDockProps {
   /** Current draft text value */
-  value: string;
+  value: string
   /** Callback when draft value changes */
-  onChange: (value: string) => void;
+  onChange: (value: string) => void
   /** Callback to send the message */
-  onSend: () => void;
+  onSend: () => void
   /** Whether a send operation is in progress */
-  sending?: boolean;
+  sending?: boolean
   /** Placeholder text for the input */
-  placeholder?: string;
+  placeholder?: string
   /** Optional additional CSS class */
-  className?: string;
+  className?: string
 }
 
 /**
  * ComposerDock - A visual wrapper/surface for message input with textarea support.
- * 
+ *
  * Features:
  * - Textarea input for multi-line messages
  * - Enter to send, Shift+Enter for newline
  * - Blocks empty/whitespace-only messages
  * - Styled with warm-paper tokens
- * 
+ *
  * Preserves test IDs:
  * - data-testid="session-message-input" on the textarea
  * - data-testid="session-send-button" on the send button
@@ -36,35 +36,35 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
   placeholder = '输入消息...',
   className = '',
 }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-resize textarea to fit content
   useEffect(() => {
-    const textarea = textareaRef.current;
+    const textarea = textareaRef.current
     if (textarea) {
-      textarea.style.height = 'auto';
-      const newHeight = Math.min(textarea.scrollHeight, 200);
-      textarea.style.height = `${newHeight}px`;
+      textarea.style.height = 'auto'
+      const newHeight = Math.min(textarea.scrollHeight, 200)
+      textarea.style.height = `${newHeight}px`
     }
-  }, [value]);
+  }, [value])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter sends, Shift+Enter creates newline
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+      e.preventDefault()
       if (value.trim() && !sending) {
-        onSend();
+        onSend()
       }
     }
-  };
+  }
 
   const handleSendClick = () => {
     if (value.trim() && !sending) {
-      onSend();
+      onSend()
     }
-  };
+  }
 
-  const isSendDisabled = !value.trim() || sending;
+  const isSendDisabled = !value.trim() || sending
 
   return (
     <div className={`composer-dock ${className}`}>
@@ -89,7 +89,7 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
         {sending ? '发送中...' : '发送'}
       </button>
     </div>
-  );
-};
+  )
+}
 
-export default ComposerDock;
+export default ComposerDock

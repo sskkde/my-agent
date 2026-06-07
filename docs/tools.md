@@ -8,18 +8,19 @@ This document describes the runtime command-execution tools added to the Agent P
 
 ## Tools Overview
 
-| Tool | Category | Sensitivity | Requires Permission | Description |
-|------|----------|-------------|---------------------|-------------|
-| `exec` | execute | high | Yes | Execute shell commands with validation and timeout |
-| `bash` | execute | high | Yes | Alias for exec tool |
-| `process` | execute | high | Yes | Manage background process sessions |
-| `code_execution` | execute | high | Yes | Execute code in JS/TS/Bash |
+| Tool             | Category | Sensitivity | Requires Permission | Description                                        |
+| ---------------- | -------- | ----------- | ------------------- | -------------------------------------------------- |
+| `exec`           | execute  | high        | Yes                 | Execute shell commands with validation and timeout |
+| `bash`           | execute  | high        | Yes                 | Alias for exec tool                                |
+| `process`        | execute  | high        | Yes                 | Manage background process sessions                 |
+| `code_execution` | execute  | high        | Yes                 | Execute code in JS/TS/Bash                         |
 
 ## exec Tool
 
 Execute a shell command with security validation, timeout, and output management.
 
 **Parameters:**
+
 ```json
 {
   "command": "string (required)",
@@ -33,6 +34,7 @@ Execute a shell command with security validation, timeout, and output management
 ```
 
 **Example:**
+
 ```json
 {
   "command": "node -e \"console.log('Hello')\"",
@@ -54,6 +56,7 @@ Manage background process sessions with these actions:
 - **clear**: Remove a completed session
 
 **Example - Poll Session:**
+
 ```json
 {
   "action": "poll",
@@ -66,6 +69,7 @@ Manage background process sessions with these actions:
 Execute code in JavaScript, TypeScript, or Bash.
 
 **Parameters:**
+
 ```json
 {
   "language": "javascript | typescript | bash",
@@ -77,6 +81,7 @@ Execute code in JavaScript, TypeScript, or Bash.
 ```
 
 **Example:**
+
 ```json
 {
   "language": "javascript",
@@ -85,6 +90,7 @@ Execute code in JavaScript, TypeScript, or Bash.
 ```
 
 **Language Availability:**
+
 - **JavaScript**: Always available
 - **TypeScript**: Requires `tsx` package
 - **Bash**: Requires `bash` in PATH

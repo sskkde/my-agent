@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { getUsage } from '../../api/client';
-import type { UsageResponse, UsageSummary } from '../../api/types';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import React, { useEffect, useState, useCallback } from 'react'
+import { getUsage } from '../../api/client'
+import type { UsageResponse, UsageSummary } from '../../api/types'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 interface UsageState {
-  data: UsageResponse | null;
-  loading: boolean;
-  error: string | null;
+  data: UsageResponse | null
+  loading: boolean
+  error: string | null
 }
 
 const UsageTab: React.FC = () => {
@@ -14,27 +14,27 @@ const UsageTab: React.FC = () => {
     data: null,
     loading: true,
     error: null,
-  });
-  const [offset, setOffset] = useState(0);
-  const limit = 10;
+  })
+  const [offset, setOffset] = useState(0)
+  const limit = 10
 
   const fetchUsage = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const response = await getUsage(undefined, limit, offset);
-      setState({ data: response, loading: false, error: null });
+      const response = await getUsage(undefined, limit, offset)
+      setState({ data: response, loading: false, error: null })
     } catch (err) {
       setState({
         data: null,
         loading: false,
         error: err instanceof Error ? err.message : 'Failed to fetch usage data',
-      });
+      })
     }
-  }, [offset]);
+  }, [offset])
 
   useEffect(() => {
-    fetchUsage();
-  }, [fetchUsage]);
+    fetchUsage()
+  }, [fetchUsage])
 
   const calculateAggregates = (usages: UsageSummary[]) => {
     return usages.reduce(
@@ -44,9 +44,8 @@ const UsageTab: React.FC = () => {
         totalToolCalls: acc.totalToolCalls + usage.toolCallCount,
         totalApprovals: acc.totalApprovals + usage.approvalCount,
         totalTokens: acc.totalTokens + usage.estimatedTotalTokens,
-        totalCostCents: usage.estimatedCostCents !== null
-          ? acc.totalCostCents + usage.estimatedCostCents
-          : acc.totalCostCents,
+        totalCostCents:
+          usage.estimatedCostCents !== null ? acc.totalCostCents + usage.estimatedCostCents : acc.totalCostCents,
         hasCostConfigured: acc.hasCostConfigured || usage.estimatedCostCents !== null,
       }),
       {
@@ -57,29 +56,29 @@ const UsageTab: React.FC = () => {
         totalTokens: 0,
         totalCostCents: 0,
         hasCostConfigured: false,
-      }
-    );
-  };
+      },
+    )
+  }
 
   const formatCost = (cents: number | null): string => {
-    if (cents === null) return '未配置';
-    return `$${(cents / 100).toFixed(2)}`;
-  };
+    if (cents === null) return '未配置'
+    return `$${(cents / 100).toFixed(2)}`
+  }
 
   const formatNumber = (num: number): string => {
-    return num.toLocaleString();
-  };
+    return num.toLocaleString()
+  }
 
   const truncateSessionId = (sessionId: string): string => {
-    return sessionId.slice(0, 12);
-  };
+    return sessionId.slice(0, 12)
+  }
 
   if (state.loading) {
     return (
       <div className="usage-tab" data-testid="usage-panel">
         <LoadingSpinner label="加载用量数据..." />
       </div>
-    );
+    )
   }
 
   if (state.error) {
@@ -87,20 +86,16 @@ const UsageTab: React.FC = () => {
       <div className="usage-tab" data-testid="usage-panel">
         <div className="usage-error" data-testid="usage-error">
           <p>加载失败: {state.error}</p>
-          <button
-            type="button"
-            className="retry-button"
-            onClick={fetchUsage}
-          >
+          <button type="button" className="retry-button" onClick={fetchUsage}>
             重试
           </button>
         </div>
       </div>
-    );
+    )
   }
 
-  const usages = state.data?.usages ?? [];
-  const total = state.data?.total ?? 0;
+  const usages = state.data?.usages ?? []
+  const total = state.data?.total ?? 0
 
   if (usages.length === 0) {
     return (
@@ -109,12 +104,12 @@ const UsageTab: React.FC = () => {
           暂无用量数据
         </div>
       </div>
-    );
+    )
   }
 
-  const aggregates = calculateAggregates(usages);
-  const totalPages = Math.ceil(total / limit);
-  const currentPage = Math.floor(offset / limit) + 1;
+  const aggregates = calculateAggregates(usages)
+  const totalPages = Math.ceil(total / limit)
+  const currentPage = Math.floor(offset / limit) + 1
 
   return (
     <div className="usage-tab" data-testid="usage-panel">
@@ -164,9 +159,7 @@ const UsageTab: React.FC = () => {
             <tbody>
               {usages.map((usage) => (
                 <tr key={usage.sessionId}>
-                  <td className="usage-table__session-id">
-                    {truncateSessionId(usage.sessionId)}
-                  </td>
+                  <td className="usage-table__session-id">{truncateSessionId(usage.sessionId)}</td>
                   <td>{formatNumber(usage.messageCount)}</td>
                   <td>{formatNumber(usage.estimatedTotalTokens)}</td>
                   <td>
@@ -183,11 +176,7 @@ const UsageTab: React.FC = () => {
         {/* Mobile card list - visible only on phone */}
         <div className="usage-mobile-list" data-testid="usage-mobile-list">
           {usages.map((usage) => (
-            <div
-              key={usage.sessionId}
-              className="usage-mobile-card"
-              data-testid={`usage-card-${usage.sessionId}`}
-            >
+            <div key={usage.sessionId} className="usage-mobile-card" data-testid={`usage-card-${usage.sessionId}`}>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">会话ID</span>
                 <span className="usage-mobile-card__value usage-mobile-card__value--monospace">
@@ -196,15 +185,11 @@ const UsageTab: React.FC = () => {
               </div>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">消息数</span>
-                <span className="usage-mobile-card__value">
-                  {formatNumber(usage.messageCount)}
-                </span>
+                <span className="usage-mobile-card__value">{formatNumber(usage.messageCount)}</span>
               </div>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">Token数</span>
-                <span className="usage-mobile-card__value">
-                  {formatNumber(usage.estimatedTotalTokens)}
-                </span>
+                <span className="usage-mobile-card__value">{formatNumber(usage.estimatedTotalTokens)}</span>
               </div>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">预估成本</span>
@@ -245,7 +230,7 @@ const UsageTab: React.FC = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default UsageTab;
+export default UsageTab

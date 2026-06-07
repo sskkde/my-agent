@@ -13,22 +13,22 @@ Phase 5 "Product Experience & API Productization" 已完成主要实现。本阶
 
 ### 1.1 核心成果
 
-| 成果 | 状态 |
-|------|------|
-| 全路由 Response Envelope 标准化 | ✅ 完成 |
-| API 错误格式标准化 | ✅ 完成 |
-| 分页响应补齐 `hasMore` | ✅ 完成 |
-| Rate Limit 中间件 | ✅ 完成 |
-| JSON Schema 请求校验 | ✅ 完成 |
-| HTTP 响应压缩 | ✅ 完成 |
-| Health / Readiness Check | ✅ 完成 |
-| Swagger UI / OpenAPI JSON | ✅ 完成 |
-| 全量 OpenAPI 文档 | ✅ 完成 |
-| 前端统一 API client | ✅ 完成 |
-| P5 Web 可复用组件 | ✅ 完成 |
+| 成果                                             | 状态    |
+| ------------------------------------------------ | ------- |
+| 全路由 Response Envelope 标准化                  | ✅ 完成 |
+| API 错误格式标准化                               | ✅ 完成 |
+| 分页响应补齐 `hasMore`                           | ✅ 完成 |
+| Rate Limit 中间件                                | ✅ 完成 |
+| JSON Schema 请求校验                             | ✅ 完成 |
+| HTTP 响应压缩                                    | ✅ 完成 |
+| Health / Readiness Check                         | ✅ 完成 |
+| Swagger UI / OpenAPI JSON                        | ✅ 完成 |
+| 全量 OpenAPI 文档                                | ✅ 完成 |
+| 前端统一 API client                              | ✅ 完成 |
+| P5 Web 可复用组件                                | ✅ 完成 |
 | User / Admin / Deployment / Troubleshooting 文档 | ✅ 完成 |
-| Architecture Test Matrix 更新 | ✅ 完成 |
-| Phase 5 Baseline / Execution Report | ✅ 完成 |
+| Architecture Test Matrix 更新                    | ✅ 完成 |
+| Phase 5 Baseline / Execution Report              | ✅ 完成 |
 
 ---
 
@@ -37,11 +37,13 @@ Phase 5 "Product Experience & API Productization" 已完成主要实现。本阶
 ### 2.1 新增文件
 
 **API 产品化**:
+
 - `src/api/middleware/rate-limit.ts` — Fastify rate limit 注册与错误封装
 - `src/api/schemas/` — 通用请求校验 schema
 - `docs/api/openapi.yaml` — 全量 OpenAPI 规范
 
 **API 测试**:
+
 - `tests/integration/api/response-envelope-contract.test.ts`
 - `tests/integration/api/error-format-contract.test.ts`
 - `tests/integration/api/pagination-contract.test.ts`
@@ -52,6 +54,7 @@ Phase 5 "Product Experience & API Productization" 已完成主要实现。本阶
 - `tests/integration/api/swagger-ui.test.ts`
 
 **Web 组件**:
+
 - `web/src/components/Toast.tsx` / `.test.tsx`
 - `web/src/components/LoadingSpinner.tsx` / `.test.tsx`
 - `web/src/components/EmptyState.tsx` / `.test.tsx`
@@ -65,6 +68,7 @@ Phase 5 "Product Experience & API Productization" 已完成主要实现。本阶
 - `web/src/hooks/useApi.ts`
 
 **产品文档**:
+
 - `docs/product/user-guide.md`
 - `docs/product/admin-guide.md`
 - `docs/deployment/docker.md`
@@ -127,87 +131,87 @@ Phase 5 "Product Experience & API Productization" 已完成主要实现。本阶
 
 ### 4.1 已完成验证
 
-| 检查项 | 结果 |
-|--------|------|
-| `npm run typecheck` | ✅ 通过 |
-| P5 API 专项测试 | ✅ 8 文件 / 47 测试通过 |
-| `ApprovalCard` + `RunDetailDrawer` 修复验证 | ✅ 2 文件 / 32 测试通过 |
-| `EventFilter` 单测 | ✅ 14 测试通过 |
-| Web 构建 | ✅ `npm --prefix web run build` 通过 |
+| 检查项                                      | 结果                                 |
+| ------------------------------------------- | ------------------------------------ |
+| `npm run typecheck`                         | ✅ 通过                              |
+| P5 API 专项测试                             | ✅ 8 文件 / 47 测试通过              |
+| `ApprovalCard` + `RunDetailDrawer` 修复验证 | ✅ 2 文件 / 32 测试通过              |
+| `EventFilter` 单测                          | ✅ 14 测试通过                       |
+| Web 构建                                    | ✅ `npm --prefix web run build` 通过 |
 
 ### 4.2 P5 API 专项测试覆盖
 
-| 测试文件 | 覆盖 |
-|----------|------|
-| `response-envelope-contract.test.ts` | 所有核心端点响应封装 |
-| `error-format-contract.test.ts` | 400/404/500 错误格式 |
-| `pagination-contract.test.ts` | 分页响应 `hasMore` |
-| `rate-limit.test.ts` | 全局/认证限流 |
-| `request-validation.test.ts` | 写接口 JSON Schema 校验 |
-| `compression.test.ts` | gzip 响应压缩 |
-| `health-check.test.ts` | liveness/readiness |
-| `swagger-ui.test.ts` | `/api/docs` 与 `/api/docs/json` |
+| 测试文件                             | 覆盖                            |
+| ------------------------------------ | ------------------------------- |
+| `response-envelope-contract.test.ts` | 所有核心端点响应封装            |
+| `error-format-contract.test.ts`      | 400/404/500 错误格式            |
+| `pagination-contract.test.ts`        | 分页响应 `hasMore`              |
+| `rate-limit.test.ts`                 | 全局/认证限流                   |
+| `request-validation.test.ts`         | 写接口 JSON Schema 校验         |
+| `compression.test.ts`                | gzip 响应压缩                   |
+| `health-check.test.ts`               | liveness/readiness              |
+| `swagger-ui.test.ts`                 | `/api/docs` 与 `/api/docs/json` |
 
 ### 4.3 P5 Web 组件测试覆盖
 
-| 组件 | 测试数 |
-|------|--------|
-| Toast | 10 |
-| LoadingSpinner | 10 |
-| EmptyState | 9 |
-| ToolCallCard | 16 |
-| ApprovalCard | 17 |
-| BackgroundTaskCard | 18 |
-| RunList | 19 |
-| RunDetailDrawer | 15 |
-| TimelineView | 17 |
-| EventFilter | 14 |
-| **总计** | **145** |
+| 组件               | 测试数  |
+| ------------------ | ------- |
+| Toast              | 10      |
+| LoadingSpinner     | 10      |
+| EmptyState         | 9       |
+| ToolCallCard       | 16      |
+| ApprovalCard       | 17      |
+| BackgroundTaskCard | 18      |
+| RunList            | 19      |
+| RunDetailDrawer    | 15      |
+| TimelineView       | 17      |
+| EventFilter        | 14      |
+| **总计**           | **145** |
 
 ---
 
 ## 5. 新增依赖
 
-| 依赖 | 用途 |
-|------|------|
-| `@fastify/compress` | HTTP 响应压缩 |
-| `@fastify/rate-limit` | API 限流 |
-| `@fastify/swagger` | OpenAPI/Swagger 生成 |
-| `@fastify/swagger-ui` | Swagger UI |
+| 依赖                  | 用途                 |
+| --------------------- | -------------------- |
+| `@fastify/compress`   | HTTP 响应压缩        |
+| `@fastify/rate-limit` | API 限流             |
+| `@fastify/swagger`    | OpenAPI/Swagger 生成 |
+| `@fastify/swagger-ui` | Swagger UI           |
 
 ---
 
 ## 6. 已修复风险
 
-| 风险 | 修复 |
-|------|------|
-| P5 改动直接位于 `master` 工作区 | 已切换到 `feat/phase5-api-productization` 分支保留当前工作区 |
-| `RunDetailDrawer.test.tsx` OOM/超时 | 将 `getRunConsole(runId)` 包装为 `useCallback`，避免 `useEffect` 因 `execute` 变化反复触发 |
-| `ApprovalCard.test.tsx` React `act(...)` warning | 使用 pending promise 验证 submitting 状态，避免测试结束后异步状态更新 |
-| 执行报告错误称“纯文档/无依赖/无代码修改” | 已更新为真实 P5 API/UI/Docs 实现范围 |
+| 风险                                             | 修复                                                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| P5 改动直接位于 `master` 工作区                  | 已切换到 `feat/phase5-api-productization` 分支保留当前工作区                               |
+| `RunDetailDrawer.test.tsx` OOM/超时              | 将 `getRunConsole(runId)` 包装为 `useCallback`，避免 `useEffect` 因 `execute` 变化反复触发 |
+| `ApprovalCard.test.tsx` React `act(...)` warning | 使用 pending promise 验证 submitting 状态，避免测试结束后异步状态更新                      |
+| 执行报告错误称“纯文档/无依赖/无代码修改”         | 已更新为真实 P5 API/UI/Docs 实现范围                                                       |
 
 ---
 
 ## 7. 已知限制
 
-| 限制 | 影响 | 后续建议 |
-|------|------|----------|
+| 限制               | 影响                            | 后续建议          |
+| ------------------ | ------------------------------- | ----------------- |
 | API Key 认证未实现 | 服务间调用仍依赖 Cookie Session | P6 结合 RBAC 实现 |
-| RBAC 未实现 | 管理员/普通用户权限边界有限 | P6 设计角色模型 |
-| API 版本前缀未引入 | `/api/v1` 尚未落地 | P6 做兼容性迁移 |
-| 游标分页未实现 | 大数据量列表仍为 offset 分页 | P6/P7 优化 |
+| RBAC 未实现        | 管理员/普通用户权限边界有限     | P6 设计角色模型   |
+| API 版本前缀未引入 | `/api/v1` 尚未落地              | P6 做兼容性迁移   |
+| 游标分页未实现     | 大数据量列表仍为 offset 分页    | P6/P7 优化        |
 
 ---
 
 ## 8. 下一阶段建议
 
-| 建议 | 优先级 | 估时 |
-|------|--------|------|
-| API Key + RBAC | 高 | 5-7 天 |
-| 真实连接器实现 | 高 | 5-7 天 |
-| API `/api/v1` 版本化迁移 | 中 | 3-5 天 |
-| PostgreSQL 迁移评估 | 中 | 5-7 天 |
-| Connector OAuth 配置向导 | 中 | 3-5 天 |
+| 建议                     | 优先级 | 估时   |
+| ------------------------ | ------ | ------ |
+| API Key + RBAC           | 高     | 5-7 天 |
+| 真实连接器实现           | 高     | 5-7 天 |
+| API `/api/v1` 版本化迁移 | 中     | 3-5 天 |
+| PostgreSQL 迁移评估      | 中     | 5-7 天 |
+| Connector OAuth 配置向导 | 中     | 3-5 天 |
 
 ---
 

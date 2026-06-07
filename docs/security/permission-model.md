@@ -20,12 +20,12 @@ When an agent attempts to execute a tool that requires approval, the following f
 
 ### Permission Types
 
-| Type | Description | Example |
-|------|-------------|---------|
-| **Read** | No approval needed | `file.read`, `memory.retrieve` |
-| **Write** | Requires approval | `file.write`, `connector.write` |
-| **Execute** | Requires approval | `shell.exec`, `http.request` |
-| **Delete** | Requires approval | `memory.delete`, `workflow.delete` |
+| Type        | Description        | Example                            |
+| ----------- | ------------------ | ---------------------------------- |
+| **Read**    | No approval needed | `file.read`, `memory.retrieve`     |
+| **Write**   | Requires approval  | `file.write`, `connector.write`    |
+| **Execute** | Requires approval  | `shell.exec`, `http.request`       |
+| **Delete**  | Requires approval  | `memory.delete`, `workflow.delete` |
 
 ## Connector Write Permissions
 
@@ -77,10 +77,10 @@ curl -H "Authorization: Bearer <token>" http://localhost:3003/api/sessions
 
 Tokens can have different scopes:
 
-| Scope | Access |
-|-------|--------|
-| `read` | Read-only API access |
-| `write` | Full read/write access |
+| Scope   | Access                    |
+| ------- | ------------------------- |
+| `read`  | Read-only API access      |
+| `write` | Full read/write access    |
 | `admin` | Administrative operations |
 
 ### Scope-Based Access
@@ -91,6 +91,7 @@ Agent configuration follows scope-based access control:
 - **User Scope**: Per-user overrides
 
 Configuration precedence:
+
 ```
 session_override > agent_config > user_provider_defaults > env_providers
 ```
@@ -136,13 +137,13 @@ All permission decisions are logged for audit purposes:
 
 ### Audit Record Types
 
-| Type | Description |
-|------|-------------|
-| `approval.requested` | Approval request created |
-| `approval.approved` | User approved request |
-| `approval.rejected` | User rejected request |
-| `tool.executed` | Tool executed after approval |
-| `memory.deleted` | Memory soft-deleted |
+| Type                 | Description                  |
+| -------------------- | ---------------------------- |
+| `approval.requested` | Approval request created     |
+| `approval.approved`  | User approved request        |
+| `approval.rejected`  | User rejected request        |
+| `tool.executed`      | Tool executed after approval |
+| `memory.deleted`     | Memory soft-deleted          |
 
 ## Security Best Practices
 
@@ -175,8 +176,8 @@ The architecture contract test `replay-preview-safety-contract.test.ts` verifies
 
 ```typescript
 // Forbidden operations in replay preview mode:
-assert(toolCalls === 0, "No tool calls allowed");
-assert(storeWrites === 0, "No store writes allowed");
-assert(httpRequests === 0, "No HTTP requests allowed");
-assert(triggerFires === 0, "No triggers fired");
+assert(toolCalls === 0, 'No tool calls allowed')
+assert(storeWrites === 0, 'No store writes allowed')
+assert(httpRequests === 0, 'No HTTP requests allowed')
+assert(triggerFires === 0, 'No triggers fired')
 ```

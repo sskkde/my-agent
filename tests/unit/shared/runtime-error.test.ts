@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest'
 import type {
   RuntimeError,
   RuntimeErrorCategory,
@@ -6,7 +6,7 @@ import type {
   ErrorSource,
   UserVisibleError,
   TechnicalErrorDetails,
-} from '../../../src/shared/errors';
+} from '../../../src/shared/errors'
 
 describe('RuntimeError Contracts', () => {
   describe('RuntimeErrorCategory', () => {
@@ -30,15 +30,15 @@ describe('RuntimeError Contracts', () => {
         'duplicate_event',
         'state_conflict',
         'system_internal_error',
-      ];
+      ]
 
-      expect(categories).toHaveLength(18);
+      expect(categories).toHaveLength(18)
 
       categories.forEach((category) => {
-        expect(typeof category).toBe('string');
-      });
-    });
-  });
+        expect(typeof category).toBe('string')
+      })
+    })
+  })
 
   describe('Recoverability', () => {
     it('should accept all documented recoverability values', () => {
@@ -48,15 +48,15 @@ describe('RuntimeError Contracts', () => {
         'recoverable_with_approval',
         'retryable_later',
         'non_recoverable',
-      ];
+      ]
 
-      expect(recoverabilityValues).toHaveLength(5);
+      expect(recoverabilityValues).toHaveLength(5)
 
       recoverabilityValues.forEach((value) => {
-        expect(typeof value).toBe('string');
-      });
-    });
-  });
+        expect(typeof value).toBe('string')
+      })
+    })
+  })
 
   describe('RuntimeError', () => {
     it('should create a complete RuntimeError object', () => {
@@ -70,19 +70,19 @@ describe('RuntimeError Contracts', () => {
         toolCallId: 'tool_call_001',
         actionId: 'act_001',
         connectorId: 'conn_001',
-      };
+      }
 
       const userVisible: UserVisibleError = {
         title: 'Test Error',
         summary: 'A test error occurred',
         suggestedActions: ['Retry', 'Contact support'],
-      };
+      }
 
       const technical: TechnicalErrorDetails = {
         stackRef: 'stack-ref-123',
         rawErrorRef: 'raw-error-456',
         retryAfterMs: 5000,
-      };
+      }
 
       const error: RuntimeError = {
         errorId: 'err_test_001',
@@ -94,18 +94,18 @@ describe('RuntimeError Contracts', () => {
         userVisible,
         technical,
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      expect(error.errorId).toBe('err_test_001');
-      expect(error.category).toBe('model_error');
-      expect(error.code).toBe('MODEL_TIMEOUT');
-      expect(error.message).toBe('Model request timed out');
-      expect(error.recoverability).toBe('retryable_later');
-      expect(error.createdAt).toBeDefined();
-      expect(error.source).toEqual(source);
-      expect(error.userVisible).toEqual(userVisible);
-      expect(error.technical).toEqual(technical);
-    });
+      expect(error.errorId).toBe('err_test_001')
+      expect(error.category).toBe('model_error')
+      expect(error.code).toBe('MODEL_TIMEOUT')
+      expect(error.message).toBe('Model request timed out')
+      expect(error.recoverability).toBe('retryable_later')
+      expect(error.createdAt).toBeDefined()
+      expect(error.source).toEqual(source)
+      expect(error.userVisible).toEqual(userVisible)
+      expect(error.technical).toEqual(technical)
+    })
 
     it('should create a RuntimeError with minimal required fields', () => {
       const error: RuntimeError = {
@@ -118,14 +118,14 @@ describe('RuntimeError Contracts', () => {
           module: 'kernel',
         },
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      expect(error.errorId).toBe('err_test_002');
-      expect(error.category).toBe('system_internal_error');
-      expect(error.recoverability).toBe('non_recoverable');
-      expect(error.userVisible).toBeUndefined();
-      expect(error.technical).toBeUndefined();
-    });
+      expect(error.errorId).toBe('err_test_002')
+      expect(error.category).toBe('system_internal_error')
+      expect(error.recoverability).toBe('non_recoverable')
+      expect(error.userVisible).toBeUndefined()
+      expect(error.technical).toBeUndefined()
+    })
 
     it('should accept connector_rate_limited as retryable_later', () => {
       const error: RuntimeError = {
@@ -137,12 +137,12 @@ describe('RuntimeError Contracts', () => {
         source: { module: 'connector' },
         technical: { retryAfterMs: 60000 },
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      expect(error.category).toBe('connector_rate_limited');
-      expect(error.recoverability).toBe('retryable_later');
-      expect(error.technical?.retryAfterMs).toBe(60000);
-    });
+      expect(error.category).toBe('connector_rate_limited')
+      expect(error.recoverability).toBe('retryable_later')
+      expect(error.technical?.retryAfterMs).toBe(60000)
+    })
 
     it('should accept approval_rejected as recoverable_with_user', () => {
       const error: RuntimeError = {
@@ -157,11 +157,11 @@ describe('RuntimeError Contracts', () => {
           summary: 'The requested action was not approved by the user',
         },
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      expect(error.category).toBe('approval_rejected');
-      expect(error.recoverability).toBe('recoverable_with_user');
-    });
+      expect(error.category).toBe('approval_rejected')
+      expect(error.recoverability).toBe('recoverable_with_user')
+    })
 
     it('should accept tool_execution_error as non_recoverable for destructive actions', () => {
       const error: RuntimeError = {
@@ -176,12 +176,12 @@ describe('RuntimeError Contracts', () => {
           summary: 'The destructive action cannot be completed',
         },
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      expect(error.category).toBe('tool_execution_error');
-      expect(error.recoverability).toBe('non_recoverable');
-    });
-  });
+      expect(error.category).toBe('tool_execution_error')
+      expect(error.recoverability).toBe('non_recoverable')
+    })
+  })
 
   describe('ErrorSource', () => {
     it('should support all documented source fields', () => {
@@ -195,25 +195,25 @@ describe('RuntimeError Contracts', () => {
         toolCallId: 'tool_call_001',
         actionId: 'act_001',
         connectorId: 'conn_001',
-      };
+      }
 
-      expect(source.module).toBe('planner');
-      expect(source.runId).toBe('krun_001');
-      expect(source.plannerRunId).toBe('pl_run_001');
-      expect(source.workflowRunId).toBe('wf_run_001');
-      expect(source.workflowStepRunId).toBe('step_001');
-      expect(source.backgroundRunId).toBe('bg_run_001');
-      expect(source.toolCallId).toBe('tool_call_001');
-      expect(source.actionId).toBe('act_001');
-      expect(source.connectorId).toBe('conn_001');
-    });
+      expect(source.module).toBe('planner')
+      expect(source.runId).toBe('krun_001')
+      expect(source.plannerRunId).toBe('pl_run_001')
+      expect(source.workflowRunId).toBe('wf_run_001')
+      expect(source.workflowStepRunId).toBe('step_001')
+      expect(source.backgroundRunId).toBe('bg_run_001')
+      expect(source.toolCallId).toBe('tool_call_001')
+      expect(source.actionId).toBe('act_001')
+      expect(source.connectorId).toBe('conn_001')
+    })
 
     it('should only require module field', () => {
       const source: ErrorSource = {
         module: 'kernel',
-      };
+      }
 
-      expect(source.module).toBe('kernel');
-    });
-  });
-});
+      expect(source.module).toBe('kernel')
+    })
+  })
+})

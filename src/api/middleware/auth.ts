@@ -1,100 +1,97 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { AuthTokenStore } from '../../storage/auth-token-store.js';
-import type { UserStore } from '../../storage/user-store.js';
-import type { UserRole } from '../../storage/user-store.js';
-import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js';
-import { hashToken } from '../../storage/auth-crypto.js';
-import { ApiErrorFactory } from '../errors.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import type { AuthTokenStore } from '../../storage/auth-token-store.js'
+import type { UserStore } from '../../storage/user-store.js'
+import type { UserRole } from '../../storage/user-store.js'
+import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js'
+import { hashToken } from '../../storage/auth-crypto.js'
+import { ApiErrorFactory } from '../errors.js'
 
-const SESSION_COOKIE_NAME = 'agent-platform-session';
+const SESSION_COOKIE_NAME = 'agent-platform-session'
 
 export interface AuthenticatedUser {
-  userId: string;
-  username: string;
-  role: UserRole;
-  tenantId: string;
+  userId: string
+  username: string
+  role: UserRole
+  tenantId: string
 }
 
 declare module 'fastify' {
   interface FastifyRequest {
-    user?: AuthenticatedUser;
+    user?: AuthenticatedUser
   }
 }
 
 interface AuthMiddlewareOptions {
-  userStore: UserStore;
-  authTokenStore: AuthTokenStore;
-  excludedPaths: string[];
+  userStore: UserStore
+  authTokenStore: AuthTokenStore
+  excludedPaths: string[]
 }
 
 function parseCookies(cookieHeader: string | undefined): Record<string, string> {
-  const cookies: Record<string, string> = {};
+  const cookies: Record<string, string> = {}
   if (!cookieHeader) {
-    return cookies;
+    return cookies
   }
 
-  const parts = cookieHeader.split(';');
+  const parts = cookieHeader.split(';')
   for (const part of parts) {
-    const [name, ...rest] = part.trim().split('=');
+    const [name, ...rest] = part.trim().split('=')
     if (name && rest.length > 0) {
-      cookies[name] = rest.join('=');
+      cookies[name] = rest.join('=')
     }
   }
 
-  return cookies;
+  return cookies
 }
 
 export function setSessionCookie(reply: FastifyReply, token: string): void {
-  const maxAge = 24 * 60 * 60;
-  const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  const maxAge = 24 * 60 * 60
+  const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : ''
   reply.header(
     'Set-Cookie',
-    `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secureFlag}`
-  );
+    `${SESSION_COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secureFlag}`,
+  )
 }
 
 export function clearSessionCookie(reply: FastifyReply): void {
-  const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  reply.header(
-    'Set-Cookie',
-    `${SESSION_COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`
-  );
+  const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  reply.header('Set-Cookie', `${SESSION_COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`)
 }
 
 export function getSessionTokenFromRequest(request: FastifyRequest): string | null {
-  const cookies = parseCookies(request.headers.cookie);
-  return cookies[SESSION_COOKIE_NAME] || null;
+  const cookies = parseCookies(request.headers.cookie)
+  return cookies[SESSION_COOKIE_NAME] || null
 }
 
 export async function authenticateRequest(
   request: FastifyRequest,
   userStore: UserStore,
-  authTokenStore: AuthTokenStore
+  authTokenStore: AuthTokenStore,
 ): Promise<AuthenticatedUser | null> {
-  const token = getSessionTokenFromRequest(request);
+  const token = getSessionTokenFromRequest(request)
   if (!token) {
-    return null;
+    return null
   }
 
-  const tokenHash = hashToken(token);
-  const authToken = authTokenStore.findByHash(tokenHash);
+  const tokenHash = hashToken(token)
+  const authToken = authTokenStore.findByHash(tokenHash)
 
   if (!authToken) {
-    return null;
+    return null
   }
 
   if (authToken.revokedAt) {
-    return null;
+    return null
   }
 
-  const now = new Date().toISOString();
+  const now = new Date().toISOString()
   if (authToken.expiresAt < now) {
-    return null;
+    return null
   }
 
-  const user = userStore.getById(authToken.userId);
+  const user = userStore.getById(authToken.userId)
   if (!user) {
-    return null;
+    return null
   }
 
   return {
@@ -102,7 +99,7 @@ export async function authenticateRequest(
     username: user.username,
     role: user.role,
     tenantId: DEFAULT_TENANT_ID,
-  };
+  }
 }
 
 function isPathExcluded(path: string, excludedPaths: string[]): boolean {
@@ -110,38 +107,35 @@ function isPathExcluded(path: string, excludedPaths: string[]): boolean {
   // intercept 307 redirects. Auth will be checked when the client follows the
   // redirect to the /api/v1/* target.
   if (path.startsWith('/api/') && !path.startsWith('/api/v1/')) {
-    return true;
+    return true
   }
-  return excludedPaths.some(excludedPath => {
+  return excludedPaths.some((excludedPath) => {
     if (excludedPath.endsWith('*')) {
-      return path.startsWith(excludedPath.slice(0, -1));
+      return path.startsWith(excludedPath.slice(0, -1))
     }
-    return path === excludedPath;
-  });
+    return path === excludedPath
+  })
 }
 
-export function registerAuthMiddleware(
-  server: FastifyInstance,
-  options: AuthMiddlewareOptions
-): void {
+export function registerAuthMiddleware(server: FastifyInstance, options: AuthMiddlewareOptions): void {
   server.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
     if (isPathExcluded(request.url, options.excludedPaths)) {
-      return;
+      return
     }
 
     // Skip session auth for Bearer token auth (API keys and API_AUTH_TOKEN)
-    const authHeader = request.headers.authorization;
+    const authHeader = request.headers.authorization
     if (authHeader?.startsWith('Bearer ')) {
-      return;
+      return
     }
 
-    const user = await authenticateRequest(request, options.userStore, options.authTokenStore);
+    const user = await authenticateRequest(request, options.userStore, options.authTokenStore)
     if (!user) {
-      const error = ApiErrorFactory.unauthorized('Invalid or expired session');
-      request.headers = { ...request.headers, 'x-no-compression': 'true' };
-      return reply.code(401).send(error);
+      const error = ApiErrorFactory.unauthorized('Invalid or expired session')
+      request.headers = { ...request.headers, 'x-no-compression': 'true' }
+      return reply.code(401).send(error)
     }
 
-    request.user = user;
-  });
+    request.user = user
+  })
 }

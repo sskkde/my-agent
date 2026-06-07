@@ -1,11 +1,11 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { OrganizationStore } from '../storage/organization-store.js';
-import type { TenantContext } from './tenant-context.js';
-import { DEFAULT_TENANT_ID, createTenantContext } from './tenant-context.js';
+import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { OrganizationStore } from '../storage/organization-store.js'
+import type { TenantContext } from './tenant-context.js'
+import { DEFAULT_TENANT_ID, createTenantContext } from './tenant-context.js'
 
 export interface TenantResolutionOptions {
-  organizationStore: OrganizationStore;
-  tenantHeader?: string;
+  organizationStore: OrganizationStore
+  tenantHeader?: string
 }
 
 /**
@@ -19,29 +19,26 @@ export interface TenantResolutionOptions {
 export function resolveTenant(
   userId: string | undefined,
   organizationStore: OrganizationStore,
-  tenantHeader?: string
+  tenantHeader?: string,
 ): TenantContext {
-  void userId;
-  void organizationStore;
-  void tenantHeader;
+  void userId
+  void organizationStore
+  void tenantHeader
 
-  return createTenantContext(DEFAULT_TENANT_ID, 'default');
+  return createTenantContext(DEFAULT_TENANT_ID, 'default')
 }
 
-export function registerTenantResolution(
-  server: FastifyInstance,
-  options: TenantResolutionOptions
-): void {
-  const tenantHeader = options.tenantHeader ?? 'X-Tenant-Id';
+export function registerTenantResolution(server: FastifyInstance, options: TenantResolutionOptions): void {
+  const tenantHeader = options.tenantHeader ?? 'X-Tenant-Id'
 
   server.addHook('onRequest', async (request: FastifyRequest) => {
-    const userId = request.user?.userId;
-    const context = resolveTenant(userId, options.organizationStore, tenantHeader);
+    const userId = request.user?.userId
+    const context = resolveTenant(userId, options.organizationStore, tenantHeader)
 
-    (request as any).tenantContext = context;
+    ;(request as any).tenantContext = context
 
     if (request.user) {
-      (request.user as any).tenantId = context.tenantId;
+      ;(request.user as any).tenantId = context.tenantId
     }
-  });
+  })
 }

@@ -12,9 +12,9 @@ export const FOREGROUND_STATES = {
   HANDLING_INTERRUPT: 'handling_interrupt',
   COMPLETED: 'completed',
   FAILED: 'failed',
-} as const;
+} as const
 
-export type ForegroundState = typeof FOREGROUND_STATES[keyof typeof FOREGROUND_STATES];
+export type ForegroundState = (typeof FOREGROUND_STATES)[keyof typeof FOREGROUND_STATES]
 
 // PlannerRun lifecycle states
 export const PLANNER_STATES = {
@@ -30,9 +30,9 @@ export const PLANNER_STATES = {
   FAILED: 'failed',
   CANCELLED: 'cancelled',
   ARCHIVED: 'archived',
-} as const;
+} as const
 
-export type PlannerState = typeof PLANNER_STATES[keyof typeof PLANNER_STATES];
+export type PlannerState = (typeof PLANNER_STATES)[keyof typeof PLANNER_STATES]
 
 // ExecutionPlan lifecycle states
 export const EXECUTION_PLAN_STATES = {
@@ -46,9 +46,9 @@ export const EXECUTION_PLAN_STATES = {
   COMPLETED: 'completed',
   FAILED: 'failed',
   ABANDONED: 'abandoned',
-} as const;
+} as const
 
-export type ExecutionPlanState = typeof EXECUTION_PLAN_STATES[keyof typeof EXECUTION_PLAN_STATES];
+export type ExecutionPlanState = (typeof EXECUTION_PLAN_STATES)[keyof typeof EXECUTION_PLAN_STATES]
 
 // RuntimeAction lifecycle states
 export const RUNTIME_ACTION_STATES = {
@@ -65,9 +65,9 @@ export const RUNTIME_ACTION_STATES = {
   FAILED: 'failed',
   TIMEOUT: 'timeout',
   CANCELLED: 'cancelled',
-} as const;
+} as const
 
-export type RuntimeActionState = typeof RUNTIME_ACTION_STATES[keyof typeof RUNTIME_ACTION_STATES];
+export type RuntimeActionState = (typeof RUNTIME_ACTION_STATES)[keyof typeof RUNTIME_ACTION_STATES]
 
 // KernelRun lifecycle states
 export const KERNEL_RUN_STATES = {
@@ -88,9 +88,9 @@ export const KERNEL_RUN_STATES = {
   INTERRUPTED: 'interrupted',
   PARTIAL_SUCCESS: 'partial_success',
   MAX_ITERATIONS_REACHED: 'max_iterations_reached',
-} as const;
+} as const
 
-export type KernelRunState = typeof KERNEL_RUN_STATES[keyof typeof KERNEL_RUN_STATES];
+export type KernelRunState = (typeof KERNEL_RUN_STATES)[keyof typeof KERNEL_RUN_STATES]
 
 // ToolExecution lifecycle states
 export const TOOL_EXECUTION_STATES = {
@@ -107,9 +107,9 @@ export const TOOL_EXECUTION_STATES = {
   CANCELLED: 'cancelled',
   ABORTED: 'aborted',
   DISCARDED: 'discarded',
-} as const;
+} as const
 
-export type ToolExecutionState = typeof TOOL_EXECUTION_STATES[keyof typeof TOOL_EXECUTION_STATES];
+export type ToolExecutionState = (typeof TOOL_EXECUTION_STATES)[keyof typeof TOOL_EXECUTION_STATES]
 
 // BackgroundSubagentRun lifecycle states
 export const BACKGROUND_SUBAGENT_STATES = {
@@ -124,9 +124,9 @@ export const BACKGROUND_SUBAGENT_STATES = {
   FAILED: 'failed',
   CANCELLED: 'cancelled',
   EXPIRED: 'expired',
-} as const;
+} as const
 
-export type BackgroundSubagentState = typeof BACKGROUND_SUBAGENT_STATES[keyof typeof BACKGROUND_SUBAGENT_STATES];
+export type BackgroundSubagentState = (typeof BACKGROUND_SUBAGENT_STATES)[keyof typeof BACKGROUND_SUBAGENT_STATES]
 
 // WorkflowRun lifecycle states
 export const WORKFLOW_RUN_STATES = {
@@ -141,9 +141,9 @@ export const WORKFLOW_RUN_STATES = {
   FAILED: 'failed',
   CANCELLED: 'cancelled',
   TIMEOUT: 'timeout',
-} as const;
+} as const
 
-export type WorkflowRunState = typeof WORKFLOW_RUN_STATES[keyof typeof WORKFLOW_RUN_STATES];
+export type WorkflowRunState = (typeof WORKFLOW_RUN_STATES)[keyof typeof WORKFLOW_RUN_STATES]
 
 // ApprovalRequest lifecycle states
 export const APPROVAL_STATES = {
@@ -152,9 +152,9 @@ export const APPROVAL_STATES = {
   REJECTED: 'rejected',
   EXPIRED: 'expired',
   CANCELLED: 'cancelled',
-} as const;
+} as const
 
-export type ApprovalState = typeof APPROVAL_STATES[keyof typeof APPROVAL_STATES];
+export type ApprovalState = (typeof APPROVAL_STATES)[keyof typeof APPROVAL_STATES]
 
 // WaitCondition lifecycle states
 export const WAIT_CONDITION_STATES = {
@@ -164,9 +164,9 @@ export const WAIT_CONDITION_STATES = {
   FAILED: 'failed',
   TIMEOUT: 'timeout',
   CANCELLED: 'cancelled',
-} as const;
+} as const
 
-export type WaitConditionState = typeof WAIT_CONDITION_STATES[keyof typeof WAIT_CONDITION_STATES];
+export type WaitConditionState = (typeof WAIT_CONDITION_STATES)[keyof typeof WAIT_CONDITION_STATES]
 
 // RuntimeTriggerEvent lifecycle states
 export const TRIGGER_EVENT_STATES = {
@@ -177,9 +177,9 @@ export const TRIGGER_EVENT_STATES = {
   HANDLED: 'handled',
   FAILED: 'failed',
   DUPLICATE: 'duplicate',
-} as const;
+} as const
 
-export type TriggerEventState = typeof TRIGGER_EVENT_STATES[keyof typeof TRIGGER_EVENT_STATES];
+export type TriggerEventState = (typeof TRIGGER_EVENT_STATES)[keyof typeof TRIGGER_EVENT_STATES]
 
 // Summary lifecycle states
 export const SUMMARY_STATES = {
@@ -189,9 +189,9 @@ export const SUMMARY_STATES = {
   SUPERSEDED: 'superseded',
   ARCHIVED: 'archived',
   EXPIRED: 'expired',
-} as const;
+} as const
 
-export type SummaryState = typeof SUMMARY_STATES[keyof typeof SUMMARY_STATES];
+export type SummaryState = (typeof SUMMARY_STATES)[keyof typeof SUMMARY_STATES]
 
 // Long-term Memory lifecycle states
 export const MEMORY_STATES = {
@@ -203,9 +203,9 @@ export const MEMORY_STATES = {
   ARCHIVED: 'archived',
   EXPIRED: 'expired',
   DELETED: 'deleted',
-} as const;
+} as const
 
-export type MemoryState = typeof MEMORY_STATES[keyof typeof MEMORY_STATES];
+export type MemoryState = (typeof MEMORY_STATES)[keyof typeof MEMORY_STATES]
 
 // Global state classifications
 // Active states - objects that are actively progressing
@@ -217,7 +217,7 @@ export const ACTIVE_STATES = [
   'executing',
   'replanning',
   'recovering',
-] as const;
+] as const
 
 // Waiting states - objects that are not done but temporarily blocked
 export const WAITING_STATES = [
@@ -227,7 +227,7 @@ export const WAITING_STATES = [
   'waiting_for_external_event',
   'sleeping',
   'paused',
-] as const;
+] as const
 
 // Terminal states - objects that have reached end of lifecycle
 export const TERMINAL_STATES = [
@@ -238,9 +238,9 @@ export const TERMINAL_STATES = [
   'timeout',
   'expired',
   'archived',
-] as const;
+] as const
 
-export type ActiveState = typeof ACTIVE_STATES[number];
-export type WaitingState = typeof WAITING_STATES[number];
-export type TerminalState = typeof TERMINAL_STATES[number];
-export type GlobalState = ActiveState | WaitingState | TerminalState;
+export type ActiveState = (typeof ACTIVE_STATES)[number]
+export type WaitingState = (typeof WAITING_STATES)[number]
+export type TerminalState = (typeof TERMINAL_STATES)[number]
+export type GlobalState = ActiveState | WaitingState | TerminalState

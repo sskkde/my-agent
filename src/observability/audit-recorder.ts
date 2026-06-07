@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash } from 'crypto'
 import type {
   AuditRecord,
   AuditStore,
@@ -24,84 +24,81 @@ import type {
   MemoryWriteAuditRequest,
   SummaryWriteAuditRequest,
   DispatchAuditRequest,
-} from './audit-types.js';
+} from './audit-types.js'
 
 function generateId(): string {
-  return `audit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return `audit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
 
 function generateCorrelationId(): string {
-  return `corr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return `corr_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
 
 function generateHash(data: string): string {
-  return createHash('sha256').update(data).digest('hex');
+  return createHash('sha256').update(data).digest('hex')
 }
 
 function redactPayload(
   payload: Record<string, unknown>,
   sensitivePatterns: Array<{ pattern: RegExp; replacement: string }>,
-  redactFields: string[]
+  redactFields: string[],
 ): RedactionResult {
-  const redactedFields: string[] = [];
+  const redactedFields: string[] = []
 
   function shouldRedactKey(key: string): boolean {
-    const keyLower = key.toLowerCase();
+    const keyLower = key.toLowerCase()
     for (const field of redactFields) {
       if (keyLower === field.toLowerCase()) {
-        return true;
+        return true
       }
       if (keyLower.endsWith('.' + field.toLowerCase())) {
-        return true;
+        return true
       }
     }
-    return false;
+    return false
   }
 
   function redactValue(key: string, value: unknown): unknown {
     if (shouldRedactKey(key)) {
-      redactedFields.push(key);
-      return '[REDACTED]';
+      redactedFields.push(key)
+      return '[REDACTED]'
     }
 
     if (typeof value === 'string') {
-      let redactedValue = value;
+      let redactedValue = value
       for (const { pattern, replacement } of sensitivePatterns) {
         if (pattern.test(redactedValue)) {
-          redactedFields.push(key);
-          redactedValue = redactedValue.replace(pattern, replacement);
+          redactedFields.push(key)
+          redactedValue = redactedValue.replace(pattern, replacement)
         }
       }
-      return redactedValue;
+      return redactedValue
     }
 
     if (typeof value === 'object' && value !== null) {
       if (Array.isArray(value)) {
-        return value.map((item, index) => redactValue(`${key}[${index}]`, item));
+        return value.map((item, index) => redactValue(`${key}[${index}]`, item))
       }
-      return redactObject(value as Record<string, unknown>, key);
+      return redactObject(value as Record<string, unknown>, key)
     }
 
-    return value;
+    return value
   }
 
-  function redactObject(
-    obj: Record<string, unknown>,
-    prefix = ''
-  ): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
+  function redactObject(obj: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+    const result: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(obj)) {
-      const fullKey = prefix ? `${prefix}.${key}` : key;
-      result[key] = redactValue(fullKey, value);
+      const fullKey = prefix ? `${prefix}.${key}` : key
+      result[key] = redactValue(fullKey, value)
     }
-    return result;
+    return result
   }
 
-  const redacted = redactObject(payload);
-  const originalJson = JSON.stringify(payload);
-  const inputHash = generateHash(originalJson);
+  const redacted = redactObject(payload)
+  const originalJson = JSON.stringify(payload)
+  const inputHash = generateHash(originalJson)
 
-  return { redacted, inputHash, redactedFields };
+  return { redacted, inputHash, redactedFields }
 }
 
 const DEFAULT_SENSITIVE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
@@ -112,7 +109,7 @@ const DEFAULT_SENSITIVE_PATTERNS: Array<{ pattern: RegExp; replacement: string }
   { pattern: /authorization['"]?:\s*['"][^'"]+['"]/gi, replacement: 'authorization: [REDACTED]' },
   { pattern: /private[_-]?key['"]?:\s*['"][^'"]+['"]/gi, replacement: 'private_key: [REDACTED]' },
   { pattern: /-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----/g, replacement: '[REDACTED]' },
-];
+]
 
 const DEFAULT_REDACT_FIELDS = [
   'password',
@@ -132,7 +129,7 @@ const DEFAULT_REDACT_FIELDS = [
   'credentials',
   'authorization',
   'authHeader',
-];
+]
 
 const DEFAULT_POLICY: AuditPolicy = {
   id: 'default_audit_policy',
@@ -147,19 +144,19 @@ const DEFAULT_POLICY: AuditPolicy = {
   sensitivePatterns: DEFAULT_SENSITIVE_PATTERNS,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-};
+}
 
 class AuditRecorderImpl implements AuditRecorder {
-  private auditStore: AuditStore;
-  private policy: AuditPolicy;
-  private enabled: boolean;
-  private generateHash: boolean;
+  private auditStore: AuditStore
+  private policy: AuditPolicy
+  private enabled: boolean
+  private generateHash: boolean
 
   constructor(config: AuditRecorderConfig) {
-    this.auditStore = config.auditStore;
-    this.policy = config.policy ?? DEFAULT_POLICY;
-    this.enabled = config.enabled ?? true;
-    this.generateHash = config.generateHash ?? true;
+    this.auditStore = config.auditStore
+    this.policy = config.policy ?? DEFAULT_POLICY
+    this.enabled = config.enabled ?? true
+    this.generateHash = config.generateHash ?? true
   }
 
   private createBaseRecord(
@@ -174,28 +171,28 @@ class AuditRecorderImpl implements AuditRecorder {
     sensitivity: SensitivityLevel,
     status: AuditStatus,
     options: {
-      correlationId?: string;
-      causationId?: string;
-      approvalId?: string;
-      toolCallId?: string;
-      permissionDecisionId?: string;
-      targetType?: string;
-      targetRef?: string;
-    } = {}
+      correlationId?: string
+      causationId?: string
+      approvalId?: string
+      toolCallId?: string
+      permissionDecisionId?: string
+      targetType?: string
+      targetRef?: string
+    } = {},
   ): AuditRecord {
-    let finalPayload = payload;
-    let inputHash: string | undefined;
+    let finalPayload = payload
+    let inputHash: string | undefined
 
     if (this.policy.defaultShouldRedact && sensitivity !== 'low') {
       const redactionResult = redactPayload(
         payload,
         this.policy.sensitivePatterns ?? DEFAULT_SENSITIVE_PATTERNS,
-        DEFAULT_REDACT_FIELDS
-      );
-      finalPayload = redactionResult.redacted;
-      inputHash = redactionResult.inputHash;
+        DEFAULT_REDACT_FIELDS,
+      )
+      finalPayload = redactionResult.redacted
+      inputHash = redactionResult.inputHash
     } else if (this.generateHash) {
-      inputHash = generateHash(JSON.stringify(payload));
+      inputHash = generateHash(JSON.stringify(payload))
     }
 
     return {
@@ -219,14 +216,14 @@ class AuditRecorderImpl implements AuditRecorder {
       permissionDecisionId: options.permissionDecisionId,
       riskLevel,
       sensitivity,
-    };
+    }
   }
 
   private storeRecord(record: AuditRecord): AuditRecord {
     if (this.enabled && this.policy.enabled) {
-      this.auditStore.record(record);
+      this.auditStore.record(record)
     }
-    return record;
+    return record
   }
 
   recordUserInput(request: UserInputRequest): AuditRecord {
@@ -248,9 +245,9 @@ class AuditRecorderImpl implements AuditRecorder {
       {
         correlationId: request.correlationId,
         causationId: request.causationId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordAssistantOutput(response: AssistantOutputResponse): AuditRecord {
@@ -272,9 +269,9 @@ class AuditRecorderImpl implements AuditRecorder {
       {
         correlationId: response.correlationId,
         causationId: response.causationId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordToolCall(toolCall: ToolCallAuditRequest): AuditRecord {
@@ -300,9 +297,9 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: toolCall.causationId,
         targetType: 'tool',
         targetRef: toolCall.toolName,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordExternalWrite(write: ExternalWriteAuditRequest): AuditRecord {
@@ -328,9 +325,9 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: write.causationId,
         targetType: write.targetType,
         targetRef: write.targetRef,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordPermissionDecision(decision: PermissionDecisionAuditRequest): AuditRecord {
@@ -356,9 +353,9 @@ class AuditRecorderImpl implements AuditRecorder {
         approvalId: decision.approvalId,
         correlationId: decision.correlationId,
         causationId: decision.causationId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordApprovalRequest(request: ApprovalRequestAuditRequest): AuditRecord {
@@ -382,9 +379,9 @@ class AuditRecorderImpl implements AuditRecorder {
         approvalId: request.requestId,
         correlationId: request.correlationId,
         causationId: request.causationId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordApprovalResponse(response: ApprovalResponseAuditRequest): AuditRecord {
@@ -407,9 +404,9 @@ class AuditRecorderImpl implements AuditRecorder {
         approvalId: response.requestId,
         correlationId: response.correlationId,
         causationId: response.causationId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordWorkflowChange(change: WorkflowChangeAuditRequest): AuditRecord {
@@ -433,9 +430,9 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: change.causationId,
         targetType: 'workflow',
         targetRef: change.workflowId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordSubagentRun(run: SubagentRunAuditRequest): AuditRecord {
@@ -460,9 +457,9 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: run.causationId,
         targetType: 'subagent',
         targetRef: run.subagentRunId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordConnectorAccess(access: ConnectorAccessAuditRequest): AuditRecord {
@@ -490,9 +487,9 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: access.causationId,
         targetType: 'connector',
         targetRef: access.connectorInstanceId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordMemoryWrite(write: MemoryWriteAuditRequest): AuditRecord {
@@ -516,9 +513,9 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: write.causationId,
         targetType: 'memory',
         targetRef: write.memoryId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordSummaryWrite(write: SummaryWriteAuditRequest): AuditRecord {
@@ -543,9 +540,9 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: write.causationId,
         targetType: 'summary',
         targetRef: write.summaryId,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   recordDispatch(dispatch: DispatchAuditRequest): AuditRecord {
@@ -571,24 +568,24 @@ class AuditRecorderImpl implements AuditRecorder {
         causationId: dispatch.causationId,
         targetType: 'runtime',
         targetRef: dispatch.targetRuntime,
-      }
-    );
-    return this.storeRecord(record);
+      },
+    )
+    return this.storeRecord(record)
   }
 
   getStore(): AuditStore {
-    return this.auditStore;
+    return this.auditStore
   }
 
   getPolicy(): AuditPolicy {
-    return this.policy;
+    return this.policy
   }
 
   setPolicy(policy: AuditPolicy): void {
-    this.policy = policy;
+    this.policy = policy
   }
 }
 
 export function createAuditRecorder(config: AuditRecorderConfig): AuditRecorder {
-  return new AuditRecorderImpl(config);
+  return new AuditRecorderImpl(config)
 }

@@ -11,6 +11,7 @@
 v0.7.0-rc.1 是 Agent Platform 的首个 Release Candidate 版本，将 Phase 6 代码库硬化为可发布、可部署、可回滚、可审计的生产就绪状态。
 
 本版本聚焦于：
+
 - 安全加固（安全头、认证测试、SSRF 防护）
 - RBAC 全路由覆盖
 - Docker 生产化
@@ -39,6 +40,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 #### API Key 认证完整测试
 
 新增完整的 API Key 认证测试套件，覆盖：
+
 - API Key 创建（返回 `ak_` 前缀 key）
 - API Key 使用（Bearer Token 认证）
 - 角色映射（admin/user/service 权限）
@@ -48,6 +50,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 #### SSRF 防护测试
 
 新增 SSRF（服务器端请求伪造）防护测试，覆盖：
+
 - RFC1918 私有地址阻止
 - 环回地址阻止
 - 链路本地地址阻止
@@ -62,6 +65,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 所有 25 个路由文件现已添加 `requirePermission` 权限检查，实现完整的资源级别访问控制。
 
 新增 `route-policy.ts` 定义路由权限映射：
+
 - `ResourceType`: session, approval, run, workflow, trigger, connector, api-key, provider, agent-config, memory, observability, tool-result, user, setting
 - `Action`: read, write, delete, execute
 - `getRequiredPermission()`: 根据路由自动查找所需权限
@@ -104,6 +108,7 @@ GET /api/v1/sessions?cursor=eyJpZCI6MTB9&limit=10
 #### Web Dockerfile
 
 多阶段构建 + nginx 静态服务：
+
 - Stage 1: 构建前端资源
 - Stage 2: nginx:alpine 静态文件服务
 - SPA 路由支持
@@ -117,18 +122,19 @@ GET /api/v1/sessions?cursor=eyJpZCI6MTB9&limit=10
 
 建立 CI 环境性能基线：
 
-| 端点 | P95 阈值 |
-|------|----------|
-| `GET /api/v1/health` | < 200ms |
-| `GET /api/v1/sessions` | < 1000ms |
-| `POST /api/v1/sessions` | < 500ms |
-| `GET /api/v1/tools` | < 200ms |
+| 端点                    | P95 阈值 |
+| ----------------------- | -------- |
+| `GET /api/v1/health`    | < 200ms  |
+| `GET /api/v1/sessions`  | < 1000ms |
+| `POST /api/v1/sessions` | < 500ms  |
+| `GET /api/v1/tools`     | < 200ms  |
 
 ---
 
 ### ESLint + Prettier
 
 新增代码质量工具链：
+
 - `npm run lint` — 代码检查
 - `npm run format` — 代码格式化
 - `npm run format:check` — 格式检查
@@ -144,11 +150,13 @@ GET /api/v1/sessions?cursor=eyJpZCI6MTB9&limit=10
 **影响**: POST 请求体在重定向后正确保留。
 
 **之前**:
+
 ```
 POST /api/sessions → 301 → GET /api/v1/sessions (请求体丢失)
 ```
 
 **之后**:
+
 ```
 POST /api/sessions → 307 → POST /api/v1/sessions (请求体保留)
 ```
@@ -159,11 +167,11 @@ POST /api/sessions → 307 → POST /api/v1/sessions (请求体保留)
 
 修复三处版本号不一致问题：
 
-| 位置 | 之前 | 之后 |
-|------|------|------|
-| package.json | 0.1.0 | 0.7.0-rc.1 |
+| 位置                | 之前   | 之后       |
+| ------------------- | ------ | ---------- |
+| package.json        | 0.1.0  | 0.7.0-rc.1 |
 | server.ts (Swagger) | v0.5.0 | 0.7.0-rc.1 |
-| openapi.yaml | 0.6.0 | 0.7.0-rc.1 |
+| openapi.yaml        | 0.6.0  | 0.7.0-rc.1 |
 
 ---
 
@@ -281,12 +289,12 @@ Sessions 端点新增 cursor 分页支持：
 
 ```javascript
 // 使用 cursor 分页
-const response = await fetch('/api/v1/sessions?limit=10');
-const data = await response.json();
+const response = await fetch('/api/v1/sessions?limit=10')
+const data = await response.json()
 
 if (data.nextCursor) {
   // 获取下一页
-  const nextResponse = await fetch(`/api/v1/sessions?cursor=${data.nextCursor}&limit=10`);
+  const nextResponse = await fetch(`/api/v1/sessions?cursor=${data.nextCursor}&limit=10`)
 }
 ```
 
@@ -302,7 +310,7 @@ if (data.nextCursor) {
 services:
   api:
     environment:
-      - NODE_ENV=production  # 之前是 development
+      - NODE_ENV=production # 之前是 development
 ```
 
 #### Web 服务变更
@@ -314,7 +322,7 @@ services:
   web:
     build:
       context: ./web
-      dockerfile: Dockerfile  # 多阶段构建
+      dockerfile: Dockerfile # 多阶段构建
     # nginx 配置在 web/nginx.conf
 ```
 
@@ -352,5 +360,6 @@ v0.7.0-rc.1 是 Release Candidate 版本，后续计划：
 ## 反馈
 
 如有问题或建议，请通过以下方式反馈：
+
 - GitHub Issues
 - 内部反馈渠道

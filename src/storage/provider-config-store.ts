@@ -1,174 +1,178 @@
-import type { ConnectionManager } from './connection.js';
+import type { ConnectionManager } from './connection.js'
 import {
   encryptSecret,
   decryptSecret,
   serializeEncryptedSecret,
-  deserializeEncryptedSecret
-} from './provider-crypto.js';
-import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
+  deserializeEncryptedSecret,
+} from './provider-crypto.js'
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 function safeJsonParse<T>(value: string | null, fallback: T): T {
-  if (value === null || value === undefined) return fallback;
+  if (value === null || value === undefined) return fallback
   try {
-    return JSON.parse(value) as T;
+    return JSON.parse(value) as T
   } catch {
-    return fallback;
+    return fallback
   }
 }
 
 function safeJsonStringify(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined) return null
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value)
   } catch {
-    return null;
+    return null
   }
 }
 
-export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom';
+export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom'
 
 export interface ProviderConfig {
-  providerId: string;
-  userId: string;
-  providerType: ProviderType;
-  displayName: string;
-  enabled: boolean;
-  baseUrl: string | null;
-  selectedModel: string | null;
-  source: string;
-  lastTestStatus: string | null;
-  lastTestedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  family?: string | null;
-  protocol?: string | null;
-  priority?: number | null;
-  headers?: Record<string, string> | null;
-  capabilities?: Record<string, unknown> | null;
-  models?: Record<string, unknown>[] | null;
-  defaultModel?: string | null;
-  options?: Record<string, unknown> | null;
+  providerId: string
+  userId: string
+  providerType: ProviderType
+  displayName: string
+  enabled: boolean
+  baseUrl: string | null
+  selectedModel: string | null
+  source: string
+  lastTestStatus: string | null
+  lastTestedAt: string | null
+  createdAt: string
+  updatedAt: string
+  family?: string | null
+  protocol?: string | null
+  priority?: number | null
+  headers?: Record<string, string> | null
+  capabilities?: Record<string, unknown> | null
+  models?: Record<string, unknown>[] | null
+  defaultModel?: string | null
+  options?: Record<string, unknown> | null
 }
 
 export interface ProviderConfigWithSecret extends ProviderConfig {
-  apiKey: string | null;
-  family?: string | null;
-  protocol?: string | null;
-  priority?: number | null;
-  headers?: Record<string, string> | null;
-  capabilities?: Record<string, unknown> | null;
-  models?: Record<string, unknown>[] | null;
-  defaultModel?: string | null;
-  options?: Record<string, unknown> | null;
+  apiKey: string | null
+  family?: string | null
+  protocol?: string | null
+  priority?: number | null
+  headers?: Record<string, string> | null
+  capabilities?: Record<string, unknown> | null
+  models?: Record<string, unknown>[] | null
+  defaultModel?: string | null
+  options?: Record<string, unknown> | null
 }
 
 export interface ProviderConfigSanitized extends ProviderConfig {
-  configured: boolean;
-  apiKeyLast4: string | null;
-  headersConfigured: boolean;
-  family?: string | null;
-  protocol?: string | null;
-  priority?: number | null;
-  capabilities?: Record<string, unknown> | null;
-  models?: Record<string, unknown>[] | null;
-  defaultModel?: string | null;
-  options?: Record<string, unknown> | null;
+  configured: boolean
+  apiKeyLast4: string | null
+  headersConfigured: boolean
+  family?: string | null
+  protocol?: string | null
+  priority?: number | null
+  capabilities?: Record<string, unknown> | null
+  models?: Record<string, unknown>[] | null
+  defaultModel?: string | null
+  options?: Record<string, unknown> | null
 }
 
 export interface CreateProviderConfigInput {
-  providerId: string;
-  userId: string;
-  providerType: ProviderType;
-  displayName: string;
-  enabled?: boolean;
-  baseUrl?: string;
-  selectedModel?: string;
-  apiKey?: string;
-  family?: string | null;
-  protocol?: string | null;
-  priority?: number | null;
-  headers?: Record<string, string> | null;
-  capabilities?: Record<string, unknown> | null;
-  models?: Record<string, unknown>[] | null;
-  defaultModel?: string | null;
-  options?: Record<string, unknown> | null;
+  providerId: string
+  userId: string
+  providerType: ProviderType
+  displayName: string
+  enabled?: boolean
+  baseUrl?: string
+  selectedModel?: string
+  apiKey?: string
+  family?: string | null
+  protocol?: string | null
+  priority?: number | null
+  headers?: Record<string, string> | null
+  capabilities?: Record<string, unknown> | null
+  models?: Record<string, unknown>[] | null
+  defaultModel?: string | null
+  options?: Record<string, unknown> | null
 }
 
 export interface UpdateProviderConfigInput {
-  displayName?: string;
-  enabled?: boolean;
-  baseUrl?: string;
-  selectedModel?: string;
-  apiKey?: string;
-  family?: string | null;
-  protocol?: string | null;
-  priority?: number | null;
-  headers?: Record<string, string> | null;
-  capabilities?: Record<string, unknown> | null;
-  models?: Record<string, unknown>[] | null;
-  defaultModel?: string | null;
-  options?: Record<string, unknown> | null;
+  displayName?: string
+  enabled?: boolean
+  baseUrl?: string
+  selectedModel?: string
+  apiKey?: string
+  family?: string | null
+  protocol?: string | null
+  priority?: number | null
+  headers?: Record<string, string> | null
+  capabilities?: Record<string, unknown> | null
+  models?: Record<string, unknown>[] | null
+  defaultModel?: string | null
+  options?: Record<string, unknown> | null
 }
 
 export interface ProviderConfigStore {
-  create(input: CreateProviderConfigInput, tenantId?: string): ProviderConfigSanitized;
-  getById(providerId: string, tenantId?: string): ProviderConfigSanitized | null;
-  getByIdWithSecret(providerId: string, tenantId?: string): ProviderConfigWithSecret | null;
-  listByUser(userId: string, tenantId?: string): ProviderConfigSanitized[];
-  update(providerId: string, updates: UpdateProviderConfigInput, tenantId?: string): boolean;
-  remove(providerId: string, tenantId?: string): boolean;
-  updateTestStatus(providerId: string, status: string, tenantId?: string): boolean;
+  create(input: CreateProviderConfigInput, tenantId?: string): ProviderConfigSanitized
+  getById(providerId: string, tenantId?: string): ProviderConfigSanitized | null
+  getByIdWithSecret(providerId: string, tenantId?: string): ProviderConfigWithSecret | null
+  listByUser(userId: string, tenantId?: string): ProviderConfigSanitized[]
+  update(providerId: string, updates: UpdateProviderConfigInput, tenantId?: string): boolean
+  remove(providerId: string, tenantId?: string): boolean
+  updateTestStatus(providerId: string, status: string, tenantId?: string): boolean
 }
 
 interface ProviderConfigRow {
-  provider_id: string;
-  user_id: string;
-  provider_type: ProviderType;
-  display_name: string;
-  enabled: number;
-  base_url: string | null;
-  selected_model: string | null;
-  encrypted_api_key: string | null;
-  api_key_last4: string | null;
-  source: string;
-  last_test_status: string | null;
-  last_tested_at: string | null;
-  created_at: string;
-  updated_at: string;
-  family: string | null;
-  protocol: string | null;
-  priority: number | null;
-  headers_json: string | null;
-  capabilities_json: string | null;
-  models_json: string | null;
-  default_model: string | null;
-  options_json: string | null;
+  provider_id: string
+  user_id: string
+  provider_type: ProviderType
+  display_name: string
+  enabled: number
+  base_url: string | null
+  selected_model: string | null
+  encrypted_api_key: string | null
+  api_key_last4: string | null
+  source: string
+  last_test_status: string | null
+  last_tested_at: string | null
+  created_at: string
+  updated_at: string
+  family: string | null
+  protocol: string | null
+  priority: number | null
+  headers_json: string | null
+  capabilities_json: string | null
+  models_json: string | null
+  default_model: string | null
+  options_json: string | null
 }
 
-function isConfiguredProvider(providerType: ProviderType, encryptedApiKey: string | null, baseUrl: string | null): boolean {
+function isConfiguredProvider(
+  providerType: ProviderType,
+  encryptedApiKey: string | null,
+  baseUrl: string | null,
+): boolean {
   if (providerType === 'ollama') {
-    return typeof baseUrl === 'string' && baseUrl.trim().length > 0;
+    return typeof baseUrl === 'string' && baseUrl.trim().length > 0
   }
 
-  return encryptedApiKey !== null;
+  return encryptedApiKey !== null
 }
 
 class ProviderConfigStoreImpl implements ProviderConfigStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   create(input: CreateProviderConfigInput, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigSanitized {
-    const now = new Date().toISOString();
-    let encryptedApiKey: string | null = null;
-    let apiKeyLast4: string | null = null;
+    const now = new Date().toISOString()
+    let encryptedApiKey: string | null = null
+    let apiKeyLast4: string | null = null
 
     if (input.apiKey) {
-      const encrypted = encryptSecret(input.apiKey);
-      encryptedApiKey = serializeEncryptedSecret(encrypted);
-      apiKeyLast4 = input.apiKey.slice(-4);
+      const encrypted = encryptSecret(input.apiKey)
+      encryptedApiKey = serializeEncryptedSecret(encrypted)
+      apiKeyLast4 = input.apiKey.slice(-4)
     }
 
     const sql = `
@@ -178,7 +182,7 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
         source, last_test_status, last_tested_at, created_at, updated_at, tenant_id,
         family, protocol, priority, headers_json, capabilities_json, models_json, default_model, options_json
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    `
 
     const params = [
       input.providerId,
@@ -204,9 +208,9 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       safeJsonStringify(input.models),
       input.defaultModel ?? null,
       safeJsonStringify(input.options),
-    ];
+    ]
 
-    this.connection.exec(sql, params);
+    this.connection.exec(sql, params)
 
     return {
       providerId: input.providerId,
@@ -231,34 +235,34 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       models: input.models ?? null,
       defaultModel: input.defaultModel ?? null,
       options: input.options ?? null,
-    };
+    }
   }
 
   getById(providerId: string, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigSanitized | null {
-    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ? AND tenant_id = ?';
-    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId, tenantId]);
+    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ? AND tenant_id = ?'
+    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId, tenantId])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToSanitized(rows[0]);
+    return this.rowToSanitized(rows[0])
   }
 
   getByIdWithSecret(providerId: string, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigWithSecret | null {
-    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ? AND tenant_id = ?';
-    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId, tenantId]);
+    const sql = 'SELECT * FROM provider_configs WHERE provider_id = ? AND tenant_id = ?'
+    const rows = this.connection.query<ProviderConfigRow>(sql, [providerId, tenantId])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    const row = rows[0];
-    let apiKey: string | null = null;
+    const row = rows[0]
+    let apiKey: string | null = null
 
     if (row.encrypted_api_key) {
-      const encrypted = deserializeEncryptedSecret(row.encrypted_api_key);
-      apiKey = decryptSecret(encrypted.encrypted, encrypted.iv, encrypted.authTag);
+      const encrypted = deserializeEncryptedSecret(row.encrypted_api_key)
+      apiKey = decryptSecret(encrypted.encrypted, encrypted.iv, encrypted.authTag)
     }
 
     return {
@@ -283,7 +287,7 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       models: safeJsonParse<Record<string, unknown>[] | null>(row.models_json, null),
       defaultModel: row.default_model,
       options: safeJsonParse<Record<string, unknown> | null>(row.options_json, null),
-    };
+    }
   }
 
   listByUser(userId: string, tenantId: string = DEFAULT_TENANT_ID): ProviderConfigSanitized[] {
@@ -291,111 +295,111 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       SELECT * FROM provider_configs
       WHERE user_id = ? AND tenant_id = ?
       ORDER BY created_at DESC
-    `;
-    const rows = this.connection.query<ProviderConfigRow>(sql, [userId, tenantId]);
-    return rows.map(row => this.rowToSanitized(row));
+    `
+    const rows = this.connection.query<ProviderConfigRow>(sql, [userId, tenantId])
+    return rows.map((row) => this.rowToSanitized(row))
   }
 
   update(providerId: string, updates: UpdateProviderConfigInput, tenantId: string = DEFAULT_TENANT_ID): boolean {
-    const sets: string[] = [];
-    const params: unknown[] = [];
+    const sets: string[] = []
+    const params: unknown[] = []
 
     if (updates.displayName !== undefined) {
-      sets.push('display_name = ?');
-      params.push(updates.displayName);
+      sets.push('display_name = ?')
+      params.push(updates.displayName)
     }
 
     if (updates.enabled !== undefined) {
-      sets.push('enabled = ?');
-      params.push(updates.enabled ? 1 : 0);
+      sets.push('enabled = ?')
+      params.push(updates.enabled ? 1 : 0)
     }
 
     if (updates.baseUrl !== undefined) {
-      sets.push('base_url = ?');
-      params.push(updates.baseUrl);
+      sets.push('base_url = ?')
+      params.push(updates.baseUrl)
     }
 
     if (updates.selectedModel !== undefined) {
-      sets.push('selected_model = ?');
-      params.push(updates.selectedModel);
+      sets.push('selected_model = ?')
+      params.push(updates.selectedModel)
     }
 
     if (updates.apiKey !== undefined) {
-      const encrypted = encryptSecret(updates.apiKey);
-      sets.push('encrypted_api_key = ?');
-      params.push(serializeEncryptedSecret(encrypted));
-      sets.push('api_key_last4 = ?');
-      params.push(updates.apiKey.slice(-4));
+      const encrypted = encryptSecret(updates.apiKey)
+      sets.push('encrypted_api_key = ?')
+      params.push(serializeEncryptedSecret(encrypted))
+      sets.push('api_key_last4 = ?')
+      params.push(updates.apiKey.slice(-4))
     }
 
     if (updates.family !== undefined) {
-      sets.push('family = ?');
-      params.push(updates.family);
+      sets.push('family = ?')
+      params.push(updates.family)
     }
 
     if (updates.protocol !== undefined) {
-      sets.push('protocol = ?');
-      params.push(updates.protocol);
+      sets.push('protocol = ?')
+      params.push(updates.protocol)
     }
 
     if (updates.priority !== undefined) {
-      sets.push('priority = ?');
-      params.push(updates.priority);
+      sets.push('priority = ?')
+      params.push(updates.priority)
     }
 
     if (updates.headers !== undefined) {
-      sets.push('headers_json = ?');
-      params.push(safeJsonStringify(updates.headers));
+      sets.push('headers_json = ?')
+      params.push(safeJsonStringify(updates.headers))
     }
 
     if (updates.capabilities !== undefined) {
-      sets.push('capabilities_json = ?');
-      params.push(safeJsonStringify(updates.capabilities));
+      sets.push('capabilities_json = ?')
+      params.push(safeJsonStringify(updates.capabilities))
     }
 
     if (updates.models !== undefined) {
-      sets.push('models_json = ?');
-      params.push(safeJsonStringify(updates.models));
+      sets.push('models_json = ?')
+      params.push(safeJsonStringify(updates.models))
     }
 
     if (updates.defaultModel !== undefined) {
-      sets.push('default_model = ?');
-      params.push(updates.defaultModel);
+      sets.push('default_model = ?')
+      params.push(updates.defaultModel)
     }
 
     if (updates.options !== undefined) {
-      sets.push('options_json = ?');
-      params.push(safeJsonStringify(updates.options));
+      sets.push('options_json = ?')
+      params.push(safeJsonStringify(updates.options))
     }
 
     if (sets.length === 0) {
-      return false;
+      return false
     }
 
-    sets.push('updated_at = ?');
-    const now = new Date().toISOString();
-    params.push(now);
-    params.push(providerId);
-    params.push(tenantId);
+    sets.push('updated_at = ?')
+    const now = new Date().toISOString()
+    params.push(now)
+    params.push(providerId)
+    params.push(tenantId)
 
-    const sql = `UPDATE provider_configs SET ${sets.join(', ')} WHERE provider_id = ? AND tenant_id = ?`;
+    const sql = `UPDATE provider_configs SET ${sets.join(', ')} WHERE provider_id = ? AND tenant_id = ?`
 
     try {
-      this.connection.exec(sql, params);
-      return true;
+      this.connection.exec(sql, params)
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
   remove(providerId: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
-    const sql = 'DELETE FROM provider_configs WHERE provider_id = ? AND tenant_id = ?';
+    const sql = 'DELETE FROM provider_configs WHERE provider_id = ? AND tenant_id = ?'
 
     try {
-      this.connection.exec(sql, [providerId, tenantId]);
-      return true;
+      this.connection.exec(sql, [providerId, tenantId])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
@@ -404,15 +408,15 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       UPDATE provider_configs
       SET last_test_status = ?, last_tested_at = ?, updated_at = ?
       WHERE provider_id = ? AND tenant_id = ?
-    `;
+    `
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     try {
-      this.connection.exec(sql, [status, now, now, providerId, tenantId]);
-      return true;
+      this.connection.exec(sql, [status, now, now, providerId, tenantId])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
@@ -440,10 +444,10 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       models: safeJsonParse<Record<string, unknown>[] | null>(row.models_json, null),
       defaultModel: row.default_model,
       options: safeJsonParse<Record<string, unknown> | null>(row.options_json, null),
-    };
+    }
   }
 }
 
 export function createProviderConfigStore(connection: ConnectionManager): ProviderConfigStore {
-  return new ProviderConfigStoreImpl(connection);
+  return new ProviderConfigStoreImpl(connection)
 }

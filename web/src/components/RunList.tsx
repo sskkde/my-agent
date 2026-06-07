@@ -1,33 +1,27 @@
-import React, { useState } from 'react';
-import LoadingSpinner from './LoadingSpinner';
-import EmptyState from './EmptyState';
+import React, { useState } from 'react'
+import LoadingSpinner from './LoadingSpinner'
+import EmptyState from './EmptyState'
 
 export interface RunListItem {
-  id: string;
-  type: 'planner_run' | 'workflow_run' | 'background_run';
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  summary: string;
-  createdAt: string;
+  id: string
+  type: 'planner_run' | 'workflow_run' | 'background_run'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  summary: string
+  createdAt: string
 }
 
 export interface RunListProps {
-  runs: RunListItem[];
-  onRunClick: (runId: string) => void;
-  onCancel?: (runId: string) => void;
-  onRetry?: (runId: string) => void;
-  loading?: boolean;
+  runs: RunListItem[]
+  onRunClick: (runId: string) => void
+  onCancel?: (runId: string) => void
+  onRetry?: (runId: string) => void
+  loading?: boolean
 }
 
-type FilterStatus = 'all' | 'active' | 'completed' | 'failed' | 'cancelled';
+type FilterStatus = 'all' | 'active' | 'completed' | 'failed' | 'cancelled'
 
-const RunList: React.FC<RunListProps> = ({
-  runs,
-  onRunClick,
-  onCancel,
-  onRetry,
-  loading = false,
-}) => {
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+const RunList: React.FC<RunListProps> = ({ runs, onRunClick, onCancel, onRetry, loading = false }) => {
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
 
   const filterOptions: { value: FilterStatus; label: string }[] = [
     { value: 'all', label: '全部' },
@@ -35,39 +29,39 @@ const RunList: React.FC<RunListProps> = ({
     { value: 'completed', label: '已完成' },
     { value: 'failed', label: '失败' },
     { value: 'cancelled', label: '已取消' },
-  ];
+  ]
 
   const filteredRuns = runs.filter((run) => {
-    if (filterStatus === 'all') return true;
-    if (filterStatus === 'active') return run.status === 'running' || run.status === 'pending';
-    return run.status === filterStatus;
-  });
+    if (filterStatus === 'all') return true
+    if (filterStatus === 'active') return run.status === 'running' || run.status === 'pending'
+    return run.status === filterStatus
+  })
 
   const getTypeIcon = (type: RunListItem['type']): string => {
     switch (type) {
       case 'planner_run':
-        return '📋';
+        return '📋'
       case 'workflow_run':
-        return '🔄';
+        return '🔄'
       case 'background_run':
-        return '⚙️';
+        return '⚙️'
       default:
-        return '📝';
+        return '📝'
     }
-  };
+  }
 
   const getTypeLabel = (type: RunListItem['type']): string => {
     switch (type) {
       case 'planner_run':
-        return '计划运行';
+        return '计划运行'
       case 'workflow_run':
-        return '工作流';
+        return '工作流'
       case 'background_run':
-        return '后台任务';
+        return '后台任务'
       default:
-        return type;
+        return type
     }
-  };
+  }
 
   const getStatusLabel = (status: RunListItem['status']): string => {
     const labels: Record<RunListItem['status'], string> = {
@@ -76,9 +70,9 @@ const RunList: React.FC<RunListProps> = ({
       completed: '已完成',
       failed: '失败',
       cancelled: '已取消',
-    };
-    return labels[status];
-  };
+    }
+    return labels[status]
+  }
 
   const formatTimestamp = (timestamp: string): string => {
     try {
@@ -87,20 +81,20 @@ const RunList: React.FC<RunListProps> = ({
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      });
+      })
     } catch {
-      return timestamp;
+      return timestamp
     }
-  };
+  }
 
   const handleActionClick = (e: React.MouseEvent, runId: string, action: 'cancel' | 'retry') => {
-    e.stopPropagation();
+    e.stopPropagation()
     if (action === 'cancel' && onCancel) {
-      onCancel(runId);
+      onCancel(runId)
     } else if (action === 'retry' && onRetry) {
-      onRetry(runId);
+      onRetry(runId)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -109,7 +103,7 @@ const RunList: React.FC<RunListProps> = ({
           <LoadingSpinner label="加载运行列表..." />
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -147,8 +141,8 @@ const RunList: React.FC<RunListProps> = ({
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onRunClick(run.id);
+                  e.preventDefault()
+                  onRunClick(run.id)
                 }
               }}
               data-testid={`run-row-${run.id}`}
@@ -196,7 +190,7 @@ const RunList: React.FC<RunListProps> = ({
         </ul>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default RunList;
+export default RunList

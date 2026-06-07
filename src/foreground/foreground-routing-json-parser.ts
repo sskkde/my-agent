@@ -13,20 +13,20 @@
  * In Phase 5, this module will be removed along with the legacy path.
  */
 
-import type { ForegroundDecisionRoute, TaskComplexity } from './types.js';
-import { getToolCatalog } from '../api/tool-catalog.js';
+import type { ForegroundDecisionRoute, TaskComplexity } from './types.js'
+import { getToolCatalog } from '../api/tool-catalog.js'
 
 /**
  * LLM Router output structure
  * NOTE: runtimeAction from LLM is REJECTED - server creates all runtime actions
  */
 export interface LLMRouterOutput {
-  route: ForegroundDecisionRoute;
-  reason: string;
-  userVisibleResponse?: string;
-  estimatedSteps?: number;
-  complexity?: TaskComplexity;
-  suggestedTools?: string[];
+  route: ForegroundDecisionRoute
+  reason: string
+  userVisibleResponse?: string
+  estimatedSteps?: number
+  complexity?: TaskComplexity
+  suggestedTools?: string[]
 }
 
 /**
@@ -40,19 +40,19 @@ export type RouterErrorCode =
   | 'INVALID_RUNTIME_ACTION'
   | 'INVALID_COMPLEXITY'
   | 'INVALID_FIELD_TYPE'
-  | 'LLM_REQUEST_FAILED';
+  | 'LLM_REQUEST_FAILED'
 
 /**
  * Router result type
  */
 export interface RouterResult {
-  success: boolean;
-  output?: LLMRouterOutput;
+  success: boolean
+  output?: LLMRouterOutput
   error?: {
-    code: RouterErrorCode;
-    message: string;
-    retryable: boolean;
-  };
+    code: RouterErrorCode
+    message: string
+    retryable: boolean
+  }
 }
 
 /**
@@ -60,9 +60,9 @@ export interface RouterResult {
  */
 export interface ParseRouterOutputOptions {
   /** Effective allowed tool IDs (filtered by agent config) */
-  effectiveToolIds?: string[];
+  effectiveToolIds?: string[]
   /** Known tool catalog (if not provided, fetched from getToolCatalog()) */
-  toolCatalog?: string[];
+  toolCatalog?: string[]
 }
 
 /**
@@ -73,13 +73,13 @@ const TOOL_ALIASES: Record<string, string[]> = {
   'web.search': ['web_search'],
   'internet.search': ['web_search'],
   web: ['web_search'],
-  'docs': ['docs_search'],
+  docs: ['docs_search'],
   'documentation.search': ['docs_search'],
-  'transcript': ['transcript_search'],
+  transcript: ['transcript_search'],
   'memory.search': ['memory_retrieve'],
-  'memory': ['memory_retrieve'],
+  memory: ['memory_retrieve'],
   status: ['status_query'],
-};
+}
 
 /**
  * Valid route values for routing decisions
@@ -93,12 +93,12 @@ const VALID_ROUTES: ForegroundDecisionRoute[] = [
   'approval_handler',
   'cancel_or_modify_task',
   'status_query',
-];
+]
 
 /**
  * Valid complexity values
  */
-const VALID_COMPLEXITIES: TaskComplexity[] = ['low', 'medium', 'high', 'critical'];
+const VALID_COMPLEXITIES: TaskComplexity[] = ['low', 'medium', 'high', 'critical']
 
 /**
  * Filter suggested tools against known tool catalog and allowed tools.
@@ -116,9 +116,9 @@ export function filterAllowedTools(
   knownToolIds: string[],
 ): string[] {
   const normalizedTools = suggestedTools.flatMap((toolId) =>
-    knownToolIds.includes(toolId) ? [toolId] : (TOOL_ALIASES[toolId] ?? [])
-  );
-  return [...new Set(normalizedTools)].filter((id) => effectiveToolIds.includes(id));
+    knownToolIds.includes(toolId) ? [toolId] : (TOOL_ALIASES[toolId] ?? []),
+  )
+  return [...new Set(normalizedTools)].filter((id) => effectiveToolIds.includes(id))
 }
 
 /**
@@ -132,13 +132,10 @@ export function filterAllowedTools(
  * @param options - Parsing options including effective tool IDs
  * @returns RouterResult with parsed output or error
  */
-export function parseForegroundRoutingJsonOutput(
-  rawOutput: string,
-  options?: ParseRouterOutputOptions,
-): RouterResult {
-  let parsed: unknown;
+export function parseForegroundRoutingJsonOutput(rawOutput: string, options?: ParseRouterOutputOptions): RouterResult {
+  let parsed: unknown
   try {
-    parsed = JSON.parse(rawOutput);
+    parsed = JSON.parse(rawOutput)
   } catch {
     return {
       success: false,
@@ -147,7 +144,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Response is not valid JSON',
         retryable: true,
       },
-    };
+    }
   }
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
@@ -158,10 +155,10 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Response must be a JSON object, not an array or primitive',
         retryable: true,
       },
-    };
+    }
   }
 
-  const obj = parsed as Record<string, unknown>;
+  const obj = parsed as Record<string, unknown>
 
   // Validate required fields
   if (!('route' in obj)) {
@@ -172,7 +169,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Missing required field: route',
         retryable: true,
       },
-    };
+    }
   }
 
   if (!('reason' in obj)) {
@@ -183,7 +180,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Missing required field: reason',
         retryable: true,
       },
-    };
+    }
   }
 
   // Validate route type and value
@@ -195,7 +192,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Field "route" must be a string',
         retryable: true,
       },
-    };
+    }
   }
 
   if (!VALID_ROUTES.includes(obj.route as ForegroundDecisionRoute)) {
@@ -206,7 +203,7 @@ export function parseForegroundRoutingJsonOutput(
         message: `Invalid route value: ${obj.route}. Must be one of: ${VALID_ROUTES.join(', ')}`,
         retryable: true,
       },
-    };
+    }
   }
 
   // Validate reason type and value
@@ -218,7 +215,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Field "reason" must be a string',
         retryable: true,
       },
-    };
+    }
   }
 
   if (obj.reason.trim().length === 0) {
@@ -229,7 +226,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Field "reason" must be a non-empty string',
         retryable: true,
       },
-    };
+    }
   }
 
   // Validate optional fields
@@ -241,7 +238,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Field "userVisibleResponse" must be a string',
         retryable: true,
       },
-    };
+    }
   }
 
   if (obj.estimatedSteps !== undefined && typeof obj.estimatedSteps !== 'number') {
@@ -252,7 +249,7 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Field "estimatedSteps" must be a number',
         retryable: true,
       },
-    };
+    }
   }
 
   if (obj.complexity !== undefined) {
@@ -264,7 +261,7 @@ export function parseForegroundRoutingJsonOutput(
           message: `Field "complexity" must be one of: ${VALID_COMPLEXITIES.join(', ')}`,
           retryable: true,
         },
-      };
+      }
     }
   }
 
@@ -276,20 +273,20 @@ export function parseForegroundRoutingJsonOutput(
         message: 'Field "suggestedTools" must be an array',
         retryable: true,
       },
-    };
+    }
   }
 
   // SECURITY: Reject LLM-provided runtimeAction - server creates all runtime actions
   // If LLM hallucinated a runtimeAction, we silently ignore it
-  void obj.runtimeAction; // Explicitly mark as intentionally unused
+  void obj.runtimeAction // Explicitly mark as intentionally unused
 
   // Filter suggestedTools to only known tools (intersection with catalog)
-  const rawSuggestedTools = obj.suggestedTools as string[] | undefined;
-  const effectiveToolIds = options?.effectiveToolIds ?? [];
-  const knownToolIds = options?.toolCatalog ?? getToolCatalog().map((t) => t.name);
+  const rawSuggestedTools = obj.suggestedTools as string[] | undefined
+  const effectiveToolIds = options?.effectiveToolIds ?? []
+  const knownToolIds = options?.toolCatalog ?? getToolCatalog().map((t) => t.name)
   const filteredSuggestedTools = rawSuggestedTools
     ? filterAllowedTools(rawSuggestedTools, effectiveToolIds, knownToolIds)
-    : undefined;
+    : undefined
 
   return {
     success: true,
@@ -301,5 +298,5 @@ export function parseForegroundRoutingJsonOutput(
       complexity: obj.complexity as TaskComplexity | undefined,
       suggestedTools: filteredSuggestedTools,
     },
-  };
+  }
 }

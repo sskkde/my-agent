@@ -1,13 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createEventStore, type EventStore, type EventRecord } from '../../../src/storage/event-store.js';
-import { createAuditStore } from '../../../src/observability/audit-store.js';
-import { createTraceStore } from '../../../src/observability/trace-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore, type RuntimeAction } from '../../../src/storage/runtime-action-store.js';
-import { createTimelineBuilder, TimelineBuilder } from '../../../src/observability/timeline.js';
-import type { AuditStore, AuditRecord } from '../../../src/observability/audit-types.js';
-import type { TraceStore, TraceContext, RuntimeSpan } from '../../../src/observability/types.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createEventStore, type EventStore, type EventRecord } from '../../../src/storage/event-store.js'
+import { createAuditStore } from '../../../src/observability/audit-store.js'
+import { createTraceStore } from '../../../src/observability/trace-store.js'
+import {
+  createRuntimeActionStore,
+  type RuntimeActionStore,
+  type RuntimeAction,
+} from '../../../src/storage/runtime-action-store.js'
+import { createTimelineBuilder, TimelineBuilder } from '../../../src/observability/timeline.js'
+import type { AuditStore, AuditRecord } from '../../../src/observability/audit-types.js'
+import type { TraceStore, TraceContext, RuntimeSpan } from '../../../src/observability/types.js'
 
 const timelineMigrations: Migration[] = [
   {
@@ -68,7 +72,7 @@ const timelineMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_events_user;
       DROP INDEX IF EXISTS idx_events_session;
       DROP TABLE IF EXISTS events;
-    `
+    `,
   },
   {
     version: 2,
@@ -111,7 +115,7 @@ const timelineMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_audit_session;
       DROP INDEX IF EXISTS idx_audit_user;
       DROP TABLE IF EXISTS audit_records;
-    `
+    `,
   },
   {
     version: 3,
@@ -133,7 +137,7 @@ const timelineMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_trace_session;
       DROP INDEX IF EXISTS idx_trace_correlation;
       DROP TABLE IF EXISTS trace_contexts;
-    `
+    `,
   },
   {
     version: 4,
@@ -160,7 +164,7 @@ const timelineMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_spans_start;
       DROP INDEX IF EXISTS idx_spans_trace;
       DROP TABLE IF EXISTS trace_spans;
-    `
+    `,
   },
   {
     version: 5,
@@ -204,47 +208,47 @@ const timelineMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_actions_workflow_run;
       DROP INDEX IF EXISTS idx_actions_planner_run;
       DROP TABLE IF EXISTS runtime_actions;
-    `
+    `,
   },
-];
+]
 
 describe('Observability Timeline Integration', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let eventStore: EventStore;
-  let auditStore: AuditStore;
-  let traceStore: TraceStore;
-  let actionStore: RuntimeActionStore;
-  let builder: TimelineBuilder;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let eventStore: EventStore
+  let auditStore: AuditStore
+  let traceStore: TraceStore
+  let actionStore: RuntimeActionStore
+  let builder: TimelineBuilder
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply(timelineMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply(timelineMigrations)
 
-    eventStore = createEventStore(connection);
-    auditStore = createAuditStore(connection);
-    traceStore = createTraceStore(connection);
-    actionStore = createRuntimeActionStore(connection);
+    eventStore = createEventStore(connection)
+    auditStore = createAuditStore(connection)
+    traceStore = createTraceStore(connection)
+    actionStore = createRuntimeActionStore(connection)
 
     builder = createTimelineBuilder({
       eventStore,
       auditStore,
       traceStore,
       actionStore,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('Timeline by session', () => {
     it('should build timeline for a session with events', () => {
-      const sessionId = 'session_001';
-      const userId = 'user_001';
+      const sessionId = 'session_001'
+      const userId = 'user_001'
 
       const event1: EventRecord = {
         eventId: 'evt_001',
@@ -257,7 +261,7 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
       const event2: EventRecord = {
         eventId: 'evt_002',
@@ -270,20 +274,20 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date(Date.now() + 1000).toISOString(),
-      };
+      }
 
-      eventStore.append([event1, event2]);
+      eventStore.append([event1, event2])
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      expect(timeline.rootType).toBe('session');
-      expect(timeline.rootId).toBe(sessionId);
-      expect(timeline.events).toHaveLength(2);
-      expect(timeline.status).toBe('completed');
-    });
+      expect(timeline.rootType).toBe('session')
+      expect(timeline.rootId).toBe(sessionId)
+      expect(timeline.events).toHaveLength(2)
+      expect(timeline.status).toBe('completed')
+    })
 
     it('should order session events by timestamp', () => {
-      const sessionId = 'session_002';
+      const sessionId = 'session_002'
 
       const event1: EventRecord = {
         eventId: 'evt_003',
@@ -294,7 +298,7 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date('2024-01-01T10:00:00Z').toISOString(),
-      };
+      }
 
       const event2: EventRecord = {
         eventId: 'evt_004',
@@ -305,7 +309,7 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date('2024-01-01T10:00:05Z').toISOString(),
-      };
+      }
 
       const event3: EventRecord = {
         eventId: 'evt_005',
@@ -316,21 +320,21 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date('2024-01-01T10:00:03Z').toISOString(),
-      };
+      }
 
-      eventStore.append([event1, event2, event3]);
+      eventStore.append([event1, event2, event3])
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      expect(timeline.events[0]?.eventId).toBe('evt_003');
-      expect(timeline.events[1]?.eventId).toBe('evt_005');
-      expect(timeline.events[2]?.eventId).toBe('evt_004');
-    });
-  });
+      expect(timeline.events[0]?.eventId).toBe('evt_003')
+      expect(timeline.events[1]?.eventId).toBe('evt_005')
+      expect(timeline.events[2]?.eventId).toBe('evt_004')
+    })
+  })
 
   describe('Timeline by planner_run', () => {
     it('should build timeline for planner run with events', () => {
-      const plannerRunId = 'planner_run_001';
+      const plannerRunId = 'planner_run_001'
 
       const event: EventRecord = {
         eventId: 'evt_006',
@@ -342,19 +346,19 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('planner_run', plannerRunId);
+      const timeline = builder.buildTimeline('planner_run', plannerRunId)
 
-      expect(timeline.rootType).toBe('planner_run');
-      expect(timeline.rootId).toBe(plannerRunId);
-      expect(timeline.events.length).toBeGreaterThan(0);
-    });
+      expect(timeline.rootType).toBe('planner_run')
+      expect(timeline.rootId).toBe(plannerRunId)
+      expect(timeline.events.length).toBeGreaterThan(0)
+    })
 
     it('should include actions for planner run timeline', () => {
-      const plannerRunId = 'planner_run_002';
+      const plannerRunId = 'planner_run_002'
 
       const event: EventRecord = {
         eventId: 'evt_007',
@@ -366,9 +370,9 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
       const action: RuntimeAction = {
         actionId: 'action_001',
@@ -381,19 +385,19 @@ describe('Observability Timeline Integration', () => {
         status: 'completed',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const timeline = builder.buildTimeline('planner_run', plannerRunId);
+      const timeline = builder.buildTimeline('planner_run', plannerRunId)
 
-      const actionEvents = timeline.events.filter(e => e.eventType === 'action');
-      expect(actionEvents.length).toBeGreaterThan(0);
-      expect(actionEvents[0]?.eventId).toBe('action_001');
-    });
+      const actionEvents = timeline.events.filter((e) => e.eventType === 'action')
+      expect(actionEvents.length).toBeGreaterThan(0)
+      expect(actionEvents[0]?.eventId).toBe('action_001')
+    })
 
     it('should show planner run actions with results', () => {
-      const plannerRunId = 'planner_run_003';
+      const plannerRunId = 'planner_run_003'
 
       const action: RuntimeAction = {
         actionId: 'action_002',
@@ -407,21 +411,21 @@ describe('Observability Timeline Integration', () => {
         result: { results: ['result1', 'result2'] },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const timeline = builder.buildTimeline('planner_run', plannerRunId);
+      const timeline = builder.buildTimeline('planner_run', plannerRunId)
 
-      const actionEvent = timeline.events.find(e => e.eventId === 'action_002');
-      expect(actionEvent).toBeDefined();
-      expect(actionEvent?.status).toBe('completed');
-    });
-  });
+      const actionEvent = timeline.events.find((e) => e.eventId === 'action_002')
+      expect(actionEvent).toBeDefined()
+      expect(actionEvent?.status).toBe('completed')
+    })
+  })
 
   describe('Timeline by workflow_run', () => {
     it('should build timeline for workflow run', () => {
-      const workflowRunId = 'workflow_run_001';
+      const workflowRunId = 'workflow_run_001'
 
       const event: EventRecord = {
         eventId: 'evt_008',
@@ -433,19 +437,19 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('workflow_run', workflowRunId);
+      const timeline = builder.buildTimeline('workflow_run', workflowRunId)
 
-      expect(timeline.rootType).toBe('workflow_run');
-      expect(timeline.rootId).toBe(workflowRunId);
-      expect(timeline.events.length).toBeGreaterThan(0);
-    });
+      expect(timeline.rootType).toBe('workflow_run')
+      expect(timeline.rootId).toBe(workflowRunId)
+      expect(timeline.events.length).toBeGreaterThan(0)
+    })
 
     it('should include workflow actions in timeline', () => {
-      const workflowRunId = 'workflow_run_002';
+      const workflowRunId = 'workflow_run_002'
 
       const action: RuntimeAction = {
         actionId: 'action_003',
@@ -458,20 +462,20 @@ describe('Observability Timeline Integration', () => {
         status: 'completed',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const timeline = builder.buildTimeline('workflow_run', workflowRunId);
+      const timeline = builder.buildTimeline('workflow_run', workflowRunId)
 
-      const actionEvents = timeline.events.filter(e => e.eventType === 'action');
-      expect(actionEvents.length).toBeGreaterThan(0);
-    });
-  });
+      const actionEvents = timeline.events.filter((e) => e.eventType === 'action')
+      expect(actionEvents.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Timeline by background_run', () => {
     it('should build timeline for background run', () => {
-      const backgroundRunId = 'bg_run_001';
+      const backgroundRunId = 'bg_run_001'
 
       const event: EventRecord = {
         eventId: 'evt_009',
@@ -483,21 +487,21 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('background_run', backgroundRunId);
+      const timeline = builder.buildTimeline('background_run', backgroundRunId)
 
-      expect(timeline.rootType).toBe('background_run');
-      expect(timeline.rootId).toBe(backgroundRunId);
-      expect(timeline.events.length).toBeGreaterThan(0);
-    });
-  });
+      expect(timeline.rootType).toBe('background_run')
+      expect(timeline.rootId).toBe(backgroundRunId)
+      expect(timeline.events.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Timeline by subagent_run', () => {
     it('should build timeline for subagent run', () => {
-      const subagentRunId = 'subagent_run_001';
+      const subagentRunId = 'subagent_run_001'
 
       const event: EventRecord = {
         eventId: 'evt_010',
@@ -509,21 +513,21 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('subagent_run', subagentRunId);
+      const timeline = builder.buildTimeline('subagent_run', subagentRunId)
 
-      expect(timeline.rootType).toBe('subagent_run');
-      expect(timeline.rootId).toBe(subagentRunId);
-      expect(timeline.events.length).toBeGreaterThan(0);
-    });
-  });
+      expect(timeline.rootType).toBe('subagent_run')
+      expect(timeline.rootId).toBe(subagentRunId)
+      expect(timeline.events.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Timeline by tool_call', () => {
     it('should build timeline for tool call', () => {
-      const toolCallId = 'tool_call_001';
+      const toolCallId = 'tool_call_001'
 
       const event: EventRecord = {
         eventId: 'evt_011',
@@ -535,21 +539,21 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('tool_call', toolCallId);
+      const timeline = builder.buildTimeline('tool_call', toolCallId)
 
-      expect(timeline.rootType).toBe('tool_call');
-      expect(timeline.rootId).toBe(toolCallId);
-      expect(timeline.events.length).toBeGreaterThan(0);
-    });
-  });
+      expect(timeline.rootType).toBe('tool_call')
+      expect(timeline.rootId).toBe(toolCallId)
+      expect(timeline.events.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Timeline by approval', () => {
     it('should build timeline for approval', () => {
-      const approvalId = 'approval_001';
+      const approvalId = 'approval_001'
 
       const event: EventRecord = {
         eventId: 'evt_012',
@@ -561,21 +565,21 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'high',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('approval', approvalId);
+      const timeline = builder.buildTimeline('approval', approvalId)
 
-      expect(timeline.rootType).toBe('approval');
-      expect(timeline.rootId).toBe(approvalId);
-      expect(timeline.events.length).toBeGreaterThan(0);
-    });
-  });
+      expect(timeline.rootType).toBe('approval')
+      expect(timeline.rootId).toBe(approvalId)
+      expect(timeline.events.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Timeline by memory', () => {
     it('should build timeline for memory access', () => {
-      const memoryId = 'memory_001';
+      const memoryId = 'memory_001'
 
       const event: EventRecord = {
         eventId: 'evt_013',
@@ -587,21 +591,21 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'medium',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('memory', memoryId);
+      const timeline = builder.buildTimeline('memory', memoryId)
 
-      expect(timeline.rootType).toBe('memory');
-      expect(timeline.rootId).toBe(memoryId);
-      expect(timeline.events.length).toBeGreaterThan(0);
-    });
-  });
+      expect(timeline.rootType).toBe('memory')
+      expect(timeline.rootId).toBe(memoryId)
+      expect(timeline.events.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Timeline event ordering', () => {
     it('should order events chronologically regardless of source', () => {
-      const sessionId = 'session_ordering';
+      const sessionId = 'session_ordering'
 
       const audit: AuditRecord = {
         auditId: 'audit_001',
@@ -616,9 +620,9 @@ describe('Observability Timeline Integration', () => {
         payload: {},
         riskLevel: 'low',
         sensitivity: 'low',
-      };
+      }
 
-      auditStore.record(audit);
+      auditStore.record(audit)
 
       const event: EventRecord = {
         eventId: 'evt_014',
@@ -630,9 +634,9 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date('2024-01-01T10:00:02Z').toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
       const action: RuntimeAction = {
         actionId: 'action_004',
@@ -645,22 +649,22 @@ describe('Observability Timeline Integration', () => {
         status: 'completed',
         createdAt: new Date('2024-01-01T10:00:01Z').toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      const timestamps = timeline.events.map(e => new Date(e.timestamp).getTime());
-      expect(timestamps[0]).toBeLessThanOrEqual(timestamps[1] ?? timestamps[0]);
-      expect(timestamps[1]).toBeLessThanOrEqual(timestamps[2] ?? timestamps[1]);
-    });
-  });
+      const timestamps = timeline.events.map((e) => new Date(e.timestamp).getTime())
+      expect(timestamps[0]).toBeLessThanOrEqual(timestamps[1] ?? timestamps[0])
+      expect(timestamps[1]).toBeLessThanOrEqual(timestamps[2] ?? timestamps[1])
+    })
+  })
 
   describe('Related audit/span refs', () => {
     it('should attach audit refs to events via correlationId', () => {
-      const sessionId = 'session_refs';
-      const correlationId = 'corr_011';
+      const sessionId = 'session_refs'
+      const correlationId = 'corr_011'
 
       const event: EventRecord = {
         eventId: 'evt_015',
@@ -672,9 +676,9 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'high',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
       const audit: AuditRecord = {
         auditId: 'audit_002',
@@ -690,20 +694,20 @@ describe('Observability Timeline Integration', () => {
         correlationId,
         riskLevel: 'high',
         sensitivity: 'high',
-      };
+      }
 
-      auditStore.record(audit);
+      auditStore.record(audit)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      const eventWithRef = timeline.events.find(e => e.eventId === 'evt_015');
-      expect(eventWithRef?.relatedRefs).toBeDefined();
-      expect(eventWithRef?.relatedRefs?.some(r => r.refType === 'audit' && r.refId === 'audit_002')).toBe(true);
-    });
+      const eventWithRef = timeline.events.find((e) => e.eventId === 'evt_015')
+      expect(eventWithRef?.relatedRefs).toBeDefined()
+      expect(eventWithRef?.relatedRefs?.some((r) => r.refType === 'audit' && r.refId === 'audit_002')).toBe(true)
+    })
 
     it('should attach span refs to events via correlationId', () => {
-      const sessionId = 'session_span_refs';
-      const correlationId = 'corr_012';
+      const sessionId = 'session_span_refs'
+      const correlationId = 'corr_012'
 
       const event: EventRecord = {
         eventId: 'evt_016',
@@ -715,9 +719,9 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
       const traceContext: TraceContext = {
         traceId: 'trace_001',
@@ -726,9 +730,9 @@ describe('Observability Timeline Integration', () => {
         sessionId,
         startedAt: new Date().toISOString(),
         status: 'active',
-      };
+      }
 
-      traceStore.createTrace(traceContext);
+      traceStore.createTrace(traceContext)
 
       const span: RuntimeSpan = {
         spanId: 'span_001',
@@ -741,21 +745,21 @@ describe('Observability Timeline Integration', () => {
         startTime: new Date().toISOString(),
         endTime: new Date().toISOString(),
         durationMs: 100,
-      };
+      }
 
-      traceStore.createSpan(span);
+      traceStore.createSpan(span)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      const eventWithRef = timeline.events.find(e => e.eventId === 'evt_016');
-      expect(eventWithRef?.relatedRefs).toBeDefined();
-      expect(eventWithRef?.relatedRefs?.some(r => r.refType === 'span' && r.refId === 'span_001')).toBe(true);
-    });
-  });
+      const eventWithRef = timeline.events.find((e) => e.eventId === 'evt_016')
+      expect(eventWithRef?.relatedRefs).toBeDefined()
+      expect(eventWithRef?.relatedRefs?.some((r) => r.refType === 'span' && r.refId === 'span_001')).toBe(true)
+    })
+  })
 
   describe('Timeline metadata', () => {
     it('should calculate correct start and end times', () => {
-      const sessionId = 'session_metadata';
+      const sessionId = 'session_metadata'
 
       const event1: EventRecord = {
         eventId: 'evt_017',
@@ -766,7 +770,7 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date('2024-01-01T10:00:00Z').toISOString(),
-      };
+      }
 
       const event2: EventRecord = {
         eventId: 'evt_018',
@@ -777,19 +781,19 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date('2024-01-01T10:00:10Z').toISOString(),
-      };
+      }
 
-      eventStore.append([event1, event2]);
+      eventStore.append([event1, event2])
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      expect(timeline.startTime).toBe(event1.createdAt);
-      expect(timeline.endTime).toBe(event2.createdAt);
-      expect(timeline.durationMs).toBe(10000);
-    });
+      expect(timeline.startTime).toBe(event1.createdAt)
+      expect(timeline.endTime).toBe(event2.createdAt)
+      expect(timeline.durationMs).toBe(10000)
+    })
 
     it('should calculate status based on event statuses', () => {
-      const sessionId = 'session_status';
+      const sessionId = 'session_status'
 
       const event1: EventRecord = {
         eventId: 'evt_019',
@@ -800,17 +804,17 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event1);
+      eventStore.append(event1)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      expect(timeline.status).toBe('failed');
-    });
+      expect(timeline.status).toBe('failed')
+    })
 
     it('should handle cancelled status', () => {
-      const sessionId = 'session_cancelled';
+      const sessionId = 'session_cancelled'
 
       const action: RuntimeAction = {
         actionId: 'action_005',
@@ -823,17 +827,17 @@ describe('Observability Timeline Integration', () => {
         status: 'cancelled',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      expect(timeline.status).toBe('cancelled');
-    });
+      expect(timeline.status).toBe('cancelled')
+    })
 
     it('should handle active status', () => {
-      const sessionId = 'session_active';
+      const sessionId = 'session_active'
 
       const action: RuntimeAction = {
         actionId: 'action_006',
@@ -846,19 +850,19 @@ describe('Observability Timeline Integration', () => {
         status: 'queued',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      expect(timeline.status).toBe('active');
-    });
-  });
+      expect(timeline.status).toBe('active')
+    })
+  })
 
   describe('Timeline event types', () => {
     it('should include event type information', () => {
-      const sessionId = 'session_event_types';
+      const sessionId = 'session_event_types'
 
       const event: EventRecord = {
         eventId: 'evt_020',
@@ -869,20 +873,20 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      const timelineEvent = timeline.events[0];
-      expect(timelineEvent?.eventType).toBe('event');
-      expect(timelineEvent?.module).toBe('kernel');
-      expect(timelineEvent?.description).toContain('custom_event');
-    });
+      const timelineEvent = timeline.events[0]
+      expect(timelineEvent?.eventType).toBe('event')
+      expect(timelineEvent?.module).toBe('kernel')
+      expect(timelineEvent?.description).toContain('custom_event')
+    })
 
     it('should include audit type information', () => {
-      const sessionId = 'session_audit_types';
+      const sessionId = 'session_audit_types'
 
       const audit: AuditRecord = {
         auditId: 'audit_003',
@@ -897,20 +901,20 @@ describe('Observability Timeline Integration', () => {
         payload: { decision: 'allowed' },
         riskLevel: 'medium',
         sensitivity: 'medium',
-      };
+      }
 
-      auditStore.record(audit);
+      auditStore.record(audit)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      const auditEvent = timeline.events.find(e => e.eventType === 'audit');
-      expect(auditEvent).toBeDefined();
-      expect(auditEvent?.description).toBe('Permission check for file write');
-    });
+      const auditEvent = timeline.events.find((e) => e.eventType === 'audit')
+      expect(auditEvent).toBeDefined()
+      expect(auditEvent?.description).toBe('Permission check for file write')
+    })
 
     it('should include span type information', () => {
-      const sessionId = 'session_span_types';
-      const correlationId = 'corr_013';
+      const sessionId = 'session_span_types'
+      const correlationId = 'corr_013'
 
       const event: EventRecord = {
         eventId: 'evt_021',
@@ -922,9 +926,9 @@ describe('Observability Timeline Integration', () => {
         sensitivity: 'low',
         retentionClass: 'standard',
         createdAt: new Date().toISOString(),
-      };
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
       const traceContext: TraceContext = {
         traceId: 'trace_002',
@@ -933,9 +937,9 @@ describe('Observability Timeline Integration', () => {
         sessionId,
         startedAt: new Date().toISOString(),
         status: 'active',
-      };
+      }
 
-      traceStore.createTrace(traceContext);
+      traceStore.createTrace(traceContext)
 
       const span: RuntimeSpan = {
         spanId: 'span_002',
@@ -946,20 +950,20 @@ describe('Observability Timeline Integration', () => {
         operation: 'process_request',
         status: 'completed',
         startTime: new Date().toISOString(),
-      };
+      }
 
-      traceStore.createSpan(span);
+      traceStore.createSpan(span)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      const spanEvent = timeline.events.find(e => e.eventType === 'span');
-      expect(spanEvent).toBeDefined();
-      expect(spanEvent?.description).toContain('kernel_run');
-      expect(spanEvent?.description).toContain('process_request');
-    });
+      const spanEvent = timeline.events.find((e) => e.eventType === 'span')
+      expect(spanEvent).toBeDefined()
+      expect(spanEvent?.description).toContain('kernel_run')
+      expect(spanEvent?.description).toContain('process_request')
+    })
 
     it('should include action type information', () => {
-      const sessionId = 'session_action_types';
+      const sessionId = 'session_action_types'
 
       const action: RuntimeAction = {
         actionId: 'action_007',
@@ -972,30 +976,30 @@ describe('Observability Timeline Integration', () => {
         status: 'completed',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      const actionEvent = timeline.events.find(e => e.eventType === 'action');
-      expect(actionEvent).toBeDefined();
-      expect(actionEvent?.description).toContain('tool_execution');
-      expect(actionEvent?.description).toContain('tool.api_call');
-    });
-  });
+      const actionEvent = timeline.events.find((e) => e.eventType === 'action')
+      expect(actionEvent).toBeDefined()
+      expect(actionEvent?.description).toContain('tool_execution')
+      expect(actionEvent?.description).toContain('tool.api_call')
+    })
+  })
 
   describe('Empty timeline handling', () => {
     it('should handle empty timeline gracefully', () => {
-      const sessionId = 'nonexistent_session';
+      const sessionId = 'nonexistent_session'
 
-      const timeline = builder.buildTimeline('session', sessionId);
+      const timeline = builder.buildTimeline('session', sessionId)
 
-      expect(timeline.rootType).toBe('session');
-      expect(timeline.rootId).toBe(sessionId);
-      expect(timeline.events).toHaveLength(0);
-      expect(timeline.status).toBe('completed');
-      expect(timeline.startTime).toBeDefined();
-    });
-  });
-});
+      expect(timeline.rootType).toBe('session')
+      expect(timeline.rootId).toBe(sessionId)
+      expect(timeline.events).toHaveLength(0)
+      expect(timeline.status).toBe('completed')
+      expect(timeline.startTime).toBeDefined()
+    })
+  })
+})

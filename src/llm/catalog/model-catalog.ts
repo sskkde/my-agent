@@ -3,12 +3,8 @@
  * Provides model lookup and fallback resolution
  */
 
-import type { ModelInfo, ProviderFamily, ProviderProtocol } from '../types.js';
-import {
-  BUILTIN_MODELS,
-  DEFAULT_TEXT_MODEL_CAPABILITIES,
-  DEFAULT_LIMITS,
-} from './builtin-models.js';
+import type { ModelInfo, ProviderFamily, ProviderProtocol } from '../types.js'
+import { BUILTIN_MODELS, DEFAULT_TEXT_MODEL_CAPABILITIES, DEFAULT_LIMITS } from './builtin-models.js'
 
 /**
  * Generates a unique key for a model
@@ -17,7 +13,7 @@ import {
  * @returns A key in the format "providerId/modelId"
  */
 export function modelKey(providerId: string, modelId: string): string {
-  return `${providerId}/${modelId}`;
+  return `${providerId}/${modelId}`
 }
 
 /**
@@ -25,8 +21,8 @@ export function modelKey(providerId: string, modelId: string): string {
  * Constructed once at module load time from BUILTIN_MODELS.
  */
 const BUILTIN_MODELS_MAP: Map<string, ModelInfo> = new Map(
-  BUILTIN_MODELS.map((m) => [modelKey(m.providerId, m.modelId), m])
-);
+  BUILTIN_MODELS.map((m) => [modelKey(m.providerId, m.modelId), m]),
+)
 
 /**
  * Retrieves a built-in model by provider and model ID
@@ -34,12 +30,9 @@ const BUILTIN_MODELS_MAP: Map<string, ModelInfo> = new Map(
  * @param modelId - The model identifier
  * @returns The model info if found, null otherwise
  */
-export function getBuiltinModel(
-  providerId: string,
-  modelId: string
-): ModelInfo | null {
-  const key = modelKey(providerId, modelId);
-  return BUILTIN_MODELS_MAP.get(key) ?? null;
+export function getBuiltinModel(providerId: string, modelId: string): ModelInfo | null {
+  const key = modelKey(providerId, modelId)
+  return BUILTIN_MODELS_MAP.get(key) ?? null
 }
 
 /**
@@ -55,7 +48,7 @@ export function createFallbackModelInfo(
   providerId: string,
   modelId: string,
   family?: ProviderFamily,
-  protocol?: ProviderProtocol
+  protocol?: ProviderProtocol,
 ): ModelInfo {
   return {
     providerId,
@@ -64,7 +57,7 @@ export function createFallbackModelInfo(
     protocol: protocol ?? 'openai_chat',
     capabilities: DEFAULT_TEXT_MODEL_CAPABILITIES,
     limits: DEFAULT_LIMITS,
-  };
+  }
 }
 
 /**
@@ -79,11 +72,11 @@ export function resolveModelInfo(
   providerId: string,
   modelId: string,
   family?: ProviderFamily,
-  protocol?: ProviderProtocol
+  protocol?: ProviderProtocol,
 ): ModelInfo {
-  const builtin = getBuiltinModel(providerId, modelId);
+  const builtin = getBuiltinModel(providerId, modelId)
   if (builtin) {
-    return builtin;
+    return builtin
   }
-  return createFallbackModelInfo(providerId, modelId, family, protocol);
+  return createFallbackModelInfo(providerId, modelId, family, protocol)
 }

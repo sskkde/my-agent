@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { getChannels } from '../../api/client';
-import type { ChannelSummary } from '../../api/types';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import React, { useEffect, useState } from 'react'
+import { getChannels } from '../../api/client'
+import type { ChannelSummary } from '../../api/types'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 interface ChannelsData {
-  channels: ChannelSummary[];
-  loading: boolean;
-  error: boolean;
+  channels: ChannelSummary[]
+  loading: boolean
+  error: boolean
 }
 
 const ChannelsTab: React.FC = () => {
@@ -14,43 +14,43 @@ const ChannelsTab: React.FC = () => {
     channels: [],
     loading: true,
     error: false,
-  });
+  })
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await getChannels();
+        const response = await getChannels()
         setData({
           channels: response.channels,
           loading: false,
           error: false,
-        });
+        })
       } catch {
         setData({
           channels: [],
           loading: false,
           error: true,
-        });
+        })
       }
-    };
+    }
 
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
-  const { channels, loading, error } = data;
+  const { channels, loading, error } = data
 
   const getStatusClass = (status: string): string => {
     switch (status.toLowerCase()) {
       case 'connected':
       case 'active':
-        return 'status-chip healthy';
+        return 'status-chip healthy'
       case 'disconnected':
       case 'inactive':
-        return 'status-chip error';
+        return 'status-chip error'
       default:
-        return 'status-chip degraded';
+        return 'status-chip degraded'
     }
-  };
+  }
 
   return (
     <div data-testid="channels-panel" className="channels-panel">
@@ -96,13 +96,13 @@ const ChannelsTab: React.FC = () => {
                       <td className="cell-connector">{channel.connectorId}</td>
                       <td className="cell-type">{channel.type}</td>
                       <td className="cell-status">
-                        <span className={getStatusClass(channel.status)}>
-                          {channel.status}
-                        </span>
+                        <span className={getStatusClass(channel.status)}>{channel.status}</span>
                       </td>
                       <td className="cell-configured">
                         {channel.configured ? (
-                          <span className="checkmark-yes" data-testid={`channel-configured-${index}`}>✓</span>
+                          <span className="checkmark-yes" data-testid={`channel-configured-${index}`}>
+                            ✓
+                          </span>
                         ) : (
                           <span className="checkmark-no">✗</span>
                         )}
@@ -127,9 +127,7 @@ const ChannelsTab: React.FC = () => {
                   </div>
                   <div className="channel-card__row">
                     <span className="channel-card__label">状态</span>
-                    <span className={getStatusClass(channel.status)}>
-                      {channel.status}
-                    </span>
+                    <span className={getStatusClass(channel.status)}>{channel.status}</span>
                   </div>
                   <div className="channel-card__row">
                     <span className="channel-card__label">已配置</span>
@@ -148,7 +146,7 @@ const ChannelsTab: React.FC = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ChannelsTab;
+export default ChannelsTab

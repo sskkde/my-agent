@@ -12,6 +12,7 @@ Ensure the following are installed:
 - **SQLite3** (optional, database file created automatically)
 
 Verify Node.js version:
+
 ```bash
 node --version  # Should show v20.x.x or higher
 ```
@@ -43,12 +44,12 @@ cp .env.example .env
 
 Edit `.env` and set at minimum:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `APP_SECRET_KEY` | Encryption key for API keys (generate with `openssl rand -hex 32`) | `a1b2c3d4...` |
-| `DATABASE_PATH` | SQLite database file path | `./data/app.db` |
-| `OPENROUTER_API_KEY` | OpenRouter API key (or use Ollama) | `sk-or-v1-...` |
-| `OLLAMA_BASE_URL` | Ollama endpoint for local LLM | `http://localhost:11434` |
+| Variable             | Description                                                        | Example                  |
+| -------------------- | ------------------------------------------------------------------ | ------------------------ |
+| `APP_SECRET_KEY`     | Encryption key for API keys (generate with `openssl rand -hex 32`) | `a1b2c3d4...`            |
+| `DATABASE_PATH`      | SQLite database file path                                          | `./data/app.db`          |
+| `OPENROUTER_API_KEY` | OpenRouter API key (or use Ollama)                                 | `sk-or-v1-...`           |
+| `OLLAMA_BASE_URL`    | Ollama endpoint for local LLM                                      | `http://localhost:11434` |
 
 ### 4. Run Database Migrations
 
@@ -75,8 +76,9 @@ curl -s http://localhost:3003/api/health
 ```
 
 Expected response:
+
 ```json
-{"status":"ok"}
+{ "status": "ok" }
 ```
 
 ### 7. (Optional) Start the Frontend
@@ -92,9 +94,9 @@ The frontend runs on http://localhost:3002 and proxies `/api` requests to the ba
 
 ## Ports
 
-| Service | Port |
-|---------|------|
-| API Server | 3003 |
+| Service         | Port |
+| --------------- | ---- |
+| API Server      | 3003 |
 | Frontend (Vite) | 3002 |
 
 All servers bind to `localhost` by default. Production public ingress requires `HOST=0.0.0.0`.
@@ -117,6 +119,7 @@ npm install --global windows-build-tools
 ```
 
 Then retry:
+
 ```bash
 npm rebuild better-sqlite3
 ```

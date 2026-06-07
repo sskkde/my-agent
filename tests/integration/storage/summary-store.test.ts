@@ -1,28 +1,33 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js';
-import { createSummaryStore, type SummaryStore, type SummaryRecord, type SummaryType } from '../../../src/storage/summary-store.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js'
+import {
+  createSummaryStore,
+  type SummaryStore,
+  type SummaryRecord,
+  type SummaryType,
+} from '../../../src/storage/summary-store.js'
 
 describe('Summary Store', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let store: SummaryStore;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let store: SummaryStore
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
 
-    const summaryMigration = createSummaryMigration();
-    migrations.apply([summaryMigration]);
-    
-    store = createSummaryStore(connection);
-  });
+    const summaryMigration = createSummaryMigration()
+    migrations.apply([summaryMigration])
+
+    store = createSummaryStore(connection)
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('SummaryRecord lifecycle', () => {
     it('should save a working_summary with sourceRefs', () => {
@@ -35,22 +40,22 @@ describe('Summary Store', () => {
           transcriptRefs: ['evt-001', 'evt-002'],
           eventRange: {
             startEventId: 'evt-001',
-            endEventId: 'evt-010'
-          }
+            endEventId: 'evt-010',
+          },
         },
         summary: 'This is a working summary of the conversation',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const retrieved = store.getWorkingSummary('run-001');
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.summaryId).toBe('ws-001');
-      expect(retrieved?.summaryType).toBe('working_summary');
-      expect(retrieved?.summary).toBe('This is a working summary of the conversation');
-    });
+      const retrieved = store.getWorkingSummary('run-001')
+      expect(retrieved).not.toBeNull()
+      expect(retrieved?.summaryId).toBe('ws-001')
+      expect(retrieved?.summaryType).toBe('working_summary')
+      expect(retrieved?.summary).toBe('This is a working summary of the conversation')
+    })
 
     it('should reject source-less summaries', () => {
       const record: SummaryRecord = {
@@ -61,11 +66,11 @@ describe('Summary Store', () => {
         sourceRefs: {},
         summary: 'Summary without sources',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      expect(() => store.save(record)).toThrow('sourceRefs');
-    });
+      expect(() => store.save(record)).toThrow('sourceRefs')
+    })
 
     it('should reject summaries with null sourceRefs', () => {
       const record = {
@@ -76,11 +81,11 @@ describe('Summary Store', () => {
         sourceRefs: null,
         summary: 'Summary with null sources',
         status: 'active',
-        createdAt: new Date().toISOString()
-      } as unknown as SummaryRecord;
+        createdAt: new Date().toISOString(),
+      } as unknown as SummaryRecord
 
-      expect(() => store.save(record)).toThrow('sourceRefs');
-    });
+      expect(() => store.save(record)).toThrow('sourceRefs')
+    })
 
     it('should save a session_memory with sourceRefs', () => {
       const record: SummaryRecord = {
@@ -90,21 +95,21 @@ describe('Summary Store', () => {
         sessionId: 'sess-001',
         sourceRefs: {
           transcriptRefs: ['evt-001', 'evt-002', 'evt-003'],
-          previousSummaryRefs: ['ws-001']
+          previousSummaryRefs: ['ws-001'],
         },
         summary: 'Session memory summary',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const retrieved = store.getSessionMemory('sess-001');
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.summaryId).toBe('sm-001');
-      expect(retrieved?.summaryType).toBe('session_memory');
-    });
-  });
+      const retrieved = store.getSessionMemory('sess-001')
+      expect(retrieved).not.toBeNull()
+      expect(retrieved?.summaryId).toBe('sm-001')
+      expect(retrieved?.summaryType).toBe('session_memory')
+    })
+  })
 
   describe('SummaryType indexing', () => {
     it('should index working_summary type', () => {
@@ -116,15 +121,15 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Working summary for indexing test',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const byType = store.getByType('working_summary');
-      expect(byType.length).toBeGreaterThan(0);
-      expect(byType.some(r => r.summaryId === 'ws-idx-001')).toBe(true);
-    });
+      const byType = store.getByType('working_summary')
+      expect(byType.length).toBeGreaterThan(0)
+      expect(byType.some((r) => r.summaryId === 'ws-idx-001')).toBe(true)
+    })
 
     it('should index session_memory type', () => {
       const record: SummaryRecord = {
@@ -135,14 +140,14 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Session memory for indexing test',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const byType = store.getByType('session_memory');
-      expect(byType.some(r => r.summaryId === 'sm-idx-001')).toBe(true);
-    });
+      const byType = store.getByType('session_memory')
+      expect(byType.some((r) => r.summaryId === 'sm-idx-001')).toBe(true)
+    })
 
     it('should index rolling_5_turns type', () => {
       const record: SummaryRecord = {
@@ -153,14 +158,14 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Rolling 5 turns summary',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const byType = store.getByType('rolling_5_turns');
-      expect(byType.some(r => r.summaryId === 'r5-idx-001')).toBe(true);
-    });
+      const byType = store.getByType('rolling_5_turns')
+      expect(byType.some((r) => r.summaryId === 'r5-idx-001')).toBe(true)
+    })
 
     it('should index rolling_10_turns type', () => {
       const record: SummaryRecord = {
@@ -171,15 +176,15 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Rolling 10 turns summary',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const byType = store.getByType('rolling_10_turns');
-      expect(byType.some(r => r.summaryId === 'r10-idx-001')).toBe(true);
-    });
-  });
+      const byType = store.getByType('rolling_10_turns')
+      expect(byType.some((r) => r.summaryId === 'r10-idx-001')).toBe(true)
+    })
+  })
 
   describe('WorkingSummary retrieval by runId', () => {
     it('should retrieve working summary by runId', () => {
@@ -191,21 +196,21 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Working summary for specific run',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const retrieved = store.getWorkingSummary('run-specific-001');
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.summaryId).toBe('ws-run-001');
-      expect(retrieved?.runId).toBe('run-specific-001');
-    });
+      const retrieved = store.getWorkingSummary('run-specific-001')
+      expect(retrieved).not.toBeNull()
+      expect(retrieved?.summaryId).toBe('ws-run-001')
+      expect(retrieved?.runId).toBe('run-specific-001')
+    })
 
     it('should return null for non-existent runId', () => {
-      const retrieved = store.getWorkingSummary('non-existent-run');
-      expect(retrieved).toBeNull();
-    });
+      const retrieved = store.getWorkingSummary('non-existent-run')
+      expect(retrieved).toBeNull()
+    })
 
     it('should return most recent working summary for runId', () => {
       const record1: SummaryRecord = {
@@ -216,8 +221,8 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Old working summary',
         status: 'active',
-        createdAt: new Date(Date.now() - 10000).toISOString()
-      };
+        createdAt: new Date(Date.now() - 10000).toISOString(),
+      }
 
       const record2: SummaryRecord = {
         summaryId: 'ws-run-new',
@@ -227,16 +232,16 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-002'] },
         summary: 'New working summary',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record1);
-      store.save(record2);
+      store.save(record1)
+      store.save(record2)
 
-      const retrieved = store.getWorkingSummary('run-multi-001');
-      expect(retrieved?.summaryId).toBe('ws-run-new');
-    });
-  });
+      const retrieved = store.getWorkingSummary('run-multi-001')
+      expect(retrieved?.summaryId).toBe('ws-run-new')
+    })
+  })
 
   describe('SessionMemory retrieval by sessionId', () => {
     it('should retrieve session memory by sessionId', () => {
@@ -248,21 +253,21 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Session memory for specific session',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const retrieved = store.getSessionMemory('sess-specific-001');
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.summaryId).toBe('sm-sess-001');
-      expect(retrieved?.sessionId).toBe('sess-specific-001');
-    });
+      const retrieved = store.getSessionMemory('sess-specific-001')
+      expect(retrieved).not.toBeNull()
+      expect(retrieved?.summaryId).toBe('sm-sess-001')
+      expect(retrieved?.sessionId).toBe('sess-specific-001')
+    })
 
     it('should return null for non-existent sessionId', () => {
-      const retrieved = store.getSessionMemory('non-existent-session');
-      expect(retrieved).toBeNull();
-    });
+      const retrieved = store.getSessionMemory('non-existent-session')
+      expect(retrieved).toBeNull()
+    })
 
     it('should return most recent session memory for sessionId', () => {
       const record1: SummaryRecord = {
@@ -273,8 +278,8 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Old session memory',
         status: 'active',
-        createdAt: new Date(Date.now() - 10000).toISOString()
-      };
+        createdAt: new Date(Date.now() - 10000).toISOString(),
+      }
 
       const record2: SummaryRecord = {
         summaryId: 'sm-sess-new',
@@ -284,16 +289,16 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-002'] },
         summary: 'New session memory',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record1);
-      store.save(record2);
+      store.save(record1)
+      store.save(record2)
 
-      const retrieved = store.getSessionMemory('sess-multi-001');
-      expect(retrieved?.summaryId).toBe('sm-sess-new');
-    });
-  });
+      const retrieved = store.getSessionMemory('sess-multi-001')
+      expect(retrieved?.summaryId).toBe('sm-sess-new')
+    })
+  })
 
   describe('Versioning/patch support', () => {
     it('should support applyPatch for partial updates', () => {
@@ -305,27 +310,27 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Initial summary',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
       const patch = {
         summary: 'Updated summary via patch',
-        status: 'validated' as const
-      };
+        status: 'validated' as const,
+      }
 
-      const updated = store.applyPatch('ws-patch-001', patch);
-      expect(updated.summary).toBe('Updated summary via patch');
-      expect(updated.status).toBe('validated');
-      expect(updated.updatedAt).toBeDefined();
-    });
+      const updated = store.applyPatch('ws-patch-001', patch)
+      expect(updated.summary).toBe('Updated summary via patch')
+      expect(updated.status).toBe('validated')
+      expect(updated.updatedAt).toBeDefined()
+    })
 
     it('should throw error when patching non-existent summary', () => {
       expect(() => {
-        store.applyPatch('non-existent-id', { summary: 'update' });
-      }).toThrow('not found');
-    });
+        store.applyPatch('non-existent-id', { summary: 'update' })
+      }).toThrow('not found')
+    })
 
     it('should preserve unpatched fields', () => {
       const record: SummaryRecord = {
@@ -337,23 +342,23 @@ describe('Summary Store', () => {
         summary: 'Original summary',
         structuredState: { key1: 'value1', key2: 'value2' },
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
       const patch = {
-        summary: 'Only summary updated'
-      };
+        summary: 'Only summary updated',
+      }
 
-      const updated = store.applyPatch('ws-patch-002', patch);
-      expect(updated.summary).toBe('Only summary updated');
-      expect(updated.structuredState).toEqual({ key1: 'value1', key2: 'value2' });
-      expect(updated.runId).toBe('run-patch-002');
-    });
+      const updated = store.applyPatch('ws-patch-002', patch)
+      expect(updated.summary).toBe('Only summary updated')
+      expect(updated.structuredState).toEqual({ key1: 'value1', key2: 'value2' })
+      expect(updated.runId).toBe('run-patch-002')
+    })
 
     it('should update updatedAt timestamp on patch', () => {
-      const originalTime = new Date(Date.now() - 10000).toISOString();
+      const originalTime = new Date(Date.now() - 10000).toISOString()
       const record: SummaryRecord = {
         summaryId: 'ws-patch-003',
         summaryType: 'working_summary' as SummaryType,
@@ -362,20 +367,20 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Summary for timestamp test',
         status: 'active',
-        createdAt: originalTime
-      };
+        createdAt: originalTime,
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const beforePatch = new Date().toISOString();
-      const updated = store.applyPatch('ws-patch-003', { summary: 'Updated' });
-      const afterPatch = new Date().toISOString();
+      const beforePatch = new Date().toISOString()
+      const updated = store.applyPatch('ws-patch-003', { summary: 'Updated' })
+      const afterPatch = new Date().toISOString()
 
-      expect(updated.updatedAt).toBeDefined();
-      expect(new Date(updated.updatedAt!).getTime()).toBeGreaterThanOrEqual(new Date(beforePatch).getTime());
-      expect(new Date(updated.updatedAt!).getTime()).toBeLessThanOrEqual(new Date(afterPatch).getTime());
-    });
-  });
+      expect(updated.updatedAt).toBeDefined()
+      expect(new Date(updated.updatedAt!).getTime()).toBeGreaterThanOrEqual(new Date(beforePatch).getTime())
+      expect(new Date(updated.updatedAt!).getTime()).toBeLessThanOrEqual(new Date(afterPatch).getTime())
+    })
+  })
 
   describe('Related refs support', () => {
     it('should store and retrieve relatedRefs', () => {
@@ -387,23 +392,23 @@ describe('Summary Store', () => {
         relatedRefs: {
           plannerRunId: 'planner-001',
           planId: 'plan-001',
-          workflowRunId: 'wf-001'
+          workflowRunId: 'wf-001',
         },
         sourceRefs: { transcriptRefs: ['evt-001'] },
         summary: 'Summary with related refs',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const retrieved = store.getBySummaryId('ws-rel-001');
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.relatedRefs?.plannerRunId).toBe('planner-001');
-      expect(retrieved?.relatedRefs?.planId).toBe('plan-001');
-      expect(retrieved?.relatedRefs?.workflowRunId).toBe('wf-001');
-    });
-  });
+      const retrieved = store.getBySummaryId('ws-rel-001')
+      expect(retrieved).not.toBeNull()
+      expect(retrieved?.relatedRefs?.plannerRunId).toBe('planner-001')
+      expect(retrieved?.relatedRefs?.planId).toBe('plan-001')
+      expect(retrieved?.relatedRefs?.workflowRunId).toBe('wf-001')
+    })
+  })
 
   describe('Retrieval metadata support', () => {
     it('should store and retrieve retrieval metadata', () => {
@@ -418,25 +423,25 @@ describe('Summary Store', () => {
         retrieval: {
           keywords: ['test', 'summary', 'memory'],
           embeddingRef: 'emb-001',
-          importance: 'high'
+          importance: 'high',
         },
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      store.save(record);
+      store.save(record)
 
-      const retrieved = store.getBySummaryId('ws-ret-001');
-      expect(retrieved).not.toBeNull();
-      expect(retrieved?.retrieval?.keywords).toEqual(['test', 'summary', 'memory']);
-      expect(retrieved?.retrieval?.embeddingRef).toBe('emb-001');
-      expect(retrieved?.retrieval?.importance).toBe('high');
-    });
-  });
+      const retrieved = store.getBySummaryId('ws-ret-001')
+      expect(retrieved).not.toBeNull()
+      expect(retrieved?.retrieval?.keywords).toEqual(['test', 'summary', 'memory'])
+      expect(retrieved?.retrieval?.embeddingRef).toBe('emb-001')
+      expect(retrieved?.retrieval?.importance).toBe('high')
+    })
+  })
 
   describe('Status field support', () => {
     it('should support all status values', () => {
-      const statuses = ['candidate', 'validated', 'active', 'superseded', 'archived', 'expired'] as const;
-      
+      const statuses = ['candidate', 'validated', 'active', 'superseded', 'archived', 'expired'] as const
+
       statuses.forEach((status, index) => {
         const record: SummaryRecord = {
           summaryId: `ws-status-${index}`,
@@ -446,18 +451,18 @@ describe('Summary Store', () => {
           sourceRefs: { transcriptRefs: ['evt-001'] },
           summary: `Summary with status ${status}`,
           status,
-          createdAt: new Date().toISOString()
-        };
+          createdAt: new Date().toISOString(),
+        }
 
-        store.save(record);
-      });
+        store.save(record)
+      })
 
       statuses.forEach((status, index) => {
-        const retrieved = store.getBySummaryId(`ws-status-${index}`);
-        expect(retrieved?.status).toBe(status);
-      });
-    });
-  });
+        const retrieved = store.getBySummaryId(`ws-status-${index}`)
+        expect(retrieved?.status).toBe(status)
+      })
+    })
+  })
 
   describe('sourceRefs validation', () => {
     it('should accept transcriptRefs as valid source', () => {
@@ -469,11 +474,11 @@ describe('Summary Store', () => {
         sourceRefs: { transcriptRefs: ['evt-001', 'evt-002'] },
         summary: 'Summary with transcript refs',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      expect(() => store.save(record)).not.toThrow();
-    });
+      expect(() => store.save(record)).not.toThrow()
+    })
 
     it('should accept eventRange as valid source', () => {
       const record: SummaryRecord = {
@@ -484,16 +489,16 @@ describe('Summary Store', () => {
         sourceRefs: {
           eventRange: {
             startEventId: 'evt-001',
-            endEventId: 'evt-010'
-          }
+            endEventId: 'evt-010',
+          },
         },
         summary: 'Summary with event range',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      expect(() => store.save(record)).not.toThrow();
-    });
+      expect(() => store.save(record)).not.toThrow()
+    })
 
     it('should accept previousSummaryRefs as valid source', () => {
       const record: SummaryRecord = {
@@ -504,13 +509,13 @@ describe('Summary Store', () => {
         sourceRefs: { previousSummaryRefs: ['ws-prev-001'] },
         summary: 'Summary with previous summary refs',
         status: 'active',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      expect(() => store.save(record)).not.toThrow();
-    });
-  });
-});
+      expect(() => store.save(record)).not.toThrow()
+    })
+  })
+})
 
 function createSummaryMigration() {
   return {
@@ -573,6 +578,6 @@ function createSummaryMigration() {
       DROP INDEX IF EXISTS idx_summaries_run_id;
       DROP INDEX IF EXISTS idx_summaries_session_id;
       DROP TABLE IF EXISTS summaries;
-    `
-  };
+    `,
+  }
 }

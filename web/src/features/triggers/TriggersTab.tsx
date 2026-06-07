@@ -1,91 +1,89 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import * as triggersApi from '../../api/triggers';
-import type { TriggerResponse, TriggerLogEntry } from '../../api/types';
-import TriggerCreateDialog from './TriggerCreateDialog';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import React, { useCallback, useEffect, useState } from 'react'
+import * as triggersApi from '../../api/triggers'
+import type { TriggerResponse, TriggerLogEntry } from '../../api/types'
+import TriggerCreateDialog from './TriggerCreateDialog'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import EmptyState from '../../components/EmptyState'
 
 const TriggersTab: React.FC = () => {
-  const [triggers, setTriggers] = useState<TriggerResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedTrigger, setSelectedTrigger] = useState<TriggerResponse | null>(null);
-  const [logs, setLogs] = useState<TriggerLogEntry[]>([]);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [triggers, setTriggers] = useState<TriggerResponse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedTrigger, setSelectedTrigger] = useState<TriggerResponse | null>(null)
+  const [logs, setLogs] = useState<TriggerLogEntry[]>([])
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [toggleLoading, setToggleLoading] = useState<string | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   const loadTriggers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const data = await triggersApi.getTriggers();
-      setTriggers(data);
+      const data = await triggersApi.getTriggers()
+      setTriggers(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载触发器失败');
+      setError(err instanceof Error ? err.message : '加载触发器失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadTriggers();
-  }, [loadTriggers]);
+    loadTriggers()
+  }, [loadTriggers])
 
   const handleToggleStatus = async (triggerId: string, currentStatus: 'active' | 'paused') => {
-    const newStatus = currentStatus === 'active' ? 'paused' : 'active';
-    setToggleLoading(triggerId);
+    const newStatus = currentStatus === 'active' ? 'paused' : 'active'
+    setToggleLoading(triggerId)
     try {
-      const updated = await triggersApi.toggleTrigger(triggerId, newStatus);
-      setTriggers((prev) =>
-        prev.map((t) => (t.triggerId === triggerId ? updated : t))
-      );
+      const updated = await triggersApi.toggleTrigger(triggerId, newStatus)
+      setTriggers((prev) => prev.map((t) => (t.triggerId === triggerId ? updated : t)))
       if (selectedTrigger?.triggerId === triggerId) {
-        setSelectedTrigger(updated);
+        setSelectedTrigger(updated)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '切换状态失败');
+      setError(err instanceof Error ? err.message : '切换状态失败')
     } finally {
-      setToggleLoading(null);
+      setToggleLoading(null)
     }
-  };
+  }
 
   const handleSelectTrigger = async (trigger: TriggerResponse) => {
-    setSelectedTrigger(trigger);
-    setLogs([]);
-    setLogsLoading(true);
+    setSelectedTrigger(trigger)
+    setLogs([])
+    setLogsLoading(true)
     try {
-      const result = await triggersApi.getTriggerLogs(trigger.triggerId, 20);
-      setLogs(result.logs);
+      const result = await triggersApi.getTriggerLogs(trigger.triggerId, 20)
+      setLogs(result.logs)
     } catch {
-      setLogs([]);
+      setLogs([])
     } finally {
-      setLogsLoading(false);
+      setLogsLoading(false)
     }
-  };
+  }
 
-  const scheduleTriggers = triggers.filter((t) => t.triggerType === 'schedule');
-  const webhookTriggers = triggers.filter((t) => t.triggerType === 'webhook');
+  const scheduleTriggers = triggers.filter((t) => t.triggerType === 'schedule')
+  const webhookTriggers = triggers.filter((t) => t.triggerType === 'webhook')
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString('zh-CN');
+      return new Date(dateStr).toLocaleString('zh-CN')
     } catch {
-      return dateStr;
+      return dateStr
     }
-  };
+  }
 
   const getStatusLabel = (status: string) => {
-    return status === 'active' ? '启用' : '暂停';
-  };
+    return status === 'active' ? '启用' : '暂停'
+  }
 
   if (loading) {
     return (
       <div data-testid="triggers-panel" className="triggers-panel">
         <LoadingSpinner size="large" label="加载触发器列表..." />
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -97,7 +95,7 @@ const TriggersTab: React.FC = () => {
           size="large"
         />
       </div>
-    );
+    )
   }
 
   if (triggers.length === 0) {
@@ -115,7 +113,7 @@ const TriggersTab: React.FC = () => {
           onSuccess={loadTriggers}
         />
       </div>
-    );
+    )
   }
 
   return (
@@ -133,11 +131,7 @@ const TriggersTab: React.FC = () => {
             </button>
           </div>
           {scheduleTriggers.length === 0 ? (
-            <EmptyState
-              icon="⏰"
-              title="暂无定时触发器"
-              description="创建定时触发器以按计划执行任务"
-            />
+            <EmptyState icon="⏰" title="暂无定时触发器" description="创建定时触发器以按计划执行任务" />
           ) : (
             <div className="triggers-list">
               {scheduleTriggers.map((trigger) => (
@@ -149,9 +143,7 @@ const TriggersTab: React.FC = () => {
                 >
                   <div className="trigger-header">
                     <span className="trigger-name">{trigger.name}</span>
-                    <span className={`trigger-status ${trigger.status}`}>
-                      {getStatusLabel(trigger.status)}
-                    </span>
+                    <span className={`trigger-status ${trigger.status}`}>{getStatusLabel(trigger.status)}</span>
                   </div>
                   <div className="trigger-meta">
                     <span>Cron: {trigger.cronExpression || '-'}</span>
@@ -161,8 +153,8 @@ const TriggersTab: React.FC = () => {
                     className={`toggle-btn ${trigger.status}`}
                     data-testid={`toggle-trigger-${trigger.triggerId}`}
                     onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleStatus(trigger.triggerId, trigger.status);
+                      e.stopPropagation()
+                      handleToggleStatus(trigger.triggerId, trigger.status)
                     }}
                     disabled={toggleLoading === trigger.triggerId}
                   >
@@ -175,11 +167,7 @@ const TriggersTab: React.FC = () => {
 
           <h4 style={{ marginTop: '24px' }}>Webhook 触发器</h4>
           {webhookTriggers.length === 0 ? (
-            <EmptyState
-              icon="🔗"
-              title="暂无 Webhook 触发器"
-              description="创建 Webhook 触发器以响应外部事件"
-            />
+            <EmptyState icon="🔗" title="暂无 Webhook 触发器" description="创建 Webhook 触发器以响应外部事件" />
           ) : (
             <div className="triggers-list">
               {webhookTriggers.map((trigger) => (
@@ -191,9 +179,7 @@ const TriggersTab: React.FC = () => {
                 >
                   <div className="trigger-header">
                     <span className="trigger-name">{trigger.name}</span>
-                    <span className={`trigger-status ${trigger.status}`}>
-                      {getStatusLabel(trigger.status)}
-                    </span>
+                    <span className={`trigger-status ${trigger.status}`}>{getStatusLabel(trigger.status)}</span>
                   </div>
                   <div className="trigger-meta">
                     <span>Key: {trigger.webhookKey || '-'}</span>
@@ -203,8 +189,8 @@ const TriggersTab: React.FC = () => {
                     className={`toggle-btn ${trigger.status}`}
                     data-testid={`toggle-trigger-${trigger.triggerId}`}
                     onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleStatus(trigger.triggerId, trigger.status);
+                      e.stopPropagation()
+                      handleToggleStatus(trigger.triggerId, trigger.status)
                     }}
                     disabled={toggleLoading === trigger.triggerId}
                   >
@@ -222,11 +208,7 @@ const TriggersTab: React.FC = () => {
             {logsLoading ? (
               <LoadingSpinner size="small" label="加载日志..." />
             ) : logs.length === 0 ? (
-              <EmptyState
-                icon="📋"
-                title="暂无执行日志"
-                description="此触发器还没有执行记录"
-              />
+              <EmptyState icon="📋" title="暂无执行日志" description="此触发器还没有执行记录" />
             ) : (
               <table className="logs-table" data-testid="trigger-logs-table">
                 <thead>
@@ -259,7 +241,7 @@ const TriggersTab: React.FC = () => {
         onSuccess={loadTriggers}
       />
     </div>
-  );
-};
+  )
+}
 
-export default TriggersTab;
+export default TriggersTab

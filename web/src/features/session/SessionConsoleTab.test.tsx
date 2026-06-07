@@ -1,8 +1,8 @@
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import SessionConsoleTab from './SessionConsoleTab';
-import { mockViewport, resetMatchMedia } from '../../test/setup';
-import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../api/types';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import SessionConsoleTab from './SessionConsoleTab'
+import { mockViewport, resetMatchMedia } from '../../test/setup'
+import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../api/types'
 
 vi.mock('../../api/client', () => ({
   getSessions: vi.fn(),
@@ -11,56 +11,56 @@ vi.mock('../../api/client', () => ({
   getSessionTimeline: vi.fn(),
   sendMessage: vi.fn(),
   subscribeSessionTimeline: vi.fn(),
-}));
+}))
 
-import * as api from '../../api/client';
+import * as api from '../../api/client'
 
-const mockGetSessions = api.getSessions as ReturnType<typeof vi.fn>;
-const mockCreateSession = api.createSession as ReturnType<typeof vi.fn>;
-const mockGetSession = api.getSession as ReturnType<typeof vi.fn>;
-const mockGetSessionTimeline = api.getSessionTimeline as ReturnType<typeof vi.fn>;
-const mockSendMessage = api.sendMessage as ReturnType<typeof vi.fn>;
-const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>;
+const mockGetSessions = api.getSessions as ReturnType<typeof vi.fn>
+const mockCreateSession = api.createSession as ReturnType<typeof vi.fn>
+const mockGetSession = api.getSession as ReturnType<typeof vi.fn>
+const mockGetSessionTimeline = api.getSessionTimeline as ReturnType<typeof vi.fn>
+const mockSendMessage = api.sendMessage as ReturnType<typeof vi.fn>
+const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>
 
-const SELECTED_SESSION_KEY = 'session-console-selected-session';
+const SELECTED_SESSION_KEY = 'session-console-selected-session'
 
 describe('SessionConsoleTab', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
-    localStorage.clear();
-  });
+    vi.clearAllMocks()
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    localStorage.clear()
+  })
 
   afterEach(() => {
-    vi.useRealTimers();
-    localStorage.clear();
-  });
+    vi.useRealTimers()
+    localStorage.clear()
+  })
 
   it('fetches sessions list on mount', async () => {
     mockGetSessions.mockResolvedValue({
       sessions: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockGetSessions).toHaveBeenCalledTimes(1);
-    });
-  });
+      expect(mockGetSessions).toHaveBeenCalledTimes(1)
+    })
+  })
 
   it('shows empty state when no sessions exist', async () => {
     mockGetSessions.mockResolvedValue({
       sessions: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-empty-state')).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByTestId('session-empty-state')).toBeInTheDocument()
+    })
+  })
 
   it('shows sessions list when sessions exist', async () => {
     mockGetSessions.mockResolvedValue({
@@ -77,21 +77,21 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('sessions-list')).toBeInTheDocument();
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByTestId('sessions-list')).toBeInTheDocument()
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+  })
 
   it('creates new session when clicking new session button', async () => {
     mockGetSessions.mockResolvedValue({
       sessions: [],
       total: 0,
-    });
+    })
     mockCreateSession.mockResolvedValue({
       session: {
         sessionId: 'session-new',
@@ -101,7 +101,7 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-new',
@@ -111,29 +111,29 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-new-button')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-new-button')).toBeInTheDocument()
+    })
 
     // Wait for the button to be enabled (not disabled by sessionsLoading)
     await waitFor(() => {
-      expect(screen.getByTestId('session-new-button')).not.toBeDisabled();
-    });
+      expect(screen.getByTestId('session-new-button')).not.toBeDisabled()
+    })
 
-    fireEvent.click(screen.getByTestId('session-new-button'));
+    fireEvent.click(screen.getByTestId('session-new-button'))
 
     await waitFor(() => {
-      expect(mockCreateSession).toHaveBeenCalledTimes(1);
-    });
-  });
+      expect(mockCreateSession).toHaveBeenCalledTimes(1)
+    })
+  })
 
   it('selects session when clicking session item', async () => {
     mockGetSessions.mockResolvedValue({
@@ -150,7 +150,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -160,7 +160,7 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [
         {
@@ -172,25 +172,25 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockGetSession).toHaveBeenCalledWith('session-123');
-      expect(mockGetSessionTimeline).toHaveBeenCalledWith('session-123');
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-timeline')).toBeInTheDocument();
-    });
-  });
+      expect(mockGetSession).toHaveBeenCalledWith('session-123')
+      expect(mockGetSessionTimeline).toHaveBeenCalledWith('session-123')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-timeline')).toBeInTheDocument()
+    })
+  })
 
   it('shows stream status indicator when session is selected', async () => {
     mockGetSessions.mockResolvedValue({
@@ -207,7 +207,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -217,24 +217,24 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-timeline-stream-status')).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-timeline-stream-status')).toBeInTheDocument()
+    })
+  })
 
   it('allows typing and sending nonblank message', async () => {
     mockGetSessions.mockResolvedValue({
@@ -251,7 +251,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -261,7 +261,7 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline
       .mockResolvedValueOnce({
         events: [],
@@ -278,31 +278,31 @@ describe('SessionConsoleTab', () => {
           },
         ],
         total: 1,
-      });
-    mockSendMessage.mockResolvedValue({ accepted: true, turnId: 'turn-1' });
+      })
+    mockSendMessage.mockResolvedValue({ accepted: true, turnId: 'turn-1' })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
 
-    const input = screen.getByTestId('session-message-input');
-    const sendButton = screen.getByTestId('session-send-button');
-
-    fireEvent.change(input, { target: { value: 'Hello world' } });
-    fireEvent.click(sendButton);
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello world');
-    });
-  });
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
+
+    const input = screen.getByTestId('session-message-input')
+    const sendButton = screen.getByTestId('session-send-button')
+
+    fireEvent.change(input, { target: { value: 'Hello world' } })
+    fireEvent.click(sendButton)
+
+    await waitFor(() => {
+      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello world')
+    })
+  })
 
   it('shows sent message immediately while accepted message is still processing', async () => {
     mockGetSessions.mockResolvedValue({
@@ -319,7 +319,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -329,43 +329,45 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    let resolveSendMessage: (value: { accepted: boolean }) => void = () => {};
-    mockSendMessage.mockReturnValue(new Promise((resolve) => {
-      resolveSendMessage = resolve;
-    }));
+    let resolveSendMessage: (value: { accepted: boolean }) => void = () => {}
+    mockSendMessage.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSendMessage = resolve
+      }),
+    )
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Queued hello' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      const timeline = screen.getByTestId('session-timeline');
-      expect(within(timeline).getByText('Queued hello')).toBeInTheDocument();
-    });
+      const timeline = screen.getByTestId('session-timeline')
+      expect(within(timeline).getByText('Queued hello')).toBeInTheDocument()
+    })
 
     await act(async () => {
-      resolveSendMessage({ accepted: true });
-    });
-  });
+      resolveSendMessage({ accepted: true })
+    })
+  })
 
   it('keeps a new pending message visible when older server message has same content', async () => {
     mockGetSessions.mockResolvedValue({
@@ -382,7 +384,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -392,7 +394,7 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [
         {
@@ -404,34 +406,34 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
-    mockSendMessage.mockReturnValue(new Promise(() => {}));
+    })
+    mockSendMessage.mockReturnValue(new Promise(() => {}))
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Repeat' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      const timeline = screen.getByTestId('session-timeline');
-      expect(within(timeline).getAllByText('Repeat')).toHaveLength(2);
-    });
-  });
+      const timeline = screen.getByTestId('session-timeline')
+      expect(within(timeline).getAllByText('Repeat')).toHaveLength(2)
+    })
+  })
 
   it('keeps the second identical pending message visible after one server confirmation arrives', async () => {
-    let timelineEvents: ConsoleTimelineEvent[] = [];
+    let timelineEvents: ConsoleTimelineEvent[] = []
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -447,7 +449,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -457,35 +459,35 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockImplementation(() => Promise.resolve({
-      events: timelineEvents,
-      total: timelineEvents.length,
-    }));
-    mockSendMessage
-      .mockResolvedValueOnce({ accepted: true })
-      .mockReturnValueOnce(new Promise(() => {}));
+    })
+    mockGetSessionTimeline.mockImplementation(() =>
+      Promise.resolve({
+        events: timelineEvents,
+        total: timelineEvents.length,
+      }),
+    )
+    mockSendMessage.mockResolvedValueOnce({ accepted: true }).mockReturnValueOnce(new Promise(() => {}))
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Same' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getAllByText('Same')).toHaveLength(1);
-    });
+      expect(screen.getAllByText('Same')).toHaveLength(1)
+    })
 
     timelineEvents = [
       {
@@ -495,27 +497,27 @@ describe('SessionConsoleTab', () => {
         timestamp: '2024-01-01T00:00:01.000Z',
         content: 'Same',
       },
-    ];
+    ]
 
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
-    });
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
 
     await waitFor(() => {
-      const timeline = screen.getByTestId('session-timeline');
-      expect(within(timeline).getAllByText('Same')).toHaveLength(1);
-    });
+      const timeline = screen.getByTestId('session-timeline')
+      expect(within(timeline).getAllByText('Same')).toHaveLength(1)
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Same' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      const timeline = screen.getByTestId('session-timeline');
-      expect(within(timeline).getAllByText('Same')).toHaveLength(2);
-    });
-  });
+      const timeline = screen.getByTestId('session-timeline')
+      expect(within(timeline).getAllByText('Same')).toHaveLength(2)
+    })
+  })
 
   it('removes all identical pending messages after staggered server confirmations arrive', async () => {
     const firstConfirmedEvent = {
@@ -524,14 +526,14 @@ describe('SessionConsoleTab', () => {
       sessionId: 'session-123',
       timestamp: '2024-01-01T00:00:01.000Z',
       content: 'Staggered',
-    };
+    }
     const secondConfirmedEvent = {
       eventId: 'event-confirmed-staggered-2',
       eventType: 'user_message' as const,
       sessionId: 'session-123',
       timestamp: '2024-01-01T00:00:02.000Z',
       content: 'Staggered',
-    };
+    }
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -547,7 +549,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -557,7 +559,7 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline
       .mockResolvedValueOnce({
         events: [],
@@ -570,60 +572,60 @@ describe('SessionConsoleTab', () => {
       .mockResolvedValue({
         events: [firstConfirmedEvent],
         total: 1,
-      });
-    mockSendMessage.mockResolvedValue({ accepted: true });
+      })
+    mockSendMessage.mockResolvedValue({ accepted: true })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Staggered' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getAllByText('Staggered')).toHaveLength(1);
-    });
+      expect(screen.getAllByText('Staggered')).toHaveLength(1)
+    })
 
     mockGetSessionTimeline.mockResolvedValue({
       events: [firstConfirmedEvent],
       total: 1,
-    });
+    })
 
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
-    });
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
 
     await waitFor(() => {
-      expect(screen.getAllByText('Staggered')).toHaveLength(1);
-    });
+      expect(screen.getAllByText('Staggered')).toHaveLength(1)
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Staggered' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getAllByText('Staggered')).toHaveLength(2);
-    });
+      expect(screen.getAllByText('Staggered')).toHaveLength(2)
+    })
 
     await act(async () => {
-      mockSubscribeSessionTimeline.mock.calls[0][1](secondConfirmedEvent);
-    });
+      mockSubscribeSessionTimeline.mock.calls[0][1](secondConfirmedEvent)
+    })
 
     await waitFor(() => {
-      expect(screen.getAllByText('Staggered')).toHaveLength(2);
-    });
-  });
+      expect(screen.getAllByText('Staggered')).toHaveLength(2)
+    })
+  })
 
   it('blocks blank input client-side', async () => {
     mockGetSessions.mockResolvedValue({
@@ -640,7 +642,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -650,32 +652,32 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
 
-    const input = screen.getByTestId('session-message-input');
-    const sendButton = screen.getByTestId('session-send-button');
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
 
-    fireEvent.change(input, { target: { value: '   ' } });
-    fireEvent.click(sendButton);
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
-    expect(mockSendMessage).not.toHaveBeenCalled();
-  });
+    const input = screen.getByTestId('session-message-input')
+    const sendButton = screen.getByTestId('session-send-button')
+
+    fireEvent.change(input, { target: { value: '   ' } })
+    fireEvent.click(sendButton)
+
+    expect(mockSendMessage).not.toHaveBeenCalled()
+  })
 
   it('displays API error and preserves draft', async () => {
     mockGetSessions.mockResolvedValue({
@@ -692,7 +694,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -702,37 +704,37 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
-    mockSendMessage.mockRejectedValue(new Error('API Error'));
+    })
+    mockSendMessage.mockRejectedValue(new Error('API Error'))
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
 
-    const input = screen.getByTestId('session-message-input');
-    fireEvent.change(input, { target: { value: 'Test message' } });
-
-    const sendButton = screen.getByTestId('session-send-button');
-    fireEvent.click(sendButton);
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-error')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
-    expect((input as HTMLInputElement).value).toBe('Test message');
-  });
+    const input = screen.getByTestId('session-message-input')
+    fireEvent.change(input, { target: { value: 'Test message' } })
+
+    const sendButton = screen.getByTestId('session-send-button')
+    fireEvent.click(sendButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-error')).toBeInTheDocument()
+    })
+
+    expect((input as HTMLInputElement).value).toBe('Test message')
+  })
 
   // =============================================================================
   // Async Assistant/Error Rendering Tests (Task 10)
@@ -753,7 +755,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -763,11 +765,11 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
     // POST returns 202 with correlationId/envelopeId but NO assistant content
     mockSendMessage.mockResolvedValue({
@@ -775,44 +777,44 @@ describe('SessionConsoleTab', () => {
       status: 'accepted',
       correlationId: 'corr-123',
       envelopeId: 'env-456',
-    });
+    })
 
-    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
+    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent) => {
-      timelineCallback = onEvent;
-      return () => {};
-    });
+      timelineCallback = onEvent
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     // Send a message
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Hello AI' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello AI');
-    });
+      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello AI')
+    })
 
     // Verify user message appears optimistically
     await waitFor(() => {
-      expect(screen.getByText('Hello AI')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Hello AI')).toBeInTheDocument()
+    })
 
     // Verify correlationId/envelopeId are NOT rendered as content
-    expect(screen.queryByText('corr-123')).not.toBeInTheDocument();
-    expect(screen.queryByText('env-456')).not.toBeInTheDocument();
+    expect(screen.queryByText('corr-123')).not.toBeInTheDocument()
+    expect(screen.queryByText('env-456')).not.toBeInTheDocument()
 
     // Simulate SSE assistant_message event arriving
     const assistantEvent: ConsoleTimelineEvent = {
@@ -822,20 +824,20 @@ describe('SessionConsoleTab', () => {
       timestamp: new Date().toISOString(),
       content: 'Hello! I am your AI assistant. How can I help you today?',
       actor: 'assistant',
-    };
+    }
 
     await act(async () => {
-      timelineCallback?.(assistantEvent);
-    });
+      timelineCallback?.(assistantEvent)
+    })
 
     // Verify assistant message now appears
     await waitFor(() => {
-      expect(screen.getByText('Hello! I am your AI assistant. How can I help you today?')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Hello! I am your AI assistant. How can I help you today?')).toBeInTheDocument()
+    })
 
     // Verify the assistant event type label is shown
-    expect(screen.getByText('Assistant')).toBeInTheDocument();
-  });
+    expect(screen.getByText('Assistant')).toBeInTheDocument()
+  })
 
   it('does not render correlationId or envelopeId from POST response as content', async () => {
     mockGetSessions.mockResolvedValue({
@@ -852,7 +854,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -862,11 +864,11 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
     // POST returns only correlation metadata, NO assistant content
     mockSendMessage.mockResolvedValue({
@@ -874,46 +876,46 @@ describe('SessionConsoleTab', () => {
       status: 'accepted',
       correlationId: 'test-correlation-id-abc123',
       envelopeId: 'test-envelope-id-xyz789',
-    });
+    })
 
-    mockSubscribeSessionTimeline.mockImplementation(() => () => {});
+    mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     // Send a message
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Test message content' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalled();
-    });
+      expect(mockSendMessage).toHaveBeenCalled()
+    })
 
     // Verify ONLY the user message appears
     await waitFor(() => {
-      expect(screen.getByText('Test message content')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Test message content')).toBeInTheDocument()
+    })
 
     // CRITICAL: CorrelationId and envelopeId MUST NOT appear as rendered content
-    expect(screen.queryByText('test-correlation-id-abc123')).not.toBeInTheDocument();
-    expect(screen.queryByText('test-envelope-id-xyz789')).not.toBeInTheDocument();
-    expect(screen.queryByText(/corr/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/envelope/)).not.toBeInTheDocument();
+    expect(screen.queryByText('test-correlation-id-abc123')).not.toBeInTheDocument()
+    expect(screen.queryByText('test-envelope-id-xyz789')).not.toBeInTheDocument()
+    expect(screen.queryByText(/corr/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/envelope/)).not.toBeInTheDocument()
 
     // Verify no assistant content is rendered (none in POST response)
-    expect(screen.queryByText('Assistant (streaming)')).not.toBeInTheDocument();
-  });
+    expect(screen.queryByText('Assistant (streaming)')).not.toBeInTheDocument()
+  })
 
   it('shows assistant processing placeholder immediately after sending and clears it on final assistant event', async () => {
     mockGetSessions.mockResolvedValue({
@@ -930,7 +932,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -940,45 +942,45 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-placeholder',
       envelopeId: 'corr-placeholder',
-    });
+    })
 
-    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
+    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent) => {
-      timelineCallback = onEvent;
-      return () => {};
-    });
+      timelineCallback = onEvent
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Needs placeholder' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toHaveAttribute('data-attempt-id', 'corr-placeholder');
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toHaveAttribute('data-attempt-id', 'corr-placeholder')
+    })
 
     await act(async () => {
       timelineCallback?.({
@@ -989,14 +991,14 @@ describe('SessionConsoleTab', () => {
         content: 'Final response',
         metadata: { turnId: 'corr-placeholder' },
         actor: 'assistant',
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-    });
-    expect(screen.getByText('Final response')).toBeInTheDocument();
-  });
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Final response')).toBeInTheDocument()
+  })
 
   it('renders streaming token drafts and clears them on final assistant event', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1013,7 +1015,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1023,43 +1025,43 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-stream',
       envelopeId: 'corr-stream',
-    });
+    })
 
-    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
-    let tokenCallback: ((token: TokenStreamPayload) => void) | null = null;
+    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null
+    let tokenCallback: ((token: TokenStreamPayload) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent, _onError, _onStatus, onToken) => {
-      timelineCallback = onEvent;
-      tokenCallback = onToken;
-      return () => {};
-    });
+      timelineCallback = onEvent
+      tokenCallback = onToken
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Stream please' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await act(async () => {
       tokenCallback?.({
@@ -1068,20 +1070,20 @@ describe('SessionConsoleTab', () => {
         sequence: 1,
         delta: 'Hello',
         timestamp: new Date().toISOString(),
-      });
+      })
       tokenCallback?.({
         sessionId: 'session-123',
         attemptId: 'corr-stream',
         sequence: 2,
         delta: ' world',
         timestamp: new Date().toISOString(),
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-      expect(screen.getByTestId('streaming-assistant-draft')).toHaveTextContent('Hello world');
-    });
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+      expect(screen.getByTestId('streaming-assistant-draft')).toHaveTextContent('Hello world')
+    })
 
     await act(async () => {
       timelineCallback?.({
@@ -1092,14 +1094,14 @@ describe('SessionConsoleTab', () => {
         content: 'Hello world final',
         metadata: { turnId: 'corr-stream' },
         actor: 'assistant',
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('streaming-assistant-draft')).not.toBeInTheDocument();
-    });
-    expect(screen.getByText('Hello world final')).toBeInTheDocument();
-  });
+      expect(screen.queryByTestId('streaming-assistant-draft')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Hello world final')).toBeInTheDocument()
+  })
 
   it('renders assistant placeholder inside timeline at correct position after user message', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1116,7 +1118,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1126,49 +1128,47 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-timeline-order',
       envelopeId: 'corr-timeline-order',
-    });
+    })
 
-    mockSubscribeSessionTimeline.mockImplementation(() => () => {});
+    mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Timeline order test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
-    const timeline = screen.getByTestId('session-timeline');
-    const timelineList = timeline.querySelector('.timeline-list');
-    const placeholder = screen.getByTestId('assistant-placeholder');
-    const userMessage = screen.getByText('Timeline order test');
+    const timeline = screen.getByTestId('session-timeline')
+    const timelineList = timeline.querySelector('.timeline-list')
+    const placeholder = screen.getByTestId('assistant-placeholder')
+    const userMessage = screen.getByText('Timeline order test')
 
-    expect(timelineList).not.toBeNull();
-    expect(timelineList?.contains(placeholder)).toBe(true);
-    expect(
-      userMessage.compareDocumentPosition(placeholder) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-  });
+    expect(timelineList).not.toBeNull()
+    expect(timelineList?.contains(placeholder)).toBe(true)
+    expect(userMessage.compareDocumentPosition(placeholder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 
   it('renders streaming draft inside timeline at correct position after user message', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1185,7 +1185,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1195,41 +1195,41 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-stream-order',
       envelopeId: 'corr-stream-order',
-    });
+    })
 
-    let tokenCallback: ((token: TokenStreamPayload) => void) | null = null;
+    let tokenCallback: ((token: TokenStreamPayload) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, _onError, _onStatus, onToken) => {
-      tokenCallback = onToken;
-      return () => {};
-    });
+      tokenCallback = onToken
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Stream order test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await act(async () => {
       tokenCallback?.({
@@ -1238,25 +1238,23 @@ describe('SessionConsoleTab', () => {
         sequence: 1,
         delta: 'Streaming content',
         timestamp: new Date().toISOString(),
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-      expect(screen.getByTestId('streaming-assistant-draft')).toBeInTheDocument();
-    });
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+      expect(screen.getByTestId('streaming-assistant-draft')).toBeInTheDocument()
+    })
 
-    const timeline = screen.getByTestId('session-timeline');
-    const timelineList = timeline.querySelector('.timeline-list');
-    const streamingDraft = screen.getByTestId('streaming-assistant-draft');
-    const userMessage = screen.getByText('Stream order test');
+    const timeline = screen.getByTestId('session-timeline')
+    const timelineList = timeline.querySelector('.timeline-list')
+    const streamingDraft = screen.getByTestId('streaming-assistant-draft')
+    const userMessage = screen.getByText('Stream order test')
 
-    expect(timelineList).not.toBeNull();
-    expect(timelineList?.contains(streamingDraft)).toBe(true);
-    expect(
-      userMessage.compareDocumentPosition(streamingDraft) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-  });
+    expect(timelineList).not.toBeNull()
+    expect(timelineList?.contains(streamingDraft)).toBe(true)
+    expect(userMessage.compareDocumentPosition(streamingDraft) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 
   it('promotes the pending placeholder when a token arrives before POST resolves', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1273,7 +1271,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1283,40 +1281,47 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    let resolveSend: (value: { accepted: boolean; status: string; correlationId: string; envelopeId: string }) => void = () => {};
-    mockSendMessage.mockReturnValue(new Promise((resolve) => {
-      resolveSend = resolve;
-    }));
+    let resolveSend: (value: {
+      accepted: boolean
+      status: string
+      correlationId: string
+      envelopeId: string
+    }) => void = () => {}
+    mockSendMessage.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSend = resolve
+      }),
+    )
 
-    let tokenCallback: ((token: TokenStreamPayload) => void) | null = null;
+    let tokenCallback: ((token: TokenStreamPayload) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, _onError, _onStatus, onToken) => {
-      tokenCallback = onToken;
-      return () => {};
-    });
+      tokenCallback = onToken
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Early token please' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await act(async () => {
       tokenCallback?.({
@@ -1325,14 +1330,14 @@ describe('SessionConsoleTab', () => {
         sequence: 1,
         delta: 'Early stream',
         timestamp: new Date().toISOString(),
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-      expect(screen.getByTestId('streaming-assistant-draft')).toHaveAttribute('data-attempt-id', 'corr-early-token');
-      expect(screen.getByTestId('streaming-assistant-draft')).toHaveTextContent('Early stream');
-    });
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+      expect(screen.getByTestId('streaming-assistant-draft')).toHaveAttribute('data-attempt-id', 'corr-early-token')
+      expect(screen.getByTestId('streaming-assistant-draft')).toHaveTextContent('Early stream')
+    })
 
     await act(async () => {
       resolveSend({
@@ -1340,12 +1345,12 @@ describe('SessionConsoleTab', () => {
         status: 'accepted',
         correlationId: 'corr-early-token',
         envelopeId: 'env-early-token',
-      });
-    });
+      })
+    })
 
-    expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-    expect(screen.getByTestId('streaming-assistant-draft')).toHaveTextContent('Early stream');
-  });
+    expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+    expect(screen.getByTestId('streaming-assistant-draft')).toHaveTextContent('Early stream')
+  })
 
   it('does not render pending assistant activity from another selected session', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1372,52 +1377,54 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 2,
-    });
-    mockGetSession.mockImplementation((sessionId: string) => Promise.resolve({
-      session: {
-        sessionId,
-        userId: 'user-1',
-        messageCount: 0,
-        lastActivityAt: new Date().toISOString(),
-        activePlannerRunIds: [],
-        activeBackgroundRunIds: [],
-      },
-    }));
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
-    mockSendMessage.mockReturnValue(new Promise(() => {}));
-    mockSubscribeSessionTimeline.mockImplementation(() => () => {});
+    })
+    mockGetSession.mockImplementation((sessionId: string) =>
+      Promise.resolve({
+        session: {
+          sessionId,
+          userId: 'user-1',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          activePlannerRunIds: [],
+          activeBackgroundRunIds: [],
+        },
+      }),
+    )
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockSendMessage.mockReturnValue(new Promise(() => {}))
+    mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-one')).toBeInTheDocument();
-      expect(screen.getByTestId('session-item-session-two')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-one'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-one')).toBeInTheDocument()
+      expect(screen.getByTestId('session-item-session-two')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-one'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Keep this pending' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
-    fireEvent.click(screen.getByTestId('session-item-session-two'));
+    fireEvent.click(screen.getByTestId('session-item-session-two'))
 
     await waitFor(() => {
-      expect(screen.getByText('Session sion-two')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Session sion-two')).toBeInTheDocument()
+    })
 
-    expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('streaming-assistant-draft')).not.toBeInTheDocument();
-  });
+    expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('streaming-assistant-draft')).not.toBeInTheDocument()
+  })
 
   it('renders processing status payload details from SSE', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1434,7 +1441,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1444,26 +1451,26 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    let statusCallback: ((status: ProcessingStatusPayload) => void) | null = null;
+    let statusCallback: ((status: ProcessingStatusPayload) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, _onError, onStatus) => {
-      statusCallback = onStatus;
-      return () => {};
-    });
+      statusCallback = onStatus
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByText('就绪')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByText('就绪')).toBeInTheDocument()
+    })
 
     await act(async () => {
       statusCallback?.({
@@ -1481,16 +1488,16 @@ describe('SessionConsoleTab', () => {
         },
         activeTools: [{ toolId: 'docs.search', status: 'running' }],
         timestamp: new Date().toISOString(),
-      });
-    });
+      })
+    })
 
-    expect(screen.getByText('模型：openrouter/gpt-test')).toBeInTheDocument();
-    expect(screen.getByText('阶段：模型调用')).toBeInTheDocument();
-    expect(screen.getByText('上下文：15/100')).toBeInTheDocument();
-    expect(screen.getByText('工具：docs.search')).toBeInTheDocument();
-    expect(screen.queryByText('模型：未知')).not.toBeInTheDocument();
-    expect(screen.queryByText('上下文：未知')).not.toBeInTheDocument();
-  });
+    expect(screen.getByText('模型：openrouter/gpt-test')).toBeInTheDocument()
+    expect(screen.getByText('阶段：模型调用')).toBeInTheDocument()
+    expect(screen.getByText('上下文：15/100')).toBeInTheDocument()
+    expect(screen.getByText('工具：docs.search')).toBeInTheDocument()
+    expect(screen.queryByText('模型：未知')).not.toBeInTheDocument()
+    expect(screen.queryByText('上下文：未知')).not.toBeInTheDocument()
+  })
 
   it('renders error event from SSE timeline and keeps input usable', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1507,7 +1514,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1517,46 +1524,46 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-789',
       envelopeId: 'env-012',
-    });
+    })
 
-    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
+    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent) => {
-      timelineCallback = onEvent;
-      return () => {};
-    });
+      timelineCallback = onEvent
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     // Send a message
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Trigger error test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalled();
-    });
+      expect(mockSendMessage).toHaveBeenCalled()
+    })
 
     // Simulate SSE error event arriving
     const errorEvent: ConsoleTimelineEvent = {
@@ -1569,31 +1576,31 @@ describe('SessionConsoleTab', () => {
         errorCode: 'PROVIDER_ERROR',
         recoverable: true,
       },
-    };
+    }
 
     await act(async () => {
-      timelineCallback?.(errorEvent);
-    });
+      timelineCallback?.(errorEvent)
+    })
 
     // Verify error event appears in timeline
     await waitFor(() => {
-      expect(screen.getByText('Failed to process request: LLM provider unavailable')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Failed to process request: LLM provider unavailable')).toBeInTheDocument()
+    })
 
     // Verify the error event type label is shown
-    expect(screen.getByText('Error')).toBeInTheDocument();
+    expect(screen.getByText('Error')).toBeInTheDocument()
 
     // Verify input remains usable (not disabled, can type)
-    const input = screen.getByTestId('session-message-input');
-    expect(input).not.toBeDisabled();
+    const input = screen.getByTestId('session-message-input')
+    expect(input).not.toBeDisabled()
 
     // Verify we can send another message after error
-    fireEvent.change(input, { target: { value: 'Retry after error' } });
-    expect((input as HTMLInputElement).value).toBe('Retry after error');
+    fireEvent.change(input, { target: { value: 'Retry after error' } })
+    expect((input as HTMLInputElement).value).toBe('Retry after error')
 
-    const sendButton = screen.getByTestId('session-send-button');
-    expect(sendButton).not.toBeDisabled();
-  });
+    const sendButton = screen.getByTestId('session-send-button')
+    expect(sendButton).not.toBeDisabled()
+  })
 
   it('handles multiple async events: user message, assistant response, then error', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1610,7 +1617,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1620,46 +1627,46 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-flow',
       envelopeId: 'env-flow',
-    });
+    })
 
-    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
+    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent) => {
-      timelineCallback = onEvent;
-      return () => {};
-    });
+      timelineCallback = onEvent
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     // First message
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'First query' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByText('First query')).toBeInTheDocument();
-    });
+      expect(screen.getByText('First query')).toBeInTheDocument()
+    })
 
     // Assistant responds
     await act(async () => {
@@ -1670,12 +1677,12 @@ describe('SessionConsoleTab', () => {
         timestamp: new Date().toISOString(),
         content: 'Response to first query',
         actor: 'assistant',
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.getByText('Response to first query')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Response to first query')).toBeInTheDocument()
+    })
 
     // Error occurs (e.g., in a follow-up tool call)
     await act(async () => {
@@ -1686,18 +1693,18 @@ describe('SessionConsoleTab', () => {
         timestamp: new Date().toISOString(),
         content: 'Tool execution failed: timeout',
         metadata: { recoverable: true },
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.getByText('Tool execution failed: timeout')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Tool execution failed: timeout')).toBeInTheDocument()
+    })
 
     // Verify input is still usable after error
-    const input = screen.getByTestId('session-message-input');
-    fireEvent.change(input, { target: { value: 'Second query after error' } });
-    expect((input as HTMLInputElement).value).toBe('Second query after error');
-  });
+    const input = screen.getByTestId('session-message-input')
+    fireEvent.change(input, { target: { value: 'Second query after error' } })
+    expect((input as HTMLInputElement).value).toBe('Second query after error')
+  })
 
   it('POST response with correlationId/envelopeId but no assistant content does not break optimistic rendering', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1714,7 +1721,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1724,11 +1731,11 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
     // Simulate backend returning 202 with only metadata
     mockSendMessage.mockResolvedValue({
@@ -1736,41 +1743,41 @@ describe('SessionConsoleTab', () => {
       status: 'accepted',
       correlationId: 'metadata-only-corr',
       envelopeId: 'metadata-only-env',
-    });
+    })
 
-    mockSubscribeSessionTimeline.mockImplementation(() => () => {});
+    mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     // Send message
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Optimistic test' },
-    });
+    })
 
-    let resolveSend: (value: { accepted: boolean; correlationId: string; envelopeId: string; status: string }) => void;
+    let resolveSend: (value: { accepted: boolean; correlationId: string; envelopeId: string; status: string }) => void
     mockSendMessage.mockReturnValueOnce(
       new Promise((resolve) => {
-        resolveSend = resolve;
-      })
-    );
+        resolveSend = resolve
+      }),
+    )
 
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     // Optimistic message appears immediately, before POST completes
     await waitFor(() => {
-      const timeline = screen.getByTestId('session-timeline');
-      expect(within(timeline).getByText('Optimistic test')).toBeInTheDocument();
-    });
+      const timeline = screen.getByTestId('session-timeline')
+      expect(within(timeline).getByText('Optimistic test')).toBeInTheDocument()
+    })
 
     // Complete the POST
     await act(async () => {
@@ -1779,17 +1786,17 @@ describe('SessionConsoleTab', () => {
         correlationId: 'returned-corr',
         envelopeId: 'returned-env',
         status: 'accepted',
-      });
-    });
+      })
+    })
 
     // Verify optimistic message remains
-    const timeline = screen.getByTestId('session-timeline');
-    expect(within(timeline).getByText('Optimistic test')).toBeInTheDocument();
+    const timeline = screen.getByTestId('session-timeline')
+    expect(within(timeline).getByText('Optimistic test')).toBeInTheDocument()
 
     // Verify correlation/envelope IDs don't appear
-    expect(screen.queryByText('returned-corr')).not.toBeInTheDocument();
-    expect(screen.queryByText('returned-env')).not.toBeInTheDocument();
-  });
+    expect(screen.queryByText('returned-corr')).not.toBeInTheDocument()
+    expect(screen.queryByText('returned-env')).not.toBeInTheDocument()
+  })
 
   it('clears placeholder when SSE assistant message arrives with mismatched metadata', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1806,7 +1813,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1816,41 +1823,41 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-placeholder-mismatch',
       envelopeId: 'env-placeholder-mismatch',
-    });
+    })
 
-    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
+    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent) => {
-      timelineCallback = onEvent;
-      return () => {};
-    });
+      timelineCallback = onEvent
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Mismatched metadata test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await act(async () => {
       timelineCallback?.({
@@ -1861,14 +1868,14 @@ describe('SessionConsoleTab', () => {
         content: 'Response with different turnId',
         metadata: { turnId: 'different-turn-id', attemptId: 'different-attempt-id' },
         actor: 'assistant',
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-    });
-    expect(screen.getByText('Response with different turnId')).toBeInTheDocument();
-  });
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Response with different turnId')).toBeInTheDocument()
+  })
 
   it('clears placeholder when SSE error message arrives with mismatched metadata', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1885,7 +1892,7 @@ describe('SessionConsoleTab', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -1895,41 +1902,41 @@ describe('SessionConsoleTab', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
-    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 });
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
     mockSendMessage.mockResolvedValue({
       accepted: true,
       status: 'accepted',
       correlationId: 'corr-error-mismatch',
       envelopeId: 'env-error-mismatch',
-    });
+    })
 
-    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
+    let timelineCallback: ((event: ConsoleTimelineEvent) => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent) => {
-      timelineCallback = onEvent;
-      return () => {};
-    });
+      timelineCallback = onEvent
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Error mismatched test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await act(async () => {
       timelineCallback?.({
@@ -1939,15 +1946,15 @@ describe('SessionConsoleTab', () => {
         timestamp: new Date().toISOString(),
         content: 'Error occurred with different metadata',
         metadata: { errorCode: 'TEST_ERROR', turnId: 'different-error-turn-id' },
-      });
-    });
+      })
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-    });
-    expect(screen.getByText('Error occurred with different metadata')).toBeInTheDocument();
-  });
-});
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Error occurred with different metadata')).toBeInTheDocument()
+  })
+})
 
 // =============================================================================
 // Session Persistence Tests
@@ -1955,15 +1962,15 @@ describe('SessionConsoleTab', () => {
 
 describe('SessionConsoleTab - Session Persistence', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
-    localStorage.clear();
-  });
+    vi.clearAllMocks()
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    localStorage.clear()
+  })
 
   afterEach(() => {
-    vi.useRealTimers();
-    localStorage.clear();
-  });
+    vi.useRealTimers()
+    localStorage.clear()
+  })
 
   it('persists selected session ID to localStorage', async () => {
     mockGetSessions.mockResolvedValue({
@@ -1980,7 +1987,7 @@ describe('SessionConsoleTab - Session Persistence', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-persist-1',
@@ -1990,27 +1997,27 @@ describe('SessionConsoleTab - Session Persistence', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('session-item-session-persist-1')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('session-item-session-persist-1'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBe('session-persist-1');
-    });
-  });
+      expect(screen.getByTestId('session-item-session-persist-1')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-persist-1'))
+
+    await waitFor(() => {
+      expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBe('session-persist-1')
+    })
+  })
 
   it('restores selected session ID from localStorage on mount', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-restored-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-restored-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2026,7 +2033,7 @@ describe('SessionConsoleTab - Session Persistence', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-restored-1',
@@ -2036,21 +2043,21 @@ describe('SessionConsoleTab - Session Persistence', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockGetSession).toHaveBeenCalledWith('session-restored-1');
-    });
-  });
+      expect(mockGetSession).toHaveBeenCalledWith('session-restored-1')
+    })
+  })
 
   it('clears localStorage when session is deselected', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-to-deselect');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-to-deselect')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2066,7 +2073,7 @@ describe('SessionConsoleTab - Session Persistence', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-to-deselect',
@@ -2076,23 +2083,23 @@ describe('SessionConsoleTab - Session Persistence', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(mockGetSession).toHaveBeenCalledWith('session-to-deselect');
-    });
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBe('session-to-deselect');
-    });
-  });
-});
+      expect(mockGetSession).toHaveBeenCalledWith('session-to-deselect')
+    })
+
+    await waitFor(() => {
+      expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBe('session-to-deselect')
+    })
+  })
+})
 
 // =============================================================================
 // Focus/Visibility Refresh Tests
@@ -2100,40 +2107,40 @@ describe('SessionConsoleTab - Session Persistence', () => {
 
 describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
-    localStorage.clear();
-  });
+    vi.clearAllMocks()
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    localStorage.clear()
+  })
 
   afterEach(() => {
-    localStorage.clear();
-  });
+    localStorage.clear()
+  })
 
   it('refreshes sessions list on visibility change to visible', async () => {
     mockGetSessions.mockResolvedValue({
       sessions: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockGetSessions).toHaveBeenCalledTimes(1);
-    });
+      expect(mockGetSessions).toHaveBeenCalledTimes(1)
+    })
 
     Object.defineProperty(document, 'visibilityState', {
       value: 'visible',
       writable: true,
-    });
-    document.dispatchEvent(new Event('visibilitychange'));
+    })
+    document.dispatchEvent(new Event('visibilitychange'))
 
     await waitFor(() => {
-      expect(mockGetSessions).toHaveBeenCalledTimes(2);
-    });
-  });
+      expect(mockGetSessions).toHaveBeenCalledTimes(2)
+    })
+  })
 
   it('refreshes timeline on focus when session is selected', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-focus-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-focus-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2149,7 +2156,7 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-focus-1',
@@ -2159,27 +2166,27 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(1);
-    });
-
-    window.dispatchEvent(new Event('focus'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(2);
-    });
-  });
+      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(1)
+    })
+
+    window.dispatchEvent(new Event('focus'))
+
+    await waitFor(() => {
+      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(2)
+    })
+  })
 
   it('refreshes sessions and timeline on pageshow event', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-pageshow-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-pageshow-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2195,7 +2202,7 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-pageshow-1',
@@ -2205,27 +2212,27 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
-
-    await waitFor(() => {
-      expect(mockGetSessions).toHaveBeenCalledTimes(1);
-      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(1);
-    });
-
-    window.dispatchEvent(new Event('pageshow'));
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockGetSessions).toHaveBeenCalledTimes(2);
-      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(2);
-    });
-  });
-});
+      expect(mockGetSessions).toHaveBeenCalledTimes(1)
+      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(1)
+    })
+
+    window.dispatchEvent(new Event('pageshow'))
+
+    await waitFor(() => {
+      expect(mockGetSessions).toHaveBeenCalledTimes(2)
+      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(2)
+    })
+  })
+})
 
 // =============================================================================
 // SSE Auto-Reconnection Tests
@@ -2233,16 +2240,16 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
 
 describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-  });
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
 
   afterEach(() => {
-    localStorage.clear();
-  });
+    localStorage.clear()
+  })
 
   it('automatically reconnects SSE after error with exponential backoff', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-sse-reconnect-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-sse-reconnect-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2258,7 +2265,7 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-sse-reconnect-1',
@@ -2268,41 +2275,41 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    let errorCallback: (() => void) | null = null;
+    let errorCallback: (() => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, onError) => {
-      errorCallback = onError;
-      return () => {};
-    });
+      errorCallback = onError
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1);
-    });
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
+    })
 
     await act(async () => {
-      errorCallback?.();
-    });
+      errorCallback?.()
+    })
 
     await waitFor(() => {
-      expect(screen.getByText('已断开')).toBeInTheDocument();
-    });
+      expect(screen.getByText('已断开')).toBeInTheDocument()
+    })
 
-    await new Promise(resolve => setTimeout(resolve, 1100));
+    await new Promise((resolve) => setTimeout(resolve, 1100))
 
     await waitFor(() => {
-      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(2);
-    });
-  });
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(2)
+    })
+  })
 
   it('stops reconnecting after 5 failed attempts', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-sse-max-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-sse-max-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2318,7 +2325,7 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-sse-max-1',
@@ -2328,40 +2335,40 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    let errorCallback: (() => void) | null = null;
+    let errorCallback: (() => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, onError) => {
-      errorCallback = onError;
-      return () => {};
-    });
+      errorCallback = onError
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1);
-    });
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
+    })
 
-    const delays = [1000, 2000];
+    const delays = [1000, 2000]
     for (const delay of delays) {
       await act(async () => {
-        errorCallback?.();
-      });
+        errorCallback?.()
+      })
 
-      await new Promise(resolve => setTimeout(resolve, delay + 100));
+      await new Promise((resolve) => setTimeout(resolve, delay + 100))
     }
 
     await waitFor(() => {
-      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(3);
-    });
-  }, 10000);
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(3)
+    })
+  }, 10000)
 
   it('resets reconnection attempts on successful event', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-sse-reset-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-sse-reset-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2377,7 +2384,7 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-sse-reset-1',
@@ -2387,35 +2394,35 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    let eventCallback: ((event: ConsoleTimelineEvent) => void) | null = null;
-    let errorCallback: (() => void) | null = null;
+    let eventCallback: ((event: ConsoleTimelineEvent) => void) | null = null
+    let errorCallback: (() => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation((_sessionId, onEvent, onError) => {
-      eventCallback = onEvent;
-      errorCallback = onError;
-      return () => {};
-    });
+      eventCallback = onEvent
+      errorCallback = onError
+      return () => {}
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1);
-    });
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
+    })
 
     await act(async () => {
-      errorCallback?.();
-    });
+      errorCallback?.()
+    })
 
-    await new Promise(resolve => setTimeout(resolve, 1100));
+    await new Promise((resolve) => setTimeout(resolve, 1100))
 
     await waitFor(() => {
-      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(2);
-    });
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(2)
+    })
 
     await act(async () => {
       eventCallback?.({
@@ -2424,20 +2431,20 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
         sessionId: 'session-sse-reset-1',
         timestamp: new Date().toISOString(),
         content: 'Test',
-      });
-    });
+      })
+    })
 
     await act(async () => {
-      errorCallback?.();
-    });
+      errorCallback?.()
+    })
 
-    await new Promise(resolve => setTimeout(resolve, 1100));
+    await new Promise((resolve) => setTimeout(resolve, 1100))
 
     await waitFor(() => {
-      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(3);
-    });
-  });
-});
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(3)
+    })
+  })
+})
 
 // =============================================================================
 // Post-Send Catch-Up Polling Tests
@@ -2445,16 +2452,16 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
 
 describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-  });
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
 
   afterEach(() => {
-    localStorage.clear();
-  });
+    localStorage.clear()
+  })
 
   it('polls timeline after sending message until user message appears', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2470,7 +2477,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-poll-1',
@@ -2480,7 +2487,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline
       .mockResolvedValueOnce({
         events: [],
@@ -2501,40 +2508,40 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
           },
         ],
         total: 1,
-      });
-    mockSendMessage.mockResolvedValue({ accepted: true });
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
+      })
+    mockSendMessage.mockResolvedValue({ accepted: true })
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Poll test message' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalledWith('session-poll-1', 'Poll test message');
-    });
+      expect(mockSendMessage).toHaveBeenCalledWith('session-poll-1', 'Poll test message')
+    })
 
-    await new Promise(resolve => setTimeout(resolve, 600));
-
-    await waitFor(() => {
-      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(2);
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 600))
 
     await waitFor(() => {
-      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(3);
-    });
-  });
+      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(2)
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 600))
+
+    await waitFor(() => {
+      expect(mockGetSessionTimeline).toHaveBeenCalledTimes(3)
+    })
+  })
 
   it('stops polling after max attempts', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-max-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-max-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2550,7 +2557,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-poll-max-1',
@@ -2560,39 +2567,39 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
-    mockSendMessage.mockResolvedValue({ accepted: true });
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
+    })
+    mockSendMessage.mockResolvedValue({ accepted: true })
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Max poll test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalled();
-    });
+      expect(mockSendMessage).toHaveBeenCalled()
+    })
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     await waitFor(() => {
-      const timelineCalls = mockGetSessionTimeline.mock.calls.length;
-      expect(timelineCalls).toBeGreaterThan(1);
-    });
-  }, 10000);
+      const timelineCalls = mockGetSessionTimeline.mock.calls.length
+      expect(timelineCalls).toBeGreaterThan(1)
+    })
+  }, 10000)
 
   it('deduplicates events by eventId during polling', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-dedup-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-dedup-1')
 
     const existingEvent: ConsoleTimelineEvent = {
       eventId: 'event-dedup-1',
@@ -2600,7 +2607,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
       sessionId: 'session-dedup-1',
       timestamp: new Date().toISOString(),
       content: 'Existing message',
-    };
+    }
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2616,7 +2623,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-dedup-1',
@@ -2626,7 +2633,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline
       .mockResolvedValueOnce({
         events: [existingEvent],
@@ -2635,34 +2642,34 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
       .mockResolvedValue({
         events: [existingEvent],
         total: 1,
-      });
-    mockSendMessage.mockResolvedValue({ accepted: true });
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
+      })
+    mockSendMessage.mockResolvedValue({ accepted: true })
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Dedup test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalled();
-    });
+      expect(mockSendMessage).toHaveBeenCalled()
+    })
 
-    await new Promise(resolve => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 600))
 
     await waitFor(() => {
-      expect(screen.getAllByText('Existing message')).toHaveLength(1);
-    });
-  });
+      expect(screen.getAllByText('Existing message')).toHaveLength(1)
+    })
+  })
 
   it('clears placeholder when polling fetches confirmed user message with assistant reply', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-clear-1');
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-clear-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2678,7 +2685,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-poll-clear-1',
@@ -2688,16 +2695,16 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
 
-    let timelineCallCount = 0;
+    let timelineCallCount = 0
     mockGetSessionTimeline.mockImplementation(async () => {
-      timelineCallCount++;
+      timelineCallCount++
       if (timelineCallCount === 1) {
-        return { events: [], total: 0 };
+        return { events: [], total: 0 }
       }
-      const userMessageTime = new Date().toISOString();
-      const assistantReplyTime = new Date(Date.now() + 1000).toISOString();
+      const userMessageTime = new Date().toISOString()
+      const assistantReplyTime = new Date(Date.now() + 1000).toISOString()
       return {
         events: [
           {
@@ -2717,40 +2724,40 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
           },
         ],
         total: 2,
-      };
-    });
+      }
+    })
 
-    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-poll-clear' });
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-poll-clear' })
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Poll clear test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
-    });
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-    });
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+    })
 
-    expect(screen.getByText('Assistant response from polling')).toBeInTheDocument();
-  });
+    expect(screen.getByText('Assistant response from polling')).toBeInTheDocument()
+  })
 
-it('clears placeholder when polling fetches confirmed user message with error reply', async () => {
-    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-error-1');
+  it('clears placeholder when polling fetches confirmed user message with error reply', async () => {
+    localStorage.setItem(SELECTED_SESSION_KEY, 'session-poll-error-1')
 
     mockGetSessions.mockResolvedValue({
       sessions: [
@@ -2766,7 +2773,7 @@ it('clears placeholder when polling fetches confirmed user message with error re
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-poll-error-1',
@@ -2776,16 +2783,16 @@ it('clears placeholder when polling fetches confirmed user message with error re
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
 
-    let timelineCallCount = 0;
+    let timelineCallCount = 0
     mockGetSessionTimeline.mockImplementation(async () => {
-      timelineCallCount++;
+      timelineCallCount++
       if (timelineCallCount === 1) {
-        return { events: [], total: 0 };
+        return { events: [], total: 0 }
       }
-      const userMessageTime = new Date().toISOString();
-      const errorReplyTime = new Date(Date.now() + 1000).toISOString();
+      const userMessageTime = new Date().toISOString()
+      const errorReplyTime = new Date(Date.now() + 1000).toISOString()
       return {
         events: [
           {
@@ -2805,62 +2812,62 @@ it('clears placeholder when polling fetches confirmed user message with error re
           },
         ],
         total: 2,
-      };
-    });
+      }
+    })
 
-    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-poll-error' });
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-poll-error' })
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-message-input')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
       target: { value: 'Poll error test' },
-    });
-    fireEvent.click(screen.getByTestId('session-send-button'));
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('assistant-placeholder')).toBeInTheDocument()
+    })
 
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
-    });
+      await new Promise((resolve) => setTimeout(resolve, 1100))
+    })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument();
-    });
+      expect(screen.queryByTestId('assistant-placeholder')).not.toBeInTheDocument()
+    })
 
-    expect(screen.getByText('Error from polling')).toBeInTheDocument();
-  });
-});
+    expect(screen.getByText('Error from polling')).toBeInTheDocument()
+  })
+})
 
 describe('SessionConsoleTab - Mobile Responsive', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockSubscribeSessionTimeline.mockReturnValue(() => {});
-    resetMatchMedia();
-  });
+    vi.clearAllMocks()
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    resetMatchMedia()
+  })
 
   it('shows sidebar toggle button on mobile viewport', async () => {
-    mockViewport(390); // iPhone width
+    mockViewport(390) // iPhone width
     mockGetSessions.mockResolvedValue({
       sessions: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
+    })
+  })
 
   it('opens drawer when toggle button is clicked', async () => {
-    mockViewport(390);
+    mockViewport(390)
     mockGetSessions.mockResolvedValue({
       sessions: [
         {
@@ -2875,23 +2882,23 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         },
       ],
       total: 1,
-    });
+    })
 
-    const { container } = render(<SessionConsoleTab />);
+    const { container } = render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
+    })
 
-    const toggleButton = screen.getByTestId('session-sidebar-toggle');
-    fireEvent.click(toggleButton);
+    const toggleButton = screen.getByTestId('session-sidebar-toggle')
+    fireEvent.click(toggleButton)
 
     // Drawer should be open (has drawer-open class)
-    expect(container.querySelector('.session-console-rich--drawer-open')).toBeInTheDocument();
-  });
+    expect(container.querySelector('.session-console-rich--drawer-open')).toBeInTheDocument()
+  })
 
   it('closes drawer when close button is clicked', async () => {
-    mockViewport(390);
+    mockViewport(390)
     mockGetSessions.mockResolvedValue({
       sessions: [
         {
@@ -2906,25 +2913,25 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         },
       ],
       total: 1,
-    });
+    })
 
-    const { container } = render(<SessionConsoleTab />);
+    const { container } = render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
+    })
 
     // Open drawer
-    fireEvent.click(screen.getByTestId('session-sidebar-toggle'));
-    expect(container.querySelector('.session-console-rich--drawer-open')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('session-sidebar-toggle'))
+    expect(container.querySelector('.session-console-rich--drawer-open')).toBeInTheDocument()
 
     // Close drawer
-    fireEvent.click(screen.getByTestId('session-sidebar-close'));
-    expect(container.querySelector('.session-console-rich--drawer-open')).not.toBeInTheDocument();
-  });
+    fireEvent.click(screen.getByTestId('session-sidebar-close'))
+    expect(container.querySelector('.session-console-rich--drawer-open')).not.toBeInTheDocument()
+  })
 
   it('closes drawer when selecting a session', async () => {
-    mockViewport(390);
+    mockViewport(390)
     mockGetSessions.mockResolvedValue({
       sessions: [
         {
@@ -2939,7 +2946,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         },
       ],
       total: 1,
-    });
+    })
     mockGetSession.mockResolvedValue({
       session: {
         sessionId: 'session-123',
@@ -2949,82 +2956,82 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         activePlannerRunIds: [],
         activeBackgroundRunIds: [],
       },
-    });
+    })
     mockGetSessionTimeline.mockResolvedValue({
       events: [],
       total: 0,
-    });
+    })
 
-    const { container } = render(<SessionConsoleTab />);
+    const { container } = render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
+    })
 
     // Open drawer
-    fireEvent.click(screen.getByTestId('session-sidebar-toggle'));
-    expect(container.querySelector('.session-console-rich--drawer-open')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('session-sidebar-toggle'))
+    expect(container.querySelector('.session-console-rich--drawer-open')).toBeInTheDocument()
 
     // Select session
-    fireEvent.click(screen.getByTestId('session-item-session-123'));
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
 
     // Drawer should close
     await waitFor(() => {
-      expect(container.querySelector('.session-console-rich--drawer-open')).not.toBeInTheDocument();
-    });
-  });
+      expect(container.querySelector('.session-console-rich--drawer-open')).not.toBeInTheDocument()
+    })
+  })
 
   it('has accessible ARIA attributes on toggle button', async () => {
-    mockViewport(390);
+    mockViewport(390)
     mockGetSessions.mockResolvedValue({
       sessions: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument();
-    });
+      expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
+    })
 
-    const toggleButton = screen.getByTestId('session-sidebar-toggle');
-    expect(toggleButton).toHaveAttribute('aria-controls', 'sessions-sidebar');
-    expect(toggleButton).toHaveAttribute('aria-label', '打开会话列表');
-    expect(toggleButton).toHaveAttribute('aria-expanded');
-  });
+    const toggleButton = screen.getByTestId('session-sidebar-toggle')
+    expect(toggleButton).toHaveAttribute('aria-controls', 'sessions-sidebar')
+    expect(toggleButton).toHaveAttribute('aria-label', '打开会话列表')
+    expect(toggleButton).toHaveAttribute('aria-expanded')
+  })
 
   it('sidebar has data-testid attribute', async () => {
     mockGetSessions.mockResolvedValue({
       sessions: [],
       total: 0,
-    });
+    })
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('sessions-sidebar')).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByTestId('sessions-sidebar')).toBeInTheDocument()
+    })
+  })
 
   it('renders loading state in sidebar on mobile', async () => {
-    mockViewport(390);
-    mockGetSessions.mockImplementation(() => new Promise(() => {})); // Never resolves
+    mockViewport(390)
+    mockGetSessions.mockImplementation(() => new Promise(() => {})) // Never resolves
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByText('加载中...')).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByText('加载中...')).toBeInTheDocument()
+    })
+  })
 
   it('renders error state in sidebar on mobile', async () => {
-    mockViewport(390);
-    mockGetSessions.mockRejectedValue(new Error('Network error'));
+    mockViewport(390)
+    mockGetSessions.mockRejectedValue(new Error('Network error'))
 
-    render(<SessionConsoleTab />);
+    render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeInTheDocument();
-    });
-  });
-});
+      expect(screen.getByText('Network error')).toBeInTheDocument()
+    })
+  })
+})

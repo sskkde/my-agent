@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createProviderConfigStore, type ProviderConfigStore } from '../../../src/storage/provider-config-store.js';
-import { createProviderScopedLLMAdapter } from '../../../src/llm/provider-runtime.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createProviderConfigStore, type ProviderConfigStore } from '../../../src/storage/provider-config-store.js'
+import { createProviderScopedLLMAdapter } from '../../../src/llm/provider-runtime.js'
 
 const CREATE_TABLE_SQL = `
   CREATE TABLE provider_configs (
@@ -29,30 +29,30 @@ const CREATE_TABLE_SQL = `
     default_model TEXT,
     options_json TEXT
   )
-`;
+`
 
 describe('provider-runtime', () => {
-  let connection: ConnectionManager;
-  let providerConfigStore: ProviderConfigStore;
-  const originalEnv = process.env;
+  let connection: ConnectionManager
+  let providerConfigStore: ProviderConfigStore
+  const originalEnv = process.env
 
   beforeEach(() => {
     process.env = {
       ...originalEnv,
       NODE_ENV: 'test',
       APP_SECRET_KEY: 'test-secret-key-for-provider-runtime',
-    };
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    connection.exec(CREATE_TABLE_SQL);
-    connection.exec('CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)');
-    providerConfigStore = createProviderConfigStore(connection);
-  });
+    }
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    connection.exec(CREATE_TABLE_SQL)
+    connection.exec('CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)')
+    providerConfigStore = createProviderConfigStore(connection)
+  })
 
   afterEach(() => {
-    connection.close();
-    process.env = originalEnv;
-  });
+    connection.close()
+    process.env = originalEnv
+  })
 
   it('loads configured database providers for the processing user', async () => {
     providerConfigStore.create({
@@ -62,16 +62,16 @@ describe('provider-runtime', () => {
       displayName: 'User 1 OpenRouter',
       apiKey: 'sk-user-1',
       selectedModel: 'openrouter/model-1',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-1', async () => {
-      expect(adapter.providers).toHaveLength(1);
-      expect(adapter.providers[0].id).toBe('provider-user-1');
-      expect(adapter.providers[0].config.capabilities.supportedModels).toEqual(['openrouter/model-1']);
-    });
-  });
+      expect(adapter.providers).toHaveLength(1)
+      expect(adapter.providers[0].id).toBe('provider-user-1')
+      expect(adapter.providers[0].config.capabilities.supportedModels).toEqual(['openrouter/model-1'])
+    })
+  })
 
   it('isolates provider scopes across users and restores the outer scope', async () => {
     providerConfigStore.create({
@@ -80,27 +80,27 @@ describe('provider-runtime', () => {
       providerType: 'openai',
       displayName: 'User 1 OpenAI',
       apiKey: 'sk-user-1',
-    });
+    })
     providerConfigStore.create({
       providerId: 'provider-user-2',
       userId: 'user-2',
       providerType: 'ollama',
       displayName: 'User 2 Ollama',
       baseUrl: 'http://localhost:11434',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-1', async () => {
-      expect(adapter.providers.map((provider) => provider.id)).toEqual(['provider-user-1']);
+      expect(adapter.providers.map((provider) => provider.id)).toEqual(['provider-user-1'])
 
       await adapter.runWithUserProviders('user-2', async () => {
-        expect(adapter.providers.map((provider) => provider.id)).toEqual(['provider-user-2']);
-      });
+        expect(adapter.providers.map((provider) => provider.id)).toEqual(['provider-user-2'])
+      })
 
-      expect(adapter.providers.map((provider) => provider.id)).toEqual(['provider-user-1']);
-    });
-  });
+      expect(adapter.providers.map((provider) => provider.id)).toEqual(['provider-user-1'])
+    })
+  })
 
   it('does not leak one user provider into another user with no providers', async () => {
     providerConfigStore.create({
@@ -109,22 +109,22 @@ describe('provider-runtime', () => {
       providerType: 'openai',
       displayName: 'User 1 OpenAI',
       apiKey: 'sk-user-1',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-1', async () => {
-      expect(adapter.providers).toHaveLength(1);
-    });
+      expect(adapter.providers).toHaveLength(1)
+    })
 
     await adapter.runWithUserProviders('user-2', async () => {
-      expect(adapter.providers).toHaveLength(0);
-    });
-  });
+      expect(adapter.providers).toHaveLength(0)
+    })
+  })
 
   it('prioritizes user database providers over environment providers', async () => {
-    process.env.NODE_ENV = 'development';
-    process.env.OPENAI_API_KEY = 'sk-env-key';
+    process.env.NODE_ENV = 'development'
+    process.env.OPENAI_API_KEY = 'sk-env-key'
 
     providerConfigStore.create({
       providerId: 'user-openai',
@@ -132,24 +132,24 @@ describe('provider-runtime', () => {
       providerType: 'openai',
       displayName: 'User OpenAI',
       apiKey: 'sk-user-key',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-1', async () => {
-      const providers = adapter.providers;
-      expect(providers.length).toBeGreaterThan(0);
-      
-      const userProvider = providers.find(p => p.id === 'user-openai');
-      const envProvider = providers.find(p => p.id === 'openai');
-      
-      expect(userProvider).toBeDefined();
-      expect(envProvider).toBeDefined();
-      expect(userProvider!.config.priority).toBeLessThan(envProvider!.config.priority);
-    });
+      const providers = adapter.providers
+      expect(providers.length).toBeGreaterThan(0)
 
-    delete process.env.OPENAI_API_KEY;
-  });
+      const userProvider = providers.find((p) => p.id === 'user-openai')
+      const envProvider = providers.find((p) => p.id === 'openai')
+
+      expect(userProvider).toBeDefined()
+      expect(envProvider).toBeDefined()
+      expect(userProvider!.config.priority).toBeLessThan(envProvider!.config.priority)
+    })
+
+    delete process.env.OPENAI_API_KEY
+  })
 
   it('gives highest priority to preferred provider', async () => {
     providerConfigStore.create({
@@ -158,7 +158,7 @@ describe('provider-runtime', () => {
       providerType: 'openai',
       displayName: 'Provider 1',
       apiKey: 'sk-1',
-    });
+    })
 
     providerConfigStore.create({
       providerId: 'provider-2',
@@ -166,27 +166,31 @@ describe('provider-runtime', () => {
       providerType: 'openrouter',
       displayName: 'Provider 2',
       apiKey: 'sk-2',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
-    let preferredProviderId = '';
-
-    await adapter.runWithUserProviders('user-1', async () => {
-      const providers = adapter.getHealthyProviders();
-      expect(providers.length).toBe(2);
-      expect(providers.map((provider) => provider.id).sort()).toEqual(['provider-1', 'provider-2']);
-      expect(providers[0].config.priority).toBe(10);
-      expect(providers[1].config.priority).toBe(20);
-      preferredProviderId = providers[1].id;
-    });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
+    let preferredProviderId = ''
 
     await adapter.runWithUserProviders('user-1', async () => {
-      const providers = adapter.getHealthyProviders();
-      expect(providers[0].id).toBe(preferredProviderId);
-      expect(providers[0].config.priority).toBe(1);
-      expect(providers[1].config.priority).toBe(10);
-    }, preferredProviderId);
-  });
+      const providers = adapter.getHealthyProviders()
+      expect(providers.length).toBe(2)
+      expect(providers.map((provider) => provider.id).sort()).toEqual(['provider-1', 'provider-2'])
+      expect(providers[0].config.priority).toBe(10)
+      expect(providers[1].config.priority).toBe(20)
+      preferredProviderId = providers[1].id
+    })
+
+    await adapter.runWithUserProviders(
+      'user-1',
+      async () => {
+        const providers = adapter.getHealthyProviders()
+        expect(providers[0].id).toBe(preferredProviderId)
+        expect(providers[0].config.priority).toBe(1)
+        expect(providers[1].config.priority).toBe(10)
+      },
+      preferredProviderId,
+    )
+  })
 
   it('assigns supportsJsonMode true for openai and openrouter providers', async () => {
     providerConfigStore.create({
@@ -195,7 +199,7 @@ describe('provider-runtime', () => {
       providerType: 'openai',
       displayName: 'User OpenAI',
       apiKey: 'sk-user-1',
-    });
+    })
 
     providerConfigStore.create({
       providerId: 'openrouter-provider',
@@ -203,21 +207,21 @@ describe('provider-runtime', () => {
       providerType: 'openrouter',
       displayName: 'User OpenRouter',
       apiKey: 'sk-user-2',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-1', async () => {
-      const providers = adapter.providers;
-      expect(providers.length).toBe(2);
+      const providers = adapter.providers
+      expect(providers.length).toBe(2)
 
-      const openaiProvider = providers.find(p => p.id === 'openai-provider');
-      const openrouterProvider = providers.find(p => p.id === 'openrouter-provider');
+      const openaiProvider = providers.find((p) => p.id === 'openai-provider')
+      const openrouterProvider = providers.find((p) => p.id === 'openrouter-provider')
 
-      expect(openaiProvider?.config.capabilities.supportsJsonMode).toBe(true);
-      expect(openrouterProvider?.config.capabilities.supportsJsonMode).toBe(true);
-    });
-  });
+      expect(openaiProvider?.config.capabilities.supportsJsonMode).toBe(true)
+      expect(openrouterProvider?.config.capabilities.supportsJsonMode).toBe(true)
+    })
+  })
 
   it('creates DeepSeek providers with OpenAI-compatible defaults', async () => {
     providerConfigStore.create({
@@ -227,37 +231,37 @@ describe('provider-runtime', () => {
       displayName: 'User DeepSeek',
       apiKey: 'sk-deepseek',
       selectedModel: 'deepseek-v4-flash',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-1', async () => {
-      const provider = adapter.providers.find(p => p.id === 'deepseek-provider');
+      const provider = adapter.providers.find((p) => p.id === 'deepseek-provider')
 
-      expect(provider).toBeDefined();
-      expect(provider?.config.baseUrl).toBe('https://api.deepseek.com');
-      expect(provider?.config.capabilities.supportsFunctionCalling).toBe(true);
-      expect(provider?.config.capabilities.supportsJsonMode).toBe(true);
-      expect(provider?.config.capabilities.supportedModels).toEqual(['deepseek-v4-flash']);
-    });
-  });
+      expect(provider).toBeDefined()
+      expect(provider?.config.baseUrl).toBe('https://api.deepseek.com')
+      expect(provider?.config.capabilities.supportsFunctionCalling).toBe(true)
+      expect(provider?.config.capabilities.supportsJsonMode).toBe(true)
+      expect(provider?.config.capabilities.supportedModels).toEqual(['deepseek-v4-flash'])
+    })
+  })
 
   it('creates DeepSeek env providers with a DeepSeek default model', async () => {
-    process.env.NODE_ENV = 'development';
-    process.env.DEEPSEEK_API_KEY = 'sk-env-deepseek';
+    process.env.NODE_ENV = 'development'
+    process.env.DEEPSEEK_API_KEY = 'sk-env-deepseek'
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-without-db-providers', async () => {
-      const provider = adapter.providers.find(p => p.id === 'deepseek');
+      const provider = adapter.providers.find((p) => p.id === 'deepseek')
 
-      expect(provider).toBeDefined();
-      expect(provider?.config.baseUrl).toBe('https://api.deepseek.com');
-      expect(provider?.config.capabilities.supportedModels).toEqual(['deepseek-v4-flash']);
-    });
+      expect(provider).toBeDefined()
+      expect(provider?.config.baseUrl).toBe('https://api.deepseek.com')
+      expect(provider?.config.capabilities.supportedModels).toEqual(['deepseek-v4-flash'])
+    })
 
-    delete process.env.DEEPSEEK_API_KEY;
-  });
+    delete process.env.DEEPSEEK_API_KEY
+  })
 
   it('assigns supportsJsonMode false for custom and ollama providers', async () => {
     providerConfigStore.create({
@@ -267,7 +271,7 @@ describe('provider-runtime', () => {
       displayName: 'Custom Provider',
       apiKey: 'sk-custom',
       baseUrl: 'https://api.siliconflow.cn/v1',
-    });
+    })
 
     providerConfigStore.create({
       providerId: 'ollama-provider',
@@ -275,21 +279,21 @@ describe('provider-runtime', () => {
       providerType: 'ollama',
       displayName: 'Ollama',
       baseUrl: 'http://localhost:11434',
-    });
+    })
 
-    const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
     await adapter.runWithUserProviders('user-1', async () => {
-      const providers = adapter.providers;
-      expect(providers.length).toBe(2);
+      const providers = adapter.providers
+      expect(providers.length).toBe(2)
 
-      const customProvider = providers.find(p => p.id === 'custom-provider');
-      const ollamaProvider = providers.find(p => p.id === 'ollama-provider');
+      const customProvider = providers.find((p) => p.id === 'custom-provider')
+      const ollamaProvider = providers.find((p) => p.id === 'ollama-provider')
 
-      expect(customProvider?.config.capabilities.supportsJsonMode).toBe(false);
-      expect(ollamaProvider?.config.capabilities.supportsJsonMode).toBe(false);
-    });
-  });
+      expect(customProvider?.config.capabilities.supportsJsonMode).toBe(false)
+      expect(ollamaProvider?.config.capabilities.supportsJsonMode).toBe(false)
+    })
+  })
 
   describe('v60 fields in runtime config', () => {
     it('reflects explicit priority from database in complete() path', async () => {
@@ -301,25 +305,25 @@ describe('provider-runtime', () => {
         apiKey: 'sk-openai',
         selectedModel: 'gpt-4o-mini',
         priority: 5,
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
         const request = {
           model: 'gpt-4o-mini',
           messages: [{ role: 'user' as const, content: 'Hello' }],
-        };
+        }
 
-        const result = await adapter.complete(request);
-        expect(result.success).toBe(false);
+        const result = await adapter.complete(request)
+        expect(result.success).toBe(false)
 
         if (!result.success) {
-          const attemptedIds = result.error.attempts?.map(a => a.providerId) ?? [];
-          expect(attemptedIds).toContain('openai');
+          const attemptedIds = result.error.attempts?.map((a) => a.providerId) ?? []
+          expect(attemptedIds).toContain('openai')
         }
-      });
-    });
+      })
+    })
 
     it('falls back to catalog defaults for DeepSeek baseUrl when not set', async () => {
       providerConfigStore.create({
@@ -329,19 +333,19 @@ describe('provider-runtime', () => {
         displayName: 'DeepSeek without baseUrl',
         apiKey: 'sk-deepseek',
         selectedModel: 'deepseek-chat',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
-        const providers = adapter.getHealthyProviders();
-        expect(providers.length).toBe(1);
+        const providers = adapter.getHealthyProviders()
+        expect(providers.length).toBe(1)
 
-        const provider = providers[0];
-        expect(provider.id).toBe('deepseek');
-        expect(provider.config.baseUrl).toBe('https://api.deepseek.com');
-      });
-    });
+        const provider = providers[0]
+        expect(provider.id).toBe('deepseek')
+        expect(provider.config.baseUrl).toBe('https://api.deepseek.com')
+      })
+    })
 
     it('custom provider has jsonMode=false by default', async () => {
       providerConfigStore.create({
@@ -352,20 +356,20 @@ describe('provider-runtime', () => {
         apiKey: 'sk-custom',
         baseUrl: 'https://api.custom.com/v1',
         selectedModel: 'custom-model',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
-        const providers = adapter.getHealthyProviders();
-        expect(providers.length).toBe(1);
+        const providers = adapter.getHealthyProviders()
+        expect(providers.length).toBe(1)
 
-        const provider = providers[0];
-        expect(provider.id).toBe('custom');
-        expect(provider.config.capabilities.supportsJsonMode).toBe(false);
-      });
-    });
-  });
+        const provider = providers[0]
+        expect(provider.id).toBe('custom')
+        expect(provider.config.capabilities.supportsJsonMode).toBe(false)
+      })
+    })
+  })
 
   describe('ollama without apiKey', () => {
     it('ollama provider works without apiKey when baseUrl is set', async () => {
@@ -376,18 +380,18 @@ describe('provider-runtime', () => {
         displayName: 'Ollama No API Key',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
-        const providers = adapter.getHealthyProviders();
-        expect(providers.length).toBe(1);
-        expect(providers[0].id).toBe('ollama-no-key');
-        expect(providers[0].config.baseUrl).toBe('http://localhost:11434');
-      });
-    });
-  });
+        const providers = adapter.getHealthyProviders()
+        expect(providers.length).toBe(1)
+        expect(providers[0].id).toBe('ollama-no-key')
+        expect(providers[0].config.baseUrl).toBe('http://localhost:11434')
+      })
+    })
+  })
 
   describe('capability-based provider selection', () => {
     it('tools request filters out functionCalling=false candidate', async () => {
@@ -398,7 +402,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama No Function Calling',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'openai',
@@ -407,34 +411,36 @@ describe('provider-runtime', () => {
         displayName: 'OpenAI with Function Calling',
         apiKey: 'sk-openai',
         selectedModel: 'gpt-4o-mini',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
         const request = {
           model: 'gpt-4o-mini',
           messages: [{ role: 'user' as const, content: 'Use tools' }],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'test_fn',
-              description: 'Test function',
-              parameters: { type: 'object' as const, properties: {} },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'test_fn',
+                description: 'Test function',
+                parameters: { type: 'object' as const, properties: {} },
+              },
             },
-          }],
-        };
+          ],
+        }
 
-        const result = await adapter.complete(request);
-        expect(result.success).toBe(false);
+        const result = await adapter.complete(request)
+        expect(result.success).toBe(false)
 
         if (!result.success) {
-          const attemptedIds = result.error.attempts?.map(a => a.providerId) ?? [];
-          expect(attemptedIds).toContain('openai');
-          expect(attemptedIds).not.toContain('ollama');
+          const attemptedIds = result.error.attempts?.map((a) => a.providerId) ?? []
+          expect(attemptedIds).toContain('openai')
+          expect(attemptedIds).not.toContain('ollama')
         }
-      });
-    });
+      })
+    })
 
     it('JSON request filters out jsonMode=false candidate', async () => {
       providerConfigStore.create({
@@ -444,7 +450,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama No JSON Mode',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'deepseek',
@@ -453,27 +459,27 @@ describe('provider-runtime', () => {
         displayName: 'DeepSeek with JSON Mode',
         apiKey: 'sk-deepseek',
         selectedModel: 'deepseek-chat',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
         const request = {
           model: 'deepseek-chat',
           messages: [{ role: 'user' as const, content: 'Return JSON' }],
           responseFormat: { type: 'json_object' as const },
-        };
+        }
 
-        const result = await adapter.complete(request);
-        expect(result.success).toBe(false);
+        const result = await adapter.complete(request)
+        expect(result.success).toBe(false)
 
         if (!result.success) {
-          const attemptedIds = result.error.attempts?.map(a => a.providerId) ?? [];
-          expect(attemptedIds).toContain('deepseek');
-          expect(attemptedIds).not.toContain('ollama');
+          const attemptedIds = result.error.attempts?.map((a) => a.providerId) ?? []
+          expect(attemptedIds).toContain('deepseek')
+          expect(attemptedIds).not.toContain('ollama')
         }
-      });
-    });
+      })
+    })
 
     it('preferred provider is NOT selected if it lacks required capability', async () => {
       providerConfigStore.create({
@@ -483,7 +489,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama Preferred',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'openai',
@@ -492,40 +498,50 @@ describe('provider-runtime', () => {
         displayName: 'OpenAI Fallback',
         apiKey: 'sk-openai',
         selectedModel: 'gpt-4o-mini',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
-      await adapter.runWithUserProviders('user-1', async () => {
-        const providers = adapter.getHealthyProviders();
-        expect(providers[0].id).toBe('ollama');
-        expect(providers[0].config.priority).toBe(1);
-      }, 'ollama');
+      await adapter.runWithUserProviders(
+        'user-1',
+        async () => {
+          const providers = adapter.getHealthyProviders()
+          expect(providers[0].id).toBe('ollama')
+          expect(providers[0].config.priority).toBe(1)
+        },
+        'ollama',
+      )
 
-      await adapter.runWithUserProviders('user-1', async () => {
-        const request = {
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user' as const, content: 'Use tools' }],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'test_fn',
-              description: 'Test function',
-              parameters: { type: 'object' as const, properties: {} },
-            },
-          }],
-        };
+      await adapter.runWithUserProviders(
+        'user-1',
+        async () => {
+          const request = {
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user' as const, content: 'Use tools' }],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'test_fn',
+                  description: 'Test function',
+                  parameters: { type: 'object' as const, properties: {} },
+                },
+              },
+            ],
+          }
 
-        const result = await adapter.complete(request);
-        expect(result.success).toBe(false);
+          const result = await adapter.complete(request)
+          expect(result.success).toBe(false)
 
-        if (!result.success) {
-          const attemptedIds = result.error.attempts?.map(a => a.providerId) ?? [];
-          expect(attemptedIds).not.toContain('ollama');
-          expect(attemptedIds).toContain('openai');
-        }
-      }, 'ollama');
-    });
+          if (!result.success) {
+            const attemptedIds = result.error.attempts?.map((a) => a.providerId) ?? []
+            expect(attemptedIds).not.toContain('ollama')
+            expect(attemptedIds).toContain('openai')
+          }
+        },
+        'ollama',
+      )
+    })
 
     it('returns ALL_PROVIDERS_FAILED when all providers lack required capability', async () => {
       providerConfigStore.create({
@@ -535,7 +551,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama 1',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'ollama-2',
@@ -544,35 +560,37 @@ describe('provider-runtime', () => {
         displayName: 'Ollama 2',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama3',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
         const request = {
           model: 'gpt-4',
           messages: [{ role: 'user' as const, content: 'Use tools' }],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'test_fn',
-              description: 'Test function',
-              parameters: { type: 'object' as const, properties: {} },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'test_fn',
+                description: 'Test function',
+                parameters: { type: 'object' as const, properties: {} },
+              },
             },
-          }],
-        };
+          ],
+        }
 
-        const result = await adapter.complete(request);
-        expect(result.success).toBe(false);
+        const result = await adapter.complete(request)
+        expect(result.success).toBe(false)
 
         if (!result.success) {
-          expect(result.error.code).toBe('ALL_PROVIDERS_FAILED');
-          expect(result.error.message).toContain('capability');
-          expect(result.providerId).toBe('none');
+          expect(result.error.code).toBe('ALL_PROVIDERS_FAILED')
+          expect(result.error.message).toContain('capability')
+          expect(result.providerId).toBe('none')
         }
-      });
-    });
-  });
+      })
+    })
+  })
 
   describe('complete/stream/getters consistency', () => {
     it('stream() applies capability filtering like complete()', async () => {
@@ -583,32 +601,34 @@ describe('provider-runtime', () => {
         displayName: 'Ollama No Function Calling',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
         const request = {
           model: 'gpt-4o-mini',
           messages: [{ role: 'user' as const, content: 'Use tools' }],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'test_fn',
-              description: 'Test function',
-              parameters: { type: 'object' as const, properties: {} },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'test_fn',
+                description: 'Test function',
+                parameters: { type: 'object' as const, properties: {} },
+              },
             },
-          }],
-        };
-
-        const chunks: any[] = [];
-        for await (const chunk of adapter.stream(request)) {
-          chunks.push(chunk);
+          ],
         }
 
-        expect(chunks).toHaveLength(0);
-      });
-    });
+        const chunks: any[] = []
+        for await (const chunk of adapter.stream(request)) {
+          chunks.push(chunk)
+        }
+
+        expect(chunks).toHaveLength(0)
+      })
+    })
 
     it('providers getter returns resolver-based providers with correct priority', async () => {
       providerConfigStore.create({
@@ -619,7 +639,7 @@ describe('provider-runtime', () => {
         apiKey: 'sk-1',
         selectedModel: 'gpt-4o-mini',
         priority: 5,
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'provider-2',
@@ -629,19 +649,19 @@ describe('provider-runtime', () => {
         apiKey: 'sk-2',
         selectedModel: 'anthropic/claude-3-opus',
         priority: 10,
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
-        const providers = adapter.providers;
-        expect(providers).toHaveLength(2);
-        expect(providers[0].id).toBe('provider-1');
-        expect(providers[0].config.priority).toBe(5);
-        expect(providers[1].id).toBe('provider-2');
-        expect(providers[1].config.priority).toBe(10);
-      });
-    });
+        const providers = adapter.providers
+        expect(providers).toHaveLength(2)
+        expect(providers[0].id).toBe('provider-1')
+        expect(providers[0].config.priority).toBe(5)
+        expect(providers[1].id).toBe('provider-2')
+        expect(providers[1].config.priority).toBe(10)
+      })
+    })
 
     it('getProvider() returns resolver-based provider', async () => {
       providerConfigStore.create({
@@ -651,17 +671,17 @@ describe('provider-runtime', () => {
         displayName: 'Test Provider',
         apiKey: 'sk-test',
         selectedModel: 'gpt-4o-mini',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
-        const provider = adapter.getProvider('test-provider');
-        expect(provider).toBeDefined();
-        expect(provider?.id).toBe('test-provider');
-        expect(provider?.config.capabilities.supportsJsonMode).toBe(true);
-      });
-    });
+        const provider = adapter.getProvider('test-provider')
+        expect(provider).toBeDefined()
+        expect(provider?.id).toBe('test-provider')
+        expect(provider?.config.capabilities.supportsJsonMode).toBe(true)
+      })
+    })
 
     it('getHealthyProviders() returns resolver-based providers sorted by priority', async () => {
       providerConfigStore.create({
@@ -672,7 +692,7 @@ describe('provider-runtime', () => {
         apiKey: 'sk-a',
         selectedModel: 'gpt-4o-mini',
         priority: 20,
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'provider-b',
@@ -682,19 +702,19 @@ describe('provider-runtime', () => {
         apiKey: 'sk-b',
         selectedModel: 'anthropic/claude-3-opus',
         priority: 10,
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
-        const healthyProviders = adapter.getHealthyProviders();
-        expect(healthyProviders).toHaveLength(2);
-        expect(healthyProviders[0].id).toBe('provider-b');
-        expect(healthyProviders[0].config.priority).toBe(10);
-        expect(healthyProviders[1].id).toBe('provider-a');
-        expect(healthyProviders[1].config.priority).toBe(20);
-      });
-    });
+        const healthyProviders = adapter.getHealthyProviders()
+        expect(healthyProviders).toHaveLength(2)
+        expect(healthyProviders[0].id).toBe('provider-b')
+        expect(healthyProviders[0].config.priority).toBe(10)
+        expect(healthyProviders[1].id).toBe('provider-a')
+        expect(healthyProviders[1].config.priority).toBe(20)
+      })
+    })
 
     it('all methods use same provider ordering with preferred provider', async () => {
       providerConfigStore.create({
@@ -704,7 +724,7 @@ describe('provider-runtime', () => {
         displayName: 'Provider 1',
         apiKey: 'sk-1',
         selectedModel: 'gpt-4o-mini',
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'provider-2',
@@ -713,23 +733,27 @@ describe('provider-runtime', () => {
         displayName: 'Provider 2',
         apiKey: 'sk-2',
         selectedModel: 'gpt-4o-mini',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
-      await adapter.runWithUserProviders('user-1', async () => {
-        const providers = adapter.providers;
-        const healthyProviders = adapter.getHealthyProviders();
+      await adapter.runWithUserProviders(
+        'user-1',
+        async () => {
+          const providers = adapter.providers
+          const healthyProviders = adapter.getHealthyProviders()
 
-        expect(providers[0].id).toBe('provider-2');
-        expect(providers[0].config.priority).toBe(1);
-        expect(healthyProviders[0].id).toBe('provider-2');
-        expect(healthyProviders[0].config.priority).toBe(1);
+          expect(providers[0].id).toBe('provider-2')
+          expect(providers[0].config.priority).toBe(1)
+          expect(healthyProviders[0].id).toBe('provider-2')
+          expect(healthyProviders[0].config.priority).toBe(1)
 
-        const provider = adapter.getProvider('provider-2');
-        expect(provider?.config.priority).toBe(1);
-      }, 'provider-2');
-    });
+          const provider = adapter.getProvider('provider-2')
+          expect(provider?.config.priority).toBe(1)
+        },
+        'provider-2',
+      )
+    })
 
     it('stream() and complete() filter providers identically for tools request', async () => {
       providerConfigStore.create({
@@ -739,7 +763,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
-      });
+      })
 
       providerConfigStore.create({
         providerId: 'openai-fc',
@@ -748,37 +772,39 @@ describe('provider-runtime', () => {
         displayName: 'OpenAI',
         apiKey: 'sk-openai',
         selectedModel: 'gpt-4o-mini',
-      });
+      })
 
-      const adapter = createProviderScopedLLMAdapter({ providerConfigStore });
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
       await adapter.runWithUserProviders('user-1', async () => {
         const request = {
           model: 'gpt-4o-mini',
           messages: [{ role: 'user' as const, content: 'Use tools' }],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'test_fn',
-              description: 'Test function',
-              parameters: { type: 'object' as const, properties: {} },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'test_fn',
+                description: 'Test function',
+                parameters: { type: 'object' as const, properties: {} },
+              },
             },
-          }],
-        };
+          ],
+        }
 
-        const completeResult = await adapter.complete(request);
-        expect(completeResult.success).toBe(false);
+        const completeResult = await adapter.complete(request)
+        expect(completeResult.success).toBe(false)
         if (!completeResult.success) {
-          const completeAttemptedIds = completeResult.error.attempts?.map(a => a.providerId) ?? [];
-          expect(completeAttemptedIds).toContain('openai-fc');
-          expect(completeAttemptedIds).not.toContain('ollama-no-fc');
+          const completeAttemptedIds = completeResult.error.attempts?.map((a) => a.providerId) ?? []
+          expect(completeAttemptedIds).toContain('openai-fc')
+          expect(completeAttemptedIds).not.toContain('ollama-no-fc')
         }
-        const streamChunks: any[] = [];
+        const streamChunks: any[] = []
         for await (const chunk of adapter.stream(request)) {
-          streamChunks.push(chunk);
+          streamChunks.push(chunk)
         }
-        expect(streamChunks).toHaveLength(0);
-      });
-    });
-  });
-});
+        expect(streamChunks).toHaveLength(0)
+      })
+    })
+  })
+})

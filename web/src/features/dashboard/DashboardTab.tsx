@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { getHealth, getRuns } from '../../api/client';
-import type { HealthResponse, RunsResponse } from '../../api/types';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import React, { useEffect, useState } from 'react'
+import { getHealth, getRuns } from '../../api/client'
+import type { HealthResponse, RunsResponse } from '../../api/types'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 interface DashboardData {
-  health: HealthResponse | null;
-  runs: RunsResponse | null;
-  healthError: boolean;
-  loading: boolean;
+  health: HealthResponse | null
+  runs: RunsResponse | null
+  healthError: boolean
+  loading: boolean
 }
 
 const DashboardTab: React.FC = () => {
@@ -16,59 +16,56 @@ const DashboardTab: React.FC = () => {
     runs: null,
     healthError: false,
     loading: true,
-  });
+  })
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const health = await getHealth();
-        setData((prev) => ({ ...prev, health, healthError: false }));
+        const health = await getHealth()
+        setData((prev) => ({ ...prev, health, healthError: false }))
       } catch {
-        setData((prev) => ({ ...prev, healthError: true }));
+        setData((prev) => ({ ...prev, healthError: true }))
       }
 
       try {
-        const runs = await getRuns();
-        setData((prev) => ({ ...prev, runs, loading: false }));
+        const runs = await getRuns()
+        setData((prev) => ({ ...prev, runs, loading: false }))
       } catch {
-        setData((prev) => ({ ...prev, runs: { runs: [], total: 0 }, loading: false }));
+        setData((prev) => ({ ...prev, runs: { runs: [], total: 0 }, loading: false }))
       }
-    };
+    }
 
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
-  const { health, runs, healthError, loading } = data;
-  const activeRunsCount = runs?.runs.filter((r) => r.status === 'running').length ?? 0;
+  const { health, runs, healthError, loading } = data
+  const activeRunsCount = runs?.runs.filter((r) => r.status === 'running').length ?? 0
 
   const getStatusText = () => {
-    if (healthError) return '异常';
-    if (!health) return '加载中...';
-    return health.status === 'healthy' ? '健康' : '降级';
-  };
+    if (healthError) return '异常'
+    if (!health) return '加载中...'
+    return health.status === 'healthy' ? '健康' : '降级'
+  }
 
   const getStatusClass = () => {
-    if (healthError) return 'status-error';
-    if (!health) return 'status-loading';
-    return health.status === 'healthy' ? 'status-healthy' : 'status-degraded';
-  };
+    if (healthError) return 'status-error'
+    if (!health) return 'status-loading'
+    return health.status === 'healthy' ? 'status-healthy' : 'status-degraded'
+  }
 
   if (loading) {
     return (
       <div className="dashboard-tab">
         <LoadingSpinner label="加载仪表盘..." />
       </div>
-    );
+    )
   }
 
   return (
     <div className="dashboard-tab">
       <div className="dashboard-section">
         <h3>系统状态</h3>
-        <div
-          className={`health-status ${getStatusClass()}`}
-          data-testid="dashboard-health-status"
-        >
+        <div className={`health-status ${getStatusClass()}`} data-testid="dashboard-health-status">
           {getStatusText()}
         </div>
       </div>
@@ -78,10 +75,7 @@ const DashboardTab: React.FC = () => {
           <h3>模块状态</h3>
           <div className="module-chips" data-testid="dashboard-modules">
             {Object.entries(health.modules).map(([name, moduleHealth]) => (
-              <span
-                key={name}
-                className={`module-chip ${moduleHealth.status}`}
-              >
+              <span key={name} className={`module-chip ${moduleHealth.status}`}>
                 {name}
               </span>
             ))}
@@ -97,15 +91,12 @@ const DashboardTab: React.FC = () => {
       </div>
 
       {runs && runs.runs.length === 0 && (
-        <div
-          className="dashboard-empty-state"
-          data-testid="dashboard-empty-state"
-        >
+        <div className="dashboard-empty-state" data-testid="dashboard-empty-state">
           暂无运行中的任务
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default DashboardTab;
+export default DashboardTab

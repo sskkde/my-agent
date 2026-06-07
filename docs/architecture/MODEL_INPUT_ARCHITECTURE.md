@@ -96,11 +96,13 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 **Purpose**: Define platform identity and core rules that apply to all agents and providers.
 
-**Content Source**: 
+**Content Source**:
+
 - `src/prompt/templates/platform/base.md`
 - `src/prompt/templates/platform/safety.md`
 
 **Characteristics**:
+
 - Identical for all requests
 - Contains security boundaries (RBAC, Tenant, Approval, Audit)
 - Never contains dynamic content
@@ -110,10 +112,12 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Purpose**: Provider-specific instructions for JSON output and tool calling.
 
 **Content Source**:
+
 - `src/prompt/templates/provider/openai.md`
 - `src/prompt/templates/provider/deepseek.md`
 
 **Selection Logic**:
+
 - Determined by `providerFamily` parameter
 - DeepSeek templates include KV cache optimization hints
 
@@ -122,10 +126,12 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Purpose**: Agent-specific behavior instructions.
 
 **Content Source**:
+
 - `src/prompt/templates/agents/foreground.md`
 - `src/prompt/templates/agents/kernel.md`
 
 **Selection Logic**:
+
 - Determined by `agentKind` parameter
 - ForegroundAgent: routing and delegation
 - Kernel: execution engine behavior
@@ -135,10 +141,12 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Purpose**: JSON schema contracts for structured output.
 
 **Content Source**:
+
 - `src/prompt/templates/output/foreground.schema.md`
 - `src/prompt/templates/output/planner.schema.md`
 
 **Characteristics**:
+
 - Defines expected JSON structure
 - Used for JSON mode and response parsing
 
@@ -147,11 +155,13 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Purpose**: Custom instructions from AgentConfig.
 
 **Content Source**:
+
 - `AgentConfig.systemPrompt` (priority 10)
 - `AgentConfig.routingPrompt` (priority 20)
 - Future: project-level instructions
 
 **Key Features**:
+
 - Tenant isolation: different tenants have different hashes
 - Priority ordering for conflict resolution
 - Computed via `InstructionResolver`
@@ -161,10 +171,12 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Purpose**: Expose available tools to the LLM.
 
 **Content Source**:
+
 - `ToolRegistry` -> `ToolPlaneProjection`
 - Filtered by exposure level, permissions, and denial rules
 
 **Mode-Dependent Rendering**:
+
 - `routing_json`: Tool IDs + capability summaries only
 - `function_calling`: Full schemas in `LLMRequest.tools`
 - `structured_json`: Tool IDs only
@@ -174,10 +186,12 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Purpose**: Dynamic context specific to the current request.
 
 **Content Source**:
+
 - `ContextBundleData` input parameter
 - Dynamic fields (currentDate, sessionId, etc.)
 
 **Key Features**:
+
 - All optional fields have deterministic ordering
 - Pair integrity protection for tool_use/tool_result
 - SemanticType to role mapping
@@ -193,6 +207,7 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 **Purpose**: Define structured persona with safety-aware rendering.
 
 **Fields**:
+
 - `personaId`: Unique identifier for the persona
 - `styleGuidelines`: Writing style and tone preferences
 - `constraints`: Behavioral constraints and boundaries
@@ -207,6 +222,7 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 **Purpose**: Guide tool selection with structured heuristics.
 
 **Fields**:
+
 - `heuristics`: General selection heuristics
 - `priorityRules`: Rules for prioritizing certain tools
 - `riskRules`: Risk-based restrictions on tool usage
@@ -220,6 +236,7 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 **Purpose**: Control memory access and visibility.
 
 **Fields**:
+
 - `useRules`: Rules for when to use stored memories
 - `invisibilityRules`: Rules for hiding certain memory content
 - `priorityRules`: Rules for memory retrieval prioritization
@@ -232,6 +249,7 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 **Purpose**: Provide layered summary context for the current request.
 
 **Layers**:
+
 - `session`: Current session summary
 - `daily`: Daily aggregated summary
 - `weekly`: Weekly aggregated summary
@@ -251,11 +269,13 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 **Use Case**: ForegroundAgent message routing
 
 **Characteristics**:
+
 - No tools in `LLMRequest`
 - Tool summaries in prompt
 - JSON output expected
 
 **Request Structure**:
+
 ```typescript
 {
   messages: [Segment A, B, C, D messages],
@@ -269,11 +289,13 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 **Use Case**: AgentKernel, SearchSubagent execution
 
 **Characteristics**:
+
 - Full tool schemas in `LLMRequest.tools`
 - Tool descriptions in prompt
 - Function calling enabled
 
 **Request Structure**:
+
 ```typescript
 {
   messages: [Segment A, B, C, D messages],
@@ -286,11 +308,13 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 **Use Case**: MemoryExtractor structured extraction
 
 **Characteristics**:
+
 - No tools
 - JSON output expected
 - Minimal tool information
 
 **Request Structure**:
+
 ```typescript
 {
   messages: [Segment A, B, C, D messages],
@@ -310,6 +334,7 @@ CacheKey = SHA-256(SegmentA_Hash | SegmentB_Hash | SegmentC_Hash)
 ```
 
 **Segment Hashes**:
+
 - Each segment has its own SHA-256 hash
 - Content normalized before hashing (whitespace, line endings)
 - Segments combined with delimiter for final key
@@ -317,29 +342,32 @@ CacheKey = SHA-256(SegmentA_Hash | SegmentB_Hash | SegmentC_Hash)
 ### DeepSeek KV Cache Optimization
 
 **Why Segment A Stability Matters**:
+
 - DeepSeek uses KV cache for prefix tokens
 - Identical prefix = cache hit = faster + cheaper
 - Dynamic fields in Segment A would break cache
 
 **What's Cached**:
+
 - Segment A: Strongly cached (never changes)
 - Segment B: Cached per tenant
 - Segment C: Cached per tool configuration
 
 **What's NOT Cached**:
+
 - Segment D: Always fresh computation
 
 ### TokenUsage Extension
 
 ```typescript
 interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
   // DeepSeek cache metrics
-  promptCacheHitTokens?: number;
-  promptCacheMissTokens?: number;
-  cacheHitRate?: number;
+  promptCacheHitTokens?: number
+  promptCacheMissTokens?: number
+  cacheHitRate?: number
 }
 ```
 
@@ -352,6 +380,7 @@ interface TokenUsage {
 **Path**: `src/foreground/foreground-agent.ts`
 
 **Integration**: Shadow mode (dual-path)
+
 - Old path and new ModelInputBuilder run in parallel
 - Comparison logging for verification
 - Mode: `routing_json`
@@ -361,6 +390,7 @@ interface TokenUsage {
 **Path**: `src/kernel/agent-kernel.ts`
 
 **Integration**: Direct replacement
+
 - `buildLLMRequest()` replaced with `ModelInputBuilder.build()`
 - Injected via `KernelConfig.modelInputBuilder`
 - Mode: `function_calling`
@@ -370,6 +400,7 @@ interface TokenUsage {
 **Path**: `src/search/search-subagent.ts`
 
 **Integration**: Two-phase build
+
 - Phase 1: Search planning
 - Phase 2: Result summarization
 - Mode: `function_calling`
@@ -379,6 +410,7 @@ interface TokenUsage {
 **Path**: `src/memory/long-term-memory-extractor-service.ts`
 
 **Integration**: Full 7-layer support
+
 - Mode: `structured_json`
 - No tools needed
 
@@ -393,6 +425,7 @@ interface TokenUsage {
 **Purpose**: Record LLM calls for audit and debugging
 
 **Features**:
+
 - Records segment hashes for correlation
 - Stores redacted input/output
 - Links to TokenUsage metrics
@@ -402,12 +435,14 @@ interface TokenUsage {
 **Path**: `src/kernel/model-input/model-input-redactor.ts`
 
 **Patterns Covered**:
+
 - API keys (19 patterns)
 - Passwords, tokens, secrets
 - PEM certificates
 - Authorization headers
 
 **Integration**:
+
 - Automatic redaction before snapshot storage
 - Configurable via `RedactorOptions`
 
@@ -416,6 +451,7 @@ interface TokenUsage {
 **Path**: `src/observability/model-input-metrics.ts`
 
 **Metrics Tracked**:
+
 - Per-agent cache hit rates
 - Token consumption
 - Segment hash correlation
@@ -426,67 +462,67 @@ interface TokenUsage {
 
 ### Core Builder
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/kernel/model-input/model-input-builder.ts` | 289 | Core 7-layer builder |
-| `src/kernel/model-input/model-input-types.ts` | 190 | Input/output types |
-| `src/kernel/model-input/model-input-cache-key.ts` | 19 | Cache key computation |
-| `src/kernel/model-input/static-prefix-builder.ts` | 54 | Layer 1-4 builder |
+| File                                              | Lines | Description           |
+| ------------------------------------------------- | ----- | --------------------- |
+| `src/kernel/model-input/model-input-builder.ts`   | 289   | Core 7-layer builder  |
+| `src/kernel/model-input/model-input-types.ts`     | 190   | Input/output types    |
+| `src/kernel/model-input/model-input-cache-key.ts` | 19    | Cache key computation |
+| `src/kernel/model-input/static-prefix-builder.ts` | 54    | Layer 1-4 builder     |
 
 ### Layer Renderers
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/kernel/model-input/context-bundle-projection.ts` | 126 | Layer 7 projection |
-| `src/kernel/model-input/context-item-renderer.ts` | 40 | ContextItem to LLMMessage |
-| `src/kernel/model-input/context-pair-integrity.ts` | 50 | Pair protection |
-| `src/kernel/model-input/tool-plane-projection-renderer.ts` | 85 | Layer 6 renderer |
-| `src/kernel/model-input/tenant-project-instruction-renderer.ts` | 27 | Layer 5 renderer |
+| File                                                            | Lines | Description               |
+| --------------------------------------------------------------- | ----- | ------------------------- |
+| `src/kernel/model-input/context-bundle-projection.ts`           | 126   | Layer 7 projection        |
+| `src/kernel/model-input/context-item-renderer.ts`               | 40    | ContextItem to LLMMessage |
+| `src/kernel/model-input/context-pair-integrity.ts`              | 50    | Pair protection           |
+| `src/kernel/model-input/tool-plane-projection-renderer.ts`      | 85    | Layer 6 renderer          |
+| `src/kernel/model-input/tenant-project-instruction-renderer.ts` | 27    | Layer 5 renderer          |
 
 ### Observability
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/kernel/model-input/model-input-snapshot-store.ts` | 138 | Audit snapshots |
-| `src/kernel/model-input/model-input-redactor.ts` | 173 | Secret redaction |
-| `src/observability/model-input-metrics.ts` | 112 | Cache metrics |
+| File                                                   | Lines | Description      |
+| ------------------------------------------------------ | ----- | ---------------- |
+| `src/kernel/model-input/model-input-snapshot-store.ts` | 138   | Audit snapshots  |
+| `src/kernel/model-input/model-input-redactor.ts`       | 173   | Secret redaction |
+| `src/observability/model-input-metrics.ts`             | 112   | Cache metrics    |
 
 ### Prompt System
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/prompt/prompt-template-registry.ts` | 242 | Template registry |
-| `src/prompt/template-loader.ts` | 114 | Template loader |
-| `src/prompt/template-hash.ts` | 79 | SHA-256 hashing |
+| File                                     | Lines | Description       |
+| ---------------------------------------- | ----- | ----------------- |
+| `src/prompt/prompt-template-registry.ts` | 242   | Template registry |
+| `src/prompt/template-loader.ts`          | 114   | Template loader   |
+| `src/prompt/template-hash.ts`            | 79    | SHA-256 hashing   |
 
 ### Instructions
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/instructions/instruction-resolver.ts` | 59 | Instruction aggregation |
-| `src/instructions/instruction-hash.ts` | 30 | Instruction hashing |
-| `src/instructions/instruction-types.ts` | 40 | Type definitions |
+| File                                       | Lines | Description             |
+| ------------------------------------------ | ----- | ----------------------- |
+| `src/instructions/instruction-resolver.ts` | 59    | Instruction aggregation |
+| `src/instructions/instruction-hash.ts`     | 30    | Instruction hashing     |
+| `src/instructions/instruction-types.ts`    | 40    | Type definitions        |
 
 ### Tools
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/tools/tool-plane-prompt-projection.ts` | 148 | Tool projection |
-| `src/tools/tool-exposure-plan.ts` | 186 | Exposure levels |
-| `src/tools/tool-schema-canonicalizer.ts` | 98 | Canonical JSON |
+| File                                        | Lines | Description     |
+| ------------------------------------------- | ----- | --------------- |
+| `src/tools/tool-plane-prompt-projection.ts` | 148   | Tool projection |
+| `src/tools/tool-exposure-plan.ts`           | 186   | Exposure levels |
+| `src/tools/tool-schema-canonicalizer.ts`    | 98    | Canonical JSON  |
 
 ### Templates
 
-| File | Layer | Description |
-|------|-------|-------------|
-| `src/prompt/templates/platform/base.md` | 1 | Platform identity |
-| `src/prompt/templates/platform/safety.md` | 1 | Security boundaries |
-| `src/prompt/templates/provider/openai.md` | 2 | OpenAI rules |
-| `src/prompt/templates/provider/deepseek.md` | 2 | DeepSeek KV cache |
-| `src/prompt/templates/agents/foreground.md` | 3 | ForegroundAgent routing |
-| `src/prompt/templates/agents/kernel.md` | 3 | Kernel execution |
-| `src/prompt/templates/output/foreground.schema.md` | 4 | Routing JSON |
-| `src/prompt/templates/output/planner.schema.md` | 4 | Planner output |
+| File                                               | Layer | Description             |
+| -------------------------------------------------- | ----- | ----------------------- |
+| `src/prompt/templates/platform/base.md`            | 1     | Platform identity       |
+| `src/prompt/templates/platform/safety.md`          | 1     | Security boundaries     |
+| `src/prompt/templates/provider/openai.md`          | 2     | OpenAI rules            |
+| `src/prompt/templates/provider/deepseek.md`        | 2     | DeepSeek KV cache       |
+| `src/prompt/templates/agents/foreground.md`        | 3     | ForegroundAgent routing |
+| `src/prompt/templates/agents/kernel.md`            | 3     | Kernel execution        |
+| `src/prompt/templates/output/foreground.schema.md` | 4     | Routing JSON            |
+| `src/prompt/templates/output/planner.schema.md`    | 4     | Planner output          |
 
 ---
 
@@ -496,30 +532,30 @@ interface TokenUsage {
 
 ```typescript
 interface ModelInputBuildInput {
-  mode: ModelInputMode;
-  agentKind: string;
-  providerFamily: string;
-  
+  mode: ModelInputMode
+  agentKind: string
+  providerFamily: string
+
   // Layer 5
-  systemPrompt?: string;
-  routingPrompt?: string;
-  personaProjection?: PersonaProjection;  // P10
-  
+  systemPrompt?: string
+  routingPrompt?: string
+  personaProjection?: PersonaProjection // P10
+
   // Layer 6
-  toolProjection?: ToolPlaneProjection;
-  toolSelectionPolicy?: ToolSelectionPolicyProjection;  // P10, top-level
-  
+  toolProjection?: ToolPlaneProjection
+  toolSelectionPolicy?: ToolSelectionPolicyProjection // P10, top-level
+
   // Layer 7
-  contextBundle?: ContextBundleData;
-  memoryPolicyProjection?: MemoryPolicyProjection;  // P10
-  summaryLayers?: SummaryLayerProjection;  // P10
-  currentUserMessage?: string;
-  currentDate?: string;
-  sessionId?: string;
-  runId?: string;
-  messageId?: string;
-  requestId?: string;
-  transcript?: LLMMessage[];
+  contextBundle?: ContextBundleData
+  memoryPolicyProjection?: MemoryPolicyProjection // P10
+  summaryLayers?: SummaryLayerProjection // P10
+  currentUserMessage?: string
+  currentDate?: string
+  sessionId?: string
+  runId?: string
+  messageId?: string
+  requestId?: string
+  transcript?: LLMMessage[]
 }
 ```
 
@@ -527,25 +563,25 @@ interface ModelInputBuildInput {
 
 ```typescript
 interface BuiltModelInput {
-  messages: LLMMessage[];
+  messages: LLMMessage[]
   segments: {
-    staticPrefix: string;
-    tenantProject: string;
-    toolPlane: string;
-    contextBundle: string;
-  };
+    staticPrefix: string
+    tenantProject: string
+    toolPlane: string
+    contextBundle: string
+  }
   segmentHashes: {
-    segmentA: string;
-    segmentB: string;
-    segmentC: string;
-    segmentD: string;
-  };
+    segmentA: string
+    segmentB: string
+    segmentC: string
+    segmentD: string
+  }
   metadata: {
-    mode: ModelInputMode;
-    agentKind: string;
-    providerFamily: string;
-    messageCount: number;
-  };
+    mode: ModelInputMode
+    agentKind: string
+    providerFamily: string
+    messageCount: number
+  }
 }
 ```
 
@@ -556,14 +592,14 @@ interface BuiltModelInput {
 ## Usage Example
 
 ```typescript
-import { ModelInputBuilder } from './kernel/model-input/model-input-builder.js';
-import { createPromptTemplateRegistry } from './prompt/prompt-template-registry.js';
-import { createTemplateLoader } from './prompt/template-loader.js';
+import { ModelInputBuilder } from './kernel/model-input/model-input-builder.js'
+import { createPromptTemplateRegistry } from './prompt/prompt-template-registry.js'
+import { createTemplateLoader } from './prompt/template-loader.js'
 
 // Setup
-const registry = createPromptTemplateRegistry();
-const loader = createTemplateLoader();
-const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader });
+const registry = createPromptTemplateRegistry()
+const loader = createTemplateLoader()
+const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
 
 // Build for routing
 const built = await builder.build({
@@ -573,18 +609,18 @@ const built = await builder.build({
   systemPrompt: 'You are a helpful assistant.',
   toolProjection: {
     toolIds: ['web.search', 'memory.retrieve'],
-    toolSummaries: 'Available tools for search and retrieval.'
+    toolSummaries: 'Available tools for search and retrieval.',
   },
   contextBundle: {
     pinnedItems: [{ itemId: '1', content: 'User prefers dark mode', isPinned: true }],
-    orderedItems: []
+    orderedItems: [],
   },
   currentUserMessage: 'Find recent AI papers on caching',
   currentDate: '2026-05-23',
-  sessionId: 'session-123'
-});
+  sessionId: 'session-123',
+})
 
 // Use built.messages in LLM request
-console.log(built.segmentHashes.segmentA); // Stable across user messages
-console.log(built.metadata.messageCount);  // Total messages generated
+console.log(built.segmentHashes.segmentA) // Stable across user messages
+console.log(built.metadata.messageCount) // Total messages generated
 ```

@@ -1,49 +1,49 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { getSettings } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
-import ProviderManager from './ProviderManager';
-import SubagentConfig from './SubagentConfig';
-import type { SettingsConfig } from '../../api/types';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import ErrorMessage from '../../components/ErrorMessage';
+import React, { useEffect, useState, useCallback } from 'react'
+import { getSettings } from '../../api/client'
+import { useAuth } from '../../context/AuthContext'
+import ProviderManager from './ProviderManager'
+import SubagentConfig from './SubagentConfig'
+import type { SettingsConfig } from '../../api/types'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
 
 interface SettingsData {
-  settings: SettingsConfig | null;
-  loading: boolean;
-  error: Error | null;
+  settings: SettingsConfig | null
+  loading: boolean
+  error: Error | null
 }
 
 const SettingsTab: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth()
   const [data, setData] = useState<SettingsData>({
     settings: null,
     loading: true,
     error: null,
-  });
+  })
 
   const fetchData = useCallback(async () => {
-    setData(prev => ({ ...prev, loading: true, error: null }));
+    setData((prev) => ({ ...prev, loading: true, error: null }))
     try {
-      const response = await getSettings();
+      const response = await getSettings()
       setData({
         settings: response.settings,
         loading: false,
         error: null,
-      });
+      })
     } catch (err) {
       setData({
         settings: null,
         loading: false,
         error: err instanceof Error ? err : new Error('加载设置失败'),
-      });
+      })
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData()
+  }, [fetchData])
 
-  const { settings, loading, error } = data;
+  const { settings, loading, error } = data
 
   return (
     <div data-testid="settings-panel" className="settings-panel">
@@ -58,13 +58,7 @@ const SettingsTab: React.FC = () => {
           </div>
         )}
 
-        {error && (
-          <ErrorMessage
-            error={error}
-            retry={{ onClick: fetchData }}
-            size="large"
-          />
-        )}
+        {error && <ErrorMessage error={error} retry={{ onClick: fetchData }} size="large" />}
 
         {!loading && !error && settings && (
           <div className="settings-content" data-testid="settings-content">
@@ -74,7 +68,9 @@ const SettingsTab: React.FC = () => {
                 <span className="setting-label">本地模式:</span>
                 <span className="setting-value">
                   {settings.localOnly ? (
-                    <span className="checkmark-yes" data-testid="local-only-yes">✓ 是</span>
+                    <span className="checkmark-yes" data-testid="local-only-yes">
+                      ✓ 是
+                    </span>
                   ) : (
                     <span className="checkmark-no">✗ 否</span>
                   )}
@@ -99,7 +95,7 @@ const SettingsTab: React.FC = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SettingsTab;
+export default SettingsTab

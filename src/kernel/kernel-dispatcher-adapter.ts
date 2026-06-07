@@ -4,24 +4,27 @@
  * Bridges AgentKernel's dispatcher interface with the real RuntimeDispatcher.
  */
 
-import type { RuntimeDispatcher as DispatcherRuntimeDispatcher, DispatchResult, RuntimeActionType, TargetRuntime } from '../dispatcher/types.js';
-import type { RuntimeDispatcher as KernelRuntimeDispatcher } from '../kernel/types.js';
+import type {
+  RuntimeDispatcher as DispatcherRuntimeDispatcher,
+  DispatchResult,
+  RuntimeActionType,
+  TargetRuntime,
+} from '../dispatcher/types.js'
+import type { RuntimeDispatcher as KernelRuntimeDispatcher } from '../kernel/types.js'
 
 function generateId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 11)}`;
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 11)}`
 }
 
-export function createKernelDispatcherAdapter(
-  runtimeDispatcher: DispatcherRuntimeDispatcher
-): KernelRuntimeDispatcher {
+export function createKernelDispatcherAdapter(runtimeDispatcher: DispatcherRuntimeDispatcher): KernelRuntimeDispatcher {
   return {
     async dispatch(request) {
-      const requestId = request.requestId ?? generateId();
-      const actionId = request.action.actionId ?? generateId();
-      const now = new Date().toISOString();
+      const requestId = request.requestId ?? generateId()
+      const actionId = request.action.actionId ?? generateId()
+      const now = new Date().toISOString()
 
-      const toolDispatchRequest = request.action.targetAction?.toolDispatchRequest;
-      const firstToolUse = toolDispatchRequest?.toolUses[0];
+      const toolDispatchRequest = request.action.targetAction?.toolDispatchRequest
+      const firstToolUse = toolDispatchRequest?.toolUses[0]
 
       const action = {
         actionId,
@@ -33,18 +36,20 @@ export function createKernelDispatcherAdapter(
           toolName: request.action.targetAction?.toolName,
           params: request.action.targetAction?.params,
           toolDispatchRequest,
-          ...(toolDispatchRequest ? {
-            toolUses: toolDispatchRequest.toolUses.map(toolUse => ({
-              toolCallId: toolUse.toolCallId,
-              toolName: toolUse.toolName,
-              params: toolUse.input,
-              kernelRunId: toolDispatchRequest.runId,
-              timeoutMs: toolDispatchRequest.executionPolicy.timeoutMs,
-            })),
-            toolCallId: firstToolUse?.toolCallId,
-            toolName: firstToolUse?.toolName,
-            params: firstToolUse?.input,
-          } : {}),
+          ...(toolDispatchRequest
+            ? {
+                toolUses: toolDispatchRequest.toolUses.map((toolUse) => ({
+                  toolCallId: toolUse.toolCallId,
+                  toolName: toolUse.toolName,
+                  params: toolUse.input,
+                  kernelRunId: toolDispatchRequest.runId,
+                  timeoutMs: toolDispatchRequest.executionPolicy.timeoutMs,
+                })),
+                toolCallId: firstToolUse?.toolCallId,
+                toolName: firstToolUse?.toolName,
+                params: firstToolUse?.input,
+              }
+            : {}),
           runId: request.context.kernelRunId,
           userId: request.context.userId ?? request.action.userId,
           sessionId: request.context.sessionId,
@@ -59,19 +64,19 @@ export function createKernelDispatcherAdapter(
         status: 'created' as const,
         createdAt: now,
         updatedAt: now,
-      };
+      }
 
       const context = {
         userId: request.context.userId ?? request.action.userId,
         sessionId: request.context.sessionId,
         callerModule: request.context.callerModule,
-      };
+      }
 
       const result: DispatchResult = await runtimeDispatcher.dispatch({
         requestId,
         action,
         context,
-      });
+      })
 
       return {
         requestId: result.requestId,
@@ -82,7 +87,7 @@ export function createKernelDispatcherAdapter(
         error: result.error,
         createdAt: result.createdAt,
         completedAt: result.completedAt,
-      };
+      }
     },
-  };
+  }
 }

@@ -1,129 +1,129 @@
-import type { ConnectionManager } from './connection.js';
-import type { ToolCallSummary } from '../api/types.js';
-import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
+import type { ConnectionManager } from './connection.js'
+import type { ToolCallSummary } from '../api/types.js'
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
-export type Visibility = 'public' | 'internal' | 'confidential';
+export type Visibility = 'public' | 'internal' | 'confidential'
 
 export interface VisibleMessage {
-  messageId: string;
-  role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error';
-  content: string;
+  messageId: string
+  role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error'
+  content: string
 }
 
 export interface TurnTranscript {
-  turnId: string;
-  sessionId: string;
-  userId: string;
+  turnId: string
+  sessionId: string
+  userId: string
 
   input: {
-    inboundEventId?: string;
-    userMessageSummary?: string;
-    contentRefs?: string[];
+    inboundEventId?: string
+    userMessageSummary?: string
+    contentRefs?: string[]
     /** ISO timestamp of the inbound user message (when the user sent it). */
-    inboundTimestamp?: string;
-  };
+    inboundTimestamp?: string
+  }
 
   output: {
-    visibleMessages: VisibleMessage[];
-    artifactRefs?: string[];
-  };
+    visibleMessages: VisibleMessage[]
+    artifactRefs?: string[]
+  }
 
   runtimeSummary?: {
-    foregroundDecisionId?: string;
-    plannerRunIds?: string[];
-    runtimeActionIds?: string[];
-    toolCallSummaries?: ToolCallSummary[];
-    approvalSummaries?: string[];
-  };
+    foregroundDecisionId?: string
+    plannerRunIds?: string[]
+    runtimeActionIds?: string[]
+    toolCallSummaries?: ToolCallSummary[]
+    approvalSummaries?: string[]
+  }
 
   eventRange?: {
-    startEventId: string;
-    endEventId: string;
-  };
+    startEventId: string
+    endEventId: string
+  }
 
-  visibility: Visibility;
-  createdAt: string;
+  visibility: Visibility
+  createdAt: string
 }
 
 export interface FindOptions {
-  limit?: number;
-  offset?: number;
+  limit?: number
+  offset?: number
 }
 
 export interface SearchOptions {
-  sessionId?: string;
-  limit?: number;
-  offset?: number;
+  sessionId?: string
+  limit?: number
+  offset?: number
 }
 
 export interface TranscriptStore {
-  saveTurn(transcript: TurnTranscript, tenantId?: string): boolean;
-  getTurn(turnId: string, tenantId?: string): TurnTranscript | null;
-  findBySession(sessionId: string, options?: FindOptions, tenantId?: string): TurnTranscript[];
-  search(query: string, options?: SearchOptions, tenantId?: string): TurnTranscript[];
-  findByArtifactRef(artifactRef: string, tenantId?: string): TurnTranscript[];
-  findByPlannerRunId(plannerRunId: string, tenantId?: string): TurnTranscript[];
-  updateUserIdForSession(sessionId: string, newUserId: string, tenantId?: string): number;
+  saveTurn(transcript: TurnTranscript, tenantId?: string): boolean
+  getTurn(turnId: string, tenantId?: string): TurnTranscript | null
+  findBySession(sessionId: string, options?: FindOptions, tenantId?: string): TurnTranscript[]
+  search(query: string, options?: SearchOptions, tenantId?: string): TurnTranscript[]
+  findByArtifactRef(artifactRef: string, tenantId?: string): TurnTranscript[]
+  findByPlannerRunId(plannerRunId: string, tenantId?: string): TurnTranscript[]
+  updateUserIdForSession(sessionId: string, newUserId: string, tenantId?: string): number
 }
 
 interface TranscriptRow {
-  turnId: string;
-  sessionId: string;
-  userId: string;
-  inboundEventId: string | null;
-  userMessageSummary: string | null;
-  contentRefs: string | null;
-  visibleMessages: string;
-  artifactRefs: string | null;
-  foregroundDecisionId: string | null;
-  plannerRunIds: string | null;
-  runtimeActionIds: string | null;
-  toolCallSummaries: string | null;
-  approvalSummaries: string | null;
-  startEventId: string | null;
-  endEventId: string | null;
-  visibility: Visibility;
-  createdAt: string;
+  turnId: string
+  sessionId: string
+  userId: string
+  inboundEventId: string | null
+  userMessageSummary: string | null
+  contentRefs: string | null
+  visibleMessages: string
+  artifactRefs: string | null
+  foregroundDecisionId: string | null
+  plannerRunIds: string | null
+  runtimeActionIds: string | null
+  toolCallSummaries: string | null
+  approvalSummaries: string | null
+  startEventId: string | null
+  endEventId: string | null
+  visibility: Visibility
+  createdAt: string
 }
 
-const INBOUND_TS_PREFIX = '__inboundTimestamp:';
+const INBOUND_TS_PREFIX = '__inboundTimestamp:'
 
 function encodeContentRefs(refs: string[] | undefined, inboundTimestamp?: string): string | null {
-  const entries = [...(refs ?? [])];
+  const entries = [...(refs ?? [])]
   if (inboundTimestamp) {
-    entries.push(`${INBOUND_TS_PREFIX}${inboundTimestamp}`);
+    entries.push(`${INBOUND_TS_PREFIX}${inboundTimestamp}`)
   }
-  return entries.length > 0 ? JSON.stringify(entries) : null;
+  return entries.length > 0 ? JSON.stringify(entries) : null
 }
 
 function decodeContentRefs(raw: string | null): { contentRefs?: string[]; inboundTimestamp?: string } {
-  if (!raw) return {};
+  if (!raw) return {}
   try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return {};
-    const refs: string[] = [];
-    let inboundTimestamp: string | undefined;
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return {}
+    const refs: string[] = []
+    let inboundTimestamp: string | undefined
     for (const entry of parsed) {
       if (typeof entry === 'string' && entry.startsWith(INBOUND_TS_PREFIX)) {
-        inboundTimestamp = entry.slice(INBOUND_TS_PREFIX.length);
+        inboundTimestamp = entry.slice(INBOUND_TS_PREFIX.length)
       } else if (typeof entry === 'string') {
-        refs.push(entry);
+        refs.push(entry)
       }
     }
     return {
       contentRefs: refs.length > 0 ? refs : undefined,
       inboundTimestamp,
-    };
+    }
   } catch {
-    return {};
+    return {}
   }
 }
 
 class TranscriptStoreImpl implements TranscriptStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   saveTurn(transcript: TurnTranscript, tenantId: string = DEFAULT_TENANT_ID): boolean {
@@ -137,7 +137,7 @@ class TranscriptStoreImpl implements TranscriptStore {
         startEventId, endEventId,
         visibility, createdAt, tenant_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    `
 
     const params = [
       transcript.turnId,
@@ -157,48 +157,48 @@ class TranscriptStoreImpl implements TranscriptStore {
       transcript.eventRange?.endEventId ?? null,
       transcript.visibility,
       transcript.createdAt,
-      tenantId
-    ];
+      tenantId,
+    ]
 
     try {
-      this.connection.exec(sql, params);
-      return true;
+      this.connection.exec(sql, params)
+      return true
     } catch (error) {
-      return false;
+      return false
     }
   }
 
   getTurn(turnId: string, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript | null {
-    const sql = 'SELECT * FROM transcripts WHERE turnId = ? AND tenant_id = ?';
-    const rows = this.connection.query<TranscriptRow>(sql, [turnId, tenantId]);
+    const sql = 'SELECT * FROM transcripts WHERE turnId = ? AND tenant_id = ?'
+    const rows = this.connection.query<TranscriptRow>(sql, [turnId, tenantId])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToTranscript(rows[0]);
+    return this.rowToTranscript(rows[0])
   }
 
   findBySession(sessionId: string, options: FindOptions = {}, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript[] {
-    const { limit = 1000, offset = 0 } = options;
+    const { limit = 1000, offset = 0 } = options
 
     const sql = `
       SELECT * FROM transcripts
       WHERE sessionId = ? AND tenant_id = ?
       ORDER BY createdAt ASC
       LIMIT ? OFFSET ?
-    `;
+    `
 
-    const rows = this.connection.query<TranscriptRow>(sql, [sessionId, tenantId, limit, offset]);
-    return rows.map(row => this.rowToTranscript(row));
+    const rows = this.connection.query<TranscriptRow>(sql, [sessionId, tenantId, limit, offset])
+    return rows.map((row) => this.rowToTranscript(row))
   }
 
   search(query: string, options: SearchOptions = {}, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript[] {
-    const { sessionId, limit = 100, offset = 0 } = options;
+    const { sessionId, limit = 100, offset = 0 } = options
 
-    const searchPattern = `%${query}%`;
-    let sql: string;
-    let params: unknown[];
+    const searchPattern = `%${query}%`
+    let sql: string
+    let params: unknown[]
 
     if (sessionId) {
       sql = `
@@ -214,8 +214,8 @@ class TranscriptStoreImpl implements TranscriptStore {
           )
         ORDER BY createdAt ASC
         LIMIT ? OFFSET ?
-      `;
-      params = [sessionId, tenantId, searchPattern, searchPattern, limit, offset];
+      `
+      params = [sessionId, tenantId, searchPattern, searchPattern, limit, offset]
     } else {
       sql = `
         SELECT * FROM transcripts
@@ -229,15 +229,15 @@ class TranscriptStoreImpl implements TranscriptStore {
           )
         ORDER BY createdAt ASC
         LIMIT ? OFFSET ?
-      `;
-      params = [tenantId, searchPattern, searchPattern, limit, offset];
+      `
+      params = [tenantId, searchPattern, searchPattern, limit, offset]
     }
 
     try {
-      const rows = this.connection.query<TranscriptRow>(sql, params);
-      return rows.map(row => this.rowToTranscript(row));
+      const rows = this.connection.query<TranscriptRow>(sql, params)
+      return rows.map((row) => this.rowToTranscript(row))
     } catch {
-      return [];
+      return []
     }
   }
 
@@ -250,10 +250,10 @@ class TranscriptStoreImpl implements TranscriptStore {
           SELECT 1 FROM json_each(artifactRefs)
           WHERE json_each.value = ?
         )
-    `;
+    `
 
-    const rows = this.connection.query<TranscriptRow>(sql, [tenantId, artifactRef]);
-    return rows.map(row => this.rowToTranscript(row));
+    const rows = this.connection.query<TranscriptRow>(sql, [tenantId, artifactRef])
+    return rows.map((row) => this.rowToTranscript(row))
   }
 
   findByPlannerRunId(plannerRunId: string, tenantId: string = DEFAULT_TENANT_ID): TurnTranscript[] {
@@ -265,10 +265,10 @@ class TranscriptStoreImpl implements TranscriptStore {
           SELECT 1 FROM json_each(plannerRunIds)
           WHERE json_each.value = ?
         )
-    `;
+    `
 
-    const rows = this.connection.query<TranscriptRow>(sql, [tenantId, plannerRunId]);
-    return rows.map(row => this.rowToTranscript(row));
+    const rows = this.connection.query<TranscriptRow>(sql, [tenantId, plannerRunId])
+    return rows.map((row) => this.rowToTranscript(row))
   }
 
   updateUserIdForSession(sessionId: string, newUserId: string, tenantId: string = DEFAULT_TENANT_ID): number {
@@ -276,20 +276,20 @@ class TranscriptStoreImpl implements TranscriptStore {
       UPDATE transcripts
       SET userId = ?
       WHERE sessionId = ? AND tenant_id = ?
-    `;
+    `
 
     try {
-      this.connection.exec(sql, [newUserId, sessionId, tenantId]);
-      const countSql = 'SELECT COUNT(*) as count FROM transcripts WHERE sessionId = ? AND userId = ? AND tenant_id = ?';
-      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId, tenantId]);
-      return rows[0]?.count ?? 0;
+      this.connection.exec(sql, [newUserId, sessionId, tenantId])
+      const countSql = 'SELECT COUNT(*) as count FROM transcripts WHERE sessionId = ? AND userId = ? AND tenant_id = ?'
+      const rows = this.connection.query<{ count: number }>(countSql, [sessionId, newUserId, tenantId])
+      return rows[0]?.count ?? 0
     } catch {
-      return 0;
+      return 0
     }
   }
 
   private rowToTranscript(row: TranscriptRow): TurnTranscript {
-    const decoded = decodeContentRefs(row.contentRefs);
+    const decoded = decodeContentRefs(row.contentRefs)
     return {
       turnId: row.turnId,
       sessionId: row.sessionId,
@@ -302,27 +302,30 @@ class TranscriptStoreImpl implements TranscriptStore {
       },
       output: {
         visibleMessages: JSON.parse(row.visibleMessages),
-        artifactRefs: row.artifactRefs ? JSON.parse(row.artifactRefs) : undefined
+        artifactRefs: row.artifactRefs ? JSON.parse(row.artifactRefs) : undefined,
       },
-      runtimeSummary: row.foregroundDecisionId || row.plannerRunIds || row.runtimeActionIds ||
-                       row.toolCallSummaries || row.approvalSummaries
-        ? {
-            foregroundDecisionId: row.foregroundDecisionId ?? undefined,
-            plannerRunIds: row.plannerRunIds ? JSON.parse(row.plannerRunIds) : undefined,
-            runtimeActionIds: row.runtimeActionIds ? JSON.parse(row.runtimeActionIds) : undefined,
-            toolCallSummaries: row.toolCallSummaries ? JSON.parse(row.toolCallSummaries) : undefined,
-            approvalSummaries: row.approvalSummaries ? JSON.parse(row.approvalSummaries) : undefined
-          }
-        : undefined,
-      eventRange: row.startEventId && row.endEventId
-        ? { startEventId: row.startEventId, endEventId: row.endEventId }
-        : undefined,
+      runtimeSummary:
+        row.foregroundDecisionId ||
+        row.plannerRunIds ||
+        row.runtimeActionIds ||
+        row.toolCallSummaries ||
+        row.approvalSummaries
+          ? {
+              foregroundDecisionId: row.foregroundDecisionId ?? undefined,
+              plannerRunIds: row.plannerRunIds ? JSON.parse(row.plannerRunIds) : undefined,
+              runtimeActionIds: row.runtimeActionIds ? JSON.parse(row.runtimeActionIds) : undefined,
+              toolCallSummaries: row.toolCallSummaries ? JSON.parse(row.toolCallSummaries) : undefined,
+              approvalSummaries: row.approvalSummaries ? JSON.parse(row.approvalSummaries) : undefined,
+            }
+          : undefined,
+      eventRange:
+        row.startEventId && row.endEventId ? { startEventId: row.startEventId, endEventId: row.endEventId } : undefined,
       visibility: row.visibility,
-      createdAt: row.createdAt
-    };
+      createdAt: row.createdAt,
+    }
   }
 }
 
 export function createTranscriptStore(connection: ConnectionManager): TranscriptStore {
-  return new TranscriptStoreImpl(connection);
+  return new TranscriptStoreImpl(connection)
 }

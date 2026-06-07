@@ -26,16 +26,16 @@
 
 ## 2. 完成步骤清单
 
-| 序号 | 步骤 | 状态 | 备注 |
-|---|---|---|---|
-| 1 | 依赖环境确认 | 通过 | Node `v22.22.2`，npm `10.9.7`，满足 `>=20.0.0` |
-| 2 | 类型检查 | 通过 | `npm run typecheck` 退出码 0 |
-| 3 | 全量后端测试 | 通过 | `npm test`：178 个测试文件、3587 个测试全部通过 |
-| 4 | P0 聚合测试 | 通过 | `npm run test:p0`：14 个用例全部通过 |
-| 5 | 数据库迁移 | 通过 | `npm run db:migrate` 已执行，数据库迁移到 version 14 |
-| 6 | API 启动验证 | 通过 | 临时端口 `3199` 启动，`/api/health` 返回 `status: healthy` |
-| 7 | 文档结构验收 | 通过 | Checklist 15 个 bash 验证块，测试矩阵引用 37 个测试路径 |
-| 8 | Git 合并准备 | 通过 | 工作区干净，源分支准备合并到 `master` |
+| 序号 | 步骤         | 状态 | 备注                                                       |
+| ---- | ------------ | ---- | ---------------------------------------------------------- |
+| 1    | 依赖环境确认 | 通过 | Node `v22.22.2`，npm `10.9.7`，满足 `>=20.0.0`             |
+| 2    | 类型检查     | 通过 | `npm run typecheck` 退出码 0                               |
+| 3    | 全量后端测试 | 通过 | `npm test`：178 个测试文件、3587 个测试全部通过            |
+| 4    | P0 聚合测试  | 通过 | `npm run test:p0`：14 个用例全部通过                       |
+| 5    | 数据库迁移   | 通过 | `npm run db:migrate` 已执行，数据库迁移到 version 14       |
+| 6    | API 启动验证 | 通过 | 临时端口 `3199` 启动，`/api/health` 返回 `status: healthy` |
+| 7    | 文档结构验收 | 通过 | Checklist 15 个 bash 验证块，测试矩阵引用 37 个测试路径    |
+| 8    | Git 合并准备 | 通过 | 工作区干净，源分支准备合并到 `master`                      |
 
 ---
 
@@ -43,24 +43,24 @@
 
 ### 3.1 新增文件
 
-| 文件路径 | 用途 | 备注 |
-|---|---|---|
-| `.nvmrc` | 固定 Node 主版本 | 内容为 `20` |
-| `.npmrc.example` | npm 配置模板 | 含 `engine-strict=true` 示例 |
-| `docs/architecture/P0_SCOPE.md` | P0 范围声明 | 声明 P0 已关闭，项目进入 Phase 3 |
-| `docs/architecture/ARCHITECTURE_RUNTIME_CHECKLIST.md` | P0 架构验收清单 | 覆盖 13 个核心模块 |
-| `docs/architecture/ARCHITECTURE_TEST_MATRIX.md` | P0 测试矩阵 | 映射 8 条黄金路径和 5 个测试层级 |
-| `docs/dev-setup.md` | 开发环境搭建指南 | 含健康检查验证步骤 |
-| `docs/runbooks/p0-troubleshooting.md` | P0 验收排障指南 | 首行引用 `RUNBOOK.md`，避免重复 |
-| `docs/reports/P0_EXECUTION_REPORT_TEMPLATE.md` | P0 报告模板 | 用于后续验收记录 |
-| `docs/reports/P0_EXECUTION_REPORT.md` | P0 正式验收报告 | 本文件 |
+| 文件路径                                              | 用途             | 备注                             |
+| ----------------------------------------------------- | ---------------- | -------------------------------- |
+| `.nvmrc`                                              | 固定 Node 主版本 | 内容为 `20`                      |
+| `.npmrc.example`                                      | npm 配置模板     | 含 `engine-strict=true` 示例     |
+| `docs/architecture/P0_SCOPE.md`                       | P0 范围声明      | 声明 P0 已关闭，项目进入 Phase 3 |
+| `docs/architecture/ARCHITECTURE_RUNTIME_CHECKLIST.md` | P0 架构验收清单  | 覆盖 13 个核心模块               |
+| `docs/architecture/ARCHITECTURE_TEST_MATRIX.md`       | P0 测试矩阵      | 映射 8 条黄金路径和 5 个测试层级 |
+| `docs/dev-setup.md`                                   | 开发环境搭建指南 | 含健康检查验证步骤               |
+| `docs/runbooks/p0-troubleshooting.md`                 | P0 验收排障指南  | 首行引用 `RUNBOOK.md`，避免重复  |
+| `docs/reports/P0_EXECUTION_REPORT_TEMPLATE.md`        | P0 报告模板      | 用于后续验收记录                 |
+| `docs/reports/P0_EXECUTION_REPORT.md`                 | P0 正式验收报告  | 本文件                           |
 
 ### 3.2 修改文件
 
-| 文件路径 | 修改内容 | 影响 |
-|---|---|---|
+| 文件路径       | 修改内容                              | 影响                                 |
+| -------------- | ------------------------------------- | ------------------------------------ |
 | `package.json` | 新增 `engines.node` 和 `test:p0` 脚本 | 固定 Node 版本约束并提供 P0 验证入口 |
-| `.gitignore` | 忽略本地 `.npmrc` | 防止个人 npm 配置误提交 |
+| `.gitignore`   | 忽略本地 `.npmrc`                     | 防止个人 npm 配置误提交              |
 
 ### 3.3 删除文件
 
@@ -72,48 +72,48 @@
 
 ### 4.1 构建与静态检查
 
-| 检查项 | 命令 | 结果 | 说明 |
-|---|---|---|---|
-| 依赖安装 | `npm install` | 未重跑 | 当前环境已安装依赖；后续验证均基于已安装依赖完成 |
-| 类型检查 | `npm run typecheck` | 通过 | `tsc --noEmit` 无错误 |
+| 检查项   | 命令                | 结果   | 说明                                             |
+| -------- | ------------------- | ------ | ------------------------------------------------ |
+| 依赖安装 | `npm install`       | 未重跑 | 当前环境已安装依赖；后续验证均基于已安装依赖完成 |
+| 类型检查 | `npm run typecheck` | 通过   | `tsc --noEmit` 无错误                            |
 
 ### 4.2 测试套件执行
 
-| 测试类型 | 命令 | 通过 | 失败 | 跳过 | 耗时 |
-|---|---|---:|---:|---:|---|
-| P0 聚合测试 | `npm run test:p0` | 14 | 0 | 0 | 2.99s |
-| 全量后端测试 | `npm test` | 3587 | 0 | 0 | 187.76s |
+| 测试类型     | 命令              | 通过 | 失败 | 跳过 | 耗时    |
+| ------------ | ----------------- | ---: | ---: | ---: | ------- |
+| P0 聚合测试  | `npm run test:p0` |   14 |    0 |    0 | 2.99s   |
+| 全量后端测试 | `npm test`        | 3587 |    0 |    0 | 187.76s |
 
 ### 4.3 服务启动验证
 
-| 服务 | 端口 | 启动状态 | 健康检查 |
-|---|---:|---|---|
-| API 服务 | 3199 | 正常 | 通过，`/api/health` 返回 `status: healthy` |
-| Web 服务 | 3002 | 未验证 | 非 P0 合并阻塞项，本次未启动前端 |
+| 服务     | 端口 | 启动状态 | 健康检查                                   |
+| -------- | ---: | -------- | ------------------------------------------ |
+| API 服务 | 3199 | 正常     | 通过，`/api/health` 返回 `status: healthy` |
+| Web 服务 | 3002 | 未验证   | 非 P0 合并阻塞项，本次未启动前端           |
 
 ### 4.4 数据库验证
 
-| 检查项 | 命令 | 结果 |
-|---|---|---|
+| 检查项     | 命令                 | 结果                          |
+| ---------- | -------------------- | ----------------------------- |
 | 数据库迁移 | `npm run db:migrate` | 通过，当前数据库版本迁移到 14 |
 
 ---
 
 ## 5. P0 黄金路径覆盖
 
-| 序号 | 黄金路径 | 测试状态 | 主要证据 |
-|---|---|---|---|
-| 1 | Direct Chat | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 1 |
-| 2 | Read Tool + ResultRef | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 2 |
-| 3 | Write Tool + Approval | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 3 |
-| 4 | PlannerRun | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 4 |
-| 5 | Background Task | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 5 |
-| 6 | Workflow Runtime | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 6 |
-| 7 | Trigger Wakeup | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 7 |
-| 8 | Approval Resume | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 8 |
-| 9 | Interrupt / Cancel | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 9 |
-| 10 | Status Query | 通过 | `tests/e2e/full-flow-suite.test.ts` Flow 10 |
-| 11 | Restart / Recovery | 通过 | `tests/e2e/full-flow-suite.test.ts` Restart/Recovery Scenario |
+| 序号 | 黄金路径              | 测试状态 | 主要证据                                                      |
+| ---- | --------------------- | -------- | ------------------------------------------------------------- |
+| 1    | Direct Chat           | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 1                    |
+| 2    | Read Tool + ResultRef | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 2                    |
+| 3    | Write Tool + Approval | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 3                    |
+| 4    | PlannerRun            | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 4                    |
+| 5    | Background Task       | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 5                    |
+| 6    | Workflow Runtime      | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 6                    |
+| 7    | Trigger Wakeup        | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 7                    |
+| 8    | Approval Resume       | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 8                    |
+| 9    | Interrupt / Cancel    | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 9                    |
+| 10   | Status Query          | 通过     | `tests/e2e/full-flow-suite.test.ts` Flow 10                   |
+| 11   | Restart / Recovery    | 通过     | `tests/e2e/full-flow-suite.test.ts` Restart/Recovery Scenario |
 
 覆盖率：11/11（100%），以 `npm run test:p0` 的 14 个测试用例为准。
 
@@ -123,30 +123,30 @@
 
 ### 6.1 已知问题
 
-| 问题编号 | 描述 | 影响等级 | 状态 |
-|---|---|---|---|
-| P0-INFO-001 | `npm install` 本轮未重新执行 | 低 | 不阻塞；依赖已安装，全部验证命令通过 |
-| P0-INFO-002 | 前端 Web 服务本轮未启动验证 | 低 | 不阻塞 P0 后端运行链路闭环 |
+| 问题编号    | 描述                         | 影响等级 | 状态                                 |
+| ----------- | ---------------------------- | -------- | ------------------------------------ |
+| P0-INFO-001 | `npm install` 本轮未重新执行 | 低       | 不阻塞；依赖已安装，全部验证命令通过 |
+| P0-INFO-002 | 前端 Web 服务本轮未启动验证  | 低       | 不阻塞 P0 后端运行链路闭环           |
 
 ### 6.2 残留风险
 
-| 风险描述 | 可能影响 | 缓解措施 |
-|---|---|---|
-| Architecture 层测试覆盖弱于 integration 层 | 后续架构漂移可能不易被专项测试捕获 | `ARCHITECTURE_RUNTIME_CHECKLIST.md` 提供可执行核查入口；P2 可补架构测试 |
-| 某些 P1/P2 能力被明确排除在 P0 外 | 不影响 P0 验收，但可能影响后续产品化 | 以 `docs/architecture/P0_SCOPE.md` 的 OUT OF SCOPE 表为准 |
+| 风险描述                                   | 可能影响                             | 缓解措施                                                                |
+| ------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------- |
+| Architecture 层测试覆盖弱于 integration 层 | 后续架构漂移可能不易被专项测试捕获   | `ARCHITECTURE_RUNTIME_CHECKLIST.md` 提供可执行核查入口；P2 可补架构测试 |
+| 某些 P1/P2 能力被明确排除在 P0 外          | 不影响 P0 验收，但可能影响后续产品化 | 以 `docs/architecture/P0_SCOPE.md` 的 OUT OF SCOPE 表为准               |
 
 ---
 
 ## 7. 合并信息
 
-| 项目 | 值 |
-|---|---|
-| 源分支 | `feat/mvp-runtime-p0-p1` |
-| 目标分支 | `master` |
-| 合并前目标分支 HEAD | `2adf1ee` |
-| 合并前源分支 HEAD | `5a0e175` |
-| 合并前待合入提交 | 38 个功能分支提交；本报告提交后将再增加 1 个文档提交 |
-| 推送远端 | 本次不推送，需用户后续明确要求 |
+| 项目                | 值                                                   |
+| ------------------- | ---------------------------------------------------- |
+| 源分支              | `feat/mvp-runtime-p0-p1`                             |
+| 目标分支            | `master`                                             |
+| 合并前目标分支 HEAD | `2adf1ee`                                            |
+| 合并前源分支 HEAD   | `5a0e175`                                            |
+| 合并前待合入提交    | 38 个功能分支提交；本报告提交后将再增加 1 个文档提交 |
+| 推送远端            | 本次不推送，需用户后续明确要求                       |
 
 ---
 

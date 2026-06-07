@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { createAuditStore } from '../../../src/observability/audit-store.js';
-import { createReplayService, DEFAULT_SAFETY_POLICY } from '../../../src/observability/replay.js';
-import { createTimelineBuilder } from '../../../src/observability/timeline.js';
-import { createTraceStore } from '../../../src/observability/trace-store.js';
-import { createConnectionManager } from '../../../src/storage/connection.js';
-import { createEventStore } from '../../../src/storage/event-store.js';
-import { createMigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createRuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
-import type { AuditRecord } from '../../../src/observability/audit-types.js';
+import { describe, expect, it } from 'vitest'
+import { createAuditStore } from '../../../src/observability/audit-store.js'
+import { createReplayService, DEFAULT_SAFETY_POLICY } from '../../../src/observability/replay.js'
+import { createTimelineBuilder } from '../../../src/observability/timeline.js'
+import { createTraceStore } from '../../../src/observability/trace-store.js'
+import { createConnectionManager } from '../../../src/storage/connection.js'
+import { createEventStore } from '../../../src/storage/event-store.js'
+import { createMigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createRuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
+import type { AuditRecord } from '../../../src/observability/audit-types.js'
 
 const migrations: Migration[] = [
   {
@@ -56,25 +56,25 @@ const migrations: Migration[] = [
       DROP TABLE events;
     `,
   },
-];
+]
 
 describe('timeline_only replay safety', () => {
   it('returns redacted connector write timeline without dispatching external writes', () => {
-    const connection = createConnectionManager(':memory:');
-    connection.open();
+    const connection = createConnectionManager(':memory:')
+    connection.open()
     try {
-      const runner = createMigrationRunner(connection);
-      runner.init();
-      runner.apply(migrations);
+      const runner = createMigrationRunner(connection)
+      runner.init()
+      runner.apply(migrations)
 
-      const eventStore = createEventStore(connection);
-      const auditStore = createAuditStore(connection);
-      const traceStore = createTraceStore(connection);
-      const actionStore = createRuntimeActionStore(connection);
-      const timelineBuilder = createTimelineBuilder({ eventStore, auditStore, traceStore, actionStore });
-      const replayService = createReplayService({ timelineBuilder, eventStore, auditStore, traceStore });
-      const mockConnector = { sendCount: 0 };
-      const sessionId = 'session-replay-safe';
+      const eventStore = createEventStore(connection)
+      const auditStore = createAuditStore(connection)
+      const traceStore = createTraceStore(connection)
+      const actionStore = createRuntimeActionStore(connection)
+      const timelineBuilder = createTimelineBuilder({ eventStore, auditStore, traceStore, actionStore })
+      const replayService = createReplayService({ timelineBuilder, eventStore, auditStore, traceStore })
+      const mockConnector = { sendCount: 0 }
+      const sessionId = 'session-replay-safe'
       const audit: AuditRecord = {
         auditId: 'audit-write-1',
         auditType: 'external_write',
@@ -88,25 +88,25 @@ describe('timeline_only replay safety', () => {
         payload: { to: 'user@example.test', token: 'secret-token' },
         riskLevel: 'high',
         sensitivity: 'medium',
-      };
+      }
 
-      auditStore.record(audit);
+      auditStore.record(audit)
 
       const result = replayService.replay({
         rootType: 'session',
         rootId: sessionId,
         replayMode: 'timeline_only',
         safetyPolicy: DEFAULT_SAFETY_POLICY,
-      });
+      })
 
-      expect(mockConnector.sendCount).toBe(0);
-      expect(result.blockedActions).toHaveLength(1);
-      const timelineEvent = result.timeline.events.find((event) => event.eventId === audit.auditId);
-      const sourceData = timelineEvent?.sourceData as AuditRecord | undefined;
-      expect(sourceData?.payload.token).toBe('[REDACTED]');
-      expect(timelineEvent?.description).toContain('external_write');
+      expect(mockConnector.sendCount).toBe(0)
+      expect(result.blockedActions).toHaveLength(1)
+      const timelineEvent = result.timeline.events.find((event) => event.eventId === audit.auditId)
+      const sourceData = timelineEvent?.sourceData as AuditRecord | undefined
+      expect(sourceData?.payload.token).toBe('[REDACTED]')
+      expect(timelineEvent?.description).toContain('external_write')
     } finally {
-      connection.close();
+      connection.close()
     }
-  });
-});
+  })
+})

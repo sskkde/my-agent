@@ -1,15 +1,15 @@
-import '@testing-library/jest-dom';
-import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import '@testing-library/jest-dom'
+import { cleanup } from '@testing-library/react'
+import { afterEach, vi } from 'vitest'
 
 Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
   writable: true,
   value: vi.fn(),
-});
+})
 
 afterEach(() => {
-  cleanup();
-});
+  cleanup()
+})
 
 /* ==========================================================================
    Responsive Test Helpers
@@ -28,7 +28,7 @@ export const BREAKPOINTS = {
   PHONE: 480,
   TABLET: 768,
   COMPACT: 1100,
-} as const;
+} as const
 
 /**
  * Media query strings for responsive breakpoints
@@ -39,7 +39,7 @@ export const MEDIA_QUERIES = {
   TABLET_AND_BELOW: `(max-width: ${BREAKPOINTS.TABLET}px)`,
   COMPACT: `(max-width: ${BREAKPOINTS.COMPACT}px)`,
   DESKTOP: `(min-width: ${BREAKPOINTS.COMPACT + 1}px)`,
-} as const;
+} as const
 
 /**
  * Mock matchMedia for responsive testing
@@ -59,7 +59,7 @@ export function mockMatchMedia(matches: boolean, query: string = MEDIA_QUERIES.C
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })),
-  });
+  })
 }
 
 /**
@@ -70,13 +70,13 @@ export function mockViewport(width: number) {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => {
-      let matches = false;
+      let matches = false
       if (query.includes('max-width')) {
-        const maxWidth = parseInt(query.match(/max-width:\s*(\d+)px/)?.[1] || '0', 10);
-        matches = width <= maxWidth;
+        const maxWidth = parseInt(query.match(/max-width:\s*(\d+)px/)?.[1] || '0', 10)
+        matches = width <= maxWidth
       } else if (query.includes('min-width')) {
-        const minWidth = parseInt(query.match(/min-width:\s*(\d+)px/)?.[1] || '0', 10);
-        matches = width >= minWidth;
+        const minWidth = parseInt(query.match(/min-width:\s*(\d+)px/)?.[1] || '0', 10)
+        matches = width >= minWidth
       }
 
       return {
@@ -88,9 +88,9 @@ export function mockViewport(width: number) {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-      };
+      }
     }),
-  });
+  })
 }
 
 /**
@@ -100,5 +100,5 @@ export function resetMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn(),
-  });
+  })
 }

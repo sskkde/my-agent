@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import TabNav, { TabId } from './TabNav';
-import { NAV_GROUPS, getNavItemById, NavGroup } from '../navigation/navigation-config';
-import { ICONS } from '../navigation/icons';
-import type { UserMetadata } from '../api/types';
-import '../styles.css';
+import React, { useState, useEffect, useMemo } from 'react'
+import TabNav, { TabId } from './TabNav'
+import { NAV_GROUPS, getNavItemById, NavGroup } from '../navigation/navigation-config'
+import { ICONS } from '../navigation/icons'
+import type { UserMetadata } from '../api/types'
+import '../styles.css'
 
 interface AppShellProps {
-  children: React.ReactNode;
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
-  onToggleNavCollapsed?: () => void;
-  isNavCollapsed?: boolean;
-  user?: UserMetadata | null;
-  onLogout?: () => void;
+  children: React.ReactNode
+  activeTab: TabId
+  onTabChange: (tab: TabId) => void
+  onToggleNavCollapsed?: () => void
+  isNavCollapsed?: boolean
+  user?: UserMetadata | null
+  onLogout?: () => void
 }
 
 const AppShell: React.FC<AppShellProps> = ({
@@ -24,77 +24,77 @@ const AppShell: React.FC<AppShellProps> = ({
   user,
   onLogout,
 }) => {
-  const [internalNavCollapsed, setInternalNavCollapsed] = useState(false);
-  const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [internalNavCollapsed, setInternalNavCollapsed] = useState(false)
+  const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
-  const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed;
+  const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {
-      setIsMobile(false);
-      return;
+      setIsMobile(false)
+      return
     }
 
     const checkMobile = () => {
-      const mobileQuery = window.matchMedia('(max-width: 1100px)');
-      setIsMobile(mobileQuery.matches);
-    };
+      const mobileQuery = window.matchMedia('(max-width: 1100px)')
+      setIsMobile(mobileQuery.matches)
+    }
 
-    checkMobile();
+    checkMobile()
 
-    const mediaQuery = window.matchMedia('(max-width: 1100px)');
+    const mediaQuery = window.matchMedia('(max-width: 1100px)')
     const handleChange = (e: MediaQueryListEvent) => {
-      setIsMobile(e.matches);
-    };
+      setIsMobile(e.matches)
+    }
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   const handleToggleNavCollapsed = () => {
     if (onToggleNavCollapsed) {
-      onToggleNavCollapsed();
+      onToggleNavCollapsed()
     } else {
-      setInternalNavCollapsed((prev) => !prev);
+      setInternalNavCollapsed((prev) => !prev)
     }
-  };
+  }
 
   const handleToggleMobileDrawer = () => {
-    setIsNavDrawerOpen((prev) => !prev);
-  };
+    setIsNavDrawerOpen((prev) => !prev)
+  }
 
   const handleLogout = () => {
     if (onLogout) {
-      onLogout();
+      onLogout()
     }
-  };
+  }
 
   const handleTabChange = (tab: TabId) => {
-    onTabChange(tab);
+    onTabChange(tab)
     if (isMobile) {
-      setIsNavDrawerOpen(false);
+      setIsNavDrawerOpen(false)
     }
-  };
+  }
 
   const breadcrumb = useMemo(() => {
-    const navItem = getNavItemById(activeTab);
-    if (!navItem) return 'Agent Platform';
+    const navItem = getNavItemById(activeTab)
+    if (!navItem) return 'Agent Platform'
 
-    let group: NavGroup | undefined;
+    let group: NavGroup | undefined
     for (const g of NAV_GROUPS) {
       if (g.items.some((item) => item.id === activeTab)) {
-        group = g;
-        break;
+        group = g
+        break
       }
     }
 
     if (group) {
-      return `Agent Platform › ${group.label} › ${navItem.label}`;
+      return `Agent Platform › ${group.label} › ${navItem.label}`
     }
 
-    return `Agent Platform › ${navItem.label}`;
-  }, [activeTab]);
+    return `Agent Platform › ${navItem.label}`
+  }, [activeTab])
 
   const shellClasses = [
     'shell',
@@ -103,9 +103,9 @@ const AppShell: React.FC<AppShellProps> = ({
     isMobile ? 'shell--mobile' : '',
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(' ')
 
-  const CollapseIcon = ICONS.chevronLeft;
+  const CollapseIcon = ICONS.chevronLeft
 
   return (
     <div data-testid="app-shell" className={shellClasses}>
@@ -191,7 +191,7 @@ const AppShell: React.FC<AppShellProps> = ({
         {children}
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default AppShell;
+export default AppShell

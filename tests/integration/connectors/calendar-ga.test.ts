@@ -14,27 +14,24 @@
  * 10. Redaction (tokens redacted from logs)
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js';
-import { createConnectorStore, type ConnectorStore } from '../../../src/storage/connector-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { createConnectorRuntime } from '../../../src/connectors/connector-runtime.js';
-import type { ConnectorRuntime, ConnectorCallRequest, ConnectorResponse } from '../../../src/connectors/types.js';
-import { createConnectorToolBridge } from '../../../src/connectors/connector-tool-bridge.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js'
+import { createConnectorStore, type ConnectorStore } from '../../../src/storage/connector-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createConnectorRuntime } from '../../../src/connectors/connector-runtime.js'
+import type { ConnectorRuntime, ConnectorCallRequest, ConnectorResponse } from '../../../src/connectors/types.js'
+import { createConnectorToolBridge } from '../../../src/connectors/connector-tool-bridge.js'
 import {
   CalendarConnectorAdapter,
   CalendarRealTransport,
   createCalendarConnectorAdapter,
-} from '../../../src/connectors/calendar/calendar-connector.js';
-import { CalendarMockTransport } from '../../../src/connectors/calendar/calendar-mock-transport.js';
-import { BaseHttpTransport } from '../../../src/connectors/base-http-transport.js';
-import {
-  encryptSecret,
-  serializeEncryptedSecret,
-} from '../../../src/storage/provider-crypto.js';
+} from '../../../src/connectors/calendar/calendar-connector.js'
+import { CalendarMockTransport } from '../../../src/connectors/calendar/calendar-mock-transport.js'
+import { BaseHttpTransport } from '../../../src/connectors/base-http-transport.js'
+import { encryptSecret, serializeEncryptedSecret } from '../../../src/storage/provider-crypto.js'
 
-const MOCK_TOKEN = 'ya29.test-oauth2-token-1234567890';
+const MOCK_TOKEN = 'ya29.test-oauth2-token-1234567890'
 
 // ============================================================================
 // GA Contract 1: Auth Mode Documentation
@@ -44,20 +41,20 @@ describe('GA Contract 1: Auth Mode', () => {
   it('should support oauth2 auth mode for Google Calendar', () => {
     // Google Calendar requires OAuth2 authentication
     // This is documented in the connector and enforced via the auth configuration
-    const transport = new CalendarRealTransport('ya29.test-token');
-    expect(transport).toBeDefined();
-    expect(transport).toBeInstanceOf(CalendarRealTransport);
-  });
+    const transport = new CalendarRealTransport('ya29.test-token')
+    expect(transport).toBeDefined()
+    expect(transport).toBeInstanceOf(CalendarRealTransport)
+  })
 
   it('should use Bearer token in Authorization header for OAuth2', () => {
     // Verify that OAuth2 tokens are sent via Bearer auth
-    const transport = new CalendarRealTransport('ya29.access-token');
-    expect(transport).toBeDefined();
+    const transport = new CalendarRealTransport('ya29.access-token')
+    expect(transport).toBeDefined()
 
     // The transport should be usable with OAuth2 tokens
     // Real transport uses BaseHttpTransport internally with oauth2 auth type
-    expect(transport).toBeInstanceOf(CalendarRealTransport);
-  });
+    expect(transport).toBeInstanceOf(CalendarRealTransport)
+  })
 
   it('should document required OAuth2 scopes for Google Calendar', () => {
     // Google Calendar API requires these scopes:
@@ -70,36 +67,36 @@ describe('GA Contract 1: Auth Mode', () => {
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/calendar.events.readonly',
-    ];
+    ]
 
     // Verify these are calendar-only scopes (no gmail, docs, etc.)
-    calendarScopes.forEach(scope => {
-      expect(scope).toContain('calendar');
-      expect(scope).not.toContain('gmail');
-      expect(scope).not.toContain('docs');
-      expect(scope).not.toContain('drive');
-    });
-  });
-});
+    calendarScopes.forEach((scope) => {
+      expect(scope).toContain('calendar')
+      expect(scope).not.toContain('gmail')
+      expect(scope).not.toContain('docs')
+      expect(scope).not.toContain('drive')
+    })
+  })
+})
 
 // ============================================================================
 // GA Contract 2: Secret Encryption
 // ============================================================================
 
 describe('GA Contract 2: Secret Encryption', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let connectorStore: ConnectorStore;
-  let eventStore: EventStore;
-  let connectorRuntime: ConnectorRuntime;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let connectorStore: ConnectorStore
+  let eventStore: EventStore
+  let connectorRuntime: ConnectorRuntime
 
   beforeEach(() => {
-    vi.stubEnv('APP_SECRET_KEY', 'test-secret-key-for-encryption-32-bytes');
+    vi.stubEnv('APP_SECRET_KEY', 'test-secret-key-for-encryption-32-bytes')
 
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
 
     const storeMigrations = [
       {
@@ -194,41 +191,41 @@ describe('GA Contract 2: Secret Encryption', () => {
         `,
         down: `DROP TABLE IF EXISTS events;`,
       },
-    ];
+    ]
 
-    migrations.apply(storeMigrations);
+    migrations.apply(storeMigrations)
 
-    connectorStore = createConnectorStore(connection);
-    eventStore = createEventStore(connection);
+    connectorStore = createConnectorStore(connection)
+    eventStore = createEventStore(connection)
 
-    const toolBridge = createConnectorToolBridge();
+    const toolBridge = createConnectorToolBridge()
     connectorRuntime = createConnectorRuntime({
       connectorStore,
       toolBridge,
       eventStore,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    connection?.close();
-    vi.unstubAllEnvs();
-  });
+    connection?.close()
+    vi.unstubAllEnvs()
+  })
 
   it('should encrypt OAuth tokens before storage in authStateRef', () => {
-    const encrypted = encryptSecret(MOCK_TOKEN);
-    const serialized = serializeEncryptedSecret(encrypted);
+    const encrypted = encryptSecret(MOCK_TOKEN)
+    const serialized = serializeEncryptedSecret(encrypted)
 
     // Verify token is not plaintext
-    expect(serialized).not.toContain(MOCK_TOKEN);
+    expect(serialized).not.toContain(MOCK_TOKEN)
 
     // Verify encryption format (aes-256-gcm:iv:authTag:encrypted)
-    expect(serialized).toMatch(/^aes-256-gcm:/);
-    expect(serialized.split(':').length).toBe(4);
-  });
+    expect(serialized).toMatch(/^aes-256-gcm:/)
+    expect(serialized.split(':').length).toBe(4)
+  })
 
   it('should store encrypted credentials in authStateRef, never plaintext', () => {
-    const encrypted = encryptSecret(MOCK_TOKEN);
-    const serialized = serializeEncryptedSecret(encrypted);
+    const encrypted = encryptSecret(MOCK_TOKEN)
+    const serialized = serializeEncryptedSecret(encrypted)
 
     const def = connectorRuntime.registerDefinition({
       connectorId: 'calendar-connector-encrypt-test',
@@ -236,13 +233,9 @@ describe('GA Contract 2: Secret Encryption', () => {
       connectorType: 'calendar' as 'api' | 'messaging' | 'storage' | 'database' | 'custom',
       version: '1.0.0',
       description: 'Google Calendar API connector - encryption test',
-      capabilities: [
-        'calendar.list_events',
-        'calendar.get_event',
-        'calendar.create_event',
-      ],
+      capabilities: ['calendar.list_events', 'calendar.get_event', 'calendar.create_event'],
       status: 'active',
-    });
+    })
 
     const instance = connectorRuntime.createInstance({
       connectorInstanceId: 'encrypt-test-instance',
@@ -251,16 +244,16 @@ describe('GA Contract 2: Secret Encryption', () => {
       name: 'Test Calendar Instance',
       authStateRef: serialized,
       status: 'active',
-    });
+    })
 
     // Verify authStateRef contains encrypted data, not plaintext
-    expect(instance.authStateRef).not.toContain(MOCK_TOKEN);
-    expect(instance.authStateRef).toMatch(/^aes-256-gcm:/);
-  });
+    expect(instance.authStateRef).not.toContain(MOCK_TOKEN)
+    expect(instance.authStateRef).toMatch(/^aes-256-gcm:/)
+  })
 
   it('should never return plaintext tokens in API responses', () => {
-    const encrypted = encryptSecret(MOCK_TOKEN);
-    const serialized = serializeEncryptedSecret(encrypted);
+    const encrypted = encryptSecret(MOCK_TOKEN)
+    const serialized = serializeEncryptedSecret(encrypted)
 
     const def = connectorRuntime.registerDefinition({
       connectorId: 'calendar-connector-api-response',
@@ -270,7 +263,7 @@ describe('GA Contract 2: Secret Encryption', () => {
       description: 'Google Calendar API connector - API response test',
       capabilities: ['calendar.list_events'],
       status: 'active',
-    });
+    })
 
     const instance = connectorRuntime.createInstance({
       connectorInstanceId: 'api-response-instance',
@@ -279,16 +272,16 @@ describe('GA Contract 2: Secret Encryption', () => {
       name: 'Test Calendar Instance',
       authStateRef: serialized,
       status: 'active',
-    });
+    })
 
     // Simulate API response serialization
-    const apiResponse = JSON.stringify(instance);
+    const apiResponse = JSON.stringify(instance)
 
     // Verify plaintext token is never in response
-    expect(apiResponse).not.toContain(MOCK_TOKEN);
-    expect(apiResponse).toContain('authStateRef');
-  });
-});
+    expect(apiResponse).not.toContain(MOCK_TOKEN)
+    expect(apiResponse).toContain('authStateRef')
+  })
+})
 
 // ============================================================================
 // GA Contract 3: Least Privilege Scopes
@@ -301,25 +294,25 @@ describe('GA Contract 3: Least Privilege Scopes', () => {
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/calendar.events.readonly',
-    ];
+    ]
 
     // Verify no cross-service scopes are included
-    calendarOnlyScopes.forEach(scope => {
-      expect(scope).toMatch(/calendar/);
-      expect(scope).not.toMatch(/gmail/);
-      expect(scope).not.toMatch(/docs/);
-      expect(scope).not.toMatch(/drive/);
-      expect(scope).not.toMatch(/sheets/);
-    });
-  });
+    calendarOnlyScopes.forEach((scope) => {
+      expect(scope).toMatch(/calendar/)
+      expect(scope).not.toMatch(/gmail/)
+      expect(scope).not.toMatch(/docs/)
+      expect(scope).not.toMatch(/drive/)
+      expect(scope).not.toMatch(/sheets/)
+    })
+  })
 
   it('should support read-only scope for read operations', () => {
     // Read operations should work with read-only scopes
-    const readOnlyScope = 'https://www.googleapis.com/auth/calendar.events.readonly';
+    const readOnlyScope = 'https://www.googleapis.com/auth/calendar.events.readonly'
 
-    expect(readOnlyScope).toContain('readonly');
-    expect(readOnlyScope).toContain('calendar');
-  });
+    expect(readOnlyScope).toContain('readonly')
+    expect(readOnlyScope).toContain('calendar')
+  })
 
   it('should document scope requirements per capability', () => {
     const capabilities = [
@@ -328,24 +321,24 @@ describe('GA Contract 3: Least Privilege Scopes', () => {
       { id: 'calendar.create_event', minScope: 'calendar.events' },
       { id: 'calendar.update_event', minScope: 'calendar.events' },
       { id: 'calendar.delete_event', minScope: 'calendar.events' },
-    ];
+    ]
 
-    capabilities.forEach(cap => {
-      expect(cap.minScope).toBeDefined();
-      expect(cap.minScope).toContain('calendar');
+    capabilities.forEach((cap) => {
+      expect(cap.minScope).toBeDefined()
+      expect(cap.minScope).toContain('calendar')
 
       // Read operations should work with readonly scope
       if (cap.id.includes('list') || cap.id.includes('get')) {
-        expect(cap.minScope).toContain('readonly');
+        expect(cap.minScope).toContain('readonly')
       }
 
       // Write/delete operations require write scope
       if (cap.id.includes('create') || cap.id.includes('update') || cap.id.includes('delete')) {
-        expect(cap.minScope).not.toContain('readonly');
+        expect(cap.minScope).not.toContain('readonly')
       }
-    });
-  });
-});
+    })
+  })
+})
 
 // ============================================================================
 // GA Contract 4: Rate Limit Handling
@@ -360,17 +353,17 @@ describe('GA Contract 4: Rate Limit Handling', () => {
       retries: 3,
       retryDelay: 1000,
       auth: { type: 'oauth2' as const, credentials: 'test-token' },
-    };
+    }
 
-    const transport = new BaseHttpTransport(config);
+    const transport = new BaseHttpTransport(config)
 
     // Verify retry configuration exists
-    expect(transport).toBeDefined();
+    expect(transport).toBeDefined()
 
     // Rate limit error should be classified as retryable
     // This is tested via the classifyError method in BaseHttpTransport
     // 429 status maps to 'rate_limit' type with retryable=true
-  });
+  })
 
   it('should classify rate limit errors as recoverable', () => {
     // CalendarError for rate limits should have recoverable: true
@@ -381,11 +374,11 @@ describe('GA Contract 4: Rate Limit Handling', () => {
       details: {
         statusCode: 429,
       },
-    };
+    }
 
-    expect(rateLimitError.recoverable).toBe(true);
-    expect(rateLimitError.code).toBe('RATE_LIMITED');
-  });
+    expect(rateLimitError.recoverable).toBe(true)
+    expect(rateLimitError.code).toBe('RATE_LIMITED')
+  })
 
   it('should include rate limit metadata in error response', () => {
     const rateLimitResponse = {
@@ -397,12 +390,12 @@ describe('GA Contract 4: Rate Limit Handling', () => {
         rateLimitRemaining: 0,
         rateLimitResetAt: '2024-01-15T10:00:00Z',
       },
-    };
+    }
 
-    expect(rateLimitResponse.details?.statusCode).toBe(429);
-    expect(rateLimitResponse.details?.rateLimitResetAt).toBeDefined();
-  });
-});
+    expect(rateLimitResponse.details?.statusCode).toBe(429)
+    expect(rateLimitResponse.details?.rateLimitResetAt).toBeDefined()
+  })
+})
 
 // ============================================================================
 // GA Contract 5: Timeout Handling
@@ -411,24 +404,24 @@ describe('GA Contract 4: Rate Limit Handling', () => {
 describe('GA Contract 5: Timeout Handling', () => {
   it('should support configurable timeout', () => {
     // CalendarRealTransport uses HttpTransportConfig with configurable timeout
-    const customTimeout = 60000; // 60 seconds
+    const customTimeout = 60000 // 60 seconds
 
     const config = {
       baseURL: 'https://www.googleapis.com/calendar/v3',
       timeout: customTimeout,
       auth: { type: 'oauth2' as const, credentials: 'test-token' },
-    };
+    }
 
-    const transport = new BaseHttpTransport(config);
-    expect(transport).toBeDefined();
-  });
+    const transport = new BaseHttpTransport(config)
+    expect(transport).toBeDefined()
+  })
 
   it('should use default timeout of 30 seconds', () => {
     // CalendarRealTransport defaults to 30000ms timeout
-    const transport = new CalendarRealTransport('test-token');
-    expect(transport).toBeDefined();
+    const transport = new CalendarRealTransport('test-token')
+    expect(transport).toBeDefined()
     // Default timeout is 30000ms as defined in CalendarRealTransport
-  });
+  })
 
   it('should abort request on timeout and classify as timeout error', () => {
     // BaseHttpTransport uses AbortController for timeout
@@ -436,11 +429,11 @@ describe('GA Contract 5: Timeout Handling', () => {
     const timeoutError: { type: string; retryable: boolean } = {
       type: 'timeout',
       retryable: true,
-    };
+    }
 
-    expect(timeoutError.type).toBe('timeout');
-    expect(timeoutError.retryable).toBe(true);
-  });
+    expect(timeoutError.type).toBe('timeout')
+    expect(timeoutError.retryable).toBe(true)
+  })
 
   it('should allow per-request timeout override via timeoutMs', () => {
     const request: ConnectorCallRequest = {
@@ -451,11 +444,11 @@ describe('GA Contract 5: Timeout Handling', () => {
       params: { timeMin: '2024-01-01T00:00:00Z' },
       userId: 'test-user-001',
       timeoutMs: 10000, // 10 second override
-    };
+    }
 
-    expect(request.timeoutMs).toBe(10000);
-  });
-});
+    expect(request.timeoutMs).toBe(10000)
+  })
+})
 
 // ============================================================================
 // GA Contract 6: Error Taxonomy
@@ -468,11 +461,11 @@ describe('GA Contract 6: Error Taxonomy', () => {
       message: 'Invalid or expired OAuth token',
       recoverable: false,
       details: { statusCode: 401 },
-    };
+    }
 
-    expect(authError.code).toBe('AUTH_INVALID');
-    expect(authError.recoverable).toBe(false);
-  });
+    expect(authError.code).toBe('AUTH_INVALID')
+    expect(authError.recoverable).toBe(false)
+  })
 
   it('should return structured error for forbidden access (FORBIDDEN)', () => {
     const forbiddenError = {
@@ -480,11 +473,11 @@ describe('GA Contract 6: Error Taxonomy', () => {
       message: 'Access denied to calendar resource',
       recoverable: false,
       details: { statusCode: 403 },
-    };
+    }
 
-    expect(forbiddenError.code).toBe('FORBIDDEN');
-    expect(forbiddenError.recoverable).toBe(false);
-  });
+    expect(forbiddenError.code).toBe('FORBIDDEN')
+    expect(forbiddenError.recoverable).toBe(false)
+  })
 
   it('should return structured error for not found (NOT_FOUND)', () => {
     const notFoundError = {
@@ -492,11 +485,11 @@ describe('GA Contract 6: Error Taxonomy', () => {
       message: 'Calendar event not found',
       recoverable: false,
       details: { statusCode: 404 },
-    };
+    }
 
-    expect(notFoundError.code).toBe('NOT_FOUND');
-    expect(notFoundError.recoverable).toBe(false);
-  });
+    expect(notFoundError.code).toBe('NOT_FOUND')
+    expect(notFoundError.recoverable).toBe(false)
+  })
 
   it('should return structured error for rate limit (RATE_LIMITED)', () => {
     const rateLimitError = {
@@ -504,11 +497,11 @@ describe('GA Contract 6: Error Taxonomy', () => {
       message: 'Calendar API rate limit exceeded',
       recoverable: true,
       details: { statusCode: 429 },
-    };
+    }
 
-    expect(rateLimitError.code).toBe('RATE_LIMITED');
-    expect(rateLimitError.recoverable).toBe(true);
-  });
+    expect(rateLimitError.code).toBe('RATE_LIMITED')
+    expect(rateLimitError.recoverable).toBe(true)
+  })
 
   it('should return structured error for validation errors (VALIDATION_ERROR)', () => {
     const validationError = {
@@ -516,22 +509,22 @@ describe('GA Contract 6: Error Taxonomy', () => {
       message: 'Invalid event time range',
       recoverable: false,
       details: { field: 'timeMax' },
-    };
+    }
 
-    expect(validationError.code).toBe('VALIDATION_ERROR');
-    expect(validationError.recoverable).toBe(false);
-  });
+    expect(validationError.code).toBe('VALIDATION_ERROR')
+    expect(validationError.recoverable).toBe(false)
+  })
 
   it('should return structured error for unknown errors (UNKNOWN_ERROR)', () => {
     const unknownError = {
       code: 'UNKNOWN_ERROR',
       message: 'An unexpected error occurred',
       recoverable: false,
-    };
+    }
 
-    expect(unknownError.code).toBe('UNKNOWN_ERROR');
-    expect(unknownError.recoverable).toBe(false);
-  });
+    expect(unknownError.code).toBe('UNKNOWN_ERROR')
+    expect(unknownError.recoverable).toBe(false)
+  })
 
   it('should classify transport errors into calendar error codes', () => {
     // TransportError classification in CalendarRealTransport
@@ -540,13 +533,13 @@ describe('GA Contract 6: Error Taxonomy', () => {
       { statusCode: 403, expectedCode: 'FORBIDDEN' },
       { statusCode: 404, expectedCode: 'NOT_FOUND' },
       { statusCode: 429, expectedCode: 'RATE_LIMITED' },
-    ];
+    ]
 
-    errorMappings.forEach(mapping => {
-      expect(mapping.expectedCode).toBeDefined();
-    });
-  });
-});
+    errorMappings.forEach((mapping) => {
+      expect(mapping.expectedCode).toBeDefined()
+    })
+  })
+})
 
 // ============================================================================
 // GA Contract 7: Mock Mode
@@ -554,65 +547,65 @@ describe('GA Contract 6: Error Taxonomy', () => {
 
 describe('GA Contract 7: Mock Mode', () => {
   beforeEach(() => {
-    vi.stubEnv('APP_SECRET_KEY', 'test-secret-key-for-encryption-32-bytes');
-  });
+    vi.stubEnv('APP_SECRET_KEY', 'test-secret-key-for-encryption-32-bytes')
+  })
 
   afterEach(() => {
-    vi.unstubAllEnvs();
-  });
+    vi.unstubAllEnvs()
+  })
 
   it('should use CalendarMockTransport when CALENDAR_MOCK_MODE=true', () => {
-    vi.stubEnv('CALENDAR_MOCK_MODE', 'true');
+    vi.stubEnv('CALENDAR_MOCK_MODE', 'true')
 
-    const adapter = createCalendarConnectorAdapter();
-    expect(adapter).toBeDefined();
-    expect(adapter).toBeInstanceOf(CalendarConnectorAdapter);
+    const adapter = createCalendarConnectorAdapter()
+    expect(adapter).toBeDefined()
+    expect(adapter).toBeInstanceOf(CalendarConnectorAdapter)
 
-    vi.unstubAllEnvs();
-  });
+    vi.unstubAllEnvs()
+  })
 
   it('should use CalendarMockTransport when useMock config is true', () => {
-    const adapter = createCalendarConnectorAdapter({ useMock: true });
-    expect(adapter).toBeDefined();
-    expect(adapter).toBeInstanceOf(CalendarConnectorAdapter);
-  });
+    const adapter = createCalendarConnectorAdapter({ useMock: true })
+    expect(adapter).toBeDefined()
+    expect(adapter).toBeInstanceOf(CalendarConnectorAdapter)
+  })
 
   it('should use provided transport when explicitly passed', () => {
-    const mockTransport = new CalendarMockTransport();
-    mockTransport.setValidToken(MOCK_TOKEN);
+    const mockTransport = new CalendarMockTransport()
+    mockTransport.setValidToken(MOCK_TOKEN)
 
-    const adapter = createCalendarConnectorAdapter({ transport: mockTransport });
-    expect(adapter).toBeDefined();
-    expect(adapter).toBeInstanceOf(CalendarConnectorAdapter);
-  });
+    const adapter = createCalendarConnectorAdapter({ transport: mockTransport })
+    expect(adapter).toBeDefined()
+    expect(adapter).toBeInstanceOf(CalendarConnectorAdapter)
+  })
 
   it('should return mock data in mock mode without real HTTP calls', async () => {
-    const mockTransport = new CalendarMockTransport();
-    mockTransport.setValidToken(MOCK_TOKEN);
+    const mockTransport = new CalendarMockTransport()
+    mockTransport.setValidToken(MOCK_TOKEN)
 
     const events = await mockTransport.listEvents({
       timeMin: '2024-01-01T00:00:00Z',
       timeMax: '2024-01-31T23:59:59Z',
-    });
+    })
 
-    expect(events).toBeDefined();
-    expect(events.kind).toBe('calendar#events');
-    expect(events.items.length).toBeGreaterThan(0);
-  });
+    expect(events).toBeDefined()
+    expect(events.kind).toBe('calendar#events')
+    expect(events.items.length).toBeGreaterThan(0)
+  })
 
   it('should simulate authentication in mock mode', async () => {
-    const mockTransport = new CalendarMockTransport();
+    const mockTransport = new CalendarMockTransport()
 
     // Without token, should fail auth
-    mockTransport.setValidToken(null);
-    await expect(mockTransport.listEvents({})).rejects.toThrow('Authentication required');
+    mockTransport.setValidToken(null)
+    await expect(mockTransport.listEvents({})).rejects.toThrow('Authentication required')
 
     // With valid token, should succeed
-    mockTransport.setValidToken(MOCK_TOKEN);
-    const result = await mockTransport.listEvents({});
-    expect(result).toBeDefined();
-  });
-});
+    mockTransport.setValidToken(MOCK_TOKEN)
+    const result = await mockTransport.listEvents({})
+    expect(result).toBeDefined()
+  })
+})
 
 // ============================================================================
 // GA Contract 8: Real HTTP Mode
@@ -620,59 +613,59 @@ describe('GA Contract 7: Mock Mode', () => {
 
 describe('GA Contract 8: Real HTTP Mode', () => {
   it('should use BaseHttpTransport for real HTTP calls', () => {
-    const transport = new CalendarRealTransport('ya29.test-token');
-    expect(transport).toBeDefined();
-    expect(transport).toBeInstanceOf(CalendarRealTransport);
+    const transport = new CalendarRealTransport('ya29.test-token')
+    expect(transport).toBeDefined()
+    expect(transport).toBeInstanceOf(CalendarRealTransport)
     // CalendarRealTransport internally uses BaseHttpTransport
-  });
+  })
 
   it('should send requests to Google Calendar API base URL', () => {
-    const GOOGLE_CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3';
-    expect(GOOGLE_CALENDAR_BASE_URL).toBe('https://www.googleapis.com/calendar/v3');
-  });
+    const GOOGLE_CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3'
+    expect(GOOGLE_CALENDAR_BASE_URL).toBe('https://www.googleapis.com/calendar/v3')
+  })
 
   it('should use OAuth2 Bearer token authentication', () => {
     const config = {
       baseURL: 'https://www.googleapis.com/calendar/v3',
       timeout: 30000,
       auth: { type: 'oauth2' as const, credentials: 'ya29.access-token' },
-    };
+    }
 
-    const transport = new BaseHttpTransport(config);
-    expect(transport).toBeDefined();
-  });
+    const transport = new BaseHttpTransport(config)
+    expect(transport).toBeDefined()
+  })
 
   it('should handle pagination via nextPageToken', async () => {
     // Calendar API supports pagination via nextPageToken
     const paginationParams = {
       pageToken: 'next-page-token-123',
       maxResults: 50,
-    };
+    }
 
-    expect(paginationParams.pageToken).toBe('next-page-token-123');
-  });
-});
+    expect(paginationParams.pageToken).toBe('next-page-token-123')
+  })
+})
 
 // ============================================================================
 // GA Contract 9: Audit Events
 // ============================================================================
 
 describe('GA Contract 9: Audit Events', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let connectorStore: ConnectorStore;
-  let eventStore: EventStore;
-  let connectorRuntime: ConnectorRuntime;
-  let calendarAdapter: CalendarConnectorAdapter;
-  let mockTransport: CalendarMockTransport;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let connectorStore: ConnectorStore
+  let eventStore: EventStore
+  let connectorRuntime: ConnectorRuntime
+  let calendarAdapter: CalendarConnectorAdapter
+  let mockTransport: CalendarMockTransport
 
   beforeEach(() => {
-    vi.stubEnv('APP_SECRET_KEY', 'test-secret-key-for-encryption-32-bytes');
+    vi.stubEnv('APP_SECRET_KEY', 'test-secret-key-for-encryption-32-bytes')
 
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
 
     const storeMigrations = [
       {
@@ -767,37 +760,36 @@ describe('GA Contract 9: Audit Events', () => {
         `,
         down: `DROP TABLE IF EXISTS events;`,
       },
-    ];
+    ]
 
-    migrations.apply(storeMigrations);
+    migrations.apply(storeMigrations)
 
-    connectorStore = createConnectorStore(connection);
-    eventStore = createEventStore(connection);
+    connectorStore = createConnectorStore(connection)
+    eventStore = createEventStore(connection)
 
-    mockTransport = new CalendarMockTransport();
-    mockTransport.setValidToken(MOCK_TOKEN);
+    mockTransport = new CalendarMockTransport()
+    mockTransport.setValidToken(MOCK_TOKEN)
 
     calendarAdapter = createCalendarConnectorAdapter({
       transport: mockTransport,
-    });
+    })
 
-    const toolBridge = createConnectorToolBridge();
+    const toolBridge = createConnectorToolBridge()
     connectorRuntime = createConnectorRuntime({
       connectorStore,
       toolBridge,
       eventStore,
-    });
-
-    (connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
+    })
+    ;(connectorRuntime as unknown as { registerAdapter: (type: string, adapter: unknown) => void }).registerAdapter(
       'calendar',
-      calendarAdapter
-    );
-  });
+      calendarAdapter,
+    )
+  })
 
   afterEach(() => {
-    connection?.close();
-    vi.unstubAllEnvs();
-  });
+    connection?.close()
+    vi.unstubAllEnvs()
+  })
 
   it('should emit audit event on successful connector call', async () => {
     const def = connectorRuntime.registerDefinition({
@@ -808,7 +800,7 @@ describe('GA Contract 9: Audit Events', () => {
       description: 'Google Calendar API connector - audit test',
       capabilities: ['calendar.list_events'],
       status: 'active',
-    });
+    })
 
     const instance = connectorRuntime.createInstance({
       connectorInstanceId: 'audit-test-instance',
@@ -817,7 +809,7 @@ describe('GA Contract 9: Audit Events', () => {
       name: 'Test Calendar Instance',
       authStateRef: MOCK_TOKEN,
       status: 'active',
-    });
+    })
 
     const request: ConnectorCallRequest = {
       requestId: 'req-audit-001',
@@ -826,15 +818,15 @@ describe('GA Contract 9: Audit Events', () => {
       operation: 'list_events',
       params: { timeMin: '2024-01-01T00:00:00Z' },
       userId: 'test-user-001',
-    };
+    }
 
-    const response = await connectorRuntime.executeCall(request) as ConnectorResponse;
-    expect(response.status).toBe('success');
+    const response = (await connectorRuntime.executeCall(request)) as ConnectorResponse
+    expect(response.status).toBe('success')
 
     // Verify event was emitted to event store
-    const events = eventStore.query({ sourceModule: 'connector' });
-    expect(events.length).toBeGreaterThan(0);
-  });
+    const events = eventStore.query({ sourceModule: 'connector' })
+    expect(events.length).toBeGreaterThan(0)
+  })
 
   it('should emit audit event on failed connector call', async () => {
     const def = connectorRuntime.registerDefinition({
@@ -845,7 +837,7 @@ describe('GA Contract 9: Audit Events', () => {
       description: 'Google Calendar API connector - audit fail test',
       capabilities: ['calendar.list_events'],
       status: 'active',
-    });
+    })
 
     const instance = connectorRuntime.createInstance({
       connectorInstanceId: 'audit-fail-instance',
@@ -854,7 +846,7 @@ describe('GA Contract 9: Audit Events', () => {
       name: 'Test Calendar Instance',
       authStateRef: MOCK_TOKEN,
       status: 'active',
-    });
+    })
 
     const request: ConnectorCallRequest = {
       requestId: 'req-audit-fail-001',
@@ -863,17 +855,15 @@ describe('GA Contract 9: Audit Events', () => {
       operation: 'unknown_operation',
       params: {},
       userId: 'test-user-001',
-    };
+    }
 
-    await connectorRuntime.executeCall(request) as ConnectorResponse;
+    ;(await connectorRuntime.executeCall(request)) as ConnectorResponse
 
     // Verify failure event was emitted
-    const events = eventStore.query({ sourceModule: 'connector' });
-    const failureEvents = events.filter(e =>
-      e.payload && typeof e.payload === 'object' && 'errorCode' in e.payload
-    );
-    expect(failureEvents.length).toBeGreaterThan(0);
-  });
+    const events = eventStore.query({ sourceModule: 'connector' })
+    const failureEvents = events.filter((e) => e.payload && typeof e.payload === 'object' && 'errorCode' in e.payload)
+    expect(failureEvents.length).toBeGreaterThan(0)
+  })
 
   it('should include user, session, and operation in audit event', async () => {
     const def = connectorRuntime.registerDefinition({
@@ -884,7 +874,7 @@ describe('GA Contract 9: Audit Events', () => {
       description: 'Google Calendar API connector - audit context test',
       capabilities: ['calendar.list_events'],
       status: 'active',
-    });
+    })
 
     const instance = connectorRuntime.createInstance({
       connectorInstanceId: 'audit-context-instance',
@@ -893,7 +883,7 @@ describe('GA Contract 9: Audit Events', () => {
       name: 'Test Calendar Instance',
       authStateRef: MOCK_TOKEN,
       status: 'active',
-    });
+    })
 
     const request: ConnectorCallRequest = {
       requestId: 'req-audit-context-001',
@@ -903,22 +893,22 @@ describe('GA Contract 9: Audit Events', () => {
       params: { timeMin: '2024-01-01T00:00:00Z' },
       userId: 'test-user-001',
       sessionId: 'session-001',
-    };
-
-    await connectorRuntime.executeCall(request) as ConnectorResponse;
-
-    const events = eventStore.query({ sourceModule: 'connector' });
-    const callEvent = events.find(e => e.eventType === 'connector_call_executed');
-
-    expect(callEvent).toBeDefined();
-    if (callEvent && callEvent.payload && typeof callEvent.payload === 'object') {
-      const payload = callEvent.payload as Record<string, unknown>;
-      expect(payload.userId).toBe('test-user-001');
-      expect(payload.sessionId).toBe('session-001');
-      expect(payload.operation).toBe('list_events');
     }
-  });
-});
+
+    ;(await connectorRuntime.executeCall(request)) as ConnectorResponse
+
+    const events = eventStore.query({ sourceModule: 'connector' })
+    const callEvent = events.find((e) => e.eventType === 'connector_call_executed')
+
+    expect(callEvent).toBeDefined()
+    if (callEvent && callEvent.payload && typeof callEvent.payload === 'object') {
+      const payload = callEvent.payload as Record<string, unknown>
+      expect(payload.userId).toBe('test-user-001')
+      expect(payload.sessionId).toBe('session-001')
+      expect(payload.operation).toBe('list_events')
+    }
+  })
+})
 
 // ============================================================================
 // GA Contract 10: Redaction
@@ -926,29 +916,26 @@ describe('GA Contract 9: Audit Events', () => {
 
 describe('GA Contract 10: Redaction', () => {
   it('should redact OAuth tokens from log output', () => {
-    const sensitiveToken = 'ya29.a0-secret-token-1234567890';
+    const sensitiveToken = 'ya29.a0-secret-token-1234567890'
 
     // Simulate log redaction
     const logOutput = JSON.stringify({
       message: 'Calendar API call',
       token: '[REDACTED]',
       authStateRef: '[ENCRYPTED]',
-    });
+    })
 
-    expect(logOutput).not.toContain(sensitiveToken);
-    expect(logOutput).toContain('[REDACTED]');
-  });
+    expect(logOutput).not.toContain(sensitiveToken)
+    expect(logOutput).toContain('[REDACTED]')
+  })
 
   it('should redact access tokens from error messages', () => {
-    const errorWithToken = new Error('Auth failed with token ya29.secret-token');
-    const redactedMessage = errorWithToken.message.replace(
-      /ya29\.[a-zA-Z0-9_-]+/g,
-      '[REDACTED_TOKEN]'
-    );
+    const errorWithToken = new Error('Auth failed with token ya29.secret-token')
+    const redactedMessage = errorWithToken.message.replace(/ya29\.[a-zA-Z0-9_-]+/g, '[REDACTED_TOKEN]')
 
-    expect(redactedMessage).not.toContain('ya29.secret-token');
-    expect(redactedMessage).toContain('[REDACTED_TOKEN]');
-  });
+    expect(redactedMessage).not.toContain('ya29.secret-token')
+    expect(redactedMessage).toContain('[REDACTED_TOKEN]')
+  })
 
   it('should not expose authStateRef in API error responses', () => {
     const errorResponse = {
@@ -958,23 +945,23 @@ describe('GA Contract 10: Redaction', () => {
         message: 'Authentication failed',
         recoverable: false,
       },
-    };
+    }
 
-    const serialized = JSON.stringify(errorResponse);
-    expect(serialized).not.toContain('authStateRef');
-    expect(serialized).not.toContain(MOCK_TOKEN);
-  });
+    const serialized = JSON.stringify(errorResponse)
+    expect(serialized).not.toContain('authStateRef')
+    expect(serialized).not.toContain(MOCK_TOKEN)
+  })
 
   it('should redact sensitive fields from audit payloads', () => {
     const auditPayload = {
       operation: 'list_events',
       paramKeys: ['timeMin', 'timeMax'],
       // Note: actual parameter values and auth tokens should not be included
-    };
+    }
 
-    const serialized = JSON.stringify(auditPayload);
-    expect(serialized).not.toContain('accessToken');
-    expect(serialized).not.toContain('refreshToken');
-    expect(serialized).not.toContain('authStateRef');
-  });
-});
+    const serialized = JSON.stringify(auditPayload)
+    expect(serialized).not.toContain('accessToken')
+    expect(serialized).not.toContain('refreshToken')
+    expect(serialized).not.toContain('authStateRef')
+  })
+})

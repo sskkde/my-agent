@@ -11,22 +11,22 @@
  */
 
 export interface ApiSuccess<T> {
-  ok: true;
-  data: T;
-  requestId: string;
+  ok: true
+  data: T
+  requestId: string
 }
 
 export interface ApiErrorResponse {
-  ok: false;
+  ok: false
   error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-  requestId: string;
+    code: string
+    message: string
+    details?: unknown
+  }
+  requestId: string
 }
 
-export type ApiEnvelope<T> = ApiSuccess<T> | ApiErrorResponse;
+export type ApiEnvelope<T> = ApiSuccess<T> | ApiErrorResponse
 
 /**
  * Create a standardized success response envelope.
@@ -36,18 +36,13 @@ export function success<T>(data: T, requestId?: string): ApiSuccess<T> {
     ok: true,
     data,
     requestId: requestId ?? 'unknown',
-  };
+  }
 }
 
 /**
  * Create a standardized error response envelope.
  */
-export function envelopeError(
-  code: string,
-  message: string,
-  requestId?: string,
-  details?: unknown,
-): ApiErrorResponse {
+export function envelopeError(code: string, message: string, requestId?: string, details?: unknown): ApiErrorResponse {
   return {
     ok: false,
     error: {
@@ -56,5 +51,5 @@ export function envelopeError(
       ...(details !== undefined ? { details } : {}),
     },
     requestId: requestId ?? 'unknown',
-  };
+  }
 }

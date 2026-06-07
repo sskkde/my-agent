@@ -1,37 +1,37 @@
-import type { ConnectionManager } from '../../storage/connection.js';
-import type { MCPServerDefinition } from '../types.js';
+import type { ConnectionManager } from '../../storage/connection.js'
+import type { MCPServerDefinition } from '../types.js'
 
 export interface McpServerRegistry {
-  registerServer(definition: MCPServerDefinition): void;
-  getServer(serverId: string): MCPServerDefinition | null;
-  listServers(): MCPServerDefinition[];
-  disableServer(serverId: string): void;
+  registerServer(definition: MCPServerDefinition): void
+  getServer(serverId: string): MCPServerDefinition | null
+  listServers(): MCPServerDefinition[]
+  disableServer(serverId: string): void
 }
 
 interface McpServerRow {
-  server_id: string;
-  name: string;
-  version: string;
-  description: string | null;
-  base_url: string;
-  config_type: 'stdio' | 'http';
-  command: string | null;
-  args: string | null;
-  trust_level: 'trusted' | 'verified' | 'untrusted';
-  sandbox_policy: string | null;
-  status: 'active' | 'inactive' | 'error';
-  created_at: string;
-  updated_at: string;
+  server_id: string
+  name: string
+  version: string
+  description: string | null
+  base_url: string
+  config_type: 'stdio' | 'http'
+  command: string | null
+  args: string | null
+  trust_level: 'trusted' | 'verified' | 'untrusted'
+  sandbox_policy: string | null
+  status: 'active' | 'inactive' | 'error'
+  created_at: string
+  updated_at: string
 }
 
 class SqliteMcpServerRegistry implements McpServerRegistry {
   constructor(private readonly connection: ConnectionManager) {}
 
   registerServer(definition: MCPServerDefinition): void {
-    const normalized = this.normalizeDefinition(definition);
-    const now = new Date().toISOString();
-    const createdAt = normalized.createdAt || now;
-    const updatedAt = normalized.updatedAt || now;
+    const normalized = this.normalizeDefinition(definition)
+    const now = new Date().toISOString()
+    const createdAt = normalized.createdAt || now
+    const updatedAt = normalized.updatedAt || now
 
     this.connection.exec(
       `INSERT INTO mcp_servers (
@@ -64,18 +64,18 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
         normalized.status,
         createdAt,
         updatedAt,
-      ]
-    );
+      ],
+    )
   }
 
   getServer(serverId: string): MCPServerDefinition | null {
-    const rows = this.connection.query<McpServerRow>('SELECT * FROM mcp_servers WHERE server_id = ?', [serverId]);
-    return rows[0] ? this.rowToDefinition(rows[0]) : null;
+    const rows = this.connection.query<McpServerRow>('SELECT * FROM mcp_servers WHERE server_id = ?', [serverId])
+    return rows[0] ? this.rowToDefinition(rows[0]) : null
   }
 
   listServers(): MCPServerDefinition[] {
-    const rows = this.connection.query<McpServerRow>('SELECT * FROM mcp_servers ORDER BY created_at ASC');
-    return rows.map(row => this.rowToDefinition(row));
+    const rows = this.connection.query<McpServerRow>('SELECT * FROM mcp_servers ORDER BY created_at ASC')
+    return rows.map((row) => this.rowToDefinition(row))
   }
 
   disableServer(serverId: string): void {
@@ -83,27 +83,36 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
       'inactive',
       new Date().toISOString(),
       serverId,
-    ]);
+    ])
   }
 
-  private normalizeDefinition(definition: MCPServerDefinition): Required<Pick<MCPServerDefinition,
-    'serverId' | 'name' | 'version' | 'baseUrl' | 'capabilities' | 'supportedFormats' | 'createdAt' | 'updatedAt'
-  >> & Omit<MCPServerDefinition, 'serverId' | 'name' | 'version' | 'baseUrl' | 'capabilities' | 'supportedFormats' | 'createdAt' | 'updatedAt'> {
-    const configType = definition.configType ?? (definition.baseUrl.startsWith('http') ? 'http' : 'stdio');
+  private normalizeDefinition(
+    definition: MCPServerDefinition,
+  ): Required<
+    Pick<
+      MCPServerDefinition,
+      'serverId' | 'name' | 'version' | 'baseUrl' | 'capabilities' | 'supportedFormats' | 'createdAt' | 'updatedAt'
+    >
+  > &
+    Omit<
+      MCPServerDefinition,
+      'serverId' | 'name' | 'version' | 'baseUrl' | 'capabilities' | 'supportedFormats' | 'createdAt' | 'updatedAt'
+    > {
+    const configType = definition.configType ?? (definition.baseUrl.startsWith('http') ? 'http' : 'stdio')
     if (configType === 'stdio' && (!definition.command || definition.command.trim().length === 0)) {
-      throw new Error('MCP stdio server requires command');
+      throw new Error('MCP stdio server requires command')
     }
     if (configType === 'stdio' && definition.args !== undefined && !Array.isArray(definition.args)) {
-      throw new Error('MCP stdio server args must be an array');
+      throw new Error('MCP stdio server args must be an array')
     }
     if (configType === 'http') {
       try {
-        const parsedUrl = new URL(definition.baseUrl);
+        const parsedUrl = new URL(definition.baseUrl)
         if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-          throw new Error('unsupported protocol');
+          throw new Error('unsupported protocol')
         }
       } catch {
-        throw new Error('MCP http server requires a valid http(s) baseUrl');
+        throw new Error('MCP http server requires a valid http(s) baseUrl')
       }
     }
 
@@ -113,7 +122,7 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
       trustLevel: definition.trustLevel ?? 'untrusted',
       sandboxPolicy: definition.sandboxPolicy ?? {},
       status: definition.status ?? 'active',
-    };
+    }
   }
 
   private rowToDefinition(row: McpServerRow): MCPServerDefinition {
@@ -133,19 +142,19 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
       status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-    };
+    }
   }
 
   private parseJson<T>(value: string | null, fallback: T): T {
     if (!value) {
-      return fallback;
+      return fallback
     }
-    return JSON.parse(value) as T;
+    return JSON.parse(value) as T
   }
 }
 
 export function createMcpServerRegistry(connection: ConnectionManager): McpServerRegistry {
-  return new SqliteMcpServerRegistry(connection);
+  return new SqliteMcpServerRegistry(connection)
 }
 
-export { SqliteMcpServerRegistry };
+export { SqliteMcpServerRegistry }

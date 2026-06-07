@@ -1,89 +1,83 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import * as adminApi from '../../api/admin';
-import type {
-  AdminUser,
-  AdminApiKey,
-  ConnectorHealthStatus,
-  SystemSettings,
-  UserRole,
-} from '../../api/types';
-import ErrorMessage from '../../components/ErrorMessage';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import EmptyState from '../../components/EmptyState';
+import React, { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import * as adminApi from '../../api/admin'
+import type { AdminUser, AdminApiKey, ConnectorHealthStatus, SystemSettings, UserRole } from '../../api/types'
+import ErrorMessage from '../../components/ErrorMessage'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import EmptyState from '../../components/EmptyState'
 
 const AdminTab: React.FC = () => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [apiKeys, setApiKeys] = useState<AdminApiKey[]>([]);
-  const [connectors, setConnectors] = useState<ConnectorHealthStatus[]>([]);
-  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [apiKeys, setApiKeys] = useState<AdminApiKey[]>([])
+  const [connectors, setConnectors] = useState<ConnectorHealthStatus[]>([])
+  const [settings, setSettings] = useState<SystemSettings | null>(null)
 
-  const [createKeyDialogOpen, setCreateKeyDialogOpen] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [newKeyRole, setNewKeyRole] = useState<UserRole>('service');
-  const [createdKey, setCreatedKey] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [createKeyDialogOpen, setCreateKeyDialogOpen] = useState(false)
+  const [newKeyName, setNewKeyName] = useState('')
+  const [newKeyRole, setNewKeyRole] = useState<UserRole>('service')
+  const [createdKey, setCreatedKey] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
       const [usersRes, keysRes, connectorsRes, settingsRes] = await Promise.all([
         adminApi.listUsers(),
         adminApi.listApiKeys(),
         adminApi.getConnectorHealth(),
         adminApi.getSystemSettings(),
-      ]);
-      setUsers(usersRes.users);
-      setApiKeys(keysRes.keys);
-      setConnectors(connectorsRes.connectors);
-      setSettings(settingsRes.settings);
+      ])
+      setUsers(usersRes.users)
+      setApiKeys(keysRes.keys)
+      setConnectors(connectorsRes.connectors)
+      setSettings(settingsRes.settings)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
+      setError(err instanceof Error ? err.message : '加载失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData()
+  }, [loadData])
 
   const handleRoleChange = async (userId: string, role: UserRole) => {
-    setActionLoading(`role-${userId}`);
+    setActionLoading(`role-${userId}`)
     try {
-      const updated = await adminApi.updateUserRole(userId, { role });
-      setUsers((prev) => prev.map((u) => (u.userId === userId ? updated : u)));
+      const updated = await adminApi.updateUserRole(userId, { role })
+      setUsers((prev) => prev.map((u) => (u.userId === userId ? updated : u)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新角色失败');
+      setError(err instanceof Error ? err.message : '更新角色失败')
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  };
+  }
 
   const handleStatusToggle = async (userId: string, currentStatus: 'active' | 'disabled') => {
-    const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
-    setActionLoading(`status-${userId}`);
+    const newStatus = currentStatus === 'active' ? 'disabled' : 'active'
+    setActionLoading(`status-${userId}`)
     try {
-      const updated = await adminApi.updateUserStatus(userId, { status: newStatus });
-      setUsers((prev) => prev.map((u) => (u.userId === userId ? updated : u)));
+      const updated = await adminApi.updateUserStatus(userId, { status: newStatus })
+      setUsers((prev) => prev.map((u) => (u.userId === userId ? updated : u)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '更新状态失败');
+      setError(err instanceof Error ? err.message : '更新状态失败')
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  };
+  }
 
   const handleCreateKey = async () => {
-    if (!newKeyName.trim()) return;
-    setActionLoading('create-key');
+    if (!newKeyName.trim()) return
+    setActionLoading('create-key')
     try {
-      const result = await adminApi.createApiKey({ name: newKeyName, role: newKeyRole });
-      setCreatedKey(result.key);
+      const result = await adminApi.createApiKey({ name: newKeyName, role: newKeyRole })
+      setCreatedKey(result.key)
       setApiKeys((prev) => [
         ...prev,
         {
@@ -97,39 +91,39 @@ const AdminTab: React.FC = () => {
           expiresAt: null,
           lastUsedAt: null,
         },
-      ]);
-      setNewKeyName('');
+      ])
+      setNewKeyName('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建密钥失败');
+      setError(err instanceof Error ? err.message : '创建密钥失败')
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  };
+  }
 
   const handleRevokeKey = async (id: string) => {
-    setActionLoading(`revoke-${id}`);
+    setActionLoading(`revoke-${id}`)
     try {
-      await adminApi.revokeApiKey(id);
-      setApiKeys((prev) => prev.map((k) => (k.id === id ? { ...k, status: 'revoked' } : k)));
+      await adminApi.revokeApiKey(id)
+      setApiKeys((prev) => prev.map((k) => (k.id === id ? { ...k, status: 'revoked' } : k)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : '撤销密钥失败');
+      setError(err instanceof Error ? err.message : '撤销密钥失败')
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  };
+  }
 
   const handleSaveSettings = async () => {
-    if (!settings) return;
-    setActionLoading('save-settings');
+    if (!settings) return
+    setActionLoading('save-settings')
     try {
-      const result = await adminApi.updateSystemSettings(settings);
-      setSettings(result.settings);
+      const result = await adminApi.updateSystemSettings(settings)
+      setSettings(result.settings)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '保存设置失败');
+      setError(err instanceof Error ? err.message : '保存设置失败')
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  };
+  }
 
   if (!user || user.role !== 'admin') {
     return (
@@ -141,7 +135,7 @@ const AdminTab: React.FC = () => {
           size="large"
         />
       </div>
-    );
+    )
   }
 
   if (loading) {
@@ -149,7 +143,7 @@ const AdminTab: React.FC = () => {
       <div className="admin-tab" data-testid="admin-loading">
         <LoadingSpinner size="large" label="加载管理控制台..." />
       </div>
-    );
+    )
   }
 
   if (error && users.length === 0 && apiKeys.length === 0) {
@@ -161,7 +155,7 @@ const AdminTab: React.FC = () => {
           size="large"
         />
       </div>
-    );
+    )
   }
 
   return (
@@ -181,11 +175,7 @@ const AdminTab: React.FC = () => {
         <section className="admin-section" data-testid="user-management-panel">
           <h3>用户管理</h3>
           {users.length === 0 ? (
-            <EmptyState
-              icon="👥"
-              title="暂无用户"
-              description="系统中还没有用户"
-            />
+            <EmptyState icon="👥" title="暂无用户" description="系统中还没有用户" />
           ) : (
             <table className="admin-table">
               <thead>
@@ -227,7 +217,7 @@ const AdminTab: React.FC = () => {
                         disabled={actionLoading === `status-${u.userId}`}
                         data-testid={`status-toggle-${u.userId}`}
                       >
-                        {actionLoading === `status-${u.userId}` ? '处理中...' : (u.status === 'active' ? '禁用' : '启用')}
+                        {actionLoading === `status-${u.userId}` ? '处理中...' : u.status === 'active' ? '禁用' : '启用'}
                       </button>
                     </td>
                   </tr>
@@ -305,8 +295,8 @@ const AdminTab: React.FC = () => {
                   <button
                     className="modal-close"
                     onClick={() => {
-                      setCreateKeyDialogOpen(false);
-                      setCreatedKey(null);
+                      setCreateKeyDialogOpen(false)
+                      setCreatedKey(null)
                     }}
                     data-testid="api-key-dialog-close"
                   >
@@ -321,8 +311,8 @@ const AdminTab: React.FC = () => {
                       <button
                         className="secondary-button"
                         onClick={() => {
-                          setCreateKeyDialogOpen(false);
-                          setCreatedKey(null);
+                          setCreateKeyDialogOpen(false)
+                          setCreatedKey(null)
                         }}
                       >
                         完成
@@ -357,10 +347,7 @@ const AdminTab: React.FC = () => {
                         </select>
                       </div>
                       <div className="modal-actions">
-                        <button
-                          className="secondary-button"
-                          onClick={() => setCreateKeyDialogOpen(false)}
-                        >
+                        <button className="secondary-button" onClick={() => setCreateKeyDialogOpen(false)}>
                           取消
                         </button>
                         <button
@@ -432,19 +419,11 @@ const AdminTab: React.FC = () => {
         <section className="admin-section" data-testid="connector-status-panel">
           <h3>连接器状态</h3>
           {connectors.length === 0 ? (
-            <EmptyState
-              icon="🔌"
-              title="暂无连接器"
-              description="系统中还没有配置连接器"
-            />
+            <EmptyState icon="🔌" title="暂无连接器" description="系统中还没有配置连接器" />
           ) : (
             <div className="connector-grid">
               {connectors.map((c) => (
-                <div
-                  key={c.connectorId}
-                  className="connector-card"
-                  data-testid={`connector-status-${c.connectorId}`}
-                >
+                <div key={c.connectorId} className="connector-card" data-testid={`connector-status-${c.connectorId}`}>
                   <div className="connector-header">
                     <span
                       className={`connector-status-icon status-${c.status}`}
@@ -468,7 +447,7 @@ const AdminTab: React.FC = () => {
         </section>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AdminTab;
+export default AdminTab

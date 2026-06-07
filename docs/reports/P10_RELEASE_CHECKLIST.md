@@ -7,16 +7,17 @@
 
 ## 1. Overview
 
-| Attribute | Value |
-|-----------|-------|
-| Phase | P0/P1 (Complete) + P2 (Decision-gated: PM-17~PM-21) |
-| Implementation | PM-1 through PM-21 (21 tasks) + Final Wave (F1-F4) |
-| Production Files | 14 modified/created |
-| Test Files | 14 created |
-| Final Wave Status | F1-F4 all APPROVED |
+| Attribute            | Value                                                                   |
+| -------------------- | ----------------------------------------------------------------------- |
+| Phase                | P0/P1 (Complete) + P2 (Decision-gated: PM-17~PM-21)                     |
+| Implementation       | PM-1 through PM-21 (21 tasks) + Final Wave (F1-F4)                      |
+| Production Files     | 14 modified/created                                                     |
+| Test Files           | 14 created                                                              |
+| Final Wave Status    | F1-F4 all APPROVED                                                      |
 | Production Readiness | P0/P1 ready for phased rollout; P2 production activation decision-gated |
 
 ### P0 Deliverables (Complete)
+
 - Memory Semantic Policy — `long_term_fact` type + 禁止项扩展
 - Layer 5 Persona Projection — 结构化 PersonaProjection 接口
 - Layer 6 Tool Selection Policy — 结构化 ToolSelectionPolicyProjection
@@ -26,12 +27,14 @@
 - Shadow Extraction 机制 — 扩展 memory_extraction_run_store
 
 ### P1 Deliverables (Complete)
+
 - Weekly Summary 写入 — SummaryManager.writeWeeklySummary
 - PlannerStatePatch → SessionMemory bridge — plannerStateToSessionPatch + PlannerStatePatchData schema
 - Rolling Summary 触发策略升级 — topic_shift + plan_update events
 - 分层 Summary Prompts — 5 layer prompts + SummaryLayerProjection
 
 ### P2 Deliverables (Decision-gated, Abstraction Complete)
+
 - Hybrid Retrieval 抽象 — VectorRetrievalBackend interface + NoOpVectorBackend
 - Entity/Time Index — migration v55 + getByEntityName/getByDateRange
 - Lifecycle Scoring Shadow — LifecycleScorer pure function; production rollout gated by `LIFECYCLE_POLICY_ENABLED`
@@ -42,56 +45,56 @@
 
 ### 2.1 Code Quality Gates
 
-| Check | Expected | Actual |
-|-------|----------|--------|
-| `npm run typecheck` | Clean | ✅ Clean |
-| `npm run test:unit` | All pass | ✅ 2378 pass / 9 skip |
-| `npm run test:integration` | All pass | ✅ 199 pass (10 files) |
-| Security Tests | All pass | ✅ All pass |
-| Token budget delta | ≤ 500 tokens | ✅ Verified |
-| Hash stability (flag OFF) | = P9 baseline | ✅ Identical |
+| Check                      | Expected      | Actual                 |
+| -------------------------- | ------------- | ---------------------- |
+| `npm run typecheck`        | Clean         | ✅ Clean               |
+| `npm run test:unit`        | All pass      | ✅ 2378 pass / 9 skip  |
+| `npm run test:integration` | All pass      | ✅ 199 pass (10 files) |
+| Security Tests             | All pass      | ✅ All pass            |
+| Token budget delta         | ≤ 500 tokens  | ✅ Verified            |
+| Hash stability (flag OFF)  | = P9 baseline | ✅ Identical           |
 
 ### 2.2 P10-Specific Gates
 
-| Check | Command | Status |
-|-------|---------|--------|
-| Memory Semantic Policy Tests | `npm test -- tests/unit/memory/memory-semantic-policy` | Passed |
-| Persona Projection Tests | `npm test -- tests/unit/kernel/model-input/persona-projection` | Passed |
-| Tool Selection Policy Tests | `npm test -- tests/unit/kernel/model-input/tool-selection-policy` | Passed |
+| Check                          | Command                                                              | Status |
+| ------------------------------ | -------------------------------------------------------------------- | ------ |
+| Memory Semantic Policy Tests   | `npm test -- tests/unit/memory/memory-semantic-policy`               | Passed |
+| Persona Projection Tests       | `npm test -- tests/unit/kernel/model-input/persona-projection`       | Passed |
+| Tool Selection Policy Tests    | `npm test -- tests/unit/kernel/model-input/tool-selection-policy`    | Passed |
 | Memory Policy Projection Tests | `npm test -- tests/unit/kernel/model-input/memory-policy-projection` | Passed |
-| Candidate Validation Tests | `npm test -- tests/unit/memory/memory-candidate-validation` | Passed |
-| Shadow Extraction Tests | `npm test -- tests/unit/memory/shadow-extraction` | Passed |
-| Weekly Summary Tests | `npm test -- tests/unit/memory/summary-manager` | Passed |
-| Planner Bridge Tests | `npm test -- tests/unit/memory/planner-state-bridge` | Passed |
-| Rolling Summary Tests | `npm test -- tests/unit/memory/rolling-summary-policy` | Passed |
-| Hybrid Retrieval Tests | `npm test -- tests/unit/memory/hybrid-retrieval` | Passed |
-| Lifecycle Scoring Tests | `npm test -- tests/unit/memory/lifecycle-scoring` | Passed |
-| Entity/Time Index Tests | `npm test -- tests/unit/memory/entity-time-index` | Passed |
+| Candidate Validation Tests     | `npm test -- tests/unit/memory/memory-candidate-validation`          | Passed |
+| Shadow Extraction Tests        | `npm test -- tests/unit/memory/shadow-extraction`                    | Passed |
+| Weekly Summary Tests           | `npm test -- tests/unit/memory/summary-manager`                      | Passed |
+| Planner Bridge Tests           | `npm test -- tests/unit/memory/planner-state-bridge`                 | Passed |
+| Rolling Summary Tests          | `npm test -- tests/unit/memory/rolling-summary-policy`               | Passed |
+| Hybrid Retrieval Tests         | `npm test -- tests/unit/memory/hybrid-retrieval`                     | Passed |
+| Lifecycle Scoring Tests        | `npm test -- tests/unit/memory/lifecycle-scoring`                    | Passed |
+| Entity/Time Index Tests        | `npm test -- tests/unit/memory/entity-time-index`                    | Passed |
 
 ### 2.3 Template-driven Projection Loading Gates
 
-| Check | Verification | Status |
-|-------|-------------|--------|
-| Persona/Tool/Memory templates load correctly | 模板文件存在且可加载 | ✅ Verified |
-| ForegroundAgent no longer hardcodes P10 projection text | 代码已改用 resolver | ✅ Verified |
-| Feature flag OFF preserves baseline hash | `isPromptMemoryP0Enabled()=false` → `{}` | ✅ Verified |
-| Segment A stable under all flag combinations | Hash 计算不受模板加载影响 | ✅ Verified |
-| Memory extraction stable rules from templates | `agents:memory.md` + `output:memory-candidate.schema.md` | ✅ Verified |
-| Fallback defaults work when templates unavailable | `DEFAULT_*` 常量正确使用 | ✅ Verified |
-| Flag interaction matrix correct | P0 × TEMPLATE_PROJECTION 四种组合正确 | ✅ Verified |
+| Check                                                   | Verification                                             | Status      |
+| ------------------------------------------------------- | -------------------------------------------------------- | ----------- |
+| Persona/Tool/Memory templates load correctly            | 模板文件存在且可加载                                     | ✅ Verified |
+| ForegroundAgent no longer hardcodes P10 projection text | 代码已改用 resolver                                      | ✅ Verified |
+| Feature flag OFF preserves baseline hash                | `isPromptMemoryP0Enabled()=false` → `{}`                 | ✅ Verified |
+| Segment A stable under all flag combinations            | Hash 计算不受模板加载影响                                | ✅ Verified |
+| Memory extraction stable rules from templates           | `agents:memory.md` + `output:memory-candidate.schema.md` | ✅ Verified |
+| Fallback defaults work when templates unavailable       | `DEFAULT_*` 常量正确使用                                 | ✅ Verified |
+| Flag interaction matrix correct                         | P0 × TEMPLATE_PROJECTION 四种组合正确                    | ✅ Verified |
 
 ---
 
 ## 3. Feature Flags
 
-| Flag | Default | Purpose |
-|------|---------|---------|
-| `PROMPT_MEMORY_P0_ENABLED` | OFF (undefined) | 统管 persona/toolSelectionPolicy/memoryPolicy 投影注入 |
-| `PROMPT_TEMPLATE_PROJECTION_ENABLED` | OFF (undefined) | 启用模板驱动投影加载（门控于 P0） |
-| `MEMORY_SEMANTIC_POLICY_ENABLED` | OFF | 统管 extraction 边界收紧 + long_term_fact 类型 |
-| `HYBRID_RETRIEVAL_ENABLED` | OFF | 启用 Hybrid Retrieval (entity/time index + vector fallback) |
-| `LIFECYCLE_SCORING_SHADOW` | OFF | 启用 Lifecycle Scoring shadow mode |
-| `LIFECYCLE_POLICY_ENABLED` | OFF | 启用 Lifecycle Policy transitions |
+| Flag                                 | Default         | Purpose                                                     |
+| ------------------------------------ | --------------- | ----------------------------------------------------------- |
+| `PROMPT_MEMORY_P0_ENABLED`           | OFF (undefined) | 统管 persona/toolSelectionPolicy/memoryPolicy 投影注入      |
+| `PROMPT_TEMPLATE_PROJECTION_ENABLED` | OFF (undefined) | 启用模板驱动投影加载（门控于 P0）                           |
+| `MEMORY_SEMANTIC_POLICY_ENABLED`     | OFF             | 统管 extraction 边界收紧 + long_term_fact 类型              |
+| `HYBRID_RETRIEVAL_ENABLED`           | OFF             | 启用 Hybrid Retrieval (entity/time index + vector fallback) |
+| `LIFECYCLE_SCORING_SHADOW`           | OFF             | 启用 Lifecycle Scoring shadow mode                          |
+| `LIFECYCLE_POLICY_ENABLED`           | OFF             | 启用 Lifecycle Policy transitions                           |
 
 ### Flag Behavior
 
@@ -101,12 +104,12 @@
 
 ### Flag Interaction Matrix
 
-| PROMPT_MEMORY_P0_ENABLED | PROMPT_TEMPLATE_PROJECTION_ENABLED | Resolver 返回值 |
-|--------------------------|-----------------------------------|----------------|
-| OFF | OFF | `{}` (无投影) |
-| OFF | ON | `{}` (TEMPLATE 被 P0 门控) |
-| ON | OFF | Fallback Defaults |
-| ON | ON | Template-loaded Projections |
+| PROMPT_MEMORY_P0_ENABLED | PROMPT_TEMPLATE_PROJECTION_ENABLED | Resolver 返回值             |
+| ------------------------ | ---------------------------------- | --------------------------- |
+| OFF                      | OFF                                | `{}` (无投影)               |
+| OFF                      | ON                                 | `{}` (TEMPLATE 被 P0 门控)  |
+| ON                       | OFF                                | Fallback Defaults           |
+| ON                       | ON                                 | Template-loaded Projections |
 
 ---
 
@@ -114,26 +117,26 @@
 
 ### 4.1 Strategy/Data Separation
 
-| Component | Type | Layer | Status |
-|-----------|------|-------|--------|
-| `personaProjection` | Strategy | ModelInputBuildInput 顶层 | Verified |
-| `toolSelectionPolicy` | Strategy | ModelInputBuildInput 顶层 | Verified |
-| `memoryPolicyProjection` | Strategy | ModelInputBuildInput 顶层 | Verified |
-| `ToolPlaneProjection` | Data | 工具列表/权限 | Verified (不含 heuristics) |
-| `ContextBundleData` | Data | 上下文内容 | Verified (不含 rules) |
+| Component                | Type     | Layer                     | Status                     |
+| ------------------------ | -------- | ------------------------- | -------------------------- |
+| `personaProjection`      | Strategy | ModelInputBuildInput 顶层 | Verified                   |
+| `toolSelectionPolicy`    | Strategy | ModelInputBuildInput 顶层 | Verified                   |
+| `memoryPolicyProjection` | Strategy | ModelInputBuildInput 顶层 | Verified                   |
+| `ToolPlaneProjection`    | Data     | 工具列表/权限             | Verified (不含 heuristics) |
+| `ContextBundleData`      | Data     | 上下文内容                | Verified (不含 rules)      |
 
 ### 4.2 Template Registry
 
-| Template ID | Layer | File | Status |
-|-------------|-------|------|--------|
-| `persona:default` | 5 | `src/prompt/templates/persona/default.md` | Registered |
-| `heuristics:tool-usage.common` | 6 | `src/prompt/templates/heuristics/tool-usage.common.md` | Registered |
-| `context:memory-use-rules` | 7 | `src/prompt/templates/context/memory-use-rules.md` | Registered |
-| `summary:session` | 7 | `src/prompt/templates/summary/session.md` | Registered |
-| `summary:daily` | 7 | `src/prompt/templates/summary/daily.md` | Registered |
-| `summary:weekly` | 7 | `src/prompt/templates/summary/weekly.md` | Registered |
-| `summary:long-term` | 7 | `src/prompt/templates/summary/long-term.md` | Registered |
-| `summary:atomic-facts` | 7 | `src/prompt/templates/summary/atomic-facts.md` | Registered |
+| Template ID                    | Layer | File                                                   | Status     |
+| ------------------------------ | ----- | ------------------------------------------------------ | ---------- |
+| `persona:default`              | 5     | `src/prompt/templates/persona/default.md`              | Registered |
+| `heuristics:tool-usage.common` | 6     | `src/prompt/templates/heuristics/tool-usage.common.md` | Registered |
+| `context:memory-use-rules`     | 7     | `src/prompt/templates/context/memory-use-rules.md`     | Registered |
+| `summary:session`              | 7     | `src/prompt/templates/summary/session.md`              | Registered |
+| `summary:daily`                | 7     | `src/prompt/templates/summary/daily.md`                | Registered |
+| `summary:weekly`               | 7     | `src/prompt/templates/summary/weekly.md`               | Registered |
+| `summary:long-term`            | 7     | `src/prompt/templates/summary/long-term.md`            | Registered |
+| `summary:atomic-facts`         | 7     | `src/prompt/templates/summary/atomic-facts.md`         | Registered |
 
 **Total Templates: 16** (8 existing + 8 new)
 
@@ -143,29 +146,29 @@
 
 ### 5.1 Persona Injection Boundary
 
-| Check | Status |
-|-------|--------|
-| Persona rendered as non-imperative text | Verified |
+| Check                                                                          | Status   |
+| ------------------------------------------------------------------------------ | -------- |
+| Persona rendered as non-imperative text                                        | Verified |
 | Safety prefix: "不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界" | Verified |
-| Persona only affects Segment B | Verified |
+| Persona only affects Segment B                                                 | Verified |
 
 ### 5.2 Shadow Extraction Safety
 
-| Check | Status |
-|-------|--------|
+| Check                                                    | Status   |
+| -------------------------------------------------------- | -------- |
 | Shadow results NOT written to active LongTermMemoryStore | Verified |
-| Shadow data follows tenant isolation | Verified |
-| variant='shadow' distinguishes shadow records | Verified |
+| Shadow data follows tenant isolation                     | Verified |
+| variant='shadow' distinguishes shadow records            | Verified |
 
 ### 5.3 P0 Security Tests
 
-| Test | Status |
-|------|--------|
-| Tenant isolation | Passed |
-| Memory leakage | Passed |
+| Test                    | Status |
+| ----------------------- | ------ |
+| Tenant isolation        | Passed |
+| Memory leakage          | Passed |
 | Deleted-memory-reingest | Passed |
-| Persona-override | Passed |
-| Tool-escalation | Passed |
+| Persona-override        | Passed |
+| Tool-escalation         | Passed |
 
 ---
 
@@ -187,6 +190,7 @@ unset LIFECYCLE_POLICY_ENABLED
 ### 6.2 Database Migration
 
 **Warning**: SQLite ADD COLUMN cannot be reverted. The following columns remain but are unused when flags are OFF:
+
 - `memory_extraction_run.policy_version`
 - `memory_extraction_run.variant`
 - `memory_extraction_run.shadow_comparison_payload`
@@ -201,6 +205,7 @@ unset LIFECYCLE_POLICY_ENABLED
 ### 6.4 Code Rollback
 
 Revert git commits in reverse order:
+
 1. PM-21 (lifecycle scoring)
 2. PM-18 (hybrid retrieval integration)
 3. PM-17 (entity/time index)
@@ -270,12 +275,12 @@ All items verified:
 
 ## 9. Final Wave Verification
 
-| Review | Agent | Result |
-|--------|-------|--------|
-| F1: Plan Compliance Audit | Oracle | ✅ APPROVE |
-| F2: Code Quality Review | unspecified-high | ✅ APPROVE |
-| F3: Real Manual QA | unspecified-high | ✅ APPROVE |
-| F4: Scope Fidelity Check | deep | ✅ APPROVE |
+| Review                    | Agent            | Result     |
+| ------------------------- | ---------------- | ---------- |
+| F1: Plan Compliance Audit | Oracle           | ✅ APPROVE |
+| F2: Code Quality Review   | unspecified-high | ✅ APPROVE |
+| F3: Real Manual QA        | unspecified-high | ✅ APPROVE |
+| F4: Scope Fidelity Check  | deep             | ✅ APPROVE |
 
 ---
 
@@ -283,16 +288,16 @@ All items verified:
 
 ### 10.1 Technical Sign-Off
 
-| Role | Date | Status |
-|------|------|--------|
-| Lead Developer | 2026-05-24 | Complete |
-| QA | 2026-05-24 | All tests pass |
-| Security | 2026-05-24 | Boundary tests pass |
+| Role           | Date       | Status              |
+| -------------- | ---------- | ------------------- |
+| Lead Developer | 2026-05-24 | Complete            |
+| QA             | 2026-05-24 | All tests pass      |
+| Security       | 2026-05-24 | Boundary tests pass |
 
 ### 10.2 Release Approval
 
-| Approver | Date | Decision |
-|----------|------|----------|
+| Approver | Date       | Decision |
+| -------- | ---------- | -------- |
 | Sisyphus | 2026-05-24 | Approved |
 
 ---

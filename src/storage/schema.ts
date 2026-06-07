@@ -1,4 +1,4 @@
-import type { Migration } from './migrations.js';
+import type { Migration } from './migrations.js'
 
 export const eventsTableMigration: Migration = {
   version: 1,
@@ -63,8 +63,8 @@ export const eventsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_events_event_type;
     DROP INDEX IF EXISTS idx_events_source_module;
     DROP TABLE IF EXISTS events
-  `
-};
+  `,
+}
 
 export const runtimeActionsTableMigration: Migration = {
   version: 2,
@@ -114,8 +114,8 @@ export const runtimeActionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_runtime_actions_session;
     DROP INDEX IF EXISTS idx_runtime_actions_user;
     DROP TABLE IF EXISTS runtime_actions
-  `
-};
+  `,
+}
 
 export const sessionsTableMigration: Migration = {
   version: 3,
@@ -139,8 +139,8 @@ export const sessionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_sessions_user_activity;
     DROP INDEX IF EXISTS idx_sessions_status;
     DROP TABLE IF EXISTS sessions
-  `
-};
+  `,
+}
 
 export const usersTableMigration: Migration = {
   version: 4,
@@ -156,8 +156,8 @@ export const usersTableMigration: Migration = {
   `,
   down: `
     DROP TABLE IF EXISTS users
-  `
-};
+  `,
+}
 
 export const authTokensTableMigration: Migration = {
   version: 5,
@@ -177,8 +177,8 @@ export const authTokensTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_auth_tokens_expires;
     DROP INDEX IF EXISTS idx_auth_tokens_user;
     DROP TABLE IF EXISTS auth_tokens
-  `
-};
+  `,
+}
 
 /**
  * Provider configs table migration (Version 6).
@@ -221,8 +221,8 @@ export const providerConfigsTableMigration: Migration = {
   down: `
     DROP INDEX IF EXISTS idx_provider_configs_user;
     DROP TABLE IF EXISTS provider_configs
-  `
-};
+  `,
+}
 
 export const allMigrations: Migration[] = [
   eventsTableMigration,
@@ -230,5 +230,5 @@ export const allMigrations: Migration[] = [
   sessionsTableMigration,
   usersTableMigration,
   authTokensTableMigration,
-  providerConfigsTableMigration
-];
+  providerConfigsTableMigration,
+]

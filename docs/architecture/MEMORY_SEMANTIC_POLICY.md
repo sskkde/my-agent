@@ -27,13 +27,13 @@ The auto-extraction whitelist is always enforced for automatic extraction writes
 
 P10 automatic extraction supports exactly five auto-extractable memory types. These types are automatically extracted from conversation context by the LLM extraction pipeline:
 
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `user_preference` | User's preferences and choices | Theme preferences, language settings, workflow preferences |
-| `user_profile` | User's profile information | Role, experience level, skills, domain expertise |
-| `user_safety_rule` | Safety rules and constraints | Content restrictions, privacy boundaries, security preferences |
-| `project_state` | Current project state and context | Active project context, current task focus, project relationships |
-| `long_term_fact` | Long-term reusable atomic facts | Traceable, independently referenceable facts |
+| Type               | Description                       | Use Case                                                          |
+| ------------------ | --------------------------------- | ----------------------------------------------------------------- |
+| `user_preference`  | User's preferences and choices    | Theme preferences, language settings, workflow preferences        |
+| `user_profile`     | User's profile information        | Role, experience level, skills, domain expertise                  |
+| `user_safety_rule` | Safety rules and constraints      | Content restrictions, privacy boundaries, security preferences    |
+| `project_state`    | Current project state and context | Active project context, current task focus, project relationships |
+| `long_term_fact`   | Long-term reusable atomic facts   | Traceable, independently referenceable facts                      |
 
 ### Type Definition
 
@@ -43,7 +43,7 @@ export type AutoExtractedMemoryType =
   | 'user_profile'
   | 'user_safety_rule'
   | 'project_state'
-  | 'long_term_fact';
+  | 'long_term_fact'
 
 export type AllowedLongTermMemoryType =
   | AutoExtractedMemoryType
@@ -51,7 +51,7 @@ export type AllowedLongTermMemoryType =
   | 'durable_fact'
   | 'episodic_summary'
   | 'routine'
-  | 'workflow_preference';
+  | 'workflow_preference'
 ```
 
 ### Auto-extraction Types Array
@@ -63,10 +63,10 @@ export const AUTO_EXTRACTED_MEMORY_TYPES: AutoExtractedMemoryType[] = [
   'user_safety_rule',
   'project_state',
   'long_term_fact',
-];
+]
 
 /** @deprecated Use AUTO_EXTRACTED_MEMORY_TYPES instead. */
-export const P0_MEMORY_TYPES = AUTO_EXTRACTED_MEMORY_TYPES;
+export const P0_MEMORY_TYPES = AUTO_EXTRACTED_MEMORY_TYPES
 ```
 
 ---
@@ -75,13 +75,13 @@ export const P0_MEMORY_TYPES = AUTO_EXTRACTED_MEMORY_TYPES;
 
 The following memory types are **storage-supported** but **not auto-extractable** in P10. They can be written to storage via explicit API calls but are not automatically extracted by the LLM extraction pipeline:
 
-| Type | Gating Reason |
-|------|---------------|
-| `relationship` | P2 decision-gated: requires entity linking infrastructure |
-| `routine` | P2 decision-gated: workflow state, not long-term memory |
-| `workflow_preference` | P2 decision-gated: transient operational preference |
-| `durable_fact` | P2 decision-gated: superseded by `long_term_fact` |
-| `episodic_summary` | P2 decision-gated: redundant with session summaries |
+| Type                  | Gating Reason                                             |
+| --------------------- | --------------------------------------------------------- |
+| `relationship`        | P2 decision-gated: requires entity linking infrastructure |
+| `routine`             | P2 decision-gated: workflow state, not long-term memory   |
+| `workflow_preference` | P2 decision-gated: transient operational preference       |
+| `durable_fact`        | P2 decision-gated: superseded by `long_term_fact`         |
+| `episodic_summary`    | P2 decision-gated: redundant with session summaries       |
 
 ---
 
@@ -93,45 +93,45 @@ The Memory Semantic Policy includes 18 ephemeral patterns that identify transien
 
 #### 1. Git Operations (6 patterns)
 
-| Pattern | Matches |
-|---------|---------|
-| `/commit\s+[a-f0-9]{7,40}/i` | Commit references like "commit abc1234" |
+| Pattern                                 | Matches                                       |
+| --------------------------------------- | --------------------------------------------- | ---------------- | --------------------- | ----- | -------- | ---------- | ------------ |
+| `/commit\s+[a-f0-9]{7,40}/i`            | Commit references like "commit abc1234"       |
 | `/[a-f0-9]{7,40}\.\.\.[a-f0-9]{7,40}/i` | Git range references like "abc1234...def5678" |
-| `/\bpush(ed)?\s+(to|origin|branch)/i` | Push operations |
-| `/\bmerged?\s+(branch|pr|pull request)/i` | Merge operations |
-| `/\b(cloned?|forked?)\s+(from|repo)/i` | Clone/fork operations |
-| `/git\s+(add|commit|push|pull|merge|checkout|branch)/i` | Git commands |
+| `/\bpush(ed)?\s+(to                     | origin                                        | branch)/i`       | Push operations       |
+| `/\bmerged?\s+(branch                   | pr                                            | pull request)/i` | Merge operations      |
+| `/\b(cloned?                            | forked?)\s+(from                              | repo)/i`         | Clone/fork operations |
+| `/git\s+(add                            | commit                                        | push             | pull                  | merge | checkout | branch)/i` | Git commands |
 
 #### 2. Package Manager Commands (3 patterns)
 
-| Pattern | Matches |
-|---------|---------|
+| Pattern              | Matches          |
+| -------------------- | ---------------- |
 | `/npm\s+run\s+\S+/i` | npm run commands |
-| `/yarn\s+\S+/i` | yarn commands |
-| `/pnpm\s+\S+/i` | pnpm commands |
+| `/yarn\s+\S+/i`      | yarn commands    |
+| `/pnpm\s+\S+/i`      | pnpm commands    |
 
 #### 3. Development Artifacts (4 patterns)
 
-| Pattern | Matches |
-|---------|---------|
+| Pattern              | Matches                                   |
+| -------------------- | ----------------------------------------- | -------------------- | --------------- | ---------- | -------------------------- |
 | `/\.\w+:\d+(:\d+)?/` | File location references like ".ts:42:10" |
-| `/\btest\s+(step|case|suite)\b/i` | Test references |
-| `/\b(passing|failing)\s+test/i` | Test status mentions |
-| `/\bconsole\.(log|warn|error|debug|info)\(/i` | Console logging statements |
+| `/\btest\s+(step     | case                                      | suite)\b/i`          | Test references |
+| `/\b(passing         | failing)\s+test/i`                        | Test status mentions |
+| `/\bconsole\.(log    | warn                                      | error                | debug           | info)\(/i` | Console logging statements |
 
 #### 4. Release and Deployment (2 patterns)
 
-| Pattern | Matches |
-|---------|---------|
+| Pattern                     | Matches                  |
+| --------------------------- | ------------------------ | --- | ------ | --------------------- |
 | `/\brelease\s+v?\d+\.\d+/i` | Release version mentions |
-| `/\bdeploy(ed|ing)?\s+(to|on|at)/i` | Deployment operations |
+| `/\bdeploy(ed               | ing)?\s+(to              | on  | at)/i` | Deployment operations |
 
 #### 5. Debug and Trace (3 patterns)
 
-| Pattern | Matches |
-|---------|---------|
-| `/\bDEBUG\s*=/i` | Debug flag assignments |
-| `/\btrace\w*\s*:/i` | Trace configuration |
+| Pattern             | Matches                |
+| ------------------- | ---------------------- |
+| `/\bDEBUG\s*=/i`    | Debug flag assignments |
+| `/\btrace\w*\s*:/i` | Trace configuration    |
 
 ### Implementation
 
@@ -154,10 +154,10 @@ const EPHEMERAL_PATTERNS = [
   /git\s+(add|commit|push|pull|merge|checkout|branch)/i,
   /\bDEBUG\s*=/i,
   /\btrace\w*\s*:/i,
-];
+]
 
 function detectEphemeralPattern(text: string): boolean {
-  return EPHEMERAL_PATTERNS.some(pattern => pattern.test(text));
+  return EPHEMERAL_PATTERNS.some((pattern) => pattern.test(text))
 }
 ```
 
@@ -167,18 +167,20 @@ function detectEphemeralPattern(text: string): boolean {
 
 ### MEMORY_SEMANTIC_POLICY_ENABLED
 
-| Attribute | Value |
-|-----------|-------|
-| Environment Variable | `MEMORY_SEMANTIC_POLICY_ENABLED` |
-| Default | `OFF` (undefined) |
-| Purpose | Enable ephemeral pattern rejection and semantic policy enforcement |
+| Attribute            | Value                                                              |
+| -------------------- | ------------------------------------------------------------------ |
+| Environment Variable | `MEMORY_SEMANTIC_POLICY_ENABLED`                                   |
+| Default              | `OFF` (undefined)                                                  |
+| Purpose              | Enable ephemeral pattern rejection and semantic policy enforcement |
 
 When OFF:
+
 - Ephemeral pattern detection is bypassed
 - All memory types pass through (legacy behavior)
 - No semantic validation applied
 
 When ON:
+
 - Ephemeral patterns are detected and rejected
 - Only P0 auto-extractable memory types are accepted by the extraction pipeline
 - Gated types (relationship, routine, etc.) remain storage-supported but are not auto-extracted
@@ -194,14 +196,14 @@ The `validateMemoryCandidate()` function in `src/memory/memory-candidate-types.t
 
 #### Validation Checks
 
-| Check | Condition | Error |
-|-------|-----------|-------|
-| Memory Type | `candidate.memoryType` must be in `P0_MEMORY_TYPES` (auto-extractable types) | `unsupported_memory_type:${type}` |
-| Confidence | `0.7 <= confidence <= 1.0` | `confidence_out_of_range:${value}` |
-| Keywords | Non-empty array, max 12 items, no empty strings | `keywords_empty`, `keywords_too_many`, `keywords_contain_empty_string` |
-| Transcript References | Non-empty `sourceRefs.transcriptRefs` | `missing_transcript_refs` |
-| Sensitivity | Must not be `restricted` | `restricted_sensitivity` |
-| Importance | Must be in `['low', 'medium', 'high', 'critical']` | `invalid_importance:${value}` |
+| Check                 | Condition                                                                    | Error                                                                  |
+| --------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Memory Type           | `candidate.memoryType` must be in `P0_MEMORY_TYPES` (auto-extractable types) | `unsupported_memory_type:${type}`                                      |
+| Confidence            | `0.7 <= confidence <= 1.0`                                                   | `confidence_out_of_range:${value}`                                     |
+| Keywords              | Non-empty array, max 12 items, no empty strings                              | `keywords_empty`, `keywords_too_many`, `keywords_contain_empty_string` |
+| Transcript References | Non-empty `sourceRefs.transcriptRefs`                                        | `missing_transcript_refs`                                              |
+| Sensitivity           | Must not be `restricted`                                                     | `restricted_sensitivity`                                               |
+| Importance            | Must be in `['low', 'medium', 'high', 'critical']`                           | `invalid_importance:${value}`                                          |
 
 ### validateExtractedCandidate()
 
@@ -210,31 +212,30 @@ The `validateExtractedCandidate()` function in `src/memory/long-term-memory-extr
 ```typescript
 export function validateExtractedCandidate(
   candidate: ExtractedMemoryCandidate,
-  _window: MemoryExtractionWindow
+  _window: MemoryExtractionWindow,
 ): ValidationResult {
   // 1. Base validation via validateMemoryCandidate()
-  const baseValidation = validateMemoryCandidate(candidate);
+  const baseValidation = validateMemoryCandidate(candidate)
   if (!baseValidation.valid) {
-    return { valid: false, reason: baseValidation.errors[0] };
+    return { valid: false, reason: baseValidation.errors[0] }
   }
 
   // 2. Window hash validation
   if (!candidate.sourceRefs.extraction?.windowHash) {
-    return { valid: false, reason: 'missing_window_hash' };
+    return { valid: false, reason: 'missing_window_hash' }
   }
 
   // 3. Ephemeral pattern detection (when policy enabled)
-  if (process.env.MEMORY_SEMANTIC_POLICY_ENABLED === 'true' && 
-      detectEphemeralPattern(candidate.text)) {
-    return { valid: false, reason: 'ephemeral_pattern_detected' };
+  if (process.env.MEMORY_SEMANTIC_POLICY_ENABLED === 'true' && detectEphemeralPattern(candidate.text)) {
+    return { valid: false, reason: 'ephemeral_pattern_detected' }
   }
 
   // 4. Explicit discard reason
   if (candidate.discardReason) {
-    return { valid: false, reason: `discard:${candidate.discardReason}` };
+    return { valid: false, reason: `discard:${candidate.discardReason}` }
   }
 
-  return { valid: true, normalizedCandidate };
+  return { valid: true, normalizedCandidate }
 }
 ```
 
@@ -247,27 +248,27 @@ The `discardReason` field in `ExtractedMemoryCandidate` allows the LLM to explic
 ```typescript
 export type ExtractedMemoryCandidate = {
   // ... other fields
-  discardReason?: string;
-};
+  discardReason?: string
+}
 ```
 
 ### Common Discard Reasons
 
-| Reason | Description |
-|--------|-------------|
-| `one_off_task` | Transient task not relevant later |
-| `transient_context` | Context that won't persist |
-| `no_provenance` | Information without clear source |
-| `low_confidence` | Speculation or uncertain claim |
-| `sensitive_content` | Passwords, secrets, private keys |
-| `file_reference` | File names, paths |
-| `command_reference` | CLI commands |
-| `test_detail` | Test step/case details |
-| `release_detail` | Commit/push/release details |
-| `workflow_preference` | Collaboration workflow preferences |
-| `tool_preference` | Tool usage preferences |
-| `formatting_requirement` | One-time formatting needs |
-| `execution_detail` | Assistant execution process details |
+| Reason                   | Description                         |
+| ------------------------ | ----------------------------------- |
+| `one_off_task`           | Transient task not relevant later   |
+| `transient_context`      | Context that won't persist          |
+| `no_provenance`          | Information without clear source    |
+| `low_confidence`         | Speculation or uncertain claim      |
+| `sensitive_content`      | Passwords, secrets, private keys    |
+| `file_reference`         | File names, paths                   |
+| `command_reference`      | CLI commands                        |
+| `test_detail`            | Test step/case details              |
+| `release_detail`         | Commit/push/release details         |
+| `workflow_preference`    | Collaboration workflow preferences  |
+| `tool_preference`        | Tool usage preferences              |
+| `formatting_requirement` | One-time formatting needs           |
+| `execution_detail`       | Assistant execution process details |
 
 ---
 
@@ -279,13 +280,13 @@ The shadow extraction mechanism allows comparison between legacy and new policy 
 
 ```typescript
 export type ShadowComparisonPayload = {
-  windowHash: string;
-  legacyAccepted: ExtractedMemoryCandidate[];
-  newAccepted: ExtractedMemoryCandidate[];
-  legacyDiscarded: string[];
-  newDiscarded: string[];
-  diff: 'same' | 'new_accepted_more' | 'legacy_accepted_more' | 'different';
-};
+  windowHash: string
+  legacyAccepted: ExtractedMemoryCandidate[]
+  newAccepted: ExtractedMemoryCandidate[]
+  legacyDiscarded: string[]
+  newDiscarded: string[]
+  diff: 'same' | 'new_accepted_more' | 'legacy_accepted_more' | 'different'
+}
 ```
 
 ### recordShadowExtraction()
@@ -300,16 +301,16 @@ export function recordShadowExtraction(
   newResult: ExtractionSideResult,
 ): void {
   // Classify candidates into accepted/discarded
-  const legacyClassified = classifyCandidates(legacyResult.candidates);
-  const newClassified = classifyCandidates(newResult.candidates);
+  const legacyClassified = classifyCandidates(legacyResult.candidates)
+  const newClassified = classifyCandidates(newResult.candidates)
 
   // Compute diff classification
   const diff = computeDiff(
     legacyClassified.accepted.length,
     newClassified.accepted.length,
-    new Set(legacyClassified.accepted.map(c => c.text.trim().toLowerCase())),
-    new Set(newClassified.accepted.map(c => c.text.trim().toLowerCase())),
-  );
+    new Set(legacyClassified.accepted.map((c) => c.text.trim().toLowerCase())),
+    new Set(newClassified.accepted.map((c) => c.text.trim().toLowerCase())),
+  )
 
   // Store shadow record with variant='shadow'
   store.createPending({
@@ -317,7 +318,7 @@ export function recordShadowExtraction(
     policyVersion: 'semantic_policy',
     variant: 'shadow',
     shadowComparisonPayload: JSON.stringify(payload),
-  });
+  })
 }
 ```
 
@@ -353,6 +354,7 @@ The prompt explicitly instructs the LLM to discard:
 ### Response Format
 
 The LLM must respond with JSON containing:
+
 - `candidates[]` array with memory candidates
 - Each candidate includes `discardReason` if it should be discarded
 - `confidence >= 0.7`
@@ -363,12 +365,12 @@ The LLM must respond with JSON containing:
 
 ## File References
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/memory/long-term-memory-extraction.ts` | 281 | Core extraction logic, ephemeral patterns, validation |
-| `src/memory/memory-candidate-types.ts` | 49 | `validateMemoryCandidate()` function |
-| `src/memory/shadow-extraction-recorder.ts` | 101 | Shadow extraction recording |
-| `src/storage/memory-extraction-run-store.ts` | - | Storage for extraction runs |
+| File                                         | Lines | Description                                           |
+| -------------------------------------------- | ----- | ----------------------------------------------------- |
+| `src/memory/long-term-memory-extraction.ts`  | 281   | Core extraction logic, ephemeral patterns, validation |
+| `src/memory/memory-candidate-types.ts`       | 49    | `validateMemoryCandidate()` function                  |
+| `src/memory/shadow-extraction-recorder.ts`   | 101   | Shadow extraction recording                           |
+| `src/storage/memory-extraction-run-store.ts` | -     | Storage for extraction runs                           |
 
 ---
 

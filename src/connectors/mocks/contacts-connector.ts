@@ -1,9 +1,5 @@
-import type {
-  ConnectorAdapter,
-  ConnectorCapability,
-  ConnectorCallRequest,
-} from '../types.js';
-import type { ConnectorInstance } from '../../storage/connector-store.js';
+import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest } from '../types.js'
+import type { ConnectorInstance } from '../../storage/connector-store.js'
 
 const mockContacts = [
   {
@@ -42,25 +38,22 @@ const mockContacts = [
     jobTitle: 'Consultant',
     notes: 'Project advisor',
   },
-];
+]
 
 export interface ContactsSearchParams {
-  query?: string;
-  maxResults?: number;
+  query?: string
+  maxResults?: number
 }
 
 export class ContactsConnectorAdapter implements ConnectorAdapter {
-  async execute(
-    _instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown> {
-    const { operation, params } = request;
+  async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
+    const { operation, params } = request
 
     switch (operation) {
       case 'search_contacts':
-        return this.searchContacts(params as unknown as ContactsSearchParams);
+        return this.searchContacts(params as unknown as ContactsSearchParams)
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation}`)
     }
   }
 
@@ -79,39 +72,39 @@ export class ContactsConnectorAdapter implements ConnectorAdapter {
         requiresAuth: true,
         supportedOperations: ['search_contacts'],
       },
-    ];
+    ]
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
-    return { healthy: true, message: 'Contacts mock connector is healthy' };
+    return { healthy: true, message: 'Contacts mock connector is healthy' }
   }
 
   private searchContacts(params: ContactsSearchParams): {
-    contacts: typeof mockContacts;
-    totalResults: number;
+    contacts: typeof mockContacts
+    totalResults: number
   } {
-    const { query, maxResults = 10 } = params;
+    const { query, maxResults = 10 } = params
 
-    let results = [...mockContacts];
+    let results = [...mockContacts]
 
     if (query) {
-      const lowerQuery = query.toLowerCase();
+      const lowerQuery = query.toLowerCase()
       results = results.filter(
         (contact) =>
           contact.name.toLowerCase().includes(lowerQuery) ||
           contact.email.toLowerCase().includes(lowerQuery) ||
           contact.company.toLowerCase().includes(lowerQuery) ||
-          contact.jobTitle.toLowerCase().includes(lowerQuery)
-      );
+          contact.jobTitle.toLowerCase().includes(lowerQuery),
+      )
     }
 
     return {
       contacts: results.slice(0, maxResults),
       totalResults: results.length,
-    };
+    }
   }
 }
 
 export function createContactsConnectorAdapter(): ContactsConnectorAdapter {
-  return new ContactsConnectorAdapter();
+  return new ContactsConnectorAdapter()
 }

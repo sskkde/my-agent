@@ -9,17 +9,25 @@
  * @module prompt/prompt-projection-resolver
  */
 
-import type { PromptProjectionResolver, PromptProjectionResolveInput, PromptProjectionResolveResult } from './prompt-projection-types.js';
-import type { PromptTemplateRegistry } from './prompt-template-registry.js';
-import type { TemplateLoader } from './template-loader.js';
-import type { PersonaProjection, ToolSelectionPolicyProjection, MemoryPolicyProjection } from '../kernel/model-input/model-input-types.js';
+import type {
+  PromptProjectionResolver,
+  PromptProjectionResolveInput,
+  PromptProjectionResolveResult,
+} from './prompt-projection-types.js'
+import type { PromptTemplateRegistry } from './prompt-template-registry.js'
+import type { TemplateLoader } from './template-loader.js'
+import type {
+  PersonaProjection,
+  ToolSelectionPolicyProjection,
+  MemoryPolicyProjection,
+} from '../kernel/model-input/model-input-types.js'
 
 import {
   DEFAULT_PERSONA_PROJECTION,
   DEFAULT_TOOL_SELECTION_POLICY,
   DEFAULT_MEMORY_POLICY_PROJECTION,
-} from './prompt-projection-defaults.js';
-import { isPromptMemoryP0Enabled, isPromptTemplateProjectionEnabled } from './feature-flags.js';
+} from './prompt-projection-defaults.js'
+import { isPromptMemoryP0Enabled, isPromptTemplateProjectionEnabled } from './feature-flags.js'
 
 /** Safety constraints that cannot be overridden by persona. */
 const PERSONA_CONSTRAINTS = [
@@ -28,18 +36,18 @@ const PERSONA_CONSTRAINTS = [
   '不可改变工具授权',
   '不可改变输出 schema',
   '不可改变租户边界',
-] as const;
+] as const
 
 /** Invisibility rules for memory policy. */
 const MEMORY_INVISIBILITY_RULES = [
   'Memory snippets are private background context',
   'Do not mention memory unless the user explicitly asks',
   'Current conversation overrides memory',
-] as const;
+] as const
 
-const PERSONA_TEMPLATE_ID = 'persona:default';
-const HEURISTICS_TEMPLATE_ID = 'heuristics:tool-usage.common';
-const MEMORY_RULES_TEMPLATE_ID = 'context:memory-use-rules';
+const PERSONA_TEMPLATE_ID = 'persona:default'
+const HEURISTICS_TEMPLATE_ID = 'heuristics:tool-usage.common'
+const MEMORY_RULES_TEMPLATE_ID = 'context:memory-use-rules'
 
 /**
  * Loads template content via the TemplateLoader, with registry existence check.
@@ -58,16 +66,16 @@ async function loadTemplateContent(
   registry: PromptTemplateRegistry,
 ): Promise<string> {
   if (!registry.hasTemplate(templateId)) {
-    console.warn(`[PromptProjectionResolver] Template not registered: ${templateId}`);
-    return '';
+    console.warn(`[PromptProjectionResolver] Template not registered: ${templateId}`)
+    return ''
   }
 
   try {
-    return await loader.load(templateId);
+    return await loader.load(templateId)
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`[PromptProjectionResolver] Failed to load template ${templateId}: ${message}`);
-    return '';
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`[PromptProjectionResolver] Failed to load template ${templateId}: ${message}`)
+    return ''
   }
 }
 
@@ -85,7 +93,7 @@ export function createPromptProjectionResolver(
   return {
     async resolve(_input: PromptProjectionResolveInput): Promise<PromptProjectionResolveResult> {
       if (!isPromptMemoryP0Enabled()) {
-        return {};
+        return {}
       }
 
       if (!isPromptTemplateProjectionEnabled()) {
@@ -93,35 +101,35 @@ export function createPromptProjectionResolver(
           personaProjection: DEFAULT_PERSONA_PROJECTION,
           toolSelectionPolicy: DEFAULT_TOOL_SELECTION_POLICY,
           memoryPolicyProjection: DEFAULT_MEMORY_POLICY_PROJECTION,
-        };
+        }
       }
 
       const [personaContent, heuristicsContent, memoryRulesContent] = await Promise.all([
         loadTemplateContent(loader, PERSONA_TEMPLATE_ID, registry),
         loadTemplateContent(loader, HEURISTICS_TEMPLATE_ID, registry),
         loadTemplateContent(loader, MEMORY_RULES_TEMPLATE_ID, registry),
-      ]);
+      ])
 
       const personaProjection: PersonaProjection = {
         personaId: 'default-assistant',
         styleGuidelines: personaContent || DEFAULT_PERSONA_PROJECTION.styleGuidelines,
         constraints: [...PERSONA_CONSTRAINTS],
-      };
+      }
 
       const toolSelectionPolicy: ToolSelectionPolicyProjection = {
         heuristics: heuristicsContent || DEFAULT_TOOL_SELECTION_POLICY.heuristics,
-      };
+      }
 
       const memoryPolicyProjection: MemoryPolicyProjection = {
         useRules: memoryRulesContent || DEFAULT_MEMORY_POLICY_PROJECTION.useRules,
         invisibilityRules: [...MEMORY_INVISIBILITY_RULES],
-      };
+      }
 
       return {
         personaProjection,
         toolSelectionPolicy,
         memoryPolicyProjection,
-      };
+      }
     },
-  };
+  }
 }

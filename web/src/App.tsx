@@ -1,34 +1,34 @@
-import { useState } from 'react';
-import AgentShell from './layout/AgentShell';
-import AgentMonitorTab from './features/monitor/AgentMonitorTab';
-import DashboardTab from './features/dashboard/DashboardTab';
-import SessionWorkspace from './features/session/SessionWorkspace';
-import StatusTab from './features/status/StatusTab';
-import SessionsTab from './features/sessions/SessionsTab';
-import UsageTab from './features/usage/UsageTab';
-import LogsDebugTab from './features/logs/LogsDebugTab';
-import ChannelsTab from './features/channels/ChannelsTab';
-import InstancesTab from './features/instances/InstancesTab';
-import SkillsTab from './features/skills/SkillsTab';
-import AgentsTab from './features/agents/AgentsTab';
-import SettingsTab from './features/settings/SettingsTab';
-import WorkflowsTab from './features/workflows/WorkflowsTab';
-import ApprovalsTab from './features/approvals/ApprovalsTab';
-import TriggersTab from './features/triggers/TriggersTab';
-import MemoryTab from './features/memory/MemoryTab';
-import ConnectorsTab from './features/connectors/ConnectorsTab';
-import ObservabilityTab from './features/observability/ObservabilityTab';
-import DLQTab from './features/dlq/DLQTab';
-import AdminTab from './features/admin/AdminTab';
-import LoginPage from './features/auth/LoginPage';
-import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import type { TabId } from './components/TabNav';
-import './styles.css';
+import { useState } from 'react'
+import AgentShell from './layout/AgentShell'
+import AgentMonitorTab from './features/monitor/AgentMonitorTab'
+import DashboardTab from './features/dashboard/DashboardTab'
+import SessionWorkspace from './features/session/SessionWorkspace'
+import StatusTab from './features/status/StatusTab'
+import SessionsTab from './features/sessions/SessionsTab'
+import UsageTab from './features/usage/UsageTab'
+import LogsDebugTab from './features/logs/LogsDebugTab'
+import ChannelsTab from './features/channels/ChannelsTab'
+import InstancesTab from './features/instances/InstancesTab'
+import SkillsTab from './features/skills/SkillsTab'
+import AgentsTab from './features/agents/AgentsTab'
+import SettingsTab from './features/settings/SettingsTab'
+import WorkflowsTab from './features/workflows/WorkflowsTab'
+import ApprovalsTab from './features/approvals/ApprovalsTab'
+import TriggersTab from './features/triggers/TriggersTab'
+import MemoryTab from './features/memory/MemoryTab'
+import ConnectorsTab from './features/connectors/ConnectorsTab'
+import ObservabilityTab from './features/observability/ObservabilityTab'
+import DLQTab from './features/dlq/DLQTab'
+import AdminTab from './features/admin/AdminTab'
+import LoginPage from './features/auth/LoginPage'
+import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import type { TabId } from './components/TabNav'
+import './styles.css'
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<TabId>('session-console');
-  const { isAuthenticated, needsSetup, loading, logout, user } = useAuth();
+  const [activeTab, setActiveTab] = useState<TabId>('session-console')
+  const { isAuthenticated, needsSetup, loading, logout, user } = useAuth()
 
   if (loading) {
     return (
@@ -41,72 +41,67 @@ function AppContent() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   if (needsSetup) {
-    return <ProductionSetupChecklist />;
+    return <ProductionSetupChecklist />
   }
 
   if (!isAuthenticated) {
-    return <LoginPage mode="login" />;
+    return <LoginPage mode="login" />
   }
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardTab />;
+        return <DashboardTab />
       case 'session-console':
-        return <SessionWorkspace />;
+        return <SessionWorkspace />
       case 'agent-monitor':
-        return <AgentMonitorTab />;
+        return <AgentMonitorTab />
       case 'status':
-        return <StatusTab onTabChange={setActiveTab} />;
+        return <StatusTab onTabChange={setActiveTab} />
       case 'sessions':
-        return <SessionsTab />;
+        return <SessionsTab />
       case 'usage':
-        return <UsageTab />;
+        return <UsageTab />
       case 'logs-debug':
-        return <LogsDebugTab />;
+        return <LogsDebugTab />
       case 'channels':
-        return <ChannelsTab />;
+        return <ChannelsTab />
       case 'instances':
-        return <InstancesTab />;
+        return <InstancesTab />
       case 'skills':
-        return <SkillsTab />;
+        return <SkillsTab />
       case 'agents':
-        return <AgentsTab />;
+        return <AgentsTab />
       case 'settings':
-        return <SettingsTab />;
+        return <SettingsTab />
       case 'workflows':
-        return <WorkflowsTab />;
+        return <WorkflowsTab />
       case 'approvals':
-        return <ApprovalsTab onTabChange={setActiveTab} />;
+        return <ApprovalsTab onTabChange={setActiveTab} />
       case 'triggers':
-        return <TriggersTab />;
+        return <TriggersTab />
       case 'memory':
-        return <MemoryTab />;
+        return <MemoryTab />
       case 'observability':
-        return <ObservabilityTab />;
+        return <ObservabilityTab />
       case 'connectors':
-        return <ConnectorsTab />;
+        return <ConnectorsTab />
       case 'dlq':
-        return <DLQTab />;
+        return <DLQTab />
       case 'admin':
-        return <AdminTab />;
+        return <AdminTab />
     }
-  };
+  }
 
   return (
-    <AgentShell
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      user={user}
-      onLogout={logout}
-    >
+    <AgentShell activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
       {renderContent()}
     </AgentShell>
-  );
+  )
 }
 
 function App() {
@@ -114,7 +109,7 @@ function App() {
     <AuthProvider>
       <AppContent />
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App

@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMcpServerRegistry, type McpServerRegistry } from '../../../src/connectors/mcp/mcp-server-registry.js';
-import { createMockMcpServer } from '../../fixtures/phase3-mock-mcp.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMcpServerRegistry, type McpServerRegistry } from '../../../src/connectors/mcp/mcp-server-registry.js'
+import { createMockMcpServer } from '../../fixtures/phase3-mock-mcp.js'
 
 const createMcpTables = (connection: ConnectionManager): void => {
   connection.exec(`CREATE TABLE mcp_servers (
@@ -19,23 +19,23 @@ const createMcpTables = (connection: ConnectionManager): void => {
             tenant_id TEXT NOT NULL DEFAULT 'org_default',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
-  )`);
-};
+  )`)
+}
 
 describe('McpServerRegistry', () => {
-  let connection: ConnectionManager;
-  let registry: McpServerRegistry;
+  let connection: ConnectionManager
+  let registry: McpServerRegistry
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    createMcpTables(connection);
-    registry = createMcpServerRegistry(connection);
-  });
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    createMcpTables(connection)
+    registry = createMcpServerRegistry(connection)
+  })
 
   afterEach(() => {
-    connection.close();
-  });
+    connection.close()
+  })
 
   it('MCP registry stores stdio and http server definitions', () => {
     const stdioServer = createMockMcpServer({
@@ -47,7 +47,7 @@ describe('McpServerRegistry', () => {
       trustLevel: 'verified',
       sandboxPolicy: { network: false, filesystem: 'read-only' },
       status: 'active',
-    });
+    })
     const httpServer = createMockMcpServer({
       serverId: 'http-server',
       baseUrl: 'https://mcp.example.test/rpc',
@@ -55,10 +55,10 @@ describe('McpServerRegistry', () => {
       trustLevel: 'trusted',
       sandboxPolicy: { network: true },
       status: 'active',
-    });
+    })
 
-    registry.registerServer(stdioServer);
-    registry.registerServer(httpServer);
+    registry.registerServer(stdioServer)
+    registry.registerServer(httpServer)
 
     expect(registry.getServer('stdio-server')).toMatchObject({
       serverId: 'stdio-server',
@@ -68,7 +68,7 @@ describe('McpServerRegistry', () => {
       trustLevel: 'verified',
       sandboxPolicy: { network: false, filesystem: 'read-only' },
       status: 'active',
-    });
+    })
     expect(registry.getServer('http-server')).toMatchObject({
       serverId: 'http-server',
       baseUrl: 'https://mcp.example.test/rpc',
@@ -76,10 +76,10 @@ describe('McpServerRegistry', () => {
       trustLevel: 'trusted',
       sandboxPolicy: { network: true },
       status: 'active',
-    });
-    expect(registry.listServers()).toHaveLength(2);
+    })
+    expect(registry.listServers()).toHaveLength(2)
 
-    registry.disableServer('stdio-server');
-    expect(registry.getServer('stdio-server')?.status).toBe('inactive');
-  });
-});
+    registry.disableServer('stdio-server')
+    expect(registry.getServer('stdio-server')?.status).toBe('inactive')
+  })
+})

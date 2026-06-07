@@ -6,18 +6,18 @@
  * navigation-config.ts structure.
  */
 
-import type { TabId } from './navigation-config';
+import type { TabId } from './navigation-config'
 
 /**
  * Product sections for navigation grouping.
  * These represent the four main product areas of the application.
  */
-export type ProductSection = 'chat' | 'workspace' | 'operations' | 'admin';
+export type ProductSection = 'chat' | 'workspace' | 'operations' | 'admin'
 
 /**
  * Mapping from each TabId to its corresponding ProductSection.
  */
-export type ProductNavMapping = Record<TabId, ProductSection>;
+export type ProductNavMapping = Record<TabId, ProductSection>
 
 /**
  * The complete mapping of all tabs to product sections.
@@ -56,17 +56,12 @@ export const PRODUCT_NAV_MAPPING: ProductNavMapping = {
   // Admin section
   settings: 'admin',
   admin: 'admin',
-};
+}
 
 /**
  * All available product sections.
  */
-export const PRODUCT_SECTIONS: readonly ProductSection[] = [
-  'chat',
-  'workspace',
-  'operations',
-  'admin',
-] as const;
+export const PRODUCT_SECTIONS: readonly ProductSection[] = ['chat', 'workspace', 'operations', 'admin'] as const
 
 /**
  * Display labels for product sections.
@@ -76,7 +71,7 @@ export const PRODUCT_SECTION_LABELS: Record<ProductSection, string> = {
   workspace: 'Workspace',
   operations: 'Operations',
   admin: 'Admin',
-};
+}
 
 /**
  * Get the product section for a given tab ID.
@@ -85,7 +80,7 @@ export const PRODUCT_SECTION_LABELS: Record<ProductSection, string> = {
  * @returns The product section the tab belongs to
  */
 export function getProductSection(tabId: TabId): ProductSection {
-  return PRODUCT_NAV_MAPPING[tabId];
+  return PRODUCT_NAV_MAPPING[tabId]
 }
 
 /**
@@ -97,7 +92,7 @@ export function getProductSection(tabId: TabId): ProductSection {
 export function getAllTabsForSection(section: ProductSection): TabId[] {
   return Object.entries(PRODUCT_NAV_MAPPING)
     .filter(([, productSection]) => productSection === section)
-    .map(([tabId]) => tabId as TabId);
+    .map(([tabId]) => tabId as TabId)
 }
 
 /**
@@ -111,11 +106,11 @@ export function getTabsBySection(): Record<ProductSection, TabId[]> {
     workspace: [],
     operations: [],
     admin: [],
-  };
-
-  for (const section of PRODUCT_SECTIONS) {
-    result[section] = getAllTabsForSection(section);
   }
 
-  return result;
+  for (const section of PRODUCT_SECTIONS) {
+    result[section] = getAllTabsForSection(section)
+  }
+
+  return result
 }

@@ -4,13 +4,13 @@ Google Docs 连接器允许 AI 代理与 Google Docs 进行交互，支持文档
 
 ## 支持的操作
 
-| 操作 | 能力 ID | 风险等级 | 描述 |
-|------|---------|----------|------|
-| 列出文档 | `docs.list_docs` | 低 | 列出用户有权访问的文档 |
-| 获取文档 | `docs.get_doc` | 低 | 获取指定文档的内容 |
-| 创建文档 | `docs.create_doc` | 中 | 创建新文档 |
-| 更新文档 | `docs.update_doc` | 中 | 更新现有文档内容 |
-| 搜索文档 | `docs.search_docs` | 低 | 按关键词搜索文档 |
+| 操作     | 能力 ID            | 风险等级 | 描述                   |
+| -------- | ------------------ | -------- | ---------------------- |
+| 列出文档 | `docs.list_docs`   | 低       | 列出用户有权访问的文档 |
+| 获取文档 | `docs.get_doc`     | 低       | 获取指定文档的内容     |
+| 创建文档 | `docs.create_doc`  | 中       | 创建新文档             |
+| 更新文档 | `docs.update_doc`  | 中       | 更新现有文档内容       |
+| 搜索文档 | `docs.search_docs` | 低       | 按关键词搜索文档       |
 
 ## 认证
 
@@ -43,10 +43,10 @@ OAuth 令牌使用 AES-256-GCM 加密存储：
 
 ### 环境变量
 
-| 变量 | 描述 | 默认值 |
-|------|------|--------|
-| `APP_SECRET_KEY` | 用于加密凭据的密钥（必需） | - |
-| `DOCS_MOCK_MODE` | 启用模拟模式（开发/测试） | `false` |
+| 变量             | 描述                       | 默认值  |
+| ---------------- | -------------------------- | ------- |
+| `APP_SECRET_KEY` | 用于加密凭据的密钥（必需） | -       |
+| `DOCS_MOCK_MODE` | 启用模拟模式（开发/测试）  | `false` |
 
 ### 连接器配置
 
@@ -62,16 +62,16 @@ OAuth 令牌使用 AES-256-GCM 加密存储：
 
 ### 错误代码
 
-| 代码 | 描述 | 可恢复 |
-|------|------|--------|
-| `AUTH_INVALID` | 认证失败或令牌无效 | 否 |
-| `AUTH_EXPIRED` | OAuth 令牌已过期 | 是（刷新令牌） |
-| `RATE_LIMITED` | 请求频率超限 | 是（自动重试） |
-| `NOT_FOUND` | 文档不存在 | 否 |
-| `FORBIDDEN` | 无权限访问文档 | 否 |
-| `VALIDATION_ERROR` | 请求参数无效 | 否 |
-| `NETWORK_ERROR` | 网络或超时错误 | 是 |
-| `UNKNOWN_ERROR` | 未知错误 | 否 |
+| 代码               | 描述               | 可恢复         |
+| ------------------ | ------------------ | -------------- |
+| `AUTH_INVALID`     | 认证失败或令牌无效 | 否             |
+| `AUTH_EXPIRED`     | OAuth 令牌已过期   | 是（刷新令牌） |
+| `RATE_LIMITED`     | 请求频率超限       | 是（自动重试） |
+| `NOT_FOUND`        | 文档不存在         | 否             |
+| `FORBIDDEN`        | 无权限访问文档     | 否             |
+| `VALIDATION_ERROR` | 请求参数无效       | 否             |
+| `NETWORK_ERROR`    | 网络或超时错误     | 是             |
+| `UNKNOWN_ERROR`    | 未知错误           | 否             |
 
 ### 速率限制处理
 
@@ -103,7 +103,7 @@ export DOCS_MOCK_MODE=true
 const adapter = createDocsConnectorAdapter({
   useMock: true,
   transport: new DocsMockTransport(),
-});
+})
 ```
 
 ### Mock 数据
@@ -164,7 +164,7 @@ const response = await connectorRuntime.executeCall({
     folderId: 'folder-123',
   },
   userId: 'user-001',
-});
+})
 ```
 
 ### 创建文档
@@ -180,7 +180,7 @@ const response = await connectorRuntime.executeCall({
     content: 'Document content here...',
   },
   userId: 'user-001',
-});
+})
 ```
 
 ### 搜索文档
@@ -196,7 +196,7 @@ const response = await connectorRuntime.executeCall({
     maxResults: 5,
   },
   userId: 'user-001',
-});
+})
 ```
 
 ## 限制

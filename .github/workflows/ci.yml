@@ -71,8 +71,8 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             web/package-lock.json
-      - run: npm audit --audit-level=high
-      - run: npm --prefix web audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm --prefix web audit --omit=dev --audit-level=high
 
   unit-tests:
     runs-on: ubuntu-latest

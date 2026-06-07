@@ -1,16 +1,12 @@
-import type {
-  ConnectorAdapter,
-  ConnectorCapability,
-  ConnectorCallRequest,
-} from '../types.js';
-import type { ConnectorInstance } from '../../storage/connector-store.js';
-import type { ApprovalStore, CreateApprovalRequest } from '../../storage/approval-store.js';
+import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest } from '../types.js'
+import type { ConnectorInstance } from '../../storage/connector-store.js'
+import type { ApprovalStore, CreateApprovalRequest } from '../../storage/approval-store.js'
 import {
   encryptSecret,
   decryptSecret,
   deserializeEncryptedSecret,
   serializeEncryptedSecret,
-} from '../../storage/provider-crypto.js';
+} from '../../storage/provider-crypto.js'
 import type {
   GitHubTransport,
   GitHubIssue,
@@ -23,8 +19,8 @@ import type {
   CreateIssueCommentParams,
   GitHubError,
   IssueCommentApprovalMetadata,
-} from './github-types.js';
-import { GitHubMockTransport } from './github-mock-transport.js';
+} from './github-types.js'
+import { GitHubMockTransport } from './github-mock-transport.js'
 
 const GITHUB_CAPABILITIES: ConnectorCapability[] = [
   {
@@ -99,157 +95,153 @@ const GITHUB_CAPABILITIES: ConnectorCapability[] = [
     requiresAuth: true,
     supportedOperations: ['create_issue_comment'],
   },
-];
+]
 
 export interface GitHubConnectorConfig {
-  transport?: GitHubTransport;
-  approvalStore: ApprovalStore;
-  useMock?: boolean;
+  transport?: GitHubTransport
+  approvalStore: ApprovalStore
+  useMock?: boolean
 }
 
 export class GitHubConnectorAdapter implements ConnectorAdapter {
-  private transport: GitHubTransport;
-  private approvalStore: ApprovalStore;
-  private pendingApprovals: Map<string, { params: CreateIssueCommentParams; approvalId: string }> = new Map();
+  private transport: GitHubTransport
+  private approvalStore: ApprovalStore
+  private pendingApprovals: Map<string, { params: CreateIssueCommentParams; approvalId: string }> = new Map()
 
   constructor(config: GitHubConnectorConfig) {
-    this.transport = config.transport ?? new GitHubMockTransport();
-    this.approvalStore = config.approvalStore;
+    this.transport = config.transport ?? new GitHubMockTransport()
+    this.approvalStore = config.approvalStore
   }
 
-  async execute(
-    instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown> {
-    const pat = this.decryptPat(instance);
+  async execute(instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
+    const pat = this.decryptPat(instance)
 
     if (this.transport instanceof GitHubMockTransport) {
-      this.transport.setValidPat(pat);
+      this.transport.setValidPat(pat)
     }
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'list_issues':
-        return this.listIssues(params as unknown as ListIssuesParams);
+        return this.listIssues(params as unknown as ListIssuesParams)
 
       case 'get_issue':
-        return this.getIssue(params as unknown as GetIssueParams);
+        return this.getIssue(params as unknown as GetIssueParams)
 
       case 'list_pull_requests':
-        return this.listPullRequests(params as unknown as ListPullRequestsParams);
+        return this.listPullRequests(params as unknown as ListPullRequestsParams)
 
       case 'get_pull_request':
-        return this.getPullRequest(params as unknown as GetPullRequestParams);
+        return this.getPullRequest(params as unknown as GetPullRequestParams)
 
       case 'create_issue_comment':
-        return this.createIssueComment(
-          params as unknown as CreateIssueCommentParams,
-          request
-        );
+        return this.createIssueComment(params as unknown as CreateIssueCommentParams, request)
 
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation}`)
     }
   }
 
   discoverCapabilities(_instance: ConnectorInstance): ConnectorCapability[] {
-    return GITHUB_CAPABILITIES;
+    return GITHUB_CAPABILITIES
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
-    return { healthy: true, message: 'GitHub connector is healthy' };
+    return { healthy: true, message: 'GitHub connector is healthy' }
   }
 
   private async listIssues(params: ListIssuesParams): Promise<{ issues: GitHubIssue[]; total: number }> {
-    return this.transport.listIssues(params);
+    return this.transport.listIssues(params)
   }
 
   private async getIssue(params: GetIssueParams): Promise<GitHubIssue | null> {
-    return this.transport.getIssue(params);
+    return this.transport.getIssue(params)
   }
 
-  private async listPullRequests(params: ListPullRequestsParams): Promise<{ pullRequests: GitHubPullRequest[]; total: number }> {
-    return this.transport.listPullRequests(params);
+  private async listPullRequests(
+    params: ListPullRequestsParams,
+  ): Promise<{ pullRequests: GitHubPullRequest[]; total: number }> {
+    return this.transport.listPullRequests(params)
   }
 
   private async getPullRequest(params: GetPullRequestParams): Promise<GitHubPullRequest | null> {
-    return this.transport.getPullRequest(params);
+    return this.transport.getPullRequest(params)
   }
 
   private async createIssueComment(
     params: CreateIssueCommentParams,
-    request: ConnectorCallRequest
+    request: ConnectorCallRequest,
   ): Promise<GitHubIssueComment | { requiresApproval: true; approvalId: string }> {
-    const idempotencyKey = this.generateIdempotencyKey(params);
+    const idempotencyKey = this.generateIdempotencyKey(params)
 
-    const existingApproval = this.findExistingApproval(request.userId, idempotencyKey);
+    const existingApproval = this.findExistingApproval(request.userId, idempotencyKey)
     if (existingApproval) {
       if (existingApproval.status === 'approved') {
-        return this.executeIssueComment(params);
+        return this.executeIssueComment(params)
       }
       if (existingApproval.status === 'rejected') {
-        throw this.createApprovalRejectedError(existingApproval.id);
+        throw this.createApprovalRejectedError(existingApproval.id)
       }
-      return { requiresApproval: true, approvalId: existingApproval.id };
+      return { requiresApproval: true, approvalId: existingApproval.id }
     }
 
-    const approvalId = await this.createApprovalRequest(params, request, idempotencyKey);
+    const approvalId = await this.createApprovalRequest(params, request, idempotencyKey)
 
-    this.pendingApprovals.set(approvalId, { params, approvalId });
+    this.pendingApprovals.set(approvalId, { params, approvalId })
 
-    return { requiresApproval: true, approvalId };
+    return { requiresApproval: true, approvalId }
   }
 
   async executeApprovedComment(approvalId: string): Promise<GitHubIssueComment> {
-    const pending = this.pendingApprovals.get(approvalId);
+    const pending = this.pendingApprovals.get(approvalId)
     if (!pending) {
-      throw new Error(`No pending comment found for approval: ${approvalId}`);
+      throw new Error(`No pending comment found for approval: ${approvalId}`)
     }
 
-    const result = await this.executeIssueComment(pending.params);
-    this.pendingApprovals.delete(approvalId);
+    const result = await this.executeIssueComment(pending.params)
+    this.pendingApprovals.delete(approvalId)
 
-    return result;
+    return result
   }
 
   private async executeIssueComment(params: CreateIssueCommentParams): Promise<GitHubIssueComment> {
-    return this.transport.createIssueComment(params);
+    return this.transport.createIssueComment(params)
   }
 
   private decryptPat(instance: ConnectorInstance): string {
     if (!instance.authStateRef) {
-      throw this.createAuthError('No authentication configured');
+      throw this.createAuthError('No authentication configured')
     }
 
     try {
-      const encrypted = deserializeEncryptedSecret(instance.authStateRef);
-      return decryptSecret(encrypted.encrypted, encrypted.iv, encrypted.authTag);
+      const encrypted = deserializeEncryptedSecret(instance.authStateRef)
+      return decryptSecret(encrypted.encrypted, encrypted.iv, encrypted.authTag)
     } catch {
-      throw this.createAuthError('Failed to decrypt PAT');
+      throw this.createAuthError('Failed to decrypt PAT')
     }
   }
 
   static encryptPat(pat: string): string {
-    const encrypted = encryptSecret(pat);
-    return serializeEncryptedSecret(encrypted);
+    const encrypted = encryptSecret(pat)
+    return serializeEncryptedSecret(encrypted)
   }
 
   private generateIdempotencyKey(params: CreateIssueCommentParams): string {
-    return `github-comment-${params.owner}-${params.repo}-${params.issueNumber}-${Date.now()}`;
+    return `github-comment-${params.owner}-${params.repo}-${params.issueNumber}-${Date.now()}`
   }
 
   private findExistingApproval(userId: string, idempotencyKey: string) {
-    const approvals = this.approvalStore.findByUser(userId);
-    return approvals.find(a => a.idempotencyKey === idempotencyKey);
+    const approvals = this.approvalStore.findByUser(userId)
+    return approvals.find((a) => a.idempotencyKey === idempotencyKey)
   }
 
   private async createApprovalRequest(
     params: CreateIssueCommentParams,
     request: ConnectorCallRequest,
-    idempotencyKey: string
+    idempotencyKey: string,
   ): Promise<string> {
-    const approvalId = `github-approval-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const approvalId = `github-approval-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 
     const metadata: IssueCommentApprovalMetadata = {
       operation: 'create_issue_comment',
@@ -258,7 +250,7 @@ export class GitHubConnectorAdapter implements ConnectorAdapter {
       issueNumber: params.issueNumber,
       body: params.body,
       idempotencyKey,
-    };
+    }
 
     const approvalRequest: CreateApprovalRequest = {
       id: approvalId,
@@ -274,30 +266,30 @@ export class GitHubConnectorAdapter implements ConnectorAdapter {
       requestedAt: new Date().toISOString(),
       idempotencyKey,
       metadata: JSON.stringify(metadata),
-    };
+    }
 
-    this.approvalStore.create(approvalRequest);
+    this.approvalStore.create(approvalRequest)
 
-    return approvalId;
+    return approvalId
   }
 
   private createAuthError(message: string): GitHubError {
-    const error = new Error(message) as Error & GitHubError;
-    error.code = 'AUTH_INVALID';
-    error.message = message;
-    error.recoverable = false;
-    throw error;
+    const error = new Error(message) as Error & GitHubError
+    error.code = 'AUTH_INVALID'
+    error.message = message
+    error.recoverable = false
+    throw error
   }
 
   private createApprovalRejectedError(approvalId: string): GitHubError {
-    const error = new Error(`Approval was rejected: ${approvalId}`) as Error & GitHubError;
-    error.code = 'FORBIDDEN';
-    error.message = `Approval was rejected: ${approvalId}`;
-    error.recoverable = false;
-    throw error;
+    const error = new Error(`Approval was rejected: ${approvalId}`) as Error & GitHubError
+    error.code = 'FORBIDDEN'
+    error.message = `Approval was rejected: ${approvalId}`
+    error.recoverable = false
+    throw error
   }
 }
 
 export function createGitHubConnectorAdapter(config: GitHubConnectorConfig): GitHubConnectorAdapter {
-  return new GitHubConnectorAdapter(config);
+  return new GitHubConnectorAdapter(config)
 }

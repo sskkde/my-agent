@@ -1,17 +1,17 @@
-import React from 'react';
+import React from 'react'
 
 export interface EventTypeOption {
-  type: string;
-  label: string;
-  count: number;
+  type: string
+  label: string
+  count: number
 }
 
 export interface EventFilterProps {
-  eventTypes: EventTypeOption[];
-  selectedTypes: string[];
-  onChange: (selectedTypes: string[]) => void;
-  showAllOption?: boolean;
-  multiSelect?: boolean;
+  eventTypes: EventTypeOption[]
+  selectedTypes: string[]
+  onChange: (selectedTypes: string[]) => void
+  showAllOption?: boolean
+  multiSelect?: boolean
 }
 
 const EventFilter: React.FC<EventFilterProps> = ({
@@ -21,30 +21,30 @@ const EventFilter: React.FC<EventFilterProps> = ({
   showAllOption = true,
   multiSelect = true,
 }) => {
-  const allTypesSelected = selectedTypes.length === 0 || selectedTypes.length === eventTypes.length;
+  const allTypesSelected = selectedTypes.length === 0 || selectedTypes.length === eventTypes.length
 
   const handleAllClick = () => {
-    onChange([]);
-  };
+    onChange([])
+  }
 
   const handleTypeClick = (type: string) => {
     if (!multiSelect) {
-      onChange([type]);
-      return;
+      onChange([type])
+      return
     }
 
     if (selectedTypes.includes(type)) {
-      const newSelected = selectedTypes.filter((t) => t !== type);
-      onChange(newSelected);
+      const newSelected = selectedTypes.filter((t) => t !== type)
+      onChange(newSelected)
     } else {
-      onChange([...selectedTypes, type]);
+      onChange([...selectedTypes, type])
     }
-  };
+  }
 
   const isTypeSelected = (type: string): boolean => {
-    if (allTypesSelected) return true;
-    return selectedTypes.includes(type);
-  };
+    if (allTypesSelected) return true
+    return selectedTypes.includes(type)
+  }
 
   return (
     <div className="event-filter" role="group" aria-label="事件类型过滤" data-testid="event-filter">
@@ -60,7 +60,7 @@ const EventFilter: React.FC<EventFilterProps> = ({
         </button>
       )}
       {eventTypes.map((eventType) => {
-        const selected = isTypeSelected(eventType.type);
+        const selected = isTypeSelected(eventType.type)
         return (
           <button
             key={eventType.type}
@@ -73,10 +73,10 @@ const EventFilter: React.FC<EventFilterProps> = ({
             {eventType.label}
             <span className="event-filter__count">{eventType.count}</span>
           </button>
-        );
+        )
       })}
     </div>
-  );
-};
+  )
+}
 
-export default EventFilter;
+export default EventFilter

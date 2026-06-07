@@ -1,12 +1,12 @@
-import type { UserRole } from '../storage/user-store.js';
+import type { UserRole } from '../storage/user-store.js'
 
 export interface ToolCallSummary {
-  toolCallId: string;
-  toolName: string;
-  status: 'completed' | 'failed' | 'pending' | 'skipped';
-  summary?: string;
-  transcriptSummary?: string;
-  resultRef?: string;
+  toolCallId: string
+  toolName: string
+  status: 'completed' | 'failed' | 'pending' | 'skipped'
+  summary?: string
+  transcriptSummary?: string
+  resultRef?: string
 }
 
 // MVP Allowed Endpoints:
@@ -16,157 +16,157 @@ export interface ToolCallSummary {
 
 export interface ApiError {
   error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
+    code: string
+    message: string
+    details?: unknown
+  }
 }
 
 export interface ApiSuccess<T> {
-  data: T;
+  data: T
 }
 
-export type ApiResponse<T> = ApiSuccess<T> | ApiError;
+export type ApiResponse<T> = ApiSuccess<T> | ApiError
 
 export interface ModuleHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  message?: string;
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  message?: string
 }
 
 export interface HealthResponse {
-  status: 'healthy' | 'degraded';
-  timestamp: string;
-  modules: Record<string, ModuleHealth>;
+  status: 'healthy' | 'degraded'
+  timestamp: string
+  modules: Record<string, ModuleHealth>
 }
 
 export interface SessionInfo {
-  sessionId: string;
-  userId: string;
-  messageCount: number;
-  lastActivityAt: string;
-  activePlannerRunIds: string[];
-  activeBackgroundRunIds: string[];
-  selectedModel?: string;
-  selectedProviderId?: string;
+  sessionId: string
+  userId: string
+  messageCount: number
+  lastActivityAt: string
+  activePlannerRunIds: string[]
+  activeBackgroundRunIds: string[]
+  selectedModel?: string
+  selectedProviderId?: string
 }
 
 export interface SessionResponse {
-  session: SessionInfo;
+  session: SessionInfo
 }
 
 export interface VisibleMessage {
-  messageId: string;
-  role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error';
-  content: string;
+  messageId: string
+  role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error'
+  content: string
 }
 
 export interface TranscriptTurn {
-  turnId: string;
-  sessionId: string;
-  userId: string;
+  turnId: string
+  sessionId: string
+  userId: string
   input: {
-    inboundEventId?: string;
-    userMessageSummary?: string;
-    contentRefs?: string[];
-    inboundTimestamp?: string;
-  };
+    inboundEventId?: string
+    userMessageSummary?: string
+    contentRefs?: string[]
+    inboundTimestamp?: string
+  }
   output: {
-    visibleMessages: VisibleMessage[];
-    artifactRefs?: string[];
-  };
+    visibleMessages: VisibleMessage[]
+    artifactRefs?: string[]
+  }
   runtimeSummary?: {
-    foregroundDecisionId?: string;
-    plannerRunIds?: string[];
-    runtimeActionIds?: string[];
-    toolCallSummaries?: ToolCallSummary[];
-    approvalSummaries?: string[];
-  };
+    foregroundDecisionId?: string
+    plannerRunIds?: string[]
+    runtimeActionIds?: string[]
+    toolCallSummaries?: ToolCallSummary[]
+    approvalSummaries?: string[]
+  }
   eventRange?: {
-    startEventId: string;
-    endEventId: string;
-  };
-  visibility: 'public' | 'internal' | 'confidential';
-  createdAt: string;
+    startEventId: string
+    endEventId: string
+  }
+  visibility: 'public' | 'internal' | 'confidential'
+  createdAt: string
 }
 
 export interface TranscriptsResponse {
-  transcripts: TranscriptTurn[];
-  total: number;
+  transcripts: TranscriptTurn[]
+  total: number
 }
 
 export interface SendMessageRequest {
-  text: string;
+  text: string
 }
 
 export interface SendMessageResponse {
-  accepted: boolean;
-  turnId?: string;
-  message?: string;
-  status: string;
-  correlationId: string;
-  envelopeId: string;
+  accepted: boolean
+  turnId?: string
+  message?: string
+  status: string
+  correlationId: string
+  envelopeId: string
 }
 
 export interface RunInfo {
-  runId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  objective?: string;
-  progress?: number;
-  createdAt: string;
-  updatedAt?: string;
+  runId: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  objective?: string
+  progress?: number
+  createdAt: string
+  updatedAt?: string
 }
 
 export interface RunsResponse {
-  runs: RunInfo[];
-  total: number;
+  runs: RunInfo[]
+  total: number
 }
 
 export interface SseRunEvent {
-  type: 'run_started' | 'run_progress' | 'run_completed' | 'run_failed' | 'run_cancelled';
-  runId: string;
-  data: Record<string, unknown>;
-  timestamp: string;
+  type: 'run_started' | 'run_progress' | 'run_completed' | 'run_failed' | 'run_cancelled'
+  runId: string
+  data: Record<string, unknown>
+  timestamp: string
 }
 
 export interface ApprovalInfo {
-  id: string;
-  userId: string;
-  sessionId: string;
-  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
-  riskLevel?: string;
-  scope?: string;
-  actionType: string;
-  resource?: string;
-  justification?: string;
-  requestedBy: string;
-  requestedAt: string;
-  expiresAt?: string;
-  respondedAt?: string;
-  responseBy?: string;
-  responseReason?: string;
-  plannerRunId?: string;
+  id: string
+  userId: string
+  sessionId: string
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled'
+  riskLevel?: string
+  scope?: string
+  actionType: string
+  resource?: string
+  justification?: string
+  requestedBy: string
+  requestedAt: string
+  expiresAt?: string
+  respondedAt?: string
+  responseBy?: string
+  responseReason?: string
+  plannerRunId?: string
 }
 
 export interface ApprovalDetailResponse {
-  approval: ApprovalInfo;
+  approval: ApprovalInfo
 }
 
 export interface ApprovalsResponse {
   data: {
-    approvals: ApprovalInfo[];
-    total: number;
-  };
+    approvals: ApprovalInfo[]
+    total: number
+  }
 }
 
 export interface ApprovalDecisionRequest {
-  decision: 'approved' | 'rejected';
-  reason?: string;
+  decision: 'approved' | 'rejected'
+  reason?: string
 }
 
 export interface ApprovalDecisionResponse {
-  success: boolean;
-  approvalId: string;
-  status: 'approved' | 'rejected';
+  success: boolean
+  approvalId: string
+  status: 'approved' | 'rejected'
 }
 
 // =============================================================================
@@ -191,16 +191,16 @@ export type ConsoleTimelineEventType =
   | 'system_status'
   | 'error'
   | 'processing_status'
-  | 'token_stream';
+  | 'token_stream'
 
 export interface ConsoleTimelineEvent {
-  eventId: string;
-  eventType: ConsoleTimelineEventType;
-  sessionId: string;
-  timestamp: string;
-  content?: string;
-  metadata?: Record<string, unknown>;
-  actor?: string;
+  eventId: string
+  eventType: ConsoleTimelineEventType
+  sessionId: string
+  timestamp: string
+  content?: string
+  metadata?: Record<string, unknown>
+  actor?: string
 }
 
 // =============================================================================
@@ -216,7 +216,7 @@ export type ProcessingStage =
   | 'streaming'
   | 'persisting'
   | 'completed'
-  | 'failed';
+  | 'failed'
 
 export const ProcessingStageLabel: Record<ProcessingStage, string> = {
   idle: '空闲',
@@ -228,142 +228,142 @@ export const ProcessingStageLabel: Record<ProcessingStage, string> = {
   persisting: '持久化',
   completed: '完成',
   failed: '失败',
-};
+}
 
 export interface ProcessingToolStatus {
-  toolId: string;
-  status: 'running' | 'completed' | 'failed';
-  label?: string;
+  toolId: string
+  status: 'running' | 'completed' | 'failed'
+  label?: string
 }
 
 /** Exact token counts only. No estimated or approximate fields. */
 export interface ExactContextUsage {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  maxContextTokens?: number;
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  maxContextTokens?: number
 }
 
 export interface ProcessingStatusPayload {
-  sessionId: string;
-  attemptId: string;
-  messageId?: string;
-  stage: ProcessingStage;
-  stageLabel: string;
-  providerId?: string;
-  model?: string;
-  contextUsage?: ExactContextUsage | null;
-  activeTools: ProcessingToolStatus[];
-  timestamp: string;
-  error?: string;
+  sessionId: string
+  attemptId: string
+  messageId?: string
+  stage: ProcessingStage
+  stageLabel: string
+  providerId?: string
+  model?: string
+  contextUsage?: ExactContextUsage | null
+  activeTools: ProcessingToolStatus[]
+  timestamp: string
+  error?: string
 }
 
 /** SAFETY: delta contains assistant-visible text only. Raw chain-of-thought MUST NOT be included. */
 export interface TokenStreamPayload {
-  sessionId: string;
-  attemptId: string;
-  messageId?: string;
-  sequence: number;
-  delta: string;
-  accumulated?: string;
-  isFinal?: boolean;
-  timestamp: string;
+  sessionId: string
+  attemptId: string
+  messageId?: string
+  sequence: number
+  delta: string
+  accumulated?: string
+  isFinal?: boolean
+  timestamp: string
 }
 
 export interface ConsoleSessionInfo {
-  sessionId: string;
-  userId: string;
-  title: string;
-  status: 'active' | 'archived' | 'closed';
-  messageCount: number;
-  lastActivityAt: string;
-  createdAt: string;
-  updatedAt: string;
-  selectedModel?: string;
-  selectedProviderId?: string;
+  sessionId: string
+  userId: string
+  title: string
+  status: 'active' | 'archived' | 'closed'
+  messageCount: number
+  lastActivityAt: string
+  createdAt: string
+  updatedAt: string
+  selectedModel?: string
+  selectedProviderId?: string
 }
 
 export interface PaginationParams {
-  limit?: number;
-  offset?: number;
+  limit?: number
+  offset?: number
 }
 
 export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  limit: number;
-  offset: number;
-  hasMore: boolean;
+  items: T[]
+  total: number
+  limit: number
+  offset: number
+  hasMore: boolean
 }
 
 export interface UsageSummary {
-  sessionId: string;
-  messageCount: number;
-  turnCount: number;
-  toolCallCount: number;
-  approvalCount: number;
-  artifactCount: number;
-  runCount: number;
-  estimatedInputTokens: number;
-  estimatedOutputTokens: number;
-  estimatedTotalTokens: number;
-  estimatedCostCents: number | null;
-  updatedAt: string;
+  sessionId: string
+  messageCount: number
+  turnCount: number
+  toolCallCount: number
+  approvalCount: number
+  artifactCount: number
+  runCount: number
+  estimatedInputTokens: number
+  estimatedOutputTokens: number
+  estimatedTotalTokens: number
+  estimatedCostCents: number | null
+  updatedAt: string
 }
 
 export interface LogEntry {
-  eventId: string;
-  eventType: string;
-  sourceModule: string;
-  sessionId?: string;
-  severity: 'info' | 'warn' | 'error';
-  summary: string;
-  createdAt: string;
-  payloadPreview?: string;
+  eventId: string
+  eventType: string
+  sourceModule: string
+  sessionId?: string
+  severity: 'info' | 'warn' | 'error'
+  summary: string
+  createdAt: string
+  payloadPreview?: string
 }
 
 export interface InstanceSummary {
-  type: 'local';
-  status: 'healthy' | 'degraded';
-  uptime?: number;
-  apiPort: number;
-  storeStatus: string;
+  type: 'local'
+  status: 'healthy' | 'degraded'
+  uptime?: number
+  apiPort: number
+  storeStatus: string
 }
 
 export interface ChannelSummary {
-  connectorId: string;
-  type: string;
-  status: string;
-  configured: boolean;
+  connectorId: string
+  type: string
+  status: string
+  configured: boolean
 }
 
 export interface SkillSummary {
-  skillId: string;
-  name: string;
-  type: string;
-  enabled: boolean;
+  skillId: string
+  name: string
+  type: string
+  enabled: boolean
 }
 
 export interface InstancesResponse {
-  instances: InstanceSummary[];
+  instances: InstanceSummary[]
 }
 
 export interface ChannelsResponse {
-  channels: ChannelSummary[];
+  channels: ChannelSummary[]
 }
 
 export interface SkillsResponse {
-  skills: SkillSummary[];
+  skills: SkillSummary[]
 }
 
 export interface SettingsConfig {
-  localOnly: boolean;
-  providers: Record<string, { configured: boolean }>;
-  retentionDays: number;
+  localOnly: boolean
+  providers: Record<string, { configured: boolean }>
+  retentionDays: number
 }
 
 export interface SettingsResponse {
-  settings: SettingsConfig;
+  settings: SettingsConfig
 }
 
 // =============================================================================
@@ -371,62 +371,62 @@ export interface SettingsResponse {
 // =============================================================================
 
 export interface SetupStatusResponse {
-  needsSetup: boolean;
+  needsSetup: boolean
 }
 
 export interface UserMetadata {
-  userId: string;
-  username: string;
-  role: UserRole;
-  createdAt: string;
+  userId: string
+  username: string
+  role: UserRole
+  createdAt: string
 }
 
 export interface LoginRequest {
-  username: string;
-  password: string;
+  username: string
+  password: string
 }
 
 export interface CreateUserRequest {
-  username: string;
-  password: string;
+  username: string
+  password: string
 }
 
 export interface AuthSuccessResponse {
-  user: UserMetadata;
+  user: UserMetadata
 }
 
 // =============================================================================
 // Provider Types - Task 18
 // =============================================================================
 
-export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom';
+export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom'
 
 /**
  * Provider summary for API responses
  * Sanitized view of provider configuration without sensitive data
  */
 export interface ProviderSummary {
-  providerId: string;
-  providerType: ProviderType;
-  displayName: string;
-  enabled: boolean;
-  configured: boolean;
-  apiKeyLast4: string | null;
-  baseUrl: string | null;
-  selectedModel: string | null;
-  source: string;
-  lastTestStatus: string | null;
-  lastTestedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  family?: string | null;
-  protocol?: string | null;
-  priority?: number | null;
-  defaultModel?: string | null;
-  capabilities?: Record<string, unknown> | null;
-  options?: Record<string, unknown> | null;
-  models?: Record<string, unknown>[] | null;
-  headersConfigured?: boolean;
+  providerId: string
+  providerType: ProviderType
+  displayName: string
+  enabled: boolean
+  configured: boolean
+  apiKeyLast4: string | null
+  baseUrl: string | null
+  selectedModel: string | null
+  source: string
+  lastTestStatus: string | null
+  lastTestedAt: string | null
+  createdAt: string
+  updatedAt: string
+  family?: string | null
+  protocol?: string | null
+  priority?: number | null
+  defaultModel?: string | null
+  capabilities?: Record<string, unknown> | null
+  options?: Record<string, unknown> | null
+  models?: Record<string, unknown>[] | null
+  headersConfigured?: boolean
 }
 
 /**
@@ -434,19 +434,19 @@ export interface ProviderSummary {
  * All optional fields can be derived from provider catalog defaults
  */
 export interface CreateProviderRequest {
-  providerType: ProviderType;
-  displayName?: string;
-  apiKey?: string;
-  baseUrl?: string;
-  selectedModel?: string;
-  family?: string;
-  protocol?: string;
-  priority?: number;
-  defaultModel?: string;
-  headers?: Record<string, string>;
-  capabilities?: Record<string, unknown>;
-  options?: Record<string, unknown>;
-  models?: Record<string, unknown>[];
+  providerType: ProviderType
+  displayName?: string
+  apiKey?: string
+  baseUrl?: string
+  selectedModel?: string
+  family?: string
+  protocol?: string
+  priority?: number
+  defaultModel?: string
+  headers?: Record<string, string>
+  capabilities?: Record<string, unknown>
+  options?: Record<string, unknown>
+  models?: Record<string, unknown>[]
 }
 
 /**
@@ -454,62 +454,72 @@ export interface CreateProviderRequest {
  * All fields are optional - only provided fields will be updated
  */
 export interface UpdateProviderRequest {
-  displayName?: string;
-  apiKey?: string;
-  baseUrl?: string;
-  selectedModel?: string;
-  enabled?: boolean;
-  family?: string;
-  protocol?: string;
-  priority?: number;
-  defaultModel?: string;
-  headers?: Record<string, string>;
-  capabilities?: Record<string, unknown>;
-  options?: Record<string, unknown>;
-  models?: Record<string, unknown>[];
+  displayName?: string
+  apiKey?: string
+  baseUrl?: string
+  selectedModel?: string
+  enabled?: boolean
+  family?: string
+  protocol?: string
+  priority?: number
+  defaultModel?: string
+  headers?: Record<string, string>
+  capabilities?: Record<string, unknown>
+  options?: Record<string, unknown>
+  models?: Record<string, unknown>[]
 }
 
 export interface TestProviderResponse {
-  success: boolean;
-  latencyMs: number;
-  modelCount?: number;
-  error?: string;
+  success: boolean
+  latencyMs: number
+  modelCount?: number
+  error?: string
 }
 
 export interface SetModelRequest {
-  providerId: string;
-  model: string;
+  providerId: string
+  model: string
 }
 
 export interface ModelsResponse {
-  providers: ProviderSummary[];
-  selectedModel?: string;
-  selectedProviderId?: string;
+  providers: ProviderSummary[]
+  selectedModel?: string
+  selectedProviderId?: string
 }
 
 // =============================================================================
 // Tool Catalog Types - Task 2
 // =============================================================================
 
-export type ToolCategory = 'read' | 'write' | 'delete' | 'execute' | 'search' | 'admin' | 'connector' | 'internal' | 'send' | 'automation';
-export type ToolSensitivity = 'low' | 'medium' | 'high' | 'restricted';
-export type ToolExecutionPlane = 'standard' | 'foreground' | 'connector' | 'mock_connector' | 'catalog_only';
-export type ToolAvailability = 'registered' | 'foreground_only' | 'deferred' | 'disabled' | 'mock';
+export type ToolCategory =
+  | 'read'
+  | 'write'
+  | 'delete'
+  | 'execute'
+  | 'search'
+  | 'admin'
+  | 'connector'
+  | 'internal'
+  | 'send'
+  | 'automation'
+export type ToolSensitivity = 'low' | 'medium' | 'high' | 'restricted'
+export type ToolExecutionPlane = 'standard' | 'foreground' | 'connector' | 'mock_connector' | 'catalog_only'
+export type ToolAvailability = 'registered' | 'foreground_only' | 'deferred' | 'disabled' | 'mock'
 
 export interface ToolSummary {
-  name: string;
-  description: string;
-  category: ToolCategory;
-  sensitivity: ToolSensitivity;
-  executionPlane?: ToolExecutionPlane;
-  availability?: ToolAvailability;
-  isMock?: boolean;
-  source?: string;
+  name: string
+  description: string
+  category: ToolCategory
+  sensitivity: ToolSensitivity
+  executionPlane?: ToolExecutionPlane
+  availability?: ToolAvailability
+  isMock?: boolean
+  source?: string
 }
 
 export interface ToolsResponse {
-  tools: ToolSummary[];
-  total: number;
+  tools: ToolSummary[]
+  total: number
 }
 
 // =============================================================================
@@ -517,14 +527,14 @@ export interface ToolsResponse {
 // =============================================================================
 
 export interface ToolResultResponse {
-  resultId: string;
-  toolExecutionId: string;
-  toolName: string;
-  userId: string;
-  sessionId?: string;
-  sizeBytes: number;
-  contentType: string;
-  preview?: string;
-  sensitivity: string;
-  createdAt: string;
+  resultId: string
+  toolExecutionId: string
+  toolName: string
+  userId: string
+  sessionId?: string
+  sizeBytes: number
+  contentType: string
+  preview?: string
+  sensitivity: string
+  createdAt: string
 }

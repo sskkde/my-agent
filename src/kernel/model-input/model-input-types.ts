@@ -10,8 +10,8 @@
  * @module kernel/model-input/model-input-types
  */
 
-import type { LLMMessage, ToolDefinition } from '../../llm/types.js';
-import type { AssistantPersonaProfile } from '../../foreground/types.js';
+import type { LLMMessage, ToolDefinition } from '../../llm/types.js'
+import type { AssistantPersonaProfile } from '../../foreground/types.js'
 
 // ─── Mode ────────────────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ import type { AssistantPersonaProfile } from '../../foreground/types.js';
  * - `structured_json`: MemoryExtractor - structured JSON extraction, no tools
  * - `function_calling`: AgentKernel/SearchSubagent - full function calling with tools
  */
-export type ModelInputMode = 'routing_json' | 'routing_tool_call' | 'structured_json' | 'function_calling';
+export type ModelInputMode = 'routing_json' | 'routing_tool_call' | 'structured_json' | 'function_calling'
 
 // ─── Input Types ─────────────────────────────────────────────────────────────
 
@@ -36,11 +36,11 @@ export type ModelInputMode = 'routing_json' | 'routing_tool_call' | 'structured_
  */
 export interface ToolPlaneProjection {
   /** Tool IDs available for this request */
-  toolIds: string[];
+  toolIds: string[]
   /** Optional human-readable summary of available tools */
-  toolSummaries?: string;
+  toolSummaries?: string
   /** Full tool schemas for function_calling mode */
-  tools?: ToolDefinition[];
+  tools?: ToolDefinition[]
 }
 
 /**
@@ -48,17 +48,17 @@ export interface ToolPlaneProjection {
  */
 export interface ContextItemData {
   /** Unique item identifier */
-  itemId: string;
+  itemId: string
   /** The text content of this context item */
-  content: string;
+  content: string
   /** Semantic type hint (e.g., 'instruction', 'fact', 'tool_output') */
-  semanticType?: string;
+  semanticType?: string
   /** Whether this item is pinned (always included) */
-  isPinned?: boolean;
+  isPinned?: boolean
   /** Whether this item must appear together with its pair partner */
-  requiresPairIntegrity?: boolean;
+  requiresPairIntegrity?: boolean
   /** Pair identifier for items that must stay together */
-  pairId?: string;
+  pairId?: string
 }
 
 /**
@@ -68,23 +68,23 @@ export interface ContextItemData {
  */
 export interface ContextBundleData {
   /** Pinned items that always appear at the top */
-  pinnedItems?: ContextItemData[];
+  pinnedItems?: ContextItemData[]
   /** Ordered context items */
-  orderedItems?: ContextItemData[];
+  orderedItems?: ContextItemData[]
   /** Summary blocks for compressed context */
-  summaryBlocks?: ContextItemData[];
+  summaryBlocks?: ContextItemData[]
   /** Plan context view string */
-  planView?: string;
+  planView?: string
   /** Workflow step view string */
-  workflowStepView?: string;
+  workflowStepView?: string
   /** Background run view string */
-  backgroundRunView?: string;
+  backgroundRunView?: string
   /** Trigger event view string */
-  triggerView?: string;
+  triggerView?: string
   /** Prior conversation transcript */
-  transcript?: LLMMessage[];
+  transcript?: LLMMessage[]
   /** Summary layer projections for context enrichment */
-  summaryLayers?: SummaryLayerProjection;
+  summaryLayers?: SummaryLayerProjection
 }
 
 /**
@@ -96,13 +96,13 @@ export interface ContextBundleData {
  */
 export interface PersonaProjection {
   /** Unique identifier for the persona */
-  personaId: string;
+  personaId: string
   /** Style guidelines for the persona's expression */
-  styleGuidelines: string;
+  styleGuidelines: string
   /** Constraints that cannot be overridden by the persona */
-  constraints: string[];
+  constraints: string[]
   /** Optional source profile with additional persona details */
-  sourceProfile?: AssistantPersonaProfile;
+  sourceProfile?: AssistantPersonaProfile
 }
 
 /**
@@ -112,21 +112,20 @@ export interface PersonaProjection {
  * @returns Rendered persona text with safety constraints
  */
 export function renderPersonaProjection(projection: PersonaProjection): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  const safetyPrefix =
-    '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界';
-  parts.push(safetyPrefix);
+  const safetyPrefix = '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界'
+  parts.push(safetyPrefix)
 
-  parts.push(`\n## 风格指南\n${projection.styleGuidelines}`);
+  parts.push(`\n## 风格指南\n${projection.styleGuidelines}`)
 
   if (projection.constraints.length > 0) {
-    parts.push(`\n## 约束条件\n${projection.constraints.map((c) => `- ${c}`).join('\n')}`);
+    parts.push(`\n## 约束条件\n${projection.constraints.map((c) => `- ${c}`).join('\n')}`)
   }
 
-  parts.push(`\n## 人格标识\n人格ID: ${projection.personaId}`);
+  parts.push(`\n## 人格标识\n人格ID: ${projection.personaId}`)
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 
 /**
@@ -137,11 +136,11 @@ export function renderPersonaProjection(projection: PersonaProjection): string {
  */
 export interface ToolSelectionPolicyProjection {
   /** Core heuristics for tool selection */
-  heuristics: string;
+  heuristics: string
   /** Priority rules for tool selection (optional) */
-  priorityRules?: string[];
+  priorityRules?: string[]
   /** Risk rules for tool selection (optional) */
-  riskRules?: string[];
+  riskRules?: string[]
 }
 
 /**
@@ -151,22 +150,22 @@ export interface ToolSelectionPolicyProjection {
  * @returns Rendered policy text
  */
 export function renderToolSelectionPolicy(policy: ToolSelectionPolicyProjection): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  parts.push('Tool Selection Policy:');
-  parts.push(policy.heuristics);
+  parts.push('Tool Selection Policy:')
+  parts.push(policy.heuristics)
 
   if (policy.priorityRules && policy.priorityRules.length > 0) {
-    parts.push('\nPriority Rules:');
-    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'));
+    parts.push('\nPriority Rules:')
+    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'))
   }
 
   if (policy.riskRules && policy.riskRules.length > 0) {
-    parts.push('\nRisk Rules:');
-    parts.push(policy.riskRules.map((r) => `- ${r}`).join('\n'));
+    parts.push('\nRisk Rules:')
+    parts.push(policy.riskRules.map((r) => `- ${r}`).join('\n'))
   }
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 
 /**
@@ -177,13 +176,13 @@ export function renderToolSelectionPolicy(policy: ToolSelectionPolicyProjection)
  */
 export interface MemoryPolicyProjection {
   /** Core rules for memory usage */
-  useRules: string;
+  useRules: string
   /** Rules for invisible memory items (optional) */
-  invisibilityRules?: string[];
+  invisibilityRules?: string[]
   /** Priority rules for memory items (optional) */
-  priorityRules?: string[];
+  priorityRules?: string[]
   /** Token budget for memory items (optional) */
-  tokenBudget?: number;
+  tokenBudget?: number
 }
 
 /**
@@ -193,22 +192,22 @@ export interface MemoryPolicyProjection {
  * @returns Rendered policy text
  */
 export function renderMemoryPolicyProjection(policy: MemoryPolicyProjection): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  parts.push('Memory Policy:');
-  parts.push(policy.useRules);
+  parts.push('Memory Policy:')
+  parts.push(policy.useRules)
 
   if (policy.invisibilityRules && policy.invisibilityRules.length > 0) {
-    parts.push('\nInvisibility Rules:');
-    parts.push(policy.invisibilityRules.map((r) => `- ${r}`).join('\n'));
+    parts.push('\nInvisibility Rules:')
+    parts.push(policy.invisibilityRules.map((r) => `- ${r}`).join('\n'))
   }
 
   if (policy.priorityRules && policy.priorityRules.length > 0) {
-    parts.push('\nPriority Rules:');
-    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'));
+    parts.push('\nPriority Rules:')
+    parts.push(policy.priorityRules.map((r) => `- ${r}`).join('\n'))
   }
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 
 /**
@@ -219,15 +218,15 @@ export function renderMemoryPolicyProjection(policy: MemoryPolicyProjection): st
  */
 export interface SummaryLayerProjection {
   /** Session-level summary (current session) */
-  session?: string | null;
+  session?: string | null
   /** Daily summary (aggregated sessions from today) */
-  daily?: string | null;
+  daily?: string | null
   /** Weekly summary (aggregated daily summaries) */
-  weekly?: string | null;
+  weekly?: string | null
   /** Long-term user profile */
-  longTerm?: string | null;
+  longTerm?: string | null
   /** Atomic facts extracted from conversations */
-  atomicFacts?: string | null;
+  atomicFacts?: string | null
 }
 
 /**
@@ -237,34 +236,34 @@ export interface SummaryLayerProjection {
  * @returns Rendered summary text, or empty string if no layers
  */
 export function renderSummaryLayers(projection: SummaryLayerProjection): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
   if (projection.session) {
-    parts.push('## Session Summary');
-    parts.push(projection.session);
+    parts.push('## Session Summary')
+    parts.push(projection.session)
   }
 
   if (projection.daily) {
-    parts.push('## Daily Summary');
-    parts.push(projection.daily);
+    parts.push('## Daily Summary')
+    parts.push(projection.daily)
   }
 
   if (projection.weekly) {
-    parts.push('## Weekly Summary');
-    parts.push(projection.weekly);
+    parts.push('## Weekly Summary')
+    parts.push(projection.weekly)
   }
 
   if (projection.longTerm) {
-    parts.push('## Long-Term Profile');
-    parts.push(projection.longTerm);
+    parts.push('## Long-Term Profile')
+    parts.push(projection.longTerm)
   }
 
   if (projection.atomicFacts) {
-    parts.push('## Atomic Facts');
-    parts.push(projection.atomicFacts);
+    parts.push('## Atomic Facts')
+    parts.push(projection.atomicFacts)
   }
 
-  return parts.join('\n\n');
+  return parts.join('\n\n')
 }
 
 /**
@@ -278,47 +277,47 @@ export function renderSummaryLayers(projection: SummaryLayerProjection): string 
  */
 export interface ModelInputBuildInput {
   /** How the LLM should be invoked */
-  mode: ModelInputMode;
+  mode: ModelInputMode
   /** Agent kind: 'foreground' | 'kernel' | 'search' | 'memory' */
-  agentKind: string;
+  agentKind: string
   /** Provider family: 'openai' | 'deepseek' | 'ollama' */
-  providerFamily: string;
+  providerFamily: string
 
   // Layer 5 (Instruction) - Segment B
   /** Custom system prompt overlay */
-  systemPrompt?: string;
+  systemPrompt?: string
   /** Routing prompt overlay */
-  routingPrompt?: string;
+  routingPrompt?: string
   /** Persona projection for expression style and preferences */
-  personaProjection?: PersonaProjection;
+  personaProjection?: PersonaProjection
 
   // Layer 6 (Tool Plane) - Segment C
   /** Tool plane projection data */
-  toolProjection?: ToolPlaneProjection;
-  toolSelectionPolicy?: ToolSelectionPolicyProjection;
+  toolProjection?: ToolPlaneProjection
+  toolSelectionPolicy?: ToolSelectionPolicyProjection
 
   // Layer 7 (Context Bundle) - Segment D
   /** Context bundle data */
-  contextBundle?: ContextBundleData;
+  contextBundle?: ContextBundleData
   /** Memory policy projection for memory usage rules */
-  memoryPolicyProjection?: MemoryPolicyProjection;
+  memoryPolicyProjection?: MemoryPolicyProjection
 
   // Dynamic fields (only in Segment D)
   /** The current user message */
-  currentUserMessage?: string;
+  currentUserMessage?: string
   /** ISO date string for current date */
-  currentDate?: string;
+  currentDate?: string
   /** Session identifier */
-  sessionId?: string;
+  sessionId?: string
   /** Run identifier */
-  runId?: string;
+  runId?: string
   /** Message identifier */
-  messageId?: string;
+  messageId?: string
   /** Request identifier */
-  requestId?: string;
+  requestId?: string
 
   /** Prior transcript messages for incremental context */
-  transcript?: LLMMessage[];
+  transcript?: LLMMessage[]
 }
 
 // ─── Output Types ────────────────────────────────────────────────────────────
@@ -328,13 +327,13 @@ export interface ModelInputBuildInput {
  */
 export interface ModelInputSegments {
   /** Segment A: Layer 1-4 (static prefix) */
-  staticPrefix: string;
+  staticPrefix: string
   /** Segment B: Layer 5 (tenant/project instructions) */
-  tenantProject: string;
+  tenantProject: string
   /** Segment C: Layer 6 (tool plane) */
-  toolPlane: string;
+  toolPlane: string
   /** Segment D: Layer 7 (context bundle + dynamic) */
-  contextBundle: string;
+  contextBundle: string
 }
 
 /**
@@ -342,13 +341,13 @@ export interface ModelInputSegments {
  */
 export interface ModelInputSegmentHashes {
   /** SHA-256 hash of Segment A (static prefix) */
-  segmentA: string;
+  segmentA: string
   /** SHA-256 hash of Segment B (tenant/project) */
-  segmentB: string;
+  segmentB: string
   /** SHA-256 hash of Segment C (tool plane) */
-  segmentC: string;
+  segmentC: string
   /** SHA-256 hash of Segment D (context bundle) */
-  segmentD: string;
+  segmentD: string
 }
 
 /**
@@ -356,13 +355,13 @@ export interface ModelInputSegmentHashes {
  */
 export interface ModelInputMetadata {
   /** The mode used to build */
-  mode: ModelInputMode;
+  mode: ModelInputMode
   /** Agent kind */
-  agentKind: string;
+  agentKind: string
   /** Provider family */
-  providerFamily: string;
+  providerFamily: string
   /** Total number of messages in the output */
-  messageCount: number;
+  messageCount: number
 }
 
 /**
@@ -370,13 +369,13 @@ export interface ModelInputMetadata {
  */
 export interface BuiltModelInput {
   /** The assembled LLM messages array */
-  messages: LLMMessage[];
+  messages: LLMMessage[]
   /** Content of each segment */
-  segments: ModelInputSegments;
+  segments: ModelInputSegments
   /** SHA-256 hashes of each segment */
-  segmentHashes: ModelInputSegmentHashes;
+  segmentHashes: ModelInputSegmentHashes
   /** Build metadata */
-  metadata: ModelInputMetadata;
+  metadata: ModelInputMetadata
 }
 
 /**
@@ -390,15 +389,13 @@ export interface BuiltModelInput {
  * This is used by ForegroundAgent and AgentKernel to select the correct
  * prompt template and caching strategy for a given LLM provider.
  */
-export function resolveProviderFamily(
-  providerId: string | undefined,
-): 'openai' | 'deepseek' | 'ollama' {
-  const normalized = providerId?.toLowerCase() ?? '';
+export function resolveProviderFamily(providerId: string | undefined): 'openai' | 'deepseek' | 'ollama' {
+  const normalized = providerId?.toLowerCase() ?? ''
   if (normalized.startsWith('deepseek') || normalized.includes('deepseek')) {
-    return 'deepseek';
+    return 'deepseek'
   }
   if (normalized.startsWith('ollama')) {
-    return 'ollama';
+    return 'ollama'
   }
-  return 'openai';
+  return 'openai'
 }

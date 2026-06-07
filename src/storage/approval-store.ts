@@ -1,5 +1,5 @@
-import type { ConnectionManager } from './connection.js';
-import type { ApprovalCode, PermissionScopeType } from '../permissions/types.js';
+import type { ConnectionManager } from './connection.js'
+import type { ApprovalCode, PermissionScopeType } from '../permissions/types.js'
 
 export const APPROVAL_STATES = {
   PENDING: 'pending',
@@ -7,89 +7,89 @@ export const APPROVAL_STATES = {
   REJECTED: 'rejected',
   EXPIRED: 'expired',
   CANCELLED: 'cancelled',
-} as const;
+} as const
 
-export type ApprovalState = typeof APPROVAL_STATES[keyof typeof APPROVAL_STATES];
+export type ApprovalState = (typeof APPROVAL_STATES)[keyof typeof APPROVAL_STATES]
 
 export interface ApprovalRequest {
-  id: string;
-  userId: string;
-  sessionId: string;
-  status: ApprovalState;
-  riskLevel?: string | null;
-  scope?: string | null;
-  scopeType?: PermissionScopeType | null;
-  scopeRef?: string | null;
-  actionType: string;
-  resource?: string | null;
-  justification?: string | null;
-  requestedBy: string;
-  requestedAt: string;
-  expiresAt?: string | null;
-  respondedAt?: string | null;
-  responseBy?: string | null;
-  responseReason?: string | null;
-  approvalCode?: ApprovalCode | null;
-  idempotencyKey?: string | null;
-  metadata?: string | null;
-  sourceContext?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  userId: string
+  sessionId: string
+  status: ApprovalState
+  riskLevel?: string | null
+  scope?: string | null
+  scopeType?: PermissionScopeType | null
+  scopeRef?: string | null
+  actionType: string
+  resource?: string | null
+  justification?: string | null
+  requestedBy: string
+  requestedAt: string
+  expiresAt?: string | null
+  respondedAt?: string | null
+  responseBy?: string | null
+  responseReason?: string | null
+  approvalCode?: ApprovalCode | null
+  idempotencyKey?: string | null
+  metadata?: string | null
+  sourceContext?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CreateApprovalRequest {
-  id: string;
-  userId: string;
-  sessionId: string;
-  status: ApprovalState;
-  riskLevel?: string;
-  scope?: string;
-  scopeType?: PermissionScopeType;
-  scopeRef?: string;
-  actionType: string;
-  resource?: string;
-  justification?: string;
-  requestedBy: string;
-  requestedAt: string;
-  expiresAt?: string;
-  respondedAt?: string;
-  responseBy?: string;
-  responseReason?: string;
-  approvalCode?: ApprovalCode;
-  idempotencyKey?: string;
-  metadata?: string;
-  sourceContext?: string;
+  id: string
+  userId: string
+  sessionId: string
+  status: ApprovalState
+  riskLevel?: string
+  scope?: string
+  scopeType?: PermissionScopeType
+  scopeRef?: string
+  actionType: string
+  resource?: string
+  justification?: string
+  requestedBy: string
+  requestedAt: string
+  expiresAt?: string
+  respondedAt?: string
+  responseBy?: string
+  responseReason?: string
+  approvalCode?: ApprovalCode
+  idempotencyKey?: string
+  metadata?: string
+  sourceContext?: string
 }
 
 export interface UpdateApprovalRequest {
-  status?: ApprovalState;
-  respondedAt?: string;
-  responseBy?: string;
-  responseReason?: string;
-  approvalCode?: ApprovalCode;
-  expiresAt?: string;
+  status?: ApprovalState
+  respondedAt?: string
+  responseBy?: string
+  responseReason?: string
+  approvalCode?: ApprovalCode
+  expiresAt?: string
 }
 
 export interface ApprovalStore {
-  create(request: CreateApprovalRequest): ApprovalRequest;
-  getById(id: string): ApprovalRequest | null;
-  update(id: string, updates: UpdateApprovalRequest): ApprovalRequest;
-  findPendingByUser(userId: string): ApprovalRequest[];
-  findByUser(userId: string): ApprovalRequest[];
-  findPendingBySession(sessionId: string): ApprovalRequest[];
-  findExpired(before: string): ApprovalRequest[];
-  delete(id: string): void;
+  create(request: CreateApprovalRequest): ApprovalRequest
+  getById(id: string): ApprovalRequest | null
+  update(id: string, updates: UpdateApprovalRequest): ApprovalRequest
+  findPendingByUser(userId: string): ApprovalRequest[]
+  findByUser(userId: string): ApprovalRequest[]
+  findPendingBySession(sessionId: string): ApprovalRequest[]
+  findExpired(before: string): ApprovalRequest[]
+  delete(id: string): void
 }
 
 class ApprovalStoreImpl implements ApprovalStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   create(request: CreateApprovalRequest): ApprovalRequest {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const approval: ApprovalRequest = {
       id: request.id,
       userId: request.userId,
@@ -114,7 +114,7 @@ class ApprovalStoreImpl implements ApprovalStore {
       sourceContext: request.sourceContext ?? null,
       createdAt: now,
       updatedAt: now,
-    };
+    }
 
     this.connection.exec(
       `INSERT INTO approval_requests (
@@ -147,32 +147,29 @@ class ApprovalStoreImpl implements ApprovalStore {
         approval.sourceContext,
         approval.createdAt,
         approval.updatedAt,
-      ]
-    );
+      ],
+    )
 
-    return approval;
+    return approval
   }
 
   getById(id: string): ApprovalRequest | null {
-    const results = this.connection.query<ApprovalRequestRow>(
-      'SELECT * FROM approval_requests WHERE id = ?',
-      [id]
-    );
+    const results = this.connection.query<ApprovalRequestRow>('SELECT * FROM approval_requests WHERE id = ?', [id])
 
     if (results.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToRequest(results[0]);
+    return this.rowToRequest(results[0])
   }
 
   update(id: string, updates: UpdateApprovalRequest): ApprovalRequest {
-    const existing = this.getById(id);
+    const existing = this.getById(id)
     if (!existing) {
-      throw new Error(`Approval request not found: ${id}`);
+      throw new Error(`Approval request not found: ${id}`)
     }
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const updated: ApprovalRequest = {
       ...existing,
       status: updates.status ?? existing.status,
@@ -182,7 +179,7 @@ class ApprovalStoreImpl implements ApprovalStore {
       approvalCode: updates.approvalCode ?? existing.approvalCode,
       expiresAt: updates.expiresAt ?? existing.expiresAt,
       updatedAt: now,
-    };
+    }
 
     this.connection.exec(
       `UPDATE approval_requests SET
@@ -203,46 +200,46 @@ class ApprovalStoreImpl implements ApprovalStore {
         updated.expiresAt,
         updated.updatedAt,
         id,
-      ]
-    );
+      ],
+    )
 
-    return updated;
+    return updated
   }
 
   findPendingByUser(userId: string): ApprovalRequest[] {
     const results = this.connection.query<ApprovalRequestRow>(
       'SELECT * FROM approval_requests WHERE user_id = ? AND status = ?',
-      [userId, APPROVAL_STATES.PENDING]
-    );
-    return results.map(row => this.rowToRequest(row));
+      [userId, APPROVAL_STATES.PENDING],
+    )
+    return results.map((row) => this.rowToRequest(row))
   }
 
   findByUser(userId: string): ApprovalRequest[] {
     const results = this.connection.query<ApprovalRequestRow>(
       'SELECT * FROM approval_requests WHERE user_id = ? ORDER BY created_at DESC',
-      [userId]
-    );
-    return results.map(row => this.rowToRequest(row));
+      [userId],
+    )
+    return results.map((row) => this.rowToRequest(row))
   }
 
   findPendingBySession(sessionId: string): ApprovalRequest[] {
     const results = this.connection.query<ApprovalRequestRow>(
       'SELECT * FROM approval_requests WHERE session_id = ? AND status = ?',
-      [sessionId, APPROVAL_STATES.PENDING]
-    );
-    return results.map(row => this.rowToRequest(row));
+      [sessionId, APPROVAL_STATES.PENDING],
+    )
+    return results.map((row) => this.rowToRequest(row))
   }
 
   findExpired(before: string): ApprovalRequest[] {
     const results = this.connection.query<ApprovalRequestRow>(
       'SELECT * FROM approval_requests WHERE expires_at IS NOT NULL AND expires_at < ?',
-      [before]
-    );
-    return results.map(row => this.rowToRequest(row));
+      [before],
+    )
+    return results.map((row) => this.rowToRequest(row))
   }
 
   delete(id: string): void {
-    this.connection.exec('DELETE FROM approval_requests WHERE id = ?', [id]);
+    this.connection.exec('DELETE FROM approval_requests WHERE id = ?', [id])
   }
 
   private rowToRequest(row: ApprovalRequestRow): ApprovalRequest {
@@ -270,36 +267,36 @@ class ApprovalStoreImpl implements ApprovalStore {
       sourceContext: row.source_context,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-    };
+    }
   }
 }
 
 interface ApprovalRequestRow {
-  id: string;
-  user_id: string;
-  session_id: string;
-  status: string;
-  risk_level: string | null;
-  scope: string | null;
-  scope_type: string | null;
-  scope_ref: string | null;
-  action_type: string;
-  resource: string | null;
-  justification: string | null;
-  requested_by: string;
-  requested_at: string;
-  expires_at: string | null;
-  responded_at: string | null;
-  response_by: string | null;
-  response_reason: string | null;
-  approval_code: string | null;
-  idempotency_key: string | null;
-  metadata: string | null;
-  source_context: string | null;
-  created_at: string;
-  updated_at: string;
+  id: string
+  user_id: string
+  session_id: string
+  status: string
+  risk_level: string | null
+  scope: string | null
+  scope_type: string | null
+  scope_ref: string | null
+  action_type: string
+  resource: string | null
+  justification: string | null
+  requested_by: string
+  requested_at: string
+  expires_at: string | null
+  responded_at: string | null
+  response_by: string | null
+  response_reason: string | null
+  approval_code: string | null
+  idempotency_key: string | null
+  metadata: string | null
+  source_context: string | null
+  created_at: string
+  updated_at: string
 }
 
 export function createApprovalStore(connection: ConnectionManager): ApprovalStore {
-  return new ApprovalStoreImpl(connection);
+  return new ApprovalStoreImpl(connection)
 }

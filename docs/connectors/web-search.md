@@ -17,15 +17,15 @@ The Web Search connector provides web and news search capabilities through multi
 
 Configure the search backend using the `WEB_SEARCH_BACKEND` environment variable:
 
-| Value | Description | Requirements |
-|-------|-------------|--------------|
-| `auto` | Default. Tries SearXNG → Tavily → Remote API | At least one provider configured |
-| `searxng` | Self-hosted SearXNG instance | `SEARXNG_BASE_URL` |
-| `tavily` | Tavily API service | `TAVILY_API_KEY` |
-| `remote` | Custom remote search API | `WEB_SEARCH_API_URL` + `WEB_SEARCH_API_KEY` |
-| `playwright` | Browser-based DuckDuckGo scraping | Playwright installed |
-| `auto-browser` | Lightweight providers → Playwright fallback | Playwright installed |
-| `none` | Disable web search | None |
+| Value          | Description                                  | Requirements                                |
+| -------------- | -------------------------------------------- | ------------------------------------------- |
+| `auto`         | Default. Tries SearXNG → Tavily → Remote API | At least one provider configured            |
+| `searxng`      | Self-hosted SearXNG instance                 | `SEARXNG_BASE_URL`                          |
+| `tavily`       | Tavily API service                           | `TAVILY_API_KEY`                            |
+| `remote`       | Custom remote search API                     | `WEB_SEARCH_API_URL` + `WEB_SEARCH_API_KEY` |
+| `playwright`   | Browser-based DuckDuckGo scraping            | Playwright installed                        |
+| `auto-browser` | Lightweight providers → Playwright fallback  | Playwright installed                        |
+| `none`         | Disable web search                           | None                                        |
 
 ### Environment Variables
 
@@ -52,10 +52,12 @@ WEB_SEARCH_API_KEY=your_api_key_here
 Search the web for information using the configured backend.
 
 **Parameters:**
+
 - `query` (string, required): The search query
 - `limit` (number, optional): Maximum number of results (default: 5, max: 10)
 
 **Response:**
+
 ```json
 {
   "query": "search query",
@@ -76,18 +78,19 @@ Search the web for information using the configured backend.
 Search news articles using the configured backend.
 
 **Parameters:**
+
 - `query` (string, required): The search query
 - `limit` (number, optional): Maximum number of results (default: 5, max: 10)
 
 ## Error Codes
 
-| Code | Description | Recoverable |
-|------|-------------|-------------|
-| `INVALID_QUERY` | Empty or invalid search query | Yes |
-| `PROVIDER_NOT_CONFIGURED` | No search backend configured | Yes |
-| `SEARCH_FAILED` | HTTP error from backend | Yes |
-| `BROWSER_SEARCH_UNAVAILABLE` | Playwright backend not supported in connector mode | No |
-| `RATE_LIMIT_EXCEEDED` | Rate limit exceeded (mock mode) | Yes |
+| Code                         | Description                                        | Recoverable |
+| ---------------------------- | -------------------------------------------------- | ----------- |
+| `INVALID_QUERY`              | Empty or invalid search query                      | Yes         |
+| `PROVIDER_NOT_CONFIGURED`    | No search backend configured                       | Yes         |
+| `SEARCH_FAILED`              | HTTP error from backend                            | Yes         |
+| `BROWSER_SEARCH_UNAVAILABLE` | Playwright backend not supported in connector mode | No          |
+| `RATE_LIMIT_EXCEEDED`        | Rate limit exceeded (mock mode)                    | Yes         |
 
 ## Security
 
@@ -111,6 +114,7 @@ CONNECTOR_MOCK_MODE=true
 ```
 
 The mock connector provides:
+
 - Predictable search results based on query matching
 - Configurable rate limit simulation
 - Configurable auth state simulation
@@ -118,13 +122,13 @@ The mock connector provides:
 ### Mock Configuration
 
 ```typescript
-import { createSearchConnectorAdapter } from './connectors/mocks/search-connector.js';
+import { createSearchConnectorAdapter } from './connectors/mocks/search-connector.js'
 
 const mockAdapter = createSearchConnectorAdapter({
-  authState: 'authenticated',  // or 'unauthenticated', 'expired'
-  rateLimitMode: 'none',       // or 'limited', 'exhausted'
-  errorMode: 'none',           // or 'transient', 'permanent'
-});
+  authState: 'authenticated', // or 'unauthenticated', 'expired'
+  rateLimitMode: 'none', // or 'limited', 'exhausted'
+  errorMode: 'none', // or 'transient', 'permanent'
+})
 ```
 
 ## Timeout Configuration
@@ -132,11 +136,11 @@ const mockAdapter = createSearchConnectorAdapter({
 Configure the request timeout (default: 10000ms):
 
 ```typescript
-import { createRealSearchConnectorAdapter } from './connectors/search/search-connector.js';
+import { createRealSearchConnectorAdapter } from './connectors/search/search-connector.js'
 
 const adapter = createRealSearchConnectorAdapter({
-  timeout: 15000,  // 15 seconds
-});
+  timeout: 15000, // 15 seconds
+})
 ```
 
 ## Health Check
@@ -144,11 +148,12 @@ const adapter = createRealSearchConnectorAdapter({
 Check connector health:
 
 ```typescript
-const health = adapter.checkHealth(instance);
+const health = adapter.checkHealth(instance)
 // Returns: { healthy: boolean, message?: string }
 ```
 
 The health check verifies:
+
 - Backend is configured (not `none`)
 - Environment variables are set for the selected backend
 
@@ -195,15 +200,15 @@ Note: Playwright backend is not supported in connector mode. Use `auto-browser` 
 
 The Web Search connector is GA-certified with the following compliance:
 
-| Requirement | Status |
-|-------------|--------|
-| Auth mode documented | ✅ API key or configured backend |
-| Secret encryption | ✅ Keys from environment, not stored |
-| Least privilege scopes | ✅ N/A (no OAuth) |
-| Rate limit handling | ✅ HTTP 429 with retry info |
-| Timeout handling | ✅ Configurable (default 10s) |
-| Error taxonomy | ✅ Structured error codes |
-| Mock mode | ✅ Mock connector available |
-| Real HTTP mode | ✅ Multiple backend support |
-| Audit events | ✅ Events emitted on calls |
-| Redaction | ✅ API keys redacted from logs |
+| Requirement            | Status                               |
+| ---------------------- | ------------------------------------ |
+| Auth mode documented   | ✅ API key or configured backend     |
+| Secret encryption      | ✅ Keys from environment, not stored |
+| Least privilege scopes | ✅ N/A (no OAuth)                    |
+| Rate limit handling    | ✅ HTTP 429 with retry info          |
+| Timeout handling       | ✅ Configurable (default 10s)        |
+| Error taxonomy         | ✅ Structured error codes            |
+| Mock mode              | ✅ Mock connector available          |
+| Real HTTP mode         | ✅ Multiple backend support          |
+| Audit events           | ✅ Events emitted on calls           |
+| Redaction              | ✅ API keys redacted from logs       |

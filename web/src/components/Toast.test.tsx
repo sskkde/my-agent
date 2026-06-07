@@ -1,9 +1,9 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import ToastProvider, { useToast } from './Toast';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import ToastProvider, { useToast } from './Toast'
 
 const TestComponent: React.FC = () => {
-  const { addToast, removeToast, toasts } = useToast();
+  const { addToast, removeToast, toasts } = useToast()
 
   return (
     <div>
@@ -26,153 +26,151 @@ const TestComponent: React.FC = () => {
       )}
       <span data-testid="toast-count">{toasts.length}</span>
     </div>
-  );
-};
+  )
+}
 
 const renderWithProvider = () => {
   return render(
     <ToastProvider>
       <TestComponent />
-    </ToastProvider>
-  );
-};
+    </ToastProvider>,
+  )
+}
 
 describe('Toast', () => {
   it('renders toast container', () => {
-    renderWithProvider();
-    expect(screen.getByRole('region', { name: '通知' })).toBeInTheDocument();
-  });
+    renderWithProvider()
+    expect(screen.getByRole('region', { name: '通知' })).toBeInTheDocument()
+  })
 
   it('adds and displays a success toast', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-success'));
+    fireEvent.click(screen.getByTestId('add-success'))
 
     await waitFor(() => {
-      expect(screen.getByText('成功消息')).toBeInTheDocument();
-    });
+      expect(screen.getByText('成功消息')).toBeInTheDocument()
+    })
 
-    const toast = screen.getByRole('alert');
-    expect(toast).toHaveClass('toast--success');
-  });
+    const toast = screen.getByRole('alert')
+    expect(toast).toHaveClass('toast--success')
+  })
 
   it('adds and displays an error toast', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-error'));
+    fireEvent.click(screen.getByTestId('add-error'))
 
     await waitFor(() => {
-      expect(screen.getByText('错误消息')).toBeInTheDocument();
-    });
+      expect(screen.getByText('错误消息')).toBeInTheDocument()
+    })
 
-    const toast = screen.getByRole('alert');
-    expect(toast).toHaveClass('toast--error');
-  });
+    const toast = screen.getByRole('alert')
+    expect(toast).toHaveClass('toast--error')
+  })
 
   it('adds and displays a warning toast', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-warning'));
+    fireEvent.click(screen.getByTestId('add-warning'))
 
     await waitFor(() => {
-      expect(screen.getByText('警告消息')).toBeInTheDocument();
-    });
+      expect(screen.getByText('警告消息')).toBeInTheDocument()
+    })
 
-    const toast = screen.getByRole('alert');
-    expect(toast).toHaveClass('toast--warning');
-  });
+    const toast = screen.getByRole('alert')
+    expect(toast).toHaveClass('toast--warning')
+  })
 
   it('adds and displays an info toast', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-info'));
+    fireEvent.click(screen.getByTestId('add-info'))
 
     await waitFor(() => {
-      expect(screen.getByText('信息消息')).toBeInTheDocument();
-    });
+      expect(screen.getByText('信息消息')).toBeInTheDocument()
+    })
 
-    const toast = screen.getByRole('alert');
-    expect(toast).toHaveClass('toast--info');
-  });
+    const toast = screen.getByRole('alert')
+    expect(toast).toHaveClass('toast--info')
+  })
 
   it('removes toast when close button is clicked', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-success'));
-
-    await waitFor(() => {
-      expect(screen.getByText('成功消息')).toBeInTheDocument();
-    });
-
-    const closeButton = screen.getByLabelText('关闭通知');
-    fireEvent.click(closeButton);
+    fireEvent.click(screen.getByTestId('add-success'))
 
     await waitFor(() => {
-      expect(screen.queryByText('成功消息')).not.toBeInTheDocument();
-    });
-  });
+      expect(screen.getByText('成功消息')).toBeInTheDocument()
+    })
+
+    const closeButton = screen.getByLabelText('关闭通知')
+    fireEvent.click(closeButton)
+
+    await waitFor(() => {
+      expect(screen.queryByText('成功消息')).not.toBeInTheDocument()
+    })
+  })
 
   it('allows manual removal via removeToast', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-success'));
-
-    await waitFor(() => {
-      expect(screen.getByText('成功消息')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('remove-first'));
+    fireEvent.click(screen.getByTestId('add-success'))
 
     await waitFor(() => {
-      expect(screen.queryByText('成功消息')).not.toBeInTheDocument();
-    });
-  });
+      expect(screen.getByText('成功消息')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('remove-first'))
+
+    await waitFor(() => {
+      expect(screen.queryByText('成功消息')).not.toBeInTheDocument()
+    })
+  })
 
   it('tracks multiple toasts', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-success'));
-    fireEvent.click(screen.getByTestId('add-error'));
+    fireEvent.click(screen.getByTestId('add-success'))
+    fireEvent.click(screen.getByTestId('add-error'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('toast-count')).toHaveTextContent('2');
-    });
+      expect(screen.getByTestId('toast-count')).toHaveTextContent('2')
+    })
 
-    expect(screen.getByText('成功消息')).toBeInTheDocument();
-    expect(screen.getByText('错误消息')).toBeInTheDocument();
-  });
+    expect(screen.getByText('成功消息')).toBeInTheDocument()
+    expect(screen.getByText('错误消息')).toBeInTheDocument()
+  })
 
   it('throws error when useToast is used outside provider', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    expect(() => render(<TestComponent />)).toThrow(
-      'useToast must be used within a ToastProvider'
-    );
+    expect(() => render(<TestComponent />)).toThrow('useToast must be used within a ToastProvider')
 
-    consoleError.mockRestore();
-  });
+    consoleError.mockRestore()
+  })
 
   it('displays correct icon for each toast type', async () => {
-    renderWithProvider();
+    renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('add-success'));
+    fireEvent.click(screen.getByTestId('add-success'))
     await waitFor(() => {
-      expect(screen.getByText('✓')).toBeInTheDocument();
-    });
+      expect(screen.getByText('✓')).toBeInTheDocument()
+    })
 
-    fireEvent.click(screen.getByTestId('add-error'));
+    fireEvent.click(screen.getByTestId('add-error'))
     await waitFor(() => {
-      expect(screen.getByText('✕')).toBeInTheDocument();
-    });
+      expect(screen.getByText('✕')).toBeInTheDocument()
+    })
 
-    fireEvent.click(screen.getByTestId('add-warning'));
+    fireEvent.click(screen.getByTestId('add-warning'))
     await waitFor(() => {
-      expect(screen.getByText('⚠')).toBeInTheDocument();
-    });
+      expect(screen.getByText('⚠')).toBeInTheDocument()
+    })
 
-    fireEvent.click(screen.getByTestId('add-info'));
+    fireEvent.click(screen.getByTestId('add-info'))
     await waitFor(() => {
-      expect(screen.getByText('ℹ')).toBeInTheDocument();
-    });
-  });
-});
+      expect(screen.getByText('ℹ')).toBeInTheDocument()
+    })
+  })
+})

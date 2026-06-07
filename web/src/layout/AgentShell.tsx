@@ -1,24 +1,24 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import TabNav, { TabId } from '../components/TabNav';
-import { NAV_GROUPS, getNavItemById, NavGroup } from '../navigation/navigation-config';
-import { ICONS } from '../navigation/icons';
+import React, { useState, useEffect, useMemo } from 'react'
+import TabNav, { TabId } from '../components/TabNav'
+import { NAV_GROUPS, getNavItemById, NavGroup } from '../navigation/navigation-config'
+import { ICONS } from '../navigation/icons'
 import {
   PRODUCT_SECTIONS,
   PRODUCT_SECTION_LABELS,
   getProductSection,
   type ProductSection,
-} from '../navigation/product-navigation';
-import type { UserMetadata } from '../api/types';
-import '../styles.css';
+} from '../navigation/product-navigation'
+import type { UserMetadata } from '../api/types'
+import '../styles.css'
 
 interface AgentShellProps {
-  children: React.ReactNode;
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
-  onToggleNavCollapsed?: () => void;
-  isNavCollapsed?: boolean;
-  user?: UserMetadata | null;
-  onLogout?: () => void;
+  children: React.ReactNode
+  activeTab: TabId
+  onTabChange: (tab: TabId) => void
+  onToggleNavCollapsed?: () => void
+  isNavCollapsed?: boolean
+  user?: UserMetadata | null
+  onLogout?: () => void
 }
 
 const AgentShell: React.FC<AgentShellProps> = ({
@@ -30,61 +30,61 @@ const AgentShell: React.FC<AgentShellProps> = ({
   user,
   onLogout,
 }) => {
-  const [internalNavCollapsed, setInternalNavCollapsed] = useState(false);
-  const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [internalNavCollapsed, setInternalNavCollapsed] = useState(false)
+  const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
-  const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed;
+  const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed
 
   // Determine active product section
-  const activeProductSection = useMemo(() => getProductSection(activeTab), [activeTab]);
+  const activeProductSection = useMemo(() => getProductSection(activeTab), [activeTab])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {
-      setIsMobile(false);
-      return;
+      setIsMobile(false)
+      return
     }
 
     const checkMobile = () => {
-      const mobileQuery = window.matchMedia('(max-width: 1100px)');
-      setIsMobile(mobileQuery.matches);
-    };
+      const mobileQuery = window.matchMedia('(max-width: 1100px)')
+      setIsMobile(mobileQuery.matches)
+    }
 
-    checkMobile();
+    checkMobile()
 
-    const mediaQuery = window.matchMedia('(max-width: 1100px)');
+    const mediaQuery = window.matchMedia('(max-width: 1100px)')
     const handleChange = (e: MediaQueryListEvent) => {
-      setIsMobile(e.matches);
-    };
+      setIsMobile(e.matches)
+    }
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   const handleToggleNavCollapsed = () => {
     if (onToggleNavCollapsed) {
-      onToggleNavCollapsed();
+      onToggleNavCollapsed()
     } else {
-      setInternalNavCollapsed((prev) => !prev);
+      setInternalNavCollapsed((prev) => !prev)
     }
-  };
+  }
 
   const handleToggleMobileDrawer = () => {
-    setIsNavDrawerOpen((prev) => !prev);
-  };
+    setIsNavDrawerOpen((prev) => !prev)
+  }
 
   const handleLogout = () => {
     if (onLogout) {
-      onLogout();
+      onLogout()
     }
-  };
+  }
 
   const handleTabChange = (tab: TabId) => {
-    onTabChange(tab);
+    onTabChange(tab)
     if (isMobile) {
-      setIsNavDrawerOpen(false);
+      setIsNavDrawerOpen(false)
     }
-  };
+  }
 
   const handleProductSectionClick = (section: ProductSection) => {
     // Navigate to the first tab in the clicked product section
@@ -92,38 +92,38 @@ const AgentShell: React.FC<AgentShellProps> = ({
     // will be determined by the product section's first tab
     switch (section) {
       case 'chat':
-        onTabChange('session-console');
-        break;
+        onTabChange('session-console')
+        break
       case 'workspace':
-        onTabChange('dashboard');
-        break;
+        onTabChange('dashboard')
+        break
       case 'operations':
-        onTabChange('agent-monitor');
-        break;
+        onTabChange('agent-monitor')
+        break
       case 'admin':
-        onTabChange('settings');
-        break;
+        onTabChange('settings')
+        break
     }
-  };
+  }
 
   const breadcrumb = useMemo(() => {
-    const navItem = getNavItemById(activeTab);
-    if (!navItem) return 'Agent Platform';
+    const navItem = getNavItemById(activeTab)
+    if (!navItem) return 'Agent Platform'
 
-    let group: NavGroup | undefined;
+    let group: NavGroup | undefined
     for (const g of NAV_GROUPS) {
       if (g.items.some((item) => item.id === activeTab)) {
-        group = g;
-        break;
+        group = g
+        break
       }
     }
 
     if (group) {
-      return `Agent Platform › ${group.label} › ${navItem.label}`;
+      return `Agent Platform › ${group.label} › ${navItem.label}`
     }
 
-    return `Agent Platform › ${navItem.label}`;
-  }, [activeTab]);
+    return `Agent Platform › ${navItem.label}`
+  }, [activeTab])
 
   const shellClasses = [
     'shell',
@@ -133,9 +133,9 @@ const AgentShell: React.FC<AgentShellProps> = ({
     isMobile ? 'shell--mobile' : '',
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(' ')
 
-  const CollapseIcon = ICONS.chevronLeft;
+  const CollapseIcon = ICONS.chevronLeft
 
   return (
     <div data-testid="agent-shell" className="agent-shell-container">
@@ -240,7 +240,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
         </main>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AgentShell;
+export default AgentShell

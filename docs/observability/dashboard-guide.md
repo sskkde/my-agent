@@ -26,12 +26,12 @@ Monitor overall API health and availability. This is the primary dashboard for o
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Service Status | Health endpoint | `up{job="agent-platform"}` |
-| Uptime | Request success rate | `sum(rate(agent_platform_request_duration_seconds_count{status="success"}[5m])) / sum(rate(agent_platform_request_duration_seconds_count[5m])) * 100` |
-| Active Instances | Instance count | `count(up{job="agent-platform"})` |
-| Health Score | Composite | Custom calculation based on error rate, latency, availability |
+| Panel            | Metric               | PromQL Query                                                                                                                                          |
+| ---------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Service Status   | Health endpoint      | `up{job="agent-platform"}`                                                                                                                            |
+| Uptime           | Request success rate | `sum(rate(agent_platform_request_duration_seconds_count{status="success"}[5m])) / sum(rate(agent_platform_request_duration_seconds_count[5m])) * 100` |
+| Active Instances | Instance count       | `count(up{job="agent-platform"})`                                                                                                                     |
+| Health Score     | Composite            | Custom calculation based on error rate, latency, availability                                                                                         |
 
 ### Refresh Rate | 刷新频率
 
@@ -39,11 +39,11 @@ Monitor overall API health and availability. This is the primary dashboard for o
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `instance` | Dropdown | All instances, or specific instance |
-| `environment` | Dropdown | `production`, `staging`, `development` |
-| `timeRange` | Time picker | Last 1h, 6h, 24h, 7d |
+| Filter        | Type        | Values                                 |
+| ------------- | ----------- | -------------------------------------- |
+| `instance`    | Dropdown    | All instances, or specific instance    |
+| `environment` | Dropdown    | `production`, `staging`, `development` |
+| `timeRange`   | Time picker | Last 1h, 6h, 24h, 7d                   |
 
 ### Panel Layout | 面板布局
 
@@ -76,12 +76,12 @@ Track incoming request volume and identify traffic patterns, spikes, or drops.
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Requests/sec | Request rate | `sum(rate(agent_platform_request_total[5m]))` |
-| Requests by Endpoint | Rate by operation | `sum by (operation)(rate(agent_platform_request_duration_seconds_count[5m]))` |
-| Requests by Status | Rate by status code | `sum by (status)(rate(agent_platform_request_duration_seconds_count[5m]))` |
-| Peak Traffic | Max rate | `max_over_time(sum(rate(agent_platform_request_total[5m]))[1h])` |
+| Panel                | Metric              | PromQL Query                                                                  |
+| -------------------- | ------------------- | ----------------------------------------------------------------------------- |
+| Requests/sec         | Request rate        | `sum(rate(agent_platform_request_total[5m]))`                                 |
+| Requests by Endpoint | Rate by operation   | `sum by (operation)(rate(agent_platform_request_duration_seconds_count[5m]))` |
+| Requests by Status   | Rate by status code | `sum by (status)(rate(agent_platform_request_duration_seconds_count[5m]))`    |
+| Peak Traffic         | Max rate            | `max_over_time(sum(rate(agent_platform_request_total[5m]))[1h])`              |
 
 ### Refresh Rate | 刷新频率
 
@@ -89,12 +89,12 @@ Track incoming request volume and identify traffic patterns, spikes, or drops.
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `instance` | Multi-select | Select multiple instances |
-| `operation` | Multi-select | Filter by API endpoint |
-| `status` | Multi-select | `success`, `failed` |
-| `timeRange` | Time picker | Last 30m, 1h, 6h, 24h |
+| Filter      | Type         | Values                    |
+| ----------- | ------------ | ------------------------- |
+| `instance`  | Multi-select | Select multiple instances |
+| `operation` | Multi-select | Filter by API endpoint    |
+| `status`    | Multi-select | `success`, `failed`       |
+| `timeRange` | Time picker  | Last 30m, 1h, 6h, 24h     |
 
 ### Panel Layout | 面板布局
 
@@ -127,12 +127,12 @@ Monitor error rates across all operations and quickly identify error spikes.
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Error Rate % | Error percentage | `sum(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m])) / sum(rate(agent_platform_request_duration_seconds_count[5m])) * 100` |
-| Errors/sec | Error count rate | `sum(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m]))` |
-| Errors by Operation | Rate by operation | `sum by (operation)(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m]))` |
-| Error Trend | Error rate trend | `rate(agent_platform_*_errors[5m])` |
+| Panel               | Metric            | PromQL Query                                                                                                                                         |
+| ------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Error Rate %        | Error percentage  | `sum(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m])) / sum(rate(agent_platform_request_duration_seconds_count[5m])) * 100` |
+| Errors/sec          | Error count rate  | `sum(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m]))`                                                                      |
+| Errors by Operation | Rate by operation | `sum by (operation)(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m]))`                                                       |
+| Error Trend         | Error rate trend  | `rate(agent_platform_*_errors[5m])`                                                                                                                  |
 
 ### Refresh Rate | 刷新频率
 
@@ -140,21 +140,21 @@ Monitor error rates across all operations and quickly identify error spikes.
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `instance` | Multi-select | Select multiple instances |
-| `operation` | Multi-select | Filter by API endpoint |
-| `errorType` | Multi-select | Filter by error type |
-| `severity` | Multi-select | `critical`, `warning`, `info` |
-| `timeRange` | Time picker | Last 15m, 1h, 6h |
+| Filter      | Type         | Values                        |
+| ----------- | ------------ | ----------------------------- |
+| `instance`  | Multi-select | Select multiple instances     |
+| `operation` | Multi-select | Filter by API endpoint        |
+| `errorType` | Multi-select | Filter by error type          |
+| `severity`  | Multi-select | `critical`, `warning`, `info` |
+| `timeRange` | Time picker  | Last 15m, 1h, 6h              |
 
 ### Alert Thresholds | 告警阈值
 
-| Level | Threshold | Color |
-|-------|-----------|-------|
-| Normal | < 1% | Green |
-| Warning | 1-5% | Yellow |
-| Critical | > 5% | Red |
+| Level    | Threshold | Color  |
+| -------- | --------- | ------ |
+| Normal   | < 1%      | Green  |
+| Warning  | 1-5%      | Yellow |
+| Critical | > 5%      | Red    |
 
 ### Panel Layout | 面板布局
 
@@ -191,13 +191,13 @@ Monitor API response latency percentiles to ensure SLA compliance and identify s
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| P50 Latency | Median latency | `histogram_quantile(0.50, sum(rate(agent_platform_request_duration_seconds_bucket[5m])) by (le))` |
-| P95 Latency | 95th percentile | `histogram_quantile(0.95, sum(rate(agent_platform_request_duration_seconds_bucket[5m])) by (le))` |
-| P99 Latency | 99th percentile | `histogram_quantile(0.99, sum(rate(agent_platform_request_duration_seconds_bucket[5m])) by (le))` |
-| Latency by Operation | Per-operation latency | `histogram_quantile(0.95, sum by (le, operation)(rate(agent_platform_request_duration_seconds_bucket[5m])))` |
-| Slow Operations | Operations > threshold | `histogram_quantile(0.95, sum by (le, operation)(rate(agent_platform_request_duration_seconds_bucket[5m]))) > 1` |
+| Panel                | Metric                 | PromQL Query                                                                                                     |
+| -------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| P50 Latency          | Median latency         | `histogram_quantile(0.50, sum(rate(agent_platform_request_duration_seconds_bucket[5m])) by (le))`                |
+| P95 Latency          | 95th percentile        | `histogram_quantile(0.95, sum(rate(agent_platform_request_duration_seconds_bucket[5m])) by (le))`                |
+| P99 Latency          | 99th percentile        | `histogram_quantile(0.99, sum(rate(agent_platform_request_duration_seconds_bucket[5m])) by (le))`                |
+| Latency by Operation | Per-operation latency  | `histogram_quantile(0.95, sum by (le, operation)(rate(agent_platform_request_duration_seconds_bucket[5m])))`     |
+| Slow Operations      | Operations > threshold | `histogram_quantile(0.95, sum by (le, operation)(rate(agent_platform_request_duration_seconds_bucket[5m]))) > 1` |
 
 ### Refresh Rate | 刷新频率
 
@@ -205,20 +205,20 @@ Monitor API response latency percentiles to ensure SLA compliance and identify s
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `instance` | Multi-select | Select multiple instances |
-| `operation` | Multi-select | Filter by API endpoint |
-| `percentile` | Dropdown | P50, P90, P95, P99 |
-| `timeRange` | Time picker | Last 1h, 6h, 24h |
+| Filter       | Type         | Values                    |
+| ------------ | ------------ | ------------------------- |
+| `instance`   | Multi-select | Select multiple instances |
+| `operation`  | Multi-select | Filter by API endpoint    |
+| `percentile` | Dropdown     | P50, P90, P95, P99        |
+| `timeRange`  | Time picker  | Last 1h, 6h, 24h          |
 
 ### SLA Thresholds | SLA 阈值
 
-| Percentile | Target | Warning | Critical |
-|------------|--------|---------|----------|
-| P50 | < 200ms | > 500ms | > 1s |
-| P95 | < 1s | > 2s | > 5s |
-| P99 | < 2s | > 5s | > 10s |
+| Percentile | Target  | Warning | Critical |
+| ---------- | ------- | ------- | -------- |
+| P50        | < 200ms | > 500ms | > 1s     |
+| P95        | < 1s    | > 2s    | > 5s     |
+| P99        | < 2s    | > 5s    | > 10s    |
 
 ### Panel Layout | 面板布局
 
@@ -252,12 +252,12 @@ Monitor workflow execution status, success rates, and identify failed workflows.
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Active Workflows | Running count | `agent_platform_workflow_runs_active` |
-| Workflow Success Rate | Success % | `sum(rate(agent_platform_workflow_runs_total{status="success"}[5m])) / sum(rate(agent_platform_workflow_runs_total[5m])) * 100` |
-| Runs/hour | Execution rate | `sum(increase(agent_platform_workflow_runs_total[1h]))` |
-| Failed Runs | Failed count | `sum(increase(agent_platform_workflow_runs_total{status="failed"}[1h]))` |
+| Panel                 | Metric         | PromQL Query                                                                                                                    |
+| --------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Active Workflows      | Running count  | `agent_platform_workflow_runs_active`                                                                                           |
+| Workflow Success Rate | Success %      | `sum(rate(agent_platform_workflow_runs_total{status="success"}[5m])) / sum(rate(agent_platform_workflow_runs_total[5m])) * 100` |
+| Runs/hour             | Execution rate | `sum(increase(agent_platform_workflow_runs_total[1h]))`                                                                         |
+| Failed Runs           | Failed count   | `sum(increase(agent_platform_workflow_runs_total{status="failed"}[1h]))`                                                        |
 
 ### Refresh Rate | 刷新频率
 
@@ -265,12 +265,12 @@ Monitor workflow execution status, success rates, and identify failed workflows.
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `workflowId` | Multi-select | Select specific workflows |
-| `status` | Multi-select | `running`, `success`, `failed`, `pending` |
-| `instance` | Multi-select | Select instances |
-| `timeRange` | Time picker | Last 1h, 6h, 24h, 7d |
+| Filter       | Type         | Values                                    |
+| ------------ | ------------ | ----------------------------------------- |
+| `workflowId` | Multi-select | Select specific workflows                 |
+| `status`     | Multi-select | `running`, `success`, `failed`, `pending` |
+| `instance`   | Multi-select | Select instances                          |
+| `timeRange`  | Time picker  | Last 1h, 6h, 24h, 7d                      |
 
 ### Panel Layout | 面板布局
 
@@ -303,12 +303,12 @@ Monitor connector health, request rates, and identify failing external integrati
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Connector Status | Health per connector | `agent_platform_connector_status` |
-| Request Rate | Requests/sec per connector | `sum by (connectorId)(rate(agent_platform_connector_requests_total[5m]))` |
-| Error Rate | Errors per connector | `sum by (connectorId)(rate(agent_platform_connector_requests_total{status="failed"}[5m]))` |
-| Latency by Connector | P95 per connector | `histogram_quantile(0.95, sum by (le, connectorId)(rate(agent_platform_connector_*_duration_ms_bucket[5m])))` |
+| Panel                | Metric                     | PromQL Query                                                                                                  |
+| -------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Connector Status     | Health per connector       | `agent_platform_connector_status`                                                                             |
+| Request Rate         | Requests/sec per connector | `sum by (connectorId)(rate(agent_platform_connector_requests_total[5m]))`                                     |
+| Error Rate           | Errors per connector       | `sum by (connectorId)(rate(agent_platform_connector_requests_total{status="failed"}[5m]))`                    |
+| Latency by Connector | P95 per connector          | `histogram_quantile(0.95, sum by (le, connectorId)(rate(agent_platform_connector_*_duration_ms_bucket[5m])))` |
 
 ### Refresh Rate | 刷新频率
 
@@ -316,12 +316,12 @@ Monitor connector health, request rates, and identify failing external integrati
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
+| Filter        | Type         | Values                                           |
+| ------------- | ------------ | ------------------------------------------------ |
 | `connectorId` | Multi-select | `github`, `google-calendar`, `google-docs`, etc. |
-| `operation` | Multi-select | Filter by operation type |
-| `status` | Multi-select | `success`, `failed` |
-| `timeRange` | Time picker | Last 1h, 6h, 24h |
+| `operation`   | Multi-select | Filter by operation type                         |
+| `status`      | Multi-select | `success`, `failed`                              |
+| `timeRange`   | Time picker  | Last 1h, 6h, 24h                                 |
 
 ### Panel Layout | 面板布局
 
@@ -354,12 +354,12 @@ Monitor dead letter queue size and identify patterns in failed events.
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| DLQ Size | Current count | `agent_platform_dlq_size` |
-| DLQ Growth Rate | Events/hour | `rate(agent_platform_dlq_events_total[1h])` |
-| Retry Success Rate | Retry success % | `sum(rate(agent_platform_dlq_retries{status="success"}[5m])) / sum(rate(agent_platform_dlq_retries[5m])) * 100` |
-| Events by Error Type | Error distribution | `sum by (errorType)(agent_platform_dlq_events)` |
+| Panel                | Metric             | PromQL Query                                                                                                    |
+| -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| DLQ Size             | Current count      | `agent_platform_dlq_size`                                                                                       |
+| DLQ Growth Rate      | Events/hour        | `rate(agent_platform_dlq_events_total[1h])`                                                                     |
+| Retry Success Rate   | Retry success %    | `sum(rate(agent_platform_dlq_retries{status="success"}[5m])) / sum(rate(agent_platform_dlq_retries[5m])) * 100` |
+| Events by Error Type | Error distribution | `sum by (errorType)(agent_platform_dlq_events)`                                                                 |
 
 ### Refresh Rate | 刷新频率
 
@@ -367,19 +367,19 @@ Monitor dead letter queue size and identify patterns in failed events.
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `errorType` | Multi-select | Filter by error type |
-| `source` | Multi-select | Filter by event source |
-| `timeRange` | Time picker | Last 1h, 6h, 24h, 7d |
+| Filter      | Type         | Values                 |
+| ----------- | ------------ | ---------------------- |
+| `errorType` | Multi-select | Filter by error type   |
+| `source`    | Multi-select | Filter by event source |
+| `timeRange` | Time picker  | Last 1h, 6h, 24h, 7d   |
 
 ### Alert Thresholds | 告警阈值
 
-| Level | Threshold | Action |
-|-------|-----------|--------|
-| Normal | < 10 events | None |
-| Warning | 10-100 events | Monitor |
-| Critical | > 100 events | Investigate immediately |
+| Level    | Threshold     | Action                  |
+| -------- | ------------- | ----------------------- |
+| Normal   | < 10 events   | None                    |
+| Warning  | 10-100 events | Monitor                 |
+| Critical | > 100 events  | Investigate immediately |
 
 ### Panel Layout | 面板布局
 
@@ -416,12 +416,12 @@ Monitor token and request budget usage across users and identify budget exhausti
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Overall Budget Usage | Usage % | `agent_platform_budget_usage_percent` |
-| Tokens Used | Token consumption | `agent_platform_tokens_used_total` |
-| Requests Count | Request count | `agent_platform_requests_count_total` |
-| Users Near Limit | Users > 80% | `count(agent_platform_budget_usage_percent > 80)` |
+| Panel                | Metric            | PromQL Query                                      |
+| -------------------- | ----------------- | ------------------------------------------------- |
+| Overall Budget Usage | Usage %           | `agent_platform_budget_usage_percent`             |
+| Tokens Used          | Token consumption | `agent_platform_tokens_used_total`                |
+| Requests Count       | Request count     | `agent_platform_requests_count_total`             |
+| Users Near Limit     | Users > 80%       | `count(agent_platform_budget_usage_percent > 80)` |
 
 ### Refresh Rate | 刷新频率
 
@@ -429,20 +429,20 @@ Monitor token and request budget usage across users and identify budget exhausti
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `userId` | Multi-select | Filter by user |
-| `budgetType` | Dropdown | `token`, `request`, `storage` |
-| `period` | Dropdown | `daily`, `monthly`, `session` |
-| `timeRange` | Time picker | Last 1h, 24h, 7d, 30d |
+| Filter       | Type         | Values                        |
+| ------------ | ------------ | ----------------------------- |
+| `userId`     | Multi-select | Filter by user                |
+| `budgetType` | Dropdown     | `token`, `request`, `storage` |
+| `period`     | Dropdown     | `daily`, `monthly`, `session` |
+| `timeRange`  | Time picker  | Last 1h, 24h, 7d, 30d         |
 
 ### Alert Thresholds | 告警阈值
 
-| Level | Threshold | Color |
-|-------|-----------|-------|
-| Normal | < 70% | Green |
-| Warning | 70-90% | Yellow |
-| Critical | > 90% | Red |
+| Level    | Threshold | Color  |
+| -------- | --------- | ------ |
+| Normal   | < 70%     | Green  |
+| Warning  | 70-90%    | Yellow |
+| Critical | > 90%     | Red    |
 
 ### Panel Layout | 面板布局
 
@@ -479,12 +479,12 @@ Monitor database backup status and ensure data recovery capability.
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Last Backup Time | Timestamp | `agent_platform_backup_last_timestamp` |
-| Backup Status | Success/Fail | `agent_platform_backup_status` |
-| Backup Size | Size in MB | `agent_platform_backup_size_bytes / 1024 / 1024` |
-| Backup Age | Hours since backup | `(time() - agent_platform_backup_last_timestamp) / 3600` |
+| Panel            | Metric             | PromQL Query                                             |
+| ---------------- | ------------------ | -------------------------------------------------------- |
+| Last Backup Time | Timestamp          | `agent_platform_backup_last_timestamp`                   |
+| Backup Status    | Success/Fail       | `agent_platform_backup_status`                           |
+| Backup Size      | Size in MB         | `agent_platform_backup_size_bytes / 1024 / 1024`         |
+| Backup Age       | Hours since backup | `(time() - agent_platform_backup_last_timestamp) / 3600` |
 
 ### Refresh Rate | 刷新频率
 
@@ -492,19 +492,19 @@ Monitor database backup status and ensure data recovery capability.
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `backupType` | Dropdown | `full`, `incremental` |
-| `status` | Multi-select | `success`, `failed`, `in_progress` |
-| `timeRange` | Time picker | Last 24h, 7d, 30d |
+| Filter       | Type         | Values                             |
+| ------------ | ------------ | ---------------------------------- |
+| `backupType` | Dropdown     | `full`, `incremental`              |
+| `status`     | Multi-select | `success`, `failed`, `in_progress` |
+| `timeRange`  | Time picker  | Last 24h, 7d, 30d                  |
 
 ### Alert Thresholds | 告警阈值
 
-| Condition | Level | Action |
-|-----------|-------|--------|
-| Backup failed | Critical | Immediate investigation |
-| Backup age > 24h | Warning | Check backup schedule |
-| Backup size = 0 | Critical | Backup not running |
+| Condition        | Level    | Action                  |
+| ---------------- | -------- | ----------------------- |
+| Backup failed    | Critical | Immediate investigation |
+| Backup age > 24h | Warning  | Check backup schedule   |
+| Backup size = 0  | Critical | Backup not running      |
 
 ### Panel Layout | 面板布局
 
@@ -537,11 +537,11 @@ Monitor active alerts and alert system health.
 
 ### Metrics Displayed | 显示指标
 
-| Panel | Metric | PromQL Query |
-|-------|--------|--------------|
-| Active Alerts | Firing count | `count(agent_platform_alert_state{state="firing"})` |
-| Alert Rate | Alerts/hour | `rate(agent_platform_alerts_fired_total[1h])` |
-| Alerts by Severity | Count by severity | `sum by (severity)(agent_platform_alert_state{state="firing"})` |
+| Panel                | Metric               | PromQL Query                                                                                                                    |
+| -------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Active Alerts        | Firing count         | `count(agent_platform_alert_state{state="firing"})`                                                                             |
+| Alert Rate           | Alerts/hour          | `rate(agent_platform_alerts_fired_total[1h])`                                                                                   |
+| Alerts by Severity   | Count by severity    | `sum by (severity)(agent_platform_alert_state{state="firing"})`                                                                 |
 | Webhook Success Rate | Notification success | `sum(rate(agent_platform_alert_webhook_total{status="success"}[5m])) / sum(rate(agent_platform_alert_webhook_total[5m])) * 100` |
 
 ### Refresh Rate | 刷新频率
@@ -550,12 +550,12 @@ Monitor active alerts and alert system health.
 
 ### Filter Options | 过滤选项
 
-| Filter | Type | Values |
-|--------|------|--------|
-| `severity` | Multi-select | `critical`, `warning`, `info` |
-| `state` | Multi-select | `idle`, `firing`, `resolved` |
-| `ruleId` | Multi-select | Filter by alert rule |
-| `timeRange` | Time picker | Last 1h, 6h, 24h |
+| Filter      | Type         | Values                        |
+| ----------- | ------------ | ----------------------------- |
+| `severity`  | Multi-select | `critical`, `warning`, `info` |
+| `state`     | Multi-select | `idle`, `firing`, `resolved`  |
+| `ruleId`    | Multi-select | Filter by alert rule          |
+| `timeRange` | Time picker  | Last 1h, 6h, 24h              |
 
 ### Panel Layout | 面板布局
 
@@ -624,12 +624,12 @@ Combined view of all critical metrics for executive summary and NOC monitoring.
 
 ### Color Coding | 颜色编码
 
-| Color | Meaning |
-|-------|---------|
-| Green | Normal, within SLA |
-| Yellow | Warning, approaching threshold |
-| Red | Critical, needs immediate attention |
-| Gray | No data / unknown |
+| Color  | Meaning                             |
+| ------ | ----------------------------------- |
+| Green  | Normal, within SLA                  |
+| Yellow | Warning, approaching threshold      |
+| Red    | Critical, needs immediate attention |
+| Gray   | No data / unknown                   |
 
 ### Annotation Standards | 注释标准
 
@@ -647,11 +647,11 @@ curl -X POST http://grafana/api/annotations \
 
 Recommended variables to define in Grafana:
 
-| Variable | Type | Purpose |
-|----------|------|---------|
-| `$instance` | Query | Filter by instance |
-| `$environment` | Custom | Filter by environment |
-| `$timeRange` | Interval | Time range selector |
+| Variable       | Type     | Purpose               |
+| -------------- | -------- | --------------------- |
+| `$instance`    | Query    | Filter by instance    |
+| `$environment` | Custom   | Filter by environment |
+| `$timeRange`   | Interval | Time range selector   |
 
 ---
 
@@ -700,11 +700,11 @@ scrape_configs:
 
 ### Key Endpoints | 关键端点
 
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/v1/metrics` | Prometheus metrics |
-| `/api/v1/health` | Health check |
-| `/api/v1/health/ready` | Readiness check |
+| Endpoint               | Purpose            |
+| ---------------------- | ------------------ |
+| `/api/v1/metrics`      | Prometheus metrics |
+| `/api/v1/health`       | Health check       |
+| `/api/v1/health/ready` | Readiness check    |
 
 ### Common PromQL Queries | 常用 PromQL 查询
 
@@ -713,7 +713,7 @@ scrape_configs:
 sum(rate(agent_platform_request_total[5m]))
 
 # Error rate percentage
-sum(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m])) 
+sum(rate(agent_platform_request_duration_seconds_count{status="failed"}[5m]))
   / sum(rate(agent_platform_request_duration_seconds_count[5m])) * 100
 
 # P95 latency

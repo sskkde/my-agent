@@ -1,64 +1,64 @@
-import React, { useEffect, useState } from 'react';
-import * as client from '../../api/client';
-import type { HealthResponse, ApprovalsResponse, ApprovalInfo } from '../../api/types';
-import type { TabId } from '../../components/TabNav';
-import ErrorMessage from '../../components/ErrorMessage';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import React, { useEffect, useState } from 'react'
+import * as client from '../../api/client'
+import type { HealthResponse, ApprovalsResponse, ApprovalInfo } from '../../api/types'
+import type { TabId } from '../../components/TabNav'
+import ErrorMessage from '../../components/ErrorMessage'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 interface StatusTabProps {
-  onTabChange: (tab: TabId) => void;
+  onTabChange: (tab: TabId) => void
 }
 
 const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [healthError, setHealthError] = useState<Error | null>(null);
-  const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null);
-  const [approvalsError, setApprovalsError] = useState<Error | null>(null);
-  const [selectedApproval, setSelectedApproval] = useState<ApprovalInfo | null>(null);
-  const [reason, setReason] = useState('');
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null)
+  const [healthError, setHealthError] = useState<Error | null>(null)
+  const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null)
+  const [approvalsError, setApprovalsError] = useState<Error | null>(null)
+  const [selectedApproval, setSelectedApproval] = useState<ApprovalInfo | null>(null)
+  const [reason, setReason] = useState('')
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const healthData = await client.getHealth();
-        setHealth(healthData);
+        const healthData = await client.getHealth()
+        setHealth(healthData)
       } catch (err) {
-        setHealthError(err instanceof Error ? err : new Error('无法加载健康状态'));
+        setHealthError(err instanceof Error ? err : new Error('无法加载健康状态'))
       }
-    };
-    fetchData();
-  }, []);
+    }
+    fetchData()
+  }, [])
 
   const fetchApprovals = async () => {
     try {
-      const approvalsData = await client.getApprovals();
-      setApprovals(approvalsData);
-      setApprovalsError(null);
+      const approvalsData = await client.getApprovals()
+      setApprovals(approvalsData)
+      setApprovalsError(null)
     } catch (err) {
-      setApprovalsError(err instanceof Error ? err : new Error('无法加载审批列表'));
+      setApprovalsError(err instanceof Error ? err : new Error('无法加载审批列表'))
     }
-  };
+  }
 
   useEffect(() => {
-    fetchApprovals();
-  }, []);
+    fetchApprovals()
+  }, [])
 
-  const pendingCount = approvals?.approvals.filter((a) => a.status === 'pending').length ?? 0;
+  const pendingCount = approvals?.approvals.filter((a) => a.status === 'pending').length ?? 0
 
   const handleApprovalAction = async (approvalId: string, decision: 'approved' | 'rejected') => {
-    setActionLoading(approvalId);
+    setActionLoading(approvalId)
     try {
-      await client.respondApproval(approvalId, decision, reason || undefined);
-      await fetchApprovals();
-      setSelectedApproval(null);
-      setReason('');
+      await client.respondApproval(approvalId, decision, reason || undefined)
+      await fetchApprovals()
+      setSelectedApproval(null)
+      setReason('')
     } catch (error) {
-      console.error('Failed to respond to approval:', error);
+      console.error('Failed to respond to approval:', error)
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  };
+  }
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -67,24 +67,24 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
       rejected: '已拒绝',
       expired: '已过期',
       cancelled: '已取消',
-    };
-    return labels[status] || status;
-  };
+    }
+    return labels[status] || status
+  }
 
   const getStatusClass = (status: string) => {
-    if (status === 'pending') return 'status-pending';
-    if (status === 'approved') return 'status-approved';
-    if (status === 'rejected') return 'status-rejected';
-    return 'status-other';
-  };
+    if (status === 'pending') return 'status-pending'
+    if (status === 'approved') return 'status-approved'
+    if (status === 'rejected') return 'status-rejected'
+    return 'status-other'
+  }
 
   return (
     <div data-testid="status-panel" className="status-panel">
       <section className="status-intro">
         <h3>欢迎使用 Agent Platform</h3>
         <p>
-          Agent Platform 是一个多智能体任务编排与执行平台，提供可扩展的、资源管理的环境来运行 AI 驱动的智能体。
-          支持 LLM 提供商、后台任务处理和健壮的错误处理。
+          Agent Platform 是一个多智能体任务编排与执行平台，提供可扩展的、资源管理的环境来运行 AI 驱动的智能体。 支持 LLM
+          提供商、后台任务处理和健壮的错误处理。
         </p>
       </section>
 
@@ -96,9 +96,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
           <div className="health-info">
             <div className={`health-status ${health.status}`}>
               <span className="status-label">总体状态:</span>
-              <span className="status-value">
-                {health.status === 'healthy' ? '健康' : '降级'}
-              </span>
+              <span className="status-value">{health.status === 'healthy' ? '健康' : '降级'}</span>
             </div>
             <div className="modules-list">
               {Object.entries(health.modules).map(([name, module]) => (
@@ -125,7 +123,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
             <div className="pending-count">
               待审批: <strong>{pendingCount}</strong>
             </div>
-            
+
             {approvals.approvals.length > 0 ? (
               <div className="approvals-list">
                 {approvals.approvals.map((approval) => (
@@ -144,7 +142,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
                       <span>资源: {approval.resource || '-'}</span>
                       <span>请求者: {approval.requestedBy}</span>
                     </div>
-                    
+
                     {selectedApproval?.id === approval.id && (
                       <div data-testid={`approval-detail-${approval.id}`} className="approval-detail">
                         <div className="detail-row">
@@ -196,12 +194,9 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
                         )}
                       </div>
                     )}
-                    
+
                     {approval.status === 'pending' && selectedApproval?.id !== approval.id && (
-                      <button
-                        className="expand-btn"
-                        onClick={() => setSelectedApproval(approval)}
-                      >
+                      <button className="expand-btn" onClick={() => setSelectedApproval(approval)}>
                         查看详情
                       </button>
                     )}
@@ -237,7 +232,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
         </div>
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default StatusTab;
+export default StatusTab

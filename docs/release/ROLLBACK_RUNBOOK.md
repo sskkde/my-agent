@@ -259,11 +259,13 @@ curl http://localhost:3003/api/v1/metrics
 ### 问题 1：数据库恢复失败
 
 **症状**:
+
 ```
 Error: unable to open database file
 ```
 
 **解决**:
+
 ```bash
 # 检查文件权限
 ls -la /data/agent-platform.db
@@ -278,11 +280,13 @@ chmod 644 /data/agent-platform.db
 ### 问题 2：服务启动失败
 
 **症状**:
+
 ```
 Error: Cannot find module 'xxx'
 ```
 
 **解决**:
+
 ```bash
 # 清理 node_modules 重新安装
 rm -rf node_modules
@@ -296,11 +300,13 @@ npm --prefix web install
 ### 问题 3：迁移版本不匹配
 
 **症状**:
+
 ```
 Migration version mismatch: expected 50, got 45
 ```
 
 **解决**:
+
 ```bash
 # 确认使用正确的备份
 # v0.6.0 数据库迁移版本应为 45
@@ -315,11 +321,13 @@ ls -la /var/backups/agent-platform/
 ### 问题 4：Docker 构建失败
 
 **症状**:
+
 ```
 ERROR: failed to solve: process "/bin/sh -c npm ci" did not complete successfully
 ```
 
 **解决**:
+
 ```bash
 # 清理 Docker 缓存
 docker system prune -f
@@ -333,11 +341,13 @@ docker compose build --no-cache
 ### 问题 5：健康检查超时
 
 **症状**:
+
 ```
 curl: (28) Operation timed out
 ```
 
 **解决**:
+
 ```bash
 # 检查服务日志
 docker compose logs api
@@ -385,14 +395,14 @@ curl -f http://localhost:3003/api/v1/health && echo "Rollback successful!" || ec
 
 ## 回滚决策矩阵
 
-| 问题类型 | 严重程度 | 是否回滚 | 备注 |
-|----------|----------|----------|------|
-| 安全漏洞 | 高 | 是 | 立即回滚 |
-| 数据丢失 | 高 | 是 | 先恢复数据再评估 |
-| 服务不可用 | 高 | 是 | 检查是否可快速修复 |
-| 性能退化 | 中 | 评估 | 先尝试调优 |
-| 功能缺陷 | 低 | 否 | 优先热修复 |
-| UI 问题 | 低 | 否 | 优先热修复 |
+| 问题类型   | 严重程度 | 是否回滚 | 备注               |
+| ---------- | -------- | -------- | ------------------ |
+| 安全漏洞   | 高       | 是       | 立即回滚           |
+| 数据丢失   | 高       | 是       | 先恢复数据再评估   |
+| 服务不可用 | 高       | 是       | 检查是否可快速修复 |
+| 性能退化   | 中       | 评估     | 先尝试调优         |
+| 功能缺陷   | 低       | 否       | 优先热修复         |
+| UI 问题    | 低       | 否       | 优先热修复         |
 
 ---
 

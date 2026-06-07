@@ -1,39 +1,36 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type {
-  LLMResult,
-  LLMRequest,
-} from '../../../src/llm/types.js';
-import type { ContextBundle } from '../../../src/context/types.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import type { LLMResult, LLMRequest } from '../../../src/llm/types.js'
+import type { ContextBundle } from '../../../src/context/types.js'
 import type {
   KernelRunInput,
   KernelConfig,
   ToolExecutor,
   ContextManager,
   RuntimeDispatcher,
-} from '../../../src/kernel/types.js';
-import type { ToolPlaneProjection } from '../../../src/kernel/model-input/model-input-types.js';
-import { AgentKernel } from '../../../src/kernel/agent-kernel.js';
-import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js';
-import type { LLMProvider } from '../../../src/llm/provider.js';
-import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
-import { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js';
-import { TemplateLoader } from '../../../src/prompt/template-loader.js';
-import { extractToolsForRequest } from '../../../src/kernel/model-input/model-input-builder.js';
-import type { ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js';
+} from '../../../src/kernel/types.js'
+import type { ToolPlaneProjection } from '../../../src/kernel/model-input/model-input-types.js'
+import { AgentKernel } from '../../../src/kernel/agent-kernel.js'
+import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js'
+import type { LLMProvider } from '../../../src/llm/provider.js'
+import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
+import { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js'
+import { TemplateLoader } from '../../../src/prompt/template-loader.js'
+import { extractToolsForRequest } from '../../../src/kernel/model-input/model-input-builder.js'
+import type { ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js'
 
 // ─── Minimal fakes ──────────────────────────────────────────────────────────
 
 class FakeLLMAdapter implements LLMAdapter {
-  private lastRequest: LLMRequest | undefined;
+  private lastRequest: LLMRequest | undefined
   config: LLMAdapterConfig = {
     providers: [],
     defaultTimeoutMs: 60000,
     enableCircuitBreaker: false,
-  };
-  providers: LLMProvider[] = [];
+  }
+  providers: LLMProvider[] = []
 
   async complete(request: LLMRequest): Promise<LLMResult> {
-    this.lastRequest = request;
+    this.lastRequest = request
     return {
       success: true,
       response: {
@@ -45,23 +42,33 @@ class FakeLLMAdapter implements LLMAdapter {
         createdAt: new Date().toISOString(),
       },
       providerId: 'fake',
-    };
+    }
   }
 
   async *stream(): AsyncGenerator<{ delta: string; providerId: string }> {}
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider); }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId); }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId); }
-  getHealthyProviders(): LLMProvider[] { return this.providers; }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(_providerId: string, _priority: number): void {}
 
-  getLastRequest(): LLMRequest | undefined { return this.lastRequest; }
+  getLastRequest(): LLMRequest | undefined {
+    return this.lastRequest
+  }
 }
 
 class FakeToolExecutor implements ToolExecutor {
   async execute() {
-    return { success: true, data: { result: 'ok' } };
+    return { success: true, data: { result: 'ok' } }
   }
 }
 
@@ -77,9 +84,11 @@ class FakeContextManager implements ContextManager {
       pinnedItems: [],
       orderedItems: [],
       tokenEstimate: 100,
-    };
+    }
   }
-  getItems() { return []; }
+  getItems() {
+    return []
+  }
   addItem() {}
   applyDelta() {}
 }
@@ -93,15 +102,15 @@ class FakeDispatcher implements RuntimeDispatcher {
       targetRuntime: 'tool_plane',
       result: { ok: true },
       createdAt: new Date().toISOString(),
-    };
+    }
   }
 }
 
 class CountingDispatcher implements RuntimeDispatcher {
-  calls = 0;
+  calls = 0
 
   async dispatch() {
-    this.calls += 1;
+    this.calls += 1
     return {
       requestId: 'req-counting',
       actionId: 'act-counting',
@@ -109,21 +118,21 @@ class CountingDispatcher implements RuntimeDispatcher {
       targetRuntime: 'tool_plane',
       result: { dispatched: true },
       createdAt: new Date().toISOString(),
-    };
+    }
   }
 }
 
 class ToolCallLLMAdapter implements LLMAdapter {
-  private lastRequest: LLMRequest | undefined;
+  private lastRequest: LLMRequest | undefined
   config: LLMAdapterConfig = {
     providers: [],
     defaultTimeoutMs: 60000,
     enableCircuitBreaker: false,
-  };
-  providers: LLMProvider[] = [];
+  }
+  providers: LLMProvider[] = []
 
   async complete(request: LLMRequest): Promise<LLMResult> {
-    this.lastRequest = request;
+    this.lastRequest = request
     return {
       success: true,
       response: {
@@ -133,28 +142,40 @@ class ToolCallLLMAdapter implements LLMAdapter {
         role: 'assistant',
         finishReason: 'tool_calls',
         createdAt: new Date().toISOString(),
-        toolCalls: [{
-          id: 'tc-internal-1',
-          type: 'function',
-          function: {
-            name: 'foreground_decide',
-            arguments: JSON.stringify({ route: 'answer_directly', reason: 'Use internal handler' }),
+        toolCalls: [
+          {
+            id: 'tc-internal-1',
+            type: 'function',
+            function: {
+              name: 'foreground_decide',
+              arguments: JSON.stringify({ route: 'answer_directly', reason: 'Use internal handler' }),
+            },
           },
-        }],
+        ],
       },
       providerId: 'fake',
-    };
+    }
   }
 
   async *stream(): AsyncGenerator<{ delta: string; providerId: string }> {}
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider); }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId); }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId); }
-  getHealthyProviders(): LLMProvider[] { return this.providers; }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(_providerId: string, _priority: number): void {}
 
-  getLastRequest(): LLMRequest | undefined { return this.lastRequest; }
+  getLastRequest(): LLMRequest | undefined {
+    return this.lastRequest
+  }
 }
 
 class HangingLLMAdapter implements LLMAdapter {
@@ -162,50 +183,64 @@ class HangingLLMAdapter implements LLMAdapter {
     providers: [],
     defaultTimeoutMs: 60000,
     enableCircuitBreaker: false,
-  };
-  providers: LLMProvider[] = [];
+  }
+  providers: LLMProvider[] = []
 
   async complete(): Promise<LLMResult> {
-    return new Promise(() => {});
+    return new Promise(() => {})
   }
 
   async *stream(): AsyncGenerator<{ delta: string; providerId: string }> {}
-  addProvider(provider: LLMProvider): void { this.providers.push(provider); }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId); }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId); }
-  getHealthyProviders(): LLMProvider[] { return this.providers; }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(_providerId: string, _priority: number): void {}
 }
 
 function createModelInputBuilder(): ModelInputBuilder {
   const registry = new PromptTemplateRegistry(
     new Map([
-      ['platform:base', {
-        id: 'platform:base',
-        version: '2026-05-23',
-        path: 'platform/base.md',
-        agentKind: '*',
-        providerFamily: '*',
-        layer: 1,
-        description: 'Test base',
-        content: 'You are a helpful assistant.',
-      }],
-      ['agents:kernel', {
-        id: 'agents:kernel',
-        version: '2026-05-23',
-        path: 'agents/kernel.md',
-        agentKind: 'kernel',
-        providerFamily: '*',
-        layer: 3,
-        description: 'Test kernel',
-        content: 'Kernel agent instructions.',
-      }],
+      [
+        'platform:base',
+        {
+          id: 'platform:base',
+          version: '2026-05-23',
+          path: 'platform/base.md',
+          agentKind: '*',
+          providerFamily: '*',
+          layer: 1,
+          description: 'Test base',
+          content: 'You are a helpful assistant.',
+        },
+      ],
+      [
+        'agents:kernel',
+        {
+          id: 'agents:kernel',
+          version: '2026-05-23',
+          path: 'agents/kernel.md',
+          agentKind: 'kernel',
+          providerFamily: '*',
+          layer: 3,
+          description: 'Test kernel',
+          content: 'Kernel agent instructions.',
+        },
+      ],
     ]),
-  );
+  )
   return new ModelInputBuilder({
     templateRegistry: registry,
     templateLoader: new TemplateLoader(),
-  });
+  })
 }
 
 function makeBaseConfig(overrides?: Partial<KernelConfig>): KernelConfig {
@@ -218,7 +253,7 @@ function makeBaseConfig(overrides?: Partial<KernelConfig>): KernelConfig {
     maxIterations: 10,
     timeoutMs: 30000,
     ...overrides,
-  };
+  }
 }
 
 function makeRunInput(): KernelRunInput {
@@ -240,7 +275,7 @@ function makeRunInput(): KernelRunInput {
     userId: 'test-user',
     maxIterations: 1,
     timeoutMs: 5000,
-  };
+  }
 }
 
 const sampleToolProjection: ToolPlaneProjection = {
@@ -263,69 +298,69 @@ const sampleToolProjection: ToolPlaneProjection = {
       },
     },
   ],
-};
+}
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('AgentKernel toolProjection in function_calling mode', () => {
-  let fakeLLM: FakeLLMAdapter;
+  let fakeLLM: FakeLLMAdapter
 
   beforeEach(() => {
-    fakeLLM = new FakeLLMAdapter();
-  });
+    fakeLLM = new FakeLLMAdapter()
+  })
 
   it('passes toolProjection from config to ModelInputBuildInput', async () => {
     const config = makeBaseConfig({
       llmAdapter: fakeLLM,
       toolProjection: sampleToolProjection,
-    });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const request = fakeLLM.getLastRequest();
-    expect(request).toBeDefined();
-    expect(request!.tools).toBeDefined();
-    expect(request!.tools!.length).toBe(2);
-    expect(request!.tools![0].function.name).toBe('status_query');
-    expect(request!.tools![1].function.name).toBe('web_search');
-  });
+    const request = fakeLLM.getLastRequest()
+    expect(request).toBeDefined()
+    expect(request!.tools).toBeDefined()
+    expect(request!.tools!.length).toBe(2)
+    expect(request!.tools![0].function.name).toBe('status_query')
+    expect(request!.tools![1].function.name).toBe('web_search')
+  })
 
   it('uses empty fallback when toolProjection is not provided', async () => {
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const request = fakeLLM.getLastRequest();
-    expect(request).toBeDefined();
+    const request = fakeLLM.getLastRequest()
+    expect(request).toBeDefined()
     // With empty fallback { toolIds: [], tools: [] }, extractToolsForRequest
     // sees tools as [] (empty array, not undefined), so it returns [] not undefined
-    expect(request!.tools).toEqual([]);
-  });
+    expect(request!.tools).toEqual([])
+  })
 
   it('function_calling mode with tools produces LLMRequest.tools as non-empty array', async () => {
     const config = makeBaseConfig({
       llmAdapter: fakeLLM,
       toolProjection: sampleToolProjection,
-    });
-    const kernel = new AgentKernel(config);
-    await kernel.run(makeRunInput());
+    })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
 
-    const request = fakeLLM.getLastRequest();
-    expect(request!.tools).toBeDefined();
-    expect(request!.tools!.length).toBeGreaterThan(0);
+    const request = fakeLLM.getLastRequest()
+    expect(request!.tools).toBeDefined()
+    expect(request!.tools!.length).toBeGreaterThan(0)
     for (const tool of request!.tools!) {
-      expect(tool.type).toBe('function');
-      expect(tool.function.name).toBeTypeOf('string');
-      expect(tool.function.description).toBeTypeOf('string');
+      expect(tool.type).toBe('function')
+      expect(tool.function.name).toBeTypeOf('string')
+      expect(tool.function.description).toBeTypeOf('string')
     }
-  });
+  })
 
   it('function_calling mode with toolIds-only projection produces LLMRequest.tools as undefined via extractToolsForRequest', () => {
     // When toolProjection has toolIds but no tools field,
     // extractToolsForRequest returns undefined (no full schemas available)
     const projectionWithoutSchemas: ToolPlaneProjection = {
       toolIds: ['status_query', 'web_search'],
-    };
+    }
 
     const buildInput: ModelInputBuildInput = {
       mode: 'function_calling',
@@ -335,11 +370,11 @@ describe('AgentKernel toolProjection in function_calling mode', () => {
       currentDate: new Date().toISOString(),
       sessionId: 'test',
       runId: 'test',
-    };
+    }
 
-    const tools = extractToolsForRequest(buildInput);
-    expect(tools).toBeUndefined();
-  });
+    const tools = extractToolsForRequest(buildInput)
+    expect(tools).toBeUndefined()
+  })
 
   it('function_calling mode with empty toolIds and empty tools array produces LLMRequest.tools as empty array', () => {
     const buildInput: ModelInputBuildInput = {
@@ -350,13 +385,13 @@ describe('AgentKernel toolProjection in function_calling mode', () => {
       currentDate: new Date().toISOString(),
       sessionId: 'test',
       runId: 'test',
-    };
+    }
 
-    const tools = extractToolsForRequest(buildInput);
+    const tools = extractToolsForRequest(buildInput)
     // tools is [] (empty array, truthy-ish but length 0)
     // extractToolsForRequest: if input.toolProjection?.tools is truthy (even []), returns it
-    expect(tools).toEqual([]);
-  });
+    expect(tools).toEqual([])
+  })
 
   it('function_calling mode without toolProjection at all produces LLMRequest.tools as undefined via extractToolsForRequest', () => {
     const buildInput: ModelInputBuildInput = {
@@ -366,19 +401,19 @@ describe('AgentKernel toolProjection in function_calling mode', () => {
       currentDate: new Date().toISOString(),
       sessionId: 'test',
       runId: 'test',
-    };
+    }
 
-    const tools = extractToolsForRequest(buildInput);
-    expect(tools).toBeUndefined();
-  });
-});
+    const tools = extractToolsForRequest(buildInput)
+    expect(tools).toBeUndefined()
+  })
+})
 
 describe('AgentKernel toolProjection per-run override', () => {
-  let fakeLLM: FakeLLMAdapter;
+  let fakeLLM: FakeLLMAdapter
 
   beforeEach(() => {
-    fakeLLM = new FakeLLMAdapter();
-  });
+    fakeLLM = new FakeLLMAdapter()
+  })
 
   it('KernelRunInput.toolProjection overrides KernelConfig.toolProjection', async () => {
     const configProjection: ToolPlaneProjection = {
@@ -393,7 +428,7 @@ describe('AgentKernel toolProjection per-run override', () => {
           },
         },
       ],
-    };
+    }
     const runProjection: ToolPlaneProjection = {
       toolIds: ['web_search'],
       tools: [
@@ -406,25 +441,25 @@ describe('AgentKernel toolProjection per-run override', () => {
           },
         },
       ],
-    };
+    }
 
     const config = makeBaseConfig({
       llmAdapter: fakeLLM,
       toolProjection: configProjection,
-    });
-    const kernel = new AgentKernel(config);
+    })
+    const kernel = new AgentKernel(config)
 
     const input: KernelRunInput = {
       ...makeRunInput(),
       toolProjection: runProjection,
-    };
-    await kernel.run(input);
+    }
+    await kernel.run(input)
 
-    const request = fakeLLM.getLastRequest();
-    expect(request).toBeDefined();
-    expect(request!.tools!.length).toBe(1);
-    expect(request!.tools![0].function.name).toBe('web_search');
-  });
+    const request = fakeLLM.getLastRequest()
+    expect(request).toBeDefined()
+    expect(request!.tools!.length).toBe(1)
+    expect(request!.tools![0].function.name).toBe('web_search')
+  })
 
   it('KernelRunInput.toolProjection is used when KernelConfig has none', async () => {
     const runProjection: ToolPlaneProjection = {
@@ -447,23 +482,23 @@ describe('AgentKernel toolProjection per-run override', () => {
           },
         },
       ],
-    };
+    }
 
-    const config = makeBaseConfig({ llmAdapter: fakeLLM });
-    const kernel = new AgentKernel(config);
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
 
     const input: KernelRunInput = {
       ...makeRunInput(),
       toolProjection: runProjection,
-    };
-    await kernel.run(input);
+    }
+    await kernel.run(input)
 
-    const request = fakeLLM.getLastRequest();
-    expect(request).toBeDefined();
-    expect(request!.tools!.length).toBe(2);
-    expect(request!.tools![0].function.name).toBe('status_query');
-    expect(request!.tools![1].function.name).toBe('web_search');
-  });
+    const request = fakeLLM.getLastRequest()
+    expect(request).toBeDefined()
+    expect(request!.tools!.length).toBe(2)
+    expect(request!.tools![0].function.name).toBe('status_query')
+    expect(request!.tools![1].function.name).toBe('web_search')
+  })
 
   it('falls back to KernelConfig.toolProjection when run input has none', async () => {
     const configProjection: ToolPlaneProjection = {
@@ -478,47 +513,51 @@ describe('AgentKernel toolProjection per-run override', () => {
           },
         },
       ],
-    };
+    }
 
     const config = makeBaseConfig({
       llmAdapter: fakeLLM,
       toolProjection: configProjection,
-    });
-    const kernel = new AgentKernel(config);
+    })
+    const kernel = new AgentKernel(config)
 
-    await kernel.run(makeRunInput());
+    await kernel.run(makeRunInput())
 
-    const request = fakeLLM.getLastRequest();
-    expect(request).toBeDefined();
-    expect(request!.tools!.length).toBe(1);
-    expect(request!.tools![0].function.name).toBe('status_query');
-  });
-});
+    const request = fakeLLM.getLastRequest()
+    expect(request).toBeDefined()
+    expect(request!.tools!.length).toBe(1)
+    expect(request!.tools![0].function.name).toBe('status_query')
+  })
+})
 
 describe('AgentKernel internal tool handling', () => {
   it('bypasses dispatcher and returns structuredResult when internal handler stops', async () => {
-    const fakeLLM = new ToolCallLLMAdapter();
-    const dispatcher = new CountingDispatcher();
-    const kernel = new AgentKernel(makeBaseConfig({
-      llmAdapter: fakeLLM,
-      dispatcher,
-    }));
+    const fakeLLM = new ToolCallLLMAdapter()
+    const dispatcher = new CountingDispatcher()
+    const kernel = new AgentKernel(
+      makeBaseConfig({
+        llmAdapter: fakeLLM,
+        dispatcher,
+      }),
+    )
 
     const result = await kernel.run({
       ...makeRunInput(),
       toolProjection: {
         toolIds: [],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'foreground_decide',
-            description: 'Internal foreground routing decision',
-            parameters: { type: 'object', properties: {} },
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'foreground_decide',
+              description: 'Internal foreground routing decision',
+              parameters: { type: 'object', properties: {} },
+            },
           },
-        }],
+        ],
       },
       internalToolHandlers: {
-        'foreground_decide': async (request) => ({
+        foreground_decide: async (request) => ({
           toolResult: {
             toolCallId: request.toolCallId,
             result: { decision: { route: 'answer_directly', reason: 'Handled internally' } },
@@ -527,18 +566,18 @@ describe('AgentKernel internal tool handling', () => {
           structuredResult: { decision: { route: 'answer_directly', reason: 'Handled internally' } },
         }),
       },
-    });
+    })
 
-    expect(dispatcher.calls).toBe(0);
-    expect(result.finalStatus).toBe('completed');
-    expect(result.structuredResult).toEqual({ decision: { route: 'answer_directly', reason: 'Handled internally' } });
-    expect(result.transcript.some(entry => entry.type === 'tool_call')).toBe(true);
-    expect(result.transcript.some(entry => entry.type === 'tool_result')).toBe(true);
-  });
+    expect(dispatcher.calls).toBe(0)
+    expect(result.finalStatus).toBe('completed')
+    expect(result.structuredResult).toEqual({ decision: { route: 'answer_directly', reason: 'Handled internally' } })
+    expect(result.transcript.some((entry) => entry.type === 'tool_call')).toBe(true)
+    expect(result.transcript.some((entry) => entry.type === 'tool_result')).toBe(true)
+  })
 
   it('uses modelInputOverride and per-run LLM request overrides', async () => {
-    const fakeLLM = new ToolCallLLMAdapter();
-    const kernel = new AgentKernel(makeBaseConfig({ llmAdapter: fakeLLM }));
+    const fakeLLM = new ToolCallLLMAdapter()
+    const kernel = new AgentKernel(makeBaseConfig({ llmAdapter: fakeLLM }))
 
     await kernel.run({
       ...makeRunInput(),
@@ -556,71 +595,78 @@ describe('AgentKernel internal tool handling', () => {
       toolChoice: { type: 'function', function: { name: 'foreground_decide' } },
       model: 'foreground-routing-model',
       internalToolHandlers: {
-        'foreground_decide': async (request) => ({
-          toolResult: { toolCallId: request.toolCallId, result: { decision: { route: 'answer_directly', reason: 'ok' } } },
+        foreground_decide: async (request) => ({
+          toolResult: {
+            toolCallId: request.toolCallId,
+            result: { decision: { route: 'answer_directly', reason: 'ok' } },
+          },
           stop: true,
           structuredResult: { decision: { route: 'answer_directly', reason: 'ok' } },
         }),
       },
-    });
+    })
 
-    const request = fakeLLM.getLastRequest();
-    expect(request).toBeDefined();
-    expect(request!.model).toBe('foreground-routing-model');
-    expect(request!.temperature).toBe(0.1);
-    expect(request!.maxTokens).toBe(500);
-      expect(request!.toolChoice).toEqual({ type: 'function', function: { name: 'foreground_decide' } });
-    expect(request!.tools?.map(tool => tool.function.name)).toEqual(['status_query', 'web_search']);
-    expect(request!.messages.some(message => message.content.includes('Please route this message'))).toBe(true);
-  });
+    const request = fakeLLM.getLastRequest()
+    expect(request).toBeDefined()
+    expect(request!.model).toBe('foreground-routing-model')
+    expect(request!.temperature).toBe(0.1)
+    expect(request!.maxTokens).toBe(500)
+    expect(request!.toolChoice).toEqual({ type: 'function', function: { name: 'foreground_decide' } })
+    expect(request!.tools?.map((tool) => tool.function.name)).toEqual(['status_query', 'web_search'])
+    expect(request!.messages.some((message) => message.content.includes('Please route this message'))).toBe(true)
+  })
 
   it('does not dispatch tool calls that were not projected as callable schemas', async () => {
-    const fakeLLM = new ToolCallLLMAdapter();
-    const dispatcher = new CountingDispatcher();
-    const kernel = new AgentKernel(makeBaseConfig({
-      llmAdapter: fakeLLM,
-      dispatcher,
-    }));
+    const fakeLLM = new ToolCallLLMAdapter()
+    const dispatcher = new CountingDispatcher()
+    const kernel = new AgentKernel(
+      makeBaseConfig({
+        llmAdapter: fakeLLM,
+        dispatcher,
+      }),
+    )
 
     const result = await kernel.run({
       ...makeRunInput(),
       toolProjection: {
         toolIds: ['foreground_decide'],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'other.tool',
-            description: 'Different projected tool',
-            parameters: { type: 'object', properties: {} },
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'other.tool',
+              description: 'Different projected tool',
+              parameters: { type: 'object', properties: {} },
+            },
           },
-        }],
+        ],
       },
-    });
+    })
 
-    expect(dispatcher.calls).toBe(0);
-    expect(result.finalStatus).toBe('max_iterations_reached');
-    const toolResult = result.transcript.find(entry => entry.type === 'tool_result');
+    expect(dispatcher.calls).toBe(0)
+    expect(result.finalStatus).toBe('max_iterations_reached')
+    const toolResult = result.transcript.find((entry) => entry.type === 'tool_result')
     expect(toolResult?.content).toMatchObject({
       error: {
         code: 'UNPROJECTED_TOOL_CALL',
       },
-    });
-  });
+    })
+  })
 
   it('returns timeout when the LLM call exceeds timeoutMs', async () => {
-    vi.useFakeTimers();
-    const kernel = new AgentKernel(makeBaseConfig({ llmAdapter: new HangingLLMAdapter() }));
+    vi.useFakeTimers()
+    const kernel = new AgentKernel(makeBaseConfig({ llmAdapter: new HangingLLMAdapter() }))
     const runPromise = kernel.run({
       ...makeRunInput(),
       timeoutMs: 10,
-    });
+    })
 
-    await vi.advanceTimersByTimeAsync(11);
-    const result = await runPromise;
-    vi.useRealTimers();
+    await vi.advanceTimersByTimeAsync(11)
+    const result = await runPromise
+    vi.useRealTimers()
 
-    expect(result.finalStatus).toBe('failed');
-    expect(result.error?.code).toBe('KERNEL_ERROR');
-    expect(result.error?.message).toContain('LLM request timeout');
-  });
-});
+    expect(result.finalStatus).toBe('failed')
+    expect(result.error?.code).toBe('KERNEL_ERROR')
+    expect(result.error?.message).toContain('LLM request timeout')
+  })
+})

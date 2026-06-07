@@ -1,170 +1,160 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import * as connectorsApi from '../../api/connectors';
-import type { ConnectorDefinition, ConnectorInstance } from '../../api/connectors';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import React, { useCallback, useEffect, useState } from 'react'
+import * as connectorsApi from '../../api/connectors'
+import type { ConnectorDefinition, ConnectorInstance } from '../../api/connectors'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import EmptyState from '../../components/EmptyState'
 
 const ConnectorsTab: React.FC = () => {
-  const [connectors, setConnectors] = useState<ConnectorDefinition[]>([]);
-  const [selectedConnector, setSelectedConnector] = useState<ConnectorDefinition | null>(null);
-  const [instances, setInstances] = useState<ConnectorInstance[]>([]);
-  const [selectedInstance, setSelectedInstance] = useState<ConnectorInstance | null>(null);
-  const [configText, setConfigText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [instancesLoading, setInstancesLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
-  const [configSaving, setConfigSaving] = useState(false);
+  const [connectors, setConnectors] = useState<ConnectorDefinition[]>([])
+  const [selectedConnector, setSelectedConnector] = useState<ConnectorDefinition | null>(null)
+  const [instances, setInstances] = useState<ConnectorInstance[]>([])
+  const [selectedInstance, setSelectedInstance] = useState<ConnectorInstance | null>(null)
+  const [configText, setConfigText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [instancesLoading, setInstancesLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [configError, setConfigError] = useState<string | null>(null)
+  const [configSaving, setConfigSaving] = useState(false)
 
   const loadConnectors = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const data = await connectorsApi.getConnectors();
-      setConnectors(data);
+      const data = await connectorsApi.getConnectors()
+      setConnectors(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载连接器失败');
+      setError(err instanceof Error ? err.message : '加载连接器失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadConnectors();
-  }, [loadConnectors]);
+    loadConnectors()
+  }, [loadConnectors])
 
   const loadInstances = useCallback(async (connectorId: string) => {
-    setInstancesLoading(true);
+    setInstancesLoading(true)
     try {
-      const data = await connectorsApi.getInstances(connectorId);
-      setInstances(data);
+      const data = await connectorsApi.getInstances(connectorId)
+      setInstances(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载实例失败');
+      setError(err instanceof Error ? err.message : '加载实例失败')
     } finally {
-      setInstancesLoading(false);
+      setInstancesLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     if (selectedConnector) {
-      loadInstances(selectedConnector.id);
+      loadInstances(selectedConnector.id)
     } else {
-      setInstances([]);
-      setSelectedInstance(null);
+      setInstances([])
+      setSelectedInstance(null)
     }
-  }, [selectedConnector, loadInstances]);
+  }, [selectedConnector, loadInstances])
 
   const handleSelectConnector = (connector: ConnectorDefinition) => {
-    setSelectedConnector(connector);
-    setSelectedInstance(null);
-    setConfigText('');
-    setConfigError(null);
-  };
+    setSelectedConnector(connector)
+    setSelectedInstance(null)
+    setConfigText('')
+    setConfigError(null)
+  }
 
   const handleBackToList = () => {
-    setSelectedConnector(null);
-    setSelectedInstance(null);
-    setInstances([]);
-    setConfigText('');
-    setConfigError(null);
-  };
+    setSelectedConnector(null)
+    setSelectedInstance(null)
+    setInstances([])
+    setConfigText('')
+    setConfigError(null)
+  }
 
   const handleSelectInstance = (instance: ConnectorInstance) => {
-    setSelectedInstance(instance);
-    setConfigText(JSON.stringify(instance.config ?? {}, null, 2));
-    setConfigError(null);
-  };
+    setSelectedInstance(instance)
+    setConfigText(JSON.stringify(instance.config ?? {}, null, 2))
+    setConfigError(null)
+  }
 
   const handleConfigChange = (value: string) => {
-    setConfigText(value);
+    setConfigText(value)
     try {
-      JSON.parse(value);
-      setConfigError(null);
+      JSON.parse(value)
+      setConfigError(null)
     } catch {
-      setConfigError('无效的 JSON 格式');
+      setConfigError('无效的 JSON 格式')
     }
-  };
+  }
 
   const handleUpdateConfig = async () => {
-    if (!selectedConnector || !selectedInstance) return;
-    if (configError) return;
+    if (!selectedConnector || !selectedInstance) return
+    if (configError) return
 
-    setConfigSaving(true);
+    setConfigSaving(true)
     try {
-      const newConfig = JSON.parse(configText);
-      const updated = await connectorsApi.updateInstanceConfig(
-        selectedConnector.id,
-        selectedInstance.id,
-        newConfig
-      );
-      setSelectedInstance(updated);
-      setInstances(prev =>
-        prev.map(inst => (inst.id === updated.id ? updated : inst))
-      );
+      const newConfig = JSON.parse(configText)
+      const updated = await connectorsApi.updateInstanceConfig(selectedConnector.id, selectedInstance.id, newConfig)
+      setSelectedInstance(updated)
+      setInstances((prev) => prev.map((inst) => (inst.id === updated.id ? updated : inst)))
     } catch (err) {
-      setConfigError(err instanceof Error ? err.message : '更新配置失败');
+      setConfigError(err instanceof Error ? err.message : '更新配置失败')
     } finally {
-      setConfigSaving(false);
+      setConfigSaving(false)
     }
-  };
+  }
 
   const getStatusClass = (status: string) => {
     switch (status) {
       case 'active':
-        return 'healthy';
+        return 'healthy'
       case 'draft':
-        return 'degraded';
+        return 'degraded'
       case 'deprecated':
       case 'inactive':
-        return 'error';
+        return 'error'
       default:
-        return '';
+        return ''
     }
-  };
+  }
 
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'active':
-        return '活跃';
+        return '活跃'
       case 'draft':
-        return '草稿';
+        return '草稿'
       case 'deprecated':
-        return '已弃用';
+        return '已弃用'
       case 'inactive':
-        return '未激活';
+        return '未激活'
       default:
-        return status;
+        return status
     }
-  };
+  }
 
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'api':
-        return 'API';
+        return 'API'
       case 'messaging':
-        return '消息';
+        return '消息'
       case 'storage':
-        return '存储';
+        return '存储'
       case 'database':
-        return '数据库';
+        return '数据库'
       case 'custom':
-        return '自定义';
+        return '自定义'
       default:
-        return type;
+        return type
     }
-  };
+  }
 
   if (selectedConnector) {
     return (
       <div data-testid="connectors-panel" className="connectors-panel">
         <section className="connectors-sidebar">
           <div className="connectors-sidebar-header">
-            <button
-              className="secondary-button"
-              onClick={handleBackToList}
-              data-testid="connector-back"
-            >
+            <button className="secondary-button" onClick={handleBackToList} data-testid="connector-back">
               ← 返回列表
             </button>
           </div>
@@ -177,7 +167,10 @@ const ConnectorsTab: React.FC = () => {
               <span className="version-badge" data-testid="connector-detail-version">
                 v{selectedConnector.version}
               </span>
-              <span className={`status-chip ${getStatusClass(selectedConnector.status)}`} data-testid="connector-detail-status">
+              <span
+                className={`status-chip ${getStatusClass(selectedConnector.status)}`}
+                data-testid="connector-detail-status"
+              >
                 {getStatusLabel(selectedConnector.status)}
               </span>
             </div>
@@ -189,8 +182,10 @@ const ConnectorsTab: React.FC = () => {
             <div className="connector-capabilities" data-testid="connector-detail-capabilities">
               <h4>能力</h4>
               <div className="capability-tags">
-                {selectedConnector.capabilities.map(cap => (
-                  <span key={cap} className="capability-tag">{cap}</span>
+                {selectedConnector.capabilities.map((cap) => (
+                  <span key={cap} className="capability-tag">
+                    {cap}
+                  </span>
                 ))}
               </div>
             </div>
@@ -211,14 +206,10 @@ const ConnectorsTab: React.FC = () => {
               size="medium"
             />
           ) : instances.length === 0 ? (
-            <EmptyState
-              icon="📦"
-              title="暂无实例"
-              description="此连接器还没有配置实例"
-            />
+            <EmptyState icon="📦" title="暂无实例" description="此连接器还没有配置实例" />
           ) : (
             <div className="connectors-instances-list">
-              {instances.map(instance => (
+              {instances.map((instance) => (
                 <button
                   key={instance.id}
                   className={`connectors-instance-card ${selectedInstance?.id === instance.id ? 'active' : ''}`}
@@ -246,13 +237,15 @@ const ConnectorsTab: React.FC = () => {
                     id="instance-config"
                     className="input-field config-textarea"
                     value={configText}
-                    onChange={e => handleConfigChange(e.target.value)}
+                    onChange={(e) => handleConfigChange(e.target.value)}
                     rows={10}
                     data-testid="config-textarea"
                   />
                 </div>
                 {configError && (
-                  <div className="config-error" data-testid="config-error">{configError}</div>
+                  <div className="config-error" data-testid="config-error">
+                    {configError}
+                  </div>
                 )}
                 <button
                   className="primary-button"
@@ -267,7 +260,7 @@ const ConnectorsTab: React.FC = () => {
           )}
         </section>
       </div>
-    );
+    )
   }
 
   return (
@@ -286,14 +279,10 @@ const ConnectorsTab: React.FC = () => {
             size="large"
           />
         ) : connectors.length === 0 ? (
-          <EmptyState
-            icon="🔌"
-            title="暂无连接器"
-            description="系统中还没有配置连接器"
-          />
+          <EmptyState icon="🔌" title="暂无连接器" description="系统中还没有配置连接器" />
         ) : (
           <div className="connectors-list">
-            {connectors.map(connector => (
+            {connectors.map((connector) => (
               <button
                 key={connector.id}
                 className="connectors-card"
@@ -316,7 +305,7 @@ const ConnectorsTab: React.FC = () => {
         )}
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default ConnectorsTab;
+export default ConnectorsTab

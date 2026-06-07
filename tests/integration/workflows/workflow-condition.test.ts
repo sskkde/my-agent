@@ -1,18 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js';
-import { createWorkflowDefinitionStore, type WorkflowDefinitionStore } from '../../../src/storage/workflow-definition-store.js';
-import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { WORKFLOW_RUN_STATES } from '../../../src/shared/states.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js'
 import {
-  createWorkflowRuntime,
-  type WorkflowRuntime,
-} from '../../../src/workflows/workflow-runtime.js';
-import type { WorkflowStep } from '../../../src/workflows/types.js';
-import { evaluateConditionExpression } from '../../../src/workflows/expression-evaluator.js';
+  createWorkflowDefinitionStore,
+  type WorkflowDefinitionStore,
+} from '../../../src/storage/workflow-definition-store.js'
+import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js'
+import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { WORKFLOW_RUN_STATES } from '../../../src/shared/states.js'
+import { createWorkflowRuntime, type WorkflowRuntime } from '../../../src/workflows/workflow-runtime.js'
+import type { WorkflowStep } from '../../../src/workflows/types.js'
+import { evaluateConditionExpression } from '../../../src/workflows/expression-evaluator.js'
 
 const workflowRuntimeMigrations: Migration[] = [
   {
@@ -39,7 +39,7 @@ const workflowRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_workflow_drafts_status;
       DROP INDEX IF EXISTS idx_workflow_drafts_owner;
       DROP TABLE IF EXISTS workflow_drafts;
-    `
+    `,
   },
   {
     version: 2,
@@ -71,7 +71,7 @@ const workflowRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_workflow_defs_status;
       DROP INDEX IF EXISTS idx_workflow_defs_owner;
       DROP TABLE IF EXISTS workflow_definitions;
-    `
+    `,
   },
   {
     version: 3,
@@ -103,7 +103,7 @@ const workflowRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_workflow_runs_owner_status;
       DROP INDEX IF EXISTS idx_workflow_runs_workflow;
       DROP TABLE IF EXISTS workflow_runs;
-    `
+    `,
   },
   {
     version: 4,
@@ -143,7 +143,7 @@ const workflowRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_workflow_step_runs_step_id;
       DROP INDEX IF EXISTS idx_workflow_step_runs_workflow_status;
       DROP TABLE IF EXISTS workflow_step_runs;
-    `
+    `,
   },
   {
     version: 5,
@@ -183,7 +183,7 @@ const workflowRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_runtime_actions_workflow_run;
       DROP INDEX IF EXISTS idx_runtime_actions_status;
       DROP TABLE IF EXISTS runtime_actions;
-    `
+    `,
   },
   {
     version: 6,
@@ -229,32 +229,32 @@ const workflowRuntimeMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_events_user;
       DROP INDEX IF EXISTS idx_events_session;
       DROP TABLE IF EXISTS events;
-    `
+    `,
   },
-];
+]
 
 describe('Workflow Condition and Branch Execution', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let draftStore: WorkflowDraftStore;
-  let definitionStore: WorkflowDefinitionStore;
-  let workflowRunStore: WorkflowRunStore;
-  let runtimeActionStore: RuntimeActionStore;
-  let eventStore: EventStore;
-  let workflowRuntime: WorkflowRuntime;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let draftStore: WorkflowDraftStore
+  let definitionStore: WorkflowDefinitionStore
+  let workflowRunStore: WorkflowRunStore
+  let runtimeActionStore: RuntimeActionStore
+  let eventStore: EventStore
+  let workflowRuntime: WorkflowRuntime
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply(workflowRuntimeMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply(workflowRuntimeMigrations)
 
-    draftStore = createWorkflowDraftStore(connection);
-    definitionStore = createWorkflowDefinitionStore(connection);
-    workflowRunStore = createWorkflowRunStore(connection);
-    runtimeActionStore = createRuntimeActionStore(connection);
-    eventStore = createEventStore(connection);
+    draftStore = createWorkflowDraftStore(connection)
+    definitionStore = createWorkflowDefinitionStore(connection)
+    workflowRunStore = createWorkflowRunStore(connection)
+    runtimeActionStore = createRuntimeActionStore(connection)
+    eventStore = createEventStore(connection)
 
     workflowRuntime = createWorkflowRuntime({
       draftStore,
@@ -262,96 +262,96 @@ describe('Workflow Condition and Branch Execution', () => {
       workflowRunStore,
       runtimeActionStore,
       eventStore,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('Expression Evaluator', () => {
     it('should evaluate simple equality comparison', () => {
-      const stepOutputs = new Map<string, unknown>();
-      stepOutputs.set('step1', { priority: 'high' });
+      const stepOutputs = new Map<string, unknown>()
+      stepOutputs.set('step1', { priority: 'high' })
 
-      const result = evaluateConditionExpression('step1.priority == "high"', stepOutputs);
+      const result = evaluateConditionExpression('step1.priority == "high"', stepOutputs)
 
-      expect(result.error).toBeUndefined();
-      expect(result.conditionMet).toBe(true);
-    });
+      expect(result.error).toBeUndefined()
+      expect(result.conditionMet).toBe(true)
+    })
 
     it('should evaluate false condition correctly', () => {
-      const stepOutputs = new Map<string, unknown>();
-      stepOutputs.set('step1', { priority: 'low' });
+      const stepOutputs = new Map<string, unknown>()
+      stepOutputs.set('step1', { priority: 'low' })
 
-      const result = evaluateConditionExpression('step1.priority == "high"', stepOutputs);
+      const result = evaluateConditionExpression('step1.priority == "high"', stepOutputs)
 
-      expect(result.error).toBeUndefined();
-      expect(result.conditionMet).toBe(false);
-    });
+      expect(result.error).toBeUndefined()
+      expect(result.conditionMet).toBe(false)
+    })
 
     it('should return UNDEFINED_VARIABLE error for missing variable', () => {
-      const stepOutputs = new Map<string, unknown>();
-      stepOutputs.set('step1', { priority: 'high' });
+      const stepOutputs = new Map<string, unknown>()
+      stepOutputs.set('step1', { priority: 'high' })
 
-      const result = evaluateConditionExpression('missing.value == "test"', stepOutputs);
+      const result = evaluateConditionExpression('missing.value == "test"', stepOutputs)
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('UNDEFINED_VARIABLE');
-      expect(result.error?.variableName).toBe('missing');
-    });
+      expect(result.error).toBeDefined()
+      expect(result.error?.code).toBe('UNDEFINED_VARIABLE')
+      expect(result.error?.variableName).toBe('missing')
+    })
 
     it('should return UNDEFINED_VARIABLE error for missing property', () => {
-      const stepOutputs = new Map<string, unknown>();
-      stepOutputs.set('step1', { priority: 'high' });
+      const stepOutputs = new Map<string, unknown>()
+      stepOutputs.set('step1', { priority: 'high' })
 
-      const result = evaluateConditionExpression('step1.nonexistent == "test"', stepOutputs);
+      const result = evaluateConditionExpression('step1.nonexistent == "test"', stepOutputs)
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('UNDEFINED_VARIABLE');
-      expect(result.error?.variableName).toBe('step1.nonexistent');
-    });
+      expect(result.error).toBeDefined()
+      expect(result.error?.code).toBe('UNDEFINED_VARIABLE')
+      expect(result.error?.variableName).toBe('step1.nonexistent')
+    })
 
     it('should evaluate numeric comparison', () => {
-      const stepOutputs = new Map<string, unknown>();
-      stepOutputs.set('step1', { count: 10 });
+      const stepOutputs = new Map<string, unknown>()
+      stepOutputs.set('step1', { count: 10 })
 
-      const result = evaluateConditionExpression('step1.count > 5', stepOutputs);
+      const result = evaluateConditionExpression('step1.count > 5', stepOutputs)
 
-      expect(result.error).toBeUndefined();
-      expect(result.conditionMet).toBe(true);
-    });
+      expect(result.error).toBeUndefined()
+      expect(result.conditionMet).toBe(true)
+    })
 
     it('should evaluate logical AND expression', () => {
-      const stepOutputs = new Map<string, unknown>();
-      stepOutputs.set('step1', { priority: 'high', count: 10 });
+      const stepOutputs = new Map<string, unknown>()
+      stepOutputs.set('step1', { priority: 'high', count: 10 })
 
-      const result = evaluateConditionExpression('step1.priority == "high" && step1.count > 5', stepOutputs);
+      const result = evaluateConditionExpression('step1.priority == "high" && step1.count > 5', stepOutputs)
 
-      expect(result.error).toBeUndefined();
-      expect(result.conditionMet).toBe(true);
-    });
+      expect(result.error).toBeUndefined()
+      expect(result.conditionMet).toBe(true)
+    })
 
     it('should evaluate logical OR expression', () => {
-      const stepOutputs = new Map<string, unknown>();
-      stepOutputs.set('step1', { priority: 'low', count: 10 });
+      const stepOutputs = new Map<string, unknown>()
+      stepOutputs.set('step1', { priority: 'low', count: 10 })
 
-      const result = evaluateConditionExpression('step1.priority == "high" || step1.count > 5', stepOutputs);
+      const result = evaluateConditionExpression('step1.priority == "high" || step1.count > 5', stepOutputs)
 
-      expect(result.error).toBeUndefined();
-      expect(result.conditionMet).toBe(true);
-    });
+      expect(result.error).toBeUndefined()
+      expect(result.conditionMet).toBe(true)
+    })
 
     it('should access input data', () => {
-      const stepOutputs = new Map<string, unknown>();
-      const inputData = { userRole: 'admin' };
+      const stepOutputs = new Map<string, unknown>()
+      const inputData = { userRole: 'admin' }
 
-      const result = evaluateConditionExpression('input.userRole == "admin"', stepOutputs, inputData);
+      const result = evaluateConditionExpression('input.userRole == "admin"', stepOutputs, inputData)
 
-      expect(result.error).toBeUndefined();
-      expect(result.conditionMet).toBe(true);
-    });
-  });
+      expect(result.error).toBeUndefined()
+      expect(result.conditionMet).toBe(true)
+    })
+  })
 
   describe('Condition Step Execution', () => {
     it('should route to true branch when condition is met', () => {
@@ -385,41 +385,41 @@ describe('Workflow Condition and Branch Execution', () => {
           name: 'Low Priority Handler',
           config: { toolName: 'handle_low' },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Priority Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
-      expect(issues).toHaveLength(0);
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      expect(issues).toHaveLength(0)
 
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_001',
-      });
+      })
 
-      expect(result.status).toBe(WORKFLOW_RUN_STATES.RUNNING);
-      expect(result.currentStepIds).toContain('step_set_priority');
+      expect(result.status).toBe(WORKFLOW_RUN_STATES.RUNNING)
+      expect(result.currentStepIds).toContain('step_set_priority')
 
-      const firstStepRunId = result.stepRuns.find(sr => sr.stepId === 'step_set_priority')?.stepRunId;
-      expect(firstStepRunId).toBeDefined();
+      const firstStepRunId = result.stepRuns.find((sr) => sr.stepId === 'step_set_priority')?.stepRunId
+      expect(firstStepRunId).toBeDefined()
 
       workflowRuntime.handleStepCompletion(firstStepRunId!, {
         success: true,
         output: { priority: 'high' },
-      });
+      })
 
-      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(afterConditionRun?.currentStepIds).toContain('step_high_priority');
+      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(afterConditionRun?.currentStepIds).toContain('step_high_priority')
 
-      const lowPriorityStepRun = result.stepRuns.find(sr => sr.stepId === 'step_low_priority');
-      expect(lowPriorityStepRun?.status).toBe(WORKFLOW_RUN_STATES.QUEUED);
-    });
+      const lowPriorityStepRun = result.stepRuns.find((sr) => sr.stepId === 'step_low_priority')
+      expect(lowPriorityStepRun?.status).toBe(WORKFLOW_RUN_STATES.QUEUED)
+    })
 
     it('should route to false branch when condition is not met', () => {
       const steps: WorkflowStep[] = [
@@ -452,32 +452,32 @@ describe('Workflow Condition and Branch Execution', () => {
           name: 'Low Priority Handler',
           config: { toolName: 'handle_low' },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Priority Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_001',
-      });
+      })
 
-      const firstStepRunId = result.stepRuns.find(sr => sr.stepId === 'step_set_priority')?.stepRunId;
+      const firstStepRunId = result.stepRuns.find((sr) => sr.stepId === 'step_set_priority')?.stepRunId
 
       workflowRuntime.handleStepCompletion(firstStepRunId!, {
         success: true,
         output: { priority: 'low' },
-      });
+      })
 
-      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(afterConditionRun?.currentStepIds).toContain('step_low_priority');
-    });
+      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(afterConditionRun?.currentStepIds).toContain('step_low_priority')
+    })
 
     it('should fail workflow when undefined variable and onFailure is fail', () => {
       const steps: WorkflowStep[] = [
@@ -511,41 +511,41 @@ describe('Workflow Condition and Branch Execution', () => {
           name: 'False Branch',
           config: { toolName: 'handle_false' },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Undefined Variable Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_001',
-      });
+      })
 
-      const firstStepRunId = result.stepRuns.find(sr => sr.stepId === 'step_set_data')?.stepRunId;
+      const firstStepRunId = result.stepRuns.find((sr) => sr.stepId === 'step_set_data')?.stepRunId
 
       workflowRuntime.handleStepCompletion(firstStepRunId!, {
         success: true,
         output: { data: 'test' },
-      });
+      })
 
-      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(afterConditionRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED);
+      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(afterConditionRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED)
 
-      const conditionStepRun = afterConditionRun?.stepRuns.find(sr => sr.stepId === 'step_check_undefined');
-      expect(conditionStepRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED);
+      const conditionStepRun = afterConditionRun?.stepRuns.find((sr) => sr.stepId === 'step_check_undefined')
+      expect(conditionStepRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED)
 
-      const events = eventStore.query({ eventType: 'workflow_step_failed' });
-      expect(events.length).toBeGreaterThan(0);
-      const failedEvent = events[0];
-      const payload = failedEvent?.payload as { errorCategory?: string };
-      expect(payload?.errorCategory).toBe('undefined_variable');
-    });
+      const events = eventStore.query({ eventType: 'workflow_step_failed' })
+      expect(events.length).toBeGreaterThan(0)
+      const failedEvent = events[0]
+      const payload = failedEvent?.payload as { errorCategory?: string }
+      expect(payload?.errorCategory).toBe('undefined_variable')
+    })
 
     it('should continue workflow when undefined variable and onFailure is continue', () => {
       const steps: WorkflowStep[] = [
@@ -579,36 +579,36 @@ describe('Workflow Condition and Branch Execution', () => {
           name: 'False Branch',
           config: { toolName: 'handle_false' },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Continue on Error Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_001',
-      });
+      })
 
-      const firstStepRunId = result.stepRuns.find(sr => sr.stepId === 'step_set_data')?.stepRunId;
+      const firstStepRunId = result.stepRuns.find((sr) => sr.stepId === 'step_set_data')?.stepRunId
 
       workflowRuntime.handleStepCompletion(firstStepRunId!, {
         success: true,
         output: { data: 'test' },
-      });
+      })
 
-      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(afterConditionRun?.status).toBe(WORKFLOW_RUN_STATES.RUNNING);
+      const afterConditionRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(afterConditionRun?.status).toBe(WORKFLOW_RUN_STATES.RUNNING)
 
-      const conditionStepRun = afterConditionRun?.stepRuns.find(sr => sr.stepId === 'step_check_undefined');
-      expect(conditionStepRun?.status).toBe(WORKFLOW_RUN_STATES.COMPLETED);
-    });
-  });
+      const conditionStepRun = afterConditionRun?.stepRuns.find((sr) => sr.stepId === 'step_check_undefined')
+      expect(conditionStepRun?.status).toBe(WORKFLOW_RUN_STATES.COMPLETED)
+    })
+  })
 
   describe('Branch Step Execution', () => {
     it('should execute selected branch and skip others', () => {
@@ -655,40 +655,40 @@ describe('Workflow Condition and Branch Execution', () => {
             ],
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Branch Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
-      expect(issues).toHaveLength(0);
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      expect(issues).toHaveLength(0)
 
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_001',
-      });
+      })
 
-      const firstStepRunId = result.stepRuns.find(sr => sr.stepId === 'step_set_priority')?.stepRunId;
+      const firstStepRunId = result.stepRuns.find((sr) => sr.stepId === 'step_set_priority')?.stepRunId
 
       workflowRuntime.handleStepCompletion(firstStepRunId!, {
         success: true,
         output: { priority: 'high' },
-      });
+      })
 
-      const afterBranchRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(afterBranchRun?.currentStepIds).toContain('step_handle_high');
+      const afterBranchRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(afterBranchRun?.currentStepIds).toContain('step_handle_high')
 
-      const lowPriorityStepRun = afterBranchRun?.stepRuns.find(sr => sr.stepId === 'step_handle_low');
-      expect(lowPriorityStepRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED);
+      const lowPriorityStepRun = afterBranchRun?.stepRuns.find((sr) => sr.stepId === 'step_handle_low')
+      expect(lowPriorityStepRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED)
 
-      const events = eventStore.query({ eventType: 'workflow_step_skipped' });
-      expect(events.length).toBeGreaterThan(0);
-    });
+      const events = eventStore.query({ eventType: 'workflow_step_skipped' })
+      expect(events.length).toBeGreaterThan(0)
+    })
 
     it('should select first branch when no condition matches', () => {
       const steps: WorkflowStep[] = [
@@ -720,33 +720,33 @@ describe('Workflow Condition and Branch Execution', () => {
             ],
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Default Branch Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_001',
-      });
+      })
 
-      const firstStepRunId = result.stepRuns.find(sr => sr.stepId === 'step_set_data')?.stepRunId;
+      const firstStepRunId = result.stepRuns.find((sr) => sr.stepId === 'step_set_data')?.stepRunId
 
       workflowRuntime.handleStepCompletion(firstStepRunId!, {
         success: true,
         output: { data: 'test' },
-      });
+      })
 
-      const afterBranchRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(afterBranchRun?.currentStepIds).toContain('step_default');
-    });
-  });
+      const afterBranchRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(afterBranchRun?.currentStepIds).toContain('step_default')
+    })
+  })
 
   describe('Condition Step Validation', () => {
     it('should validate condition step requires conditionExpression', () => {
@@ -765,17 +765,17 @@ describe('Workflow Condition and Branch Execution', () => {
           name: 'True Branch',
           config: { toolName: 'handle_true' },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Invalid Condition Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
-      expect(issues.some(i => i.code === 'MISSING_CONDITION_EXPRESSION')).toBe(true);
-    });
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      expect(issues.some((i) => i.code === 'MISSING_CONDITION_EXPRESSION')).toBe(true)
+    })
 
     it('should validate branch step requires branches', () => {
       const steps: WorkflowStep[] = [
@@ -785,17 +785,17 @@ describe('Workflow Condition and Branch Execution', () => {
           name: 'Invalid Branch',
           config: {},
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Invalid Branch Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
-      expect(issues.some(i => i.code === 'MISSING_BRANCHES')).toBe(true);
-    });
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      expect(issues.some((i) => i.code === 'MISSING_BRANCHES')).toBe(true)
+    })
 
     it('should validate parallel_group step requires parallelSteps', () => {
       const steps: WorkflowStep[] = [
@@ -805,16 +805,16 @@ describe('Workflow Condition and Branch Execution', () => {
           name: 'Invalid Parallel',
           config: {},
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Invalid Parallel Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
-      expect(issues.some(i => i.code === 'MISSING_PARALLEL_STEPS')).toBe(true);
-    });
-  });
-});
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      expect(issues.some((i) => i.code === 'MISSING_PARALLEL_STEPS')).toBe(true)
+    })
+  })
+})

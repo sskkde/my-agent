@@ -6,10 +6,10 @@
  */
 
 export interface TimeoutPolicy {
-  defaultTimeoutMs: number;
-  configurable: boolean;
-  maxTimeoutMs?: number;
-  description: string;
+  defaultTimeoutMs: number
+  configurable: boolean
+  maxTimeoutMs?: number
+  description: string
 }
 
 export type RunType =
@@ -19,7 +19,7 @@ export type RunType =
   | 'ToolExecution'
   | 'BackgroundRun'
   | 'WorkflowRun'
-  | 'ApprovalRequest';
+  | 'ApprovalRequest'
 
 export const TIMEOUT_POLICIES: Record<RunType, TimeoutPolicy> = {
   PlannerRun: {
@@ -64,10 +64,10 @@ export const TIMEOUT_POLICIES: Record<RunType, TimeoutPolicy> = {
     maxTimeoutMs: 3_600_000,
     description: 'Approval request timeout',
   },
-};
+}
 
 export interface TimeoutConfig {
-  timeoutMs?: number;
+  timeoutMs?: number
 }
 
 /**
@@ -78,28 +78,24 @@ export interface TimeoutConfig {
  * is given or the policy is not configurable.
  */
 export function getTimeout(runType: RunType, config?: TimeoutConfig): number {
-  const policy = TIMEOUT_POLICIES[runType];
+  const policy = TIMEOUT_POLICIES[runType]
   if (!policy) {
-    return 120_000;
+    return 120_000
   }
 
   if (config?.timeoutMs !== undefined && policy.configurable) {
-    return Math.min(config.timeoutMs, policy.maxTimeoutMs ?? config.timeoutMs);
+    return Math.min(config.timeoutMs, policy.maxTimeoutMs ?? config.timeoutMs)
   }
 
-  return policy.defaultTimeoutMs;
+  return policy.defaultTimeoutMs
 }
 
 /**
  * Check whether a run whose `startTime` is known has exceeded its
  * timeout window.
  */
-export function isOverdue(
-  runType: RunType,
-  startTime: string | Date,
-  config?: TimeoutConfig,
-): boolean {
-  const timeout = getTimeout(runType, config);
-  const start = typeof startTime === 'string' ? new Date(startTime) : startTime;
-  return Date.now() - start.getTime() > timeout;
+export function isOverdue(runType: RunType, startTime: string | Date, config?: TimeoutConfig): boolean {
+  const timeout = getTimeout(runType, config)
+  const start = typeof startTime === 'string' ? new Date(startTime) : startTime
+  return Date.now() - start.getTime() > timeout
 }

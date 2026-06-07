@@ -8,14 +8,14 @@
 
 ## Overview
 
-| Attribute | Value |
-|-----------|-------|
-| Phase | P0/P1 (Complete) + P2 (Decision-gated, Abstraction Complete) |
-| Implementation | PM-1 through PM-22 (22 tasks) + Final Wave (F1-F4) |
-| Production Files | 14 modified/created |
-| Test Files | 14 created |
-| Final Wave Status | F1-F4 all APPROVED |
-| P2 Status | Abstraction complete, NoOpVectorBackend active, Lifecycle shadow mode ready — Production activation decision-gated |
+| Attribute         | Value                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Phase             | P0/P1 (Complete) + P2 (Decision-gated, Abstraction Complete)                                                       |
+| Implementation    | PM-1 through PM-22 (22 tasks) + Final Wave (F1-F4)                                                                 |
+| Production Files  | 14 modified/created                                                                                                |
+| Test Files        | 14 created                                                                                                         |
+| Final Wave Status | F1-F4 all APPROVED                                                                                                 |
+| P2 Status         | Abstraction complete, NoOpVectorBackend active, Lifecycle shadow mode ready — Production activation decision-gated |
 
 ---
 
@@ -23,21 +23,21 @@
 
 All feature flags default to OFF for safe staged rollout:
 
-| Flag | Default | Purpose |
-|------|---------|---------|
-| `PROMPT_MEMORY_P0_ENABLED` | OFF | Master flag for persona/toolSelectionPolicy/memoryPolicy projections |
-| `MEMORY_SEMANTIC_POLICY_ENABLED` | OFF | Enable memory semantic policy (ephemeral pattern rejection, long_term_fact type) |
-| `HYBRID_RETRIEVAL_ENABLED` | OFF | Enable hybrid retrieval (entity/time index + vector fallback) |
-| `LIFECYCLE_SCORING_SHADOW` | OFF | Enable lifecycle scoring shadow mode |
-| `LIFECYCLE_POLICY_ENABLED` | OFF | Enable lifecycle policy transitions |
-| `PROMPT_SUMMARY_LAYERS_ENABLED` | OFF | Enable summary layer injection |
+| Flag                             | Default | Purpose                                                                          |
+| -------------------------------- | ------- | -------------------------------------------------------------------------------- |
+| `PROMPT_MEMORY_P0_ENABLED`       | OFF     | Master flag for persona/toolSelectionPolicy/memoryPolicy projections             |
+| `MEMORY_SEMANTIC_POLICY_ENABLED` | OFF     | Enable memory semantic policy (ephemeral pattern rejection, long_term_fact type) |
+| `HYBRID_RETRIEVAL_ENABLED`       | OFF     | Enable hybrid retrieval (entity/time index + vector fallback)                    |
+| `LIFECYCLE_SCORING_SHADOW`       | OFF     | Enable lifecycle scoring shadow mode                                             |
+| `LIFECYCLE_POLICY_ENABLED`       | OFF     | Enable lifecycle policy transitions                                              |
+| `PROMPT_SUMMARY_LAYERS_ENABLED`  | OFF     | Enable summary layer injection                                                   |
 
 ### Flag Behavior
 
-| Flag State | Behavior |
-|------------|----------|
+| Flag State      | Behavior                             |
+| --------------- | ------------------------------------ |
 | OFF (undefined) | P9 baseline behavior, identical hash |
-| ON | P10 features enabled, hash changes |
+| ON              | P10 features enabled, hash changes   |
 
 ### Safe Rollout Order
 
@@ -54,38 +54,38 @@ All feature flags default to OFF for safe staged rollout:
 
 ### Code Quality Gates
 
-| Check | Command | Expected | Evidence |
-|-------|---------|----------|----------|
-| TypeScript | `npm run typecheck` | Clean | No errors |
-| Unit Tests | `npm run test:unit` | All pass | 2524 passed |
-| Integration Tests | `npm run test:integration` | All pass | 199 passed |
-| Security Tests | `npm run test:security` | All pass | 97 passed |
+| Check             | Command                    | Expected | Evidence    |
+| ----------------- | -------------------------- | -------- | ----------- |
+| TypeScript        | `npm run typecheck`        | Clean    | No errors   |
+| Unit Tests        | `npm run test:unit`        | All pass | 2524 passed |
+| Integration Tests | `npm run test:integration` | All pass | 199 passed  |
+| Security Tests    | `npm run test:security`    | All pass | 97 passed   |
 
 ### P10-Specific Gates
 
-| Check | Command | Evidence |
-|-------|---------|----------|
-| Memory Semantic Policy | `npm test -- tests/unit/memory/memory-semantic-policy` | Passed |
-| Persona Projection | `npm test -- tests/unit/kernel/model-input/persona-projection` | Passed |
-| Tool Selection Policy | `npm test -- tests/unit/kernel/model-input/tool-selection-policy` | Passed |
-| Memory Policy | `npm test -- tests/unit/kernel/model-input/memory-policy-projection` | Passed |
-| Candidate Validation | `npm test -- tests/unit/memory/memory-candidate-validation` | Passed |
-| Shadow Extraction | `npm test -- tests/unit/memory/shadow-extraction` | Passed |
-| Weekly Summary | `npm test -- tests/unit/memory/summary-manager` | Passed |
-| Planner Bridge | `npm test -- tests/unit/memory/planner-state-bridge` | Passed |
-| Rolling Summary | `npm test -- tests/unit/memory/rolling-summary-policy` | Passed |
-| Hybrid Retrieval | `npm test -- tests/unit/memory/hybrid-retrieval` | Passed |
-| Lifecycle Scoring | `npm test -- tests/unit/memory/lifecycle-scoring` | Passed |
-| Entity/Time Index | `npm test -- tests/unit/memory/entity-time-index` | Passed |
+| Check                  | Command                                                              | Evidence |
+| ---------------------- | -------------------------------------------------------------------- | -------- |
+| Memory Semantic Policy | `npm test -- tests/unit/memory/memory-semantic-policy`               | Passed   |
+| Persona Projection     | `npm test -- tests/unit/kernel/model-input/persona-projection`       | Passed   |
+| Tool Selection Policy  | `npm test -- tests/unit/kernel/model-input/tool-selection-policy`    | Passed   |
+| Memory Policy          | `npm test -- tests/unit/kernel/model-input/memory-policy-projection` | Passed   |
+| Candidate Validation   | `npm test -- tests/unit/memory/memory-candidate-validation`          | Passed   |
+| Shadow Extraction      | `npm test -- tests/unit/memory/shadow-extraction`                    | Passed   |
+| Weekly Summary         | `npm test -- tests/unit/memory/summary-manager`                      | Passed   |
+| Planner Bridge         | `npm test -- tests/unit/memory/planner-state-bridge`                 | Passed   |
+| Rolling Summary        | `npm test -- tests/unit/memory/rolling-summary-policy`               | Passed   |
+| Hybrid Retrieval       | `npm test -- tests/unit/memory/hybrid-retrieval`                     | Passed   |
+| Lifecycle Scoring      | `npm test -- tests/unit/memory/lifecycle-scoring`                    | Passed   |
+| Entity/Time Index      | `npm test -- tests/unit/memory/entity-time-index`                    | Passed   |
 
 ### Architecture Verification
 
-| Check | Evidence |
-|-------|----------|
-| Strategy/Data Separation | Verified via code review |
-| Template Registry (16 templates) | Verified via registry dump |
-| Hash Stability (flag OFF) | Verified via hash comparison |
-| Persona Injection Boundary | Verified via security tests |
+| Check                            | Evidence                     |
+| -------------------------------- | ---------------------------- |
+| Strategy/Data Separation         | Verified via code review     |
+| Template Registry (16 templates) | Verified via registry dump   |
+| Hash Stability (flag OFF)        | Verified via hash comparison |
+| Persona Injection Boundary       | Verified via security tests  |
 
 ---
 
@@ -184,29 +184,29 @@ Revert git commits in reverse order:
 
 ### Pre-Enablement Monitoring
 
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Error rate | < 1% | Proceed with enablement |
-| Latency P99 | < 5s | Proceed with enablement |
-| Memory usage | < 80% | Proceed with enablement |
+| Metric       | Threshold | Action                  |
+| ------------ | --------- | ----------------------- |
+| Error rate   | < 1%      | Proceed with enablement |
+| Latency P99  | < 5s      | Proceed with enablement |
+| Memory usage | < 80%     | Proceed with enablement |
 
 ### Post-Enablement Monitoring
 
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Shadow diff rate | < 10% | Acceptable |
-| Memory rejection rate | < 5% | Acceptable |
-| Cache hit rate | > 80% | Acceptable |
-| Error rate increase | < 0.5% | Acceptable |
+| Metric                | Threshold | Action     |
+| --------------------- | --------- | ---------- |
+| Shadow diff rate      | < 10%     | Acceptable |
+| Memory rejection rate | < 5%      | Acceptable |
+| Cache hit rate        | > 80%     | Acceptable |
+| Error rate increase   | < 0.5%    | Acceptable |
 
 ### Alert Triggers
 
-| Condition | Alert Level | Action |
-|-----------|-------------|--------|
-| Error rate > 2% | Critical | Immediate rollback |
-| Shadow diff > 20% | Warning | Investigate, consider rollback |
-| Cache hit < 50% | Warning | Investigate prompt changes |
-| Memory usage > 90% | Critical | Scale or investigate leak |
+| Condition          | Alert Level | Action                         |
+| ------------------ | ----------- | ------------------------------ |
+| Error rate > 2%    | Critical    | Immediate rollback             |
+| Shadow diff > 20%  | Warning     | Investigate, consider rollback |
+| Cache hit < 50%    | Warning     | Investigate prompt changes     |
+| Memory usage > 90% | Critical    | Scale or investigate leak      |
 
 ---
 
@@ -250,16 +250,16 @@ All items verified:
 
 ### Technical Sign-Off
 
-| Role | Date | Status |
-|------|------|--------|
-| Lead Developer | 2026-05-24 | Complete |
-| QA | 2026-05-24 | All tests pass |
-| Security | 2026-05-24 | Boundary tests pass |
+| Role           | Date       | Status              |
+| -------------- | ---------- | ------------------- |
+| Lead Developer | 2026-05-24 | Complete            |
+| QA             | 2026-05-24 | All tests pass      |
+| Security       | 2026-05-24 | Boundary tests pass |
 
 ### Release Approval
 
-| Approver | Date | Decision |
-|----------|------|----------|
+| Approver | Date       | Decision |
+| -------- | ---------- | -------- |
 | Sisyphus | 2026-05-24 | Approved |
 
 ---

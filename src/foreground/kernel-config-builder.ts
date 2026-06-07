@@ -5,14 +5,14 @@
  * @module foreground/kernel-config-builder
  */
 
-import type { KernelConfig, ToolExecutor, ContextManager } from '../kernel/types.js';
-import type { ProcessorOrchestrationDeps } from '../processing/processor-orchestration.js';
-import type { AgentConfig } from '../storage/agent-config-store.js';
-import type { ForegroundTurnInput } from './foreground-runner-types.js';
-import type { ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js';
-import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js';
-import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js';
-import { buildContextBundleFromForegroundState } from './context-bundle-builder.js';
+import type { KernelConfig, ToolExecutor, ContextManager } from '../kernel/types.js'
+import type { ProcessorOrchestrationDeps } from '../processing/processor-orchestration.js'
+import type { AgentConfig } from '../storage/agent-config-store.js'
+import type { ForegroundTurnInput } from './foreground-runner-types.js'
+import type { ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js'
+import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
+import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js'
+import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
 
 /**
  * ForegroundContextManager - ContextManager implementation for foreground runner.
@@ -20,10 +20,10 @@ import { buildContextBundleFromForegroundState } from './context-bundle-builder.
  */
 export class ForegroundContextManager implements ContextManager {
   private state: {
-    foregroundState?: import('./types.js').ForegroundSessionState;
-    turnInput?: ForegroundTurnInput;
-    items: ContextItem[];
-  } = { items: [] };
+    foregroundState?: import('./types.js').ForegroundSessionState
+    turnInput?: ForegroundTurnInput
+    items: ContextItem[]
+  } = { items: [] }
 
   /**
    * Set the foreground context for bundle building.
@@ -31,20 +31,16 @@ export class ForegroundContextManager implements ContextManager {
    */
   setForegroundContext(
     foregroundState: import('./types.js').ForegroundSessionState,
-    turnInput: ForegroundTurnInput
+    turnInput: ForegroundTurnInput,
   ): void {
-    this.state.foregroundState = foregroundState;
-    this.state.turnInput = turnInput;
+    this.state.foregroundState = foregroundState
+    this.state.turnInput = turnInput
   }
 
   assembleBundle(): ContextBundle {
     if (this.state.foregroundState && this.state.turnInput) {
-      return buildContextBundleFromForegroundState(
-        this.state.foregroundState,
-        this.state.turnInput
-      );
+      return buildContextBundleFromForegroundState(this.state.foregroundState, this.state.turnInput)
     }
-
 
     return {
       bundleId: `cb-${Date.now()}`,
@@ -57,20 +53,20 @@ export class ForegroundContextManager implements ContextManager {
       orderedItems: [],
       summaryBlocks: [],
       tokenEstimate: 100,
-    };
+    }
   }
 
   getItems(): ContextItem[] {
-    return this.state.items;
+    return this.state.items
   }
 
   addItem(item: ContextItem): void {
-    this.state.items.push(item);
+    this.state.items.push(item)
   }
 
   applyDelta(delta: RuntimeContextDelta): void {
     for (const item of delta.items) {
-      this.state.items.push(item);
+      this.state.items.push(item)
     }
   }
 }
@@ -81,10 +77,9 @@ export class ForegroundContextManager implements ContextManager {
 function createToolExecutorAdapter(deps: ProcessorOrchestrationDeps): ToolExecutor {
   return {
     async execute(request) {
-      const requestId = `te-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const actionId = `action-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const now = new Date().toISOString();
-
+      const requestId = `te-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+      const actionId = `action-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+      const now = new Date().toISOString()
 
       const dispatchRequest = {
         requestId,
@@ -117,17 +112,17 @@ function createToolExecutorAdapter(deps: ProcessorOrchestrationDeps): ToolExecut
           userId: request.userId,
           sessionId: request.sessionId,
         },
-      };
+      }
 
       try {
-        const result = await deps.runtimeDispatcher.dispatch(dispatchRequest);
+        const result = await deps.runtimeDispatcher.dispatch(dispatchRequest)
 
         if (result.status === 'completed') {
           return {
             success: true,
             data: result.result,
             resultPreview: typeof result.result === 'string' ? result.result.slice(0, 200) : undefined,
-          };
+          }
         } else {
           return {
             success: false,
@@ -136,7 +131,7 @@ function createToolExecutorAdapter(deps: ProcessorOrchestrationDeps): ToolExecut
               message: 'Tool execution failed',
               recoverable: true,
             },
-          };
+          }
         }
       } catch (error) {
         return {
@@ -146,10 +141,10 @@ function createToolExecutorAdapter(deps: ProcessorOrchestrationDeps): ToolExecut
             message: error instanceof Error ? error.message : 'Unknown error',
             recoverable: true,
           },
-        };
+        }
       }
     },
-  };
+  }
 }
 
 /**
@@ -161,19 +156,19 @@ function createMinimalModelInputBuilder(): ModelInputBuilder {
   // Stub: PromptTemplateRegistry and TemplateLoader not available in ProcessorOrchestrationDeps
   return {
     async build(input) {
-      const messages: import('../llm/types.js').LLMMessage[] = [];
+      const messages: import('../llm/types.js').LLMMessage[] = []
 
       if (input.systemPrompt) {
-        messages.push({ role: 'system', content: input.systemPrompt });
+        messages.push({ role: 'system', content: input.systemPrompt })
       }
 
       if (input.currentUserMessage) {
-        messages.push({ role: 'user', content: input.currentUserMessage });
+        messages.push({ role: 'user', content: input.currentUserMessage })
       }
 
       if (input.transcript && input.transcript.length > 0) {
         for (const msg of input.transcript) {
-          messages.push(msg);
+          messages.push(msg)
         }
       }
 
@@ -197,9 +192,9 @@ function createMinimalModelInputBuilder(): ModelInputBuilder {
           providerFamily: input.providerFamily,
           messageCount: messages.length,
         },
-      };
+      }
     },
-  } as ModelInputBuilder;
+  } as ModelInputBuilder
 }
 
 /**
@@ -212,14 +207,11 @@ function createMinimalModelInputBuilder(): ModelInputBuilder {
  * @param agentConfig - Optional agent configuration for model/timeout settings
  * @returns A KernelConfig ready for AgentKernel instantiation
  */
-export function buildKernelConfigFromDeps(
-  deps: ProcessorOrchestrationDeps,
-  agentConfig?: AgentConfig
-): KernelConfig {
-  const toolExecutor = createToolExecutorAdapter(deps);
-  const contextManager = new ForegroundContextManager();
-  const dispatcher = createKernelDispatcherAdapter(deps.runtimeDispatcher);
-  const modelInputBuilder = createMinimalModelInputBuilder();
+export function buildKernelConfigFromDeps(deps: ProcessorOrchestrationDeps, agentConfig?: AgentConfig): KernelConfig {
+  const toolExecutor = createToolExecutorAdapter(deps)
+  const contextManager = new ForegroundContextManager()
+  const dispatcher = createKernelDispatcherAdapter(deps.runtimeDispatcher)
+  const modelInputBuilder = createMinimalModelInputBuilder()
 
   return {
     llmAdapter: deps.llmAdapter,
@@ -230,15 +222,13 @@ export function buildKernelConfigFromDeps(
     maxIterations: 5,
     timeoutMs: agentConfig?.routingTimeoutMs ?? 60000,
     defaultModel: agentConfig?.model ?? undefined,
-  };
+  }
 }
 
 /**
  * Type guard to check if a ContextManager is a ForegroundContextManager.
  * Useful for the processor pipeline to access setForegroundContext method.
  */
-export function isForegroundContextManager(
-  manager: ContextManager
-): manager is ForegroundContextManager {
-  return manager instanceof ForegroundContextManager;
+export function isForegroundContextManager(manager: ContextManager): manager is ForegroundContextManager {
+  return manager instanceof ForegroundContextManager
 }

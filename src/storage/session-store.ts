@@ -1,77 +1,77 @@
-import type { ConnectionManager } from './connection.js';
-import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js';
+import type { ConnectionManager } from './connection.js'
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 export interface Session {
-  sessionId: string;
-  userId: string;
-  title: string;
-  status: 'active' | 'archived' | 'closed';
-  messageCount: number;
-  lastActivityAt: string;
-  createdAt: string;
-  updatedAt: string;
-  metadata?: Record<string, unknown>;
-  selectedModel?: string;
-  selectedProviderId?: string;
+  sessionId: string
+  userId: string
+  title: string
+  status: 'active' | 'archived' | 'closed'
+  messageCount: number
+  lastActivityAt: string
+  createdAt: string
+  updatedAt: string
+  metadata?: Record<string, unknown>
+  selectedModel?: string
+  selectedProviderId?: string
 }
 
 export interface CreateSessionInput {
-  sessionId: string;
-  userId: string;
-  title: string;
-  status?: 'active' | 'archived' | 'closed';
-  messageCount?: number;
-  metadata?: Record<string, unknown>;
+  sessionId: string
+  userId: string
+  title: string
+  status?: 'active' | 'archived' | 'closed'
+  messageCount?: number
+  metadata?: Record<string, unknown>
 }
 
 export interface ListSessionsOptions {
-  userId?: string;
-  status?: 'active' | 'archived' | 'closed';
-  limit?: number;
-  offset?: number;
+  userId?: string
+  status?: 'active' | 'archived' | 'closed'
+  limit?: number
+  offset?: number
 }
 
 export interface UpdateMetadataInput {
-  messageCount?: number;
-  lastActivityAt?: string;
+  messageCount?: number
+  lastActivityAt?: string
 }
 
 export interface SessionStore {
-  create(input: CreateSessionInput, tenantId?: string): Session;
-  getById(sessionId: string, tenantId?: string): Session | null;
-  list(options?: ListSessionsOptions, tenantId?: string): Session[];
-  updateActivity(sessionId: string, lastActivityAt: string, tenantId?: string): boolean;
-  updateMetadata(sessionId: string, input: UpdateMetadataInput, tenantId?: string): boolean;
-  updateStatus(sessionId: string, status: 'active' | 'archived' | 'closed', tenantId?: string): boolean;
-  updateTitle(sessionId: string, title: string, tenantId?: string): boolean;
-  updateUserId(sessionId: string, newUserId: string, tenantId?: string): boolean;
-  setModel(sessionId: string, selectedModel: string, selectedProviderId: string, tenantId?: string): boolean;
-  getCount(options?: { userId?: string; status?: 'active' | 'archived' | 'closed' }, tenantId?: string): number;
+  create(input: CreateSessionInput, tenantId?: string): Session
+  getById(sessionId: string, tenantId?: string): Session | null
+  list(options?: ListSessionsOptions, tenantId?: string): Session[]
+  updateActivity(sessionId: string, lastActivityAt: string, tenantId?: string): boolean
+  updateMetadata(sessionId: string, input: UpdateMetadataInput, tenantId?: string): boolean
+  updateStatus(sessionId: string, status: 'active' | 'archived' | 'closed', tenantId?: string): boolean
+  updateTitle(sessionId: string, title: string, tenantId?: string): boolean
+  updateUserId(sessionId: string, newUserId: string, tenantId?: string): boolean
+  setModel(sessionId: string, selectedModel: string, selectedProviderId: string, tenantId?: string): boolean
+  getCount(options?: { userId?: string; status?: 'active' | 'archived' | 'closed' }, tenantId?: string): number
 }
 
 interface SessionRow {
-  session_id: string;
-  user_id: string;
-  title: string;
-  status: 'active' | 'archived' | 'closed';
-  message_count: number;
-  last_activity_at: string;
-  created_at: string;
-  updated_at: string;
-  metadata: string | null;
-  selected_model: string | null;
-  selected_provider_id: string | null;
+  session_id: string
+  user_id: string
+  title: string
+  status: 'active' | 'archived' | 'closed'
+  message_count: number
+  last_activity_at: string
+  created_at: string
+  updated_at: string
+  metadata: string | null
+  selected_model: string | null
+  selected_provider_id: string | null
 }
 
 class SessionStoreImpl implements SessionStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   create(input: CreateSessionInput, tenantId: string = DEFAULT_TENANT_ID): Session {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const session: Session = {
       sessionId: input.sessionId,
       userId: input.userId,
@@ -81,15 +81,15 @@ class SessionStoreImpl implements SessionStore {
       lastActivityAt: now,
       createdAt: now,
       updatedAt: now,
-      metadata: input.metadata
-    };
+      metadata: input.metadata,
+    }
 
     const sql = `
       INSERT INTO sessions (
         session_id, user_id, title, status, message_count,
         last_activity_at, created_at, updated_at, metadata, tenant_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    `
 
     const params = [
       session.sessionId,
@@ -101,29 +101,29 @@ class SessionStoreImpl implements SessionStore {
       session.createdAt,
       session.updatedAt,
       session.metadata ? JSON.stringify(session.metadata) : null,
-      tenantId
-    ];
+      tenantId,
+    ]
 
-    this.connection.exec(sql, params);
-    return session;
+    this.connection.exec(sql, params)
+    return session
   }
 
   getById(sessionId: string, tenantId: string = DEFAULT_TENANT_ID): Session | null {
-    const sql = 'SELECT * FROM sessions WHERE tenant_id = ? AND session_id = ?';
-    const rows = this.connection.query<SessionRow>(sql, [tenantId, sessionId]);
+    const sql = 'SELECT * FROM sessions WHERE tenant_id = ? AND session_id = ?'
+    const rows = this.connection.query<SessionRow>(sql, [tenantId, sessionId])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToSession(rows[0]);
+    return this.rowToSession(rows[0])
   }
 
   list(options: ListSessionsOptions = {}, tenantId: string = DEFAULT_TENANT_ID): Session[] {
-    const { userId, status, limit = 100, offset = 0 } = options;
+    const { userId, status, limit = 100, offset = 0 } = options
 
-    let sql: string;
-    let params: unknown[];
+    let sql: string
+    let params: unknown[]
 
     if (userId && status) {
       sql = `
@@ -131,36 +131,36 @@ class SessionStoreImpl implements SessionStore {
         WHERE tenant_id = ? AND user_id = ? AND status = ?
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
-      `;
-      params = [tenantId, userId, status, limit, offset];
+      `
+      params = [tenantId, userId, status, limit, offset]
     } else if (userId) {
       sql = `
         SELECT * FROM sessions
         WHERE tenant_id = ? AND user_id = ?
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
-      `;
-      params = [tenantId, userId, limit, offset];
+      `
+      params = [tenantId, userId, limit, offset]
     } else if (status) {
       sql = `
         SELECT * FROM sessions
         WHERE tenant_id = ? AND status = ?
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
-      `;
-      params = [tenantId, status, limit, offset];
+      `
+      params = [tenantId, status, limit, offset]
     } else {
       sql = `
         SELECT * FROM sessions
         WHERE tenant_id = ?
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
-      `;
-      params = [tenantId, limit, offset];
+      `
+      params = [tenantId, limit, offset]
     }
 
-    const rows = this.connection.query<SessionRow>(sql, params);
-    return rows.map(row => this.rowToSession(row));
+    const rows = this.connection.query<SessionRow>(sql, params)
+    return rows.map((row) => this.rowToSession(row))
   }
 
   updateActivity(sessionId: string, lastActivityAt: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
@@ -168,66 +168,70 @@ class SessionStoreImpl implements SessionStore {
       UPDATE sessions
       SET last_activity_at = ?, updated_at = ?
       WHERE tenant_id = ? AND session_id = ?
-    `;
+    `
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     try {
-      this.connection.exec(sql, [lastActivityAt, now, tenantId, sessionId]);
-      return true;
+      this.connection.exec(sql, [lastActivityAt, now, tenantId, sessionId])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
   updateMetadata(sessionId: string, input: UpdateMetadataInput, tenantId: string = DEFAULT_TENANT_ID): boolean {
-    const updates: string[] = [];
-    const params: unknown[] = [];
-    const now = new Date().toISOString();
+    const updates: string[] = []
+    const params: unknown[] = []
+    const now = new Date().toISOString()
 
     if (input.messageCount !== undefined) {
-      updates.push('message_count = ?');
-      params.push(input.messageCount);
+      updates.push('message_count = ?')
+      params.push(input.messageCount)
     }
 
     if (input.lastActivityAt !== undefined) {
-      updates.push('last_activity_at = ?');
-      params.push(input.lastActivityAt);
+      updates.push('last_activity_at = ?')
+      params.push(input.lastActivityAt)
     }
 
     if (updates.length === 0) {
-      return false;
+      return false
     }
 
-    updates.push('updated_at = ?');
-    params.push(now);
-    params.push(tenantId);
-    params.push(sessionId);
+    updates.push('updated_at = ?')
+    params.push(now)
+    params.push(tenantId)
+    params.push(sessionId)
 
-    const sql = `UPDATE sessions SET ${updates.join(', ')} WHERE tenant_id = ? AND session_id = ?`;
+    const sql = `UPDATE sessions SET ${updates.join(', ')} WHERE tenant_id = ? AND session_id = ?`
 
     try {
-      this.connection.exec(sql, params);
-      return true;
+      this.connection.exec(sql, params)
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
-  updateStatus(sessionId: string, status: 'active' | 'archived' | 'closed', tenantId: string = DEFAULT_TENANT_ID): boolean {
+  updateStatus(
+    sessionId: string,
+    status: 'active' | 'archived' | 'closed',
+    tenantId: string = DEFAULT_TENANT_ID,
+  ): boolean {
     const sql = `
       UPDATE sessions
       SET status = ?, updated_at = ?
       WHERE tenant_id = ? AND session_id = ?
-    `;
+    `
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     try {
-      this.connection.exec(sql, [status, now, tenantId, sessionId]);
-      return true;
+      this.connection.exec(sql, [status, now, tenantId, sessionId])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
@@ -236,15 +240,15 @@ class SessionStoreImpl implements SessionStore {
       UPDATE sessions
       SET title = ?, updated_at = ?
       WHERE tenant_id = ? AND session_id = ?
-    `;
+    `
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     try {
-      this.connection.exec(sql, [title, now, tenantId, sessionId]);
-      return true;
+      this.connection.exec(sql, [title, now, tenantId, sessionId])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
@@ -253,57 +257,65 @@ class SessionStoreImpl implements SessionStore {
       UPDATE sessions
       SET user_id = ?, updated_at = ?
       WHERE tenant_id = ? AND session_id = ?
-    `;
+    `
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     try {
-      this.connection.exec(sql, [newUserId, now, tenantId, sessionId]);
-      return true;
+      this.connection.exec(sql, [newUserId, now, tenantId, sessionId])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
-  setModel(sessionId: string, selectedModel: string, selectedProviderId: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
+  setModel(
+    sessionId: string,
+    selectedModel: string,
+    selectedProviderId: string,
+    tenantId: string = DEFAULT_TENANT_ID,
+  ): boolean {
     const sql = `
       UPDATE sessions
       SET selected_model = ?, selected_provider_id = ?, updated_at = ?
       WHERE tenant_id = ? AND session_id = ?
-    `;
+    `
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     try {
-      this.connection.exec(sql, [selectedModel, selectedProviderId, now, tenantId, sessionId]);
-      return true;
+      this.connection.exec(sql, [selectedModel, selectedProviderId, now, tenantId, sessionId])
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
-  getCount(options: { userId?: string; status?: 'active' | 'archived' | 'closed' } = {}, tenantId: string = DEFAULT_TENANT_ID): number {
-    const { userId, status } = options;
+  getCount(
+    options: { userId?: string; status?: 'active' | 'archived' | 'closed' } = {},
+    tenantId: string = DEFAULT_TENANT_ID,
+  ): number {
+    const { userId, status } = options
 
-    let sql: string;
-    let params: unknown[];
+    let sql: string
+    let params: unknown[]
 
     if (userId && status) {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND user_id = ? AND status = ?';
-      params = [tenantId, userId, status];
+      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND user_id = ? AND status = ?'
+      params = [tenantId, userId, status]
     } else if (userId) {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND user_id = ?';
-      params = [tenantId, userId];
+      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND user_id = ?'
+      params = [tenantId, userId]
     } else if (status) {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND status = ?';
-      params = [tenantId, status];
+      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND status = ?'
+      params = [tenantId, status]
     } else {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ?';
-      params = [tenantId];
+      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ?'
+      params = [tenantId]
     }
 
-    const rows = this.connection.query<{ count: number }>(sql, params);
-    return rows[0]?.count ?? 0;
+    const rows = this.connection.query<{ count: number }>(sql, params)
+    return rows[0]?.count ?? 0
   }
 
   private rowToSession(row: SessionRow): Session {
@@ -318,11 +330,11 @@ class SessionStoreImpl implements SessionStore {
       updatedAt: row.updated_at,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
       selectedModel: row.selected_model ?? undefined,
-      selectedProviderId: row.selected_provider_id ?? undefined
-    };
+      selectedProviderId: row.selected_provider_id ?? undefined,
+    }
   }
 }
 
 export function createSessionStore(connection: ConnectionManager): SessionStore {
-  return new SessionStoreImpl(connection);
+  return new SessionStoreImpl(connection)
 }

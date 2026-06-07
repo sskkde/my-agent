@@ -1,62 +1,62 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import * as client from '../../api/client';
-import type { MemoryItem } from '../../api/types';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import React, { useEffect, useState, useCallback } from 'react'
+import * as client from '../../api/client'
+import type { MemoryItem } from '../../api/types'
+import LoadingSpinner from '../../components/LoadingSpinner'
+import ErrorMessage from '../../components/ErrorMessage'
+import EmptyState from '../../components/EmptyState'
 
 const MemoryTab: React.FC = () => {
-  const [memories, setMemories] = useState<MemoryItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMemory, setSelectedMemory] = useState<MemoryItem | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [memories, setMemories] = useState<MemoryItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedMemory, setSelectedMemory] = useState<MemoryItem | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const fetchMemories = useCallback(async (query?: string) => {
-    setLoading(true);
-    setError(false);
+    setLoading(true)
+    setError(false)
     try {
-      const result = await client.getMemories({ query, limit: 50 });
-      setMemories(result.memories);
-      setTotal(result.total);
+      const result = await client.getMemories({ query, limit: 50 })
+      setMemories(result.memories)
+      setTotal(result.total)
     } catch {
-      setError(true);
+      setError(true)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    fetchMemories();
-  }, [fetchMemories]);
+    fetchMemories()
+  }, [fetchMemories])
 
   const handleSearch = () => {
-    fetchMemories(searchQuery || undefined);
-  };
+    fetchMemories(searchQuery || undefined)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
-  };
+    if (e.key === 'Enter') handleSearch()
+  }
 
   const handleDelete = async (memoryId: string) => {
-    if (!window.confirm('确定要删除这条记忆吗？')) return;
-    setDeleting(memoryId);
+    if (!window.confirm('确定要删除这条记忆吗？')) return
+    setDeleting(memoryId)
     try {
-      await client.deleteMemory(memoryId);
-      setMemories(prev => prev.filter(m => m.memoryId !== memoryId));
-      setTotal(prev => prev - 1);
-      if (selectedMemory?.memoryId === memoryId) setSelectedMemory(null);
-      setToast({ message: '记忆已删除', type: 'success' });
+      await client.deleteMemory(memoryId)
+      setMemories((prev) => prev.filter((m) => m.memoryId !== memoryId))
+      setTotal((prev) => prev - 1)
+      if (selectedMemory?.memoryId === memoryId) setSelectedMemory(null)
+      setToast({ message: '记忆已删除', type: 'success' })
     } catch {
-      setToast({ message: '删除失败，请重试', type: 'error' });
+      setToast({ message: '删除失败，请重试', type: 'error' })
     } finally {
-      setDeleting(null);
-      setTimeout(() => setToast(null), 3000);
+      setDeleting(null)
+      setTimeout(() => setToast(null), 3000)
     }
-  };
+  }
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
@@ -64,9 +64,9 @@ const MemoryTab: React.FC = () => {
       user_preference: '用户偏好',
       user_safety_rule: '安全规则',
       project_state: '项目状态',
-    };
-    return labels[type] || type;
-  };
+    }
+    return labels[type] || type
+  }
 
   const getSensitivityLabel = (s: string) => {
     const labels: Record<string, string> = {
@@ -74,17 +74,17 @@ const MemoryTab: React.FC = () => {
       medium: '中',
       high: '高',
       restricted: '受限',
-    };
-    return labels[s] || s;
-  };
+    }
+    return labels[s] || s
+  }
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString('zh-CN');
+      return new Date(dateStr).toLocaleString('zh-CN')
     } catch {
-      return dateStr;
+      return dateStr
     }
-  };
+  }
 
   return (
     <div data-testid="memory-tab" className="memory-tab">
@@ -96,11 +96,13 @@ const MemoryTab: React.FC = () => {
           type="text"
           placeholder="搜索记忆..."
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           className="memory-search-input"
         />
-        <button onClick={handleSearch} className="memory-search-btn">搜索</button>
+        <button onClick={handleSearch} className="memory-search-btn">
+          搜索
+        </button>
       </div>
 
       {loading && (
@@ -131,7 +133,7 @@ const MemoryTab: React.FC = () => {
 
           <div className="memory-layout">
             <div className="memory-list">
-              {memories.map(memory => (
+              {memories.map((memory) => (
                 <div
                   key={memory.memoryId}
                   data-testid="memory-row"
@@ -151,20 +153,17 @@ const MemoryTab: React.FC = () => {
                   <button
                     data-testid={`memory-delete-${memory.memoryId}`}
                     className="memory-delete-btn"
-                    onClick={e => { e.stopPropagation(); handleDelete(memory.memoryId); }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDelete(memory.memoryId)
+                    }}
                     disabled={deleting === memory.memoryId}
                   >
                     {deleting === memory.memoryId ? '删除中...' : '删除'}
                   </button>
                 </div>
               ))}
-              {memories.length === 0 && (
-                <EmptyState
-                  icon="🧠"
-                  title="暂无记忆"
-                  description="系统还没有存储任何记忆"
-                />
-              )}
+              {memories.length === 0 && <EmptyState icon="🧠" title="暂无记忆" description="系统还没有存储任何记忆" />}
             </div>
 
             {selectedMemory && (
@@ -199,7 +198,9 @@ const MemoryTab: React.FC = () => {
                     <label>关键词</label>
                     <div className="memory-keywords">
                       {selectedMemory.keywords.map((kw, i) => (
-                        <span key={i} className="memory-keyword-tag">{kw}</span>
+                        <span key={i} className="memory-keyword-tag">
+                          {kw}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -218,7 +219,7 @@ const MemoryTab: React.FC = () => {
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default MemoryTab;
+export default MemoryTab

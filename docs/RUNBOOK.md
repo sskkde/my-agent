@@ -9,6 +9,7 @@ This runbook contains operational procedures for the Agent Platform, including r
 When shutting down the platform, follow these steps to ensure all pending work is handled properly:
 
 1. **Initiate graceful shutdown**
+
    ```bash
    # Send SIGTERM signal
    kill -TERM <pid>
@@ -29,6 +30,7 @@ When shutting down the platform, follow these steps to ensure all pending work i
 ### Startup Procedure
 
 1. **Pre-flight checks**
+
    ```bash
    # Check database is accessible
    npm run db:health
@@ -38,6 +40,7 @@ When shutting down the platform, follow these steps to ensure all pending work i
    ```
 
 2. **Start the application**
+
    ```bash
    npm run start:dev
    ```
@@ -57,6 +60,7 @@ The platform automatically recovers state on startup:
 4. **Pending Runtime Actions** - Actions queued for execution
 
 Review recovery state in startup logs:
+
 ```
 Recovery State:
 - Pending Approvals: N
@@ -75,20 +79,20 @@ const RESOURCE_CONFIG = {
   maxConcurrentLLMCalls: 2,
   maxCacheSizeMB: 256,
   maxContextTokens: 8000,
-};
+}
 ```
 
 ### Resource Configuration Reference
 
-| Setting | 2C2G Value | Description |
-|---------|------------|-------------|
-| `maxConcurrentPlannerRunsPerSession` | 3 | Max planning operations per session |
-| `maxConcurrentLLMCalls` | 2 | Concurrent LLM API calls |
-| `maxCacheSizeMB` | 256 | Memory cache limit |
-| `maxContextTokens` | 8000 | Context window for LLM calls |
-| `maxConcurrentForegroundTurns` | 10 | User session turns |
-| `maxConcurrentBackgroundRuns` | 5 | Background task limit |
-| `sqliteQueueMaxDepth` | 100 | Database queue depth |
+| Setting                              | 2C2G Value | Description                         |
+| ------------------------------------ | ---------- | ----------------------------------- |
+| `maxConcurrentPlannerRunsPerSession` | 3          | Max planning operations per session |
+| `maxConcurrentLLMCalls`              | 2          | Concurrent LLM API calls            |
+| `maxCacheSizeMB`                     | 256        | Memory cache limit                  |
+| `maxContextTokens`                   | 8000       | Context window for LLM calls        |
+| `maxConcurrentForegroundTurns`       | 10         | User session turns                  |
+| `maxConcurrentBackgroundRuns`        | 5          | Background task limit               |
+| `sqliteQueueMaxDepth`                | 100        | Database queue depth                |
 
 ### Adjusting Resource Limits
 
@@ -97,60 +101,63 @@ Modify values in `src/runtime/resource-limits.ts`:
 ```typescript
 export const DEFAULT_RESOURCE_CONFIG: ResourceConfig = {
   // Adjust these values based on your hardware
-  maxCacheSizeMB: 256,      // Reduce if memory constrained
-  maxContextTokens: 8000,   // Reduce for smaller context windows
+  maxCacheSizeMB: 256, // Reduce if memory constrained
+  maxContextTokens: 8000, // Reduce for smaller context windows
   maxConcurrentLLMCalls: 2, // Reduce if hitting rate limits
-};
+}
 ```
 
 ## Environment Variables
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `OPENROUTER_API_KEY` | API key for OpenRouter | `sk-or-v1-...` |
-| `OLLAMA_BASE_URL` | Base URL for Ollama | `http://localhost:11434` |
+| Variable             | Description            | Example                  |
+| -------------------- | ---------------------- | ------------------------ |
+| `OPENROUTER_API_KEY` | API key for OpenRouter | `sk-or-v1-...`           |
+| `OLLAMA_BASE_URL`    | Base URL for Ollama    | `http://localhost:11434` |
 
 ### Optional Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment mode | `development` |
-| `LOG_LEVEL` | Logging verbosity | `info` |
-| `DATABASE_PATH` | SQLite database file | `./data/app.db` |
-| `PORT` | API server port | `3003` |
-| `HOST` | API server bind address | `localhost` (requires explicit `HOST=0.0.0.0` for public ingress) |
-| `VITE_PORT` | Vite dev server port | `3002` |
-| `VITE_API_TARGET` | API proxy target for Vite | `http://localhost:3003` |
-| `SHUTDOWN_TIMEOUT_MS` | Graceful shutdown timeout | `30000` |
+| Variable              | Description               | Default                                                           |
+| --------------------- | ------------------------- | ----------------------------------------------------------------- |
+| `NODE_ENV`            | Environment mode          | `development`                                                     |
+| `LOG_LEVEL`           | Logging verbosity         | `info`                                                            |
+| `DATABASE_PATH`       | SQLite database file      | `./data/app.db`                                                   |
+| `PORT`                | API server port           | `3003`                                                            |
+| `HOST`                | API server bind address   | `localhost` (requires explicit `HOST=0.0.0.0` for public ingress) |
+| `VITE_PORT`           | Vite dev server port      | `3002`                                                            |
+| `VITE_API_TARGET`     | API proxy target for Vite | `http://localhost:3003`                                           |
+| `SHUTDOWN_TIMEOUT_MS` | Graceful shutdown timeout | `30000`                                                           |
 
 ### Web Search Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `WEB_SEARCH_BACKEND` | Backend selection: `auto` \| `searxng` \| `tavily` \| `remote` \| `playwright` \| `auto-browser` \| `none` | `auto` |
-| `SEARXNG_BASE_URL` | SearXNG instance URL | None |
-| `TAVILY_API_KEY` | Tavily API key | None |
-| `TAVILY_BASE_URL` | Custom Tavily endpoint | `https://api.tavily.com` |
-| `WEB_SEARCH_API_URL` | Legacy remote search API URL | None |
-| `WEB_SEARCH_API_KEY` | Legacy remote API key | None |
+| Variable             | Description                                                                                                | Default                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `WEB_SEARCH_BACKEND` | Backend selection: `auto` \| `searxng` \| `tavily` \| `remote` \| `playwright` \| `auto-browser` \| `none` | `auto`                   |
+| `SEARXNG_BASE_URL`   | SearXNG instance URL                                                                                       | None                     |
+| `TAVILY_API_KEY`     | Tavily API key                                                                                             | None                     |
+| `TAVILY_BASE_URL`    | Custom Tavily endpoint                                                                                     | `https://api.tavily.com` |
+| `WEB_SEARCH_API_URL` | Legacy remote search API URL                                                                               | None                     |
+| `WEB_SEARCH_API_KEY` | Legacy remote API key                                                                                      | None                     |
 
 ### Web Search Backend Selection
 
 The platform supports multiple web search backends with automatic fallback:
 
 **Default Provider Order (auto mode):**
+
 1. SearXNG (if `SEARXNG_BASE_URL` is configured)
 2. Tavily (if `TAVILY_API_KEY` is configured)
 3. Remote API (if `WEB_SEARCH_API_URL` is configured)
 4. Error: `PROVIDER_NOT_CONFIGURED`
 
 **Browser Fallback (auto-browser mode):**
+
 1. SearXNG → Tavily → Remote API (as above)
 2. Playwright/DuckDuckGo (if Chromium is installed)
 
 **Explicit Backend Selection:**
+
 - `searxng`: Use only SearXNG
 - `tavily`: Use only Tavily
 - `remote`: Use only legacy remote API
@@ -198,6 +205,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 **Symptom:** `Failed to establish database connection`
 
 **Solutions:**
+
 1. Check database file exists: `ls -la data/`
 2. Verify permissions: `chmod 644 data/app.db`
 3. Run migrations: `npm run db:migrate`
@@ -208,6 +216,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 **Symptom:** `429 Too Many Requests` errors
 
 **Solutions:**
+
 1. Reduce `maxConcurrentLLMCalls` to 1
 2. Add exponential backoff in your LLM client
 3. Consider upgrading your API tier
@@ -218,6 +227,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 **Symptom:** `JavaScript heap out of memory`
 
 **Solutions:**
+
 1. Reduce `maxCacheSizeMB` to 128 or lower
 2. Lower `maxContextTokens` to 4000
 3. Reduce concurrent operations
@@ -228,6 +238,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 **Symptom:** Database queries taking too long
 
 **Solutions:**
+
 1. Run database health check: `npm run db:health`
 2. Check for long-running transactions
 3. Verify indexes exist on frequently queried columns
@@ -238,6 +249,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 **Symptom:** Application fails during startup
 
 **Solutions:**
+
 1. Check logs for specific error stage
 2. Verify all environment variables are set
 3. Run typecheck: `npm run typecheck`
@@ -248,6 +260,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 **Symptom:** `PROVIDER_NOT_CONFIGURED` error or search returns no results
 
 **Solutions:**
+
 1. Check `WEB_SEARCH_BACKEND` is set correctly
 2. Verify at least one provider is configured:
    - SearXNG: `SEARXNG_BASE_URL` must be reachable
@@ -262,6 +275,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
 **Symptom:** Search requests fall through to default behavior
 
 **Solutions:**
+
 1. Configure search LLM via API:
    ```bash
    curl -X PATCH http://localhost:3003/api/agents/foreground.default/config/global \
@@ -296,13 +310,13 @@ LOG_LEVEL=debug npm run start:dev
 
 ### Log Levels
 
-| Level | Use Case |
-|-------|----------|
-| `error` | Critical failures only |
-| `warn` | Warnings and recoverable errors |
-| `info` | General operational information |
-| `debug` | Detailed debugging information |
-| `trace` | Very verbose internal details |
+| Level   | Use Case                        |
+| ------- | ------------------------------- |
+| `error` | Critical failures only          |
+| `warn`  | Warnings and recoverable errors |
+| `info`  | General operational information |
+| `debug` | Detailed debugging information  |
+| `trace` | Very verbose internal details   |
 
 ### Health Check Endpoints
 

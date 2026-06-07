@@ -3,62 +3,54 @@ import type {
   MessageProcessorConfig,
   MessageProcessorInput,
   MessageProcessorOutput,
-} from './types.js';
-import type { InboundEnvelope } from '../gateway/types.js';
+} from './types.js'
+import type { InboundEnvelope } from '../gateway/types.js'
 
 class MessageProcessorImpl implements MessageProcessor {
-  private config: MessageProcessorConfig;
+  private config: MessageProcessorConfig
 
   constructor(config: MessageProcessorConfig) {
-    this.config = config;
+    this.config = config
   }
 
   async process(input: MessageProcessorInput): Promise<MessageProcessorOutput> {
-    const timeoutMs = this.config.timeoutMs;
-    const processorFn = this.config.processorFn;
+    const timeoutMs = this.config.timeoutMs
+    const processorFn = this.config.processorFn
 
     return Promise.race([
       this.executeProcessor(processorFn, input),
       this.createTimeoutPromise(input.correlationId, timeoutMs),
-    ]);
+    ])
   }
 
   private async executeProcessor(
     processorFn: (input: MessageProcessorInput) => Promise<MessageProcessorOutput>,
-    input: MessageProcessorInput
+    input: MessageProcessorInput,
   ): Promise<MessageProcessorOutput> {
     try {
-      const result = await processorFn(input);
-      return result;
+      const result = await processorFn(input)
+      return result
     } catch (error) {
       return this.createErrorOutput(
         input.correlationId,
         'PROCESSING_ERROR',
-        error instanceof Error ? error.message : 'Unknown processing error'
-      );
+        error instanceof Error ? error.message : 'Unknown processing error',
+      )
     }
   }
 
   private createTimeoutPromise(correlationId: string, timeoutMs: number): Promise<MessageProcessorOutput> {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const timeoutSeconds = Math.floor(timeoutMs / 1000);
+        const timeoutSeconds = Math.floor(timeoutMs / 1000)
         resolve(
-          this.createErrorOutput(
-            correlationId,
-            'TIMEOUT',
-            `Processing timed out after ${timeoutSeconds} seconds`
-          )
-        );
-      }, timeoutMs);
-    });
+          this.createErrorOutput(correlationId, 'TIMEOUT', `Processing timed out after ${timeoutSeconds} seconds`),
+        )
+      }, timeoutMs)
+    })
   }
 
-  private createErrorOutput(
-    correlationId: string,
-    code: string,
-    message: string
-  ): MessageProcessorOutput {
+  private createErrorOutput(correlationId: string, code: string, message: string): MessageProcessorOutput {
     return {
       correlationId,
       success: false,
@@ -67,7 +59,7 @@ class MessageProcessorImpl implements MessageProcessor {
         message,
       },
       timestamp: new Date().toISOString(),
-    };
+    }
   }
 }
 
@@ -78,7 +70,7 @@ class MessageProcessorImpl implements MessageProcessor {
  * @returns MessageProcessor instance
  */
 export function createMessageProcessor(config: MessageProcessorConfig): MessageProcessor {
-  return new MessageProcessorImpl(config);
+  return new MessageProcessorImpl(config)
 }
 
 /**
@@ -91,15 +83,13 @@ export function createMessageProcessor(config: MessageProcessorConfig): MessageP
  * @param envelope - The inbound envelope from the gateway
  * @returns Channel-neutral MessageProcessorInput
  */
-export function convertInboundEnvelopeToProcessorInput(
-  envelope: InboundEnvelope
-): MessageProcessorInput {
+export function convertInboundEnvelopeToProcessorInput(envelope: InboundEnvelope): MessageProcessorInput {
   // Filter out channel-specific keys from metadata
-  const filteredMetadata: Record<string, unknown> = {};
+  const filteredMetadata: Record<string, unknown> = {}
   if (envelope.metadata) {
     for (const [key, value] of Object.entries(envelope.metadata)) {
       if (key !== 'sourceChannel' && key !== 'channel' && key !== 'channelRegistry') {
-        filteredMetadata[key] = value;
+        filteredMetadata[key] = value
       }
     }
   }
@@ -114,5 +104,5 @@ export function convertInboundEnvelopeToProcessorInput(
       ...filteredMetadata,
       envelopeEventType: envelope.eventType,
     },
-  };
+  }
 }

@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import type { RelatedRefs } from '../../../src/shared/refs.js';
+import { describe, it, expect } from 'vitest'
+import type { RelatedRefs } from '../../../src/shared/refs.js'
 
 describe('RelatedRefs Type', () => {
   it('should accept empty object', () => {
-    const refs: RelatedRefs = {};
-    expect(refs).toBeDefined();
-  });
+    const refs: RelatedRefs = {}
+    expect(refs).toBeDefined()
+  })
 
   it('should accept all optional fields', () => {
     const refs: RelatedRefs = {
@@ -30,28 +30,28 @@ describe('RelatedRefs Type', () => {
       memoryId: 'mem_001',
       summaryId: 'sum_001',
       auditId: 'audit_001',
-    };
-    expect(refs.sessionId).toBe('sess_001');
-    expect(refs.turnId).toBe('turn_001');
-    expect(refs.plannerRunId).toBe('pl_run_001');
-  });
+    }
+    expect(refs.sessionId).toBe('sess_001')
+    expect(refs.turnId).toBe('turn_001')
+    expect(refs.plannerRunId).toBe('pl_run_001')
+  })
 
   it('should accept partial fields', () => {
     const refs: RelatedRefs = {
       sessionId: 'sess_001',
       planId: 'plan_001',
-    };
-    expect(refs.sessionId).toBe('sess_001');
-    expect(refs.planId).toBe('plan_001');
-    expect(refs.turnId).toBeUndefined();
-  });
+    }
+    expect(refs.sessionId).toBe('sess_001')
+    expect(refs.planId).toBe('plan_001')
+    expect(refs.turnId).toBeUndefined()
+  })
 
   it('should accept null for optional fields', () => {
     const refs: RelatedRefs = {
       sessionId: null,
       turnId: undefined,
-    };
-    expect(refs.sessionId).toBeNull();
-    expect(refs.turnId).toBeUndefined();
-  });
-});
+    }
+    expect(refs.sessionId).toBeNull()
+    expect(refs.turnId).toBeUndefined()
+  })
+})

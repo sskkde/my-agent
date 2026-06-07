@@ -1,19 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js';
-import { createWorkflowDefinitionStore, type WorkflowDefinitionStore } from '../../../src/storage/workflow-definition-store.js';
-import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { WORKFLOW_RUN_STATES, RUNTIME_ACTION_STATES } from '../../../src/shared/states.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js'
 import {
-  createWorkflowRuntime,
-  type WorkflowRuntime,
-} from '../../../src/workflows/workflow-runtime.js';
-import type {
-  WorkflowStep,
-} from '../../../src/workflows/types.js';
+  createWorkflowDefinitionStore,
+  type WorkflowDefinitionStore,
+} from '../../../src/storage/workflow-definition-store.js'
+import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js'
+import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { WORKFLOW_RUN_STATES, RUNTIME_ACTION_STATES } from '../../../src/shared/states.js'
+import { createWorkflowRuntime, type WorkflowRuntime } from '../../../src/workflows/workflow-runtime.js'
+import type { WorkflowStep } from '../../../src/workflows/types.js'
 
 const workflowRuntimeMigrations: Migration[] = [
   {
@@ -32,7 +30,7 @@ const workflowRuntimeMigrations: Migration[] = [
         updated_at TEXT NOT NULL
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_drafts;`
+    down: `DROP TABLE IF EXISTS workflow_drafts;`,
   },
   {
     version: 2,
@@ -52,7 +50,7 @@ const workflowRuntimeMigrations: Migration[] = [
         tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_definitions;`
+    down: `DROP TABLE IF EXISTS workflow_definitions;`,
   },
   {
     version: 3,
@@ -76,7 +74,7 @@ const workflowRuntimeMigrations: Migration[] = [
         tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_runs;`
+    down: `DROP TABLE IF EXISTS workflow_runs;`,
   },
   {
     version: 4,
@@ -102,7 +100,7 @@ const workflowRuntimeMigrations: Migration[] = [
         tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS workflow_step_runs;`
+    down: `DROP TABLE IF EXISTS workflow_step_runs;`,
   },
   {
     version: 5,
@@ -136,7 +134,7 @@ const workflowRuntimeMigrations: Migration[] = [
         updated_at TEXT NOT NULL
       );
     `,
-    down: `DROP TABLE IF EXISTS runtime_actions;`
+    down: `DROP TABLE IF EXISTS runtime_actions;`,
   },
   {
     version: 6,
@@ -170,34 +168,34 @@ const workflowRuntimeMigrations: Migration[] = [
       tenant_id TEXT NOT NULL DEFAULT 'org_default'
       );
     `,
-    down: `DROP TABLE IF EXISTS events;`
+    down: `DROP TABLE IF EXISTS events;`,
   },
-];
+]
 
 describe('Workflow Cancel Cascade', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let draftStore: WorkflowDraftStore;
-  let definitionStore: WorkflowDefinitionStore;
-  let workflowRunStore: WorkflowRunStore;
-  let runtimeActionStore: RuntimeActionStore;
-  let eventStore: EventStore;
-  let workflowRuntime: WorkflowRuntime;
-  let allRuntimes: WorkflowRuntime[] = [];
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let draftStore: WorkflowDraftStore
+  let definitionStore: WorkflowDefinitionStore
+  let workflowRunStore: WorkflowRunStore
+  let runtimeActionStore: RuntimeActionStore
+  let eventStore: EventStore
+  let workflowRuntime: WorkflowRuntime
+  let allRuntimes: WorkflowRuntime[] = []
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply(workflowRuntimeMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply(workflowRuntimeMigrations)
 
-    draftStore = createWorkflowDraftStore(connection);
-    definitionStore = createWorkflowDefinitionStore(connection);
-    workflowRunStore = createWorkflowRunStore(connection);
-    runtimeActionStore = createRuntimeActionStore(connection);
-    eventStore = createEventStore(connection);
-    allRuntimes = [];
+    draftStore = createWorkflowDraftStore(connection)
+    definitionStore = createWorkflowDefinitionStore(connection)
+    workflowRunStore = createWorkflowRunStore(connection)
+    runtimeActionStore = createRuntimeActionStore(connection)
+    eventStore = createEventStore(connection)
+    allRuntimes = []
 
     workflowRuntime = createWorkflowRuntime({
       draftStore,
@@ -205,16 +203,16 @@ describe('Workflow Cancel Cascade', () => {
       workflowRunStore,
       runtimeActionStore,
       eventStore,
-    });
-    allRuntimes.push(workflowRuntime);
-  });
+    })
+    allRuntimes.push(workflowRuntime)
+  })
 
   afterEach(() => {
     for (const rt of allRuntimes) {
-      rt.shutdown();
+      rt.shutdown()
     }
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   it('should cancel all pending step runs when workflow run is cancelled', () => {
     const steps: WorkflowStep[] = [
@@ -238,38 +236,38 @@ describe('Workflow Cancel Cascade', () => {
         name: 'Step 3',
         config: { toolName: 'tool_c' },
       },
-    ];
+    ]
 
     const draft = workflowRuntime.createDraft({
       name: 'Cancel Steps Workflow',
       steps,
       ownerUserId: 'user_001',
-    });
-    workflowRuntime.validateDraft(draft.draftId);
-    const definition = workflowRuntime.publishDraft(draft.draftId);
+    })
+    workflowRuntime.validateDraft(draft.draftId)
+    const definition = workflowRuntime.publishDraft(draft.draftId)
 
     const result = workflowRuntime.startWorkflowRun({
       definitionId: definition.workflowId,
       userId: 'user_001',
-    });
+    })
 
     // Verify all 3 step runs were created
-    expect(result.stepRuns).toHaveLength(3);
+    expect(result.stepRuns).toHaveLength(3)
 
     // Cancel the workflow run
-    workflowRuntime.cancelWorkflowRun(result.workflowRunId);
+    workflowRuntime.cancelWorkflowRun(result.workflowRunId)
 
     // Verify the workflow run status is cancelled
-    const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-    expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED);
+    const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+    expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED)
 
     // Verify all step runs are cancelled
-    const stepRuns = workflowRunStore.getStepsByWorkflowRunId(result.workflowRunId);
-    expect(stepRuns.length).toBe(3);
+    const stepRuns = workflowRunStore.getStepsByWorkflowRunId(result.workflowRunId)
+    expect(stepRuns.length).toBe(3)
     for (const stepRun of stepRuns) {
-      expect(stepRun.status).toBe(WORKFLOW_RUN_STATES.CANCELLED);
+      expect(stepRun.status).toBe(WORKFLOW_RUN_STATES.CANCELLED)
     }
-  });
+  })
 
   it('should cancel all pending RuntimeActions when workflow run is cancelled', () => {
     const steps: WorkflowStep[] = [
@@ -288,52 +286,54 @@ describe('Workflow Cancel Cascade', () => {
         name: 'Execute Action',
         config: { toolName: 'deploy_tool' },
       },
-    ];
+    ]
 
     const draft = workflowRuntime.createDraft({
       name: 'Cancel Actions Workflow',
       steps,
       ownerUserId: 'user_002',
-    });
-    workflowRuntime.validateDraft(draft.draftId);
-    const definition = workflowRuntime.publishDraft(draft.draftId);
+    })
+    workflowRuntime.validateDraft(draft.draftId)
+    const definition = workflowRuntime.publishDraft(draft.draftId)
 
     const result = workflowRuntime.startWorkflowRun({
       definitionId: definition.workflowId,
       userId: 'user_002',
-    });
+    })
 
     // Verify RuntimeActions were created for the workflow run
-    const actionsBeforeCancel = runtimeActionStore.query({ workflowRunId: result.workflowRunId });
-    expect(actionsBeforeCancel.length).toBeGreaterThan(0);
+    const actionsBeforeCancel = runtimeActionStore.query({ workflowRunId: result.workflowRunId })
+    expect(actionsBeforeCancel.length).toBeGreaterThan(0)
 
     // Verify there are non-terminal actions
     const nonTerminalBefore = actionsBeforeCancel.filter(
-      a => a.status !== RUNTIME_ACTION_STATES.COMPLETED
-        && a.status !== RUNTIME_ACTION_STATES.FAILED
-        && a.status !== RUNTIME_ACTION_STATES.CANCELLED
-        && a.status !== RUNTIME_ACTION_STATES.TIMEOUT
-        && a.status !== RUNTIME_ACTION_STATES.DENIED
-    );
-    expect(nonTerminalBefore.length).toBeGreaterThan(0);
+      (a) =>
+        a.status !== RUNTIME_ACTION_STATES.COMPLETED &&
+        a.status !== RUNTIME_ACTION_STATES.FAILED &&
+        a.status !== RUNTIME_ACTION_STATES.CANCELLED &&
+        a.status !== RUNTIME_ACTION_STATES.TIMEOUT &&
+        a.status !== RUNTIME_ACTION_STATES.DENIED,
+    )
+    expect(nonTerminalBefore.length).toBeGreaterThan(0)
 
     // Cancel the workflow run
-    workflowRuntime.cancelWorkflowRun(result.workflowRunId);
+    workflowRuntime.cancelWorkflowRun(result.workflowRunId)
 
     // Verify all runtime actions for this workflow are now cancelled
-    const actionsAfterCancel = runtimeActionStore.query({ workflowRunId: result.workflowRunId });
-    expect(actionsAfterCancel.length).toBeGreaterThan(0);
+    const actionsAfterCancel = runtimeActionStore.query({ workflowRunId: result.workflowRunId })
+    expect(actionsAfterCancel.length).toBeGreaterThan(0)
 
     for (const action of actionsAfterCancel) {
-      if (action.status !== RUNTIME_ACTION_STATES.COMPLETED
-        && action.status !== RUNTIME_ACTION_STATES.FAILED
-        && action.status !== RUNTIME_ACTION_STATES.TIMEOUT
-        && action.status !== RUNTIME_ACTION_STATES.DENIED
+      if (
+        action.status !== RUNTIME_ACTION_STATES.COMPLETED &&
+        action.status !== RUNTIME_ACTION_STATES.FAILED &&
+        action.status !== RUNTIME_ACTION_STATES.TIMEOUT &&
+        action.status !== RUNTIME_ACTION_STATES.DENIED
       ) {
-        expect(action.status).toBe(RUNTIME_ACTION_STATES.CANCELLED);
+        expect(action.status).toBe(RUNTIME_ACTION_STATES.CANCELLED)
       }
     }
-  });
+  })
 
   it('should emit cancel event with cascade counts', () => {
     const steps: WorkflowStep[] = [
@@ -350,34 +350,34 @@ describe('Workflow Cancel Cascade', () => {
         name: 'Step B',
         config: { toolName: 'test_tool_2' },
       },
-    ];
+    ]
 
     const draft = workflowRuntime.createDraft({
       name: 'Cancel Event Workflow',
       steps,
       ownerUserId: 'user_003',
-    });
-    workflowRuntime.validateDraft(draft.draftId);
-    const definition = workflowRuntime.publishDraft(draft.draftId);
+    })
+    workflowRuntime.validateDraft(draft.draftId)
+    const definition = workflowRuntime.publishDraft(draft.draftId)
 
     const result = workflowRuntime.startWorkflowRun({
       definitionId: definition.workflowId,
       userId: 'user_003',
-    });
+    })
 
-    workflowRuntime.cancelWorkflowRun(result.workflowRunId);
+    workflowRuntime.cancelWorkflowRun(result.workflowRunId)
 
     // Verify cancel event was emitted
-    const cancelEvents = eventStore.query({ eventType: 'workflow_run_cancelled' });
-    expect(cancelEvents.length).toBeGreaterThan(0);
+    const cancelEvents = eventStore.query({ eventType: 'workflow_run_cancelled' })
+    expect(cancelEvents.length).toBeGreaterThan(0)
 
-    const cancelEvent = cancelEvents[0];
-    expect(cancelEvent).toBeDefined();
-    expect(cancelEvent?.payload).toHaveProperty('workflowRunId', result.workflowRunId);
-    expect(cancelEvent?.payload).toHaveProperty('cancelledStepCount');
-    expect(cancelEvent?.payload).toHaveProperty('cancelledActionCount');
-    expect(cancelEvent?.payload).toHaveProperty('cancelledAt');
-  });
+    const cancelEvent = cancelEvents[0]
+    expect(cancelEvent).toBeDefined()
+    expect(cancelEvent?.payload).toHaveProperty('workflowRunId', result.workflowRunId)
+    expect(cancelEvent?.payload).toHaveProperty('cancelledStepCount')
+    expect(cancelEvent?.payload).toHaveProperty('cancelledActionCount')
+    expect(cancelEvent?.payload).toHaveProperty('cancelledAt')
+  })
 
   it('should not cancel already-completed steps', () => {
     const steps: WorkflowStep[] = [
@@ -394,44 +394,44 @@ describe('Workflow Cancel Cascade', () => {
         name: 'Pending Step',
         config: { toolName: 'test_tool_2' },
       },
-    ];
+    ]
 
     const draft = workflowRuntime.createDraft({
       name: 'Partial Cancel Workflow',
       steps,
       ownerUserId: 'user_004',
-    });
-    workflowRuntime.validateDraft(draft.draftId);
-    const definition = workflowRuntime.publishDraft(draft.draftId);
+    })
+    workflowRuntime.validateDraft(draft.draftId)
+    const definition = workflowRuntime.publishDraft(draft.draftId)
 
     const result = workflowRuntime.startWorkflowRun({
       definitionId: definition.workflowId,
       userId: 'user_004',
-    });
+    })
 
     // Complete the first step
-    const firstStepRun = result.stepRuns.find(sr => sr.stepId === 'completed_step');
-    expect(firstStepRun).toBeDefined();
+    const firstStepRun = result.stepRuns.find((sr) => sr.stepId === 'completed_step')
+    expect(firstStepRun).toBeDefined()
     workflowRuntime.handleStepCompletion(firstStepRun!.stepRunId, {
       success: true,
       output: { result: 'done' },
-    });
+    })
 
     // Verify first step is completed
-    let stepRuns = workflowRunStore.getStepsByWorkflowRunId(result.workflowRunId);
-    const completedStep = stepRuns.find(sr => sr.stepId === 'completed_step');
-    expect(completedStep?.status).toBe(WORKFLOW_RUN_STATES.COMPLETED);
+    let stepRuns = workflowRunStore.getStepsByWorkflowRunId(result.workflowRunId)
+    const completedStep = stepRuns.find((sr) => sr.stepId === 'completed_step')
+    expect(completedStep?.status).toBe(WORKFLOW_RUN_STATES.COMPLETED)
 
     // Cancel the workflow (pending step should be cancelled, completed step should stay completed)
-    workflowRuntime.cancelWorkflowRun(result.workflowRunId);
+    workflowRuntime.cancelWorkflowRun(result.workflowRunId)
 
-    stepRuns = workflowRunStore.getStepsByWorkflowRunId(result.workflowRunId);
-    const completedStepAfter = stepRuns.find(sr => sr.stepId === 'completed_step');
-    const pendingStep = stepRuns.find(sr => sr.stepId === 'pending_step');
+    stepRuns = workflowRunStore.getStepsByWorkflowRunId(result.workflowRunId)
+    const completedStepAfter = stepRuns.find((sr) => sr.stepId === 'completed_step')
+    const pendingStep = stepRuns.find((sr) => sr.stepId === 'pending_step')
 
-    expect(completedStepAfter?.status).toBe(WORKFLOW_RUN_STATES.COMPLETED);
-    expect(pendingStep?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED);
-  });
+    expect(completedStepAfter?.status).toBe(WORKFLOW_RUN_STATES.COMPLETED)
+    expect(pendingStep?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED)
+  })
 
   it('should be idempotent - cancelling an already cancelled run should not throw', () => {
     const steps: WorkflowStep[] = [
@@ -441,35 +441,35 @@ describe('Workflow Cancel Cascade', () => {
         name: 'Only Step',
         config: { toolName: 'test_tool' },
       },
-    ];
+    ]
 
     const draft = workflowRuntime.createDraft({
       name: 'Idempotent Cancel Workflow',
       steps,
       ownerUserId: 'user_005',
-    });
-    workflowRuntime.validateDraft(draft.draftId);
-    const definition = workflowRuntime.publishDraft(draft.draftId);
+    })
+    workflowRuntime.validateDraft(draft.draftId)
+    const definition = workflowRuntime.publishDraft(draft.draftId)
 
     const result = workflowRuntime.startWorkflowRun({
       definitionId: definition.workflowId,
       userId: 'user_005',
-    });
+    })
 
     // First cancel
-    workflowRuntime.cancelWorkflowRun(result.workflowRunId);
+    workflowRuntime.cancelWorkflowRun(result.workflowRunId)
 
     // Verify cancelled
-    let updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-    expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED);
+    let updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+    expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED)
 
     // Second cancel should not throw
     expect(() => {
-      workflowRuntime.cancelWorkflowRun(result.workflowRunId);
-    }).not.toThrow();
+      workflowRuntime.cancelWorkflowRun(result.workflowRunId)
+    }).not.toThrow()
 
     // Status should remain cancelled
-    updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-    expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED);
-  });
-});
+    updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+    expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.CANCELLED)
+  })
+})

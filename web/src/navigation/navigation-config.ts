@@ -18,23 +18,23 @@ export type TabId =
   | 'observability'
   | 'connectors'
   | 'dlq'
-  | 'admin';
+  | 'admin'
 
-export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings';
+export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings'
 
 export interface NavItem {
-  id: TabId;
-  label: string;
-  description: string;
-  testId: string;
-  iconKey: string;
+  id: TabId
+  label: string
+  description: string
+  testId: string
+  iconKey: string
 }
 
 export interface NavGroup {
-  id: NavGroupId;
-  label: string;
-  testId: string;
-  items: NavItem[];
+  id: NavGroupId
+  label: string
+  testId: string
+  items: NavItem[]
 }
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -206,14 +206,14 @@ export const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
-];
+]
 
-const allNavItems: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
+const allNavItems: NavItem[] = NAV_GROUPS.flatMap((group) => group.items)
 
 export function getNavItemById(id: TabId): NavItem | undefined {
-  return allNavItems.find((item) => item.id === id);
+  return allNavItems.find((item) => item.id === id)
 }
 
 export function getNavGroupById(id: NavGroupId): NavGroup | undefined {
-  return NAV_GROUPS.find((group) => group.id === id);
+  return NAV_GROUPS.find((group) => group.id === id)
 }

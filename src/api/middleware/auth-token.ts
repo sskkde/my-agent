@@ -1,11 +1,11 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js';
-import { envelopeError } from '../response-envelope.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js'
+import { envelopeError } from '../response-envelope.js'
 
 export interface AuthTokenOptions {
-  token?: string;
-  enabled?: boolean;
-  exemptPaths?: string[];
+  token?: string
+  enabled?: boolean
+  exemptPaths?: string[]
 }
 
 const DEFAULT_EXEMPT_PATHS = [
@@ -20,11 +20,11 @@ const DEFAULT_EXEMPT_PATHS = [
   '/api/v1/tools',
   '/api/v1/webhooks/*',
   '/api/v1/metrics',
-];
+]
 
 export function isAuthRequired(options: AuthTokenOptions): boolean {
-  const token = options.token ?? process.env.API_AUTH_TOKEN;
-  return options.enabled ?? Boolean(token);
+  const token = options.token ?? process.env.API_AUTH_TOKEN
+  return options.enabled ?? Boolean(token)
 }
 
 function isPathExempt(path: string, exemptPaths: string[]): boolean {
@@ -32,58 +32,53 @@ function isPathExempt(path: string, exemptPaths: string[]): boolean {
   // intercept 307 redirects. Auth will be checked when the client follows the
   // redirect to the /api/v1/* target.
   if (path.startsWith('/api/') && !path.startsWith('/api/v1/')) {
-    return true;
+    return true
   }
-  return exemptPaths.some(exemptPath => {
+  return exemptPaths.some((exemptPath) => {
     if (exemptPath.endsWith('*')) {
-      return path.startsWith(exemptPath.slice(0, -1));
+      return path.startsWith(exemptPath.slice(0, -1))
     }
-    return path === exemptPath;
-  });
+    return path === exemptPath
+  })
 }
 
-export async function registerAuthToken(
-  app: FastifyInstance,
-  options: AuthTokenOptions = {}
-): Promise<void> {
-  const token = options.token ?? process.env.API_AUTH_TOKEN;
-  const enabled = options.enabled ?? Boolean(token);
+export async function registerAuthToken(app: FastifyInstance, options: AuthTokenOptions = {}): Promise<void> {
+  const token = options.token ?? process.env.API_AUTH_TOKEN
+  const enabled = options.enabled ?? Boolean(token)
 
   if (!enabled) {
-    return;
+    return
   }
 
-  const exemptPaths = options.exemptPaths ?? DEFAULT_EXEMPT_PATHS;
+  const exemptPaths = options.exemptPaths ?? DEFAULT_EXEMPT_PATHS
 
   app.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
     if (isPathExempt(request.url, exemptPaths)) {
-      return;
+      return
     }
 
     // Skip if already authenticated by session/API key middleware or already rejected by an earlier hook.
     if (request.user || reply.sent) {
-      return;
+      return
     }
 
-    const authHeader = request.headers.authorization;
+    const authHeader = request.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      request.headers = { ...request.headers, 'x-no-compression': 'true' };
-      return reply.code(401).send(
-        envelopeError('UNAUTHORIZED', 'Missing or invalid Authorization header', request.requestId)
-      );
+      request.headers = { ...request.headers, 'x-no-compression': 'true' }
+      return reply
+        .code(401)
+        .send(envelopeError('UNAUTHORIZED', 'Missing or invalid Authorization header', request.requestId))
     }
 
     // Skip API key tokens (ak_*) — handled by api-key-auth middleware
-    const providedToken = authHeader.slice(7);
+    const providedToken = authHeader.slice(7)
     if (providedToken.startsWith('ak_')) {
-      return;
+      return
     }
 
     if (providedToken !== token) {
-      request.headers = { ...request.headers, 'x-no-compression': 'true' };
-      return reply.code(401).send(
-        envelopeError('UNAUTHORIZED', 'Invalid API token', request.requestId)
-      );
+      request.headers = { ...request.headers, 'x-no-compression': 'true' }
+      return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid API token', request.requestId))
     }
 
     // Token matched — mark request as authenticated so downstream middleware (e.g. api-key-auth) skips.
@@ -92,6 +87,6 @@ export async function registerAuthToken(
       username: 'api-token',
       role: 'admin',
       tenantId: DEFAULT_TENANT_ID,
-    };
-  });
+    }
+  })
 }

@@ -1,56 +1,56 @@
-import type { SubagentDefinition, SubagentProviderPolicy } from './registry.js';
-import type { SubagentTaskSpec } from './types.js';
+import type { SubagentDefinition, SubagentProviderPolicy } from './registry.js'
+import type { SubagentTaskSpec } from './types.js'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface SubagentProviderPreference {
-  providerId?: string;
-  model?: string;
-  fallbackMode?: 'none' | 'same_provider' | 'any_compatible';
+  providerId?: string
+  model?: string
+  fallbackMode?: 'none' | 'same_provider' | 'any_compatible'
 }
 
 export interface SubagentProviderPreferenceStore {
-  get(userId: string, agentType: string): SubagentProviderPreference | null;
-  set(userId: string, agentType: string, preference: SubagentProviderPreference): void;
+  get(userId: string, agentType: string): SubagentProviderPreference | null
+  set(userId: string, agentType: string, preference: SubagentProviderPreference): void
 }
 
 export interface ResolveSubagentProviderInput {
-  userId: string;
-  sessionId?: string;
-  agentType: string;
-  taskSpec: SubagentTaskSpec;
-  definition: SubagentDefinition;
+  userId: string
+  sessionId?: string
+  agentType: string
+  taskSpec: SubagentTaskSpec
+  definition: SubagentDefinition
   providerConfigStore: {
     getByUser(userId: string): Array<{
-      providerId: string;
-      enabled: boolean;
-      selectedModel?: string;
-    }>;
-  };
+      providerId: string
+      enabled: boolean
+      selectedModel?: string
+    }>
+  }
   agentConfigStore: {
-    getGlobal(): { providerId?: string; model?: string } | null;
-  };
+    getGlobal(): { providerId?: string; model?: string } | null
+  }
   sessionStore?: {
     getById(sessionId: string): {
-      selectedProviderId?: string;
-      selectedModel?: string;
-    } | null;
-  };
-  preferenceStore?: SubagentProviderPreferenceStore;
+      selectedProviderId?: string
+      selectedModel?: string
+    } | null
+  }
+  preferenceStore?: SubagentProviderPreferenceStore
 }
 
 export interface ResolvedSubagentProvider {
-  providerId: string;
-  model: string;
+  providerId: string
+  model: string
   source:
     | 'task_override'
     | 'user_subagent_preference'
     | 'definition_default'
     | 'session'
     | 'global_default'
-    | 'fallback';
+    | 'fallback'
 }
 
 // ---------------------------------------------------------------------------
@@ -78,25 +78,23 @@ export function validateProviderCapabilities(
     return {
       valid: false,
       missingCapabilities: requiredCapabilities ?? ['providerId_or_model_missing'],
-    };
+    }
   }
 
   // If no capabilities are required the provider is implicitly valid.
   if (!requiredCapabilities || requiredCapabilities.length === 0) {
-    return { valid: true };
+    return { valid: true }
   }
 
   // Resolve the provider entry so we can verify it exists and is enabled.
-  const providers = providerConfigStore.getByUser(userId ?? '');
-  const provider = providers.find(
-    (p) => p.providerId === providerId && p.enabled,
-  );
+  const providers = providerConfigStore.getByUser(userId ?? '')
+  const provider = providers.find((p) => p.providerId === providerId && p.enabled)
 
   if (!provider) {
     return {
       valid: false,
       missingCapabilities: [...requiredCapabilities],
-    };
+    }
   }
 
   // At this level we perform structural validation only.  A full capability
@@ -107,7 +105,7 @@ export function validateProviderCapabilities(
   //
   // Callers that need stricter checking can plug a capability-aware store
   // behind the same interface.
-  return { valid: true };
+  return { valid: true }
 }
 
 // ---------------------------------------------------------------------------
@@ -127,13 +125,13 @@ function candidateMatchesPolicy(
 ): boolean {
   if (policy.allowedProviderIds && policy.allowedProviderIds.length > 0) {
     if (!policy.allowedProviderIds.includes(providerId)) {
-      return false;
+      return false
     }
   }
 
   if (policy.allowedModelIds && policy.allowedModelIds.length > 0) {
     if (!policy.allowedModelIds.includes(model)) {
-      return false;
+      return false
     }
   }
 
@@ -143,9 +141,9 @@ function candidateMatchesPolicy(
     policy.requiredCapabilities,
     providerConfigStore,
     userId,
-  );
+  )
 
-  return valid;
+  return valid
 }
 
 /**
@@ -161,35 +159,31 @@ function resolvePartialPreference(
   providerConfigStore: ResolveSubagentProviderInput['providerConfigStore'],
   userId: string,
 ): { providerId: string; model: string } | null {
-  if (!pref) return null;
+  if (!pref) return null
 
   if (pref.providerId && pref.model) {
-    return { providerId: pref.providerId, model: pref.model };
+    return { providerId: pref.providerId, model: pref.model }
   }
 
   if (pref.providerId) {
-    const userProviders = providerConfigStore.getByUser(userId);
-    const provider = userProviders.find(
-      (p) => p.providerId === pref.providerId && p.enabled,
-    );
+    const userProviders = providerConfigStore.getByUser(userId)
+    const provider = userProviders.find((p) => p.providerId === pref.providerId && p.enabled)
     if (provider?.selectedModel) {
-      return { providerId: pref.providerId, model: provider.selectedModel };
+      return { providerId: pref.providerId, model: provider.selectedModel }
     }
-    return null;
+    return null
   }
 
   if (pref.model) {
-    const userProviders = providerConfigStore.getByUser(userId);
-    const provider = userProviders.find(
-      (p) => p.enabled && p.selectedModel === pref.model,
-    );
+    const userProviders = providerConfigStore.getByUser(userId)
+    const provider = userProviders.find((p) => p.enabled && p.selectedModel === pref.model)
     if (provider) {
-      return { providerId: provider.providerId, model: pref.model };
+      return { providerId: provider.providerId, model: pref.model }
     }
-    return null;
+    return null
   }
 
-  return null;
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -215,9 +209,7 @@ function resolvePartialPreference(
  * If no valid candidate is found and the effective fallback mode is `'none'`,
  * an error is thrown.
  */
-export function resolveSubagentProvider(
-  input: ResolveSubagentProviderInput,
-): ResolvedSubagentProvider {
+export function resolveSubagentProvider(input: ResolveSubagentProviderInput): ResolvedSubagentProvider {
   const {
     userId,
     sessionId,
@@ -227,37 +219,30 @@ export function resolveSubagentProvider(
     agentConfigStore,
     sessionStore,
     preferenceStore,
-  } = input;
+  } = input
 
-  const policy = definition.providerPolicy;
+  const policy = definition.providerPolicy
 
   // Effective fallback mode: user preference overrides the definition default.
-  const userPref = preferenceStore?.get(userId, definition.agentType) ?? null;
-  const effectiveFallbackMode: SubagentProviderPolicy['fallbackMode'] =
-    userPref?.fallbackMode ?? policy.fallbackMode;
+  const userPref = preferenceStore?.get(userId, definition.agentType) ?? null
+  const effectiveFallbackMode: SubagentProviderPolicy['fallbackMode'] = userPref?.fallbackMode ?? policy.fallbackMode
 
   // -----------------------------------------------------------------------
   // 1. taskSpec.modelOverride (highest priority)
   // -----------------------------------------------------------------------
-  const modelOverride = (taskSpec as SubagentTaskSpec & {
-    modelOverride?: { providerId?: string; model?: string };
-  }).modelOverride;
+  const modelOverride = (
+    taskSpec as SubagentTaskSpec & {
+      modelOverride?: { providerId?: string; model?: string }
+    }
+  ).modelOverride
 
   if (modelOverride?.providerId && modelOverride.model) {
-    if (
-      candidateMatchesPolicy(
-        modelOverride.providerId,
-        modelOverride.model,
-        policy,
-        providerConfigStore,
-        userId,
-      )
-    ) {
+    if (candidateMatchesPolicy(modelOverride.providerId, modelOverride.model, policy, providerConfigStore, userId)) {
       return {
         providerId: modelOverride.providerId,
         model: modelOverride.model,
         source: 'task_override',
-      };
+      }
     }
   }
 
@@ -265,22 +250,16 @@ export function resolveSubagentProvider(
   // 2. user subagent preference
   // -----------------------------------------------------------------------
   if (userPref?.providerId || userPref?.model) {
-    const resolvedPref = resolvePartialPreference(userPref, providerConfigStore, userId);
+    const resolvedPref = resolvePartialPreference(userPref, providerConfigStore, userId)
     if (
       resolvedPref &&
-      candidateMatchesPolicy(
-        resolvedPref.providerId,
-        resolvedPref.model,
-        policy,
-        providerConfigStore,
-        userId,
-      )
+      candidateMatchesPolicy(resolvedPref.providerId, resolvedPref.model, policy, providerConfigStore, userId)
     ) {
       return {
         providerId: resolvedPref.providerId,
         model: resolvedPref.model,
         source: 'user_subagent_preference',
-      };
+      }
     }
   }
 
@@ -288,20 +267,12 @@ export function resolveSubagentProvider(
   // 3. SubagentDefinition.providerPolicy defaults
   // -----------------------------------------------------------------------
   if (policy.defaultProviderId && policy.defaultModel) {
-    if (
-      candidateMatchesPolicy(
-        policy.defaultProviderId,
-        policy.defaultModel,
-        policy,
-        providerConfigStore,
-        userId,
-      )
-    ) {
+    if (candidateMatchesPolicy(policy.defaultProviderId, policy.defaultModel, policy, providerConfigStore, userId)) {
       return {
         providerId: policy.defaultProviderId,
         model: policy.defaultModel,
         source: 'definition_default',
-      };
+      }
     }
   }
 
@@ -309,22 +280,16 @@ export function resolveSubagentProvider(
   // 4. session provider/model
   // -----------------------------------------------------------------------
   if (sessionId && sessionStore) {
-    const session = sessionStore.getById(sessionId);
+    const session = sessionStore.getById(sessionId)
     if (session?.selectedProviderId && session.selectedModel) {
       if (
-        candidateMatchesPolicy(
-          session.selectedProviderId,
-          session.selectedModel,
-          policy,
-          providerConfigStore,
-          userId,
-        )
+        candidateMatchesPolicy(session.selectedProviderId, session.selectedModel, policy, providerConfigStore, userId)
       ) {
         return {
           providerId: session.selectedProviderId,
           model: session.selectedModel,
           source: 'session',
-        };
+        }
       }
     }
   }
@@ -332,22 +297,14 @@ export function resolveSubagentProvider(
   // -----------------------------------------------------------------------
   // 5. global agent config
   // -----------------------------------------------------------------------
-  const globalConfig = agentConfigStore.getGlobal();
+  const globalConfig = agentConfigStore.getGlobal()
   if (globalConfig?.providerId && globalConfig.model) {
-    if (
-      candidateMatchesPolicy(
-        globalConfig.providerId,
-        globalConfig.model,
-        policy,
-        providerConfigStore,
-        userId,
-      )
-    ) {
+    if (candidateMatchesPolicy(globalConfig.providerId, globalConfig.model, policy, providerConfigStore, userId)) {
       return {
         providerId: globalConfig.providerId,
         model: globalConfig.model,
         source: 'global_default',
-      };
+      }
     }
   }
 
@@ -359,38 +316,34 @@ export function resolveSubagentProvider(
       `No provider resolved for subagent "${definition.agentType}" ` +
         `and fallbackMode is "none". ` +
         `Ensure a compatible provider is configured for user "${userId}".`,
-    );
+    )
   }
 
-  const userProviders = providerConfigStore.getByUser(userId);
+  const userProviders = providerConfigStore.getByUser(userId)
   const allowedProviders =
     policy.allowedProviderIds && policy.allowedProviderIds.length > 0
-      ? userProviders.filter((p) =>
-          policy.allowedProviderIds!.includes(p.providerId),
-        )
-      : userProviders;
+      ? userProviders.filter((p) => policy.allowedProviderIds!.includes(p.providerId))
+      : userProviders
 
   // When fallbackMode is 'same_provider' restrict to the provider that was
   // last tried (global config) so we stay within the same provider family.
   const scopedProviders =
     effectiveFallbackMode === 'same_provider' && globalConfig?.providerId
-      ? allowedProviders.filter(
-          (p) => p.providerId === globalConfig.providerId,
-        )
-      : allowedProviders;
+      ? allowedProviders.filter((p) => p.providerId === globalConfig.providerId)
+      : allowedProviders
 
   for (const provider of scopedProviders) {
-    if (!provider.enabled) continue;
+    if (!provider.enabled) continue
 
-    const model = provider.selectedModel;
-    if (!model) continue;
+    const model = provider.selectedModel
+    if (!model) continue
 
     if (candidateMatchesPolicy(provider.providerId, model, policy, providerConfigStore, userId)) {
       return {
         providerId: provider.providerId,
         model,
         source: 'fallback',
-      };
+      }
     }
   }
 
@@ -399,5 +352,5 @@ export function resolveSubagentProvider(
     `No compatible provider found for subagent "${definition.agentType}" ` +
       `(user="${userId}", fallbackMode="${effectiveFallbackMode}"). ` +
       `Ensure at least one enabled provider with a selected model is configured.`,
-  );
+  )
 }

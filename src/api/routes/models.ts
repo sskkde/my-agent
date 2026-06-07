@@ -1,9 +1,9 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { ApiContext } from '../context.js';
-import { success, envelopeError } from '../response-envelope.js';
-import type { ModelsResponse, ProviderSummary } from '../types.js';
-import type { ProviderConfigSanitized } from '../../storage/provider-config-store.js';
-import { ResourceType, Action } from '../../permissions/rbac-types.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import type { ApiContext } from '../context.js'
+import { success, envelopeError } from '../response-envelope.js'
+import type { ModelsResponse, ProviderSummary } from '../types.js'
+import type { ProviderConfigSanitized } from '../../storage/provider-config-store.js'
+import { ResourceType, Action } from '../../permissions/rbac-types.js'
 
 function sanitizeProviderForResponse(provider: ProviderConfigSanitized): ProviderSummary {
   return {
@@ -20,27 +20,27 @@ function sanitizeProviderForResponse(provider: ProviderConfigSanitized): Provide
     lastTestedAt: provider.lastTestedAt,
     createdAt: provider.createdAt,
     updatedAt: provider.updatedAt,
-  };
+  }
 }
 
 export function registerModelsRoutes(server: FastifyInstance, context: ApiContext): void {
-  const providerConfigStore = context.providerConfigStore;
-  const sessionStore = context.stores.sessionStore;
+  const providerConfigStore = context.providerConfigStore
+  const sessionStore = context.stores.sessionStore
 
   server.get<{ Querystring: { sessionId?: string } }>(
     '/api/v1/models',
     async (request: FastifyRequest<{ Querystring: { sessionId?: string } }>, reply: FastifyReply) => {
       if (!request.requirePermission('provider' as ResourceType, Action.read)) {
-        return reply;
+        return reply
       }
-      const userId = request.user?.userId;
+      const userId = request.user?.userId
       if (!userId) {
-        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId));
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       }
 
-      const { sessionId } = request.query;
+      const { sessionId } = request.query
 
-      const providers: ProviderSummary[] = [];
+      const providers: ProviderSummary[] = []
 
       if (process.env.OPENROUTER_API_KEY) {
         providers.push({
@@ -57,7 +57,7 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
           lastTestedAt: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        });
+        })
       }
 
       if (process.env.OLLAMA_BASE_URL) {
@@ -75,7 +75,7 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
           lastTestedAt: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        });
+        })
       }
 
       if (process.env.OPENAI_API_KEY) {
@@ -93,7 +93,7 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
           lastTestedAt: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        });
+        })
       }
 
       if (process.env.DEEPSEEK_API_KEY) {
@@ -111,29 +111,29 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
           lastTestedAt: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        });
+        })
       }
 
       if (providerConfigStore) {
-        const userProviders = providerConfigStore.listByUser(userId);
+        const userProviders = providerConfigStore.listByUser(userId)
         for (const provider of userProviders) {
-          providers.push(sanitizeProviderForResponse(provider));
+          providers.push(sanitizeProviderForResponse(provider))
         }
       }
 
       const response: ModelsResponse = {
         providers,
-      };
+      }
 
       if (sessionId && sessionStore) {
-        const session = sessionStore.getById(sessionId);
+        const session = sessionStore.getById(sessionId)
         if (session && session.userId === userId) {
-          response.selectedModel = session.selectedModel;
-          response.selectedProviderId = session.selectedProviderId;
+          response.selectedModel = session.selectedModel
+          response.selectedProviderId = session.selectedProviderId
         }
       }
 
-      return reply.code(200).send(success(response, request.requestId));
-    }
-  );
+      return reply.code(200).send(success(response, request.requestId))
+    },
+  )
 }

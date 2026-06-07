@@ -1,30 +1,26 @@
-import React, { useRef, useEffect } from 'react';
-import type { ConsoleTimelineEvent } from '../../api/types';
-import { TimelineEventCard } from './TimelineEventCard';
+import React, { useRef, useEffect } from 'react'
+import type { ConsoleTimelineEvent } from '../../api/types'
+import { TimelineEventCard } from './TimelineEventCard'
 
 export interface TimelineListProps {
-  events: ConsoleTimelineEvent[];
-  loading: boolean;
-  error?: string;
+  events: ConsoleTimelineEvent[]
+  loading: boolean
+  error?: string
 }
 
-export const TimelineList: React.FC<TimelineListProps> = ({
-  events,
-  loading,
-  error,
-}) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+export const TimelineList: React.FC<TimelineListProps> = ({ events, loading, error }) => {
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [events]);
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [events])
 
   if (loading) {
     return (
       <div className="timeline-list timeline-list--loading" data-testid="timeline-loading">
         <div className="timeline-loading">加载中...</div>
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -32,7 +28,7 @@ export const TimelineList: React.FC<TimelineListProps> = ({
       <div className="timeline-list timeline-list--error" data-testid="timeline-error">
         <div className="timeline-error">{error}</div>
       </div>
-    );
+    )
   }
 
   if (events.length === 0) {
@@ -43,7 +39,7 @@ export const TimelineList: React.FC<TimelineListProps> = ({
           <p>暂无事件</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -53,5 +49,5 @@ export const TimelineList: React.FC<TimelineListProps> = ({
       ))}
       <div ref={scrollRef} />
     </div>
-  );
-};
+  )
+}

@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { useToast } from './Toast';
-import { useApprovalActions } from '../features/approvals/ApprovalActionHandler';
+import React, { useState } from 'react'
+import { useToast } from './Toast'
+import { useApprovalActions } from '../features/approvals/ApprovalActionHandler'
 
 export interface ApprovalCardProps {
-  approvalId: string;
-  actionType: string;
-  resource?: string;
-  justification?: string;
-  riskLevel?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  onApprove: (approvalId: string) => void;
-  onReject: (approvalId: string) => void;
+  approvalId: string
+  actionType: string
+  resource?: string
+  justification?: string
+  riskLevel?: string
+  status: 'pending' | 'approved' | 'rejected'
+  onApprove: (approvalId: string) => void
+  onReject: (approvalId: string) => void
 }
 
 const riskLevelLabels: Record<string, string> = {
   low: '低风险',
   medium: '中风险',
   high: '高风险',
-};
+}
 
 export const ApprovalCard: React.FC<ApprovalCardProps> = ({
   approvalId,
@@ -29,41 +29,37 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
   onApprove,
   onReject,
 }) => {
-  const [actionTaken, setActionTaken] = useState<'approved' | 'rejected' | null>(null);
-  const { addToast } = useToast();
-  const { approve, reject, isSubmitting, error } = useApprovalActions();
+  const [actionTaken, setActionTaken] = useState<'approved' | 'rejected' | null>(null)
+  const { addToast } = useToast()
+  const { approve, reject, isSubmitting, error } = useApprovalActions()
 
-  const effectiveStatus = actionTaken ?? status;
-  const isPending = effectiveStatus === 'pending';
+  const effectiveStatus = actionTaken ?? status
+  const isPending = effectiveStatus === 'pending'
 
   const handleApprove = async () => {
     try {
-      await approve(approvalId);
-      setActionTaken('approved');
-      addToast('success', '审批已通过');
-      onApprove(approvalId);
+      await approve(approvalId)
+      setActionTaken('approved')
+      addToast('success', '审批已通过')
+      onApprove(approvalId)
     } catch (_err) {
       // Error state is surfaced by useApprovalActions.
     }
-  };
+  }
 
   const handleReject = async () => {
     try {
-      await reject(approvalId);
-      setActionTaken('rejected');
-      addToast('success', '审批已拒绝');
-      onReject(approvalId);
+      await reject(approvalId)
+      setActionTaken('rejected')
+      addToast('success', '审批已拒绝')
+      onReject(approvalId)
     } catch (_err) {
       // Error state is surfaced by useApprovalActions.
     }
-  };
+  }
 
   return (
-    <div
-      className="approval-card"
-      data-testid="approval-card"
-      data-status={effectiveStatus}
-    >
+    <div className="approval-card" data-testid="approval-card" data-status={effectiveStatus}>
       <div className="approval-card__header">
         <span className="approval-card__action-type">{actionType}</span>
         {riskLevel && (
@@ -130,7 +126,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ApprovalCard;
+export default ApprovalCard

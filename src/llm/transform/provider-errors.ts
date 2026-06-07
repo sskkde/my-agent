@@ -3,7 +3,7 @@
  * Maps HTTP responses to structured RuntimeError objects
  */
 
-import type { RuntimeError, ErrorSource } from '../../shared/errors';
+import type { RuntimeError, ErrorSource } from '../../shared/errors'
 
 /**
  * Creates a structured RuntimeError from an HTTP response
@@ -18,7 +18,7 @@ export function createErrorFromResponse(
   status: number,
   statusText: string,
   providerId: string,
-  source: ErrorSource
+  source: ErrorSource,
 ): RuntimeError {
   const baseError = {
     errorId: `err_${providerId}_${Date.now()}`,
@@ -26,7 +26,7 @@ export function createErrorFromResponse(
     recoverability: 'retryable_later' as const,
     source,
     createdAt: new Date().toISOString(),
-  };
+  }
 
   if (status === 429) {
     return {
@@ -34,7 +34,7 @@ export function createErrorFromResponse(
       category: 'connector_rate_limited',
       code: 'RATE_LIMIT_ERROR',
       technical: { retryAfterMs: 60000 },
-    };
+    }
   }
 
   if (status >= 500) {
@@ -42,7 +42,7 @@ export function createErrorFromResponse(
       ...baseError,
       category: 'model_error',
       code: 'PROVIDER_ERROR',
-    };
+    }
   }
 
   if (status >= 400) {
@@ -50,12 +50,12 @@ export function createErrorFromResponse(
       ...baseError,
       category: 'model_error',
       code: 'REQUEST_ERROR',
-    };
+    }
   }
 
   return {
     ...baseError,
     category: 'model_error',
     code: 'UNKNOWN_ERROR',
-  };
+  }
 }

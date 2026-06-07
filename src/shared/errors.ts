@@ -20,7 +20,7 @@ export type RuntimeErrorCategory =
   | 'dispatcher_error'
   | 'duplicate_event'
   | 'state_conflict'
-  | 'system_internal_error';
+  | 'system_internal_error'
 
 /**
  * Error Recoverability
@@ -31,22 +31,22 @@ export type Recoverability =
   | 'recoverable_with_user'
   | 'recoverable_with_approval'
   | 'retryable_later'
-  | 'non_recoverable';
+  | 'non_recoverable'
 
 /**
  * Error Source Information
  * Tracks where the error originated
  */
 export interface ErrorSource {
-  module: string;
-  runId?: string;
-  plannerRunId?: string;
-  workflowRunId?: string;
-  workflowStepRunId?: string;
-  backgroundRunId?: string;
-  toolCallId?: string;
-  actionId?: string;
-  connectorId?: string;
+  module: string
+  runId?: string
+  plannerRunId?: string
+  workflowRunId?: string
+  workflowStepRunId?: string
+  backgroundRunId?: string
+  toolCallId?: string
+  actionId?: string
+  connectorId?: string
 }
 
 /**
@@ -54,9 +54,9 @@ export interface ErrorSource {
  * Information shown to the user about the error
  */
 export interface UserVisibleError {
-  title: string;
-  summary: string;
-  suggestedActions?: string[];
+  title: string
+  summary: string
+  suggestedActions?: string[]
 }
 
 /**
@@ -64,9 +64,9 @@ export interface UserVisibleError {
  * Technical information for debugging and retry handling
  */
 export interface TechnicalErrorDetails {
-  stackRef?: string;
-  rawErrorRef?: string;
-  retryAfterMs?: number;
+  stackRef?: string
+  rawErrorRef?: string
+  retryAfterMs?: number
 }
 
 /**
@@ -74,14 +74,14 @@ export interface TechnicalErrorDetails {
  * Unified error object for all runtime errors
  */
 export interface RuntimeError {
-  errorId: string;
-  category: RuntimeErrorCategory;
-  code: string;
-  message: string;
-  recoverability: Recoverability;
-  source: ErrorSource;
-  userVisible?: UserVisibleError;
-  technical?: TechnicalErrorDetails;
-  createdAt: string;
-  attempts?: Array<{ providerId: string; error: RuntimeError }>;
+  errorId: string
+  category: RuntimeErrorCategory
+  code: string
+  message: string
+  recoverability: Recoverability
+  source: ErrorSource
+  userVisible?: UserVisibleError
+  technical?: TechnicalErrorDetails
+  createdAt: string
+  attempts?: Array<{ providerId: string; error: RuntimeError }>
 }

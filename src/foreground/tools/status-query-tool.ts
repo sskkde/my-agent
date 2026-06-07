@@ -3,28 +3,28 @@
  * Foreground tool for querying active work status
  */
 
-import type { RuntimeDispatcher, DispatchResult } from '../../dispatcher/types.js';
-import { createSuccessResult, createErrorResult } from './foreground-tool-result.js';
-import type { ForegroundToolResult } from './foreground-tool-result.js';
+import type { RuntimeDispatcher, DispatchResult } from '../../dispatcher/types.js'
+import { createSuccessResult, createErrorResult } from './foreground-tool-result.js'
+import type { ForegroundToolResult } from './foreground-tool-result.js'
 
-export const STATUS_QUERY_TOOL_ID = 'foreground_status_query';
+export const STATUS_QUERY_TOOL_ID = 'foreground_status_query'
 
 /**
  * Status query response data
  */
 export interface StatusQueryData {
-  runtimeActionId: string;
-  statusText: string;
+  runtimeActionId: string
+  statusText: string
 }
 
 /**
  * Dependencies for status query tool
  */
 export interface StatusQueryDeps {
-  runtimeDispatcher: RuntimeDispatcher;
-  userId: string;
-  sessionId: string;
-  turnId: string;
+  runtimeDispatcher: RuntimeDispatcher
+  userId: string
+  sessionId: string
+  turnId: string
 }
 
 /**
@@ -32,13 +32,13 @@ export interface StatusQueryDeps {
  */
 export async function handleStatusQuery(
   deps: StatusQueryDeps,
-  userMessage?: string
+  userMessage?: string,
 ): Promise<ForegroundToolResult<StatusQueryData>> {
-  const { runtimeDispatcher, userId, sessionId, turnId } = deps;
+  const { runtimeDispatcher, userId, sessionId, turnId } = deps
 
   try {
     // Create runtime action server-side
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const runtimeAction = {
       actionId: `action-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       actionType: 'query_active_work' as const,
@@ -58,7 +58,7 @@ export async function handleStatusQuery(
       createdAt: now,
       updatedAt: now,
       status: 'created' as const,
-    };
+    }
 
     // Dispatch via runtime dispatcher
     const dispatchResult: DispatchResult = await runtimeDispatcher.dispatch({
@@ -69,7 +69,7 @@ export async function handleStatusQuery(
         userId,
         sessionId,
       },
-    });
+    })
 
     // Extract status text from dispatch result
     const statusText =
@@ -79,7 +79,7 @@ export async function handleStatusQuery(
           : 'Status check completed.'
         : dispatchResult.status === 'failed'
           ? `Status check failed: ${dispatchResult.error?.message || 'Unknown error'}`
-          : 'Status check is pending.';
+          : 'Status check is pending.'
 
     return createSuccessResult<StatusQueryData>(
       {
@@ -89,15 +89,15 @@ export async function handleStatusQuery(
       userMessage || statusText,
       {
         runtimeActionIds: [runtimeAction.actionId],
-      }
-    );
+      },
+    )
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return createErrorResult<StatusQueryData>(
       'STATUS_QUERY_FAILED',
       errorMessage,
       false,
-      'Status check failed due to an error.'
-    );
+      'Status check failed due to an error.',
+    )
   }
 }

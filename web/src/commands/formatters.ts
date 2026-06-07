@@ -3,11 +3,11 @@
  * Converts CommandResult to ConsoleTimelineEvent for display in the timeline
  */
 
-import type { ConsoleTimelineEvent } from '../api/types.js';
-import type { FrontendCommandResult } from './types.js';
+import type { ConsoleTimelineEvent } from '../api/types.js'
+import type { FrontendCommandResult } from './types.js'
 
 /** localStorage key for command event counter */
-const EVENT_COUNTER_KEY = 'agent-platform.console.commandEventCounter';
+const EVENT_COUNTER_KEY = 'agent-platform.console.commandEventCounter'
 
 /**
  * Get the next counter value for event IDs
@@ -15,13 +15,13 @@ const EVENT_COUNTER_KEY = 'agent-platform.console.commandEventCounter';
  */
 function getNextCounter(): number {
   try {
-    const current = parseInt(localStorage.getItem(EVENT_COUNTER_KEY) || '0', 10);
-    const next = (isNaN(current) ? 0 : current) + 1;
-    localStorage.setItem(EVENT_COUNTER_KEY, String(next));
-    return next;
+    const current = parseInt(localStorage.getItem(EVENT_COUNTER_KEY) || '0', 10)
+    const next = (isNaN(current) ? 0 : current) + 1
+    localStorage.setItem(EVENT_COUNTER_KEY, String(next))
+    return next
   } catch {
     // If localStorage is not available, use timestamp-based fallback
-    return Date.now() % 10000;
+    return Date.now() % 10000
   }
 }
 
@@ -33,25 +33,25 @@ function getNextCounter(): number {
  */
 function sanitizeOutput(output: string | undefined | { type: string; content: string }): string {
   if (!output) {
-    return '';
+    return ''
   }
 
   // Handle object output format
-  const contentString = typeof output === 'string' ? output : output.content;
+  const contentString = typeof output === 'string' ? output : output.content
 
   // Remove ANSI escape codes
   const cleaned = contentString
     .replace(/\u001b\[[0-9;]*m/g, '') // ANSI color codes
     .replace(/\u001b\[[0-9;]*[A-Za-z]/g, '') // Other ANSI sequences
-    .replace(/\x1b\[[0-9;]*m/g, ''); // Alternative escape sequences
+    .replace(/\x1b\[[0-9;]*m/g, '') // Alternative escape sequences
 
   // Limit length to reasonable maximum
-  const MAX_LENGTH = 10000;
+  const MAX_LENGTH = 10000
   if (cleaned.length > MAX_LENGTH) {
-    return cleaned.substring(0, MAX_LENGTH) + '\n... (output truncated)';
+    return cleaned.substring(0, MAX_LENGTH) + '\n... (output truncated)'
   }
 
-  return cleaned;
+  return cleaned
 }
 
 /**
@@ -61,22 +61,19 @@ function sanitizeOutput(output: string | undefined | { type: string; content: st
  * @param sessionId - The session ID for the event context
  * @returns A ConsoleTimelineEvent suitable for timeline display
  */
-export function createCommandEvent(
-  result: FrontendCommandResult,
-  sessionId: string
-): ConsoleTimelineEvent {
-  const counter = getNextCounter();
-  const timestamp = new Date().toISOString();
+export function createCommandEvent(result: FrontendCommandResult, sessionId: string): ConsoleTimelineEvent {
+  const counter = getNextCounter()
+  const timestamp = new Date().toISOString()
 
   // Determine event type based on success/failure
-  const eventType = result.success ? 'system_status' : 'error';
+  const eventType = result.success ? 'system_status' : 'error'
 
   // Build event content
-  let content: string;
+  let content: string
   if (result.success) {
-    content = sanitizeOutput(result.output);
+    content = sanitizeOutput(result.output)
   } else {
-    content = sanitizeOutput(result.error) || 'Command failed';
+    content = sanitizeOutput(result.error) || 'Command failed'
   }
 
   return {
@@ -90,5 +87,5 @@ export function createCommandEvent(
       commandName: result.commandName,
       success: result.success,
     },
-  };
+  }
 }

@@ -1,43 +1,40 @@
-import type { SummaryStore, SummaryRecord, SourceRefs, SummaryPatch } from '../storage/summary-store.js';
-import type {
-  SessionMemory,
-  SessionMemoryPatch
-} from './types.js';
-import type { PlannerStatePatch } from '../planner/types.js';
-import type { CacheLayer, CacheStats } from './cache-layer.js';
-import type { CacheConfig } from './limit-types.js';
-import { createCacheLayer } from './cache-layer.js';
-import { plannerStateToSessionPatch } from './planner-state-bridge.js';
+import type { SummaryStore, SummaryRecord, SourceRefs, SummaryPatch } from '../storage/summary-store.js'
+import type { SessionMemory, SessionMemoryPatch } from './types.js'
+import type { PlannerStatePatch } from '../planner/types.js'
+import type { CacheLayer, CacheStats } from './cache-layer.js'
+import type { CacheConfig } from './limit-types.js'
+import { createCacheLayer } from './cache-layer.js'
+import { plannerStateToSessionPatch } from './planner-state-bridge.js'
 
-export type { SessionMemoryManager } from './types.js';
+export type { SessionMemoryManager } from './types.js'
 
 const DEFAULT_CACHE_CONFIG: CacheConfig = {
   maxSizeMb: 64,
   ttlSeconds: 300,
-  evictionPolicy: 'lru'
-};
+  evictionPolicy: 'lru',
+}
 
-const SYSTEM_OWNED_FIELDS = ['summaryId', 'sessionId', 'userId', 'createdAt', 'sourceRefs'] as const;
+const SYSTEM_OWNED_FIELDS = ['summaryId', 'sessionId', 'userId', 'createdAt', 'sourceRefs'] as const
 
-type SystemOwnedField = typeof SYSTEM_OWNED_FIELDS[number];
+type SystemOwnedField = (typeof SYSTEM_OWNED_FIELDS)[number]
 
 type SessionMemoryManagerType = {
-  createSessionMemory(sessionId: string, userId: string, sourceRefs: SourceRefs): SessionMemory;
-  getSessionMemory(sessionId: string): SessionMemory | null;
-  patchSessionMemory(sessionId: string, patch: SessionMemoryPatch): SessionMemory;
-  applyPlannerStatePatch(sessionId: string, patch: PlannerStatePatch): SessionMemory;
-  invalidateCache(sessionId: string): void;
-  getCacheStats(): CacheStats;
-};
+  createSessionMemory(sessionId: string, userId: string, sourceRefs: SourceRefs): SessionMemory
+  getSessionMemory(sessionId: string): SessionMemory | null
+  patchSessionMemory(sessionId: string, patch: SessionMemoryPatch): SessionMemory
+  applyPlannerStatePatch(sessionId: string, patch: PlannerStatePatch): SessionMemory
+  invalidateCache(sessionId: string): void
+  getCacheStats(): CacheStats
+}
 
 export function createSessionMemoryManager(
   summaryStore: SummaryStore,
-  cacheConfig?: CacheConfig
+  cacheConfig?: CacheConfig,
 ): SessionMemoryManagerType {
-  const cache: CacheLayer = createCacheLayer(cacheConfig ?? DEFAULT_CACHE_CONFIG);
+  const cache: CacheLayer = createCacheLayer(cacheConfig ?? DEFAULT_CACHE_CONFIG)
 
   function sessionKey(sessionId: string): string {
-    return `memory:${sessionId}:memory`;
+    return `memory:${sessionId}:memory`
   }
 
   return {
@@ -46,16 +43,12 @@ export function createSessionMemoryManager(
     patchSessionMemory,
     applyPlannerStatePatch,
     invalidateCache,
-    getCacheStats
-  };
+    getCacheStats,
+  }
 
-  function createSessionMemory(
-    sessionId: string,
-    userId: string,
-    sourceRefs: SourceRefs
-  ): SessionMemory {
-    const summaryId = `sm-${sessionId}-${Date.now()}`;
-    const createdAt = new Date().toISOString();
+  function createSessionMemory(sessionId: string, userId: string, sourceRefs: SourceRefs): SessionMemory {
+    const summaryId = `sm-${sessionId}-${Date.now()}`
+    const createdAt = new Date().toISOString()
 
     const memory: SessionMemory = {
       summaryId,
@@ -65,8 +58,8 @@ export function createSessionMemoryManager(
       sourceRefs,
       summary: '',
       status: 'active',
-      createdAt
-    };
+      createdAt,
+    }
 
     summaryStore.save({
       summaryId: memory.summaryId,
@@ -76,85 +69,82 @@ export function createSessionMemoryManager(
       sourceRefs: memory.sourceRefs,
       summary: memory.summary,
       status: memory.status,
-      createdAt: memory.createdAt
-    });
+      createdAt: memory.createdAt,
+    })
 
-    cache.set(sessionKey(sessionId), memory);
+    cache.set(sessionKey(sessionId), memory)
 
-    return memory;
+    return memory
   }
 
   function getSessionMemory(sessionId: string): SessionMemory | null {
-    const cached = cache.get<SessionMemory>(sessionKey(sessionId));
+    const cached = cache.get<SessionMemory>(sessionKey(sessionId))
     if (cached) {
-      return cached;
+      return cached
     }
 
-    const record = summaryStore.getSessionMemory(sessionId);
+    const record = summaryStore.getSessionMemory(sessionId)
 
     if (!record) {
-      return null;
+      return null
     }
 
-    const memory = recordToSessionMemory(record);
-    cache.set(sessionKey(sessionId), memory);
-    return memory;
+    const memory = recordToSessionMemory(record)
+    cache.set(sessionKey(sessionId), memory)
+    return memory
   }
 
-  function patchSessionMemory(
-    sessionId: string,
-    patch: SessionMemoryPatch
-  ): SessionMemory {
-    const existing = summaryStore.getSessionMemory(sessionId);
+  function patchSessionMemory(sessionId: string, patch: SessionMemoryPatch): SessionMemory {
+    const existing = summaryStore.getSessionMemory(sessionId)
 
     if (!existing) {
-      throw new Error(`Session memory with sessionId "${sessionId}" not found`);
+      throw new Error(`Session memory with sessionId "${sessionId}" not found`)
     }
 
-    const sanitizedPatch = sanitizePatch(patch);
+    const sanitizedPatch = sanitizePatch(patch)
 
     const summaryPatch: SummaryPatch = {
       ...sanitizedPatch,
-      updatedAt: new Date().toISOString()
-    };
+      updatedAt: new Date().toISOString(),
+    }
 
-    const updated = summaryStore.applyPatch(existing.summaryId, summaryPatch);
+    const updated = summaryStore.applyPatch(existing.summaryId, summaryPatch)
 
-    const memory = recordToSessionMemory(updated);
-    cache.set(sessionKey(sessionId), memory);
-    return memory;
+    const memory = recordToSessionMemory(updated)
+    cache.set(sessionKey(sessionId), memory)
+    return memory
   }
 
   function applyPlannerStatePatch(sessionId: string, patch: PlannerStatePatch): SessionMemory {
-    const { updates, warnings } = plannerStateToSessionPatch(patch);
+    const { updates, warnings } = plannerStateToSessionPatch(patch)
     if (warnings.length > 0) {
-      console.warn('[SessionMemoryManager] plannerStateToSessionPatch warnings:', warnings);
+      console.warn('[SessionMemoryManager] plannerStateToSessionPatch warnings:', warnings)
     }
-    return patchSessionMemory(sessionId, updates);
+    return patchSessionMemory(sessionId, updates)
   }
 
   function invalidateCache(sessionId: string): void {
-    cache.delete(sessionKey(sessionId));
+    cache.delete(sessionKey(sessionId))
   }
 
   function getCacheStats(): CacheStats {
-    return cache.stats();
+    return cache.stats()
   }
 
   function sanitizePatch(patch: SessionMemoryPatch): SummaryPatch {
-    const sanitized: SummaryPatch = {};
+    const sanitized: SummaryPatch = {}
 
     for (const [key, value] of Object.entries(patch)) {
       if (!isSystemOwnedField(key)) {
-        (sanitized as Record<string, unknown>)[key] = value;
+        ;(sanitized as Record<string, unknown>)[key] = value
       }
     }
 
-    return sanitized;
+    return sanitized
   }
 
   function isSystemOwnedField(field: string): field is SystemOwnedField {
-    return SYSTEM_OWNED_FIELDS.includes(field as SystemOwnedField);
+    return SYSTEM_OWNED_FIELDS.includes(field as SystemOwnedField)
   }
 
   function recordToSessionMemory(record: SummaryRecord): SessionMemory {
@@ -170,7 +160,7 @@ export function createSessionMemoryManager(
       status: record.status,
       retrieval: record.retrieval,
       createdAt: record.createdAt,
-      updatedAt: record.updatedAt
-    };
+      updatedAt: record.updatedAt,
+    }
   }
 }

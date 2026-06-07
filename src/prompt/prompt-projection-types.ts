@@ -11,7 +11,7 @@ import type {
   PersonaProjection,
   ToolSelectionPolicyProjection,
   MemoryPolicyProjection,
-} from '../kernel/model-input/model-input-types.js';
+} from '../kernel/model-input/model-input-types.js'
 
 /**
  * Input parameters for PromptProjectionResolver.resolve().
@@ -33,11 +33,11 @@ export interface PromptProjectionResolveInput {
  */
 export interface PromptProjectionResolveResult {
   /** Persona projection for expression style and preferences */
-  personaProjection?: PersonaProjection;
+  personaProjection?: PersonaProjection
   /** Tool selection policy projection for tool selection heuristics */
-  toolSelectionPolicy?: ToolSelectionPolicyProjection;
+  toolSelectionPolicy?: ToolSelectionPolicyProjection
   /** Memory policy projection for memory usage rules */
-  memoryPolicyProjection?: MemoryPolicyProjection;
+  memoryPolicyProjection?: MemoryPolicyProjection
 }
 
 /**
@@ -55,5 +55,5 @@ export interface PromptProjectionResolver {
    * @param input - Resolution parameters (currently empty, reserved for future use)
    * @returns Promise resolving to projection objects
    */
-  resolve(input: PromptProjectionResolveInput): Promise<PromptProjectionResolveResult>;
+  resolve(input: PromptProjectionResolveInput): Promise<PromptProjectionResolveResult>
 }

@@ -15,10 +15,10 @@ The platform supports multiple LLM providers. Configure at least one provider be
 
 ### Supported Providers
 
-| Provider | Type | Description |
-|----------|------|-------------|
+| Provider   | Type         | Description             |
+| ---------- | ------------ | ----------------------- |
 | OpenRouter | `openrouter` | Multi-model API gateway |
-| Ollama | `ollama` | Local LLM runtime |
+| Ollama     | `ollama`     | Local LLM runtime       |
 
 ### Configuring OpenRouter
 
@@ -69,6 +69,7 @@ This endpoint validates the provider configuration and attempts a test call.
 ### Mock Mode (Development Only)
 
 For development without an LLM provider:
+
 ```bash
 MVP_USE_MOCK_LLM=true
 ```
@@ -83,25 +84,25 @@ Agent configuration controls LLM behavior at the agent level. The primary agent 
 
 ### Configuration Scope
 
-| Scope | Description | Precedence |
-|-------|-------------|------------|
-| Global | Default for all users | Lowest |
-| User Override | Per-user settings | Highest |
+| Scope         | Description           | Precedence |
+| ------------- | --------------------- | ---------- |
+| Global        | Default for all users | Lowest     |
+| User Override | Per-user settings     | Highest    |
 
 ### Configuration Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `providerId` | string | Preferred LLM provider |
-| `model` | string | Specific model to use |
-| `systemPrompt` | string | Base system prompt |
-| `routingPrompt` | string | Custom routing instructions |
-| `allowedToolIds` | string[] | Permitted tool IDs |
-| `allowedSkillIds` | string[] | Permitted skill IDs |
-| `routingTimeoutMs` | number | LLM routing timeout (default: 60000) |
-| `repairAttempts` | number | JSON repair retries (default: 1) |
-| `searchLlmProviderId` | string | Provider for web search summarization |
-| `searchLlmModel` | string | Model for web search |
+| Field                 | Type     | Description                           |
+| --------------------- | -------- | ------------------------------------- |
+| `providerId`          | string   | Preferred LLM provider                |
+| `model`               | string   | Specific model to use                 |
+| `systemPrompt`        | string   | Base system prompt                    |
+| `routingPrompt`       | string   | Custom routing instructions           |
+| `allowedToolIds`      | string[] | Permitted tool IDs                    |
+| `allowedSkillIds`     | string[] | Permitted skill IDs                   |
+| `routingTimeoutMs`    | number   | LLM routing timeout (default: 60000)  |
+| `repairAttempts`      | number   | JSON repair retries (default: 1)      |
+| `searchLlmProviderId` | string   | Provider for web search summarization |
+| `searchLlmModel`      | string   | Model for web search                  |
 
 ### Global Configuration
 
@@ -127,6 +128,7 @@ PATCH /api/agents/foreground.default/config/override
 ```
 
 To reset a user override:
+
 ```bash
 DELETE /api/agents/foreground.default/config/override
 ```
@@ -147,27 +149,28 @@ Control which tools are available to the agent.
 
 ### Available Tools
 
-| Tool ID | Description | Risk Level |
-|---------|-------------|------------|
-| `artifact.create` | Create artifacts | Medium |
-| `artifact.update` | Update artifacts | Medium |
-| `ask_user` | Request user input | Low |
-| `status.query` | Query run status | Low |
-| `memory.retrieve` | Retrieve memories | Low |
-| `transcript.search` | Search transcripts | Low |
-| `plan.patch` | Modify execution plan | High |
-| `docs.search` | Search documentation | Low |
-| `file.read` | Read files | Medium |
-| `file.glob` | List files | Low |
-| `file.grep` | Search file contents | Medium |
-| `session.list` | List sessions | Low |
-| `session.history` | View session history | Low |
-| `web.fetch` | Fetch web content | Medium |
-| `web.search` | Web search | Medium |
+| Tool ID             | Description           | Risk Level |
+| ------------------- | --------------------- | ---------- |
+| `artifact.create`   | Create artifacts      | Medium     |
+| `artifact.update`   | Update artifacts      | Medium     |
+| `ask_user`          | Request user input    | Low        |
+| `status.query`      | Query run status      | Low        |
+| `memory.retrieve`   | Retrieve memories     | Low        |
+| `transcript.search` | Search transcripts    | Low        |
+| `plan.patch`        | Modify execution plan | High       |
+| `docs.search`       | Search documentation  | Low        |
+| `file.read`         | Read files            | Medium     |
+| `file.glob`         | List files            | Low        |
+| `file.grep`         | Search file contents  | Medium     |
+| `session.list`      | List sessions         | Low        |
+| `session.history`   | View session history  | Low        |
+| `web.fetch`         | Fetch web content     | Medium     |
+| `web.search`        | Web search            | Medium     |
 
 ### Configuring Tool Permissions
 
 Via agent configuration:
+
 ```bash
 PATCH /api/agents/foreground.default/config
 {
@@ -224,6 +227,7 @@ POST /api/approvals/:approvalId/respond
 The platform uses SQLite with migrations stored in `migrations/`.
 
 **Running migrations:**
+
 ```bash
 npm run db:migrate
 ```
@@ -237,6 +241,7 @@ npm run db:health
 ```
 
 Output includes:
+
 - Database file path
 - Current schema version
 - Table row counts
@@ -251,6 +256,7 @@ npm run db:backup
 Creates a timestamped backup in `data/backups/`.
 
 **Recommended backup schedule:**
+
 - Daily automated backups for production
 - Retain at least 7 days of backups
 - Test restore procedures monthly
@@ -278,57 +284,57 @@ npm run start:api
 
 ### Core Configuration
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `APP_SECRET_KEY` | Yes | — | Encryption key for API keys (32 hex chars) |
-| `NODE_ENV` | No | `development` | Environment mode |
-| `LOG_LEVEL` | No | `info` | Logging verbosity |
-| `DATABASE_PATH` | No | `./data/app.db` | SQLite database path |
-| `HOST` | No | `localhost` | Server bind address |
-| `PORT` | No | `3003` | Server port |
+| Variable         | Required | Default         | Description                                |
+| ---------------- | -------- | --------------- | ------------------------------------------ |
+| `APP_SECRET_KEY` | Yes      | —               | Encryption key for API keys (32 hex chars) |
+| `NODE_ENV`       | No       | `development`   | Environment mode                           |
+| `LOG_LEVEL`      | No       | `info`          | Logging verbosity                          |
+| `DATABASE_PATH`  | No       | `./data/app.db` | SQLite database path                       |
+| `HOST`           | No       | `localhost`     | Server bind address                        |
+| `PORT`           | No       | `3003`          | Server port                                |
 
 ### LLM Providers
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENROUTER_API_KEY` | No* | OpenRouter API key |
-| `OLLAMA_BASE_URL` | No* | Ollama server URL |
-| `MVP_USE_MOCK_LLM` | No | Enable mock LLM (dev only) |
+| Variable             | Required | Description                |
+| -------------------- | -------- | -------------------------- |
+| `OPENROUTER_API_KEY` | No\*     | OpenRouter API key         |
+| `OLLAMA_BASE_URL`    | No\*     | Ollama server URL          |
+| `MVP_USE_MOCK_LLM`   | No       | Enable mock LLM (dev only) |
 
-*At least one provider required unless using mock mode.
+\*At least one provider required unless using mock mode.
 
 ### Web Search
 
-| Variable | Description |
-|----------|-------------|
+| Variable             | Description                                                          |
+| -------------------- | -------------------------------------------------------------------- |
 | `WEB_SEARCH_BACKEND` | Backend: `auto`, `searxng`, `tavily`, `remote`, `playwright`, `none` |
-| `SEARXNG_BASE_URL` | SearXNG instance URL |
-| `TAVILY_API_KEY` | Tavily API key |
-| `TAVILY_BASE_URL` | Tavily API endpoint |
-| `WEB_SEARCH_API_URL` | Legacy remote API URL |
-| `WEB_SEARCH_API_KEY` | Legacy remote API key |
+| `SEARXNG_BASE_URL`   | SearXNG instance URL                                                 |
+| `TAVILY_API_KEY`     | Tavily API key                                                       |
+| `TAVILY_BASE_URL`    | Tavily API endpoint                                                  |
+| `WEB_SEARCH_API_URL` | Legacy remote API URL                                                |
+| `WEB_SEARCH_API_KEY` | Legacy remote API key                                                |
 
 ### Resource Limits
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MAX_CONCURRENT_LLM_CALLS` | 2 | Concurrent LLM requests |
-| `MAX_CACHE_SIZE_MB` | 256 | Memory cache limit |
-| `MAX_CONTEXT_TOKENS` | 8000 | Context window size |
+| Variable                   | Default | Description             |
+| -------------------------- | ------- | ----------------------- |
+| `MAX_CONCURRENT_LLM_CALLS` | 2       | Concurrent LLM requests |
+| `MAX_CACHE_SIZE_MB`        | 256     | Memory cache limit      |
+| `MAX_CONTEXT_TOKENS`       | 8000    | Context window size     |
 
 ### Connectors
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CONNECTOR_MODE` | `mock` | Connector mode |
+| Variable                         | Default    | Description                   |
+| -------------------------------- | ---------- | ----------------------------- |
+| `CONNECTOR_MODE`                 | `mock`     | Connector mode                |
 | `GENERIC_HTTP_CONNECTOR_NETWORK` | `disabled` | HTTP connector network access |
-| `REPLAY_PREVIEW_ONLY` | `true` | Replay preview safety mode |
+| `REPLAY_PREVIEW_ONLY`            | `true`     | Replay preview safety mode    |
 
 ### Shutdown
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SHUTDOWN_TIMEOUT_MS` | 30000 | Graceful shutdown timeout |
+| Variable              | Default | Description               |
+| --------------------- | ------- | ------------------------- |
+| `SHUTDOWN_TIMEOUT_MS` | 30000   | Graceful shutdown timeout |
 
 ---
 
@@ -343,12 +349,14 @@ Rate limiting is applied globally to all API routes.
 ### Configuration (via code)
 
 Rate limiting is configured in `src/api/server.ts`. Default settings:
+
 - Time window: 1 minute
 - Max requests per window: 100
 
 ### Monitoring Rate Limits
 
 Rate limit headers are included in API responses:
+
 - `x-ratelimit-limit`: Maximum requests per window
 - `x-ratelimit-remaining`: Remaining requests in current window
 - `x-ratelimit-reset`: Unix timestamp when the window resets
@@ -359,14 +367,14 @@ Rate limit headers are included in API responses:
 
 ### Available Levels
 
-| Level | Description |
-|-------|-------------|
-| `trace` | Extremely verbose debugging |
-| `debug` | Detailed debugging information |
-| `info` | General operational information |
-| `warn` | Warning conditions |
-| `error` | Error conditions |
-| `fatal` | Critical errors |
+| Level   | Description                     |
+| ------- | ------------------------------- |
+| `trace` | Extremely verbose debugging     |
+| `debug` | Detailed debugging information  |
+| `info`  | General operational information |
+| `warn`  | Warning conditions              |
+| `error` | Error conditions                |
+| `fatal` | Critical errors                 |
 
 ### Setting Log Level
 
@@ -379,6 +387,7 @@ LOG_LEVEL=debug npm run start:api
 Logs are written to stdout/stderr. Use your process manager or container orchestration to capture logs.
 
 **Example with pm2:**
+
 ```bash
 pm2 start npm --name "agent-api" -- run start:api
 pm2 logs agent-api
@@ -431,6 +440,7 @@ GET /api/health
 ### Observability Console
 
 Access the web UI to monitor:
+
 - Active runs
 - Run history
 - Failed operations (DLQ)
@@ -499,17 +509,18 @@ The platform implements a 3-tier role system for access control.
 
 ### Role Hierarchy
 
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| `admin` | Full system access | All resources, all actions |
-| `user` | Standard user | Own resources CRUD, public resources Read |
-| `service` | Programmatic access | Execute on specific resources only |
+| Role      | Description         | Permissions                               |
+| --------- | ------------------- | ----------------------------------------- |
+| `admin`   | Full system access  | All resources, all actions                |
+| `user`    | Standard user       | Own resources CRUD, public resources Read |
+| `service` | Programmatic access | Execute on specific resources only        |
 
 ### Permission Model
 
 Permissions follow the pattern: `resource:action`
 
 **Resource Types:**
+
 - `session` — Chat sessions
 - `run` — Workflow and planner runs
 - `workflow` — Workflow definitions
@@ -521,6 +532,7 @@ Permissions follow the pattern: `resource:action`
 - `api_key` — API keys (admin only)
 
 **Actions:**
+
 - `create` — Create new resources
 - `read` — View resources
 - `update` — Modify resources
@@ -531,18 +543,21 @@ Permissions follow the pattern: `resource:action`
 ### Role Permissions
 
 **Admin Role:**
+
 - All permissions on all resources
 - Can manage other users' resources
 - Can create/manage API keys
 - Can modify system settings
 
 **User Role:**
+
 - Full CRUD on own resources
 - Read access to public resources
 - Execute workflows and triggers
 - No access to settings or API key management
 
 **Service Role:**
+
 - Execute-only on specific permitted resources
 - Used for programmatic integrations
 - Limited to explicitly granted permissions
@@ -592,6 +607,7 @@ POST /api/v1/api-keys
 ```
 
 Response includes the full key (shown once):
+
 ```json
 {
   "ok": true,
@@ -599,7 +615,7 @@ Response includes the full key (shown once):
     "id": "key_abc123",
     "name": "CI/CD Integration",
     "role": "service",
-    "key": "ak_xxxxxxxxxxxxxxxxxxxxxxxx",  // Save this!
+    "key": "ak_xxxxxxxxxxxxxxxxxxxxxxxx", // Save this!
     "prefix": "ak_xxxxxx",
     "expiresAt": "2027-01-01T00:00:00Z"
   }
@@ -658,6 +674,7 @@ Phase 6 introduces the `/api/v1/` prefix for all API endpoints.
 ### Migration Path
 
 **Legacy endpoints (deprecated):**
+
 - `/api/sessions` → `/api/v1/sessions`
 - `/api/workflows` → `/api/v1/workflows`
 - `/api/triggers` → `/api/v1/triggers`
@@ -667,17 +684,17 @@ Phase 6 introduces the `/api/v1/` prefix for all API endpoints.
 
 ### Endpoint Mapping
 
-| Legacy | V1 |
-|--------|----|
-| `/api/sessions` | `/api/v1/sessions` |
-| `/api/workflows` | `/api/v1/workflows` |
-| `/api/triggers` | `/api/v1/triggers` |
-| `/api/connectors` | `/api/v1/connectors` |
-| `/api/approvals` | `/api/v1/approvals` |
+| Legacy                   | V1                          |
+| ------------------------ | --------------------------- |
+| `/api/sessions`          | `/api/v1/sessions`          |
+| `/api/workflows`         | `/api/v1/workflows`         |
+| `/api/triggers`          | `/api/v1/triggers`          |
+| `/api/connectors`        | `/api/v1/connectors`        |
+| `/api/approvals`         | `/api/v1/approvals`         |
 | `/api/agents/:id/config` | `/api/v1/agents/:id/config` |
-| `/api/providers` | `/api/v1/providers` |
-| `/api/metrics` | `/api/v1/metrics` |
-| `/api/dlq` | `/api/v1/dlq` |
+| `/api/providers`         | `/api/v1/providers`         |
+| `/api/metrics`           | `/api/v1/metrics`           |
+| `/api/dlq`               | `/api/v1/dlq`               |
 
 ### Timeline
 
@@ -691,10 +708,10 @@ Update API clients to use `/api/v1/` prefix:
 
 ```javascript
 // Before
-const API_BASE = '/api';
+const API_BASE = '/api'
 
 // After
-const API_BASE = '/api/v1';
+const API_BASE = '/api/v1'
 ```
 
 The web frontend and E2E tests already use `/api/v1/` paths.
@@ -707,29 +724,31 @@ Connectors enable integration with external systems.
 
 ### Available Connector Types
 
-| Type | Description | Auth Method |
-|------|-------------|-------------|
-| `github` | GitHub API | API Key / OAuth |
-| `slack` | Slack API | OAuth2 |
-| `calendar` | Google Calendar | OAuth2 |
-| `contacts` | Google Contacts | OAuth2 |
-| `docs` | Google Docs / Notion | OAuth2 / API Key |
-| `web` | Web Search | None / API Key |
+| Type       | Description          | Auth Method      |
+| ---------- | -------------------- | ---------------- |
+| `github`   | GitHub API           | API Key / OAuth  |
+| `slack`    | Slack API            | OAuth2           |
+| `calendar` | Google Calendar      | OAuth2           |
+| `contacts` | Google Contacts      | OAuth2           |
+| `docs`     | Google Docs / Notion | OAuth2 / API Key |
+| `web`      | Web Search           | None / API Key   |
 
 ### Connector Modes
 
-| Mode | Description | Use Case |
-|------|-------------|----------|
+| Mode   | Description         | Use Case             |
+| ------ | ------------------- | -------------------- |
 | `mock` | Simulated responses | Development, testing |
-| `live` | Real API calls | Production |
+| `live` | Real API calls      | Production           |
 
 Set via environment:
+
 ```bash
 CONNECTOR_MODE=mock  # Development
 CONNECTOR_MODE=live   # Production
 ```
 
 Or per-connector:
+
 ```bash
 CALENDAR_MOCK_MODE=true
 CONTACTS_MOCK_MODE=true
@@ -748,11 +767,11 @@ DOCS_MOCK_MODE=true
 
 ### Authentication Types
 
-| Type | Description | Storage |
-|------|-------------|---------|
-| `api_key` | Static API key | Encrypted at rest |
-| `oauth2` | OAuth 2.0 flow | Token encrypted, refresh token stored |
-| `basic` | Username/password | Encrypted at rest |
+| Type      | Description       | Storage                               |
+| --------- | ----------------- | ------------------------------------- |
+| `api_key` | Static API key    | Encrypted at rest                     |
+| `oauth2`  | OAuth 2.0 flow    | Token encrypted, refresh token stored |
+| `basic`   | Username/password | Encrypted at rest                     |
 
 ### Connector Security
 
@@ -787,11 +806,13 @@ The alerting system monitors metrics and sends notifications when conditions are
 Alert rules define conditions that trigger notifications.
 
 **Condition Types:**
+
 - `threshold` — Fire when metric exceeds a value
 - `rate` — Fire when metric rate of change exceeds threshold
 - `absence` — Fire when no metrics received in window
 
 **Operators:**
+
 - `>` — Greater than
 - `<` — Less than
 - `>=` — Greater than or equal
@@ -817,18 +838,18 @@ POST /api/v1/alerts/rules
 
 ### Alert Severity Levels
 
-| Level | Description |
-|-------|-------------|
+| Level      | Description                  |
+| ---------- | ---------------------------- |
 | `critical` | Requires immediate attention |
-| `warning` | Needs investigation soon |
-| `info` | Informational notification |
+| `warning`  | Needs investigation soon     |
+| `info`     | Informational notification   |
 
 ### Alert States
 
-| State | Description |
-|-------|-------------|
-| `idle` | Condition not met |
-| `firing` | Condition currently met |
+| State      | Description                    |
+| ---------- | ------------------------------ |
+| `idle`     | Condition not met              |
+| `firing`   | Condition currently met        |
 | `resolved` | Condition was met, now cleared |
 
 ### Notification Webhooks
@@ -853,6 +874,7 @@ When an alert fires or resolves, POST to configured webhook:
 ### Evaluating Alerts
 
 Alerts are evaluated:
+
 - On schedule (configurable per rule)
 - On-demand via API: `POST /api/v1/alerts/rules/:ruleId/evaluate`
 
@@ -882,10 +904,10 @@ Memory budgets control resource consumption per user.
 
 ### Budget Periods
 
-| Period | Reset Behavior |
-|--------|----------------|
-| `daily` | Resets at midnight UTC |
-| `monthly` | Resets on the 1st of each month |
+| Period        | Reset Behavior                  |
+| ------------- | ------------------------------- |
+| `daily`       | Resets at midnight UTC          |
+| `monthly`     | Resets on the 1st of each month |
 | `per_session` | Never resets (session lifetime) |
 
 ### Budget Types
@@ -935,6 +957,7 @@ GET /api/v1/budget/usage
 ### Budget Exceeded Behavior
 
 When a budget is exceeded:
+
 1. Request returns `BUDGET_EXCEEDED` error
 2. Budget usage details included in response
 3. Request is logged but not executed
@@ -956,19 +979,20 @@ Unauthenticated endpoint for Prometheus scraping.
 
 ### Available Metrics
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `agent_platform_request_total` | Counter | Total API requests |
+| Metric                                    | Type      | Description                  |
+| ----------------------------------------- | --------- | ---------------------------- |
+| `agent_platform_request_total`            | Counter   | Total API requests           |
 | `agent_platform_request_duration_seconds` | Histogram | Request latency distribution |
-| `agent_platform_active_sessions` | Gauge | Currently active sessions |
-| `agent_platform_workflow_runs_total` | Counter | Workflow executions |
-| `agent_platform_connector_requests_total` | Counter | Connector API calls |
-| `agent_platform_memory_usage_bytes` | Gauge | Memory cache size |
-| `agent_platform_budget_usage_percent` | Gauge | Budget utilization |
+| `agent_platform_active_sessions`          | Gauge     | Currently active sessions    |
+| `agent_platform_workflow_runs_total`      | Counter   | Workflow executions          |
+| `agent_platform_connector_requests_total` | Counter   | Connector API calls          |
+| `agent_platform_memory_usage_bytes`       | Gauge     | Memory cache size            |
+| `agent_platform_budget_usage_percent`     | Gauge     | Budget utilization           |
 
 ### Metric Labels
 
 Default labels on all metrics:
+
 - `service_name` — Platform identifier
 - `version` — Platform version
 - `instance` — Instance identifier
@@ -1001,6 +1025,7 @@ POST /api/v1/traces/export
 ### Trace Attributes
 
 Spans include:
+
 - `session.id` — Session identifier
 - `run.id` — Run identifier
 - `user.id` — User identifier
@@ -1010,10 +1035,10 @@ Spans include:
 
 ### Span Status
 
-| Status | Description |
-|--------|-------------|
-| `STATUS_CODE_OK` | Successful operation |
-| `STATUS_CODE_ERROR` | Failed operation |
+| Status              | Description            |
+| ------------------- | ---------------------- |
+| `STATUS_CODE_OK`    | Successful operation   |
+| `STATUS_CODE_ERROR` | Failed operation       |
 | `STATUS_CODE_UNSET` | In progress or unknown |
 
 ---

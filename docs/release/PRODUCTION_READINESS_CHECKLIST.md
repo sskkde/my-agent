@@ -16,12 +16,14 @@
 ### 1.1 认证与授权
 
 - [ ] <!-- deployment-time check --> **API Key 认证已配置**
+
   ```bash
   # 确认至少有一个 API Key 存在
   curl -H "Authorization: Bearer ak_xxx" http://localhost:3003/api/v1/sessions
   ```
 
 - [x] **RBAC 权限配置正确**
+
   ```bash
   # 运行 RBAC 集成测试
   npx vitest run tests/integration/api/rbac-integration.test.ts
@@ -36,12 +38,14 @@
 ### 1.2 安全响应头
 
 - [x] **X-Content-Type-Options 存在**
+
   ```bash
   curl -I http://localhost:3003/api/v1/health | grep -i "X-Content-Type-Options"
   # 期望: X-Content-Type-Options: nosniff
   ```
 
 - [x] **X-Frame-Options 存在**
+
   ```bash
   curl -I http://localhost:3003/api/v1/health | grep -i "X-Frame-Options"
   # 期望: X-Frame-Options: DENY
@@ -63,6 +67,7 @@
 ### 1.4 密钥管理
 
 - [ ] <!-- deployment-time check --> **APP_SECRET_KEY 已设置且安全**
+
   ```bash
   # 确认长度（应为 64 字符 hex）
   echo -n $APP_SECRET_KEY | wc -c
@@ -91,6 +96,7 @@
 ### 2.1 延迟基线
 
 - [x] **Health 端点延迟 < 200ms**
+
   ```bash
   # 运行性能测试
   npx vitest run tests/performance/api-latency-smoke.test.ts
@@ -105,6 +111,7 @@
 ### 2.2 资源限制
 
 - [ ] <!-- deployment-time check --> **内存限制已配置**
+
   ```bash
   echo $MAX_CACHE_SIZE_MB
   # 期望: 有值（如 256）
@@ -119,6 +126,7 @@
 ### 2.3 数据库性能
 
 - [ ] <!-- deployment-time check --> **数据库大小合理**
+
   ```bash
   du -h /data/agent-platform.db
   # 建议: < 10GB
@@ -137,6 +145,7 @@
 ### 3.1 健康检查端点
 
 - [ ] <!-- deployment-time check --> **Health 端点可访问**
+
   ```bash
   curl -f http://localhost:3003/api/v1/health
   # 期望: 200 OK
@@ -159,6 +168,7 @@
 ### 3.3 告警配置
 
 - [ ] <!-- deployment-time check --> **告警规则已配置**
+
   ```bash
   # 检查告警配置
   curl http://localhost:3003/api/v1/observability/alerts/rules
@@ -169,6 +179,7 @@
 ### 3.4 日志聚合
 
 - [ ] <!-- deployment-time check --> **日志级别正确**
+
   ```bash
   echo $LOG_LEVEL
   # 生产建议: info 或 warn
@@ -187,11 +198,13 @@
 ### 4.1 备份配置
 
 - [x] **备份脚本存在**
+
   ```bash
   ls -la scripts/db-backup.ts
   ```
 
 - [ ] <!-- deployment-time check --> **备份目录存在**
+
   ```bash
   ls -la /var/backups/agent-platform/
   ```
@@ -204,6 +217,7 @@
 ### 4.2 备份验证
 
 - [x] **备份恢复验证通过**
+
   ```bash
   npx tsx scripts/check-backup-restore.ts
   # 期望: PASS
@@ -229,16 +243,19 @@
 ### 5.1 发布文档
 
 - [x] **CHANGELOG 存在**
+
   ```bash
   ls -la docs/release/CHANGELOG.md
   ```
 
 - [x] **Release Notes 存在**
+
   ```bash
   ls -la docs/release/RELEASE_NOTES_v0.7.0-rc.1.md
   ```
 
 - [x] **Rollback Runbook 存在**
+
   ```bash
   ls -la docs/release/ROLLBACK_RUNBOOK.md
   ```
@@ -251,6 +268,7 @@
 ### 5.2 运维文档
 
 - [x] **生产部署指南存在**
+
   ```bash
   ls -la docs/deployment/production.md
   ```
@@ -263,11 +281,13 @@
 ### 5.3 API 文档
 
 - [x] **OpenAPI 规范存在**
+
   ```bash
   ls -la docs/api/openapi.yaml
   ```
 
 - [ ] <!-- deployment-time check --> **Swagger UI 可访问**
+
   ```bash
   curl -f http://localhost:3003/api/v1/docs
   ```
@@ -284,6 +304,7 @@
 ### 6.1 环境变量
 
 - [ ] <!-- deployment-time check --> **NODE_ENV=production**
+
   ```bash
   echo $NODE_ENV
   # 期望: production
@@ -298,6 +319,7 @@
 ### 6.2 LLM 提供商
 
 - [ ] <!-- deployment-time check --> **至少一个 LLM 提供商已配置**
+
   ```bash
   # 检查提供商配置
   curl http://localhost:3003/api/v1/providers
@@ -403,6 +425,7 @@
 ### 9.1 Docker 配置
 
 - [ ] <!-- deployment-time check --> **Docker Compose 配置正确**
+
   ```bash
   docker compose config
   # 期望: 配置有效
@@ -416,6 +439,7 @@
 ### 9.2 服务启动
 
 - [ ] <!-- deployment-time check --> **服务启动成功**
+
   ```bash
   docker compose up -d
   docker compose ps
@@ -445,28 +469,28 @@
 
 ## 检查结果汇总
 
-| 类别 | 检查项 | 通过 | 失败 | 状态 |
-|------|--------|------|------|------|
-| 安全 | 10 | 7 | 3 | 部署时检查 |
-| 性能 | 8 | 4 | 4 | 部署时检查 |
-| 监控 | 7 | 0 | 7 | 部署时检查 |
-| 备份 | 7 | 3 | 4 | 部署时检查 |
-| 文档 | 9 | 8 | 1 | 部署时检查 |
-| 配置 | 9 | 0 | 9 | 部署时检查 |
-| 测试 | 5 | 5 | 0 | ✅ 通过 |
-| 构建 | 4 | 3 | 1 | 部署时检查 |
-| 部署 | 4 | 0 | 4 | 部署时检查 |
-| 已知限制 | 5 | 5 | 0 | ✅ 已确认 |
-| **总计** | **68** | **35** | **33** | - |
+| 类别     | 检查项 | 通过   | 失败   | 状态       |
+| -------- | ------ | ------ | ------ | ---------- |
+| 安全     | 10     | 7      | 3      | 部署时检查 |
+| 性能     | 8      | 4      | 4      | 部署时检查 |
+| 监控     | 7      | 0      | 7      | 部署时检查 |
+| 备份     | 7      | 3      | 4      | 部署时检查 |
+| 文档     | 9      | 8      | 1      | 部署时检查 |
+| 配置     | 9      | 0      | 9      | 部署时检查 |
+| 测试     | 5      | 5      | 0      | ✅ 通过    |
+| 构建     | 4      | 3      | 1      | 部署时检查 |
+| 部署     | 4      | 0      | 4      | 部署时检查 |
+| 已知限制 | 5      | 5      | 0      | ✅ 已确认  |
+| **总计** | **68** | **35** | **33** | -          |
 
 ---
 
 ## 签署
 
-**检查人**: ________________  
-**检查日期**: ________________  
+**检查人**: **\*\***\_\_\_\_**\*\***  
+**检查日期**: **\*\***\_\_\_\_**\*\***  
 **检查结果**: [ ] 通过 / [ ] 不通过  
-**备注**: ________________
+**备注**: **\*\***\_\_\_\_**\*\***
 
 ---
 

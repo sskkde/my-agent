@@ -1,8 +1,8 @@
-import React from 'react';
+import React from 'react'
 
 interface ErrorWithCode {
-  code: string;
-  message: string;
+  code: string
+  message: string
 }
 
 function hasErrorCode(error: unknown): error is ErrorWithCode {
@@ -13,7 +13,7 @@ function hasErrorCode(error: unknown): error is ErrorWithCode {
     typeof (error as ErrorWithCode).code === 'string' &&
     'message' in error &&
     typeof (error as ErrorWithCode).message === 'string'
-  );
+  )
 }
 
 /**
@@ -21,18 +21,18 @@ function hasErrorCode(error: unknown): error is ErrorWithCode {
  * Returns title and description for the error.
  */
 export function getErrorDisplay(error: Error | null | undefined): {
-  title: string;
-  description: string;
+  title: string
+  description: string
 } {
   if (!error) {
     return {
       title: '发生错误',
       description: '请稍后再试',
-    };
+    }
   }
 
   if (hasErrorCode(error)) {
-    const code = error.code;
+    const code = error.code
 
     switch (code) {
       case '401':
@@ -41,79 +41,79 @@ export function getErrorDisplay(error: Error | null | undefined): {
         return {
           title: '认证失败',
           description: '请重新登录',
-        };
+        }
       case '403':
       case 'FORBIDDEN':
       case 'ACCESS_DENIED':
         return {
           title: '没有权限',
           description: '没有权限执行此操作',
-        };
+        }
       case '429':
       case 'RATE_LIMITED':
       case 'TOO_MANY_REQUESTS':
         return {
           title: '请求过于频繁',
           description: '请稍后再试',
-        };
+        }
       case '500':
       case 'INTERNAL_ERROR':
       case 'SERVER_ERROR':
         return {
           title: '服务器错误',
           description: '服务器内部错误，请稍后再试',
-        };
+        }
       case '404':
       case 'NOT_FOUND':
         return {
           title: '资源不存在',
           description: '请求的资源未找到',
-        };
+        }
       case '400':
       case 'BAD_REQUEST':
       case 'VALIDATION_ERROR':
         return {
           title: '请求无效',
           description: error.message || '请检查输入后重试',
-        };
+        }
       case 'NETWORK_ERROR':
       case 'CONNECTION_FAILED':
         return {
           title: '网络错误',
           description: '无法连接到服务器，请检查网络连接',
-        };
+        }
       default:
         return {
           title: '操作失败',
           description: error.message || '请稍后再试',
-        };
+        }
     }
   }
 
   return {
     title: '发生错误',
     description: error.message || '请稍后再试',
-  };
+  }
 }
 
 export interface ErrorMessageProps {
   /** Error object to display */
-  error: Error | null | undefined;
+  error: Error | null | undefined
   /** Optional custom title (overrides auto-generated title) */
-  title?: string;
+  title?: string
   /** Optional custom description (overrides auto-generated description) */
-  description?: string;
+  description?: string
   /** Optional retry action */
   retry?: {
-    label?: string;
-    onClick: () => void;
-  };
+    label?: string
+    onClick: () => void
+  }
   /** Optional additional CSS class */
-  className?: string;
+  className?: string
   /** Size variant */
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large'
   /** Variant style */
-  variant?: 'default' | 'inline' | 'card';
+  variant?: 'default' | 'inline' | 'card'
 }
 
 const ErrorMessage: React.FC<ErrorMessageProps> = ({
@@ -125,20 +125,16 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
   size = 'medium',
   variant = 'default',
 }) => {
-  const errorDisplay = getErrorDisplay(error);
-  const displayTitle = title ?? errorDisplay.title;
-  const displayDescription = description ?? errorDisplay.description;
+  const errorDisplay = getErrorDisplay(error)
+  const displayTitle = title ?? errorDisplay.title
+  const displayDescription = description ?? errorDisplay.description
 
-  const sizeClass = `error-message--${size}`;
-  const variantClass = `error-message--${variant}`;
-  const combinedClassName = `error-message ${sizeClass} ${variantClass} ${className}`.trim();
+  const sizeClass = `error-message--${size}`
+  const variantClass = `error-message--${variant}`
+  const combinedClassName = `error-message ${sizeClass} ${variantClass} ${className}`.trim()
 
   return (
-    <div
-      className={combinedClassName}
-      role="alert"
-      data-testid="error-message"
-    >
+    <div className={combinedClassName} role="alert" data-testid="error-message">
       <div className="error-message__icon" aria-hidden="true">
         ⚠
       </div>
@@ -157,7 +153,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
         </button>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ErrorMessage;
+export default ErrorMessage

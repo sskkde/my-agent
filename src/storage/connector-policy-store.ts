@@ -1,65 +1,60 @@
-import type { ConnectionManager } from './connection.js';
+import type { ConnectionManager } from './connection.js'
 
 export interface ConnectorPolicy {
-  policyId: string;
-  connectorId: string;
-  resourcePattern: string;
-  action: string;
-  effect: 'allow' | 'deny';
-  allowedScopes?: string[] | null;
-  riskCap?: string | null;
-  auditLabel?: string | null;
-  userId?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  policyId: string
+  connectorId: string
+  resourcePattern: string
+  action: string
+  effect: 'allow' | 'deny'
+  allowedScopes?: string[] | null
+  riskCap?: string | null
+  auditLabel?: string | null
+  userId?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CreateConnectorPolicy {
-  policyId: string;
-  connectorId: string;
-  resourcePattern: string;
-  action: string;
-  effect: 'allow' | 'deny';
-  allowedScopes?: string[];
-  riskCap?: string;
-  auditLabel?: string;
-  userId?: string;
+  policyId: string
+  connectorId: string
+  resourcePattern: string
+  action: string
+  effect: 'allow' | 'deny'
+  allowedScopes?: string[]
+  riskCap?: string
+  auditLabel?: string
+  userId?: string
 }
 
 export interface UpdateConnectorPolicy {
-  resourcePattern?: string;
-  action?: string;
-  effect?: 'allow' | 'deny';
-  allowedScopes?: string[] | null;
-  riskCap?: string | null;
-  auditLabel?: string | null;
+  resourcePattern?: string
+  action?: string
+  effect?: 'allow' | 'deny'
+  allowedScopes?: string[] | null
+  riskCap?: string | null
+  auditLabel?: string | null
 }
 
 export interface ConnectorPolicyStore {
-  create(policy: CreateConnectorPolicy): ConnectorPolicy;
-  getById(policyId: string): ConnectorPolicy | null;
-  listPolicies(): ConnectorPolicy[];
-  getPoliciesByConnector(connectorId: string): ConnectorPolicy[];
-  getPoliciesByUser(userId: string): ConnectorPolicy[];
-  update(policyId: string, updates: UpdateConnectorPolicy): ConnectorPolicy;
-  delete(policyId: string): void;
-  getEffectivePolicies(
-    connectorId: string,
-    resource: string,
-    action: string,
-    userId?: string
-  ): ConnectorPolicy[];
+  create(policy: CreateConnectorPolicy): ConnectorPolicy
+  getById(policyId: string): ConnectorPolicy | null
+  listPolicies(): ConnectorPolicy[]
+  getPoliciesByConnector(connectorId: string): ConnectorPolicy[]
+  getPoliciesByUser(userId: string): ConnectorPolicy[]
+  update(policyId: string, updates: UpdateConnectorPolicy): ConnectorPolicy
+  delete(policyId: string): void
+  getEffectivePolicies(connectorId: string, resource: string, action: string, userId?: string): ConnectorPolicy[]
 }
 
 class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   create(policy: CreateConnectorPolicy): ConnectorPolicy {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const connectorPolicy: ConnectorPolicy = {
       policyId: policy.policyId,
       connectorId: policy.connectorId,
@@ -72,7 +67,7 @@ class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
       userId: policy.userId ?? null,
       createdAt: now,
       updatedAt: now,
-    };
+    }
 
     this.connection.exec(
       `INSERT INTO connector_policies (
@@ -90,56 +85,55 @@ class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
         connectorPolicy.auditLabel,
         connectorPolicy.userId,
         connectorPolicy.createdAt,
-      ]
-    );
+      ],
+    )
 
-    return connectorPolicy;
+    return connectorPolicy
   }
 
   getById(policyId: string): ConnectorPolicy | null {
-    const results = this.connection.query<ConnectorPolicyRow>(
-      'SELECT * FROM connector_policies WHERE policy_id = ?',
-      [policyId]
-    );
+    const results = this.connection.query<ConnectorPolicyRow>('SELECT * FROM connector_policies WHERE policy_id = ?', [
+      policyId,
+    ])
 
     if (results.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToPolicy(results[0]);
+    return this.rowToPolicy(results[0])
   }
 
   listPolicies(): ConnectorPolicy[] {
     const results = this.connection.query<ConnectorPolicyRow>(
       'SELECT * FROM connector_policies ORDER BY created_at DESC',
-      []
-    );
-    return results.map(row => this.rowToPolicy(row));
+      [],
+    )
+    return results.map((row) => this.rowToPolicy(row))
   }
 
   getPoliciesByConnector(connectorId: string): ConnectorPolicy[] {
     const results = this.connection.query<ConnectorPolicyRow>(
       'SELECT * FROM connector_policies WHERE connector_id = ? ORDER BY created_at DESC',
-      [connectorId]
-    );
-    return results.map(row => this.rowToPolicy(row));
+      [connectorId],
+    )
+    return results.map((row) => this.rowToPolicy(row))
   }
 
   getPoliciesByUser(userId: string): ConnectorPolicy[] {
     const results = this.connection.query<ConnectorPolicyRow>(
       'SELECT * FROM connector_policies WHERE user_id = ? ORDER BY created_at DESC',
-      [userId]
-    );
-    return results.map(row => this.rowToPolicy(row));
+      [userId],
+    )
+    return results.map((row) => this.rowToPolicy(row))
   }
 
   update(policyId: string, updates: UpdateConnectorPolicy): ConnectorPolicy {
-    const existing = this.getById(policyId);
+    const existing = this.getById(policyId)
     if (!existing) {
-      throw new Error(`Connector policy not found: ${policyId}`);
+      throw new Error(`Connector policy not found: ${policyId}`)
     }
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const updated: ConnectorPolicy = {
       ...existing,
       resourcePattern: updates.resourcePattern ?? existing.resourcePattern,
@@ -149,7 +143,7 @@ class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
       riskCap: updates.riskCap !== undefined ? updates.riskCap : existing.riskCap,
       auditLabel: updates.auditLabel !== undefined ? updates.auditLabel : existing.auditLabel,
       updatedAt: now,
-    };
+    }
 
     this.connection.exec(
       `UPDATE connector_policies SET
@@ -170,14 +164,14 @@ class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
         updated.auditLabel,
         updated.updatedAt,
         policyId,
-      ]
-    );
+      ],
+    )
 
-    return updated;
+    return updated
   }
 
   delete(policyId: string): void {
-    this.connection.exec('DELETE FROM connector_policies WHERE policy_id = ?', [policyId]);
+    this.connection.exec('DELETE FROM connector_policies WHERE policy_id = ?', [policyId])
   }
 
   /**
@@ -187,43 +181,38 @@ class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
    * - resourcePattern matches resource (glob pattern with *)
    * - action matches exactly or is '*'
    * - userId matches or is null (global policy)
-   * 
+   *
    * Order: user-specific policies first (regardless of effect), then global policies.
    * Within each group, deny policies take precedence over allow.
    */
-  getEffectivePolicies(
-    connectorId: string,
-    resource: string,
-    action: string,
-    userId?: string
-  ): ConnectorPolicy[] {
-    const allPolicies = this.getPoliciesByConnector(connectorId);
+  getEffectivePolicies(connectorId: string, resource: string, action: string, userId?: string): ConnectorPolicy[] {
+    const allPolicies = this.getPoliciesByConnector(connectorId)
 
-    const matchingPolicies = allPolicies.filter(policy => {
+    const matchingPolicies = allPolicies.filter((policy) => {
       if (policy.action !== action && policy.action !== '*') {
-        return false;
+        return false
       }
 
       if (!this.matchesPattern(policy.resourcePattern, resource)) {
-        return false;
+        return false
       }
 
       if (policy.userId !== null && policy.userId !== userId) {
-        return false;
+        return false
       }
 
-      return true;
-    });
+      return true
+    })
 
     return matchingPolicies.sort((a, b) => {
-      if (a.userId !== null && b.userId === null) return -1;
-      if (a.userId === null && b.userId !== null) return 1;
+      if (a.userId !== null && b.userId === null) return -1
+      if (a.userId === null && b.userId !== null) return 1
 
-      if (a.effect === 'deny' && b.effect !== 'deny') return -1;
-      if (a.effect !== 'deny' && b.effect === 'deny') return 1;
+      if (a.effect === 'deny' && b.effect !== 'deny') return -1
+      if (a.effect !== 'deny' && b.effect === 'deny') return 1
 
-      return b.createdAt.localeCompare(a.createdAt);
-    });
+      return b.createdAt.localeCompare(a.createdAt)
+    })
   }
 
   private matchesPattern(pattern: string, value: string): boolean {
@@ -233,10 +222,10 @@ class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
     const regexPattern = pattern
       .replace(/[.+^${}|[\]\\]/g, '\\$&') // Escape special regex chars except * and ?
       .replace(/\*/g, '.*') // * -> .*
-      .replace(/\?/g, '.'); // ? -> .
+      .replace(/\?/g, '.') // ? -> .
 
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(value);
+    const regex = new RegExp(`^${regexPattern}$`)
+    return regex.test(value)
   }
 
   private rowToPolicy(row: ConnectorPolicyRow): ConnectorPolicy {
@@ -252,24 +241,24 @@ class ConnectorPolicyStoreImpl implements ConnectorPolicyStore {
       userId: row.user_id ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at ?? row.created_at,
-    };
+    }
   }
 }
 
 interface ConnectorPolicyRow {
-  policy_id: string;
-  connector_id: string;
-  resource_pattern: string;
-  action: string;
-  effect: string;
-  allowed_scopes: string | null;
-  risk_cap: string | null;
-  audit_label: string | null;
-  user_id?: string | null;
-  created_at: string;
-  updated_at?: string | null;
+  policy_id: string
+  connector_id: string
+  resource_pattern: string
+  action: string
+  effect: string
+  allowed_scopes: string | null
+  risk_cap: string | null
+  audit_label: string | null
+  user_id?: string | null
+  created_at: string
+  updated_at?: string | null
 }
 
 export function createConnectorPolicyStore(connection: ConnectionManager): ConnectorPolicyStore {
-  return new ConnectorPolicyStoreImpl(connection);
+  return new ConnectorPolicyStoreImpl(connection)
 }

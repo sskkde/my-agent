@@ -32,6 +32,7 @@ Web users authenticate via secure HTTP-only cookies:
   - `Path=/`: Available across all routes
 
 **Login Flow**:
+
 1. User submits credentials to `POST /api/v1/auth/login`
 2. Server validates credentials against stored password hash
 3. Server generates session token and stores hash in database
@@ -50,6 +51,7 @@ Service accounts and integrations use API keys:
 - **Expiration**: Optional via `expiresAt` field
 
 **Usage**:
+
 ```http
 Authorization: Bearer ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
@@ -71,11 +73,11 @@ The platform implements a three-tier Role-Based Access Control system:
 
 ### Roles
 
-| Role | Description | Scope |
-|------|-------------|-------|
-| `admin` | Full system access | All resources, all actions |
-| `user` | Standard user | Own resources, read-only on shared resources |
-| `service` | Service account | Execute workflows, read sessions |
+| Role      | Description        | Scope                                        |
+| --------- | ------------------ | -------------------------------------------- |
+| `admin`   | Full system access | All resources, all actions                   |
+| `user`    | Standard user      | Own resources, read-only on shared resources |
+| `service` | Service account    | Execute workflows, read sessions             |
 
 ### Permission Model
 
@@ -87,23 +89,24 @@ Permissions are defined as `(Resource, Action)` pairs:
 
 ### Role Permissions Matrix
 
-| Resource | admin | user | service |
-|----------|-------|------|---------|
-| sessions | CRUD+X | CRUD (own) | read |
-| workflows | CRUD+X | CRUD (own) | execute |
-| triggers | CRUD+X | CRUD (own) | execute |
-| connectors | CRUD+X | read | execute |
-| memory | CRUD+X | CRUD (own) | - |
-| apiKeys | CRUD+X | CRD (own) | - |
-| providers | CRUD+X | read | - |
-| settings | CRUD+X | read | - |
-| observability | CRUD+X | read | - |
-| users | CRUD+X | - | - |
-| agent-config | manage | update (own) | - |
+| Resource      | admin  | user         | service |
+| ------------- | ------ | ------------ | ------- |
+| sessions      | CRUD+X | CRUD (own)   | read    |
+| workflows     | CRUD+X | CRUD (own)   | execute |
+| triggers      | CRUD+X | CRUD (own)   | execute |
+| connectors    | CRUD+X | read         | execute |
+| memory        | CRUD+X | CRUD (own)   | -       |
+| apiKeys       | CRUD+X | CRD (own)    | -       |
+| providers     | CRUD+X | read         | -       |
+| settings      | CRUD+X | read         | -       |
+| observability | CRUD+X | read         | -       |
+| users         | CRUD+X | -            | -       |
+| agent-config  | manage | update (own) | -       |
 
 ### Ownership Enforcement
 
 For resources with ownership requirements (sessions, workflows, triggers, memory, apiKeys):
+
 - `admin` and `service` roles bypass ownership checks
 - `user` role can only access resources they own
 
@@ -229,7 +232,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 Web fetch operations are protected against Server-Side Request Forgery:
 
-- **Blocked IPs**: 
+- **Blocked IPs**:
   - Loopback: `127.0.0.0/8`, `::1`
   - Private: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`
   - Link-local: `169.254.0.0/16`, `fe80::/10`
@@ -245,14 +248,14 @@ Web fetch operations are protected against Server-Side Request Forgery:
 
 Security-relevant operations are logged to the audit store:
 
-| Event | Description |
-|-------|-------------|
-| `user.login` | User authentication |
-| `user.logout` | User session ended |
-| `api_key.created` | API key created |
-| `api_key.revoked` | API key revoked |
+| Event              | Description         |
+| ------------------ | ------------------- |
+| `user.login`       | User authentication |
+| `user.logout`      | User session ended  |
+| `api_key.created`  | API key created     |
+| `api_key.revoked`  | API key revoked     |
 | `provider.created` | Provider configured |
-| `provider.deleted` | Provider removed |
+| `provider.deleted` | Provider removed    |
 
 ### Metrics
 
@@ -278,24 +281,26 @@ The platform includes a production guard that validates configuration before sta
 
 When `NODE_ENV=production`, the following must be configured:
 
-| Variable | Requirement |
-|----------|-------------|
-| `APP_SECRET_KEY` | Must be at least 32 characters |
-| `ALLOWED_ORIGINS` | Must be specified, cannot be `*` |
-| `DATABASE_PATH` or `DATABASE_URL` | Must be specified |
-| `PUBLIC_BASE_URL` | Must be specified for OAuth |
-| `COOKIE_SECURE` | Must be `true` |
-| `LOG_LEVEL` | Cannot be `debug` |
+| Variable                          | Requirement                      |
+| --------------------------------- | -------------------------------- |
+| `APP_SECRET_KEY`                  | Must be at least 32 characters   |
+| `ALLOWED_ORIGINS`                 | Must be specified, cannot be `*` |
+| `DATABASE_PATH` or `DATABASE_URL` | Must be specified                |
+| `PUBLIC_BASE_URL`                 | Must be specified for OAuth      |
+| `COOKIE_SECURE`                   | Must be `true`                   |
+| `LOG_LEVEL`                       | Cannot be `debug`                |
 
 ### Bootstrap Authentication
 
 At least one authentication method must be enabled:
+
 - `API_AUTH_TOKEN` set, OR
 - At least one API key exists
 
 ### Failure Behavior
 
 If validation fails:
+
 - Server refuses to start
 - Clear error message indicates missing configuration
 - Exit code is non-zero
@@ -324,12 +329,14 @@ Pre-deployment security checklist:
 ### Security Incident Playbook
 
 1. **Revoke compromised credentials**:
+
    ```bash
    curl -X DELETE http://localhost:3003/api/v1/api-keys/{key-id} \
      -H "Authorization: Bearer $ADMIN_TOKEN"
    ```
 
 2. **Force logout all sessions**:
+
    ```sql
    DELETE FROM auth_tokens WHERE user_id = 'compromised-user-id';
    ```
@@ -342,8 +349,8 @@ Pre-deployment security checklist:
 4. **Review audit logs**:
    ```bash
    # Check recent authentication events
-   SELECT * FROM audit_events 
-   WHERE event_type LIKE 'user.%' 
+   SELECT * FROM audit_events
+   WHERE event_type LIKE 'user.%'
    ORDER BY created_at DESC LIMIT 100;
    ```
 

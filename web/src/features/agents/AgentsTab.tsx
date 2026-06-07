@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   getAgentConfig,
   updateAgentConfig,
@@ -7,7 +7,7 @@ import {
   getTools,
   getSkills,
   ApiClientError,
-} from '../../api/client';
+} from '../../api/client'
 import type {
   AgentConfig,
   ProviderSummary,
@@ -15,18 +15,18 @@ import type {
   SkillSummary,
   UpdateAgentGlobalConfigRequest,
   UpdateAgentUserOverrideRequest,
-} from '../../api/types';
-import LoadingSpinner from '../../components/LoadingSpinner';
+} from '../../api/types'
+import LoadingSpinner from '../../components/LoadingSpinner'
 
 interface FormData {
-  providerId: string;
-  model: string;
-  systemPrompt: string;
-  routingPrompt: string;
-  allowedToolIds: string[];
-  allowedSkillIds: string[];
-  routingTimeoutMs: number;
-  toolScopeMode: 'inherit' | 'all' | 'none' | 'custom';
+  providerId: string
+  model: string
+  systemPrompt: string
+  routingPrompt: string
+  allowedToolIds: string[]
+  allowedSkillIds: string[]
+  routingTimeoutMs: number
+  toolScopeMode: 'inherit' | 'all' | 'none' | 'custom'
 }
 
 const initialFormData: FormData = {
@@ -38,30 +38,30 @@ const initialFormData: FormData = {
   allowedSkillIds: [],
   routingTimeoutMs: 60000,
   toolScopeMode: 'custom',
-};
+}
 
-const AGENT_ID = 'foreground.default';
-const MIN_TIMEOUT = 1; // seconds
-const MAX_TIMEOUT = 60; // seconds (matching backend max of 60000ms)
+const AGENT_ID = 'foreground.default'
+const MIN_TIMEOUT = 1 // seconds
+const MAX_TIMEOUT = 60 // seconds (matching backend max of 60000ms)
 
 const AgentsTab: React.FC = () => {
-  const [config, setConfig] = useState<AgentConfig | null>(null);
-  const [providers, setProviders] = useState<ProviderSummary[]>([]);
-  const [tools, setTools] = useState<ToolSummary[]>([]);
-  const [skills, setSkills] = useState<SkillSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [activeScope, setActiveScope] = useState<'global' | 'override'>('global');
-  const [hasOverride, setHasOverride] = useState(false);
-  const [overrideTimingTouched, setOverrideTimingTouched] = useState(false);
+  const [config, setConfig] = useState<AgentConfig | null>(null)
+  const [providers, setProviders] = useState<ProviderSummary[]>([])
+  const [tools, setTools] = useState<ToolSummary[]>([])
+  const [skills, setSkills] = useState<SkillSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [formData, setFormData] = useState<FormData>(initialFormData)
+  const [activeScope, setActiveScope] = useState<'global' | 'override'>('global')
+  const [hasOverride, setHasOverride] = useState(false)
+  const [overrideTimingTouched, setOverrideTimingTouched] = useState(false)
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
       const [configData, providersData, toolsData, skillsData] = await Promise.all([
@@ -69,23 +69,24 @@ const AgentsTab: React.FC = () => {
         getProviders(),
         getTools(),
         getSkills(),
-      ]);
+      ])
 
-      setConfig(configData);
-      setProviders(providersData);
-      setTools(toolsData.tools);
-      setSkills(skillsData.skills);
-      setHasOverride(configData.userOverride !== null);
-      setOverrideTimingTouched(false);
+      setConfig(configData)
+      setProviders(providersData)
+      setTools(toolsData.tools)
+      setSkills(skillsData.skills)
+      setHasOverride(configData.userOverride !== null)
+      setOverrideTimingTouched(false)
 
-      const effective = configData.effective;
-      const toolScopeMode = configData.userOverride?.allowedToolIds === null
-        ? 'inherit'
-        : configData.userOverride?.allowedToolIds?.length === 0
-          ? 'none'
-          : configData.userOverride?.allowedToolIds?.length === toolsData.tools.length
-            ? 'all'
-            : 'custom';
+      const effective = configData.effective
+      const toolScopeMode =
+        configData.userOverride?.allowedToolIds === null
+          ? 'inherit'
+          : configData.userOverride?.allowedToolIds?.length === 0
+            ? 'none'
+            : configData.userOverride?.allowedToolIds?.length === toolsData.tools.length
+              ? 'all'
+              : 'custom'
       setFormData({
         providerId: effective.providerId,
         model: effective.model,
@@ -95,104 +96,100 @@ const AgentsTab: React.FC = () => {
         allowedSkillIds: effective.allowedSkillIds,
         routingTimeoutMs: effective.routingTimeoutMs,
         toolScopeMode,
-      });
-} catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '加载配置失败';
-      setError(message);
+      })
+    } catch (err) {
+      const message = err instanceof ApiClientError ? err.message : '加载配置失败'
+      setError(message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData()
+  }, [fetchData])
 
   const handleInputChange = (field: keyof FormData, value: string | number | string[]) => {
     if (field === 'routingTimeoutMs' && activeScope === 'override') {
-      setOverrideTimingTouched(true);
+      setOverrideTimingTouched(true)
     }
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
 
   const handleToolToggle = (toolId: string) => {
     setFormData((prev) => {
-      const current = prev.allowedToolIds;
-      const updated = current.includes(toolId)
-        ? current.filter((id) => id !== toolId)
-        : [...current, toolId];
-      return { ...prev, allowedToolIds: updated, toolScopeMode: 'custom' };
-    });
-  };
+      const current = prev.allowedToolIds
+      const updated = current.includes(toolId) ? current.filter((id) => id !== toolId) : [...current, toolId]
+      return { ...prev, allowedToolIds: updated, toolScopeMode: 'custom' }
+    })
+  }
 
   const handleToolScopeModeChange = (mode: 'inherit' | 'all' | 'none' | 'custom') => {
     setFormData((prev) => {
       if (mode === 'inherit') {
-        return { ...prev, allowedToolIds: [], toolScopeMode: 'inherit' };
+        return { ...prev, allowedToolIds: [], toolScopeMode: 'inherit' }
       }
       if (mode === 'all') {
-        return { ...prev, allowedToolIds: tools.map((t) => t.name), toolScopeMode: 'all' };
+        return { ...prev, allowedToolIds: tools.map((t) => t.name), toolScopeMode: 'all' }
       }
       if (mode === 'none') {
-        return { ...prev, allowedToolIds: [], toolScopeMode: 'none' };
+        return { ...prev, allowedToolIds: [], toolScopeMode: 'none' }
       }
-      return { ...prev, toolScopeMode: 'custom' };
-    });
-  };
+      return { ...prev, toolScopeMode: 'custom' }
+    })
+  }
 
   const handleSkillToggle = (skillId: string) => {
     setFormData((prev) => {
-      const current = prev.allowedSkillIds;
-      const updated = current.includes(skillId)
-        ? current.filter((id) => id !== skillId)
-        : [...current, skillId];
-      return { ...prev, allowedSkillIds: updated };
-    });
-  };
+      const current = prev.allowedSkillIds
+      const updated = current.includes(skillId) ? current.filter((id) => id !== skillId) : [...current, skillId]
+      return { ...prev, allowedSkillIds: updated }
+    })
+  }
 
   const handleSelectAllTools = () => {
     setFormData((prev) => ({
       ...prev,
       allowedToolIds: tools.map((t) => t.name),
-    }));
-  };
+    }))
+  }
 
   const handleDeselectAllTools = () => {
-    setFormData((prev) => ({ ...prev, allowedToolIds: [] }));
-  };
+    setFormData((prev) => ({ ...prev, allowedToolIds: [] }))
+  }
 
   const handleSelectAllSkills = () => {
     setFormData((prev) => ({
       ...prev,
       allowedSkillIds: skills.map((s) => s.skillId),
-    }));
-  };
+    }))
+  }
 
   const handleDeselectAllSkills = () => {
-    setFormData((prev) => ({ ...prev, allowedSkillIds: [] }));
-  };
+    setFormData((prev) => ({ ...prev, allowedSkillIds: [] }))
+  }
 
   const validateForm = (): boolean => {
     if (!formData.providerId) {
-      setSaveError('请选择服务提供商');
-      return false;
+      setSaveError('请选择服务提供商')
+      return false
     }
     if (!formData.model.trim()) {
-      setSaveError('请输入模型ID');
-      return false;
+      setSaveError('请输入模型ID')
+      return false
     }
     if (formData.routingTimeoutMs < MIN_TIMEOUT * 1000 || formData.routingTimeoutMs > MAX_TIMEOUT * 1000) {
-      setSaveError(`超时时间必须在 ${MIN_TIMEOUT}-${MAX_TIMEOUT} 秒之间`);
-      return false;
+      setSaveError(`超时时间必须在 ${MIN_TIMEOUT}-${MAX_TIMEOUT} 秒之间`)
+      return false
     }
-    return true;
-  };
+    return true
+  }
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) return
 
-    setSaving(true);
-    setSaveError(null);
+    setSaving(true)
+    setSaveError(null)
 
     try {
       const baseUpdateRequest = {
@@ -200,37 +197,37 @@ const AgentsTab: React.FC = () => {
         model: formData.model,
         systemPrompt: formData.systemPrompt,
         routingPrompt: formData.routingPrompt,
-        allowedToolIds: activeScope === 'override' && formData.toolScopeMode === 'inherit'
-          ? undefined
-          : formData.allowedToolIds,
+        allowedToolIds:
+          activeScope === 'override' && formData.toolScopeMode === 'inherit' ? undefined : formData.allowedToolIds,
         allowedSkillIds: formData.allowedSkillIds,
-      };
-      const updateRequest: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest = activeScope === 'global'
-        ? {
-            ...baseUpdateRequest,
-            routingTimeoutMs: formData.routingTimeoutMs,
-            repairAttempts: config?.global.repairAttempts ?? config?.effective.repairAttempts ?? 1,
-          }
-        : {
-            ...baseUpdateRequest,
-            ...(overrideTimingTouched ? { routingTimeoutMs: formData.routingTimeoutMs } : {}),
-          };
+      }
+      const updateRequest: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest =
+        activeScope === 'global'
+          ? {
+              ...baseUpdateRequest,
+              routingTimeoutMs: formData.routingTimeoutMs,
+              repairAttempts: config?.global.repairAttempts ?? config?.effective.repairAttempts ?? 1,
+            }
+          : {
+              ...baseUpdateRequest,
+              ...(overrideTimingTouched ? { routingTimeoutMs: formData.routingTimeoutMs } : {}),
+            }
 
-      await updateAgentConfig(AGENT_ID, activeScope, updateRequest);
-      await fetchData();
+      await updateAgentConfig(AGENT_ID, activeScope, updateRequest)
+      await fetchData()
     } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '保存配置失败';
-      setSaveError(message);
+      const message = err instanceof ApiClientError ? err.message : '保存配置失败'
+      setSaveError(message)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const handleReset = async () => {
     if (!hasOverride) {
       if (config) {
-        const global = config.global;
-        setOverrideTimingTouched(false);
+        const global = config.global
+        setOverrideTimingTouched(false)
         setFormData({
           providerId: global.providerId,
           model: global.model,
@@ -240,37 +237,37 @@ const AgentsTab: React.FC = () => {
           allowedSkillIds: global.allowedSkillIds,
           routingTimeoutMs: global.routingTimeoutMs,
           toolScopeMode: 'custom',
-        });
+        })
       }
-      return;
+      return
     }
 
     if (!confirm('确定要重置用户覆盖配置吗？这将恢复到全局默认设置。')) {
-      return;
+      return
     }
 
-    setResetting(true);
-    setSaveError(null);
+    setResetting(true)
+    setSaveError(null)
 
     try {
-      await resetAgentConfigOverride(AGENT_ID);
-      await fetchData();
+      await resetAgentConfigOverride(AGENT_ID)
+      await fetchData()
     } catch (err) {
-      const message = err instanceof ApiClientError ? err.message : '重置配置失败';
-      setSaveError(message);
+      const message = err instanceof ApiClientError ? err.message : '重置配置失败'
+      setSaveError(message)
     } finally {
-      setResetting(false);
+      setResetting(false)
     }
-  };
+  }
 
   const handleScopeChange = (scope: 'global' | 'override') => {
-    setActiveScope(scope);
-    setSaveError(null);
-    setOverrideTimingTouched(false);
+    setActiveScope(scope)
+    setSaveError(null)
+    setOverrideTimingTouched(false)
 
     if (config) {
       if (scope === 'global') {
-        const global = config.global;
+        const global = config.global
         setFormData({
           providerId: global.providerId,
           model: global.model,
@@ -280,18 +277,19 @@ const AgentsTab: React.FC = () => {
           allowedSkillIds: global.allowedSkillIds,
           routingTimeoutMs: global.routingTimeoutMs,
           toolScopeMode: 'custom',
-        });
+        })
       } else {
-        const override = config.userOverride;
-        const effective = config.effective;
-        const overrideToolIds = override?.allowedToolIds ?? effective.allowedToolIds;
-        const derivedToolScopeMode = override?.allowedToolIds === null
-          ? 'inherit'
-          : overrideToolIds.length === 0
-            ? 'none'
-            : overrideToolIds.length === tools.length
-              ? 'all'
-              : 'custom';
+        const override = config.userOverride
+        const effective = config.effective
+        const overrideToolIds = override?.allowedToolIds ?? effective.allowedToolIds
+        const derivedToolScopeMode =
+          override?.allowedToolIds === null
+            ? 'inherit'
+            : overrideToolIds.length === 0
+              ? 'none'
+              : overrideToolIds.length === tools.length
+                ? 'all'
+                : 'custom'
         setFormData({
           providerId: override?.providerId ?? effective.providerId,
           model: override?.model ?? effective.model,
@@ -301,15 +299,15 @@ const AgentsTab: React.FC = () => {
           allowedSkillIds: override?.allowedSkillIds ?? effective.allowedSkillIds,
           routingTimeoutMs: override?.routingTimeoutMs ?? effective.routingTimeoutMs,
           toolScopeMode: derivedToolScopeMode,
-        });
+        })
       }
     }
-  };
+  }
 
   const getProviderDisplayName = (providerId: string): string => {
-    const provider = providers.find((p) => p.providerId === providerId);
-    return provider?.displayName || providerId;
-  };
+    const provider = providers.find((p) => p.providerId === providerId)
+    return provider?.displayName || providerId
+  }
 
   if (loading) {
     return (
@@ -321,11 +319,11 @@ const AgentsTab: React.FC = () => {
           <LoadingSpinner label="加载代理配置..." />
         </div>
       </div>
-    );
+    )
   }
 
   if (error || !config?.effective || !config.global) {
-    const displayError = error || '配置数据不完整，请重试';
+    const displayError = error || '配置数据不完整，请重试'
     return (
       <div data-testid="agents-panel" className="agents-panel">
         <div className="content-header">
@@ -334,17 +332,13 @@ const AgentsTab: React.FC = () => {
         <div className="content-body">
           <div className="agents-error" data-testid="agents-error">
             <p>{displayError}</p>
-            <button
-              className="retry-button"
-              onClick={fetchData}
-              data-testid="agents-retry-btn"
-            >
+            <button className="retry-button" onClick={fetchData} data-testid="agents-retry-btn">
               重试
             </button>
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -374,9 +368,7 @@ const AgentsTab: React.FC = () => {
             </button>
           </div>
           <p className="scope-hint">
-            {activeScope === 'global'
-              ? '修改全局默认配置，影响所有用户。'
-              : '设置用户特定的覆盖配置，仅影响当前用户。'}
+            {activeScope === 'global' ? '修改全局默认配置，影响所有用户。' : '设置用户特定的覆盖配置，仅影响当前用户。'}
           </p>
         </div>
 
@@ -505,18 +497,10 @@ const AgentsTab: React.FC = () => {
           {formData.toolScopeMode === 'custom' && (
             <>
               <div className="multi-select-actions">
-                <button
-                  className="action-link"
-                  onClick={handleSelectAllTools}
-                  data-testid="select-all-tools-btn"
-                >
+                <button className="action-link" onClick={handleSelectAllTools} data-testid="select-all-tools-btn">
                   全选
                 </button>
-                <button
-                  className="action-link"
-                  onClick={handleDeselectAllTools}
-                  data-testid="deselect-all-tools-btn"
-                >
+                <button className="action-link" onClick={handleDeselectAllTools} data-testid="deselect-all-tools-btn">
                   取消全选
                 </button>
               </div>
@@ -536,9 +520,7 @@ const AgentsTab: React.FC = () => {
                   </label>
                 ))}
               </div>
-              {tools.length === 0 && (
-                <p className="empty-hint">暂无可用的工具</p>
-              )}
+              {tools.length === 0 && <p className="empty-hint">暂无可用的工具</p>}
             </>
           )}
         </div>
@@ -546,18 +528,10 @@ const AgentsTab: React.FC = () => {
         <div className="agents-section">
           <h3>允许的技能</h3>
           <div className="multi-select-actions">
-            <button
-              className="action-link"
-              onClick={handleSelectAllSkills}
-              data-testid="select-all-skills-btn"
-            >
+            <button className="action-link" onClick={handleSelectAllSkills} data-testid="select-all-skills-btn">
               全选
             </button>
-            <button
-              className="action-link"
-              onClick={handleDeselectAllSkills}
-              data-testid="deselect-all-skills-btn"
-            >
+            <button className="action-link" onClick={handleDeselectAllSkills} data-testid="deselect-all-skills-btn">
               取消全选
             </button>
           </div>
@@ -572,24 +546,22 @@ const AgentsTab: React.FC = () => {
                 />
                 <span className="multi-select-label">
                   <span className="multi-select-name">{skill.name}</span>
-                  <span className={`type-badge ${skill.type.toLowerCase()}`}>
-                    {skill.type}
-                  </span>
+                  <span className={`type-badge ${skill.type.toLowerCase()}`}>{skill.type}</span>
                 </span>
               </label>
             ))}
           </div>
-          {skills.length === 0 && (
-            <p className="empty-hint">暂无可用的技能</p>
-          )}
+          {skills.length === 0 && <p className="empty-hint">暂无可用的技能</p>}
         </div>
 
         <div className="agents-section">
           <h3>超时配置</h3>
           <div className="form-group">
             <label htmlFor="routingTimeoutMs">
-              路由超时时间 (秒) * 
-              <span className="timeout-range">{MIN_TIMEOUT}-{MAX_TIMEOUT}</span>
+              路由超时时间 (秒) *
+              <span className="timeout-range">
+                {MIN_TIMEOUT}-{MAX_TIMEOUT}
+              </span>
             </label>
             <input
               id="routingTimeoutMs"
@@ -597,7 +569,9 @@ const AgentsTab: React.FC = () => {
               min={MIN_TIMEOUT}
               max={MAX_TIMEOUT}
               value={Math.round(formData.routingTimeoutMs / 1000)}
-              onChange={(e) => handleInputChange('routingTimeoutMs', (parseInt(e.target.value, 10) || MIN_TIMEOUT) * 1000)}
+              onChange={(e) =>
+                handleInputChange('routingTimeoutMs', (parseInt(e.target.value, 10) || MIN_TIMEOUT) * 1000)
+              }
               className="input-field timeout-input"
               data-testid="timeout-input"
             />
@@ -638,13 +612,19 @@ const AgentsTab: React.FC = () => {
             <div className="effective-config">
               <div className="effective-item">
                 <span className="effective-label">提供商:</span>
-                <span className={`effective-value${!config.effective.providerId ? ' not-configured' : ''}`} data-testid="effective-provider">
+                <span
+                  className={`effective-value${!config.effective.providerId ? ' not-configured' : ''}`}
+                  data-testid="effective-provider"
+                >
                   {config.effective.providerId ? getProviderDisplayName(config.effective.providerId) : '未配置'}
                 </span>
               </div>
               <div className="effective-item">
                 <span className="effective-label">模型:</span>
-                <span className={`effective-value${!config.effective.model ? ' not-configured' : ''}`} data-testid="effective-model">
+                <span
+                  className={`effective-value${!config.effective.model ? ' not-configured' : ''}`}
+                  data-testid="effective-model"
+                >
                   {config.effective.model ?? '未配置'}
                 </span>
               </div>
@@ -668,7 +648,10 @@ const AgentsTab: React.FC = () => {
               </div>
               <div className="effective-item">
                 <span className="effective-label">用户覆盖:</span>
-                <span className={`effective-value ${hasOverride ? 'has-override' : ''}`} data-testid="effective-override">
+                <span
+                  className={`effective-value ${hasOverride ? 'has-override' : ''}`}
+                  data-testid="effective-override"
+                >
                   {hasOverride ? '已启用' : '未设置'}
                 </span>
               </div>
@@ -701,7 +684,7 @@ const AgentsTab: React.FC = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AgentsTab;
+export default AgentsTab

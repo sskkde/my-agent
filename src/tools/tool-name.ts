@@ -8,14 +8,14 @@
  * during dispatch.
  */
 
-const TOOL_NAME_MAX_LENGTH = 64;
-const TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const TOOL_NAME_MAX_LENGTH = 64
+const TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 
 /**
  * Returns true if `name` conforms to the legal [A-Za-z0-9_-]{1,64} rule.
  */
 export function isValidToolName(name: string): boolean {
-  return TOOL_NAME_PATTERN.test(name);
+  return TOOL_NAME_PATTERN.test(name)
 }
 
 /**
@@ -35,7 +35,7 @@ export function sanitizeToolName(name: string): string {
     .replace(/[^A-Za-z0-9_-]+/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_+|_+$/g, '')
-    .slice(0, TOOL_NAME_MAX_LENGTH);
+    .slice(0, TOOL_NAME_MAX_LENGTH)
 
-  return sanitized || 'tool';
+  return sanitized || 'tool'
 }

@@ -7,23 +7,23 @@
  * @module prompt/template-loader
  */
 
-import { readFileSync, promises as fsPromises } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { readFileSync, promises as fsPromises } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
-const DEFAULT_BASE_PATH = join(__dirname, 'templates');
+const DEFAULT_BASE_PATH = join(__dirname, 'templates')
 
-const PLACEHOLDER_REGEX = /\{(\w+)\}/g;
+const PLACEHOLDER_REGEX = /\{(\w+)\}/g
 
 export class TemplateLoader {
-  private readonly basePath: string;
+  private readonly basePath: string
 
   constructor(basePath?: string) {
-    this.basePath = basePath ?? DEFAULT_BASE_PATH;
+    this.basePath = basePath ?? DEFAULT_BASE_PATH
   }
 
   /**
@@ -34,13 +34,10 @@ export class TemplateLoader {
    * @returns Template content with placeholders replaced
    * @throws Error if template file not found
    */
-  async load(
-    templateId: string,
-    variables?: Record<string, string>
-  ): Promise<string> {
-    const filePath = this.resolveTemplatePath(templateId);
-    const content = await fsPromises.readFile(filePath, 'utf-8');
-    return this.replacePlaceholders(content, variables);
+  async load(templateId: string, variables?: Record<string, string>): Promise<string> {
+    const filePath = this.resolveTemplatePath(templateId)
+    const content = await fsPromises.readFile(filePath, 'utf-8')
+    return this.replacePlaceholders(content, variables)
   }
 
   /**
@@ -52,9 +49,9 @@ export class TemplateLoader {
    * @throws Error if template file not found
    */
   loadSync(templateId: string, variables?: Record<string, string>): string {
-    const filePath = this.resolveTemplatePath(templateId);
-    const content = readFileSync(filePath, 'utf-8');
-    return this.replacePlaceholders(content, variables);
+    const filePath = this.resolveTemplatePath(templateId)
+    const content = readFileSync(filePath, 'utf-8')
+    return this.replacePlaceholders(content, variables)
   }
 
   /**
@@ -67,7 +64,7 @@ export class TemplateLoader {
    * @returns Content with placeholders replaced
    */
   loadFromString(content: string, variables?: Record<string, string>): string {
-    return this.replacePlaceholders(content, variables);
+    return this.replacePlaceholders(content, variables)
   }
 
   /**
@@ -77,13 +74,11 @@ export class TemplateLoader {
    * @returns Absolute path to template file
    */
   resolveTemplatePath(templateId: string): string {
-    const [category, name] = templateId.split(':');
+    const [category, name] = templateId.split(':')
     if (!category || !name) {
-      throw new Error(
-        `Invalid template ID format: "${templateId}". Expected "category:name".`
-      );
+      throw new Error(`Invalid template ID format: "${templateId}". Expected "category:name".`)
     }
-    return resolve(this.basePath, category, `${name}.md`);
+    return resolve(this.basePath, category, `${name}.md`)
   }
 
   /**
@@ -93,22 +88,17 @@ export class TemplateLoader {
    * @param variables - Key-value pairs for replacement
    * @returns Content with known placeholders replaced
    */
-  private replacePlaceholders(
-    content: string,
-    variables?: Record<string, string>
-  ): string {
+  private replacePlaceholders(content: string, variables?: Record<string, string>): string {
     if (!variables) {
-      return content;
+      return content
     }
 
     return content.replace(PLACEHOLDER_REGEX, (match, key: string) => {
-      return Object.prototype.hasOwnProperty.call(variables, key)
-        ? variables[key]
-        : match;
-    });
+      return Object.prototype.hasOwnProperty.call(variables, key) ? variables[key] : match
+    })
   }
 }
 
 export function createTemplateLoader(basePath?: string): TemplateLoader {
-  return new TemplateLoader(basePath);
+  return new TemplateLoader(basePath)
 }

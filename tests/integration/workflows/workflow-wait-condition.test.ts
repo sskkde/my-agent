@@ -1,21 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js';
-import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js';
-import { createWorkflowDefinitionStore, type WorkflowDefinitionStore } from '../../../src/storage/workflow-definition-store.js';
-import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { createWaitConditionStore, type WaitConditionStore } from '../../../src/storage/wait-condition-store.js';
-import { WORKFLOW_RUN_STATES } from '../../../src/shared/states.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
+import { createWorkflowDraftStore, type WorkflowDraftStore } from '../../../src/storage/workflow-draft-store.js'
 import {
-  createWorkflowRuntime,
-  type WorkflowRuntime,
-} from '../../../src/workflows/workflow-runtime.js';
-import type {
-  WorkflowStep,
-} from '../../../src/workflows/types.js';
-import { TestClock } from '../../helpers/clock.js';
+  createWorkflowDefinitionStore,
+  type WorkflowDefinitionStore,
+} from '../../../src/storage/workflow-definition-store.js'
+import { createWorkflowRunStore, type WorkflowRunStore } from '../../../src/storage/workflow-run-store.js'
+import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createWaitConditionStore, type WaitConditionStore } from '../../../src/storage/wait-condition-store.js'
+import { WORKFLOW_RUN_STATES } from '../../../src/shared/states.js'
+import { createWorkflowRuntime, type WorkflowRuntime } from '../../../src/workflows/workflow-runtime.js'
+import type { WorkflowStep } from '../../../src/workflows/types.js'
+import { TestClock } from '../../helpers/clock.js'
 
 const workflowRuntimeMigrations: Migration[] = [
   {
@@ -36,7 +34,7 @@ const workflowRuntimeMigrations: Migration[] = [
       CREATE INDEX idx_workflow_drafts_owner ON workflow_drafts(owner_user_id);
       CREATE INDEX idx_workflow_drafts_status ON workflow_drafts(status);
     `,
-    down: `DROP TABLE IF EXISTS workflow_drafts;`
+    down: `DROP TABLE IF EXISTS workflow_drafts;`,
   },
   {
     version: 2,
@@ -58,7 +56,7 @@ const workflowRuntimeMigrations: Migration[] = [
       CREATE INDEX idx_workflow_defs_owner ON workflow_definitions(owner_user_id);
       CREATE INDEX idx_workflow_defs_status ON workflow_definitions(status);
     `,
-    down: `DROP TABLE IF EXISTS workflow_definitions;`
+    down: `DROP TABLE IF EXISTS workflow_definitions;`,
   },
   {
     version: 3,
@@ -84,7 +82,7 @@ const workflowRuntimeMigrations: Migration[] = [
       CREATE INDEX idx_workflow_runs_workflow ON workflow_runs(workflow_id, started_at);
       CREATE INDEX idx_workflow_runs_owner_status ON workflow_runs(owner_user_id, status);
     `,
-    down: `DROP TABLE IF EXISTS workflow_runs;`
+    down: `DROP TABLE IF EXISTS workflow_runs;`,
   },
   {
     version: 4,
@@ -111,7 +109,7 @@ const workflowRuntimeMigrations: Migration[] = [
       );
       CREATE INDEX idx_workflow_step_runs_workflow_status ON workflow_step_runs(workflow_run_id, status);
     `,
-    down: `DROP TABLE IF EXISTS workflow_step_runs;`
+    down: `DROP TABLE IF EXISTS workflow_step_runs;`,
   },
   {
     version: 5,
@@ -147,7 +145,7 @@ const workflowRuntimeMigrations: Migration[] = [
       CREATE INDEX idx_runtime_actions_status ON runtime_actions(status);
       CREATE INDEX idx_runtime_actions_workflow_run ON runtime_actions(workflow_run_id);
     `,
-    down: `DROP TABLE IF EXISTS runtime_actions;`
+    down: `DROP TABLE IF EXISTS runtime_actions;`,
   },
   {
     version: 6,
@@ -183,7 +181,7 @@ const workflowRuntimeMigrations: Migration[] = [
       CREATE INDEX idx_events_type ON events(event_type);
       CREATE INDEX idx_events_correlation ON events(correlation_id);
     `,
-    down: `DROP TABLE IF EXISTS events;`
+    down: `DROP TABLE IF EXISTS events;`,
   },
   {
     version: 7,
@@ -209,38 +207,38 @@ const workflowRuntimeMigrations: Migration[] = [
       CREATE INDEX idx_wait_conditions_target ON wait_conditions(target_type, target_ref);
       CREATE INDEX idx_wait_conditions_timeout ON wait_conditions(timeout_at);
     `,
-    down: `DROP TABLE IF EXISTS wait_conditions;`
+    down: `DROP TABLE IF EXISTS wait_conditions;`,
   },
-];
+]
 
 describe('Workflow Polling Wait Condition Integration', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let draftStore: WorkflowDraftStore;
-  let definitionStore: WorkflowDefinitionStore;
-  let workflowRunStore: WorkflowRunStore;
-  let runtimeActionStore: RuntimeActionStore;
-  let eventStore: EventStore;
-  let waitConditionStore: WaitConditionStore;
-  let workflowRuntime: WorkflowRuntime;
-  let clock: TestClock;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let draftStore: WorkflowDraftStore
+  let definitionStore: WorkflowDefinitionStore
+  let workflowRunStore: WorkflowRunStore
+  let runtimeActionStore: RuntimeActionStore
+  let eventStore: EventStore
+  let waitConditionStore: WaitConditionStore
+  let workflowRuntime: WorkflowRuntime
+  let clock: TestClock
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers()
 
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply(workflowRuntimeMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply(workflowRuntimeMigrations)
 
-    draftStore = createWorkflowDraftStore(connection);
-    definitionStore = createWorkflowDefinitionStore(connection);
-    workflowRunStore = createWorkflowRunStore(connection);
-    runtimeActionStore = createRuntimeActionStore(connection);
-    eventStore = createEventStore(connection);
-    waitConditionStore = createWaitConditionStore(connection);
-    clock = new TestClock('2024-01-01T00:00:00.000Z');
+    draftStore = createWorkflowDraftStore(connection)
+    definitionStore = createWorkflowDefinitionStore(connection)
+    workflowRunStore = createWorkflowRunStore(connection)
+    runtimeActionStore = createRuntimeActionStore(connection)
+    eventStore = createEventStore(connection)
+    waitConditionStore = createWaitConditionStore(connection)
+    clock = new TestClock('2024-01-01T00:00:00.000Z')
 
     workflowRuntime = createWorkflowRuntime({
       draftStore,
@@ -254,17 +252,17 @@ describe('Workflow Polling Wait Condition Integration', () => {
         nowISO: () => clock.nowISO(),
         advance: (ms: number) => clock.advance(ms),
       },
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    vi.clearAllTimers();
-    vi.useRealTimers();
-    connection?.close();
-  });
+    vi.clearAllTimers()
+    vi.useRealTimers()
+    connection?.close()
+  })
 
   async function advanceRuntimeTimers(ms: number): Promise<void> {
-    await vi.advanceTimersByTimeAsync(ms);
+    await vi.advanceTimersByTimeAsync(ms)
   }
 
   describe('Polling Wait Step', () => {
@@ -278,18 +276,18 @@ describe('Workflow Polling Wait Condition Integration', () => {
             timeoutMs: 5000,
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Invalid Polling Workflow',
         steps,
         ownerUserId: 'user_001',
-      });
+      })
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
+      const issues = workflowRuntime.validateDraft(draft.draftId)
 
-      expect(issues.some(i => i.code === 'MISSING_POLLING_CONDITION')).toBe(true);
-    });
+      expect(issues.some((i) => i.code === 'MISSING_POLLING_CONDITION')).toBe(true)
+    })
 
     it('should validate polling_wait step requires timeoutMs', () => {
       const steps: WorkflowStep[] = [
@@ -301,18 +299,18 @@ describe('Workflow Polling Wait Condition Integration', () => {
             pollingCondition: 'input.status == "ready"',
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Invalid Polling Workflow',
         steps,
         ownerUserId: 'user_002',
-      });
+      })
 
-      const issues = workflowRuntime.validateDraft(draft.draftId);
+      const issues = workflowRuntime.validateDraft(draft.draftId)
 
-      expect(issues.some(i => i.code === 'MISSING_POLLING_TIMEOUT')).toBe(true);
-    });
+      expect(issues.some((i) => i.code === 'MISSING_POLLING_TIMEOUT')).toBe(true)
+    })
 
     it('should register wait condition when executing polling_wait step', async () => {
       const steps: WorkflowStep[] = [
@@ -326,36 +324,36 @@ describe('Workflow Polling Wait Condition Integration', () => {
             timeoutMs: 5000,
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Polling Wait Workflow',
         steps,
         ownerUserId: 'user_003',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_003',
         inputData: { status: 'pending' },
-      });
+      })
 
-      await advanceRuntimeTimers(50);
+      await advanceRuntimeTimers(50)
 
-      const waitConditions = waitConditionStore.findByStatus('active');
-      expect(waitConditions.length).toBeGreaterThan(0);
+      const waitConditions = waitConditionStore.findByStatus('active')
+      expect(waitConditions.length).toBeGreaterThan(0)
 
-      const waitCondition = waitConditions[0];
-      expect(waitCondition?.waitType).toBe('polling');
-      expect(waitCondition?.conditionPattern).toBe('input.status == "ready"');
-      expect(waitCondition?.targetType).toBe('workflow_step_run');
-      expect(waitCondition?.timeoutAt).toBeDefined();
+      const waitCondition = waitConditions[0]
+      expect(waitCondition?.waitType).toBe('polling')
+      expect(waitCondition?.conditionPattern).toBe('input.status == "ready"')
+      expect(waitCondition?.targetType).toBe('workflow_step_run')
+      expect(waitCondition?.timeoutAt).toBeDefined()
 
-      const registeredEvents = eventStore.query({ eventType: 'workflow_polling_wait_registered' });
-      expect(registeredEvents.length).toBeGreaterThan(0);
-    });
+      const registeredEvents = eventStore.query({ eventType: 'workflow_polling_wait_registered' })
+      expect(registeredEvents.length).toBeGreaterThan(0)
+    })
 
     it('should timeout when condition never satisfied', async () => {
       const steps: WorkflowStep[] = [
@@ -370,32 +368,32 @@ describe('Workflow Polling Wait Condition Integration', () => {
             onFailure: 'fail',
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Timeout Polling Workflow',
         steps,
         ownerUserId: 'user_004',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_004',
         inputData: { status: 'pending' },
-      });
+      })
 
-      clock.advance(600);
+      clock.advance(600)
 
-      await advanceRuntimeTimers(100);
+      await advanceRuntimeTimers(100)
 
-      const timeoutEvents = eventStore.query({ eventType: 'workflow_polling_wait_timeout' });
-      expect(timeoutEvents.length).toBeGreaterThan(0);
+      const timeoutEvents = eventStore.query({ eventType: 'workflow_polling_wait_timeout' })
+      expect(timeoutEvents.length).toBeGreaterThan(0)
 
-      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED);
-    });
+      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED)
+    })
 
     it('should succeed when condition becomes satisfied', async () => {
       const steps: WorkflowStep[] = [
@@ -418,30 +416,30 @@ describe('Workflow Polling Wait Condition Integration', () => {
             toolName: 'test_tool',
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Satisfied Polling Workflow',
         steps,
         ownerUserId: 'user_005',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_005',
         inputData: { status: 'ready' },
-      });
+      })
 
-      await advanceRuntimeTimers(100);
+      await advanceRuntimeTimers(100)
 
-      const satisfiedEvents = eventStore.query({ eventType: 'workflow_polling_wait_satisfied' });
-      expect(satisfiedEvents.length).toBeGreaterThan(0);
+      const satisfiedEvents = eventStore.query({ eventType: 'workflow_polling_wait_satisfied' })
+      expect(satisfiedEvents.length).toBeGreaterThan(0)
 
-      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(updatedRun?.currentStepIds).toContain('step_002');
-    });
+      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(updatedRun?.currentStepIds).toContain('step_002')
+    })
 
     it('should record poll attempts', async () => {
       const steps: WorkflowStep[] = [
@@ -456,31 +454,31 @@ describe('Workflow Polling Wait Condition Integration', () => {
             onFailure: 'fail',
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Poll Attempts Workflow',
         steps,
         ownerUserId: 'user_006',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_006',
         inputData: { status: 'pending' },
-      });
+      })
 
-      await advanceRuntimeTimers(50);
+      await advanceRuntimeTimers(50)
 
-      const pollEvents = eventStore.query({ eventType: 'workflow_polling_wait_poll' });
-      expect(pollEvents.length).toBeGreaterThan(0);
+      const pollEvents = eventStore.query({ eventType: 'workflow_polling_wait_poll' })
+      expect(pollEvents.length).toBeGreaterThan(0)
 
-      const pollEvent = pollEvents[0];
-      expect(pollEvent?.payload).toHaveProperty('pollAttempt');
-      expect(pollEvent?.payload).toHaveProperty('nextPollInMs');
-    });
+      const pollEvent = pollEvents[0]
+      expect(pollEvent?.payload).toHaveProperty('pollAttempt')
+      expect(pollEvent?.payload).toHaveProperty('nextPollInMs')
+    })
 
     it('should handle expression error in polling condition', async () => {
       const steps: WorkflowStep[] = [
@@ -495,30 +493,30 @@ describe('Workflow Polling Wait Condition Integration', () => {
             onFailure: 'fail',
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Error Polling Workflow',
         steps,
         ownerUserId: 'user_007',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_007',
         inputData: { status: 'pending' },
-      });
+      })
 
-      await advanceRuntimeTimers(100);
+      await advanceRuntimeTimers(100)
 
-      const errorEvents = eventStore.query({ eventType: 'workflow_polling_wait_error' });
-      expect(errorEvents.length).toBeGreaterThan(0);
+      const errorEvents = eventStore.query({ eventType: 'workflow_polling_wait_error' })
+      expect(errorEvents.length).toBeGreaterThan(0)
 
-      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED);
-    });
+      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(updatedRun?.status).toBe(WORKFLOW_RUN_STATES.FAILED)
+    })
 
     it('should apply onFailure=continue when polling times out', async () => {
       const steps: WorkflowStep[] = [
@@ -542,29 +540,29 @@ describe('Workflow Polling Wait Condition Integration', () => {
             toolName: 'test_tool',
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Timeout Continue Workflow',
         steps,
         ownerUserId: 'user_008',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       const result = workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_008',
         inputData: { status: 'pending' },
-      });
+      })
 
-      clock.advance(300);
+      clock.advance(300)
 
-      await advanceRuntimeTimers(100);
+      await advanceRuntimeTimers(100)
 
-      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId);
-      expect(updatedRun?.currentStepIds).toContain('step_002');
-    });
+      const updatedRun = workflowRuntime.getWorkflowRun(result.workflowRunId)
+      expect(updatedRun?.currentStepIds).toContain('step_002')
+    })
 
     it('should mark wait condition as satisfied when condition met', async () => {
       const steps: WorkflowStep[] = [
@@ -578,31 +576,31 @@ describe('Workflow Polling Wait Condition Integration', () => {
             timeoutMs: 5000,
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Satisfied Wait Workflow',
         steps,
         ownerUserId: 'user_009',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_009',
         inputData: { status: 'ready' },
-      });
+      })
 
-      await advanceRuntimeTimers(100);
+      await advanceRuntimeTimers(100)
 
-      const satisfiedConditions = waitConditionStore.findByStatus('satisfied');
-      expect(satisfiedConditions.length).toBeGreaterThan(0);
+      const satisfiedConditions = waitConditionStore.findByStatus('satisfied')
+      expect(satisfiedConditions.length).toBeGreaterThan(0)
 
-      const waitCondition = satisfiedConditions[0];
-      expect(waitCondition?.satisfiedAt).toBeDefined();
-      expect(waitCondition?.satisfiedBy).toBe('polling_evaluator');
-    });
+      const waitCondition = satisfiedConditions[0]
+      expect(waitCondition?.satisfiedAt).toBeDefined()
+      expect(waitCondition?.satisfiedBy).toBe('polling_evaluator')
+    })
 
     it('should mark wait condition as timeout when exceeded', async () => {
       const steps: WorkflowStep[] = [
@@ -617,30 +615,30 @@ describe('Workflow Polling Wait Condition Integration', () => {
             onFailure: 'fail',
           },
         },
-      ];
+      ]
 
       const draft = workflowRuntime.createDraft({
         name: 'Timeout Wait Workflow',
         steps,
         ownerUserId: 'user_010',
-      });
-      workflowRuntime.validateDraft(draft.draftId);
-      const definition = workflowRuntime.publishDraft(draft.draftId);
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
 
       workflowRuntime.startWorkflowRun({
         definitionId: definition.workflowId,
         userId: 'user_010',
         inputData: { status: 'pending' },
-      });
+      })
 
-      clock.advance(200);
+      clock.advance(200)
 
-      await advanceRuntimeTimers(100);
+      await advanceRuntimeTimers(100)
 
-      const timeoutConditions = waitConditionStore.findByStatus('timeout');
-      expect(timeoutConditions.length).toBeGreaterThan(0);
-    });
-  });
+      const timeoutConditions = waitConditionStore.findByStatus('timeout')
+      expect(timeoutConditions.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Wait Condition Store Integration', () => {
     it('should create wait condition with correct fields', () => {
@@ -654,14 +652,14 @@ describe('Workflow Polling Wait Condition Integration', () => {
         priority: 5,
         timeoutAt: '2024-01-01T00:05:00.000Z',
         metadata: JSON.stringify({ pollingIntervalMs: 100 }),
-      });
+      })
 
-      expect(waitCondition.id).toBe('wait_test_001');
-      expect(waitCondition.waitType).toBe('polling');
-      expect(waitCondition.status).toBe('active');
-      expect(waitCondition.priority).toBe(5);
-      expect(waitCondition.timeoutAt).toBe('2024-01-01T00:05:00.000Z');
-    });
+      expect(waitCondition.id).toBe('wait_test_001')
+      expect(waitCondition.waitType).toBe('polling')
+      expect(waitCondition.status).toBe('active')
+      expect(waitCondition.priority).toBe(5)
+      expect(waitCondition.timeoutAt).toBe('2024-01-01T00:05:00.000Z')
+    })
 
     it('should find wait conditions by target', () => {
       waitConditionStore.create({
@@ -671,7 +669,7 @@ describe('Workflow Polling Wait Condition Integration', () => {
         targetType: 'workflow_step_run',
         targetRef: 'step_run_002',
         status: 'active',
-      });
+      })
 
       waitConditionStore.create({
         id: 'wait_test_003',
@@ -680,11 +678,11 @@ describe('Workflow Polling Wait Condition Integration', () => {
         targetType: 'workflow_step_run',
         targetRef: 'step_run_002',
         status: 'active',
-      });
+      })
 
-      const conditions = waitConditionStore.findByTarget('workflow_step_run', 'step_run_002');
-      expect(conditions.length).toBe(2);
-    });
+      const conditions = waitConditionStore.findByTarget('workflow_step_run', 'step_run_002')
+      expect(conditions.length).toBe(2)
+    })
 
     it('should mark wait condition as satisfied', () => {
       waitConditionStore.create({
@@ -694,14 +692,14 @@ describe('Workflow Polling Wait Condition Integration', () => {
         targetType: 'workflow_step_run',
         targetRef: 'step_run_004',
         status: 'active',
-      });
+      })
 
-      const satisfied = waitConditionStore.markSatisfied('wait_test_004', 'test_evaluator', { result: 'success' });
+      const satisfied = waitConditionStore.markSatisfied('wait_test_004', 'test_evaluator', { result: 'success' })
 
-      expect(satisfied.status).toBe('satisfied');
-      expect(satisfied.satisfiedBy).toBe('test_evaluator');
-      expect(satisfied.resultData).toEqual({ result: 'success' });
-    });
+      expect(satisfied.status).toBe('satisfied')
+      expect(satisfied.satisfiedBy).toBe('test_evaluator')
+      expect(satisfied.resultData).toEqual({ result: 'success' })
+    })
 
     it('should mark wait condition as timeout', () => {
       waitConditionStore.create({
@@ -712,12 +710,12 @@ describe('Workflow Polling Wait Condition Integration', () => {
         targetRef: 'step_run_005',
         status: 'active',
         timeoutAt: '2024-01-01T00:01:00.000Z',
-      });
+      })
 
-      const timedOut = waitConditionStore.markTimeout('wait_test_005');
+      const timedOut = waitConditionStore.markTimeout('wait_test_005')
 
-      expect(timedOut.status).toBe('timeout');
-    });
+      expect(timedOut.status).toBe('timeout')
+    })
 
     it('should find expired wait conditions', () => {
       waitConditionStore.create({
@@ -728,7 +726,7 @@ describe('Workflow Polling Wait Condition Integration', () => {
         targetRef: 'step_run_006',
         status: 'active',
         timeoutAt: '2024-01-01T00:00:30.000Z',
-      });
+      })
 
       waitConditionStore.create({
         id: 'wait_test_007',
@@ -738,11 +736,11 @@ describe('Workflow Polling Wait Condition Integration', () => {
         targetRef: 'step_run_007',
         status: 'active',
         timeoutAt: '2024-01-01T00:05:00.000Z',
-      });
+      })
 
-      const expired = waitConditionStore.findExpired('2024-01-01T00:01:00.000Z');
-      expect(expired.length).toBe(1);
-      expect(expired[0]?.id).toBe('wait_test_006');
-    });
-  });
-});
+      const expired = waitConditionStore.findExpired('2024-01-01T00:01:00.000Z')
+      expect(expired.length).toBe(1)
+      expect(expired[0]?.id).toBe('wait_test_006')
+    })
+  })
+})

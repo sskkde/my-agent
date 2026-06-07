@@ -26,6 +26,7 @@ The frontend refactor is executed in three distinct rounds, each with clear boun
 **Goal**: Make the product visibly become an Agent Workspace while preserving core behavior.
 
 **Includes**:
+
 - Baseline inventory and test snapshot
 - Warm-paper-inspired CSS variables and scoped shell styles
 - Minimal UI primitives used only by new Round 1 components
@@ -37,6 +38,7 @@ The frontend refactor is executed in three distinct rounds, each with clear boun
 - Focused tests and Round 1 documentation
 
 **Explicitly excludes**:
+
 - Deep `SessionConsoleTab` hook extraction
 - Full React Router migration
 - Full Context Desk data integration
@@ -48,6 +50,7 @@ The frontend refactor is executed in three distinct rounds, each with clear boun
 **Goal**: Complete the information architecture and bring secondary product surfaces into the new shell.
 
 **Includes**:
+
 - Context Desk panel with approval, memory, run status, and tool activity cards
 - Empty/error states where session-scoped APIs are missing
 - Workspace / Operations / Admin container pages
@@ -56,6 +59,7 @@ The frontend refactor is executed in three distinct rounds, each with clear boun
 - Additional integration tests and smoke tests
 
 **Still excludes**:
+
 - Deep SSE/timeline refactor unless Round 1 evidence proves stable
 - Removing legacy tab compatibility
 
@@ -64,6 +68,7 @@ The frontend refactor is executed in three distinct rounds, each with clear boun
 **Goal**: Improve long-term maintainability and deep-linking after UI shell risk is retired.
 
 **Includes**:
+
 - Gradual `SessionConsoleTab` extraction into hooks and presentation components
 - Full React Router routes: `/chat`, `/chat/:sessionId`, `/workspace/:tabId`, `/operations/:tabId`, `/admin/:tabId`
 - Session URL synchronization with `session-console-selected-session` migration guard
@@ -110,6 +115,7 @@ The warm-paper visual direction is inspired by the [openhanako](https://github.c
 ## Current Architecture
 
 The frontend is built with:
+
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
 - **Styling**: Plain CSS with CSS variables
@@ -121,6 +127,7 @@ The current UI is admin/sidebar oriented. Round 1 transforms this into an Agent 
 ## Evidence and Progress
 
 Implementation progress and baseline evidence is tracked in:
+
 - `.omo/evidence/round1-baseline.md` — Baseline command/test/selector/navigation inventory
 - `.omo/evidence/task-*.txt` — Per-task verification evidence
 
@@ -134,24 +141,27 @@ The detailed implementation plan lives in `.omo/plans/frontend-refactor-round1.m
 
 ### Final Verification Results
 
-| Command | Status | Details |
-|---------|--------|---------|
-| `npm run build:web` | PASS | 94 modules, 119.47 kB CSS, 1.84s |
-| `npm run test:web` | PASS | 60 test files, 1042 tests, 95.37s |
+| Command             | Status | Details                           |
+| ------------------- | ------ | --------------------------------- |
+| `npm run build:web` | PASS   | 94 modules, 119.47 kB CSS, 1.84s  |
+| `npm run test:web`  | PASS   | 60 test files, 1042 tests, 95.37s |
 
 ### Round 1 Deliverables
 
 **Layout Architecture:**
+
 - `AgentShell` (web/src/layout/AgentShell.tsx) subsumes the planned `LeftRail` functionality
 - AgentShell provides: product navigation bar, shell layout, sidebar, topbar, content area
 - No separate LeftRail component needed — AgentShell handles all layout concerns
 
 **Design Tokens:**
+
 - 35+ warm-paper CSS custom properties added to `web/src/styles.css`
 - Namespaced with `--warm-paper-` prefix
 - No external assets (fonts, images, textures)
 
 **UI Primitives:**
+
 - `web/src/components/ui/Button.tsx` + tests (12 tests)
 - `web/src/components/ui/Card.tsx` + tests (9 tests)
 - `web/src/components/ui/Badge.tsx`
@@ -160,23 +170,27 @@ The detailed implementation plan lives in `.omo/plans/frontend-refactor-round1.m
 - `web/src/components/ui/index.ts` (barrel exports)
 
 **Product Navigation:**
+
 - `web/src/navigation/product-navigation.ts` — TabId to ProductSection mapping
 - Four sections: Chat, Workspace, Operations, Admin
 - 14 tests verifying complete coverage
 
 **AgentShell:**
+
 - `web/src/layout/AgentShell.tsx` + tests (23 tests)
 - Product navigation bar with four sections
 - Backward compatibility: `data-testid="app-shell"` preserved
 - New selectors: `agent-shell`, `center-stage`, `product-nav`
 
 **SessionWorkspace:**
+
 - `web/src/features/session/SessionWorkspace.tsx` + tests (9 tests)
 - Lightweight wrapper around SessionConsoleTab
 - Default landing changed from dashboard to session-console
 - All existing selectors preserved
 
 **ComposerDock:**
+
 - `web/src/components/ComposerDock.tsx` + tests (22 tests)
 - Textarea-based message input
 - Enter sends, Shift+Enter creates newline
@@ -186,12 +200,14 @@ The detailed implementation plan lives in `.omo/plans/frontend-refactor-round1.m
 ### Selector Compatibility
 
 All baseline selectors preserved:
+
 - `data-testid="app-shell"` — Preserved in AgentShell for backward compatibility
 - `data-testid="session-message-input"` — Preserved in ComposerDock
 - `data-testid="session-send-button"` — Preserved in ComposerDock
 - All 20 legacy tab test IDs — Preserved in navigation-config.ts
 
 New selectors properly namespaced:
+
 - `data-testid="agent-shell"` — AgentShell root
 - `data-testid="center-stage"` — Main content area
 - `data-testid="product-nav"` — Product navigation bar
@@ -201,6 +217,7 @@ New selectors properly namespaced:
 ### Known Issues
 
 **Baseline (Not Round 1 Regressions):**
+
 - `act()` warnings in tests (existing, not new)
 - React Router future flag warnings (existing, not new)
 - Test timeout on constrained CI environments (not code issue)
@@ -210,6 +227,7 @@ New selectors properly namespaced:
 ### Guardrail Compliance
 
 All guardrails satisfied:
+
 - No deep SessionConsoleTab extraction
 - No full React Router migration
 - No backend/API/database changes
@@ -230,6 +248,7 @@ All guardrails satisfied:
 **Status:** NOT STARTED
 
 **Scope:**
+
 - Context Desk panel with approval, memory, run status, and tool activity cards
 - Empty/error states where session-scoped APIs are missing
 - Workspace / Operations / Admin container pages
@@ -238,6 +257,7 @@ All guardrails satisfied:
 - Additional integration tests and smoke tests
 
 **Still Excludes:**
+
 - Deep SSE/timeline refactor
 - Removing legacy tab compatibility
 
@@ -246,6 +266,7 @@ All guardrails satisfied:
 **Status:** NOT STARTED
 
 **Scope:**
+
 - Gradual SessionConsoleTab extraction into hooks and presentation components
 - Full React Router routes: `/chat`, `/chat/:sessionId`, `/workspace/:tabId`, `/operations/:tabId`, `/admin/:tabId`
 - Session URL synchronization with `session-console-selected-session` migration guard
@@ -260,6 +281,7 @@ All guardrails satisfied:
 **Round 1 Final:** 60 test files, 1042 tests PASS
 
 **New Test Files:**
+
 - `src/layout/AgentShell.test.tsx` (23 tests)
 - `src/features/session/SessionWorkspace.test.tsx` (9 tests)
 - `src/components/ComposerDock.test.tsx` (22 tests)

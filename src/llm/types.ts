@@ -3,35 +3,35 @@
  * Core types for LLM request/response and provider configuration
  */
 
-import type { RuntimeError } from '../shared/errors';
+import type { RuntimeError } from '../shared/errors'
 
 /**
  * LLM Message role
  */
-export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
+export type MessageRole = 'system' | 'user' | 'assistant' | 'tool'
 
 /**
  * LLM Message
  * Represents a single message in the conversation
  */
 export interface LLMMessage {
-  role: MessageRole;
-  content: string;
-  name?: string;
-  toolCalls?: ToolCall[];
-  toolCallId?: string;
+  role: MessageRole
+  content: string
+  name?: string
+  toolCalls?: ToolCall[]
+  toolCallId?: string
 }
 
 /**
  * Tool call from LLM
  */
 export interface ToolCall {
-  id: string;
-  type: 'function';
+  id: string
+  type: 'function'
   function: {
-    name: string;
-    arguments: string;
-  };
+    name: string
+    arguments: string
+  }
 }
 
 /**
@@ -39,29 +39,29 @@ export interface ToolCall {
  * Complete request to an LLM provider
  */
 export interface LLMRequest {
-  model: string;
-  messages: LLMMessage[];
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  frequencyPenalty?: number;
-  presencePenalty?: number;
-  stopSequences?: string[];
-  tools?: ToolDefinition[];
-  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
-  responseFormat?: { type: 'json_object' | 'text' };
+  model: string
+  messages: LLMMessage[]
+  temperature?: number
+  maxTokens?: number
+  topP?: number
+  frequencyPenalty?: number
+  presencePenalty?: number
+  stopSequences?: string[]
+  tools?: ToolDefinition[]
+  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
+  responseFormat?: { type: 'json_object' | 'text' }
 }
 
 /**
  * Tool definition for function calling
  */
 export interface ToolDefinition {
-  type: 'function';
+  type: 'function'
   function: {
-    name: string;
-    description: string;
-    parameters: Record<string, unknown>;
-  };
+    name: string
+    description: string
+    parameters: Record<string, unknown>
+  }
 }
 
 /**
@@ -69,26 +69,26 @@ export interface ToolDefinition {
  * Response from an LLM provider
  */
 export interface LLMResponse {
-  id: string;
-  model: string;
-  content: string;
-  role: 'assistant';
-  toolCalls?: ToolCall[];
-  usage?: TokenUsage;
-  finishReason: 'stop' | 'length' | 'tool_calls' | 'content_filter';
-  createdAt: string;
+  id: string
+  model: string
+  content: string
+  role: 'assistant'
+  toolCalls?: ToolCall[]
+  usage?: TokenUsage
+  finishReason: 'stop' | 'length' | 'tool_calls' | 'content_filter'
+  createdAt: string
 }
 
 /**
  * Token usage information
  */
 export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  promptCacheHitTokens?: number;
-  promptCacheMissTokens?: number;
-  cacheHitRate?: number;
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  promptCacheHitTokens?: number
+  promptCacheMissTokens?: number
+  cacheHitRate?: number
 }
 
 /**
@@ -97,70 +97,70 @@ export interface TokenUsage {
  */
 export type LLMResult =
   | { success: true; response: LLMResponse; providerId: string }
-  | { success: false; error: RuntimeError; providerId: string };
+  | { success: false; error: RuntimeError; providerId: string }
 
 /**
  * Model capabilities flags
  * Detailed capability flags for a specific model
  */
 export interface ModelCapabilities {
-  streaming: boolean;
-  functionCalling: boolean;
-  jsonMode: boolean;
-  structuredOutput: boolean;
-  reasoning: boolean;
-  vision: boolean;
-  audioInput: boolean;
-  pdfInput: boolean;
-  toolChoice: boolean;
-  parallelToolCalls: boolean;
-  promptCache: boolean;
+  streaming: boolean
+  functionCalling: boolean
+  jsonMode: boolean
+  structuredOutput: boolean
+  reasoning: boolean
+  vision: boolean
+  audioInput: boolean
+  pdfInput: boolean
+  toolChoice: boolean
+  parallelToolCalls: boolean
+  promptCache: boolean
 }
 
 /**
  * Provider capability flags
  */
 export interface ProviderCapabilities {
-  supportsStreaming: boolean;
-  supportsFunctionCalling: boolean;
-  supportsJsonMode: boolean;
-  supportsVision: boolean;
-  maxTokens: number;
-  supportedModels: string[];
+  supportsStreaming: boolean
+  supportsFunctionCalling: boolean
+  supportsJsonMode: boolean
+  supportsVision: boolean
+  maxTokens: number
+  supportedModels: string[]
   /** Extended model capabilities (v60+) */
-  modelCapabilities?: Partial<ModelCapabilities>;
+  modelCapabilities?: Partial<ModelCapabilities>
   /** Prompt provider family for this provider */
-  promptFamily?: PromptProviderFamily;
+  promptFamily?: PromptProviderFamily
   /** Whether structured output is supported */
-  supportsStructuredOutput?: boolean;
+  supportsStructuredOutput?: boolean
   /** Whether reasoning capabilities are supported */
-  supportsReasoning?: boolean;
+  supportsReasoning?: boolean
   /** Whether audio input is supported */
-  supportsAudio?: boolean;
+  supportsAudio?: boolean
   /** Whether PDF input is supported */
-  supportsPdf?: boolean;
+  supportsPdf?: boolean
   /** Whether parallel tool calls are supported */
-  supportsParallelToolCalls?: boolean;
+  supportsParallelToolCalls?: boolean
   /** Whether prompt caching is supported */
-  supportsPromptCache?: boolean;
+  supportsPromptCache?: boolean
 }
 
 /**
  * Provider configuration
  */
 export interface ProviderConfig {
-  id: string;
-  name: string;
-  enabled: boolean;
-  priority: number;
-  timeoutMs: number;
-  retries: number;
-  capabilities: ProviderCapabilities;
-  apiKey?: string;
-  baseUrl?: string;
-  enableLogging?: boolean;
-  siteUrl?: string;
-  appName?: string;
+  id: string
+  name: string
+  enabled: boolean
+  priority: number
+  timeoutMs: number
+  retries: number
+  capabilities: ProviderCapabilities
+  apiKey?: string
+  baseUrl?: string
+  enableLogging?: boolean
+  siteUrl?: string
+  appName?: string
 }
 
 /**
@@ -168,9 +168,9 @@ export interface ProviderConfig {
  * Returned when no provider can fulfill the request
  */
 export interface AllProvidersFailedError extends RuntimeError {
-  category: 'model_error';
-  code: 'ALL_PROVIDERS_FAILED';
-  attempts: Array<{ providerId: string; error: RuntimeError }>;
+  category: 'model_error'
+  code: 'ALL_PROVIDERS_FAILED'
+  attempts: Array<{ providerId: string; error: RuntimeError }>
 }
 
 // ============================================================================
@@ -181,14 +181,7 @@ export interface AllProvidersFailedError extends RuntimeError {
  * Provider family identifier
  * Categorizes providers by their underlying architecture
  */
-export type ProviderFamily =
-  | 'openai'
-  | 'openai_compatible'
-  | 'deepseek'
-  | 'anthropic'
-  | 'gemini'
-  | 'ollama'
-  | 'bedrock';
+export type ProviderFamily = 'openai' | 'openai_compatible' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'bedrock'
 
 /**
  * Provider communication protocol
@@ -200,26 +193,21 @@ export type ProviderProtocol =
   | 'anthropic_messages'
   | 'gemini_generate_content'
   | 'ollama_chat'
-  | 'bedrock_converse';
+  | 'bedrock_converse'
 
 /**
  * Prompt provider family
  * Used for prompt template compatibility
  */
-export type PromptProviderFamily =
-  | 'openai'
-  | 'deepseek'
-  | 'ollama'
-  | 'anthropic'
-  | 'gemini';
+export type PromptProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini'
 
 /**
  * Model limits
  * Token limits for a specific model
  */
 export interface ModelLimits {
-  contextTokens: number;
-  outputTokens: number;
+  contextTokens: number
+  outputTokens: number
 }
 
 /**
@@ -227,10 +215,10 @@ export interface ModelLimits {
  * Per-million-token pricing (optional, may not be available for all models)
  */
 export interface ModelPricing {
-  inputPerMTok?: number;
-  outputPerMTok?: number;
-  cacheReadPerMTok?: number;
-  cacheWritePerMTok?: number;
+  inputPerMTok?: number
+  outputPerMTok?: number
+  cacheReadPerMTok?: number
+  cacheWritePerMTok?: number
 }
 
 /**
@@ -238,15 +226,15 @@ export interface ModelPricing {
  * Complete metadata about a specific model
  */
 export interface ModelInfo {
-  providerId: string;
-  modelId: string;
-  family: ProviderFamily;
-  protocol: ProviderProtocol;
-  displayName?: string;
-  capabilities: ModelCapabilities;
-  limits: ModelLimits;
-  pricing?: ModelPricing;
-  requestOptions?: Record<string, unknown>;
+  providerId: string
+  modelId: string
+  family: ProviderFamily
+  protocol: ProviderProtocol
+  displayName?: string
+  capabilities: ModelCapabilities
+  limits: ModelLimits
+  pricing?: ModelPricing
+  requestOptions?: Record<string, unknown>
 }
 
 /**
@@ -254,13 +242,13 @@ export interface ModelInfo {
  * Extends base provider config with runtime-specific settings
  */
 export interface ProviderRuntimeConfig extends ProviderConfig {
-  family?: ProviderFamily;
-  protocol?: ProviderProtocol;
-  defaultModel?: string | null;
-  headers?: Record<string, string>;
-  customCapabilities?: Partial<ModelCapabilities>;
-  options?: Record<string, unknown>;
-  promptFamily?: PromptProviderFamily;
+  family?: ProviderFamily
+  protocol?: ProviderProtocol
+  defaultModel?: string | null
+  headers?: Record<string, string>
+  customCapabilities?: Partial<ModelCapabilities>
+  options?: Record<string, unknown>
+  promptFamily?: PromptProviderFamily
 }
 
 /**
@@ -268,12 +256,12 @@ export interface ProviderRuntimeConfig extends ProviderConfig {
  * Represents a potential provider for request routing
  */
 export interface ProviderCandidate {
-  providerId: string;
+  providerId: string
   /** Provider type identifier (e.g. 'openai', 'ollama', 'openrouter') */
-  providerType: string;
-  config: ProviderRuntimeConfig;
-  model: ModelInfo;
-  priority: number;
+  providerType: string
+  config: ProviderRuntimeConfig
+  model: ModelInfo
+  priority: number
 }
 
 /**
@@ -281,13 +269,13 @@ export interface ProviderCandidate {
  * Constraints that must be satisfied by the selected provider/model
  */
 export interface RequestRequirements {
-  requiresTools: boolean;
-  requiresJsonMode: boolean;
-  requiresStreaming: boolean;
-  requiresVision: boolean;
-  requiresAudio: boolean;
-  requiresPdf: boolean;
-  minOutputTokens?: number;
+  requiresTools: boolean
+  requiresJsonMode: boolean
+  requiresStreaming: boolean
+  requiresVision: boolean
+  requiresAudio: boolean
+  requiresPdf: boolean
+  minOutputTokens?: number
 }
 
 /**
@@ -301,16 +289,16 @@ export const DEFAULT_REQUEST_REQUIREMENTS: RequestRequirements = {
   requiresVision: false,
   requiresAudio: false,
   requiresPdf: false,
-};
+}
 
 /**
  * Fallback policy configuration
  * Controls provider fallback behavior on failures
  */
 export interface FallbackPolicy {
-  enabled: boolean;
-  maxAttempts: number;
-  mode: 'same_model_only' | 'same_capability_only' | 'any_compatible';
+  enabled: boolean
+  maxAttempts: number
+  mode: 'same_model_only' | 'same_capability_only' | 'any_compatible'
 }
 
 /**
@@ -321,15 +309,15 @@ export const DEFAULT_FALLBACK_POLICY: FallbackPolicy = {
   enabled: true,
   maxAttempts: 3,
   mode: 'any_compatible',
-};
+}
 
 /**
  * Compute cache hit rate from token usage
  * Returns 0 if cache metrics are unavailable or total is zero
  */
 export function computeCacheHitRate(usage: TokenUsage): number {
-  const hit = usage.promptCacheHitTokens ?? 0;
-  const miss = usage.promptCacheMissTokens ?? 0;
-  const total = hit + miss;
-  return total > 0 ? hit / total : 0;
+  const hit = usage.promptCacheHitTokens ?? 0
+  const miss = usage.promptCacheMissTokens ?? 0
+  const total = hit + miss
+  return total > 0 ? hit / total : 0
 }

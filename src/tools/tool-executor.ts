@@ -5,23 +5,23 @@ import type {
   ToolExecutionResult,
   ToolExecutionContext,
   ToolCategory,
-} from './types.js';
-import type { RuntimeContextDelta } from '../context/types.js';
-import { TOOL_EXECUTION_STATES } from '../shared/states.js';
-import { sanitizeErrorMessage, formatPersistedError } from './error-sanitizer.js';
+} from './types.js'
+import type { RuntimeContextDelta } from '../context/types.js'
+import { TOOL_EXECUTION_STATES } from '../shared/states.js'
+import { sanitizeErrorMessage, formatPersistedError } from './error-sanitizer.js'
 
 class ToolExecutorImpl implements ToolExecutor {
-  private config: ToolExecutorConfig;
+  private config: ToolExecutorConfig
 
   constructor(config: ToolExecutorConfig) {
-    this.config = config;
+    this.config = config
   }
 
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
-    const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext } = request;
-    const traceId = kernelRunId || toolCallId;
-    const spanId = `span_${toolCallId}`;
-    const startedAt = Date.now();
+    const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext } = request
+    const traceId = kernelRunId || toolCallId
+    const spanId = `span_${toolCallId}`
+    const startedAt = Date.now()
 
     this.config.traceStore?.createSpan({
       spanId,
@@ -32,13 +32,13 @@ class ToolExecutorImpl implements ToolExecutor {
       status: 'started',
       startTime: new Date(startedAt).toISOString(),
       metadata: { toolCallId, toolName },
-    });
+    })
 
     try {
-      const tool = this.config.registry.getTool(toolName);
+      const tool = this.config.registry.getTool(toolName)
 
       if (!tool) {
-        const errorMessage = `[TOOL_NOT_FOUND] Tool not found: ${toolName}`;
+        const errorMessage = `[TOOL_NOT_FOUND] Tool not found: ${toolName}`
         this.config.toolExecutionStore.create({
           toolCallId,
           toolName,
@@ -48,13 +48,9 @@ class ToolExecutorImpl implements ToolExecutor {
           status: TOOL_EXECUTION_STATES.FAILED,
           sensitivity: 'low',
           errorMessage,
-        });
-        this.endToolSpan(spanId, startedAt, 'failed', errorMessage);
-        return this.createErrorResult(
-          'TOOL_NOT_FOUND',
-          `Tool not found: ${toolName}`,
-          false
-        );
+        })
+        this.endToolSpan(spanId, startedAt, 'failed', errorMessage)
+        return this.createErrorResult('TOOL_NOT_FOUND', `Tool not found: ${toolName}`, false)
       }
 
       this.config.toolExecutionStore.create({
@@ -66,39 +62,45 @@ class ToolExecutorImpl implements ToolExecutor {
         status: TOOL_EXECUTION_STATES.SCHEMA_VALIDATING,
         params,
         sensitivity: tool.sensitivity,
-      });
+      })
 
-      const validationResult = this.validateParams(params, tool.schema);
+      const validationResult = this.validateParams(params, tool.schema)
       if (!validationResult.valid) {
-        const rawErrorMessage = `Schema validation failed: ${validationResult.errors?.join(', ')}`;
-        const persistedErrorMessage = formatPersistedError('SCHEMA_VALIDATION_FAILED', rawErrorMessage);
-        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED, undefined, persistedErrorMessage);
-        this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage));
-        return this.createErrorResult(
-          'SCHEMA_VALIDATION_FAILED',
-          rawErrorMessage,
-          false
-        );
+        const rawErrorMessage = `Schema validation failed: ${validationResult.errors?.join(', ')}`
+        const persistedErrorMessage = formatPersistedError('SCHEMA_VALIDATION_FAILED', rawErrorMessage)
+        this.config.toolExecutionStore.updateStatus(
+          toolCallId,
+          TOOL_EXECUTION_STATES.FAILED,
+          undefined,
+          persistedErrorMessage,
+        )
+        this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage))
+        return this.createErrorResult('SCHEMA_VALIDATION_FAILED', rawErrorMessage, false)
       }
 
-      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.PERMISSION_CHECKING);
+      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.PERMISSION_CHECKING)
 
-      const operationType = this.categoryToOperationType(tool.category);
+      const operationType = this.categoryToOperationType(tool.category)
       const permissionDecision = this.config.permissionEngine.checkPermission({
         context: permissionContext,
         actionType: `tool:${toolName}`,
         resource: toolName,
         operationType,
         justification: `Execute tool: ${tool.description}`,
-      });
+      })
 
       if (!permissionDecision.allowed) {
-        const rawErrorMessage = permissionDecision.reason || 'Permission denied';
-        
+        const rawErrorMessage = permissionDecision.reason || 'Permission denied'
+
         if (permissionDecision.status === 'requires_approval' || permissionDecision.status === 'pending_approval') {
-          const persistedErrorMessage = formatPersistedError('APPROVAL_REQUIRED', rawErrorMessage);
-          this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.WAITING_FOR_APPROVAL, undefined, persistedErrorMessage);
-          this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage));
+          const persistedErrorMessage = formatPersistedError('APPROVAL_REQUIRED', rawErrorMessage)
+          this.config.toolExecutionStore.updateStatus(
+            toolCallId,
+            TOOL_EXECUTION_STATES.WAITING_FOR_APPROVAL,
+            undefined,
+            persistedErrorMessage,
+          )
+          this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage))
           return {
             success: false,
             error: {
@@ -111,20 +113,21 @@ class ToolExecutorImpl implements ToolExecutor {
               requestId: permissionDecision.requestId,
               approvalRequest: permissionDecision.approvalRequest,
             },
-          };
+          }
         }
-        
-        const persistedErrorMessage = formatPersistedError('PERMISSION_DENIED', rawErrorMessage);
-        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.DENIED, undefined, persistedErrorMessage);
-        this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage));
-        return this.createErrorResult(
-          'PERMISSION_DENIED',
-          rawErrorMessage,
-          false
-        );
+
+        const persistedErrorMessage = formatPersistedError('PERMISSION_DENIED', rawErrorMessage)
+        this.config.toolExecutionStore.updateStatus(
+          toolCallId,
+          TOOL_EXECUTION_STATES.DENIED,
+          undefined,
+          persistedErrorMessage,
+        )
+        this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawErrorMessage))
+        return this.createErrorResult('PERMISSION_DENIED', rawErrorMessage, false)
       }
 
-      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.EXECUTING);
+      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.EXECUTING)
 
       const executionContext: ToolExecutionContext = {
         toolCallId,
@@ -137,46 +140,54 @@ class ToolExecutorImpl implements ToolExecutor {
         stores: {
           toolExecutionStore: {
             updateStatus: (id: string, status: string, errorMessage?: string) => {
-              this.config.toolExecutionStore.updateStatus(id, status, undefined, errorMessage);
+              this.config.toolExecutionStore.updateStatus(id, status, undefined, errorMessage)
             },
-            saveResult: (id: string, result: {
-              preview?: string;
-              resultRef?: string;
-              structuredContent?: Record<string, unknown>;
-            }) => {
-              this.config.toolExecutionStore.saveResult(id, result);
+            saveResult: (
+              id: string,
+              result: {
+                preview?: string
+                resultRef?: string
+                structuredContent?: Record<string, unknown>
+              },
+            ) => {
+              this.config.toolExecutionStore.saveResult(id, result)
             },
           },
         },
-      };
+      }
 
-      const handlerResult = await tool.handler(params, executionContext);
+      const handlerResult = await tool.handler(params, executionContext)
 
       const finalResult: ToolExecutionResult = {
         ...handlerResult,
         contextDelta: this.normalizeContextDelta(handlerResult.contextDelta, kernelRunId),
-      };
+      }
 
       if (!finalResult.success) {
-        const rawErrorMessage = finalResult.error?.message || 'Tool execution returned failure';
-        const persistedErrorMessage = formatPersistedError('EXECUTION_FAILED', rawErrorMessage);
-        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED, undefined, persistedErrorMessage);
+        const rawErrorMessage = finalResult.error?.message || 'Tool execution returned failure'
+        const persistedErrorMessage = formatPersistedError('EXECUTION_FAILED', rawErrorMessage)
+        this.config.toolExecutionStore.updateStatus(
+          toolCallId,
+          TOOL_EXECUTION_STATES.FAILED,
+          undefined,
+          persistedErrorMessage,
+        )
         this.config.toolExecutionStore.saveResult(toolCallId, {
           preview: finalResult.resultPreview,
           resultRef: finalResult.resultRef,
           structuredContent: finalResult.structuredContent,
-        });
+        })
       } else {
-        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.COMPLETED);
+        this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.COMPLETED)
         this.config.toolExecutionStore.saveResult(toolCallId, {
           preview: finalResult.resultPreview,
           resultRef: finalResult.resultRef,
           structuredContent: finalResult.structuredContent,
-        });
+        })
       }
 
       if (finalResult.contextDelta && this.config.contextManager) {
-        this.config.contextManager.applyDelta(finalResult.contextDelta);
+        this.config.contextManager.applyDelta(finalResult.contextDelta)
       }
 
       this.config.auditRecorder?.recordToolCall({
@@ -189,9 +200,11 @@ class ToolExecutorImpl implements ToolExecutor {
         status: finalResult.success ? 'success' : 'failure',
         correlationId: toolCallId,
         causationId: kernelRunId,
-      });
-      const spanError = finalResult.success ? undefined : sanitizeErrorMessage(finalResult.error?.message || 'Tool execution returned failure');
-      this.endToolSpan(spanId, startedAt, finalResult.success ? 'completed' : 'failed', spanError);
+      })
+      const spanError = finalResult.success
+        ? undefined
+        : sanitizeErrorMessage(finalResult.error?.message || 'Tool execution returned failure')
+      this.endToolSpan(spanId, startedAt, finalResult.success ? 'completed' : 'failed', spanError)
 
       if (finalResult.events && finalResult.events.length > 0 && this.config.eventStore) {
         for (const event of finalResult.events) {
@@ -206,75 +219,82 @@ class ToolExecutorImpl implements ToolExecutor {
             sensitivity: tool.sensitivity === 'restricted' ? 'high' : tool.sensitivity === 'high' ? 'medium' : 'low',
             retentionClass: 'standard',
             createdAt: event.timestamp,
-          });
+          })
         }
       }
 
-      return finalResult;
+      return finalResult
     } catch (error) {
-      const rawMessage = error instanceof Error ? error.message : String(error);
-      const persistedErrorMessage = formatPersistedError('EXECUTION_FAILED', rawMessage);
-      this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.FAILED, undefined, persistedErrorMessage);
+      const rawMessage = error instanceof Error ? error.message : String(error)
+      const persistedErrorMessage = formatPersistedError('EXECUTION_FAILED', rawMessage)
+      this.config.toolExecutionStore.updateStatus(
+        toolCallId,
+        TOOL_EXECUTION_STATES.FAILED,
+        undefined,
+        persistedErrorMessage,
+      )
 
-      this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawMessage));
-      return this.createErrorResult(
-        'EXECUTION_FAILED',
-        rawMessage,
-        false
-      );
+      this.endToolSpan(spanId, startedAt, 'failed', sanitizeErrorMessage(rawMessage))
+      return this.createErrorResult('EXECUTION_FAILED', rawMessage, false)
     }
   }
 
-  private validateParams(params: unknown, schema: { type: string; properties: Record<string, unknown>; required?: string[] }): { valid: boolean; errors?: string[] } {
-    const errors: string[] = [];
+  private validateParams(
+    params: unknown,
+    schema: { type: string; properties: Record<string, unknown>; required?: string[] },
+  ): { valid: boolean; errors?: string[] } {
+    const errors: string[] = []
 
     if (schema.type !== 'object') {
-      return { valid: true };
+      return { valid: true }
     }
 
     if (typeof params !== 'object' || params === null) {
-      return { valid: false, errors: ['Params must be an object'] };
+      return { valid: false, errors: ['Params must be an object'] }
     }
 
-    const paramsObj = params as Record<string, unknown>;
+    const paramsObj = params as Record<string, unknown>
 
     if (schema.required && schema.required.length > 0) {
       for (const required of schema.required) {
         if (!(required in paramsObj)) {
-          errors.push(`Missing required field: ${required}`);
+          errors.push(`Missing required field: ${required}`)
         }
       }
     }
 
     if (schema.properties) {
       for (const [key, value] of Object.entries(paramsObj)) {
-        const propertySchema = schema.properties[key];
+        const propertySchema = schema.properties[key]
         if (propertySchema && typeof propertySchema === 'object' && 'type' in propertySchema) {
-          const expectedType = (propertySchema as { type: string }).type;
-          const actualType = this.getTypeName(value);
+          const expectedType = (propertySchema as { type: string }).type
+          const actualType = this.getTypeName(value)
 
           if (expectedType === 'number' && typeof value !== 'number') {
-            errors.push(`Field '${key}' must be of type 'number', got '${actualType}'`);
+            errors.push(`Field '${key}' must be of type 'number', got '${actualType}'`)
           } else if (expectedType === 'string' && typeof value !== 'string') {
-            errors.push(`Field '${key}' must be of type 'string', got '${actualType}'`);
+            errors.push(`Field '${key}' must be of type 'string', got '${actualType}'`)
           } else if (expectedType === 'boolean' && typeof value !== 'boolean') {
-            errors.push(`Field '${key}' must be of type 'boolean', got '${actualType}'`);
+            errors.push(`Field '${key}' must be of type 'boolean', got '${actualType}'`)
           } else if (expectedType === 'array' && !Array.isArray(value)) {
-            errors.push(`Field '${key}' must be of type 'array', got '${actualType}'`);
-          } else if (expectedType === 'object' && (typeof value !== 'object' || value === null || Array.isArray(value))) {
-            errors.push(`Field '${key}' must be of type 'object', got '${actualType}'`);
+            errors.push(`Field '${key}' must be of type 'array', got '${actualType}'`)
+          } else if (
+            expectedType === 'object' &&
+            (typeof value !== 'object' || value === null || Array.isArray(value))
+          ) {
+            errors.push(`Field '${key}' must be of type 'object', got '${actualType}'`)
           }
         }
       }
     }
 
-    return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
+    return { valid: errors.length === 0, errors: errors.length > 0 ? errors : undefined }
   }
 
   private getTypeName(value: unknown): string {
-    if (value === null) return 'null';
-    if (Array.isArray(value)) return 'array';
-    return typeof value;
+    if (value === null) return 'null'
+    if (Array.isArray(value)) return 'array'
+    return typeof value
   }
 
   private categoryToOperationType(category: ToolCategory): 'read' | 'write' | 'execute' | 'delete' | 'admin' {
@@ -282,59 +302,57 @@ class ToolExecutorImpl implements ToolExecutor {
       case 'read':
       case 'search':
       case 'internal':
-        return 'read';
+        return 'read'
       case 'write':
       case 'send':
-        return 'write';
+        return 'write'
       case 'delete':
-        return 'delete';
+        return 'delete'
       case 'execute':
       case 'automation':
-        return 'execute';
+        return 'execute'
       case 'admin':
       case 'connector':
-        return 'admin';
+        return 'admin'
       default:
-        return 'read';
+        return 'read'
     }
   }
 
-  private normalizeContextDelta(delta: RuntimeContextDelta | undefined, kernelRunId: string | undefined): RuntimeContextDelta | undefined {
-    if (!delta) return undefined;
+  private normalizeContextDelta(
+    delta: RuntimeContextDelta | undefined,
+    kernelRunId: string | undefined,
+  ): RuntimeContextDelta | undefined {
+    if (!delta) return undefined
 
     return {
       ...delta,
       runId: delta.runId || kernelRunId || 'unknown',
       source: delta.source || 'tool_result',
-    };
+    }
   }
 
   private normalizeRecordParams(params: unknown): Record<string, unknown> {
     if (typeof params === 'object' && params !== null && !Array.isArray(params)) {
-      return params as Record<string, unknown>;
+      return params as Record<string, unknown>
     }
-    return { value: params };
+    return { value: params }
   }
 
-  private endToolSpan(
-    spanId: string,
-    startedAt: number,
-    status: 'completed' | 'failed',
-    error?: string
-  ): void {
+  private endToolSpan(spanId: string, startedAt: number, status: 'completed' | 'failed', error?: string): void {
     this.config.traceStore?.updateSpan(spanId, {
       status,
       endTime: new Date().toISOString(),
       durationMs: Date.now() - startedAt,
       error,
-    });
+    })
   }
 
   private createErrorResult(
     code: string,
     message: string,
     recoverable: boolean,
-    structuredContent?: Record<string, unknown>
+    structuredContent?: Record<string, unknown>,
   ): ToolExecutionResult {
     return {
       success: false,
@@ -344,16 +362,18 @@ class ToolExecutorImpl implements ToolExecutor {
         recoverable,
       },
       structuredContent,
-    };
+    }
   }
 }
 
 export function createToolExecutor(config: ToolExecutorConfig): ToolExecutor {
-  return new ToolExecutorImpl(config);
+  return new ToolExecutorImpl(config)
 }
 
 // @internal - Exported for testing only
-export function _categoryToOperationTypeForTesting(category: ToolCategory): 'read' | 'write' | 'execute' | 'delete' | 'admin' {
-  const executor = new ToolExecutorImpl({} as ToolExecutorConfig);
-  return executor['categoryToOperationType'](category);
+export function _categoryToOperationTypeForTesting(
+  category: ToolCategory,
+): 'read' | 'write' | 'execute' | 'delete' | 'admin' {
+  const executor = new ToolExecutorImpl({} as ToolExecutorConfig)
+  return executor['categoryToOperationType'](category)
 }

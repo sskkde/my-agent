@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import type { ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/types';
-import { ToolCallCard } from '../ToolCallCard';
-import { ApprovalCard } from '../ApprovalCard';
-import { BackgroundTaskCard } from '../BackgroundTaskCard';
+import React, { useState } from 'react'
+import type { ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/types'
+import { ToolCallCard } from '../ToolCallCard'
+import { ApprovalCard } from '../ApprovalCard'
+import { BackgroundTaskCard } from '../BackgroundTaskCard'
 
 export interface TimelineEventCardProps {
-  event: ConsoleTimelineEvent;
+  event: ConsoleTimelineEvent
 }
 
 const eventTypeLabels: Record<ConsoleTimelineEventType, string> = {
@@ -26,92 +26,72 @@ const eventTypeLabels: Record<ConsoleTimelineEventType, string> = {
   error: 'Error',
   processing_status: 'Processing',
   token_stream: 'Token Stream',
-};
+}
 
 const formatTimestamp = (timestamp: string): string => {
-  const date = new Date(timestamp);
+  const date = new Date(timestamp)
   return date.toLocaleTimeString('zh-CN', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-  });
-};
+  })
+}
 
 const sanitizeContent = (content: string | undefined): string => {
-  if (!content) return '';
-  return content.replace(/<[^>]*>/g, '');
-};
+  if (!content) return ''
+  return content.replace(/<[^>]*>/g, '')
+}
 
 export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false)
 
-  const isAssistantPlaceholder = event.metadata?.assistantPlaceholder === true;
-  const isStreamingDraft = event.metadata?.streamingDraft === true;
-  const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined;
+  const isAssistantPlaceholder = event.metadata?.assistantPlaceholder === true
+  const isStreamingDraft = event.metadata?.streamingDraft === true
+  const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
 
-  const approvalRequestId = typeof event.metadata?.approvalRequestId === 'string'
-    ? event.metadata.approvalRequestId
-    : undefined;
-  const approvalStatus = typeof event.metadata?.approvalStatus === 'string'
-    ? event.metadata.approvalStatus as 'pending' | 'approved' | 'rejected'
-    : undefined;
-  const actionType = typeof event.metadata?.actionType === 'string'
-    ? event.metadata.actionType
-    : undefined;
-  const resource = typeof event.metadata?.resource === 'string'
-    ? event.metadata.resource
-    : undefined;
-  const justification = typeof event.metadata?.justification === 'string'
-    ? event.metadata.justification
-    : undefined;
-  const riskLevel = typeof event.metadata?.riskLevel === 'string'
-    ? event.metadata.riskLevel
-    : undefined;
+  const approvalRequestId =
+    typeof event.metadata?.approvalRequestId === 'string' ? event.metadata.approvalRequestId : undefined
+  const approvalStatus =
+    typeof event.metadata?.approvalStatus === 'string'
+      ? (event.metadata.approvalStatus as 'pending' | 'approved' | 'rejected')
+      : undefined
+  const actionType = typeof event.metadata?.actionType === 'string' ? event.metadata.actionType : undefined
+  const resource = typeof event.metadata?.resource === 'string' ? event.metadata.resource : undefined
+  const justification = typeof event.metadata?.justification === 'string' ? event.metadata.justification : undefined
+  const riskLevel = typeof event.metadata?.riskLevel === 'string' ? event.metadata.riskLevel : undefined
 
-  const toolName = typeof event.metadata?.toolName === 'string'
-    ? event.metadata.toolName
-    : undefined;
-  const parameters = typeof event.metadata?.parameters === 'object' && event.metadata.parameters !== null
-    ? event.metadata.parameters as Record<string, unknown>
-    : undefined;
-  const toolResult = typeof event.metadata?.result === 'string'
-    ? event.metadata.result
-    : undefined;
-  const toolStatus = typeof event.metadata?.status === 'string'
-    ? event.metadata.status as 'running' | 'completed' | 'failed'
-    : undefined;
-  const durationMs = typeof event.metadata?.durationMs === 'number'
-    ? event.metadata.durationMs
-    : undefined;
+  const toolName = typeof event.metadata?.toolName === 'string' ? event.metadata.toolName : undefined
+  const parameters =
+    typeof event.metadata?.parameters === 'object' && event.metadata.parameters !== null
+      ? (event.metadata.parameters as Record<string, unknown>)
+      : undefined
+  const toolResult = typeof event.metadata?.result === 'string' ? event.metadata.result : undefined
+  const toolStatus =
+    typeof event.metadata?.status === 'string'
+      ? (event.metadata.status as 'running' | 'completed' | 'failed')
+      : undefined
+  const durationMs = typeof event.metadata?.durationMs === 'number' ? event.metadata.durationMs : undefined
 
-  const taskId = typeof event.metadata?.taskId === 'string'
-    ? event.metadata.taskId
-    : undefined;
-  const taskLabel = typeof event.metadata?.label === 'string'
-    ? event.metadata.label
-    : undefined;
-  const progress = typeof event.metadata?.progress === 'number'
-    ? event.metadata.progress
-    : undefined;
-  const taskMessage = typeof event.metadata?.message === 'string'
-    ? event.metadata.message
-    : undefined;
+  const taskId = typeof event.metadata?.taskId === 'string' ? event.metadata.taskId : undefined
+  const taskLabel = typeof event.metadata?.label === 'string' ? event.metadata.label : undefined
+  const progress = typeof event.metadata?.progress === 'number' ? event.metadata.progress : undefined
+  const taskMessage = typeof event.metadata?.message === 'string' ? event.metadata.message : undefined
 
-  const label = isStreamingDraft ? 'Assistant (streaming)' : eventTypeLabels[event.eventType];
-  const timestamp = formatTimestamp(event.timestamp);
-  const sanitizedContent = sanitizeContent(event.content);
+  const label = isStreamingDraft ? 'Assistant (streaming)' : eventTypeLabels[event.eventType]
+  const timestamp = formatTimestamp(event.timestamp)
+  const sanitizedContent = sanitizeContent(event.content)
 
   const getEventClassName = (): string => {
-    const baseClass = 'timeline-event-card';
+    const baseClass = 'timeline-event-card'
     if (isAssistantPlaceholder) {
-      return `${baseClass} timeline-event-card--assistant-placeholder`;
+      return `${baseClass} timeline-event-card--assistant-placeholder`
     }
     if (isStreamingDraft) {
-      return `${baseClass} timeline-event-card--streaming-draft`;
+      return `${baseClass} timeline-event-card--streaming-draft`
     }
-    const typeClass = `timeline-event-card--${event.eventType}`;
-    return `${baseClass} ${typeClass}`;
-  };
+    const typeClass = `timeline-event-card--${event.eventType}`
+    return `${baseClass} ${typeClass}`
+  }
 
   const renderContent = (): React.ReactNode => {
     if (isAssistantPlaceholder) {
@@ -121,13 +101,11 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
           <span className="placeholder-dot"></span>
           <span className="placeholder-dot"></span>
         </div>
-      );
+      )
     }
 
     if (isStreamingDraft) {
-      return sanitizedContent ? (
-        <div className="timeline-event-content">{sanitizedContent}</div>
-      ) : null;
+      return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
     }
 
     switch (event.eventType) {
@@ -142,11 +120,9 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
               <span className="timeline-thinking-icon">{isExpanded ? '▼' : '▶'}</span>
               <span>{isExpanded ? '思考中...' : 'Thinking...'}</span>
             </button>
-            {isExpanded && sanitizedContent && (
-              <div className="timeline-thinking-content">{sanitizedContent}</div>
-            )}
+            {isExpanded && sanitizedContent && <div className="timeline-thinking-content">{sanitizedContent}</div>}
           </div>
-        );
+        )
 
       case 'tool_call':
       case 'tool_result':
@@ -159,7 +135,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
               status={toolStatus ?? 'completed'}
               durationMs={durationMs}
             />
-          );
+          )
         }
         return (
           <div className="timeline-code-block">
@@ -167,7 +143,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
               <code>{sanitizedContent || '(No content)'}</code>
             </pre>
           </div>
-        );
+        )
 
       case 'approval_request':
         if (approvalRequestId && actionType) {
@@ -182,16 +158,12 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
               onApprove={() => {}}
               onReject={() => {}}
             />
-          );
+          )
         }
         if (!approvalRequestId) {
-          return sanitizedContent ? (
-            <div className="timeline-event-content">{sanitizedContent}</div>
-          ) : null;
+          return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
         }
-        return sanitizedContent ? (
-          <div className="timeline-event-content">{sanitizedContent}</div>
-        ) : null;
+        return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
 
       case 'run_started':
       case 'run_progress':
@@ -205,7 +177,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
             run_completed: 'completed',
             run_failed: 'failed',
             run_cancelled: 'cancelled',
-          };
+          }
           return (
             <BackgroundTaskCard
               taskId={taskId}
@@ -214,18 +186,14 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
               progress={progress}
               message={taskMessage}
             />
-          );
+          )
         }
-        return sanitizedContent ? (
-          <div className="timeline-event-content">{sanitizedContent}</div>
-        ) : null;
+        return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
 
       default:
-        return sanitizedContent ? (
-          <div className="timeline-event-content">{sanitizedContent}</div>
-        ) : null;
+        return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
     }
-  };
+  }
 
   return (
     <div
@@ -244,11 +212,9 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
       <div className="timeline-event-header">
         <span className="timeline-event-label">{label}</span>
         <span className="timeline-event-timestamp">{timestamp}</span>
-        {event.actor && (
-          <span className="timeline-event-actor">@{event.actor}</span>
-        )}
+        {event.actor && <span className="timeline-event-actor">@{event.actor}</span>}
       </div>
       <div className="timeline-event-body">{renderContent()}</div>
     </div>
-  );
-};
+  )
+}

@@ -24,26 +24,26 @@
 
 ### 系统要求
 
-| 组件 | 最低要求 | 推荐配置 |
-|------|----------|----------|
-| CPU | 1 核心 | 2-4 核心 |
-| 内存 | 1 GB | 4 GB |
-| 存储 | 10 GB | 50 GB SSD |
-| 网络 | 100 Mbps | 1 Gbps |
+| 组件 | 最低要求 | 推荐配置  |
+| ---- | -------- | --------- |
+| CPU  | 1 核心   | 2-4 核心  |
+| 内存 | 1 GB     | 4 GB      |
+| 存储 | 10 GB    | 50 GB SSD |
+| 网络 | 100 Mbps | 1 Gbps    |
 
 ### 软件依赖
 
-| 软件 | 版本要求 | 用途 |
-|------|----------|------|
-| Node.js | v20+ | 运行时 |
-| npm | v10+ | 包管理 |
-| SQLite | 3.x | 默认数据库 |
-| Docker | 24+ | 容器化部署（可选） |
-| PostgreSQL | 15+ | 替代数据库（可选） |
+| 软件       | 版本要求 | 用途               |
+| ---------- | -------- | ------------------ |
+| Node.js    | v20+     | 运行时             |
+| npm        | v10+     | 包管理             |
+| SQLite     | 3.x      | 默认数据库         |
+| Docker     | 24+      | 容器化部署（可选） |
+| PostgreSQL | 15+      | 替代数据库（可选） |
 
 ### 网络要求
 
-- **入站端口**: 
+- **入站端口**:
   - 3003 (API)
   - 3002 (Web UI)
   - 443 (HTTPS，通过反向代理)
@@ -135,7 +135,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3003:3003"
+      - '3003:3003'
     environment:
       - NODE_ENV=production
       - APP_SECRET_KEY=${APP_SECRET_KEY}
@@ -150,7 +150,7 @@ services:
     volumes:
       - agent_data:/data
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3003/api/v1/health"]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:3003/api/v1/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -163,7 +163,7 @@ services:
       context: ./web
       dockerfile: Dockerfile
     ports:
-      - "3002:3002"
+      - '3002:3002'
     environment:
       - VITE_API_TARGET=http://api:3003
     depends_on:
@@ -316,10 +316,10 @@ curl http://localhost:3003/api/v1/health
 
 ### 端点
 
-| 端点 | 用途 | 响应 |
-|------|------|------|
-| `/api/v1/health` | 基础健康状态 | `{status, timestamp, modules}` |
-| `/api/v1/health/ready` | 就绪状态（含数据库检查） | `{status, timestamp, checks}` |
+| 端点                   | 用途                     | 响应                           |
+| ---------------------- | ------------------------ | ------------------------------ |
+| `/api/v1/health`       | 基础健康状态             | `{status, timestamp, modules}` |
+| `/api/v1/health/ready` | 就绪状态（含数据库检查） | `{status, timestamp, checks}`  |
 
 ### 响应示例
 
@@ -462,14 +462,14 @@ sudo systemctl start agent-platform
 
 ### 关键指标
 
-| 指标 | 描述 | 告警阈值 |
-|------|------|----------|
-| `http_request_duration_seconds` | API 延迟 | P95 > 500ms (警告), > 2s (严重) |
-| `http_requests_total` | 请求计数 | - |
-| `api_error_rate` | 错误率 | > 5% (警告), > 10% (严重) |
-| `llm_latency_seconds` | LLM 延迟 | > 30s (警告) |
-| `dlq_entries_count` | 死信队列大小 | > 100 (警告) |
-| `database_size_bytes` | 数据库大小 | > 10GB (警告) |
+| 指标                            | 描述         | 告警阈值                        |
+| ------------------------------- | ------------ | ------------------------------- |
+| `http_request_duration_seconds` | API 延迟     | P95 > 500ms (警告), > 2s (严重) |
+| `http_requests_total`           | 请求计数     | -                               |
+| `api_error_rate`                | 错误率       | > 5% (警告), > 10% (严重)       |
+| `llm_latency_seconds`           | LLM 延迟     | > 30s (警告)                    |
+| `dlq_entries_count`             | 死信队列大小 | > 100 (警告)                    |
+| `database_size_bytes`           | 数据库大小   | > 10GB (警告)                   |
 
 ### 告警规则示例
 
@@ -483,7 +483,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "API 延迟过高"
+          summary: 'API 延迟过高'
 
       - alert: APIHighErrorRate
         expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.1
@@ -491,7 +491,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "API 错误率超过 10%"
+          summary: 'API 错误率超过 10%'
 
       - alert: DLQBacklog
         expr: dlq_entries_count > 100
@@ -499,7 +499,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "死信队列积压"
+          summary: '死信队列积压'
 ```
 
 ### Grafana Dashboard
@@ -512,11 +512,11 @@ groups:
 
 ### 故障等级
 
-| 等级 | 响应时间 | 描述 |
-|------|----------|------|
-| P0 (严重) | < 5 分钟 | 服务不可用 |
-| P1 (高) | < 15 分钟 | 功能严重受损 |
-| P2 (中) | < 1 小时 | 功能部分受损 |
+| 等级      | 响应时间  | 描述         |
+| --------- | --------- | ------------ |
+| P0 (严重) | < 5 分钟  | 服务不可用   |
+| P1 (高)   | < 15 分钟 | 功能严重受损 |
+| P2 (中)   | < 1 小时  | 功能部分受损 |
 
 ### 常见故障处理
 
@@ -657,13 +657,13 @@ ufw enable
 
 ## 维护日程
 
-| 任务 | 频率 | 自动化 |
-|------|------|--------|
-| 数据库备份 | 每日 | Cron |
-| 日志轮转 | 每周 | logrotate |
-| 安全更新 | 每月 | 手动 |
-| 密钥轮换 | 每季度 | 手动 |
-| 版本升级 | 按需 | 手动 |
+| 任务       | 频率   | 自动化    |
+| ---------- | ------ | --------- |
+| 数据库备份 | 每日   | Cron      |
+| 日志轮转   | 每周   | logrotate |
+| 安全更新   | 每月   | 手动      |
+| 密钥轮换   | 每季度 | 手动      |
+| 版本升级   | 按需   | 手动      |
 
 ---
 

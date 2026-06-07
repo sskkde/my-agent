@@ -1,8 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js';
-import { createEventStore, type EventStore, type EventRecord } from '../../../src/storage/event-store.js';
-import { createRuntimeActionStore, type RuntimeActionStore, type RuntimeAction } from '../../../src/storage/runtime-action-store.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js'
+import { createEventStore, type EventStore, type EventRecord } from '../../../src/storage/event-store.js'
+import {
+  createRuntimeActionStore,
+  type RuntimeActionStore,
+  type RuntimeAction,
+} from '../../../src/storage/runtime-action-store.js'
 
 const eventsMigration = {
   version: 1,
@@ -68,8 +72,8 @@ const eventsMigration = {
     DROP INDEX IF EXISTS idx_events_event_type;
     DROP INDEX IF EXISTS idx_events_source_module;
     DROP TABLE IF EXISTS events;
-  `
-};
+  `,
+}
 
 const runtimeActionsMigration = {
   version: 2,
@@ -119,26 +123,26 @@ const runtimeActionsMigration = {
     DROP INDEX IF EXISTS idx_runtime_actions_session;
     DROP INDEX IF EXISTS idx_runtime_actions_user;
     DROP TABLE IF EXISTS runtime_actions;
-  `
-};
+  `,
+}
 
 describe('Event Store', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let eventStore: EventStore;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let eventStore: EventStore
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply([eventsMigration, runtimeActionsMigration]);
-    eventStore = createEventStore(connection);
-  });
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply([eventsMigration, runtimeActionsMigration])
+    eventStore = createEventStore(connection)
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('append()', () => {
     it('should append a single event', () => {
@@ -152,14 +156,14 @@ describe('Event Store', () => {
         payload: { message: 'Hello' },
         sensitivity: 'low',
         retentionClass: 'standard',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
-      const result = connection.query<{ count: number }>('SELECT COUNT(*) as count FROM events');
-      expect(result[0]?.count).toBe(1);
-    });
+      const result = connection.query<{ count: number }>('SELECT COUNT(*) as count FROM events')
+      expect(result[0]?.count).toBe(1)
+    })
 
     it('should append an event with an undefined payload as an empty object', () => {
       const event = {
@@ -169,17 +173,16 @@ describe('Event Store', () => {
         payload: undefined,
         sensitivity: 'medium',
         retentionClass: 'standard',
-        createdAt: new Date().toISOString()
-      } as unknown as EventRecord;
+        createdAt: new Date().toISOString(),
+      } as unknown as EventRecord
 
-      expect(() => eventStore.append(event)).not.toThrow();
+      expect(() => eventStore.append(event)).not.toThrow()
 
-      const result = connection.query<{ payload: string }>(
-        'SELECT payload FROM events WHERE event_id = ?',
-        ['evt-undefined-payload']
-      );
-      expect(result[0]?.payload).toBe('{}');
-    });
+      const result = connection.query<{ payload: string }>('SELECT payload FROM events WHERE event_id = ?', [
+        'evt-undefined-payload',
+      ])
+      expect(result[0]?.payload).toBe('{}')
+    })
 
     it('should append multiple events', () => {
       const events: EventRecord[] = [
@@ -190,7 +193,7 @@ describe('Event Store', () => {
           payload: {},
           sensitivity: 'low',
           retentionClass: 'standard',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         },
         {
           eventId: 'evt-002',
@@ -199,15 +202,15 @@ describe('Event Store', () => {
           payload: {},
           sensitivity: 'medium',
           retentionClass: 'standard',
-          createdAt: new Date().toISOString()
-        }
-      ];
+          createdAt: new Date().toISOString(),
+        },
+      ]
 
-      eventStore.append(events);
+      eventStore.append(events)
 
-      const result = connection.query<{ count: number }>('SELECT COUNT(*) as count FROM events');
-      expect(result[0]?.count).toBe(2);
-    });
+      const result = connection.query<{ count: number }>('SELECT COUNT(*) as count FROM events')
+      expect(result[0]?.count).toBe(2)
+    })
 
     it('should store all event fields correctly', () => {
       const event: EventRecord = {
@@ -231,69 +234,69 @@ describe('Event Store', () => {
           approvalId: 'appr-001',
           waitConditionId: 'wait-001',
           artifactId: 'art-001',
-          memoryId: 'mem-001'
+          memoryId: 'mem-001',
         },
         payload: { action: 'test' },
         sensitivity: 'high',
         retentionClass: 'long',
-        createdAt: '2024-01-15T10:30:00.000Z'
-      };
+        createdAt: '2024-01-15T10:30:00.000Z',
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
       const result = connection.query<{
-        event_id: string;
-        event_type: string;
-        source_module: string;
-        user_id: string;
-        session_id: string;
-        correlation_id: string;
-        causation_id: string;
-        idempotency_key: string;
-        planner_run_id: string;
-        plan_id: string;
-        run_id: string;
-        workflow_run_id: string;
-        workflow_step_run_id: string;
-        background_run_id: string;
-        subagent_run_id: string;
-        tool_call_id: string;
-        approval_id: string;
-        wait_condition_id: string;
-        artifact_id: string;
-        memory_id: string;
-        payload: string;
-        sensitivity: string;
-        retention_class: string;
-        created_at: string;
-      }>('SELECT * FROM events WHERE event_id = ?', ['evt-001']);
+        event_id: string
+        event_type: string
+        source_module: string
+        user_id: string
+        session_id: string
+        correlation_id: string
+        causation_id: string
+        idempotency_key: string
+        planner_run_id: string
+        plan_id: string
+        run_id: string
+        workflow_run_id: string
+        workflow_step_run_id: string
+        background_run_id: string
+        subagent_run_id: string
+        tool_call_id: string
+        approval_id: string
+        wait_condition_id: string
+        artifact_id: string
+        memory_id: string
+        payload: string
+        sensitivity: string
+        retention_class: string
+        created_at: string
+      }>('SELECT * FROM events WHERE event_id = ?', ['evt-001'])
 
-      expect(result.length).toBe(1);
-      expect(result[0]?.event_id).toBe('evt-001');
-      expect(result[0]?.event_type).toBe('runtime_action_created');
-      expect(result[0]?.source_module).toBe('dispatcher');
-      expect(result[0]?.user_id).toBe('user-001');
-      expect(result[0]?.session_id).toBe('sess-001');
-      expect(result[0]?.correlation_id).toBe('corr-001');
-      expect(result[0]?.causation_id).toBe('cause-001');
-      expect(result[0]?.idempotency_key).toBe('idem-001');
-      expect(result[0]?.planner_run_id).toBe('planrun-001');
-      expect(result[0]?.plan_id).toBe('plan-001');
-      expect(result[0]?.run_id).toBe('run-001');
-      expect(result[0]?.workflow_run_id).toBe('wf-001');
-      expect(result[0]?.workflow_step_run_id).toBe('wfstep-001');
-      expect(result[0]?.background_run_id).toBe('bg-001');
-      expect(result[0]?.subagent_run_id).toBe('sub-001');
-      expect(result[0]?.tool_call_id).toBe('tool-001');
-      expect(result[0]?.approval_id).toBe('appr-001');
-      expect(result[0]?.wait_condition_id).toBe('wait-001');
-      expect(result[0]?.artifact_id).toBe('art-001');
-      expect(result[0]?.memory_id).toBe('mem-001');
-      expect(JSON.parse(result[0]?.payload ?? '{}')).toEqual({ action: 'test' });
-      expect(result[0]?.sensitivity).toBe('high');
-      expect(result[0]?.retention_class).toBe('long');
-      expect(result[0]?.created_at).toBe('2024-01-15T10:30:00.000Z');
-    });
+      expect(result.length).toBe(1)
+      expect(result[0]?.event_id).toBe('evt-001')
+      expect(result[0]?.event_type).toBe('runtime_action_created')
+      expect(result[0]?.source_module).toBe('dispatcher')
+      expect(result[0]?.user_id).toBe('user-001')
+      expect(result[0]?.session_id).toBe('sess-001')
+      expect(result[0]?.correlation_id).toBe('corr-001')
+      expect(result[0]?.causation_id).toBe('cause-001')
+      expect(result[0]?.idempotency_key).toBe('idem-001')
+      expect(result[0]?.planner_run_id).toBe('planrun-001')
+      expect(result[0]?.plan_id).toBe('plan-001')
+      expect(result[0]?.run_id).toBe('run-001')
+      expect(result[0]?.workflow_run_id).toBe('wf-001')
+      expect(result[0]?.workflow_step_run_id).toBe('wfstep-001')
+      expect(result[0]?.background_run_id).toBe('bg-001')
+      expect(result[0]?.subagent_run_id).toBe('sub-001')
+      expect(result[0]?.tool_call_id).toBe('tool-001')
+      expect(result[0]?.approval_id).toBe('appr-001')
+      expect(result[0]?.wait_condition_id).toBe('wait-001')
+      expect(result[0]?.artifact_id).toBe('art-001')
+      expect(result[0]?.memory_id).toBe('mem-001')
+      expect(JSON.parse(result[0]?.payload ?? '{}')).toEqual({ action: 'test' })
+      expect(result[0]?.sensitivity).toBe('high')
+      expect(result[0]?.retention_class).toBe('long')
+      expect(result[0]?.created_at).toBe('2024-01-15T10:30:00.000Z')
+    })
 
     it('should throw on duplicate eventId', () => {
       const event: EventRecord = {
@@ -303,16 +306,16 @@ describe('Event Store', () => {
         payload: {},
         sensitivity: 'low',
         retentionClass: 'standard',
-        createdAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString(),
+      }
 
-      eventStore.append(event);
+      eventStore.append(event)
 
       expect(() => {
-        eventStore.append(event);
-      }).toThrow();
-    });
-  });
+        eventStore.append(event)
+      }).toThrow()
+    })
+  })
 
   describe('query()', () => {
     beforeEach(() => {
@@ -328,7 +331,7 @@ describe('Event Store', () => {
           payload: { seq: 1 },
           sensitivity: 'low',
           retentionClass: 'standard',
-          createdAt: '2024-01-15T10:00:00.000Z'
+          createdAt: '2024-01-15T10:00:00.000Z',
         },
         {
           eventId: 'evt-002',
@@ -341,7 +344,7 @@ describe('Event Store', () => {
           payload: { seq: 2 },
           sensitivity: 'medium',
           retentionClass: 'standard',
-          createdAt: '2024-01-15T10:01:00.000Z'
+          createdAt: '2024-01-15T10:01:00.000Z',
         },
         {
           eventId: 'evt-003',
@@ -354,52 +357,52 @@ describe('Event Store', () => {
           payload: { seq: 3 },
           sensitivity: 'low',
           retentionClass: 'short',
-          createdAt: '2024-01-15T10:02:00.000Z'
-        }
-      ];
-      eventStore.append(events);
-    });
+          createdAt: '2024-01-15T10:02:00.000Z',
+        },
+      ]
+      eventStore.append(events)
+    })
 
     it('should query by sessionId', () => {
-      const result = eventStore.query({ sessionId: 'sess-001' });
-      expect(result.length).toBe(2);
-      expect(result.map(e => e.eventId)).toContain('evt-001');
-      expect(result.map(e => e.eventId)).toContain('evt-002');
-    });
+      const result = eventStore.query({ sessionId: 'sess-001' })
+      expect(result.length).toBe(2)
+      expect(result.map((e) => e.eventId)).toContain('evt-001')
+      expect(result.map((e) => e.eventId)).toContain('evt-002')
+    })
 
     it('should query by userId', () => {
-      const result = eventStore.query({ userId: 'user-001' });
-      expect(result.length).toBe(2);
-    });
+      const result = eventStore.query({ userId: 'user-001' })
+      expect(result.length).toBe(2)
+    })
 
     it('should query by eventType', () => {
-      const result = eventStore.query({ eventType: 'inbound_received' });
-      expect(result.length).toBe(1);
-      expect(result[0]?.eventId).toBe('evt-001');
-    });
+      const result = eventStore.query({ eventType: 'inbound_received' })
+      expect(result.length).toBe(1)
+      expect(result[0]?.eventId).toBe('evt-001')
+    })
 
     it('should query by sourceModule', () => {
-      const result = eventStore.query({ sourceModule: 'gateway' });
-      expect(result.length).toBe(1);
-      expect(result[0]?.sourceModule).toBe('gateway');
-    });
+      const result = eventStore.query({ sourceModule: 'gateway' })
+      expect(result.length).toBe(1)
+      expect(result[0]?.sourceModule).toBe('gateway')
+    })
 
     it('should query with limit', () => {
-      const result = eventStore.query({ sessionId: 'sess-001', limit: 1 });
-      expect(result.length).toBe(1);
-    });
+      const result = eventStore.query({ sessionId: 'sess-001', limit: 1 })
+      expect(result.length).toBe(1)
+    })
 
     it('should query with limit and offset', () => {
-      const result = eventStore.query({ sessionId: 'sess-001', limit: 1, offset: 1 });
-      expect(result.length).toBe(1);
-      expect(result[0]?.eventId).toBe('evt-002');
-    });
+      const result = eventStore.query({ sessionId: 'sess-001', limit: 1, offset: 1 })
+      expect(result.length).toBe(1)
+      expect(result[0]?.eventId).toBe('evt-002')
+    })
 
     it('should return empty array when no matches', () => {
-      const result = eventStore.query({ sessionId: 'non-existent' });
-      expect(result).toEqual([]);
-    });
-  });
+      const result = eventStore.query({ sessionId: 'non-existent' })
+      expect(result).toEqual([])
+    })
+  })
 
   describe('findByCorrelationId()', () => {
     beforeEach(() => {
@@ -412,7 +415,7 @@ describe('Event Store', () => {
           payload: {},
           sensitivity: 'low',
           retentionClass: 'standard',
-          createdAt: '2024-01-15T10:00:00.000Z'
+          createdAt: '2024-01-15T10:00:00.000Z',
         },
         {
           eventId: 'evt-002',
@@ -422,7 +425,7 @@ describe('Event Store', () => {
           payload: {},
           sensitivity: 'medium',
           retentionClass: 'standard',
-          createdAt: '2024-01-15T10:01:00.000Z'
+          createdAt: '2024-01-15T10:01:00.000Z',
         },
         {
           eventId: 'evt-003',
@@ -432,29 +435,29 @@ describe('Event Store', () => {
           payload: {},
           sensitivity: 'low',
           retentionClass: 'short',
-          createdAt: '2024-01-15T10:02:00.000Z'
-        }
-      ];
-      eventStore.append(events);
-    });
+          createdAt: '2024-01-15T10:02:00.000Z',
+        },
+      ]
+      eventStore.append(events)
+    })
 
     it('should find events by correlationId', () => {
-      const result = eventStore.findByCorrelationId('corr-001');
-      expect(result.length).toBe(2);
-      expect(result.map(e => e.eventId).sort()).toEqual(['evt-001', 'evt-002']);
-    });
+      const result = eventStore.findByCorrelationId('corr-001')
+      expect(result.length).toBe(2)
+      expect(result.map((e) => e.eventId).sort()).toEqual(['evt-001', 'evt-002'])
+    })
 
     it('should return empty array when correlationId not found', () => {
-      const result = eventStore.findByCorrelationId('non-existent');
-      expect(result).toEqual([]);
-    });
+      const result = eventStore.findByCorrelationId('non-existent')
+      expect(result).toEqual([])
+    })
 
     it('should return events ordered by createdAt', () => {
-      const result = eventStore.findByCorrelationId('corr-001');
-      expect(result[0]?.eventId).toBe('evt-001');
-      expect(result[1]?.eventId).toBe('evt-002');
-    });
-  });
+      const result = eventStore.findByCorrelationId('corr-001')
+      expect(result[0]?.eventId).toBe('evt-001')
+      expect(result[1]?.eventId).toBe('evt-002')
+    })
+  })
 
   describe('findByCausationId()', () => {
     beforeEach(() => {
@@ -467,7 +470,7 @@ describe('Event Store', () => {
           payload: {},
           sensitivity: 'low',
           retentionClass: 'standard',
-          createdAt: '2024-01-15T10:00:00.000Z'
+          createdAt: '2024-01-15T10:00:00.000Z',
         },
         {
           eventId: 'evt-002',
@@ -477,36 +480,36 @@ describe('Event Store', () => {
           payload: {},
           sensitivity: 'medium',
           retentionClass: 'standard',
-          createdAt: '2024-01-15T10:01:00.000Z'
-        }
-      ];
-      eventStore.append(events);
-    });
+          createdAt: '2024-01-15T10:01:00.000Z',
+        },
+      ]
+      eventStore.append(events)
+    })
 
     it('should find events by causationId', () => {
-      const result = eventStore.findByCausationId('cause-001');
-      expect(result.length).toBe(2);
-    });
-  });
-});
+      const result = eventStore.findByCausationId('cause-001')
+      expect(result.length).toBe(2)
+    })
+  })
+})
 
 describe('RuntimeAction Store', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let actionStore: RuntimeActionStore;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let actionStore: RuntimeActionStore
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
-    migrations.apply([eventsMigration, runtimeActionsMigration]);
-    actionStore = createRuntimeActionStore(connection);
-  });
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
+    migrations.apply([eventsMigration, runtimeActionsMigration])
+    actionStore = createRuntimeActionStore(connection)
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('save()', () => {
     it('should save a new runtime action', () => {
@@ -524,18 +527,18 @@ describe('RuntimeAction Store', () => {
         userId: 'user-001',
         targetRef: {
           plannerRunId: 'planrun-001',
-          runId: 'run-001'
+          runId: 'run-001',
         },
         status: 'created',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+        updatedAt: new Date().toISOString(),
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
-      const result = connection.query<{ count: number }>('SELECT COUNT(*) as count FROM runtime_actions');
-      expect(result[0]?.count).toBe(1);
-    });
+      const result = connection.query<{ count: number }>('SELECT COUNT(*) as count FROM runtime_actions')
+      expect(result[0]?.count).toBe(1)
+    })
 
     it('should store all action fields correctly', () => {
       const action: RuntimeAction = {
@@ -558,71 +561,71 @@ describe('RuntimeAction Store', () => {
           workflowStepRunId: 'wfstep-001',
           backgroundRunId: 'bg-001',
           subagentRunId: 'sub-001',
-          toolCallId: 'tool-001'
+          toolCallId: 'tool-001',
         },
         status: 'accepted',
         statusMessage: 'Action accepted for execution',
         result: { success: true },
         createdAt: '2024-01-15T10:30:00.000Z',
-        updatedAt: '2024-01-15T10:31:00.000Z'
-      };
+        updatedAt: '2024-01-15T10:31:00.000Z',
+      }
 
-      actionStore.save(action);
+      actionStore.save(action)
 
       const result = connection.query<{
-        action_id: string;
-        idempotency_key: string;
-        source_module: string;
-        source_action: string;
-        target_runtime: string;
-        target_action: string;
-        payload: string;
-        correlation_id: string;
-        causation_id: string;
-        session_id: string;
-        user_id: string;
-        planner_run_id: string;
-        plan_id: string;
-        run_id: string;
-        workflow_run_id: string;
-        workflow_step_run_id: string;
-        background_run_id: string;
-        subagent_run_id: string;
-        tool_call_id: string;
-        status: string;
-        status_message: string;
-        result: string;
-        created_at: string;
-        updated_at: string;
-      }>('SELECT * FROM runtime_actions WHERE action_id = ?', ['act-001']);
+        action_id: string
+        idempotency_key: string
+        source_module: string
+        source_action: string
+        target_runtime: string
+        target_action: string
+        payload: string
+        correlation_id: string
+        causation_id: string
+        session_id: string
+        user_id: string
+        planner_run_id: string
+        plan_id: string
+        run_id: string
+        workflow_run_id: string
+        workflow_step_run_id: string
+        background_run_id: string
+        subagent_run_id: string
+        tool_call_id: string
+        status: string
+        status_message: string
+        result: string
+        created_at: string
+        updated_at: string
+      }>('SELECT * FROM runtime_actions WHERE action_id = ?', ['act-001'])
 
-      expect(result.length).toBe(1);
-      expect(result[0]?.action_id).toBe('act-001');
-      expect(result[0]?.idempotency_key).toBe('idem-001');
-      expect(result[0]?.source_module).toBe('dispatcher');
-      expect(result[0]?.source_action).toBe('dispatch');
-      expect(result[0]?.target_runtime).toBe('kernel');
-      expect(result[0]?.target_action).toBe('execute');
-      expect(JSON.parse(result[0]?.payload ?? '{}')).toEqual({ data: 'test-payload' });
-      expect(result[0]?.correlation_id).toBe('corr-001');
-      expect(result[0]?.causation_id).toBe('cause-001');
-      expect(result[0]?.session_id).toBe('sess-001');
-      expect(result[0]?.user_id).toBe('user-001');
-      expect(result[0]?.planner_run_id).toBe('planrun-001');
-      expect(result[0]?.plan_id).toBe('plan-001');
-      expect(result[0]?.run_id).toBe('run-001');
-      expect(result[0]?.workflow_run_id).toBe('wf-001');
-      expect(result[0]?.workflow_step_run_id).toBe('wfstep-001');
-      expect(result[0]?.background_run_id).toBe('bg-001');
-      expect(result[0]?.subagent_run_id).toBe('sub-001');
-      expect(result[0]?.tool_call_id).toBe('tool-001');
-      expect(result[0]?.status).toBe('accepted');
-      expect(result[0]?.status_message).toBe('Action accepted for execution');
-      expect(JSON.parse(result[0]?.result ?? '{}')).toEqual({ success: true });
-      expect(result[0]?.created_at).toBe('2024-01-15T10:30:00.000Z');
-      expect(result[0]?.updated_at).toBe('2024-01-15T10:31:00.000Z');
-    });
-  });
+      expect(result.length).toBe(1)
+      expect(result[0]?.action_id).toBe('act-001')
+      expect(result[0]?.idempotency_key).toBe('idem-001')
+      expect(result[0]?.source_module).toBe('dispatcher')
+      expect(result[0]?.source_action).toBe('dispatch')
+      expect(result[0]?.target_runtime).toBe('kernel')
+      expect(result[0]?.target_action).toBe('execute')
+      expect(JSON.parse(result[0]?.payload ?? '{}')).toEqual({ data: 'test-payload' })
+      expect(result[0]?.correlation_id).toBe('corr-001')
+      expect(result[0]?.causation_id).toBe('cause-001')
+      expect(result[0]?.session_id).toBe('sess-001')
+      expect(result[0]?.user_id).toBe('user-001')
+      expect(result[0]?.planner_run_id).toBe('planrun-001')
+      expect(result[0]?.plan_id).toBe('plan-001')
+      expect(result[0]?.run_id).toBe('run-001')
+      expect(result[0]?.workflow_run_id).toBe('wf-001')
+      expect(result[0]?.workflow_step_run_id).toBe('wfstep-001')
+      expect(result[0]?.background_run_id).toBe('bg-001')
+      expect(result[0]?.subagent_run_id).toBe('sub-001')
+      expect(result[0]?.tool_call_id).toBe('tool-001')
+      expect(result[0]?.status).toBe('accepted')
+      expect(result[0]?.status_message).toBe('Action accepted for execution')
+      expect(JSON.parse(result[0]?.result ?? '{}')).toEqual({ success: true })
+      expect(result[0]?.created_at).toBe('2024-01-15T10:30:00.000Z')
+      expect(result[0]?.updated_at).toBe('2024-01-15T10:31:00.000Z')
+    })
+  })
 
   describe('findByIdempotencyKey()', () => {
     beforeEach(() => {
@@ -636,31 +639,31 @@ describe('RuntimeAction Store', () => {
         payload: { data: 'test' },
         status: 'accepted',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      actionStore.save(action);
-    });
+        updatedAt: new Date().toISOString(),
+      }
+      actionStore.save(action)
+    })
 
     it('should find action by idempotency key', () => {
-      const result = actionStore.findByIdempotencyKey('idem-001');
-      expect(result).not.toBeNull();
-      expect(result?.actionId).toBe('act-001');
-      expect(result?.idempotencyKey).toBe('idem-001');
-    });
+      const result = actionStore.findByIdempotencyKey('idem-001')
+      expect(result).not.toBeNull()
+      expect(result?.actionId).toBe('act-001')
+      expect(result?.idempotencyKey).toBe('idem-001')
+    })
 
     it('should return null when idempotency key not found', () => {
-      const result = actionStore.findByIdempotencyKey('non-existent');
-      expect(result).toBeNull();
-    });
+      const result = actionStore.findByIdempotencyKey('non-existent')
+      expect(result).toBeNull()
+    })
 
     it('should support idempotency check for duplicate action', () => {
-      const existing = actionStore.findByIdempotencyKey('idem-001');
-      expect(existing).not.toBeNull();
+      const existing = actionStore.findByIdempotencyKey('idem-001')
+      expect(existing).not.toBeNull()
 
-      const duplicate = actionStore.findByIdempotencyKey('idem-001');
-      expect(duplicate?.actionId).toBe(existing?.actionId);
-    });
-  });
+      const duplicate = actionStore.findByIdempotencyKey('idem-001')
+      expect(duplicate?.actionId).toBe(existing?.actionId)
+    })
+  })
 
   describe('updateStatus()', () => {
     beforeEach(() => {
@@ -674,61 +677,63 @@ describe('RuntimeAction Store', () => {
         payload: { data: 'test' },
         status: 'created',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      actionStore.save(action);
-    });
+        updatedAt: new Date().toISOString(),
+      }
+      actionStore.save(action)
+    })
 
     it('should update action status', () => {
-      actionStore.updateStatus('act-001', 'accepted');
+      actionStore.updateStatus('act-001', 'accepted')
 
-      const result = connection.query<{ status: string }>('SELECT status FROM runtime_actions WHERE action_id = ?', ['act-001']);
-      expect(result[0]?.status).toBe('accepted');
-    });
+      const result = connection.query<{ status: string }>('SELECT status FROM runtime_actions WHERE action_id = ?', [
+        'act-001',
+      ])
+      expect(result[0]?.status).toBe('accepted')
+    })
 
     it('should update action status with message', () => {
-      actionStore.updateStatus('act-001', 'accepted', 'Action validated and queued');
+      actionStore.updateStatus('act-001', 'accepted', 'Action validated and queued')
 
       const result = connection.query<{ status: string; status_message: string }>(
         'SELECT status, status_message FROM runtime_actions WHERE action_id = ?',
-        ['act-001']
-      );
-      expect(result[0]?.status).toBe('accepted');
-      expect(result[0]?.status_message).toBe('Action validated and queued');
-    });
+        ['act-001'],
+      )
+      expect(result[0]?.status).toBe('accepted')
+      expect(result[0]?.status_message).toBe('Action validated and queued')
+    })
 
     it('should update action status with result', () => {
-      const resultData = { output: 'success', duration: 100 };
-      actionStore.updateStatus('act-001', 'completed', undefined, resultData);
+      const resultData = { output: 'success', duration: 100 }
+      actionStore.updateStatus('act-001', 'completed', undefined, resultData)
 
       const result = connection.query<{ status: string; result: string }>(
         'SELECT status, result FROM runtime_actions WHERE action_id = ?',
-        ['act-001']
-      );
-      expect(result[0]?.status).toBe('completed');
-      expect(JSON.parse(result[0]?.result ?? '{}')).toEqual(resultData);
-    });
+        ['act-001'],
+      )
+      expect(result[0]?.status).toBe('completed')
+      expect(JSON.parse(result[0]?.result ?? '{}')).toEqual(resultData)
+    })
 
     it('should update updatedAt timestamp', () => {
-      const before = Date.now();
-      actionStore.updateStatus('act-001', 'accepted');
-      const after = Date.now();
+      const before = Date.now()
+      actionStore.updateStatus('act-001', 'accepted')
+      const after = Date.now()
 
       const result = connection.query<{ updated_at: string }>(
         'SELECT updated_at FROM runtime_actions WHERE action_id = ?',
-        ['act-001']
-      );
-      const updatedAt = new Date(result[0]?.updated_at ?? '').getTime();
-      expect(updatedAt).toBeGreaterThanOrEqual(before);
-      expect(updatedAt).toBeLessThanOrEqual(after);
-    });
+        ['act-001'],
+      )
+      const updatedAt = new Date(result[0]?.updated_at ?? '').getTime()
+      expect(updatedAt).toBeGreaterThanOrEqual(before)
+      expect(updatedAt).toBeLessThanOrEqual(after)
+    })
 
     it('should throw when action not found', () => {
       expect(() => {
-        actionStore.updateStatus('non-existent', 'accepted');
-      }).toThrow('Action not found');
-    });
-  });
+        actionStore.updateStatus('non-existent', 'accepted')
+      }).toThrow('Action not found')
+    })
+  })
 
   describe('findById()', () => {
     beforeEach(() => {
@@ -742,20 +747,20 @@ describe('RuntimeAction Store', () => {
         payload: { data: 'test' },
         status: 'created',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      actionStore.save(action);
-    });
+        updatedAt: new Date().toISOString(),
+      }
+      actionStore.save(action)
+    })
 
     it('should find action by actionId', () => {
-      const result = actionStore.findById('act-001');
-      expect(result).not.toBeNull();
-      expect(result?.actionId).toBe('act-001');
-    });
+      const result = actionStore.findById('act-001')
+      expect(result).not.toBeNull()
+      expect(result?.actionId).toBe('act-001')
+    })
 
     it('should return null when action not found', () => {
-      const result = actionStore.findById('non-existent');
-      expect(result).toBeNull();
-    });
-  });
-});
+      const result = actionStore.findById('non-existent')
+      expect(result).toBeNull()
+    })
+  })
+})

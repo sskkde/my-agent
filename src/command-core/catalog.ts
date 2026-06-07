@@ -3,7 +3,7 @@
  * Includes provider subcommands: connect, test, enable, disable, delete
  */
 
-import type { CommandDefinition, CommandName, CommandSubcommand } from './types.js';
+import type { CommandDefinition, CommandName, CommandSubcommand } from './types.js'
 
 export const COMMAND_CATALOG: Record<CommandName, CommandDefinition> = {
   help: {
@@ -305,38 +305,30 @@ export const COMMAND_CATALOG: Record<CommandName, CommandDefinition> = {
     requiresAuth: false,
     backendMutation: false,
   },
-};
+}
 
 export function getCommand(name: CommandName): CommandDefinition | undefined {
-  return COMMAND_CATALOG[name];
+  return COMMAND_CATALOG[name]
 }
 
 export function hasCommand(name: string): name is CommandName {
-  return name in COMMAND_CATALOG;
+  return name in COMMAND_CATALOG
 }
 
 export function getAllCommands(): CommandDefinition[] {
-  return Object.values(COMMAND_CATALOG);
+  return Object.values(COMMAND_CATALOG)
 }
 
-export function getCommandsByCategory(
-  category: CommandDefinition['category']
-): CommandDefinition[] {
-  return Object.values(COMMAND_CATALOG).filter((cmd) => cmd.category === category);
+export function getCommandsByCategory(category: CommandDefinition['category']): CommandDefinition[] {
+  return Object.values(COMMAND_CATALOG).filter((cmd) => cmd.category === category)
 }
 
-export function getSubcommand(
-  commandName: CommandName,
-  subcommandName: string
-): CommandSubcommand | undefined {
-  const command = COMMAND_CATALOG[commandName];
-  return command?.subcommands?.[subcommandName];
+export function getSubcommand(commandName: CommandName, subcommandName: string): CommandSubcommand | undefined {
+  const command = COMMAND_CATALOG[commandName]
+  return command?.subcommands?.[subcommandName]
 }
 
-export function hasSubcommand(
-  commandName: CommandName,
-  subcommandName: string
-): boolean {
-  const command = COMMAND_CATALOG[commandName];
-  return subcommandName in (command?.subcommands ?? {});
+export function hasSubcommand(commandName: CommandName, subcommandName: string): boolean {
+  const command = COMMAND_CATALOG[commandName]
+  return subcommandName in (command?.subcommands ?? {})
 }

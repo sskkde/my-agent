@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
-import LoadingSpinner from './LoadingSpinner';
+import React, { useState } from 'react'
+import LoadingSpinner from './LoadingSpinner'
 
 export interface ToolCallCardProps {
-  toolName: string;
-  parameters: Record<string, unknown>;
-  result?: string;
-  status: 'running' | 'completed' | 'failed';
-  durationMs?: number;
-  onExpand?: () => void;
+  toolName: string
+  parameters: Record<string, unknown>
+  result?: string
+  status: 'running' | 'completed' | 'failed'
+  durationMs?: number
+  onExpand?: () => void
 }
 
 const statusLabels: Record<ToolCallCardProps['status'], string> = {
   running: '运行中',
   completed: '已完成',
   failed: '失败',
-};
+}
 
 export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   toolName,
@@ -24,35 +24,31 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   durationMs,
   onExpand,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const handleToggle = () => {
-    const newState = !isExpanded;
-    setIsExpanded(newState);
+    const newState = !isExpanded
+    setIsExpanded(newState)
     if (newState && onExpand) {
-      onExpand();
+      onExpand()
     }
-  };
+  }
 
   const formatDuration = (ms: number): string => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
+    if (ms < 1000) return `${ms}ms`
+    return `${(ms / 1000).toFixed(2)}s`
+  }
 
   const formatJson = (obj: Record<string, unknown>): string => {
     try {
-      return JSON.stringify(obj, null, 2);
+      return JSON.stringify(obj, null, 2)
     } catch {
-      return '[无法序列化]';
+      return '[无法序列化]'
     }
-  };
+  }
 
   return (
-    <div
-      className="tool-call-card"
-      data-testid="tool-call-card"
-      data-status={status}
-    >
+    <div className="tool-call-card" data-testid="tool-call-card" data-status={status}>
       <div
         className="tool-call-card__header"
         onClick={handleToggle}
@@ -61,8 +57,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleToggle();
+            e.preventDefault()
+            handleToggle()
           }
         }}
       >
@@ -71,15 +67,11 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
         </span>
         <span className="tool-call-card__tool-name">{toolName}</span>
         <span className={`status-badge status-badge--${status}`}>
-          {status === 'running' && (
-            <LoadingSpinner size="small" inline label="" />
-          )}
+          {status === 'running' && <LoadingSpinner size="small" inline label="" />}
           {statusLabels[status]}
         </span>
         {durationMs !== undefined && status !== 'running' && (
-          <span className="tool-call-card__duration">
-            {formatDuration(durationMs)}
-          </span>
+          <span className="tool-call-card__duration">{formatDuration(durationMs)}</span>
         )}
       </div>
 
@@ -107,7 +99,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ToolCallCard;
+export default ToolCallCard

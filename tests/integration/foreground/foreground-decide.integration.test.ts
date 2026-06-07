@@ -6,25 +6,23 @@
  * @see src/foreground/tools/ for the replacement tool implementations
  * @see src/processing/processor-orchestration.ts for the replacement pipeline
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js';
-import {
-  createForegroundKernelRunner,
-} from '../../../src/foreground/foreground-kernel-runner.js';
-import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js';
-import type { ForegroundSessionState } from '../../../src/foreground/types.js';
-import type { AgentKernel } from '../../../src/kernel/agent-kernel.js';
-import type { KernelRunResult } from '../../../src/kernel/types.js';
-import type { RuntimeDispatcher, DispatchResult } from '../../../src/dispatcher/types.js';
-import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js';
-import type { LLMAdapter } from '../../../src/llm/adapter.js';
-import type { LLMResult, LLMResponse, ToolCall } from '../../../src/llm/types.js';
-import type { HydratedSessionState } from '../../../src/gateway/types.js';
-import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js'
+import { createForegroundKernelRunner } from '../../../src/foreground/foreground-kernel-runner.js'
+import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js'
+import type { ForegroundSessionState } from '../../../src/foreground/types.js'
+import type { AgentKernel } from '../../../src/kernel/agent-kernel.js'
+import type { KernelRunResult } from '../../../src/kernel/types.js'
+import type { RuntimeDispatcher, DispatchResult } from '../../../src/dispatcher/types.js'
+import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js'
+import type { LLMAdapter } from '../../../src/llm/adapter.js'
+import type { LLMResult, LLMResponse, ToolCall } from '../../../src/llm/types.js'
+import type { HydratedSessionState } from '../../../src/gateway/types.js'
+import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
 
 function createMockForegroundState(overrides?: {
-  activePlannerRunIds?: string[];
-  activeBackgroundRunIds?: string[];
+  activePlannerRunIds?: string[]
+  activeBackgroundRunIds?: string[]
 }): ForegroundSessionState {
   return {
     hydratedSession: {
@@ -63,11 +61,11 @@ function createMockForegroundState(overrides?: {
       allowedToolCategories: ['read', 'search', 'internal'],
     },
     conversationHistory: [],
-  };
+  }
 }
 
 function createMockInput(overrides?: Partial<ForegroundTurnInput>): ForegroundTurnInput {
-  const state = createMockForegroundState();
+  const state = createMockForegroundState()
   return {
     userId: 'user-001',
     sessionId: 'session-001',
@@ -77,18 +75,18 @@ function createMockInput(overrides?: Partial<ForegroundTurnInput>): ForegroundTu
     hydratedState: state.hydratedSession,
     foregroundState: state,
     ...overrides,
-  };
+  }
 }
 
 function createDecideToolCall(params: {
-  route: string;
-  requiresPlanner?: boolean;
-  reason?: string;
-  userVisibleResponse?: string;
-  suggestedTools?: string[];
-  estimatedSteps?: number;
-  complexity?: string;
-  targetRef?: { plannerRunId?: string; planId?: string };
+  route: string
+  requiresPlanner?: boolean
+  reason?: string
+  userVisibleResponse?: string
+  suggestedTools?: string[]
+  estimatedSteps?: number
+  complexity?: string
+  targetRef?: { plannerRunId?: string; planId?: string }
 }): ToolCall {
   return {
     id: `tc-decide-${Date.now()}`,
@@ -107,7 +105,7 @@ function createDecideToolCall(params: {
         targetRef: params.targetRef,
       }),
     },
-  };
+  }
 }
 
 function createDecideLLMResult(toolCall: ToolCall): LLMResult {
@@ -119,12 +117,12 @@ function createDecideLLMResult(toolCall: ToolCall): LLMResult {
     role: 'assistant',
     finishReason: 'tool_calls',
     createdAt: '2024-01-15T10:00:00.000Z',
-  };
+  }
   return {
     success: true,
     response,
     providerId: 'mock-provider',
-  };
+  }
 }
 
 function createMockLLMAdapter(result: LLMResult): LLMAdapter {
@@ -140,35 +138,51 @@ function createMockLLMAdapter(result: LLMResult): LLMAdapter {
     addProvider: vi.fn(),
     removeProvider: vi.fn(),
     getProvider: vi.fn(),
-    getHealthyProviders: vi.fn().mockReturnValue([{
-      id: 'mock-provider',
-      config: {
+    getHealthyProviders: vi.fn().mockReturnValue([
+      {
         id: 'mock-provider',
-        name: 'Mock Provider',
-        enabled: true,
-        priority: 1,
-        timeoutMs: 10000,
-        retries: 2,
-        capabilities: {
-          supportsStreaming: false,
-          supportsFunctionCalling: true,
-          supportsJsonMode: true,
-          supportsVision: false,
-          maxTokens: 4096,
-          supportedModels: [],
+        config: {
+          id: 'mock-provider',
+          name: 'Mock Provider',
+          enabled: true,
+          priority: 1,
+          timeoutMs: 10000,
+          retries: 2,
+          capabilities: {
+            supportsStreaming: false,
+            supportsFunctionCalling: true,
+            supportsJsonMode: true,
+            supportsVision: false,
+            maxTokens: 4096,
+            supportedModels: [],
+          },
         },
+        circuitBreaker: { state: 'CLOSED', canExecute: () => true, recordSuccess: () => {}, recordFailure: () => {} },
+        health: 'healthy',
+        stats: {
+          totalRequests: 0,
+          successfulRequests: 0,
+          failedRequests: 0,
+          timeoutRequests: 0,
+          averageLatencyMs: 0,
+          healthStatus: 'healthy',
+        },
+        isHealthy: () => true,
+        getStats: () => ({
+          totalRequests: 0,
+          successfulRequests: 0,
+          failedRequests: 0,
+          timeoutRequests: 0,
+          averageLatencyMs: 0,
+          healthStatus: 'healthy',
+        }),
+        updateConfig: () => {},
+        resetStats: () => {},
+        complete: async () => result,
       },
-      circuitBreaker: { state: 'CLOSED', canExecute: () => true, recordSuccess: () => {}, recordFailure: () => {} },
-      health: 'healthy',
-      stats: { totalRequests: 0, successfulRequests: 0, failedRequests: 0, timeoutRequests: 0, averageLatencyMs: 0, healthStatus: 'healthy' },
-      isHealthy: () => true,
-      getStats: () => ({ totalRequests: 0, successfulRequests: 0, failedRequests: 0, timeoutRequests: 0, averageLatencyMs: 0, healthStatus: 'healthy' }),
-      updateConfig: () => {},
-      resetStats: () => {},
-      complete: async () => result,
-    }]),
+    ]),
     updateProviderPriority: vi.fn(),
-  } as unknown as LLMAdapter;
+  } as unknown as LLMAdapter
 }
 
 function createMockModelInputBuilder(): ModelInputBuilder {
@@ -197,33 +211,33 @@ function createMockModelInputBuilder(): ModelInputBuilder {
         messageCount: 2,
       },
     }),
-  } as unknown as ModelInputBuilder;
+  } as unknown as ModelInputBuilder
 }
 
 describe.skip('foreground.decide Routing Integration Tests [deprecated/historical]', () => {
-  let originalDecideEnabled: string | undefined;
-  let originalModelInputBuilder: string | undefined;
+  let originalDecideEnabled: string | undefined
+  let originalModelInputBuilder: string | undefined
 
   beforeEach(() => {
-    originalDecideEnabled = process.env.FOREGROUND_DECIDE_ENABLED;
-    originalModelInputBuilder = process.env.MODEL_INPUT_BUILDER_ENABLED;
-    process.env.FOREGROUND_DECIDE_ENABLED = 'true';
-    delete process.env.MODEL_INPUT_BUILDER_ENABLED;
-  });
+    originalDecideEnabled = process.env.FOREGROUND_DECIDE_ENABLED
+    originalModelInputBuilder = process.env.MODEL_INPUT_BUILDER_ENABLED
+    process.env.FOREGROUND_DECIDE_ENABLED = 'true'
+    delete process.env.MODEL_INPUT_BUILDER_ENABLED
+  })
 
   afterEach(() => {
     if (originalDecideEnabled === undefined) {
-      delete process.env.FOREGROUND_DECIDE_ENABLED;
+      delete process.env.FOREGROUND_DECIDE_ENABLED
     } else {
-      process.env.FOREGROUND_DECIDE_ENABLED = originalDecideEnabled;
+      process.env.FOREGROUND_DECIDE_ENABLED = originalDecideEnabled
     }
     if (originalModelInputBuilder === undefined) {
-      delete process.env.MODEL_INPUT_BUILDER_ENABLED;
+      delete process.env.MODEL_INPUT_BUILDER_ENABLED
     } else {
-      process.env.MODEL_INPUT_BUILDER_ENABLED = originalModelInputBuilder;
+      process.env.MODEL_INPUT_BUILDER_ENABLED = originalModelInputBuilder
     }
-    vi.clearAllMocks();
-  });
+    vi.clearAllMocks()
+  })
 
   describe('answer_directly via foreground.decide', () => {
     it('reaches direct answer handler without calling AgentKernel', async () => {
@@ -231,8 +245,8 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         route: 'answer_directly',
         reason: 'Simple greeting',
         userVisibleResponse: 'Hello! How can I help you today?',
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
       const directAnswerResult: LLMResult = {
         success: true,
@@ -245,19 +259,17 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
           createdAt: '2024-01-15T10:00:00.000Z',
         },
         providerId: 'mock-provider',
-      };
+      }
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
-      vi.mocked(mockLlmAdapter.complete)
-        .mockResolvedValueOnce(llmResult)
-        .mockResolvedValueOnce(directAnswerResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
+      vi.mocked(mockLlmAdapter.complete).mockResolvedValueOnce(llmResult).mockResolvedValueOnce(directAnswerResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
-      const mockAgentKernel = { run: vi.fn() } as unknown as AgentKernel;
+      const mockAgentKernel = { run: vi.fn() } as unknown as AgentKernel
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -265,17 +277,17 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
         plannerRuntime: { createPlannerRun: vi.fn(), resumePlannerRun: vi.fn() } as unknown as PlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState();
-      const input = createMockInput({ message: 'Hello!', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState()
+      const input = createMockInput({ message: 'Hello!', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('answer_directly');
-      expect(mockAgentKernel.run).not.toHaveBeenCalled();
-    });
-  });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('answer_directly')
+      expect(mockAgentKernel.run).not.toHaveBeenCalled()
+    })
+  })
 
   describe('dispatch_tool via foreground.decide', () => {
     it('routes to AgentKernel with suggestedTools in kernel config', async () => {
@@ -283,27 +295,25 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         route: 'dispatch_tool',
         reason: 'User needs memory retrieval',
         suggestedTools: ['memory_retrieve'],
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const mockAgentKernel = {
         run: vi.fn().mockResolvedValue({
           finalStatus: 'completed',
           finalResponse: 'Retrieved memory: Project Mercury details.',
           iterationsUsed: 1,
-          toolCalls: [
-            { toolCallId: 'tc-mem-001', toolName: 'memory_retrieve', params: { query: 'project' } },
-          ],
+          toolCalls: [{ toolCallId: 'tc-mem-001', toolName: 'memory_retrieve', params: { query: 'project' } }],
           transcript: [],
         } as KernelRunResult),
-      } as unknown as AgentKernel;
+      } as unknown as AgentKernel
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -311,46 +321,44 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
         plannerRuntime: { createPlannerRun: vi.fn(), resumePlannerRun: vi.fn() } as unknown as PlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState();
-      const input = createMockInput({ message: 'What do you remember about my project?', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState()
+      const input = createMockInput({ message: 'What do you remember about my project?', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('dispatch_tool');
-      expect(mockAgentKernel.run).toHaveBeenCalledTimes(1);
-      expect(result.kernelResult).toBeDefined();
-      expect(result.kernelResult?.toolCallCount).toBe(1);
-      expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(1);
-    });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('dispatch_tool')
+      expect(mockAgentKernel.run).toHaveBeenCalledTimes(1)
+      expect(result.kernelResult).toBeDefined()
+      expect(result.kernelResult?.toolCallCount).toBe(1)
+      expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(1)
+    })
 
     it('suggestedTools from decide tool call reaches kernel input', async () => {
       const decideToolCall = createDecideToolCall({
         route: 'dispatch_tool',
         reason: 'Search documentation',
         suggestedTools: ['docs_search', 'transcript_search'],
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const mockAgentKernel = {
         run: vi.fn().mockResolvedValue({
           finalStatus: 'completed',
           finalResponse: 'Found documentation about TypeScript interfaces.',
           iterationsUsed: 1,
-          toolCalls: [
-            { toolCallId: 'tc-docs-001', toolName: 'docs_search', params: { query: 'typescript' } },
-          ],
+          toolCalls: [{ toolCallId: 'tc-docs-001', toolName: 'docs_search', params: { query: 'typescript' } }],
           transcript: [],
         } as KernelRunResult),
-      } as unknown as AgentKernel;
+      } as unknown as AgentKernel
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -358,19 +366,19 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
         plannerRuntime: { createPlannerRun: vi.fn(), resumePlannerRun: vi.fn() } as unknown as PlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState();
-      const input = createMockInput({ message: 'Search docs for TypeScript', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState()
+      const input = createMockInput({ message: 'Search docs for TypeScript', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('dispatch_tool');
-      expect(result.decisionTrace.suggestedTools).toContain('docs_search');
-      expect(result.decisionTrace.suggestedTools).toContain('transcript_search');
-      expect(mockAgentKernel.run).toHaveBeenCalledTimes(1);
-    });
-  });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('dispatch_tool')
+      expect(result.decisionTrace.suggestedTools).toContain('docs_search')
+      expect(result.decisionTrace.suggestedTools).toContain('transcript_search')
+      expect(mockAgentKernel.run).toHaveBeenCalledTimes(1)
+    })
+  })
 
   describe('status_query via foreground.decide', () => {
     it('creates server-side runtimeAction and dispatches it', async () => {
@@ -378,15 +386,15 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         route: 'status_query',
         reason: 'User asked about task progress',
         userVisibleResponse: 'Checking your active tasks...',
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const mockDispatchResult: DispatchResult = {
         requestId: 'req-status-001',
@@ -395,11 +403,11 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         targetRuntime: 'gateway',
         result: { activeWork: [] },
         createdAt: '2024-01-15T10:00:00.000Z',
-      };
+      }
 
       const mockRuntimeDispatcher = {
         dispatch: vi.fn().mockResolvedValue(mockDispatchResult),
-      } as unknown as RuntimeDispatcher;
+      } as unknown as RuntimeDispatcher
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -407,20 +415,20 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: { createPlannerRun: vi.fn(), resumePlannerRun: vi.fn() } as unknown as PlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState();
-      const input = createMockInput({ message: 'What is the status of my tasks?', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState()
+      const input = createMockInput({ message: 'What is the status of my tasks?', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('status_query');
-      expect(result.decisionTrace.runtimeAction).toBeDefined();
-      expect(result.decisionTrace.runtimeAction?.actionType).toBe('query_active_work');
-      expect(result.decisionTrace.runtimeAction?.targetRuntime).toBe('gateway');
-      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalledTimes(1);
-    });
-  });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('status_query')
+      expect(result.decisionTrace.runtimeAction).toBeDefined()
+      expect(result.decisionTrace.runtimeAction?.actionType).toBe('query_active_work')
+      expect(result.decisionTrace.runtimeAction?.targetRuntime).toBe('gateway')
+      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalledTimes(1)
+    })
+  })
 
   describe('spawn_planner via foreground.decide', () => {
     it('creates a planner run with correct objective', async () => {
@@ -431,27 +439,27 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         userVisibleResponse: 'Planning your trip to Shanghai...',
         estimatedSteps: 5,
         complexity: 'high',
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const mockPlannerResult = {
         plannerRunId: 'planner-run-001',
         planId: 'plan-001',
         status: 'initializing',
         actions: [],
-      };
+      }
 
       const mockPlannerRuntime = {
         createPlannerRun: vi.fn().mockReturnValue(mockPlannerResult),
         resumePlannerRun: vi.fn(),
-      } as unknown as PlannerRuntime;
+      } as unknown as PlannerRuntime
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -459,23 +467,26 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState();
-      const input = createMockInput({ message: 'Plan my trip to Shanghai with hotels and meetings', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState()
+      const input = createMockInput({
+        message: 'Plan my trip to Shanghai with hotels and meetings',
+        foregroundState: state,
+      })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('spawn_planner');
-      expect(result.decisionTrace.requiresPlanner).toBe(true);
-      expect(mockPlannerRuntime.createPlannerRun).toHaveBeenCalledTimes(1);
-      const createCall = vi.mocked(mockPlannerRuntime.createPlannerRun).mock.calls[0]![0];
-      expect(createCall.objective).toBeDefined();
-      expect(createCall.userId).toBe('user-001');
-      expect(createCall.sessionId).toBe('session-001');
-      expect(result.runtimeSummary?.plannerRunIds).toContain('planner-run-001');
-    });
-  });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('spawn_planner')
+      expect(result.decisionTrace.requiresPlanner).toBe(true)
+      expect(mockPlannerRuntime.createPlannerRun).toHaveBeenCalledTimes(1)
+      const createCall = vi.mocked(mockPlannerRuntime.createPlannerRun).mock.calls[0]![0]
+      expect(createCall.objective).toBeDefined()
+      expect(createCall.userId).toBe('user-001')
+      expect(createCall.sessionId).toBe('session-001')
+      expect(result.runtimeSummary?.plannerRunIds).toContain('planner-run-001')
+    })
+  })
 
   describe('cancel_or_modify_task via foreground.decide', () => {
     it('validates active work and dispatches cancel runtime action', async () => {
@@ -483,15 +494,15 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         route: 'cancel_or_modify_task',
         reason: 'User wants to cancel the running task',
         userVisibleResponse: 'Cancelling your active task...',
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const mockDispatchResult: DispatchResult = {
         requestId: 'req-cancel-001',
@@ -500,11 +511,11 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         targetRuntime: 'planner_runtime',
         result: { cancelled: true },
         createdAt: '2024-01-15T10:00:00.000Z',
-      };
+      }
 
       const mockRuntimeDispatcher = {
         dispatch: vi.fn().mockResolvedValue(mockDispatchResult),
-      } as unknown as RuntimeDispatcher;
+      } as unknown as RuntimeDispatcher
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -512,34 +523,34 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: { createPlannerRun: vi.fn(), resumePlannerRun: vi.fn() } as unknown as PlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState({ activePlannerRunIds: ['planner-run-active-001'] });
-      const input = createMockInput({ message: 'Cancel the current task', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState({ activePlannerRunIds: ['planner-run-active-001'] })
+      const input = createMockInput({ message: 'Cancel the current task', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('cancel_or_modify_task');
-      expect(result.decisionTrace.targetRef).toBeDefined();
-      expect(result.decisionTrace.targetRef?.plannerRunId).toBe('planner-run-active-001');
-      expect(result.decisionTrace.runtimeAction).toBeDefined();
-      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalledTimes(1);
-    });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('cancel_or_modify_task')
+      expect(result.decisionTrace.targetRef).toBeDefined()
+      expect(result.decisionTrace.targetRef?.plannerRunId).toBe('planner-run-active-001')
+      expect(result.decisionTrace.runtimeAction).toBeDefined()
+      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalledTimes(1)
+    })
 
     it('returns answer_directly when no active work found for cancel', async () => {
       const decideToolCall = createDecideToolCall({
         route: 'cancel_or_modify_task',
         reason: 'User wants to cancel something',
         userVisibleResponse: 'Cancelling...',
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -547,16 +558,16 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
         plannerRuntime: { createPlannerRun: vi.fn(), resumePlannerRun: vi.fn() } as unknown as PlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState();
-      const input = createMockInput({ message: 'Cancel the task', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState()
+      const input = createMockInput({ message: 'Cancel the task', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('answer_directly');
-    });
-  });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('answer_directly')
+    })
+  })
 
   describe('resume_existing_planner via foreground.decide', () => {
     it('resumes planner with targetRef.plannerRunId', async () => {
@@ -565,20 +576,20 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         reason: 'User wants to continue the previous plan',
         userVisibleResponse: 'Resuming your previous task...',
         targetRef: { plannerRunId: 'planner-run-paused-001' },
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const mockPlannerRuntime = {
         createPlannerRun: vi.fn(),
         resumePlannerRun: vi.fn(),
-      } as unknown as PlannerRuntime;
+      } as unknown as PlannerRuntime
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -586,41 +597,41 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState({ activePlannerRunIds: ['planner-run-paused-001'] });
-      const input = createMockInput({ message: 'Continue the previous plan', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState({ activePlannerRunIds: ['planner-run-paused-001'] })
+      const input = createMockInput({ message: 'Continue the previous plan', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('resume_existing_planner');
-      expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalledTimes(1);
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('resume_existing_planner')
+      expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalledTimes(1)
       expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalledWith(
         'planner-run-paused-001',
         expect.objectContaining({ eventType: 'user_resume' }),
-      );
-      expect(result.runtimeSummary?.plannerRunIds).toContain('planner-run-paused-001');
-    });
+      )
+      expect(result.runtimeSummary?.plannerRunIds).toContain('planner-run-paused-001')
+    })
 
     it('uses first active planner run ID when no targetRef provided', async () => {
       const decideToolCall = createDecideToolCall({
         route: 'resume_existing_planner',
         reason: 'User wants to continue',
         userVisibleResponse: 'Resuming...',
-      });
-      const llmResult = createDecideLLMResult(decideToolCall);
+      })
+      const llmResult = createDecideLLMResult(decideToolCall)
 
-      const mockLlmAdapter = createMockLLMAdapter(llmResult);
+      const mockLlmAdapter = createMockLLMAdapter(llmResult)
 
       const foregroundAgent = createForegroundAgent({
         llmAdapter: mockLlmAdapter,
         modelInputBuilder: createMockModelInputBuilder(),
-      });
+      })
 
       const mockPlannerRuntime = {
         createPlannerRun: vi.fn(),
         resumePlannerRun: vi.fn(),
-      } as unknown as PlannerRuntime;
+      } as unknown as PlannerRuntime
 
       const runner = createForegroundKernelRunner({
         foregroundAgent,
@@ -628,16 +639,16 @@ describe.skip('foreground.decide Routing Integration Tests [deprecated/historica
         runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      });
+      })
 
-      const state = createMockForegroundState({ activePlannerRunIds: ['planner-run-existing-001'] });
-      const input = createMockInput({ message: 'Resume my plan', foregroundState: state });
-      const result = await runner.runTurn(input);
+      const state = createMockForegroundState({ activePlannerRunIds: ['planner-run-existing-001'] })
+      const input = createMockInput({ message: 'Resume my plan', foregroundState: state })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('resume_existing_planner');
-      expect(result.decisionTrace.targetRef?.plannerRunId).toBe('planner-run-existing-001');
-      expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalledTimes(1);
-    });
-  });
-});
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('resume_existing_planner')
+      expect(result.decisionTrace.targetRef?.plannerRunId).toBe('planner-run-existing-001')
+      expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalledTimes(1)
+    })
+  })
+})

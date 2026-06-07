@@ -1,36 +1,27 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js';
-import { createApprovalStore, type ApprovalStore, APPROVAL_STATES } from '../../../src/storage/approval-store.js';
-import { createPermissionGrantStore, type PermissionGrantStore } from '../../../src/storage/permission-grant-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import {
-  createPermissionEngine,
-  type PermissionEngine,
-} from '../../../src/permissions/permission-engine.js';
-import {
-  createApprovalHandler,
-  type ApprovalHandler,
-} from '../../../src/permissions/approval-handler.js';
-import {
-  createPermissionContext,
-  type PermissionCheckRequest,
-} from '../../../src/permissions/types.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js'
+import { createApprovalStore, type ApprovalStore, APPROVAL_STATES } from '../../../src/storage/approval-store.js'
+import { createPermissionGrantStore, type PermissionGrantStore } from '../../../src/storage/permission-grant-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createPermissionEngine, type PermissionEngine } from '../../../src/permissions/permission-engine.js'
+import { createApprovalHandler, type ApprovalHandler } from '../../../src/permissions/approval-handler.js'
+import { createPermissionContext, type PermissionCheckRequest } from '../../../src/permissions/types.js'
 
 describe('Permission & Approval Engine', () => {
-  let connection: ConnectionManager;
-  let migrations: MigrationRunner;
-  let approvalStore: ApprovalStore;
-  let grantStore: PermissionGrantStore;
-  let eventStore: EventStore;
-  let permissionEngine: PermissionEngine;
-  let approvalHandler: ApprovalHandler;
+  let connection: ConnectionManager
+  let migrations: MigrationRunner
+  let approvalStore: ApprovalStore
+  let grantStore: PermissionGrantStore
+  let eventStore: EventStore
+  let permissionEngine: PermissionEngine
+  let approvalHandler: ApprovalHandler
 
   beforeEach(async () => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrations = createMigrationRunner(connection);
-    migrations.init();
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrations = createMigrationRunner(connection)
+    migrations.init()
 
     const storeMigrations = [
       {
@@ -129,189 +120,192 @@ describe('Permission & Approval Engine', () => {
         `,
         down: `DROP TABLE IF EXISTS events;`,
       },
-    ];
+    ]
 
-    migrations.apply(storeMigrations);
+    migrations.apply(storeMigrations)
 
-    approvalStore = createApprovalStore(connection);
-    grantStore = createPermissionGrantStore(connection);
-    eventStore = createEventStore(connection);
+    approvalStore = createApprovalStore(connection)
+    grantStore = createPermissionGrantStore(connection)
+    eventStore = createEventStore(connection)
     permissionEngine = createPermissionEngine({
       approvalStore,
       grantStore,
       eventStore,
-    });
+    })
     approvalHandler = createApprovalHandler({
       approvalStore,
       grantStore,
       eventStore,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('PermissionEngine.checkPermission', () => {
     it('should allow read operations in read_only mode', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'read_only');
+      const context = createPermissionContext('user_123', 'sess_456', 'read_only')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_read',
         operationType: 'read',
         resource: '/data/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(true);
-      expect(decision.status).toBe('allowed');
-    });
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+    })
 
     it('should deny write operations in read_only mode', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'read_only');
+      const context = createPermissionContext('user_123', 'sess_456', 'read_only')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_write',
         operationType: 'write',
         resource: '/data/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(false);
-      expect(decision.status).toBe('denied');
-      expect(decision.reason).toContain('read_only');
-    });
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
+      expect(decision.reason).toContain('read_only')
+    })
 
     it('should allow all operations in ask_on_write mode for reads', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'ask_on_write');
+      const context = createPermissionContext('user_123', 'sess_456', 'ask_on_write')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_read',
         operationType: 'read',
         resource: '/data/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(true);
-      expect(decision.status).toBe('allowed');
-    });
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+    })
 
     it('should require approval for write operations in ask_on_write mode', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'ask_on_write');
+      const context = createPermissionContext('user_123', 'sess_456', 'ask_on_write')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_write',
         operationType: 'write',
         resource: '/data/file.txt',
         justification: 'Updating user profile',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(false);
-      expect(decision.status).toBe('requires_approval');
-      expect(decision.requestId).toBeDefined();
-      expect(decision.approvalRequest).toBeDefined();
-    });
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('requires_approval')
+      expect(decision.requestId).toBeDefined()
+      expect(decision.approvalRequest).toBeDefined()
+    })
 
     it('should deny all operations in hard_deny mode', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'hard_deny');
+      const context = createPermissionContext('user_123', 'sess_456', 'hard_deny')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'any_action',
         operationType: 'read',
         resource: '/data/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(false);
-      expect(decision.status).toBe('denied');
-      expect(decision.reason).toContain('hard_deny');
-    });
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
+      expect(decision.reason).toContain('hard_deny')
+    })
 
     it('should allow reads in background_limited mode', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'background_limited');
+      const context = createPermissionContext('user_123', 'sess_456', 'background_limited')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'data_query',
         operationType: 'read',
         resource: '/data/query',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(true);
-      expect(decision.status).toBe('allowed');
-    });
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+    })
 
     it('should deny writes in background_limited mode', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'background_limited');
+      const context = createPermissionContext('user_123', 'sess_456', 'background_limited')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_write',
         operationType: 'write',
         resource: '/data/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(false);
-      expect(decision.status).toBe('denied');
-    });
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
+    })
 
     it('should respect existing grants for allowed operations', () => {
-      const userId = 'user_granted';
-      const scope = 'project_alpha';
-      
+      const userId = 'user_granted'
+      const scope = 'project_alpha'
+
       grantStore.create({
         id: `grant_${Date.now()}`,
         userId,
         scope,
         action: 'file_write',
         resourcePattern: '/data/project/.*',
-      });
+      })
 
-      const context = createPermissionContext(userId, 'sess_456', 'ask_on_write', 
-        grantStore.findActiveByUserAndScope(userId, scope)
-      );
-      
+      const context = createPermissionContext(
+        userId,
+        'sess_456',
+        'ask_on_write',
+        grantStore.findActiveByUserAndScope(userId, scope),
+      )
+
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_write',
         operationType: 'write',
         resource: '/data/project/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(true);
-      expect(decision.status).toBe('allowed');
-      expect(decision.grant).toBeDefined();
-    });
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+      expect(decision.grant).toBeDefined()
+    })
 
     it('should emit audit event for permission check', () => {
-      const context = createPermissionContext('user_123', 'sess_456', 'read_only');
+      const context = createPermissionContext('user_123', 'sess_456', 'read_only')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_read',
         operationType: 'read',
         resource: '/data/file.txt',
-      };
+      }
 
-      permissionEngine.checkPermission(request);
+      permissionEngine.checkPermission(request)
 
-      const events = eventStore.query({ 
+      const events = eventStore.query({
         userId: 'user_123',
-        sourceModule: 'permission'
-      });
-      expect(events.length).toBeGreaterThan(0);
-      expect(events[0].eventType).toBe('permission_granted');
-    });
-  });
+        sourceModule: 'permission',
+      })
+      expect(events.length).toBeGreaterThan(0)
+      expect(events[0].eventType).toBe('permission_granted')
+    })
+  })
 
   describe('ApprovalHandler.createApproval', () => {
     it('should create an approval request', () => {
@@ -323,13 +317,13 @@ describe('Permission & Approval Engine', () => {
         resource: '/data/file.txt',
         justification: 'Need to update config',
         requestedBy: 'system',
-      });
+      })
 
-      expect(request.id).toBeDefined();
-      expect(request.status).toBe('pending');
-      expect(request.userId).toBe('user_123');
-      expect(request.actionType).toBe('file_write');
-    });
+      expect(request.id).toBeDefined()
+      expect(request.status).toBe('pending')
+      expect(request.userId).toBe('user_123')
+      expect(request.actionType).toBe('file_write')
+    })
 
     it('should set expiry on approval request', () => {
       const request = approvalHandler.createApproval({
@@ -339,14 +333,14 @@ describe('Permission & Approval Engine', () => {
         operationType: 'write',
         requestedBy: 'system',
         expiresInMs: 3600000,
-      });
+      })
 
-      expect(request.expiresAt).toBeDefined();
-      const expiry = new Date(request.expiresAt!);
-      const now = new Date();
-      expect(expiry.getTime()).toBeGreaterThan(now.getTime());
-    });
-  });
+      expect(request.expiresAt).toBeDefined()
+      const expiry = new Date(request.expiresAt!)
+      const now = new Date()
+      expect(expiry.getTime()).toBeGreaterThan(now.getTime())
+    })
+  })
 
   describe('ApprovalHandler.processResponse', () => {
     it('should approve a pending request with approve_once', () => {
@@ -356,21 +350,21 @@ describe('Permission & Approval Engine', () => {
         actionType: 'file_write',
         operationType: 'write',
         requestedBy: 'system',
-      });
+      })
 
       const result = approvalHandler.processResponse({
         requestId: approval.id,
         responseType: 'approve_once',
         respondedBy: 'admin_user',
         respondedAt: new Date().toISOString(),
-      });
+      })
 
-      expect(result.success).toBe(true);
-      expect(result.approved).toBe(true);
+      expect(result.success).toBe(true)
+      expect(result.approved).toBe(true)
 
-      const updated = approvalStore.getById(approval.id);
-      expect(updated?.status).toBe(APPROVAL_STATES.APPROVED);
-    });
+      const updated = approvalStore.getById(approval.id)
+      expect(updated?.status).toBe(APPROVAL_STATES.APPROVED)
+    })
 
     it('should reject a pending request', () => {
       const approval = approvalHandler.createApproval({
@@ -379,7 +373,7 @@ describe('Permission & Approval Engine', () => {
         actionType: 'file_write',
         operationType: 'write',
         requestedBy: 'system',
-      });
+      })
 
       const result = approvalHandler.processResponse({
         requestId: approval.id,
@@ -387,14 +381,14 @@ describe('Permission & Approval Engine', () => {
         respondedBy: 'admin_user',
         respondedAt: new Date().toISOString(),
         reason: 'Not authorized',
-      });
+      })
 
-      expect(result.success).toBe(true);
-      expect(result.approved).toBe(false);
+      expect(result.success).toBe(true)
+      expect(result.approved).toBe(false)
 
-      const updated = approvalStore.getById(approval.id);
-      expect(updated?.status).toBe(APPROVAL_STATES.REJECTED);
-    });
+      const updated = approvalStore.getById(approval.id)
+      expect(updated?.status).toBe(APPROVAL_STATES.REJECTED)
+    })
 
     it('should create a grant with approve_always', () => {
       const approval = approvalHandler.createApproval({
@@ -404,7 +398,7 @@ describe('Permission & Approval Engine', () => {
         operationType: 'write',
         resource: '/data/project/.*',
         requestedBy: 'system',
-      });
+      })
 
       const result = approvalHandler.processResponse({
         requestId: approval.id,
@@ -413,17 +407,17 @@ describe('Permission & Approval Engine', () => {
         respondedAt: new Date().toISOString(),
         grantScope: 'project_alpha',
         grantDuration: 86400000,
-      });
+      })
 
-      expect(result.success).toBe(true);
-      expect(result.approved).toBe(true);
-      expect(result.grant).toBeDefined();
+      expect(result.success).toBe(true)
+      expect(result.approved).toBe(true)
+      expect(result.grant).toBeDefined()
 
-      const grant = result.grant!;
-      expect(grant.userId).toBe('user_123');
-      expect(grant.scope).toBe('project_alpha');
-      expect(grant.action).toBe('file_write');
-    });
+      const grant = result.grant!
+      expect(grant.userId).toBe('user_123')
+      expect(grant.scope).toBe('project_alpha')
+      expect(grant.action).toBe('file_write')
+    })
 
     it('should emit audit event for approval response', () => {
       const approval = approvalHandler.createApproval({
@@ -432,54 +426,54 @@ describe('Permission & Approval Engine', () => {
         actionType: 'file_write',
         operationType: 'write',
         requestedBy: 'system',
-      });
+      })
 
       approvalHandler.processResponse({
         requestId: approval.id,
         responseType: 'approve_once',
         respondedBy: 'admin_user',
         respondedAt: new Date().toISOString(),
-      });
+      })
 
-      const events = eventStore.query({ 
+      const events = eventStore.query({
         userId: 'user_123',
-        eventType: 'approval_responded' 
-      });
-      expect(events.length).toBeGreaterThan(0);
-    });
-  });
+        eventType: 'approval_responded',
+      })
+      expect(events.length).toBeGreaterThan(0)
+    })
+  })
 
   describe('Persona permission policy', () => {
     it('should not allow persona to bypass hard_deny policy', () => {
-      const context = createPermissionContext('persona_user', 'sess_456', 'hard_deny');
+      const context = createPermissionContext('persona_user', 'sess_456', 'hard_deny')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'file_read',
         operationType: 'read',
         resource: '/data/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(false);
-      expect(decision.status).toBe('denied');
-    });
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
+    })
 
     it('should not allow workflow publication to bypass policy', () => {
-      const context = createPermissionContext('workflow_user', 'sess_456', 'hard_deny');
+      const context = createPermissionContext('workflow_user', 'sess_456', 'hard_deny')
       const request: PermissionCheckRequest = {
         context,
         actionType: 'publish_workflow',
         operationType: 'write',
         resource: 'workflow_definition',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(request);
+      const decision = permissionEngine.checkPermission(request)
 
-      expect(decision.allowed).toBe(false);
-      expect(decision.status).toBe('denied');
-    });
-  });
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
+    })
+  })
 
   describe('PermissionGrant storage and expiry', () => {
     it('should store created grants', () => {
@@ -489,23 +483,23 @@ describe('Permission & Approval Engine', () => {
         scope: 'test_scope',
         action: 'file_write',
         expiresAt: new Date(Date.now() + 86400000).toISOString(),
-      });
+      })
 
-      const retrieved = grantStore.getById(grant.id);
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.userId).toBe('user_123');
-    });
+      const retrieved = grantStore.getById(grant.id)
+      expect(retrieved).toBeDefined()
+      expect(retrieved?.userId).toBe('user_123')
+    })
 
     it('should find active grants by user and scope', () => {
-      const userId = 'user_active';
-      const scope = 'active_scope';
-      
+      const userId = 'user_active'
+      const scope = 'active_scope'
+
       grantStore.create({
         id: `grant_${Date.now()}_1`,
         userId,
         scope,
         action: 'read',
-      });
+      })
 
       grantStore.create({
         id: `grant_${Date.now()}_2`,
@@ -513,27 +507,27 @@ describe('Permission & Approval Engine', () => {
         scope,
         action: 'write',
         expiresAt: new Date(Date.now() + 86400000).toISOString(),
-      });
+      })
 
-      const active = grantStore.findActiveByUserAndScope(userId, scope);
-      expect(active.length).toBe(2);
-    });
+      const active = grantStore.findActiveByUserAndScope(userId, scope)
+      expect(active.length).toBe(2)
+    })
 
     it('should not return expired grants as active', () => {
-      const userId = 'user_expired';
-      const scope = 'expired_scope';
-      const pastDate = new Date(Date.now() - 86400000).toISOString();
-      
+      const userId = 'user_expired'
+      const scope = 'expired_scope'
+      const pastDate = new Date(Date.now() - 86400000).toISOString()
+
       grantStore.create({
         id: `grant_${Date.now()}`,
         userId,
         scope,
         action: 'read',
         expiresAt: pastDate,
-      });
+      })
 
-      const active = grantStore.findActiveByUserAndScope(userId, scope);
-      expect(active.length).toBe(0);
-    });
-  });
-});
+      const active = grantStore.findActiveByUserAndScope(userId, scope)
+      expect(active.length).toBe(0)
+    })
+  })
+})

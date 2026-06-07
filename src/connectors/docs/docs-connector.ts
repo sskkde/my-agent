@@ -1,9 +1,5 @@
-import type {
-  ConnectorAdapter,
-  ConnectorCapability,
-  ConnectorCallRequest,
-} from '../types.js';
-import type { ConnectorInstance } from '../../storage/connector-store.js';
+import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest } from '../types.js'
+import type { ConnectorInstance } from '../../storage/connector-store.js'
 import type {
   DocsTransport,
   DocsDocument,
@@ -15,16 +11,16 @@ import type {
   SearchDocsParams,
   DocsProvider,
   DocsError,
-} from './docs-types.js';
+} from './docs-types.js'
 import {
   encryptSecret,
   decryptSecret,
   deserializeEncryptedSecret,
   serializeEncryptedSecret,
-} from '../../storage/provider-crypto.js';
-import { BaseHttpTransport, TransportError } from '../base-http-transport.js';
-import type { HttpTransportAuth } from '../base-http-transport-types.js';
-import { DocsMockTransport } from './docs-mock-transport.js';
+} from '../../storage/provider-crypto.js'
+import { BaseHttpTransport, TransportError } from '../base-http-transport.js'
+import type { HttpTransportAuth } from '../base-http-transport-types.js'
+import { DocsMockTransport } from './docs-mock-transport.js'
 
 const DOCS_CAPABILITIES: ConnectorCapability[] = [
   {
@@ -95,146 +91,143 @@ const DOCS_CAPABILITIES: ConnectorCapability[] = [
     requiresAuth: true,
     supportedOperations: ['search_docs'],
   },
-];
+]
 
 export interface DocsConnectorConfig {
-  transport?: DocsTransport;
-  useMock?: boolean;
+  transport?: DocsTransport
+  useMock?: boolean
 }
 
 interface ParsedAuthState {
-  provider: DocsProvider;
-  credentials: string;
+  provider: DocsProvider
+  credentials: string
 }
 
 export class DocsConnectorAdapter implements ConnectorAdapter {
-  private defaultTransport: DocsTransport | null = null;
-  private useMock: boolean;
+  private defaultTransport: DocsTransport | null = null
+  private useMock: boolean
 
   constructor(config: DocsConnectorConfig) {
-    this.useMock = config.useMock ?? process.env.DOCS_MOCK_MODE === 'true';
+    this.useMock = config.useMock ?? process.env.DOCS_MOCK_MODE === 'true'
 
     if (this.useMock || config.transport instanceof DocsMockTransport) {
-      this.defaultTransport = config.transport ?? new DocsMockTransport();
+      this.defaultTransport = config.transport ?? new DocsMockTransport()
     } else if (config.transport) {
-      this.defaultTransport = config.transport;
+      this.defaultTransport = config.transport
     }
   }
 
   private getTransport(instance: ConnectorInstance): DocsTransport {
     if (this.defaultTransport) {
-      return this.defaultTransport;
+      return this.defaultTransport
     }
 
-    const authState = this.parseAuthState(instance);
+    const authState = this.parseAuthState(instance)
 
     if (this.useMock) {
-      return new DocsMockTransport();
+      return new DocsMockTransport()
     }
 
     if (authState.provider === 'notion') {
-      return createNotionTransport(authState.credentials);
+      return createNotionTransport(authState.credentials)
     }
 
     if (authState.provider === 'google') {
-      return createGoogleDocsTransport(authState.credentials);
+      return createGoogleDocsTransport(authState.credentials)
     }
 
-    throw new Error(`Unsupported provider: ${authState.provider}`);
+    throw new Error(`Unsupported provider: ${authState.provider}`)
   }
 
-  async execute(
-    instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown> {
-    const transport = this.getTransport(instance);
+  async execute(instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
+    const transport = this.getTransport(instance)
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'list_docs':
-        return transport.listDocs(params as unknown as ListDocsParams);
+        return transport.listDocs(params as unknown as ListDocsParams)
 
       case 'get_doc':
-        return transport.getDoc(params as unknown as GetDocParams);
+        return transport.getDoc(params as unknown as GetDocParams)
 
       case 'create_doc':
-        return transport.createDoc(params as unknown as CreateDocParams);
+        return transport.createDoc(params as unknown as CreateDocParams)
 
       case 'update_doc':
-        return transport.updateDoc(params as unknown as UpdateDocParams);
+        return transport.updateDoc(params as unknown as UpdateDocParams)
 
       case 'search_docs':
-        return transport.searchDocs(params as unknown as SearchDocsParams);
+        return transport.searchDocs(params as unknown as SearchDocsParams)
 
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation}`)
     }
   }
 
   discoverCapabilities(_instance: ConnectorInstance): ConnectorCapability[] {
-    return DOCS_CAPABILITIES;
+    return DOCS_CAPABILITIES
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
-    return { healthy: true, message: 'Docs connector is healthy' };
+    return { healthy: true, message: 'Docs connector is healthy' }
   }
 
   private parseAuthState(instance: ConnectorInstance): ParsedAuthState {
     if (!instance.authStateRef) {
-      throw this.createAuthError('No authentication configured');
+      throw this.createAuthError('No authentication configured')
     }
 
     try {
-      const deserialized = deserializeEncryptedSecret(instance.authStateRef);
-      const decrypted = decryptSecret(deserialized.encrypted, deserialized.iv, deserialized.authTag);
-      const parsed = JSON.parse(decrypted) as ParsedAuthState;
+      const deserialized = deserializeEncryptedSecret(instance.authStateRef)
+      const decrypted = decryptSecret(deserialized.encrypted, deserialized.iv, deserialized.authTag)
+      const parsed = JSON.parse(decrypted) as ParsedAuthState
 
       if (!parsed.provider || !parsed.credentials) {
-        throw new Error('Invalid auth state format');
+        throw new Error('Invalid auth state format')
       }
 
-      return parsed;
+      return parsed
     } catch {
-      throw this.createAuthError('Failed to decrypt credentials');
+      throw this.createAuthError('Failed to decrypt credentials')
     }
   }
 
   static encryptAuth(credentials: string, provider: DocsProvider): string {
-    const authState: ParsedAuthState = { provider, credentials };
-    const encrypted = encryptSecret(JSON.stringify(authState));
-    return serializeEncryptedSecret(encrypted);
+    const authState: ParsedAuthState = { provider, credentials }
+    const encrypted = encryptSecret(JSON.stringify(authState))
+    return serializeEncryptedSecret(encrypted)
   }
 
   private createAuthError(message: string): DocsError {
-    const error = new Error(message) as Error & DocsError;
-    error.code = 'AUTH_INVALID';
-    error.message = message;
-    error.recoverable = false;
-    throw error;
+    const error = new Error(message) as Error & DocsError
+    error.code = 'AUTH_INVALID'
+    error.message = message
+    error.recoverable = false
+    throw error
   }
 }
 
 export function createDocsConnectorAdapter(config: DocsConnectorConfig): DocsConnectorAdapter {
-  return new DocsConnectorAdapter(config);
+  return new DocsConnectorAdapter(config)
 }
 
 export function createNotionTransport(apiKey: string): DocsTransport {
-  return new NotionHttpTransport(apiKey);
+  return new NotionHttpTransport(apiKey)
 }
 
 export function createGoogleDocsTransport(oauthToken: string): DocsTransport {
-  return new GoogleDocsHttpTransport(oauthToken);
+  return new GoogleDocsHttpTransport(oauthToken)
 }
 
 class NotionHttpTransport implements DocsTransport {
-  private http: BaseHttpTransport;
+  private http: BaseHttpTransport
 
   constructor(apiKey: string) {
     const auth: HttpTransportAuth = {
       type: 'bearer',
       credentials: apiKey,
-    };
+    }
 
     this.http = new BaseHttpTransport({
       baseURL: 'https://api.notion.com/v1',
@@ -242,60 +235,69 @@ class NotionHttpTransport implements DocsTransport {
       headers: {
         'Notion-Version': '2022-06-28',
       },
-    });
+    })
   }
 
-  async listDocs(params: ListDocsParams): Promise<{ docs: DocsListItem[]; totalResults: number; nextPageToken?: string }> {
-    const { maxResults = 10, pageToken } = params;
+  async listDocs(
+    params: ListDocsParams,
+  ): Promise<{ docs: DocsListItem[]; totalResults: number; nextPageToken?: string }> {
+    const { maxResults = 10, pageToken } = params
 
     try {
       const response = await this.http.post<{
-        results: Array<{ id: string; properties: Record<string, unknown>; url: string; created_time: string; last_edited_time: string }>;
-        has_more: boolean;
-        next_cursor?: string;
+        results: Array<{
+          id: string
+          properties: Record<string, unknown>
+          url: string
+          created_time: string
+          last_edited_time: string
+        }>
+        has_more: boolean
+        next_cursor?: string
       }>('/search', {
         page_size: maxResults,
         start_cursor: pageToken,
-      });
+      })
 
-      const docs: DocsListItem[] = response.body?.results.map(page => ({
-        id: page.id,
-        title: this.extractTitle(page.properties) || 'Untitled',
-        updatedAt: page.last_edited_time,
-        owner: 'notion-user',
-        url: page.url,
-      })) ?? [];
+      const docs: DocsListItem[] =
+        response.body?.results.map((page) => ({
+          id: page.id,
+          title: this.extractTitle(page.properties) || 'Untitled',
+          updatedAt: page.last_edited_time,
+          owner: 'notion-user',
+          url: page.url,
+        })) ?? []
 
       return {
         docs,
         totalResults: docs.length,
         nextPageToken: response.body?.has_more ? response.body.next_cursor : undefined,
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
   async getDoc(params: GetDocParams): Promise<DocsDocument | null> {
-    const { docId } = params;
+    const { docId } = params
 
     try {
       const [pageResponse, blocksResponse] = await Promise.all([
         this.http.get<{
-          id: string;
-          properties: Record<string, unknown>;
-          url: string;
-          created_time: string;
-          last_edited_time: string;
+          id: string
+          properties: Record<string, unknown>
+          url: string
+          created_time: string
+          last_edited_time: string
         }>(`/pages/${docId}`),
         this.http.get<{
-          results: Array<{ type: string; [key: string]: unknown }>;
+          results: Array<{ type: string; [key: string]: unknown }>
         }>(`/blocks/${docId}/children`),
-      ]);
+      ])
 
-      if (!pageResponse.body) return null;
+      if (!pageResponse.body) return null
 
-      const content = this.blocksToContent(blocksResponse.body?.results ?? []);
+      const content = this.blocksToContent(blocksResponse.body?.results ?? [])
 
       return {
         id: pageResponse.body.id,
@@ -305,147 +307,152 @@ class NotionHttpTransport implements DocsTransport {
         updatedAt: pageResponse.body.last_edited_time,
         owner: 'notion-user',
         url: pageResponse.body.url,
-      };
+      }
     } catch (err) {
       if (err instanceof TransportError && err.statusCode === 404) {
-        return null;
+        return null
       }
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
-  async createDoc(params: CreateDocParams): Promise<{ id: string; title: string; createdAt: string; updatedAt: string }> {
-    const { title, content = '' } = params;
+  async createDoc(
+    params: CreateDocParams,
+  ): Promise<{ id: string; title: string; createdAt: string; updatedAt: string }> {
+    const { title, content = '' } = params
 
     try {
       const response = await this.http.post<{
-        id: string;
-        created_time: string;
-        last_edited_time: string;
+        id: string
+        created_time: string
+        last_edited_time: string
       }>('/pages', {
         parent: { page_id: null },
         properties: {
           title: [{ text: { content: title } }],
         },
         children: this.contentToBlocks(content),
-      });
+      })
 
       return {
         id: response.body?.id ?? '',
         title,
         createdAt: response.body?.created_time ?? new Date().toISOString(),
         updatedAt: response.body?.last_edited_time ?? new Date().toISOString(),
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
-  async updateDoc(params: UpdateDocParams): Promise<{ id: string; title: string; updatedAt: string; success: boolean }> {
-    const { docId, content, title } = params;
+  async updateDoc(
+    params: UpdateDocParams,
+  ): Promise<{ id: string; title: string; updatedAt: string; success: boolean }> {
+    const { docId, content, title } = params
 
     try {
       await this.http.patch(`/pages/${docId}`, {
         properties: title ? { title: [{ text: { content: title } }] } : undefined,
-      });
+      })
 
       await this.http.patch(`/blocks/${docId}/children`, {
         children: this.contentToBlocks(content),
-      });
+      })
 
       return {
         id: docId,
         title: title || 'Untitled',
         updatedAt: new Date().toISOString(),
         success: true,
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
   async searchDocs(params: SearchDocsParams): Promise<{ docs: DocsListItem[]; totalResults: number }> {
-    const { query, maxResults = 10 } = params;
+    const { query, maxResults = 10 } = params
 
     try {
       const response = await this.http.post<{
-        results: Array<{ id: string; properties: Record<string, unknown>; url: string; last_edited_time: string }>;
+        results: Array<{ id: string; properties: Record<string, unknown>; url: string; last_edited_time: string }>
       }>('/search', {
         query,
         page_size: maxResults,
-      });
+      })
 
-      const docs: DocsListItem[] = response.body?.results.map(page => ({
-        id: page.id,
-        title: this.extractTitle(page.properties) || 'Untitled',
-        updatedAt: page.last_edited_time,
-        owner: 'notion-user',
-        url: page.url,
-      })) ?? [];
+      const docs: DocsListItem[] =
+        response.body?.results.map((page) => ({
+          id: page.id,
+          title: this.extractTitle(page.properties) || 'Untitled',
+          updatedAt: page.last_edited_time,
+          owner: 'notion-user',
+          url: page.url,
+        })) ?? []
 
       return {
         docs,
         totalResults: docs.length,
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
   async validateAuth(): Promise<boolean> {
     try {
-      await this.http.get('/users/me');
-      return true;
+      await this.http.get('/users/me')
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
   private extractTitle(properties: Record<string, unknown>): string | null {
-    const titleProp = properties.title ?? properties.Name ?? properties.name;
+    const titleProp = properties.title ?? properties.Name ?? properties.name
     if (Array.isArray(titleProp)) {
-      const textItem = titleProp[0];
+      const textItem = titleProp[0]
       if (textItem && typeof textItem === 'object' && 'text' in textItem) {
-        return (textItem.text as { content: string }).content ?? null;
+        return (textItem.text as { content: string }).content ?? null
       }
     }
-    return null;
+    return null
   }
 
   private blocksToContent(blocks: Array<{ type: string; [key: string]: unknown }>): string {
     return blocks
-      .map(block => {
-        const typeData = block[block.type as keyof typeof block];
+      .map((block) => {
+        const typeData = block[block.type as keyof typeof block]
         if (typeData && typeof typeData === 'object' && 'rich_text' in typeData) {
-          const richText = typeData.rich_text as Array<{ text?: { content: string } }>;
-          return richText.map(rt => rt.text?.content ?? '').join('');
+          const richText = typeData.rich_text as Array<{ text?: { content: string } }>
+          return richText.map((rt) => rt.text?.content ?? '').join('')
         }
-        return '';
+        return ''
       })
       .filter(Boolean)
-      .join('\n');
+      .join('\n')
   }
 
   private contentToBlocks(content: string): unknown[] {
-    return content.split('\n').map(line => ({
+    return content.split('\n').map((line) => ({
       type: 'paragraph',
       paragraph: {
         rich_text: [{ text: { content: line } }],
       },
-    }));
+    }))
   }
 
   private handleError(err: unknown): DocsError {
     if (err instanceof TransportError) {
-      const error = new Error(err.message) as Error & DocsError;
-      error.code = this.mapErrorCode(err.type);
-      error.recoverable = err.retryable;
-      throw error;
+      const error = new Error(err.message) as Error & DocsError
+      error.code = this.mapErrorCode(err.type)
+      error.recoverable = err.retryable
+      throw error
     }
-    const error = new Error('Unknown error') as Error & DocsError;
-    error.code = 'UNKNOWN_ERROR';
-    error.recoverable = false;
-    throw error;
+    const error = new Error('Unknown error') as Error & DocsError
+    error.code = 'UNKNOWN_ERROR'
+    error.recoverable = false
+    throw error
   }
 
   private mapErrorCode(type: string): DocsError['code'] {
@@ -456,98 +463,101 @@ class NotionHttpTransport implements DocsTransport {
       network: 'NETWORK_ERROR',
       server: 'UNKNOWN_ERROR',
       parse: 'VALIDATION_ERROR',
-    };
-    return mapping[type] ?? 'UNKNOWN_ERROR';
+    }
+    return mapping[type] ?? 'UNKNOWN_ERROR'
   }
 }
 
 class GoogleDocsHttpTransport implements DocsTransport {
-  private http: BaseHttpTransport;
-  private driveHttp: BaseHttpTransport;
+  private http: BaseHttpTransport
+  private driveHttp: BaseHttpTransport
 
   constructor(oauthToken: string) {
     const auth: HttpTransportAuth = {
       type: 'oauth2',
       credentials: oauthToken,
-    };
+    }
 
     this.http = new BaseHttpTransport({
       baseURL: 'https://docs.googleapis.com/v1',
       auth,
-    });
+    })
 
     this.driveHttp = new BaseHttpTransport({
       baseURL: 'https://www.googleapis.com/drive/v3',
       auth,
-    });
+    })
   }
 
-  async listDocs(params: ListDocsParams): Promise<{ docs: DocsListItem[]; totalResults: number; nextPageToken?: string }> {
-    const { maxResults = 10, pageToken, folderId } = params;
+  async listDocs(
+    params: ListDocsParams,
+  ): Promise<{ docs: DocsListItem[]; totalResults: number; nextPageToken?: string }> {
+    const { maxResults = 10, pageToken, folderId } = params
 
     try {
-      const query = folderId ? `'${folderId}' in parents` : undefined;
+      const query = folderId ? `'${folderId}' in parents` : undefined
       const searchParams: Record<string, string> = {
         pageSize: String(maxResults),
         fields: 'files(id,name,mimeType,modifiedTime,owners,webViewLink),nextPageToken',
-      };
-      if (query) searchParams.q = query;
-      if (pageToken) searchParams.pageToken = pageToken;
+      }
+      if (query) searchParams.q = query
+      if (pageToken) searchParams.pageToken = pageToken
 
       const response = await this.driveHttp.get<{
         files: Array<{
-          id: string;
-          name: string;
-          mimeType: string;
-          modifiedTime: string;
-          owners: Array<{ emailAddress: string }>;
-          webViewLink: string;
-        }>;
-        nextPageToken?: string;
-      }>('/files', searchParams);
+          id: string
+          name: string
+          mimeType: string
+          modifiedTime: string
+          owners: Array<{ emailAddress: string }>
+          webViewLink: string
+        }>
+        nextPageToken?: string
+      }>('/files', searchParams)
 
-      const docs: DocsListItem[] = response.body?.files.map(file => ({
-        id: file.id,
-        title: file.name,
-        updatedAt: file.modifiedTime,
-        owner: file.owners[0]?.emailAddress ?? 'unknown',
-        mimeType: file.mimeType,
-        url: file.webViewLink,
-      })) ?? [];
+      const docs: DocsListItem[] =
+        response.body?.files.map((file) => ({
+          id: file.id,
+          title: file.name,
+          updatedAt: file.modifiedTime,
+          owner: file.owners[0]?.emailAddress ?? 'unknown',
+          mimeType: file.mimeType,
+          url: file.webViewLink,
+        })) ?? []
 
       return {
         docs,
         totalResults: docs.length,
         nextPageToken: response.body?.nextPageToken,
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
   async getDoc(params: GetDocParams): Promise<DocsDocument | null> {
-    const { docId } = params;
+    const { docId } = params
 
     try {
       const [driveResponse, docsResponse] = await Promise.all([
         this.driveHttp.get<{
-          id: string;
-          name: string;
-          createdTime: string;
-          modifiedTime: string;
-          owners: Array<{ emailAddress: string }>;
-          webViewLink: string;
+          id: string
+          name: string
+          createdTime: string
+          modifiedTime: string
+          owners: Array<{ emailAddress: string }>
+          webViewLink: string
         }>(`/files/${docId}`, { fields: 'id,name,createdTime,modifiedTime,owners,webViewLink' }),
         this.http.get<{
-          documentId: string;
-          title: string;
-          body?: { content: unknown[] };
+          documentId: string
+          title: string
+          body?: { content: unknown[] }
         }>(`/documents/${docId}`),
-      ]);
+      ])
 
-      if (!driveResponse.body) return null;
+      if (!driveResponse.body) return null
 
-      const content = this.extractContent(docsResponse.body?.body?.content ?? []);
+      const content = this.extractContent(docsResponse.body?.body?.content ?? [])
 
       return {
         id: driveResponse.body.id,
@@ -557,130 +567,135 @@ class GoogleDocsHttpTransport implements DocsTransport {
         updatedAt: driveResponse.body.modifiedTime,
         owner: driveResponse.body.owners[0]?.emailAddress ?? 'unknown',
         url: driveResponse.body.webViewLink,
-      };
+      }
     } catch (err) {
       if (err instanceof TransportError && err.statusCode === 404) {
-        return null;
+        return null
       }
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
-  async createDoc(params: CreateDocParams): Promise<{ id: string; title: string; createdAt: string; updatedAt: string }> {
-    const { title, content = '' } = params;
+  async createDoc(
+    params: CreateDocParams,
+  ): Promise<{ id: string; title: string; createdAt: string; updatedAt: string }> {
+    const { title, content = '' } = params
 
     try {
       const docsResponse = await this.http.post<{ documentId: string; title: string }>('/documents', {
         title,
-      });
+      })
 
       if (content && docsResponse.body?.documentId) {
         await this.http.post(`/documents/${docsResponse.body.documentId}:batchUpdate`, {
           requests: this.contentToRequests(content),
-        });
+        })
       }
 
-      const now = new Date().toISOString();
+      const now = new Date().toISOString()
       return {
         id: docsResponse.body?.documentId ?? '',
         title,
         createdAt: now,
         updatedAt: now,
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
-  async updateDoc(params: UpdateDocParams): Promise<{ id: string; title: string; updatedAt: string; success: boolean }> {
-    const { docId, content, title } = params;
+  async updateDoc(
+    params: UpdateDocParams,
+  ): Promise<{ id: string; title: string; updatedAt: string; success: boolean }> {
+    const { docId, content, title } = params
 
     try {
       if (title) {
-        await this.driveHttp.patch(`/files/${docId}`, { name: title });
+        await this.driveHttp.patch(`/files/${docId}`, { name: title })
       }
 
       await this.http.post(`/documents/${docId}:batchUpdate`, {
         requests: this.contentToRequests(content, true),
-      });
+      })
 
       return {
         id: docId,
         title: title || 'Untitled',
         updatedAt: new Date().toISOString(),
         success: true,
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
   async searchDocs(params: SearchDocsParams): Promise<{ docs: DocsListItem[]; totalResults: number }> {
-    const { query, maxResults = 10 } = params;
+    const { query, maxResults = 10 } = params
 
     try {
       const response = await this.driveHttp.get<{
         files: Array<{
-          id: string;
-          name: string;
-          mimeType: string;
-          modifiedTime: string;
-          owners: Array<{ emailAddress: string }>;
-          webViewLink: string;
-        }>;
+          id: string
+          name: string
+          mimeType: string
+          modifiedTime: string
+          owners: Array<{ emailAddress: string }>
+          webViewLink: string
+        }>
       }>('/files', {
         q: `fullText contains '${query}'`,
         pageSize: String(maxResults),
         fields: 'files(id,name,mimeType,modifiedTime,owners,webViewLink)',
-      });
+      })
 
-      const docs: DocsListItem[] = response.body?.files.map(file => ({
-        id: file.id,
-        title: file.name,
-        updatedAt: file.modifiedTime,
-        owner: file.owners[0]?.emailAddress ?? 'unknown',
-        mimeType: file.mimeType,
-        url: file.webViewLink,
-      })) ?? [];
+      const docs: DocsListItem[] =
+        response.body?.files.map((file) => ({
+          id: file.id,
+          title: file.name,
+          updatedAt: file.modifiedTime,
+          owner: file.owners[0]?.emailAddress ?? 'unknown',
+          mimeType: file.mimeType,
+          url: file.webViewLink,
+        })) ?? []
 
       return {
         docs,
         totalResults: docs.length,
-      };
+      }
     } catch (err) {
-      throw this.handleError(err);
+      throw this.handleError(err)
     }
   }
 
   async validateAuth(): Promise<boolean> {
     try {
-      await this.driveHttp.get('/about', { fields: 'user' });
-      return true;
+      await this.driveHttp.get('/about', { fields: 'user' })
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
   private extractContent(content: unknown[]): string {
-    const text: string[] = [];
+    const text: string[] = []
     for (const element of content) {
       if (element && typeof element === 'object' && 'paragraph' in element) {
-        const paragraph = element.paragraph as { elements?: Array<{ textRun?: { content: string } }> };
+        const paragraph = element.paragraph as { elements?: Array<{ textRun?: { content: string } }> }
         if (paragraph.elements) {
           for (const el of paragraph.elements) {
             if (el.textRun?.content) {
-              text.push(el.textRun.content);
+              text.push(el.textRun.content)
             }
           }
-          text.push('\n');
+          text.push('\n')
         }
       }
     }
-    return text.join('');
+    return text.join('')
   }
 
   private contentToRequests(content: string, replaceAll = false): unknown[] {
-    const requests: unknown[] = [];
+    const requests: unknown[] = []
 
     if (replaceAll) {
       requests.push({
@@ -690,7 +705,7 @@ class GoogleDocsHttpTransport implements DocsTransport {
             endIndex: 999999,
           },
         },
-      });
+      })
     }
 
     requests.push({
@@ -698,22 +713,22 @@ class GoogleDocsHttpTransport implements DocsTransport {
         location: { index: 1 },
         text: content,
       },
-    });
+    })
 
-    return requests;
+    return requests
   }
 
   private handleError(err: unknown): DocsError {
     if (err instanceof TransportError) {
-      const error = new Error(err.message) as Error & DocsError;
-      error.code = this.mapErrorCode(err.type);
-      error.recoverable = err.retryable;
-      throw error;
+      const error = new Error(err.message) as Error & DocsError
+      error.code = this.mapErrorCode(err.type)
+      error.recoverable = err.retryable
+      throw error
     }
-    const error = new Error('Unknown error') as Error & DocsError;
-    error.code = 'UNKNOWN_ERROR';
-    error.recoverable = false;
-    throw error;
+    const error = new Error('Unknown error') as Error & DocsError
+    error.code = 'UNKNOWN_ERROR'
+    error.recoverable = false
+    throw error
   }
 
   private mapErrorCode(type: string): DocsError['code'] {
@@ -724,7 +739,7 @@ class GoogleDocsHttpTransport implements DocsTransport {
       network: 'NETWORK_ERROR',
       server: 'UNKNOWN_ERROR',
       parse: 'VALIDATION_ERROR',
-    };
-    return mapping[type] ?? 'UNKNOWN_ERROR';
+    }
+    return mapping[type] ?? 'UNKNOWN_ERROR'
   }
 }

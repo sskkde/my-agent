@@ -1,5 +1,5 @@
-import type { ConnectionManager } from './connection.js';
-import type { BudgetPeriod } from '../memory/limit-types.js';
+import type { ConnectionManager } from './connection.js'
+import type { BudgetPeriod } from '../memory/limit-types.js'
 
 // ============================================================================
 // Types
@@ -7,34 +7,34 @@ import type { BudgetPeriod } from '../memory/limit-types.js';
 
 export type BudgetUsageRecord = {
   /** Unique record ID */
-  recordId: string;
+  recordId: string
   /** User ID this budget belongs to */
-  userId: string;
+  userId: string
   /** Budget tracking period */
-  period: BudgetPeriod;
+  period: BudgetPeriod
   /** Tokens used so far */
-  tokensUsed: number;
+  tokensUsed: number
   /** Requests made so far */
-  requestsUsed: number;
+  requestsUsed: number
   /** Memory used in MB so far */
-  memoryUsedMb: number;
+  memoryUsedMb: number
   /** When the current period started (ISO 8601) */
-  periodStartedAt: string;
+  periodStartedAt: string
   /** When the record was last updated (ISO 8601) */
-  updatedAt: string;
-};
+  updatedAt: string
+}
 
 export interface BudgetStore {
   /** Upsert a budget usage record (insert or update) */
-  upsert(record: BudgetUsageRecord): void;
+  upsert(record: BudgetUsageRecord): void
   /** Get budget usage by userId and period */
-  getByUserAndPeriod(userId: string, period: BudgetPeriod): BudgetUsageRecord | null;
+  getByUserAndPeriod(userId: string, period: BudgetPeriod): BudgetUsageRecord | null
   /** Get all budget records for a user */
-  getByUserId(userId: string): BudgetUsageRecord[];
+  getByUserId(userId: string): BudgetUsageRecord[]
   /** Delete a budget record */
-  delete(recordId: string): void;
+  delete(recordId: string): void
   /** Reset usage for a user+period (sets counters to 0, updates periodStartedAt) */
-  resetUsage(userId: string, period: BudgetPeriod, newPeriodStart: string): void;
+  resetUsage(userId: string, period: BudgetPeriod, newPeriodStart: string): void
 }
 
 // ============================================================================
@@ -42,10 +42,10 @@ export interface BudgetStore {
 // ============================================================================
 
 class BudgetStoreImpl implements BudgetStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   upsert(record: BudgetUsageRecord): void {
@@ -60,7 +60,7 @@ class BudgetStoreImpl implements BudgetStore {
         memory_used_mb = excluded.memory_used_mb,
         period_started_at = excluded.period_started_at,
         updated_at = excluded.updated_at
-    `;
+    `
 
     this.connection.exec(sql, [
       record.recordId,
@@ -70,29 +70,29 @@ class BudgetStoreImpl implements BudgetStore {
       record.requestsUsed,
       record.memoryUsedMb,
       record.periodStartedAt,
-      record.updatedAt
-    ]);
+      record.updatedAt,
+    ])
   }
 
   getByUserAndPeriod(userId: string, period: BudgetPeriod): BudgetUsageRecord | null {
-    const sql = 'SELECT * FROM budget_usage WHERE user_id = ? AND period = ?';
-    const rows = this.connection.query<BudgetUsageRow>(sql, [userId, period]);
+    const sql = 'SELECT * FROM budget_usage WHERE user_id = ? AND period = ?'
+    const rows = this.connection.query<BudgetUsageRow>(sql, [userId, period])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToRecord(rows[0]);
+    return this.rowToRecord(rows[0])
   }
 
   getByUserId(userId: string): BudgetUsageRecord[] {
-    const sql = 'SELECT * FROM budget_usage WHERE user_id = ? ORDER BY period';
-    const rows = this.connection.query<BudgetUsageRow>(sql, [userId]);
-    return rows.map(r => this.rowToRecord(r));
+    const sql = 'SELECT * FROM budget_usage WHERE user_id = ? ORDER BY period'
+    const rows = this.connection.query<BudgetUsageRow>(sql, [userId])
+    return rows.map((r) => this.rowToRecord(r))
   }
 
   delete(recordId: string): void {
-    this.connection.exec('DELETE FROM budget_usage WHERE record_id = ?', [recordId]);
+    this.connection.exec('DELETE FROM budget_usage WHERE record_id = ?', [recordId])
   }
 
   resetUsage(userId: string, period: BudgetPeriod, newPeriodStart: string): void {
@@ -104,9 +104,9 @@ class BudgetStoreImpl implements BudgetStore {
           period_started_at = ?,
           updated_at = ?
       WHERE user_id = ? AND period = ?
-    `;
+    `
 
-    this.connection.exec(sql, [newPeriodStart, new Date().toISOString(), userId, period]);
+    this.connection.exec(sql, [newPeriodStart, new Date().toISOString(), userId, period])
   }
 
   private rowToRecord(row: BudgetUsageRow): BudgetUsageRecord {
@@ -118,28 +118,28 @@ class BudgetStoreImpl implements BudgetStore {
       requestsUsed: row.requests_used,
       memoryUsedMb: row.memory_used_mb,
       periodStartedAt: row.period_started_at,
-      updatedAt: row.updated_at
-    };
+      updatedAt: row.updated_at,
+    }
   }
 }
 
 type BudgetUsageRow = {
-  record_id: string;
-  user_id: string;
-  period: string;
-  tokens_used: number;
-  requests_used: number;
-  memory_used_mb: number;
-  period_started_at: string;
-  updated_at: string;
-};
+  record_id: string
+  user_id: string
+  period: string
+  tokens_used: number
+  requests_used: number
+  memory_used_mb: number
+  period_started_at: string
+  updated_at: string
+}
 
 // ============================================================================
 // Factory
 // ============================================================================
 
 export function createBudgetStore(connection: ConnectionManager): BudgetStore {
-  return new BudgetStoreImpl(connection);
+  return new BudgetStoreImpl(connection)
 }
 
 // ============================================================================
@@ -172,6 +172,6 @@ export function createBudgetUsageMigration() {
       DROP INDEX IF EXISTS idx_budget_usage_user;
       DROP INDEX IF EXISTS idx_budget_usage_user_period;
       DROP TABLE IF EXISTS budget_usage
-    `
-  };
+    `,
+  }
 }

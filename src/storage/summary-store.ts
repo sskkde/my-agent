@@ -1,4 +1,4 @@
-import type { ConnectionManager } from './connection.js';
+import type { ConnectionManager } from './connection.js'
 
 export type SummaryType =
   | 'working_summary'
@@ -10,78 +10,70 @@ export type SummaryType =
   | 'workflow_run_summary'
   | 'background_subagent_summary'
   | 'planner_run_summary'
-  | 'compact_summary';
+  | 'compact_summary'
 
-export type SummaryStatus =
-  | 'candidate'
-  | 'validated'
-  | 'active'
-  | 'superseded'
-  | 'archived'
-  | 'expired';
+export type SummaryStatus = 'candidate' | 'validated' | 'active' | 'superseded' | 'archived' | 'expired'
 
 export type RelatedRefs = {
-  plannerRunId?: string;
-  planId?: string;
-  workflowRunId?: string;
-  backgroundRunId?: string;
-  subagentRunId?: string;
-  artifactId?: string;
-};
+  plannerRunId?: string
+  planId?: string
+  workflowRunId?: string
+  backgroundRunId?: string
+  subagentRunId?: string
+  artifactId?: string
+}
 
 export type SourceRefs = {
-  transcriptRefs?: string[];
+  transcriptRefs?: string[]
   eventRange?: {
-    startEventId: string;
-    endEventId: string;
-  };
-  previousSummaryRefs?: string[];
-};
+    startEventId: string
+    endEventId: string
+  }
+  previousSummaryRefs?: string[]
+}
 
 export type RetrievalMetadata = {
-  keywords?: string[];
-  embeddingRef?: string;
-  importance?: 'low' | 'medium' | 'high';
-};
+  keywords?: string[]
+  embeddingRef?: string
+  importance?: 'low' | 'medium' | 'high'
+}
 
 export type SummaryRecord = {
-  summaryId: string;
-  summaryType: SummaryType;
-  userId: string;
-  sessionId?: string;
-  runId?: string;
-  relatedRefs?: RelatedRefs;
-  sourceRefs: SourceRefs;
-  summary: string;
-  structuredState?: Record<string, unknown>;
-  status: SummaryStatus;
-  retrieval?: RetrievalMetadata;
-  createdAt: string;
-  updatedAt?: string;
-};
+  summaryId: string
+  summaryType: SummaryType
+  userId: string
+  sessionId?: string
+  runId?: string
+  relatedRefs?: RelatedRefs
+  sourceRefs: SourceRefs
+  summary: string
+  structuredState?: Record<string, unknown>
+  status: SummaryStatus
+  retrieval?: RetrievalMetadata
+  createdAt: string
+  updatedAt?: string
+}
 
-export type SummaryPatch = Partial<
-  Omit<SummaryRecord, 'summaryId' | 'createdAt'>
->;
+export type SummaryPatch = Partial<Omit<SummaryRecord, 'summaryId' | 'createdAt'>>
 
 export interface SummaryStore {
-  save(record: SummaryRecord): void;
-  getBySummaryId(summaryId: string): SummaryRecord | null;
-  getByType(summaryType: SummaryType): SummaryRecord[];
-  getWorkingSummary(runId: string): SummaryRecord | null;
-  getSessionMemory(sessionId: string): SummaryRecord | null;
-  applyPatch(summaryId: string, patch: SummaryPatch): SummaryRecord;
+  save(record: SummaryRecord): void
+  getBySummaryId(summaryId: string): SummaryRecord | null
+  getByType(summaryType: SummaryType): SummaryRecord[]
+  getWorkingSummary(runId: string): SummaryRecord | null
+  getSessionMemory(sessionId: string): SummaryRecord | null
+  applyPatch(summaryId: string, patch: SummaryPatch): SummaryRecord
 }
 
 class SummaryStoreImpl implements SummaryStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   save(record: SummaryRecord): void {
-    this.validateSourceRefs(record.sourceRefs);
+    this.validateSourceRefs(record.sourceRefs)
 
     const sql = `
       INSERT INTO summaries (
@@ -101,7 +93,7 @@ class SummaryStoreImpl implements SummaryStore {
         status = excluded.status,
         retrieval = excluded.retrieval,
         updated_at = excluded.updated_at
-    `;
+    `
 
     this.connection.exec(sql, [
       record.summaryId,
@@ -116,19 +108,19 @@ class SummaryStoreImpl implements SummaryStore {
       record.status,
       record.retrieval ? JSON.stringify(record.retrieval) : null,
       record.createdAt,
-      record.updatedAt ?? null
-    ]);
+      record.updatedAt ?? null,
+    ])
   }
 
   getBySummaryId(summaryId: string): SummaryRecord | null {
-    const sql = 'SELECT * FROM summaries WHERE summary_id = ?';
-    const rows = this.connection.query<SummaryRow>(sql, [summaryId]);
+    const sql = 'SELECT * FROM summaries WHERE summary_id = ?'
+    const rows = this.connection.query<SummaryRow>(sql, [summaryId])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToRecord(rows[0]);
+    return this.rowToRecord(rows[0])
   }
 
   getByType(summaryType: SummaryType): SummaryRecord[] {
@@ -136,9 +128,9 @@ class SummaryStoreImpl implements SummaryStore {
       SELECT * FROM summaries 
       WHERE summary_type = ? 
       ORDER BY created_at DESC
-    `;
-    const rows = this.connection.query<SummaryRow>(sql, [summaryType]);
-    return rows.map(r => this.rowToRecord(r));
+    `
+    const rows = this.connection.query<SummaryRow>(sql, [summaryType])
+    return rows.map((r) => this.rowToRecord(r))
   }
 
   getWorkingSummary(runId: string): SummaryRecord | null {
@@ -147,14 +139,14 @@ class SummaryStoreImpl implements SummaryStore {
       WHERE run_id = ? AND summary_type = 'working_summary'
       ORDER BY created_at DESC
       LIMIT 1
-    `;
-    const rows = this.connection.query<SummaryRow>(sql, [runId]);
+    `
+    const rows = this.connection.query<SummaryRow>(sql, [runId])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToRecord(rows[0]);
+    return this.rowToRecord(rows[0])
   }
 
   getSessionMemory(sessionId: string): SummaryRecord | null {
@@ -163,21 +155,21 @@ class SummaryStoreImpl implements SummaryStore {
       WHERE session_id = ? AND summary_type = 'session_memory'
       ORDER BY created_at DESC
       LIMIT 1
-    `;
-    const rows = this.connection.query<SummaryRow>(sql, [sessionId]);
+    `
+    const rows = this.connection.query<SummaryRow>(sql, [sessionId])
 
     if (rows.length === 0) {
-      return null;
+      return null
     }
 
-    return this.rowToRecord(rows[0]);
+    return this.rowToRecord(rows[0])
   }
 
   applyPatch(summaryId: string, patch: SummaryPatch): SummaryRecord {
-    const existing = this.getBySummaryId(summaryId);
+    const existing = this.getBySummaryId(summaryId)
 
     if (!existing) {
-      throw new Error(`Summary with id "${summaryId}" not found`);
+      throw new Error(`Summary with id "${summaryId}" not found`)
     }
 
     const updated: SummaryRecord = {
@@ -185,38 +177,34 @@ class SummaryStoreImpl implements SummaryStore {
       ...patch,
       summaryId: existing.summaryId,
       createdAt: existing.createdAt,
-      updatedAt: new Date().toISOString()
-    };
+      updatedAt: new Date().toISOString(),
+    }
 
-    this.save(updated);
+    this.save(updated)
 
-    return updated;
+    return updated
   }
 
   private validateSourceRefs(sourceRefs: SourceRefs): void {
     if (!sourceRefs) {
-      throw new Error('sourceRefs is required');
+      throw new Error('sourceRefs is required')
     }
 
     const hasTranscriptRefs =
-      sourceRefs.transcriptRefs &&
-      Array.isArray(sourceRefs.transcriptRefs) &&
-      sourceRefs.transcriptRefs.length > 0;
+      sourceRefs.transcriptRefs && Array.isArray(sourceRefs.transcriptRefs) && sourceRefs.transcriptRefs.length > 0
 
     const hasEventRange =
       sourceRefs.eventRange &&
       typeof sourceRefs.eventRange.startEventId === 'string' &&
-      typeof sourceRefs.eventRange.endEventId === 'string';
+      typeof sourceRefs.eventRange.endEventId === 'string'
 
     const hasPreviousSummaryRefs =
       sourceRefs.previousSummaryRefs &&
       Array.isArray(sourceRefs.previousSummaryRefs) &&
-      sourceRefs.previousSummaryRefs.length > 0;
+      sourceRefs.previousSummaryRefs.length > 0
 
     if (!hasTranscriptRefs && !hasEventRange && !hasPreviousSummaryRefs) {
-      throw new Error(
-        'sourceRefs must contain at least one of: transcriptRefs, eventRange, or previousSummaryRefs'
-      );
+      throw new Error('sourceRefs must contain at least one of: transcriptRefs, eventRange, or previousSummaryRefs')
     }
   }
 
@@ -227,42 +215,36 @@ class SummaryStoreImpl implements SummaryStore {
       userId: row.user_id,
       sessionId: row.session_id ?? undefined,
       runId: row.run_id ?? undefined,
-      relatedRefs: row.related_refs
-        ? JSON.parse(row.related_refs)
-        : undefined,
+      relatedRefs: row.related_refs ? JSON.parse(row.related_refs) : undefined,
       sourceRefs: JSON.parse(row.source_refs) as SourceRefs,
       summary: row.summary,
-      structuredState: row.structured_state
-        ? JSON.parse(row.structured_state)
-        : undefined,
+      structuredState: row.structured_state ? JSON.parse(row.structured_state) : undefined,
       status: row.status as SummaryStatus,
-      retrieval: row.retrieval
-        ? JSON.parse(row.retrieval)
-        : undefined,
+      retrieval: row.retrieval ? JSON.parse(row.retrieval) : undefined,
       createdAt: row.created_at,
-      updatedAt: row.updated_at ?? undefined
-    };
+      updatedAt: row.updated_at ?? undefined,
+    }
   }
 }
 
 type SummaryRow = {
-  summary_id: string;
-  summary_type: string;
-  user_id: string;
-  session_id: string | null;
-  run_id: string | null;
-  related_refs: string | null;
-  source_refs: string;
-  summary: string;
-  structured_state: string | null;
-  status: string;
-  retrieval: string | null;
-  created_at: string;
-  updated_at: string | null;
-};
+  summary_id: string
+  summary_type: string
+  user_id: string
+  session_id: string | null
+  run_id: string | null
+  related_refs: string | null
+  source_refs: string
+  summary: string
+  structured_state: string | null
+  status: string
+  retrieval: string | null
+  created_at: string
+  updated_at: string | null
+}
 
 export function createSummaryStore(connection: ConnectionManager): SummaryStore {
-  return new SummaryStoreImpl(connection);
+  return new SummaryStoreImpl(connection)
 }
 
 export function createSummaryMigration() {
@@ -325,6 +307,6 @@ export function createSummaryMigration() {
       DROP INDEX IF EXISTS idx_summaries_run_id;
       DROP INDEX IF EXISTS idx_summaries_session_id;
       DROP TABLE IF EXISTS summaries;
-    `
-  };
+    `,
+  }
 }
