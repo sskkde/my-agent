@@ -57,7 +57,8 @@
     "test:tool-loop": "vitest run tests/unit/tools/tool-dispatch-contract.test.ts tests/unit/tools/tool-result-message-mapper.test.ts tests/unit/kernel/tool-result-pairing-guard.test.ts tests/integration/kernel/tool-loop-closure.test.ts tests/security/tool-loop-security.test.ts",
     "test:tool-loop:e2e": "vitest run tests/e2e/flow-tool-loop-closure.test.ts",
     "test:p11-toolchain": "npm run typecheck && npm run test:tool-loop && npm run test:tool-loop:e2e && npm run test:p10 && npm run build:web",
-    "install:playwright": "npx playwright install chromium"
+    "install:playwright": "npm run install:cloakbrowser",
+    "install:cloakbrowser": "node -e \"import('cloakbrowser').then(m => m.ensureBinary())\""
   },
   "keywords": [
     "agent",
@@ -79,7 +80,8 @@
   },
   "optionalDependencies": {
     "pg": "^8.21.0",
-    "playwright": "^1.59.1"
+    "cloakbrowser": "^0.3.31",
+    "playwright-core": "^1.60.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

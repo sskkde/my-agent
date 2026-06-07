@@ -23,8 +23,8 @@ Configure the search backend using the `WEB_SEARCH_BACKEND` environment variable
 | `searxng` | Self-hosted SearXNG instance | `SEARXNG_BASE_URL` |
 | `tavily` | Tavily API service | `TAVILY_API_KEY` |
 | `remote` | Custom remote search API | `WEB_SEARCH_API_URL` + `WEB_SEARCH_API_KEY` |
-| `playwright` | Browser-based DuckDuckGo scraping | Playwright installed |
-| `auto-browser` | Lightweight providers → Playwright fallback | Playwright installed |
+| `playwright` | Browser-based DuckDuckGo scraping through the CloakBrowser-backed Playwright-compatible browser | `cloakbrowser`/`playwright-core` installed and CloakBrowser binary available |
+| `auto-browser` | Lightweight providers → CloakBrowser fallback | `cloakbrowser`/`playwright-core` installed and CloakBrowser binary available |
 | `none` | Disable web search | None |
 
 ### Environment Variables
@@ -43,6 +43,15 @@ TAVILY_BASE_URL=https://api.tavily.com  # Optional
 # Legacy Remote API
 WEB_SEARCH_API_URL=https://your-search-api.example.com/search
 WEB_SEARCH_API_KEY=your_api_key_here
+
+# CloakBrowser-backed browser mode
+CLOAKBROWSER_HEADLESS=true
+CLOAKBROWSER_HUMANIZE=false
+CLOAKBROWSER_PROXY=http://user:pass@proxy.example:8080  # Optional
+CLOAKBROWSER_GEOIP=false
+CLOAKBROWSER_TIMEZONE=America/New_York  # Optional
+CLOAKBROWSER_LOCALE=en-US  # Optional
+CLOAKBROWSER_ARGS=--disable-gpu,--no-sandbox  # Optional comma-separated Chromium args
 ```
 
 ## Capabilities
@@ -180,16 +189,19 @@ WEB_SEARCH_API_URL=https://search.example.com/api
 WEB_SEARCH_API_KEY=your-key
 ```
 
-### Playwright (Browser-based)
+### CloakBrowser-backed Browser Mode
 
-DuckDuckGo search via browser automation. Requires Playwright:
+DuckDuckGo search via browser automation now uses CloakBrowser as the Playwright-compatible browser implementation. The backend name remains `playwright` for compatibility, but the browser instance is launched lazily through CloakBrowser and injected into the search tool:
 
 ```bash
-npm run install:playwright
 WEB_SEARCH_BACKEND=playwright
+CLOAKBROWSER_HEADLESS=true
+CLOAKBROWSER_HUMANIZE=true
 ```
 
-Note: Playwright backend is not supported in connector mode. Use `auto-browser` for automatic fallback.
+Optional CloakBrowser settings include `CLOAKBROWSER_PROXY`, `CLOAKBROWSER_GEOIP`, `CLOAKBROWSER_TIMEZONE`, `CLOAKBROWSER_LOCALE`, and comma-separated `CLOAKBROWSER_ARGS`. The browser process is reused across searches and closed when the API server shuts down.
+
+Note: Playwright/CloakBrowser backend is not supported in connector mode. Use `auto-browser` for automatic fallback in built-in tool mode.
 
 ## GA Compliance
 

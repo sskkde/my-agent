@@ -1,6 +1,6 @@
 import type { ToolDefinition, ToolHandler, ToolExecutionContext, ToolExecutionResult } from '../types.js';
 import type { WebSearchResult, SearchBackend, SearchErrorCode } from '../../search/types.js';
-import type { Browser } from 'playwright';
+import type { Browser } from 'playwright-core';
 import { validateTimeout } from './web-safety.js';
 import { resolveSearchBackend } from '../../search/backend-resolver.js';
 import { normalizeSearXNGResponse } from '../../search/providers/searxng.js';
@@ -27,6 +27,7 @@ export interface WebSearchToolConfig {
   provider?: string;
   fetchImpl?: typeof fetch;
   browser?: Browser;
+  browserProvider?: () => Promise<Browser | undefined>;
 }
 
 const DEFAULT_LIMIT = 5;
@@ -271,19 +272,31 @@ async function fetchWithPlaywright(
   query: string,
   limit: number,
   timeoutMs: number,
-  browser?: Browser
+  browser?: Browser,
+  browserProvider?: () => Promise<Browser | undefined>
 ): Promise<{ success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string }> {
-  if (!browser) {
+  let resolvedBrowser: Browser | undefined;
+  try {
+    resolvedBrowser = browser ?? await browserProvider?.();
+  } catch (error) {
     return {
       success: false,
       errorCode: 'BROWSER_SEARCH_UNAVAILABLE',
-      message: 'Playwright browser not available',
+      message: error instanceof Error ? error.message : 'CloakBrowser browser not available',
+    };
+  }
+
+  if (!resolvedBrowser) {
+    return {
+      success: false,
+      errorCode: 'BROWSER_SEARCH_UNAVAILABLE',
+      message: 'CloakBrowser browser not available',
     };
   }
   
   const browserResult = await searchWithDuckDuckGoBrowser({
     query,
-    browser,
+    browser: resolvedBrowser,
     timeoutMs,
   });
   
@@ -406,7 +419,7 @@ export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefin
         break;
 
       case 'playwright':
-        searchResult = await fetchWithPlaywright(query, limit, timeoutMs, config.browser);
+        searchResult = await fetchWithPlaywright(query, limit, timeoutMs, config.browser, config.browserProvider);
         break;
 
       default:

@@ -1,3 +1,4 @@
+import type { Browser } from 'playwright-core';
 import type { ToolRegistry } from '../types.js';
 import type { ArtifactStore } from '../../storage/artifact-store.js';
 import type { SummaryStore } from '../../storage/summary-store.js';
@@ -40,13 +41,15 @@ export interface BuiltInToolsConfig {
   sessionStore: SessionStore;
   processSessionStore?: ProcessSessionStore;
   enableRuntimeTools?: boolean; // default: true
+  webSearchBrowser?: Browser;
+  webSearchBrowserProvider?: () => Promise<Browser | undefined>;
 }
 
 export function registerBuiltInTools(
   registry: ToolRegistry,
   config: BuiltInToolsConfig
 ): void {
-  const { artifactStore, summaryStore, transcriptStore, planStore, longTermMemoryStore, toolResultStore, sessionStore, processSessionStore, enableRuntimeTools = true } = config;
+  const { artifactStore, summaryStore, transcriptStore, planStore, longTermMemoryStore, toolResultStore, sessionStore, processSessionStore, enableRuntimeTools = true, webSearchBrowser, webSearchBrowserProvider } = config;
 
   registry.register(createArtifactCreateTool(artifactStore));
   registry.register(createArtifactUpdateTool(artifactStore));
@@ -65,7 +68,7 @@ export function registerBuiltInTools(
   registry.register(createSessionListTool(sessionStore));
   registry.register(createSessionHistoryTool(sessionStore, transcriptStore));
   registry.register(createWebFetchTool());
-  registry.register(createWebSearchTool());
+  registry.register(createWebSearchTool({ browser: webSearchBrowser, browserProvider: webSearchBrowserProvider }));
 
   // Register runtime tools if enabled
   if (enableRuntimeTools && processSessionStore) {

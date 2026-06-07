@@ -58,6 +58,12 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
 
   await server.register(compress, { global: true, threshold: 0 });
 
+  if (context?.webSearchBrowserProvider) {
+    server.addHook('onClose', async () => {
+      await context.webSearchBrowserProvider?.closeBrowser();
+    });
+  }
+
   await registerSecurityHeaders(server);
 
   // Register Swagger/OpenAPI documentation

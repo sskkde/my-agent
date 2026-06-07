@@ -83,6 +83,7 @@ import { TemplateLoader } from '../prompt/template-loader.js';
 import { createPromptProjectionResolver } from '../prompt/prompt-projection-resolver.js';
 import { createModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js';
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js';
+import { createCloakBrowserProvider, type CloakBrowserProvider } from '../search/browser/cloakbrowser-launcher.js';
 
 export interface ApiContext {
   gateway: Gateway;
@@ -146,6 +147,7 @@ export interface ApiContext {
   subagentTranscriptStore: SubagentTranscriptStore;
   subagentProviderPreferenceStore: SubagentProviderPreferenceStore;
   auditRecorder: AuditRecorder;
+  webSearchBrowserProvider?: CloakBrowserProvider;
 }
 
 export interface ApiContextOptions {
@@ -160,6 +162,7 @@ export interface ApiContextOptions {
   llmAdapter?: LLMAdapter;
   timelineBroadcaster?: TimelineBroadcaster;
   channelRegistry?: ChannelRegistry;
+  webSearchBrowserProvider?: CloakBrowserProvider;
 }
 
 export interface ApiContextError {
@@ -231,7 +234,10 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     llmAdapter: injectedLlmAdapter,
     timelineBroadcaster: injectedTimelineBroadcaster,
     channelRegistry: injectedChannelRegistry,
+    webSearchBrowserProvider: injectedWebSearchBrowserProvider,
   } = options;
+
+  const webSearchBrowserProvider = injectedWebSearchBrowserProvider ?? createCloakBrowserProvider();
 
   const connection = existingConnection ?? createConnectionManager(dbPath);
 
@@ -469,6 +475,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     longTermMemoryStore,
     toolResultStore,
     sessionStore,
+    webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
   });
 
   // Create tool executor
@@ -740,6 +747,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     subagentTranscriptStore,
     subagentProviderPreferenceStore,
     auditRecorder,
+    webSearchBrowserProvider,
   };
 }
 

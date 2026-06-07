@@ -363,8 +363,8 @@ OPENROUTER_API_KEY=sk-or-xxx
 | `searxng` | 自托管 SearXNG | `SEARXNG_BASE_URL` |
 | `tavily` | Tavily API | `TAVILY_API_KEY` |
 | `remote` | 自定义搜索 API | `WEB_SEARCH_API_URL` + `WEB_SEARCH_API_KEY` |
-| `playwright` | 浏览器抓取 DuckDuckGo | 安装 Playwright |
-| `auto-browser` | 轻量级 → Playwright 回退 | Playwright 已安装 |
+| `playwright` | 通过 CloakBrowser 兼容 Playwright 的浏览器抓取 DuckDuckGo | 已安装 CloakBrowser 浏览器二进制 |
+| `auto-browser` | 轻量级 → CloakBrowser 回退 | 已安装 CloakBrowser 浏览器二进制 |
 | `none` | 禁用 Web 搜索 | 无 |
 
 ---

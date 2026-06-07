@@ -147,25 +147,27 @@ The platform supports multiple web search backends with automatic fallback:
 4. Error: `PROVIDER_NOT_CONFIGURED`
 
 **Browser Fallback (auto-browser mode):**
+
+Browser fallback uses CloakBrowser as the Playwright-compatible browser implementation. Configure it with `CLOAKBROWSER_HEADLESS`, `CLOAKBROWSER_HUMANIZE`, `CLOAKBROWSER_PROXY`, `CLOAKBROWSER_GEOIP`, `CLOAKBROWSER_TIMEZONE`, `CLOAKBROWSER_LOCALE`, and comma-separated `CLOAKBROWSER_ARGS`.
 1. SearXNG → Tavily → Remote API (as above)
-2. Playwright/DuckDuckGo (if Chromium is installed)
+2. CloakBrowser/DuckDuckGo (if the CloakBrowser binary is installed)
 
 **Explicit Backend Selection:**
 - `searxng`: Use only SearXNG
 - `tavily`: Use only Tavily
 - `remote`: Use only legacy remote API
-- `playwright`: Use only browser-based DuckDuckGo
+- `playwright`: Use only CloakBrowser-backed browser-based DuckDuckGo
 - `none`: Disable web search entirely
 
-### Playwright Installation (Optional)
+### CloakBrowser Installation (Optional)
 
-For browser-based search fallback, install Chromium:
+For browser-based search fallback, preinstall the CloakBrowser Chromium binary:
 
 ```bash
-npm run install:playwright
+npm run install:cloakbrowser
 ```
 
-This is only required for `playwright` or `auto-browser` modes. Default `auto` mode does not require Playwright.
+The compatibility alias `npm run install:playwright` runs the same CloakBrowser install step. Default `auto` mode does not require a browser.
 
 ### Configuration Example
 
@@ -253,7 +255,7 @@ The Vite dev server is always bound to `localhost` and cannot be exposed via env
    - SearXNG: `SEARXNG_BASE_URL` must be reachable
    - Tavily: `TAVILY_API_KEY` must be valid
    - Remote: `WEB_SEARCH_API_URL` and `WEB_SEARCH_API_KEY` must be set
-3. For Playwright mode, run `npm run install:playwright`
+3. For browser mode, run `npm run install:cloakbrowser`
 4. Check provider endpoint is accessible: `curl $SEARXNG_BASE_URL/search?q=test`
 5. Verify search LLM is configured via Agent Configuration API
 
