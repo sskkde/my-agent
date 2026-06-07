@@ -3,8 +3,8 @@
  * @module instructions/instruction-hash
  */
 
-import { createHash } from 'node:crypto';
-import type { InstructionBlock } from './instruction-types.js';
+import { createHash } from 'node:crypto'
+import type { InstructionBlock } from './instruction-types.js'
 
 /**
  * Computes a deterministic SHA-256 hash for instruction blocks with tenant isolation.
@@ -21,17 +21,17 @@ import type { InstructionBlock } from './instruction-types.js';
  */
 export function computeInstructionHash(blocks: InstructionBlock[], tenantId: string): string {
   const sortedBlocks = [...blocks].sort((a, b) => {
-    if (a.priority !== b.priority) return a.priority - b.priority;
-    return a.source.localeCompare(b.source);
-  });
+    if (a.priority !== b.priority) return a.priority - b.priority
+    return a.source.localeCompare(b.source)
+  })
 
-  const parts: string[] = [`tenant:${tenantId}`];
+  const parts: string[] = [`tenant:${tenantId}`]
 
   for (const block of sortedBlocks) {
-    parts.push(`source:${block.source}`);
-    parts.push(`content:${block.content}`);
+    parts.push(`source:${block.source}`)
+    parts.push(`content:${block.content}`)
   }
 
-  const combined = parts.join('\n');
-  return createHash('sha256').update(combined, 'utf8').digest('hex');
+  const combined = parts.join('\n')
+  return createHash('sha256').update(combined, 'utf8').digest('hex')
 }

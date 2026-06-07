@@ -10,7 +10,7 @@
   "scripts": {
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration --maxWorkers=1 --minWorkers=1",
+    "test:integration": "vitest run tests/integration --maxWorkers=1",
     "test:e2e": "vitest run tests/e2e",
     "test:p0": "vitest run tests/e2e/full-flow-suite.test.ts --reporter=verbose",
     "test:api": "vitest run tests/integration/api",
@@ -95,6 +95,9 @@
     "prettier": "^3.8.3",
     "tsx": "^4.22.3",
     "typescript": "^5.9.3",
-    "vitest": "^1.6.1"
+    "vitest": "^4.1.8"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
   }
 }

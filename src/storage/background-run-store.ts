@@ -1,53 +1,53 @@
-import type { ConnectionManager } from './connection.js';
-import type { BackgroundSubagentState } from '../shared/states.js';
+import type { ConnectionManager } from './connection.js'
+import type { BackgroundSubagentState } from '../shared/states.js'
 
 export interface BackgroundRun {
-  backgroundRunId: string;
-  subagentRunId?: string;
-  userId: string;
-  sessionId?: string;
-  agentType: string;
-  status: BackgroundSubagentState;
-  launchSource: string;
-  checkpointData?: unknown;
-  recoveryPoint?: unknown;
-  resultData?: unknown;
-  errorMessage?: string;
-  priority?: number;
-  scheduledAt?: string;
-  startedAt?: string;
-  completedAt?: string;
-  expiresAt?: string;
-  retryCount: number;
-  createdAt?: string;
-  updatedAt?: string;
+  backgroundRunId: string
+  subagentRunId?: string
+  userId: string
+  sessionId?: string
+  agentType: string
+  status: BackgroundSubagentState
+  launchSource: string
+  checkpointData?: unknown
+  recoveryPoint?: unknown
+  resultData?: unknown
+  errorMessage?: string
+  priority?: number
+  scheduledAt?: string
+  startedAt?: string
+  completedAt?: string
+  expiresAt?: string
+  retryCount: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface BackgroundRunStore {
-  create(run: Omit<BackgroundRun, 'createdAt' | 'updatedAt' | 'retryCount'> & { retryCount?: number }): void;
-  getById(backgroundRunId: string): BackgroundRun | null;
-  updateStatus(backgroundRunId: string, status: BackgroundSubagentState): void;
-  saveCheckpoint(backgroundRunId: string, checkpoint: unknown): void;
-  saveRecoveryPoint(backgroundRunId: string, recoveryPoint: unknown): void;
-  saveResult(backgroundRunId: string, result: unknown): void;
-  incrementRetryCount(backgroundRunId: string): void;
-  getByUserAndStatus(userId: string, status: BackgroundSubagentState): BackgroundRun[];
-  getBySessionAndStatus(sessionId: string, status: BackgroundSubagentState): BackgroundRun[];
-  getBySubagentRunId(subagentRunId: string): BackgroundRun[];
-  getByLaunchSource(launchSource: string): BackgroundRun[];
-  getByStatus(status: BackgroundSubagentState): BackgroundRun[];
-  getExpiredRuns(): BackgroundRun[];
+  create(run: Omit<BackgroundRun, 'createdAt' | 'updatedAt' | 'retryCount'> & { retryCount?: number }): void
+  getById(backgroundRunId: string): BackgroundRun | null
+  updateStatus(backgroundRunId: string, status: BackgroundSubagentState): void
+  saveCheckpoint(backgroundRunId: string, checkpoint: unknown): void
+  saveRecoveryPoint(backgroundRunId: string, recoveryPoint: unknown): void
+  saveResult(backgroundRunId: string, result: unknown): void
+  incrementRetryCount(backgroundRunId: string): void
+  getByUserAndStatus(userId: string, status: BackgroundSubagentState): BackgroundRun[]
+  getBySessionAndStatus(sessionId: string, status: BackgroundSubagentState): BackgroundRun[]
+  getBySubagentRunId(subagentRunId: string): BackgroundRun[]
+  getByLaunchSource(launchSource: string): BackgroundRun[]
+  getByStatus(status: BackgroundSubagentState): BackgroundRun[]
+  getExpiredRuns(): BackgroundRun[]
 }
 
 class BackgroundRunStoreImpl implements BackgroundRunStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   create(run: Omit<BackgroundRun, 'createdAt' | 'updatedAt' | 'retryCount'> & { retryCount?: number }): void {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     this.connection.exec(
       `INSERT INTO background_runs (
         background_run_id, subagent_run_id, user_id, session_id, agent_type,
@@ -75,286 +75,273 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
         run.retryCount ?? 0,
         now,
         now,
-      ]
-    );
+      ],
+    )
   }
 
   getById(backgroundRunId: string): BackgroundRun | null {
     const results = this.connection.query<{
-      background_run_id: string;
-      subagent_run_id: string | null;
-      user_id: string;
-      session_id: string | null;
-      agent_type: string;
-      status: string;
-      launch_source: string;
-      checkpoint_data: string | null;
-      recovery_point: string | null;
-      result_data: string | null;
-      error_message: string | null;
-      priority: number;
-      scheduled_at: string | null;
-      started_at: string | null;
-      completed_at: string | null;
-      expires_at: string | null;
-      retry_count: number;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT * FROM background_runs WHERE background_run_id = ?`,
-      [backgroundRunId]
-    );
+      background_run_id: string
+      subagent_run_id: string | null
+      user_id: string
+      session_id: string | null
+      agent_type: string
+      status: string
+      launch_source: string
+      checkpoint_data: string | null
+      recovery_point: string | null
+      result_data: string | null
+      error_message: string | null
+      priority: number
+      scheduled_at: string | null
+      started_at: string | null
+      completed_at: string | null
+      expires_at: string | null
+      retry_count: number
+      created_at: string
+      updated_at: string
+    }>(`SELECT * FROM background_runs WHERE background_run_id = ?`, [backgroundRunId])
 
     if (results.length === 0) {
-      return null;
+      return null
     }
 
-    return this.mapRowToBackgroundRun(results[0]);
+    return this.mapRowToBackgroundRun(results[0])
   }
 
   updateStatus(backgroundRunId: string, status: BackgroundSubagentState): void {
-    const now = new Date().toISOString();
-    this.connection.exec(
-      `UPDATE background_runs SET status = ?, updated_at = ? WHERE background_run_id = ?`,
-      [status, now, backgroundRunId]
-    );
+    const now = new Date().toISOString()
+    this.connection.exec(`UPDATE background_runs SET status = ?, updated_at = ? WHERE background_run_id = ?`, [
+      status,
+      now,
+      backgroundRunId,
+    ])
   }
 
   saveCheckpoint(backgroundRunId: string, checkpoint: unknown): void {
-    const now = new Date().toISOString();
-    const recoveryPoint = { checkpointSavedAt: now, data: checkpoint };
+    const now = new Date().toISOString()
+    const recoveryPoint = { checkpointSavedAt: now, data: checkpoint }
     this.connection.exec(
       `UPDATE background_runs SET checkpoint_data = ?, recovery_point = ?, updated_at = ? WHERE background_run_id = ?`,
-      [JSON.stringify(checkpoint), JSON.stringify(recoveryPoint), now, backgroundRunId]
-    );
+      [JSON.stringify(checkpoint), JSON.stringify(recoveryPoint), now, backgroundRunId],
+    )
   }
 
   saveRecoveryPoint(backgroundRunId: string, recoveryPoint: unknown): void {
-    const now = new Date().toISOString();
-    this.connection.exec(
-      `UPDATE background_runs SET recovery_point = ?, updated_at = ? WHERE background_run_id = ?`,
-      [JSON.stringify(recoveryPoint), now, backgroundRunId]
-    );
+    const now = new Date().toISOString()
+    this.connection.exec(`UPDATE background_runs SET recovery_point = ?, updated_at = ? WHERE background_run_id = ?`, [
+      JSON.stringify(recoveryPoint),
+      now,
+      backgroundRunId,
+    ])
   }
 
   saveResult(backgroundRunId: string, result: unknown): void {
-    const now = new Date().toISOString();
-    const completedAt = new Date().toISOString();
+    const now = new Date().toISOString()
+    const completedAt = new Date().toISOString()
     this.connection.exec(
       `UPDATE background_runs 
        SET result_data = ?, completed_at = ?, updated_at = ? 
        WHERE background_run_id = ?`,
-      [JSON.stringify(result), completedAt, now, backgroundRunId]
-    );
+      [JSON.stringify(result), completedAt, now, backgroundRunId],
+    )
   }
 
   incrementRetryCount(backgroundRunId: string): void {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     this.connection.exec(
       `UPDATE background_runs 
        SET retry_count = retry_count + 1, updated_at = ? 
        WHERE background_run_id = ?`,
-      [now, backgroundRunId]
-    );
+      [now, backgroundRunId],
+    )
   }
 
   getByUserAndStatus(userId: string, status: BackgroundSubagentState): BackgroundRun[] {
     const results = this.connection.query<{
-      background_run_id: string;
-      subagent_run_id: string | null;
-      user_id: string;
-      session_id: string | null;
-      agent_type: string;
-      status: string;
-      launch_source: string;
-      checkpoint_data: string | null;
-      recovery_point: string | null;
-      result_data: string | null;
-      error_message: string | null;
-      priority: number;
-      scheduled_at: string | null;
-      started_at: string | null;
-      completed_at: string | null;
-      expires_at: string | null;
-      retry_count: number;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT * FROM background_runs WHERE user_id = ? AND status = ? ORDER BY updated_at DESC`,
-      [userId, status]
-    );
+      background_run_id: string
+      subagent_run_id: string | null
+      user_id: string
+      session_id: string | null
+      agent_type: string
+      status: string
+      launch_source: string
+      checkpoint_data: string | null
+      recovery_point: string | null
+      result_data: string | null
+      error_message: string | null
+      priority: number
+      scheduled_at: string | null
+      started_at: string | null
+      completed_at: string | null
+      expires_at: string | null
+      retry_count: number
+      created_at: string
+      updated_at: string
+    }>(`SELECT * FROM background_runs WHERE user_id = ? AND status = ? ORDER BY updated_at DESC`, [userId, status])
 
-    return results.map(r => this.mapRowToBackgroundRun(r));
+    return results.map((r) => this.mapRowToBackgroundRun(r))
   }
 
   getBySessionAndStatus(sessionId: string, status: BackgroundSubagentState): BackgroundRun[] {
     const results = this.connection.query<{
-      background_run_id: string;
-      subagent_run_id: string | null;
-      user_id: string;
-      session_id: string | null;
-      agent_type: string;
-      status: string;
-      launch_source: string;
-      checkpoint_data: string | null;
-      recovery_point: string | null;
-      result_data: string | null;
-      error_message: string | null;
-      priority: number;
-      scheduled_at: string | null;
-      started_at: string | null;
-      completed_at: string | null;
-      expires_at: string | null;
-      retry_count: number;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT * FROM background_runs WHERE session_id = ? AND status = ? ORDER BY updated_at DESC`,
-      [sessionId, status]
-    );
+      background_run_id: string
+      subagent_run_id: string | null
+      user_id: string
+      session_id: string | null
+      agent_type: string
+      status: string
+      launch_source: string
+      checkpoint_data: string | null
+      recovery_point: string | null
+      result_data: string | null
+      error_message: string | null
+      priority: number
+      scheduled_at: string | null
+      started_at: string | null
+      completed_at: string | null
+      expires_at: string | null
+      retry_count: number
+      created_at: string
+      updated_at: string
+    }>(`SELECT * FROM background_runs WHERE session_id = ? AND status = ? ORDER BY updated_at DESC`, [
+      sessionId,
+      status,
+    ])
 
-    return results.map(r => this.mapRowToBackgroundRun(r));
+    return results.map((r) => this.mapRowToBackgroundRun(r))
   }
 
   getBySubagentRunId(subagentRunId: string): BackgroundRun[] {
     const results = this.connection.query<{
-      background_run_id: string;
-      subagent_run_id: string | null;
-      user_id: string;
-      session_id: string | null;
-      agent_type: string;
-      status: string;
-      launch_source: string;
-      checkpoint_data: string | null;
-      recovery_point: string | null;
-      result_data: string | null;
-      error_message: string | null;
-      priority: number;
-      scheduled_at: string | null;
-      started_at: string | null;
-      completed_at: string | null;
-      expires_at: string | null;
-      retry_count: number;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT * FROM background_runs WHERE subagent_run_id = ? ORDER BY updated_at DESC`,
-      [subagentRunId]
-    );
+      background_run_id: string
+      subagent_run_id: string | null
+      user_id: string
+      session_id: string | null
+      agent_type: string
+      status: string
+      launch_source: string
+      checkpoint_data: string | null
+      recovery_point: string | null
+      result_data: string | null
+      error_message: string | null
+      priority: number
+      scheduled_at: string | null
+      started_at: string | null
+      completed_at: string | null
+      expires_at: string | null
+      retry_count: number
+      created_at: string
+      updated_at: string
+    }>(`SELECT * FROM background_runs WHERE subagent_run_id = ? ORDER BY updated_at DESC`, [subagentRunId])
 
-    return results.map(r => this.mapRowToBackgroundRun(r));
+    return results.map((r) => this.mapRowToBackgroundRun(r))
   }
 
   getByLaunchSource(launchSource: string): BackgroundRun[] {
     const results = this.connection.query<{
-      background_run_id: string;
-      subagent_run_id: string | null;
-      user_id: string;
-      session_id: string | null;
-      agent_type: string;
-      status: string;
-      launch_source: string;
-      checkpoint_data: string | null;
-      recovery_point: string | null;
-      result_data: string | null;
-      error_message: string | null;
-      priority: number;
-      scheduled_at: string | null;
-      started_at: string | null;
-      completed_at: string | null;
-      expires_at: string | null;
-      retry_count: number;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT * FROM background_runs WHERE launch_source = ? ORDER BY updated_at DESC`,
-      [launchSource]
-    );
+      background_run_id: string
+      subagent_run_id: string | null
+      user_id: string
+      session_id: string | null
+      agent_type: string
+      status: string
+      launch_source: string
+      checkpoint_data: string | null
+      recovery_point: string | null
+      result_data: string | null
+      error_message: string | null
+      priority: number
+      scheduled_at: string | null
+      started_at: string | null
+      completed_at: string | null
+      expires_at: string | null
+      retry_count: number
+      created_at: string
+      updated_at: string
+    }>(`SELECT * FROM background_runs WHERE launch_source = ? ORDER BY updated_at DESC`, [launchSource])
 
-    return results.map(r => this.mapRowToBackgroundRun(r));
+    return results.map((r) => this.mapRowToBackgroundRun(r))
   }
 
   getByStatus(status: BackgroundSubagentState): BackgroundRun[] {
     const results = this.connection.query<{
-      background_run_id: string;
-      subagent_run_id: string | null;
-      user_id: string;
-      session_id: string | null;
-      agent_type: string;
-      status: string;
-      launch_source: string;
-      checkpoint_data: string | null;
-      recovery_point: string | null;
-      result_data: string | null;
-      error_message: string | null;
-      priority: number;
-      scheduled_at: string | null;
-      started_at: string | null;
-      completed_at: string | null;
-      expires_at: string | null;
-      retry_count: number;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `SELECT * FROM background_runs WHERE status = ? ORDER BY updated_at DESC`,
-      [status]
-    );
+      background_run_id: string
+      subagent_run_id: string | null
+      user_id: string
+      session_id: string | null
+      agent_type: string
+      status: string
+      launch_source: string
+      checkpoint_data: string | null
+      recovery_point: string | null
+      result_data: string | null
+      error_message: string | null
+      priority: number
+      scheduled_at: string | null
+      started_at: string | null
+      completed_at: string | null
+      expires_at: string | null
+      retry_count: number
+      created_at: string
+      updated_at: string
+    }>(`SELECT * FROM background_runs WHERE status = ? ORDER BY updated_at DESC`, [status])
 
-    return results.map(r => this.mapRowToBackgroundRun(r));
+    return results.map((r) => this.mapRowToBackgroundRun(r))
   }
 
   getExpiredRuns(): BackgroundRun[] {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     const results = this.connection.query<{
-      background_run_id: string;
-      subagent_run_id: string | null;
-      user_id: string;
-      session_id: string | null;
-      agent_type: string;
-      status: string;
-      launch_source: string;
-      checkpoint_data: string | null;
-      recovery_point: string | null;
-      result_data: string | null;
-      error_message: string | null;
-      priority: number;
-      scheduled_at: string | null;
-      started_at: string | null;
-      completed_at: string | null;
-      expires_at: string | null;
-      retry_count: number;
-      created_at: string;
-      updated_at: string;
+      background_run_id: string
+      subagent_run_id: string | null
+      user_id: string
+      session_id: string | null
+      agent_type: string
+      status: string
+      launch_source: string
+      checkpoint_data: string | null
+      recovery_point: string | null
+      result_data: string | null
+      error_message: string | null
+      priority: number
+      scheduled_at: string | null
+      started_at: string | null
+      completed_at: string | null
+      expires_at: string | null
+      retry_count: number
+      created_at: string
+      updated_at: string
     }>(
       `SELECT * FROM background_runs 
        WHERE expires_at IS NOT NULL AND expires_at < ? 
        ORDER BY expires_at ASC`,
-      [now]
-    );
+      [now],
+    )
 
-    return results.map(r => this.mapRowToBackgroundRun(r));
+    return results.map((r) => this.mapRowToBackgroundRun(r))
   }
 
   private mapRowToBackgroundRun(row: {
-    background_run_id: string;
-    subagent_run_id: string | null;
-    user_id: string;
-    session_id: string | null;
-    agent_type: string;
-    status: string;
-    launch_source: string;
-    checkpoint_data: string | null;
-    recovery_point: string | null;
-    result_data: string | null;
-    error_message: string | null;
-    priority: number;
-    scheduled_at: string | null;
-    started_at: string | null;
-    completed_at: string | null;
-    expires_at: string | null;
-    retry_count: number;
-    created_at: string;
-    updated_at: string;
+    background_run_id: string
+    subagent_run_id: string | null
+    user_id: string
+    session_id: string | null
+    agent_type: string
+    status: string
+    launch_source: string
+    checkpoint_data: string | null
+    recovery_point: string | null
+    result_data: string | null
+    error_message: string | null
+    priority: number
+    scheduled_at: string | null
+    started_at: string | null
+    completed_at: string | null
+    expires_at: string | null
+    retry_count: number
+    created_at: string
+    updated_at: string
   }): BackgroundRun {
     return {
       backgroundRunId: row.background_run_id,
@@ -376,10 +363,10 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       retryCount: row.retry_count,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-    };
+    }
   }
 }
 
 export function createBackgroundRunStore(connection: ConnectionManager): BackgroundRunStore {
-  return new BackgroundRunStoreImpl(connection);
+  return new BackgroundRunStoreImpl(connection)
 }

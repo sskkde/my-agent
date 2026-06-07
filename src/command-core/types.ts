@@ -27,55 +27,48 @@ export type CommandName =
   | 'provider'
   | 'logout'
   | 'exit'
-  | 'quit';
+  | 'quit'
 
-export type CommandCategory =
-  | 'help'
-  | 'status'
-  | 'session'
-  | 'data'
-  | 'preference'
-  | 'provider'
-  | 'auth';
+export type CommandCategory = 'help' | 'status' | 'session' | 'data' | 'preference' | 'provider' | 'auth'
 
-export type CommandRisk = 'safe' | 'mutation';
+export type CommandRisk = 'safe' | 'mutation'
 
 export interface CommandSubcommand {
-  description: string;
-  usage?: string;
-  risk: CommandRisk;
+  description: string
+  usage?: string
+  risk: CommandRisk
 }
 
 export interface CommandDefinition {
-  name: CommandName;
-  aliases?: string[];
-  description: string;
-  usage?: string;
-  category: CommandCategory;
-  risk: CommandRisk;
-  requiresAuth: boolean;
-  backendMutation: boolean;
-  subcommands?: Record<string, CommandSubcommand>;
+  name: CommandName
+  aliases?: string[]
+  description: string
+  usage?: string
+  category: CommandCategory
+  risk: CommandRisk
+  requiresAuth: boolean
+  backendMutation: boolean
+  subcommands?: Record<string, CommandSubcommand>
 }
 
 export interface ParsedCommand {
-  command: string;
-  args: string[];
-  rawInput: string;
-  isEscaped: boolean;
+  command: string
+  args: string[]
+  rawInput: string
+  isEscaped: boolean
 }
 
 export interface CommandResult {
-  success: boolean;
-  output?: string;
-  error?: string;
-  commandName: string;
+  success: boolean
+  output?: string
+  error?: string
+  commandName: string
 }
 
-export type CommandOutputKind = 'text' | 'json' | 'error' | 'success';
+export type CommandOutputKind = 'text' | 'json' | 'error' | 'success'
 
 export interface CommandOutput {
-  kind: CommandOutputKind;
-  content: string;
-  metadata?: Record<string, unknown>;
+  kind: CommandOutputKind
+  content: string
+  metadata?: Record<string, unknown>
 }

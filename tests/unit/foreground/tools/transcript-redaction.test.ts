@@ -3,9 +3,12 @@
  * Redaction coverage tests for transcript persistence
  */
 
-import { describe, it, expect } from 'vitest';
-import { mapKernelResultToTranscript, hasHiddenPromptContent } from '../../../../src/foreground/tools/transcript-redaction-mapper.js';
-import type { KernelRunResult } from '../../../../src/kernel/types.js';
+import { describe, it, expect } from 'vitest'
+import {
+  mapKernelResultToTranscript,
+  hasHiddenPromptContent,
+} from '../../../../src/foreground/tools/transcript-redaction-mapper.js'
+import type { KernelRunResult } from '../../../../src/kernel/types.js'
 
 describe('Transcript Redaction Mapper', () => {
   describe('Sensitive tool args redacted', () => {
@@ -27,24 +30,24 @@ describe('Transcript Redaction Mapper', () => {
           },
         ],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result).toBeDefined();
-      expect(result?.toolCallSummaries).toHaveLength(1);
-      expect(result?.toolCallSummaries?.[0].toolCallId).toBe('tc-1');
-      expect(result?.toolCallSummaries?.[0].toolName).toBe('authenticate');
-      expect(result?.toolCallSummaries?.[0].status).toBe('completed');
+      expect(result).toBeDefined()
+      expect(result?.toolCallSummaries).toHaveLength(1)
+      expect(result?.toolCallSummaries?.[0].toolCallId).toBe('tc-1')
+      expect(result?.toolCallSummaries?.[0].toolName).toBe('authenticate')
+      expect(result?.toolCallSummaries?.[0].status).toBe('completed')
 
       // SAFETY: Verify raw params are NOT included
-      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>;
-      expect(summary.params).toBeUndefined();
-      expect(summary.password).toBeUndefined();
-      expect(summary.apiKey).toBeUndefined();
-      expect(summary.token).toBeUndefined();
-      expect(summary.secret).toBeUndefined();
-    });
+      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>
+      expect(summary.params).toBeUndefined()
+      expect(summary.password).toBeUndefined()
+      expect(summary.apiKey).toBeUndefined()
+      expect(summary.token).toBeUndefined()
+      expect(summary.secret).toBeUndefined()
+    })
 
     it('raw tool params are never persisted', () => {
       const kernelResult: KernelRunResult = {
@@ -61,20 +64,20 @@ describe('Transcript Redaction Mapper', () => {
           },
         ],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result).toBeDefined();
-      expect(result?.toolCallSummaries).toHaveLength(1);
+      expect(result).toBeDefined()
+      expect(result?.toolCallSummaries).toHaveLength(1)
 
       // SAFETY: Even non-sensitive params should not be persisted
-      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>;
-      expect(summary.params).toBeUndefined();
-      expect(summary.path).toBeUndefined();
-      expect(summary.encoding).toBeUndefined();
-    });
-  });
+      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>
+      expect(summary.params).toBeUndefined()
+      expect(summary.path).toBeUndefined()
+      expect(summary.encoding).toBeUndefined()
+    })
+  })
 
   describe('Hidden prompt not persisted', () => {
     it('kernel result with private reasoning does not leak', () => {
@@ -99,25 +102,25 @@ describe('Transcript Redaction Mapper', () => {
             },
           },
         ],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
       // SAFETY: Transcript is not persisted in runtimeSummary
-      expect(result).toBeDefined();
-      expect(result?.toolCallSummaries).toHaveLength(1);
-      expect(result?.toolCallSummaries?.[0].toolName).toBe('search');
+      expect(result).toBeDefined()
+      expect(result?.toolCallSummaries).toHaveLength(1)
+      expect(result?.toolCallSummaries?.[0].toolName).toBe('search')
 
       // SAFETY: No transcript content leaked
-      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>;
-      expect(summary.transcript).toBeUndefined();
-      expect(summary.hiddenPrompt).toBeUndefined();
-      expect(summary.content).toBeUndefined();
+      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>
+      expect(summary.transcript).toBeUndefined()
+      expect(summary.hiddenPrompt).toBeUndefined()
+      expect(summary.content).toBeUndefined()
 
       // SAFETY: hasHiddenPromptContent check returns false (we don't leak by design)
-      expect(hasHiddenPromptContent(kernelResult)).toBe(false);
-    });
-  });
+      expect(hasHiddenPromptContent(kernelResult)).toBe(false)
+    })
+  })
 
   describe('Tool call summary includes ID, name, status', () => {
     it('no raw params/results in summary', () => {
@@ -137,37 +140,37 @@ describe('Transcript Redaction Mapper', () => {
           },
         ],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result).toBeDefined();
-      expect(result?.toolCallSummaries).toHaveLength(2);
+      expect(result).toBeDefined()
+      expect(result?.toolCallSummaries).toHaveLength(2)
 
       // First tool call
-      const summary1 = result?.toolCallSummaries?.[0];
-      expect(summary1?.toolCallId).toBe('tc-4');
-      expect(summary1?.toolName).toBe('read_file');
-      expect(summary1?.status).toBe('completed');
-      expect(summary1?.summary).toBe('Tool: read_file');
-      expect(summary1?.resultRef).toBeUndefined();
+      const summary1 = result?.toolCallSummaries?.[0]
+      expect(summary1?.toolCallId).toBe('tc-4')
+      expect(summary1?.toolName).toBe('read_file')
+      expect(summary1?.status).toBe('completed')
+      expect(summary1?.summary).toBe('Tool: read_file')
+      expect(summary1?.resultRef).toBeUndefined()
 
       // Second tool call
-      const summary2 = result?.toolCallSummaries?.[1];
-      expect(summary2?.toolCallId).toBe('tc-5');
-      expect(summary2?.toolName).toBe('write_file');
-      expect(summary2?.status).toBe('completed');
-      expect(summary2?.summary).toBe('Tool: write_file');
+      const summary2 = result?.toolCallSummaries?.[1]
+      expect(summary2?.toolCallId).toBe('tc-5')
+      expect(summary2?.toolName).toBe('write_file')
+      expect(summary2?.status).toBe('completed')
+      expect(summary2?.summary).toBe('Tool: write_file')
 
       // SAFETY: Verify no raw data
-      const rawSummary1 = summary1 as unknown as Record<string, unknown>;
-      expect(rawSummary1.params).toBeUndefined();
-      expect(rawSummary1.result).toBeUndefined();
+      const rawSummary1 = summary1 as unknown as Record<string, unknown>
+      expect(rawSummary1.params).toBeUndefined()
+      expect(rawSummary1.result).toBeUndefined()
 
-      const rawSummary2 = summary2 as unknown as Record<string, unknown>;
-      expect(rawSummary2.params).toBeUndefined();
-      expect(rawSummary2.result).toBeUndefined();
-    });
+      const rawSummary2 = summary2 as unknown as Record<string, unknown>
+      expect(rawSummary2.params).toBeUndefined()
+      expect(rawSummary2.result).toBeUndefined()
+    })
 
     it('status is failed when kernel fails', () => {
       const kernelResult: KernelRunResult = {
@@ -185,18 +188,18 @@ describe('Transcript Redaction Mapper', () => {
           code: 'EXECUTION_ERROR',
           message: 'Tool execution failed',
         },
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result).toBeDefined();
-      expect(result?.toolCallSummaries).toHaveLength(1);
-      expect(result?.toolCallSummaries?.[0].status).toBe('failed');
+      expect(result).toBeDefined()
+      expect(result?.toolCallSummaries).toHaveLength(1)
+      expect(result?.toolCallSummaries?.[0].status).toBe('failed')
 
       // SAFETY: Error details not leaked
-      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>;
-      expect(summary.error).toBeUndefined();
-    });
+      const summary = result?.toolCallSummaries?.[0] as unknown as Record<string, unknown>
+      expect(summary.error).toBeUndefined()
+    })
 
     it('status is failed when kernel times out', () => {
       const kernelResult: KernelRunResult = {
@@ -210,12 +213,12 @@ describe('Transcript Redaction Mapper', () => {
           },
         ],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result?.toolCallSummaries?.[0].status).toBe('failed');
-    });
+      expect(result?.toolCallSummaries?.[0].status).toBe('failed')
+    })
 
     it('status is completed when max iterations reached', () => {
       const kernelResult: KernelRunResult = {
@@ -229,14 +232,14 @@ describe('Transcript Redaction Mapper', () => {
           },
         ],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
       // Tools that executed are still completed
-      expect(result?.toolCallSummaries?.[0].status).toBe('completed');
-    });
-  });
+      expect(result?.toolCallSummaries?.[0].status).toBe('completed')
+    })
+  })
 
   describe('Empty tool calls returns undefined', () => {
     it('returns undefined when no tool calls', () => {
@@ -245,18 +248,18 @@ describe('Transcript Redaction Mapper', () => {
         iterationsUsed: 1,
         toolCalls: [],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result).toBeUndefined();
-    });
+      expect(result).toBeUndefined()
+    })
 
     it('returns undefined when kernelResult is undefined', () => {
-      const result = mapKernelResultToTranscript(undefined);
+      const result = mapKernelResultToTranscript(undefined)
 
-      expect(result).toBeUndefined();
-    });
+      expect(result).toBeUndefined()
+    })
 
     it('returns undefined when toolCalls is undefined', () => {
       const kernelResult = {
@@ -264,13 +267,13 @@ describe('Transcript Redaction Mapper', () => {
         iterationsUsed: 1,
         toolCalls: undefined as unknown as never[],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result).toBeUndefined();
-    });
-  });
+      expect(result).toBeUndefined()
+    })
+  })
 
   describe('Multiple tool calls', () => {
     it('handles multiple tool calls with mixed parameters', () => {
@@ -295,23 +298,23 @@ describe('Transcript Redaction Mapper', () => {
           },
         ],
         transcript: [],
-      };
+      }
 
-      const result = mapKernelResultToTranscript(kernelResult);
+      const result = mapKernelResultToTranscript(kernelResult)
 
-      expect(result).toBeDefined();
-      expect(result?.toolCallSummaries).toHaveLength(3);
+      expect(result).toBeDefined()
+      expect(result?.toolCallSummaries).toHaveLength(3)
 
       // All summaries have safe structure
       result?.toolCallSummaries?.forEach((summary, index) => {
-        expect(summary.toolCallId).toBe(`tc-${['a', 'b', 'c'][index]}`);
-        expect(summary.status).toBe('completed');
-        expect(summary.summary).toContain('Tool:');
+        expect(summary.toolCallId).toBe(`tc-${['a', 'b', 'c'][index]}`)
+        expect(summary.status).toBe('completed')
+        expect(summary.summary).toContain('Tool:')
 
         // SAFETY: No raw params
-        const raw = summary as unknown as Record<string, unknown>;
-        expect(raw.params).toBeUndefined();
-      });
-    });
-  });
-});
+        const raw = summary as unknown as Record<string, unknown>
+        expect(raw.params).toBeUndefined()
+      })
+    })
+  })
+})

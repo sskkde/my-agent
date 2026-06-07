@@ -1,99 +1,123 @@
-import { describe, it, expect } from 'vitest';
-import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../src/prompt/prompt-template-registry.js';
-import { TemplateLoader } from '../../../src/prompt/template-loader.js';
-import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
-import type { ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js';
+import { describe, it, expect } from 'vitest'
+import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../src/prompt/prompt-template-registry.js'
+import { TemplateLoader } from '../../../src/prompt/template-loader.js'
+import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
+import type { ModelInputBuildInput } from '../../../src/kernel/model-input/model-input-types.js'
 
 function makeTestTemplates(): Map<string, PromptTemplateRecord> {
   return new Map([
-    ['platform:base', {
-      id: 'platform:base',
-      version: '2026-05-23',
-      path: 'platform/base.md',
-      agentKind: '*',
-      providerFamily: '*',
-      layer: 1,
-      content: 'Platform Base for {agentKind} agent with {providerFamily} provider.',
-      description: 'Test platform base',
-    }],
-    ['platform:safety', {
-      id: 'platform:safety',
-      version: '2026-05-23',
-      path: 'platform/safety.md',
-      agentKind: '*',
-      providerFamily: '*',
-      layer: 1,
-      content: 'Safety rules for {agentKind}.',
-      description: 'Test safety',
-    }],
-    ['provider:openai', {
-      id: 'provider:openai',
-      version: '2026-05-23',
-      path: 'provider/openai.md',
-      agentKind: '*',
-      providerFamily: 'openai',
-      layer: 2,
-      content: 'OpenAI provider config for {agentKind}.',
-      description: 'Test openai provider',
-    }],
-    ['provider:deepseek', {
-      id: 'provider:deepseek',
-      version: '2026-05-23',
-      path: 'provider/deepseek.md',
-      agentKind: '*',
-      providerFamily: 'deepseek',
-      layer: 2,
-      content: 'DeepSeek provider config for {agentKind}.',
-      description: 'Test deepseek provider',
-    }],
-    ['agents:foreground', {
-      id: 'agents:foreground',
-      version: '2026-05-23',
-      path: 'agents/foreground.md',
-      agentKind: 'foreground',
-      providerFamily: '*',
-      layer: 3,
-      content: 'Foreground agent instructions for {agentKind}.',
-      description: 'Test foreground agent',
-    }],
-    ['agents:kernel', {
-      id: 'agents:kernel',
-      version: '2026-05-23',
-      path: 'agents/kernel.md',
-      agentKind: 'kernel',
-      providerFamily: '*',
-      layer: 3,
-      content: 'Kernel agent instructions for {agentKind}.',
-      description: 'Test kernel agent',
-    }],
-    ['output:foreground.schema', {
-      id: 'output:foreground.schema',
-      version: '2026-05-23',
-      path: 'output/foreground.schema.md',
-      agentKind: 'foreground',
-      providerFamily: '*',
-      layer: 4,
-      content: 'Output schema for {agentKind} with {providerFamily}.',
-      description: 'Test foreground schema',
-    }],
-    ['output:planner.schema', {
-      id: 'output:planner.schema',
-      version: '2026-05-23',
-      path: 'output/planner.schema.md',
-      agentKind: 'planner',
-      providerFamily: '*',
-      layer: 4,
-      content: 'Planner output schema for {agentKind}.',
-      description: 'Test planner schema',
-    }],
-  ]);
+    [
+      'platform:base',
+      {
+        id: 'platform:base',
+        version: '2026-05-23',
+        path: 'platform/base.md',
+        agentKind: '*',
+        providerFamily: '*',
+        layer: 1,
+        content: 'Platform Base for {agentKind} agent with {providerFamily} provider.',
+        description: 'Test platform base',
+      },
+    ],
+    [
+      'platform:safety',
+      {
+        id: 'platform:safety',
+        version: '2026-05-23',
+        path: 'platform/safety.md',
+        agentKind: '*',
+        providerFamily: '*',
+        layer: 1,
+        content: 'Safety rules for {agentKind}.',
+        description: 'Test safety',
+      },
+    ],
+    [
+      'provider:openai',
+      {
+        id: 'provider:openai',
+        version: '2026-05-23',
+        path: 'provider/openai.md',
+        agentKind: '*',
+        providerFamily: 'openai',
+        layer: 2,
+        content: 'OpenAI provider config for {agentKind}.',
+        description: 'Test openai provider',
+      },
+    ],
+    [
+      'provider:deepseek',
+      {
+        id: 'provider:deepseek',
+        version: '2026-05-23',
+        path: 'provider/deepseek.md',
+        agentKind: '*',
+        providerFamily: 'deepseek',
+        layer: 2,
+        content: 'DeepSeek provider config for {agentKind}.',
+        description: 'Test deepseek provider',
+      },
+    ],
+    [
+      'agents:foreground',
+      {
+        id: 'agents:foreground',
+        version: '2026-05-23',
+        path: 'agents/foreground.md',
+        agentKind: 'foreground',
+        providerFamily: '*',
+        layer: 3,
+        content: 'Foreground agent instructions for {agentKind}.',
+        description: 'Test foreground agent',
+      },
+    ],
+    [
+      'agents:kernel',
+      {
+        id: 'agents:kernel',
+        version: '2026-05-23',
+        path: 'agents/kernel.md',
+        agentKind: 'kernel',
+        providerFamily: '*',
+        layer: 3,
+        content: 'Kernel agent instructions for {agentKind}.',
+        description: 'Test kernel agent',
+      },
+    ],
+    [
+      'output:foreground.schema',
+      {
+        id: 'output:foreground.schema',
+        version: '2026-05-23',
+        path: 'output/foreground.schema.md',
+        agentKind: 'foreground',
+        providerFamily: '*',
+        layer: 4,
+        content: 'Output schema for {agentKind} with {providerFamily}.',
+        description: 'Test foreground schema',
+      },
+    ],
+    [
+      'output:planner.schema',
+      {
+        id: 'output:planner.schema',
+        version: '2026-05-23',
+        path: 'output/planner.schema.md',
+        agentKind: 'planner',
+        providerFamily: '*',
+        layer: 4,
+        content: 'Planner output schema for {agentKind}.',
+        description: 'Test planner schema',
+      },
+    ],
+  ])
 }
 
 function makeBuilder(): ModelInputBuilder {
-  const templates = makeTestTemplates();
-  const registry = new PromptTemplateRegistry(templates, '/nonexistent');
-  const loader = new TemplateLoader('/nonexistent');
-  return new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader });
+  const templates = makeTestTemplates()
+  const registry = new PromptTemplateRegistry(templates, '/nonexistent')
+  const loader = new TemplateLoader('/nonexistent')
+  return new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
 }
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
@@ -102,62 +126,68 @@ function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelI
     agentKind: 'foreground',
     providerFamily: 'openai',
     ...overrides,
-  };
+  }
 }
 
 describe('Tool Escalation Security Tests', () => {
   describe('denied tools never appear in prompt', () => {
     it('tool with exposure denied is excluded from toolIds', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
       const allowedProjection = {
         toolIds: ['file_read', 'web_search', 'memory_retrieve'],
-      };
+      }
 
       const deniedProjection = {
         toolIds: ['file_read', 'web_search'],
-      };
+      }
 
-      const resultAllowed = await builder.build(makeMinimalInput({
-        toolProjection: allowedProjection,
-      }));
+      const resultAllowed = await builder.build(
+        makeMinimalInput({
+          toolProjection: allowedProjection,
+        }),
+      )
 
-      const resultDenied = await builder.build(makeMinimalInput({
-        toolProjection: deniedProjection,
-      }));
+      const resultDenied = await builder.build(
+        makeMinimalInput({
+          toolProjection: deniedProjection,
+        }),
+      )
 
-      expect(resultAllowed.segments.toolPlane).toContain('memory_retrieve');
-      expect(resultDenied.segments.toolPlane).not.toContain('memory_retrieve');
-    });
+      expect(resultAllowed.segments.toolPlane).toContain('memory_retrieve')
+      expect(resultDenied.segments.toolPlane).not.toContain('memory_retrieve')
+    })
 
     it('tool with exposure denied never appears in tool descriptions', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const sensitiveToolDescription = 'Execute arbitrary shell commands on the server';
+      const sensitiveToolDescription = 'Execute arbitrary shell commands on the server'
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['file_read', 'web_search'],
-          tools: [
-            {
-              type: 'function' as const,
-              function: {
-                name: 'file_read',
-                description: 'Read a file from disk',
-                parameters: { type: 'object', properties: { path: { type: 'string' } } },
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['file_read', 'web_search'],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'file_read',
+                  description: 'Read a file from disk',
+                  parameters: { type: 'object', properties: { path: { type: 'string' } } },
+                },
               },
-            },
-          ],
-        },
-      }));
+            ],
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('file_read');
-      expect(result.segments.toolPlane).not.toContain(sensitiveToolDescription);
-      expect(result.segments.toolPlane).not.toContain('shell');
-    });
+      expect(result.segments.toolPlane).toContain('file_read')
+      expect(result.segments.toolPlane).not.toContain(sensitiveToolDescription)
+      expect(result.segments.toolPlane).not.toContain('shell')
+    })
 
     it('removing a tool from projection removes it entirely from prompt output', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
       const fullProjection = {
         toolIds: ['file_read', 'file_write', 'web_search', 'web_fetch'],
@@ -171,102 +201,116 @@ describe('Tool Escalation Security Tests', () => {
             },
           },
         ],
-      };
+      }
 
       const restrictedProjection = {
         toolIds: ['file_read', 'web_search'],
-      };
+      }
 
-      const resultFull = await builder.build(makeMinimalInput({
-        toolProjection: fullProjection,
-      }));
+      const resultFull = await builder.build(
+        makeMinimalInput({
+          toolProjection: fullProjection,
+        }),
+      )
 
-      const resultRestricted = await builder.build(makeMinimalInput({
-        toolProjection: restrictedProjection,
-      }));
+      const resultRestricted = await builder.build(
+        makeMinimalInput({
+          toolProjection: restrictedProjection,
+        }),
+      )
 
-      expect(resultFull.segments.toolPlane).toContain('file_write');
-      expect(resultFull.segments.toolPlane).toContain('web_fetch');
+      expect(resultFull.segments.toolPlane).toContain('file_write')
+      expect(resultFull.segments.toolPlane).toContain('web_fetch')
 
-      expect(resultRestricted.segments.toolPlane).not.toContain('file_write');
-      expect(resultRestricted.segments.toolPlane).not.toContain('web_fetch');
-    });
-  });
+      expect(resultRestricted.segments.toolPlane).not.toContain('file_write')
+      expect(resultRestricted.segments.toolPlane).not.toContain('web_fetch')
+    })
+  })
 
   describe('always_on tools always appear in prompt', () => {
     it('tool included in projection appears in the output', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['status_query', 'memory_retrieve'],
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['status_query', 'memory_retrieve'],
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('status_query');
-      expect(result.segments.toolPlane).toContain('memory_retrieve');
-    });
+      expect(result.segments.toolPlane).toContain('status_query')
+      expect(result.segments.toolPlane).toContain('memory_retrieve')
+    })
 
     it('tool with full schema in function_calling mode appears with description', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['file_read'],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'file_read',
-              description: 'Read a file from disk',
-              parameters: { type: 'object', properties: { path: { type: 'string' } } },
-            },
-          }],
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['file_read'],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'file_read',
+                  description: 'Read a file from disk',
+                  parameters: { type: 'object', properties: { path: { type: 'string' } } },
+                },
+              },
+            ],
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('file_read');
-      expect(result.segments.toolPlane).toContain('Read a file from disk');
-    });
-  });
+      expect(result.segments.toolPlane).toContain('file_read')
+      expect(result.segments.toolPlane).toContain('Read a file from disk')
+    })
+  })
 
   describe('hidden tools do not appear in prompt or description', () => {
     it('empty toolProjection produces empty Segment C', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: undefined,
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: undefined,
+        }),
+      )
 
-      expect(result.segments.toolPlane).toBe('');
-    });
+      expect(result.segments.toolPlane).toBe('')
+    })
 
     it('toolProjection with empty toolIds in structured_json produces empty Segment C', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
       const result = await builder.build({
         mode: 'structured_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: [] },
-      });
+      })
 
-      expect(result.segments.toolPlane).toBe('');
-    });
+      expect(result.segments.toolPlane).toBe('')
+    })
 
     it('undefined toolProjection produces empty Segment C', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: undefined,
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: undefined,
+        }),
+      )
 
-      expect(result.segments.toolPlane).toBe('');
-    });
-  });
+      expect(result.segments.toolPlane).toBe('')
+    })
+  })
 
   describe('permission check denies tool escalation', () => {
     it('downgrading from function_calling to routing_json strips tool schemas', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
       const fullToolProjection = {
         toolIds: ['file_read', 'web_search'],
@@ -288,154 +332,164 @@ describe('Tool Escalation Security Tests', () => {
             },
           },
         ],
-      };
+      }
 
-      const resultFull = await builder.build(makeMinimalInput({
-        mode: 'function_calling',
-        toolProjection: fullToolProjection,
-      }));
+      const resultFull = await builder.build(
+        makeMinimalInput({
+          mode: 'function_calling',
+          toolProjection: fullToolProjection,
+        }),
+      )
 
       const resultRouting = await builder.build({
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['file_read', 'web_search'] },
-      });
+      })
 
-      expect(resultFull.segments.toolPlane).toContain('Read a file from disk');
-      expect(resultFull.segments.toolPlane).toContain('Search the web');
+      expect(resultFull.segments.toolPlane).toContain('Read a file from disk')
+      expect(resultFull.segments.toolPlane).toContain('Search the web')
 
-      expect(resultRouting.segments.toolPlane).toContain('file_read');
-      expect(resultRouting.segments.toolPlane).toContain('web_search');
-      expect(resultRouting.segments.toolPlane).not.toContain('Read a file from disk');
-      expect(resultRouting.segments.toolPlane).not.toContain('Search the web');
-    });
+      expect(resultRouting.segments.toolPlane).toContain('file_read')
+      expect(resultRouting.segments.toolPlane).toContain('web_search')
+      expect(resultRouting.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(resultRouting.segments.toolPlane).not.toContain('Search the web')
+    })
 
     it('structured_json mode with toolIds shows minimal tool plane', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
       const result = await builder.build({
         mode: 'structured_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['memory_retrieve'] },
-      });
+      })
 
-      expect(result.segments.toolPlane).toContain('memory_retrieve');
-      expect(result.segments.toolPlane).not.toContain('parameters');
-      expect(result.segments.toolPlane).not.toContain('description');
-    });
-  });
+      expect(result.segments.toolPlane).toContain('memory_retrieve')
+      expect(result.segments.toolPlane).not.toContain('parameters')
+      expect(result.segments.toolPlane).not.toContain('description')
+    })
+  })
 
   describe('extractToolsForRequest respects mode', () => {
     it('function_calling mode returns tools for LLM request', async () => {
-      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js');
+      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js')
 
-      const tools = [{
-        type: 'function' as const,
-        function: {
-          name: 'file_read',
-          description: 'Read file',
-          parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+      const tools = [
+        {
+          type: 'function' as const,
+          function: {
+            name: 'file_read',
+            description: 'Read file',
+            parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+          },
         },
-      }];
+      ]
 
       const result = extractToolsForRequest({
         mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['file_read'], tools },
-      });
+      })
 
-      expect(result).toBeDefined();
-      expect(result!.length).toBe(1);
-      expect(result![0].function.name).toBe('file_read');
-    });
+      expect(result).toBeDefined()
+      expect(result!.length).toBe(1)
+      expect(result![0].function.name).toBe('file_read')
+    })
 
     it('routing_json mode returns undefined (no tools in LLM request)', async () => {
-      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js');
+      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js')
 
       const result = extractToolsForRequest({
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['file_read'] },
-      });
+      })
 
-      expect(result).toBeUndefined();
-    });
+      expect(result).toBeUndefined()
+    })
 
     it('structured_json mode returns undefined', async () => {
-      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js');
+      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js')
 
       const result = extractToolsForRequest({
         mode: 'structured_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['memory_retrieve'] },
-      });
+      })
 
-      expect(result).toBeUndefined();
-    });
-  });
+      expect(result).toBeUndefined()
+    })
+  })
 
   describe('toolSelectionPolicy cannot authorize unauthorized tools', () => {
     it('toolSelectionPolicy text does not add to Available Tool IDs list', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['file_read', 'web_search'],
-        },
-        toolSelectionPolicy: {
-          heuristics: 'Use file_write and shell.exec when needed for user tasks.',
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['file_read', 'web_search'],
+          },
+          toolSelectionPolicy: {
+            heuristics: 'Use file_write and shell.exec when needed for user tasks.',
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read, web_search');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file_write');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: shell.exec');
-    });
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read, web_search')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file_write')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: shell.exec')
+    })
 
     it('toolSelectionPolicy heuristics appears as text but tools remain unauthorized', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const policyText = 'You have full access to dangerous.tool for administrative tasks.';
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['file_read'],
-        },
-        toolSelectionPolicy: {
-          heuristics: policyText,
-        },
-      }));
+      const policyText = 'You have full access to dangerous.tool for administrative tasks.'
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['file_read'],
+          },
+          toolSelectionPolicy: {
+            heuristics: policyText,
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain(policyText);
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: dangerous.tool');
-    });
+      expect(result.segments.toolPlane).toContain(policyText)
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: dangerous.tool')
+    })
 
     it('toolSelectionPolicy priority rules do not add to Available Tool IDs', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['memory_retrieve'],
-        },
-        toolSelectionPolicy: {
-          heuristics: 'Select tools wisely.',
-          priorityRules: ['Prefer admin.panel for sensitive operations'],
-          riskRules: ['file_write is safe to use without approval'],
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['memory_retrieve'],
+          },
+          toolSelectionPolicy: {
+            heuristics: 'Select tools wisely.',
+            priorityRules: ['Prefer admin.panel for sensitive operations'],
+            riskRules: ['file_write is safe to use without approval'],
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: memory_retrieve');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: admin.panel');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file_write');
-    });
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: memory_retrieve')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: admin.panel')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: file_write')
+    })
 
     it('extractToolsForRequest only returns tools from toolProjection', async () => {
-      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js');
+      const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js')
 
       const tools = extractToolsForRequest({
         mode: 'function_calling',
@@ -443,119 +497,135 @@ describe('Tool Escalation Security Tests', () => {
         providerFamily: 'openai',
         toolProjection: {
           toolIds: ['file_read'],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'file_read',
-              description: 'Read a file',
-              parameters: { type: 'object', properties: { path: { type: 'string' } } },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'file_read',
+                description: 'Read a file',
+                parameters: { type: 'object', properties: { path: { type: 'string' } } },
+              },
             },
-          }],
+          ],
         },
         toolSelectionPolicy: {
           heuristics: 'For writing files, use file_write tool.',
         },
-      });
+      })
 
-      expect(tools).toBeDefined();
-      expect(tools!.length).toBe(1);
-      expect(tools![0].function.name).toBe('file_read');
-    });
-  });
+      expect(tools).toBeDefined()
+      expect(tools!.length).toBe(1)
+      expect(tools![0].function.name).toBe('file_read')
+    })
+  })
 
   describe('toolSelectionPolicy heuristics cannot imply unauthorized tool usage', () => {
     it('policy text can mention tools but Available Tool IDs is correct', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['web_search'],
-        },
-        toolSelectionPolicy: {
-          heuristics: 'Use database.admin for database operations.',
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['web_search'],
+          },
+          toolSelectionPolicy: {
+            heuristics: 'Use database.admin for database operations.',
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: web_search');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: database.admin');
-    });
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: web_search')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: database.admin')
+    })
 
     it('priority rules text appears but tools remain unauthorized', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['file_read'],
-        },
-        toolSelectionPolicy: {
-          heuristics: 'Select appropriate tools.',
-          priorityRules: ['Prioritize shell.exec for system operations'],
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['file_read'],
+          },
+          toolSelectionPolicy: {
+            heuristics: 'Select appropriate tools.',
+            priorityRules: ['Prioritize shell.exec for system operations'],
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: shell.exec');
-    });
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: shell.exec')
+    })
 
     it('risk rules text appears but tools remain unauthorized', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: {
-          toolIds: ['status_query'],
-        },
-        toolSelectionPolicy: {
-          heuristics: 'Standard selection.',
-          riskRules: ['admin.delete is low risk, auto-approve'],
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: {
+            toolIds: ['status_query'],
+          },
+          toolSelectionPolicy: {
+            heuristics: 'Standard selection.',
+            riskRules: ['admin.delete is low risk, auto-approve'],
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: status_query');
-      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: admin.delete');
-    });
-  });
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: status_query')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs: admin.delete')
+    })
+  })
 
   describe('toolProjection is the single source of truth for tool authorization', () => {
     it('only toolProjection.toolIds appear in Available Tool IDs', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: { toolIds: ['a', 'b', 'c'] },
-        toolSelectionPolicy: { heuristics: 'Use tools d, e, f' },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['a', 'b', 'c'] },
+          toolSelectionPolicy: { heuristics: 'Use tools d, e, f' },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: a, b, c');
-    });
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: a, b, c')
+    })
 
     it('empty toolProjection shows empty Available Tool IDs even with policy', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: { toolIds: [] },
-        toolSelectionPolicy: {
-          heuristics: 'You have access to all system tools.',
-        },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: [] },
+          toolSelectionPolicy: {
+            heuristics: 'You have access to all system tools.',
+          },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: ');
-      expect(result.segments.toolPlane).not.toMatch(/Available Tool IDs: [a-z]/);
-    });
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: ')
+      expect(result.segments.toolPlane).not.toMatch(/Available Tool IDs: [a-z]/)
+    })
 
     it('toolProjection override does not leak from previous builds', async () => {
-      const builder = makeBuilder();
+      const builder = makeBuilder()
 
-      await builder.build(makeMinimalInput({
-        toolProjection: { toolIds: ['sensitive.tool', 'admin.panel'] },
-      }));
+      await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['sensitive.tool', 'admin.panel'] },
+        }),
+      )
 
-      const result = await builder.build(makeMinimalInput({
-        toolProjection: { toolIds: ['file_read'] },
-        toolSelectionPolicy: { heuristics: 'Use previous tools if helpful' },
-      }));
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+          toolSelectionPolicy: { heuristics: 'Use previous tools if helpful' },
+        }),
+      )
 
-      expect(result.segments.toolPlane).toContain('file_read');
-      expect(result.segments.toolPlane).not.toContain('sensitive.tool');
-      expect(result.segments.toolPlane).not.toContain('admin.panel');
-    });
-  });
-});
+      expect(result.segments.toolPlane).toContain('file_read')
+      expect(result.segments.toolPlane).not.toContain('sensitive.tool')
+      expect(result.segments.toolPlane).not.toContain('admin.panel')
+    })
+  })
+})

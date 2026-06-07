@@ -1,18 +1,18 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { Role, ResourceType, Action } from '../../permissions/rbac-types.js';
-import { checkPermission, filterResources, getRolePermissions } from '../../permissions/rbac-engine.js';
-import type { OwnershipContext } from '../../permissions/rbac-engine.js';
-import { envelopeError } from '../response-envelope.js';
-import type { AuthenticatedUser } from './auth.js';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import type { Role, ResourceType, Action } from '../../permissions/rbac-types.js'
+import { checkPermission, filterResources, getRolePermissions } from '../../permissions/rbac-engine.js'
+import type { OwnershipContext } from '../../permissions/rbac-engine.js'
+import { envelopeError } from '../response-envelope.js'
+import type { AuthenticatedUser } from './auth.js'
 
 export interface Rbac {
-  checkPermission: typeof checkPermission;
-  getRolePermissions: typeof getRolePermissions;
-  filterResources: typeof filterResources;
+  checkPermission: typeof checkPermission
+  getRolePermissions: typeof getRolePermissions
+  filterResources: typeof filterResources
 }
 
 export interface RbacMiddlewareOptions {
-  exemptPaths?: string[];
+  exemptPaths?: string[]
 }
 
 const DEFAULT_EXEMPT_PATHS = [
@@ -38,97 +38,103 @@ const DEFAULT_EXEMPT_PATHS = [
   '/api/v1/tools',
   '/api/v1/webhooks/*',
   '/api/v1/metrics',
-];
+]
 
 function isPathExempt(path: string, exemptPaths: string[]): boolean {
-  return exemptPaths.some(exemptPath => {
+  return exemptPaths.some((exemptPath) => {
     if (exemptPath.endsWith('*')) {
-      return path.startsWith(exemptPath.slice(0, -1));
+      return path.startsWith(exemptPath.slice(0, -1))
     }
-    return path === exemptPath;
-  });
+    return path === exemptPath
+  })
 }
 
 function getRoleFromRequest(request: FastifyRequest): Role | null {
-  const user = request.user as AuthenticatedUser | undefined;
+  const user = request.user as AuthenticatedUser | undefined
   if (!user) {
-    return null;
+    return null
   }
-  return user.role;
+  return user.role
 }
 
 declare module 'fastify' {
   interface FastifyInstance {
-    rbac: Rbac;
+    rbac: Rbac
   }
 
   interface FastifyRequest {
-    rbacRole: Role | null;
-    rbacCheck(resource: ResourceType, action: Action, context?: OwnershipContext): boolean;
-    requirePermission(resource: ResourceType, action: Action, context?: OwnershipContext): boolean;
+    rbacRole: Role | null
+    rbacCheck(resource: ResourceType, action: Action, context?: OwnershipContext): boolean
+    requirePermission(resource: ResourceType, action: Action, context?: OwnershipContext): boolean
   }
 }
 
 export async function registerRbacMiddleware(
   server: FastifyInstance,
-  options: RbacMiddlewareOptions = {}
+  options: RbacMiddlewareOptions = {},
 ): Promise<void> {
-  const exemptPaths = options.exemptPaths ?? DEFAULT_EXEMPT_PATHS;
+  const exemptPaths = options.exemptPaths ?? DEFAULT_EXEMPT_PATHS
 
   const rbac: Rbac = {
     checkPermission,
     getRolePermissions,
     filterResources,
-  };
+  }
 
-  server.decorate('rbac', rbac);
-  server.decorateRequest('rbacRole', null);
-  server.decorateRequest('rbacCheck', function (this: FastifyRequest, _resource: ResourceType, _action: Action, _context?: OwnershipContext): boolean {
-    return false;
-  });
-  server.decorateRequest('requirePermission', function (this: FastifyRequest, _resource: ResourceType, _action: Action, _context?: OwnershipContext): boolean {
-    return true;
-  });
+  server.decorate('rbac', rbac)
+  server.decorateRequest('rbacRole', null)
+  server.decorateRequest(
+    'rbacCheck',
+    function (this: FastifyRequest, _resource: ResourceType, _action: Action, _context?: OwnershipContext): boolean {
+      return false
+    },
+  )
+  server.decorateRequest(
+    'requirePermission',
+    function (this: FastifyRequest, _resource: ResourceType, _action: Action, _context?: OwnershipContext): boolean {
+      return true
+    },
+  )
 
   server.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
     if (isPathExempt(request.url, exemptPaths)) {
-      return;
+      return
     }
 
     // Skip if reply already sent by a previous hook (e.g., auth middleware)
     if (reply.sent) {
-      return;
+      return
     }
 
-    const role = getRoleFromRequest(request);
-    request.rbacRole = role;
+    const role = getRoleFromRequest(request)
+    request.rbacRole = role
 
     request.rbacCheck = (resource: ResourceType, action: Action, context?: OwnershipContext): boolean => {
       if (!role) {
-        return false;
+        return false
       }
-      return checkPermission(role, resource, action, context);
-    };
+      return checkPermission(role, resource, action, context)
+    }
 
     request.requirePermission = (resource: ResourceType, action: Action, context?: OwnershipContext): boolean => {
       if (reply.sent) {
-        return false;
+        return false
       }
       if (!role) {
-        request.headers = { ...request.headers, 'x-no-compression': 'true' };
-        reply.code(403).send(
-          envelopeError('FORBIDDEN', `No role found for request`, request.requestId)
-        );
-        return false;
+        request.headers = { ...request.headers, 'x-no-compression': 'true' }
+        reply.code(403).send(envelopeError('FORBIDDEN', `No role found for request`, request.requestId))
+        return false
       }
       if (!checkPermission(role, resource, action, context)) {
-        request.headers = { ...request.headers, 'x-no-compression': 'true' };
-        reply.code(403).send(
-          envelopeError('FORBIDDEN', `Role '${role}' cannot perform '${action}' on '${resource}'`, request.requestId)
-        );
-        return false;
+        request.headers = { ...request.headers, 'x-no-compression': 'true' }
+        reply
+          .code(403)
+          .send(
+            envelopeError('FORBIDDEN', `Role '${role}' cannot perform '${action}' on '${resource}'`, request.requestId),
+          )
+        return false
       }
-      return true;
-    };
-  });
+      return true
+    }
+  })
 }

@@ -3,74 +3,74 @@
  * Parses slash commands from user input
  */
 
-import type { ParsedCommand } from './types.js';
+import type { ParsedCommand } from './types.js'
 
-const WHITESPACE_REGEX = /\s+/;
+const WHITESPACE_REGEX = /\s+/
 
 function unescapeString(str: string): string {
-  return str.replace(/\\(.)/g, '$1');
+  return str.replace(/\\(.)/g, '$1')
 }
 
 function parseArgs(input: string): string[] {
-  const args: string[] = [];
-  let current = '';
-  let inQuotes: string | null = null;
-  let escaped = false;
+  const args: string[] = []
+  let current = ''
+  let inQuotes: string | null = null
+  let escaped = false
 
   for (let i = 0; i < input.length; i++) {
-    const char = input[i];
+    const char = input[i]
 
     if (escaped) {
-      current += char;
-      escaped = false;
-      continue;
+      current += char
+      escaped = false
+      continue
     }
 
     if (char === '\\' && inQuotes) {
-      const nextChar = input[i + 1];
+      const nextChar = input[i + 1]
       if (nextChar === '"' || nextChar === "'") {
-        current += nextChar;
-        i++;
-        continue;
+        current += nextChar
+        i++
+        continue
       }
     }
 
     if (char === '\\' && !inQuotes) {
-      escaped = true;
-      continue;
+      escaped = true
+      continue
     }
 
     if (char === '"' || char === "'") {
       if (inQuotes === null) {
-        inQuotes = char;
+        inQuotes = char
       } else if (inQuotes === char) {
-        inQuotes = null;
+        inQuotes = null
       } else {
-        current += char;
+        current += char
       }
-      continue;
+      continue
     }
 
     if (WHITESPACE_REGEX.test(char) && inQuotes === null) {
       if (current.length > 0) {
-        args.push(unescapeString(current));
-        current = '';
+        args.push(unescapeString(current))
+        current = ''
       }
-      continue;
+      continue
     }
 
-    current += char;
+    current += char
   }
 
   if (current.length > 0) {
-    args.push(unescapeString(current));
+    args.push(unescapeString(current))
   }
 
-  return args;
+  return args
 }
 
 export function parseCommand(input: string): ParsedCommand | null {
-  const trimmed = input.trim();
+  const trimmed = input.trim()
 
   if (trimmed.startsWith('//')) {
     return {
@@ -78,42 +78,42 @@ export function parseCommand(input: string): ParsedCommand | null {
       args: [],
       rawInput: trimmed.slice(2),
       isEscaped: true,
-    };
+    }
   }
 
   if (!trimmed.startsWith('/')) {
-    return null;
+    return null
   }
 
-  const withoutSlash = trimmed.slice(1);
-  const spaceIndex = withoutSlash.search(WHITESPACE_REGEX);
+  const withoutSlash = trimmed.slice(1)
+  const spaceIndex = withoutSlash.search(WHITESPACE_REGEX)
 
-  let command: string;
-  let rest: string;
+  let command: string
+  let rest: string
 
   if (spaceIndex === -1) {
-    command = withoutSlash.toLowerCase();
-    rest = '';
+    command = withoutSlash.toLowerCase()
+    rest = ''
   } else {
-    command = withoutSlash.slice(0, spaceIndex).toLowerCase();
-    rest = withoutSlash.slice(spaceIndex + 1).trim();
+    command = withoutSlash.slice(0, spaceIndex).toLowerCase()
+    rest = withoutSlash.slice(spaceIndex + 1).trim()
   }
 
-  const args = parseArgs(rest);
+  const args = parseArgs(rest)
 
   return {
     command,
     args,
     rawInput: trimmed,
     isEscaped: false,
-  };
+  }
 }
 
 export function isCommand(input: string): boolean {
-  const trimmed = input.trim();
-  return trimmed.startsWith('/') && !trimmed.startsWith('//');
+  const trimmed = input.trim()
+  return trimmed.startsWith('/') && !trimmed.startsWith('//')
 }
 
 export function isEscapedCommand(input: string): boolean {
-  return input.trim().startsWith('//');
+  return input.trim().startsWith('//')
 }

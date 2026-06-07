@@ -19,69 +19,65 @@
  * or route delivery concerns leak into processing logic.
  */
 
-import type {
-  MessageProcessorInput,
-  MessageProcessorOutput,
-  MessageProcessorResult,
-} from './types.js';
-import type { ForegroundDecision, ForegroundSessionState } from '../foreground/types.js';
-import type { ForegroundAgent } from '../foreground/foreground-agent.js';
-import type { HydratedSessionState, Stores } from '../gateway/types.js';
-import type { Gateway } from '../gateway/gateway.js';
-import type { RuntimeDispatcher } from '../dispatcher/types.js';
-import type { PlannerRuntime } from '../planner/planner-runtime.js';
-import type { AgentKernel } from '../kernel/agent-kernel.js';
-import type { LLMAdapter } from '../llm/adapter.js';
-import type { TranscriptStore, TurnTranscript, VisibleMessage } from '../storage/transcript-store.js';
-import type { EventStore } from '../storage/event-store.js';
-import type { ProviderConfigStore } from '../storage/provider-config-store.js';
-import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-store.js';
-import type { SessionStore } from '../storage/session-store.js';
-import type { LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js';
-import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js';
-import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js';
-import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js';
-import type { ForegroundTurnInput, ForegroundTurnResult } from '../foreground/foreground-runner-types.js';
+import type { MessageProcessorInput, MessageProcessorOutput, MessageProcessorResult } from './types.js'
+import type { ForegroundDecision, ForegroundSessionState } from '../foreground/types.js'
+import type { ForegroundAgent } from '../foreground/foreground-agent.js'
+import type { HydratedSessionState, Stores } from '../gateway/types.js'
+import type { Gateway } from '../gateway/gateway.js'
+import type { RuntimeDispatcher } from '../dispatcher/types.js'
+import type { PlannerRuntime } from '../planner/planner-runtime.js'
+import type { AgentKernel } from '../kernel/agent-kernel.js'
+import type { LLMAdapter } from '../llm/adapter.js'
+import type { TranscriptStore, TurnTranscript, VisibleMessage } from '../storage/transcript-store.js'
+import type { EventStore } from '../storage/event-store.js'
+import type { ProviderConfigStore } from '../storage/provider-config-store.js'
+import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-store.js'
+import type { SessionStore } from '../storage/session-store.js'
+import type { LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js'
+import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js'
+import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js'
+import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js'
+import type { ForegroundTurnInput, ForegroundTurnResult } from '../foreground/foreground-runner-types.js'
 
-const CONVERSATION_HISTORY_TURN_LIMIT = 20;
+const CONVERSATION_HISTORY_TURN_LIMIT = 20
 
 /**
  * Dependencies required for full-pipeline message processing
  */
 export interface ProcessorOrchestrationDeps {
   /** Gateway for state hydration */
-  gateway: Gateway;
+  gateway: Gateway
   /** Stores for hydration and persistence */
-  stores: Stores;
+  stores: Stores
   /** Foreground agent for message processing (optional during transition) */
-  foregroundAgent?: ForegroundAgent;
+  foregroundAgent?: ForegroundAgent
   /** Runtime dispatcher for action routing */
-  runtimeDispatcher: RuntimeDispatcher;
+  runtimeDispatcher: RuntimeDispatcher
   /** Planner runtime for planner operations */
-  plannerRuntime: PlannerRuntime;
+  plannerRuntime: PlannerRuntime
   /** Agent kernel for LLM execution */
-  agentKernel: AgentKernel;
+  agentKernel: AgentKernel
   /** LLM adapter for provider access */
-  llmAdapter: LLMAdapter;
+  llmAdapter: LLMAdapter
   /** Transcript store for persisting turn transcripts */
-  transcriptStore: TranscriptStore;
+  transcriptStore: TranscriptStore
   /** Event store for logging provider fallback events */
-  eventStore?: EventStore;
+  eventStore?: EventStore
   /** Provider config store for resolving providers */
-  providerConfigStore?: ProviderConfigStore;
+  providerConfigStore?: ProviderConfigStore
   /** Agent config store for agent configuration */
-  agentConfigStore?: AgentConfigStore;
+  agentConfigStore?: AgentConfigStore
   /** Session store for session-specific provider/model selection */
-  sessionStore?: SessionStore;
+  sessionStore?: SessionStore
   /** Runs processing with request-scoped LLM providers for the current user */
-  runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>;
+  runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>
   /** Observer for emitting processing status events (channel-neutral) */
   processingObserver?: {
-    emitStatus(payload: ProcessingStatusPayload): void;
-    emitToken?(payload: TokenStreamPayload): void;
-  };
+    emitStatus(payload: ProcessingStatusPayload): void
+    emitToken?(payload: TokenStreamPayload): void
+  }
   /** Scheduler for async long-term memory extraction after transcript persistence */
-  memoryExtractionScheduler?: LongTermMemoryScheduler;
+  memoryExtractionScheduler?: LongTermMemoryScheduler
 }
 
 /**
@@ -89,23 +85,20 @@ export interface ProcessorOrchestrationDeps {
  */
 export interface CreateOrchestrationProcessorOptions {
   /** Dependencies for processing */
-  deps: ProcessorOrchestrationDeps;
+  deps: ProcessorOrchestrationDeps
   /** Default persona ID to use */
-  defaultPersonaId?: string;
+  defaultPersonaId?: string
   /** Default persona name */
-  defaultPersonaName?: string;
+  defaultPersonaName?: string
   /** Session-scoped provider/model selection */
   sessionProviderSelection?: {
-    selectedProviderId?: string;
-    selectedModel?: string;
-  };
+    selectedProviderId?: string
+    selectedModel?: string
+  }
 }
 
-function emitStatus(
-  deps: ProcessorOrchestrationDeps,
-  payload: ProcessingStatusPayload
-): void {
-  deps.processingObserver?.emitStatus(payload);
+function emitStatus(deps: ProcessorOrchestrationDeps, payload: ProcessingStatusPayload): void {
+  deps.processingObserver?.emitStatus(payload)
 }
 
 function buildStatusPayload(
@@ -115,7 +108,7 @@ function buildStatusPayload(
   providerId?: string,
   model?: string,
   activeTools: ProcessingToolStatus[] = [],
-  error?: string
+  error?: string,
 ): ProcessingStatusPayload {
   return {
     sessionId,
@@ -128,7 +121,7 @@ function buildStatusPayload(
     activeTools,
     timestamp: new Date().toISOString(),
     error,
-  };
+  }
 }
 
 function createFailedForegroundTurnResult(code: string, message: string): ForegroundTurnResult {
@@ -141,35 +134,32 @@ function createFailedForegroundTurnResult(code: string, message: string): Foregr
       reason: message,
     },
     error: { code, message },
-  };
+  }
 }
 
 function createCompletedForegroundTurnResult(
   decision: ForegroundDecision,
-  finalResponse = decision.userVisibleResponse ?? ''
+  finalResponse = decision.userVisibleResponse ?? '',
 ): ForegroundTurnResult {
   return {
     status: 'completed',
     finalResponse,
     decisionTrace: decision,
-  };
+  }
 }
 
 function legacyDispatchId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 async function runLegacyForegroundDecision(
   deps: ProcessorOrchestrationDeps,
   input: MessageProcessorInput,
-  foregroundState: ForegroundSessionState
+  foregroundState: ForegroundSessionState,
 ): Promise<ForegroundTurnResult> {
-  const foregroundAgent = deps.foregroundAgent;
+  const foregroundAgent = deps.foregroundAgent
   if (!foregroundAgent) {
-    return createFailedForegroundTurnResult(
-      'FOREGROUND_AGENT_UNAVAILABLE',
-      'ForegroundAgent is not configured'
-    );
+    return createFailedForegroundTurnResult('FOREGROUND_AGENT_UNAVAILABLE', 'ForegroundAgent is not configured')
   }
 
   const decision = await foregroundAgent.processMessage(
@@ -180,8 +170,8 @@ async function runLegacyForegroundDecision(
       turnId: input.correlationId,
       timestamp: input.timestamp,
     },
-    foregroundState
-  );
+    foregroundState,
+  )
 
   if (decision.route === 'spawn_planner') {
     const plannerRun = deps.plannerRuntime.createPlannerRun({
@@ -193,17 +183,17 @@ async function runLegacyForegroundDecision(
         complexity: decision.complexity,
         reason: decision.reason,
       },
-    });
+    })
 
     return createCompletedForegroundTurnResult(
       decision,
-      decision.userVisibleResponse ?? `Created planner run ${plannerRun.plannerRunId}`
-    );
+      decision.userVisibleResponse ?? `Created planner run ${plannerRun.plannerRunId}`,
+    )
   }
 
-  const toolName = decision.route === 'dispatch_tool' ? decision.suggestedTools?.[0] : undefined;
+  const toolName = decision.route === 'dispatch_tool' ? decision.suggestedTools?.[0] : undefined
   if (toolName) {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
     await deps.runtimeDispatcher.dispatch({
       requestId: legacyDispatchId('legacy-dispatch'),
       action: {
@@ -233,10 +223,10 @@ async function runLegacyForegroundDecision(
         userId: input.userId,
         sessionId: input.sessionId,
       },
-    });
+    })
   }
 
-  return createCompletedForegroundTurnResult(decision);
+  return createCompletedForegroundTurnResult(decision)
 }
 
 /**
@@ -248,74 +238,78 @@ async function runLegacyForegroundDecision(
  */
 
 export function createOrchestrationProcessor(
-  options: CreateOrchestrationProcessorOptions
+  options: CreateOrchestrationProcessorOptions,
 ): (input: MessageProcessorInput) => Promise<MessageProcessorOutput> {
-  const { deps, defaultPersonaId = 'default', defaultPersonaName = 'Assistant', sessionProviderSelection: optionSessionProviderSelection } = options;
+  const {
+    deps,
+    defaultPersonaId = 'default',
+    defaultPersonaName = 'Assistant',
+    sessionProviderSelection: optionSessionProviderSelection,
+  } = options
 
   return async (input: MessageProcessorInput): Promise<MessageProcessorOutput> => {
     const sessionProviderSelection = deps.sessionStore
       ? (() => {
-          const session = deps.sessionStore.getById(input.sessionId);
-          return session
-            ? { selectedProviderId: session.selectedProviderId, selectedModel: session.selectedModel }
-            : {};
+          const session = deps.sessionStore.getById(input.sessionId)
+          return session ? { selectedProviderId: session.selectedProviderId, selectedModel: session.selectedModel } : {}
         })()
-      : optionSessionProviderSelection ?? {};
+      : (optionSessionProviderSelection ?? {})
 
     const providerResolution = resolveProviderWithFallback(
       deps.providerConfigStore,
       deps.eventStore,
       deps.agentConfigStore,
       input,
-      sessionProviderSelection
-    );
+      sessionProviderSelection,
+    )
 
-    const resolvedProviderId = providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined;
-    const resolvedModel = providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined;
+    const resolvedProviderId =
+      providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined
+    const resolvedModel =
+      providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined
 
     const execute = async (): Promise<MessageProcessorOutput> => {
-      let output: MessageProcessorOutput;
+      let output: MessageProcessorOutput
 
       try {
         // Check inside execute() so the provider-scoped adapter's providers getter
         // runs within the AsyncLocalStorage scope set by runWithProvidersForUser.
-        const hasNoProvider = providerResolution?.type === 'no-provider' || (!providerResolution && deps.llmAdapter.providers.length === 0);
+        const hasNoProvider =
+          providerResolution?.type === 'no-provider' || (!providerResolution && deps.llmAdapter.providers.length === 0)
 
         if (hasNoProvider) {
-          emitStatus(deps, buildStatusPayload(
-            input.sessionId,
-            input.correlationId,
-            'failed',
-            undefined,
-            undefined,
-            [],
-            'No LLM providers configured'
-          ));
-          
+          emitStatus(
+            deps,
+            buildStatusPayload(
+              input.sessionId,
+              input.correlationId,
+              'failed',
+              undefined,
+              undefined,
+              [],
+              'No LLM providers configured',
+            ),
+          )
+
           output = createErrorOutput(
             input.correlationId,
             'PROCESSING_ERROR',
-            'No LLM providers configured. Message received but cannot be processed.'
-          );
+            'No LLM providers configured. Message received but cannot be processed.',
+          )
         } else {
-          emitStatus(deps, buildStatusPayload(
-            input.sessionId,
-            input.correlationId,
-            'receiving',
-            resolvedProviderId,
-            resolvedModel
-          ));
+          emitStatus(
+            deps,
+            buildStatusPayload(input.sessionId, input.correlationId, 'receiving', resolvedProviderId, resolvedModel),
+          )
 
-          const hydratedSession = deps.gateway.assembleHydratedState(
-            input.userId,
-            input.sessionId,
-            deps.stores
-          );
+          const hydratedSession = deps.gateway.assembleHydratedState(input.userId, input.sessionId, deps.stores)
 
-          const agentConfig = deps.agentConfigStore?.getByUser(input.userId);
+          const agentConfig = deps.agentConfigStore?.getByUser(input.userId)
 
-          const resolvedProvider = providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined;
-          const resolvedModelInner = providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined;
+          const resolvedProvider =
+            providerResolution?.type === 'success' ? providerResolution.selectedProviderId : undefined
+          const resolvedModelInner =
+            providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined
 
           const foregroundState = buildForegroundSessionState(
             hydratedSession,
@@ -324,24 +318,18 @@ export function createOrchestrationProcessor(
             resolvedProvider,
             resolvedModelInner,
             agentConfig ?? undefined,
-            buildConversationHistory(deps.transcriptStore, input.sessionId)
-          );
+            buildConversationHistory(deps.transcriptStore, input.sessionId),
+          )
 
-          emitStatus(deps, buildStatusPayload(
-            input.sessionId,
-            input.correlationId,
-            'routing',
-            resolvedProviderId,
-            resolvedModel
-          ));
+          emitStatus(
+            deps,
+            buildStatusPayload(input.sessionId, input.correlationId, 'routing', resolvedProviderId, resolvedModel),
+          )
 
-          emitStatus(deps, buildStatusPayload(
-            input.sessionId,
-            input.correlationId,
-            'model_call',
-            resolvedProviderId,
-            resolvedModel
-          ));
+          emitStatus(
+            deps,
+            buildStatusPayload(input.sessionId, input.correlationId, 'model_call', resolvedProviderId, resolvedModel),
+          )
 
           const turnInput: ForegroundTurnInput = {
             userId: input.userId,
@@ -352,19 +340,19 @@ export function createOrchestrationProcessor(
             hydratedState: hydratedSession,
             foregroundState,
             agentConfig: agentConfig ?? undefined,
-          };
+          }
 
           const turnResult = deps.foregroundAgent?.runTurn
             ? await deps.foregroundAgent.runTurn(turnInput)
-            : await runLegacyForegroundDecision(deps, input, foregroundState);
+            : await runLegacyForegroundDecision(deps, input, foregroundState)
 
           if (turnResult.status === 'failed' || turnResult.error) {
             output = createErrorOutput(
               input.correlationId,
               'PROCESSING_ERROR',
               turnResult.error?.message ?? 'Foreground turn failed',
-              turnResult.error?.code ? { foregroundErrorCode: turnResult.error.code } : undefined
-            );
+              turnResult.error?.code ? { foregroundErrorCode: turnResult.error.code } : undefined,
+            )
           } else {
             output = createSuccessOutput(input.correlationId, {
               text: turnResult.finalResponse || '',
@@ -374,63 +362,59 @@ export function createOrchestrationProcessor(
                 runtimeSummary: turnResult.runtimeSummary,
                 kernelResult: turnResult.kernelResult,
               },
-            });
+            })
           }
         }
       } catch (error) {
-        emitStatus(deps, buildStatusPayload(
-          input.sessionId,
-          input.correlationId,
-          'failed',
-          resolvedProviderId,
-          resolvedModel,
-          [],
-          error instanceof Error ? error.message : 'Unknown processing error'
-        ));
-        
+        emitStatus(
+          deps,
+          buildStatusPayload(
+            input.sessionId,
+            input.correlationId,
+            'failed',
+            resolvedProviderId,
+            resolvedModel,
+            [],
+            error instanceof Error ? error.message : 'Unknown processing error',
+          ),
+        )
+
         output = createErrorOutput(
           input.correlationId,
           'PROCESSING_ERROR',
-          error instanceof Error ? error.message : 'Unknown processing error'
-        );
+          error instanceof Error ? error.message : 'Unknown processing error',
+        )
       }
 
-      emitStatus(deps, buildStatusPayload(
-        input.sessionId,
-        input.correlationId,
-        'persisting',
-        resolvedProviderId,
-        resolvedModel
-      ));
+      emitStatus(
+        deps,
+        buildStatusPayload(input.sessionId, input.correlationId, 'persisting', resolvedProviderId, resolvedModel),
+      )
 
-      const persisted = persistTurnTranscript(input, output, deps.transcriptStore);
+      const persisted = persistTurnTranscript(input, output, deps.transcriptStore)
 
       if (deps.memoryExtractionScheduler && persisted && output.success) {
         deps.memoryExtractionScheduler.scheduleAfterTurn({
           userId: input.userId,
           sessionId: input.sessionId,
           triggerTurnId: input.correlationId,
-        });
+        })
       }
 
-      emitStatus(deps, buildStatusPayload(
-        input.sessionId,
-        input.correlationId,
-        'completed',
-        resolvedProviderId,
-        resolvedModel,
-        []
-      ));
+      emitStatus(
+        deps,
+        buildStatusPayload(input.sessionId, input.correlationId, 'completed', resolvedProviderId, resolvedModel, []),
+      )
 
-      return output;
-    };
-
-    if (deps.runWithProvidersForUser) {
-      return deps.runWithProvidersForUser(input.userId, execute, resolvedProviderId);
+      return output
     }
 
-    return execute();
-  };
+    if (deps.runWithProvidersForUser) {
+      return deps.runWithProvidersForUser(input.userId, execute, resolvedProviderId)
+    }
+
+    return execute()
+  }
 }
 
 function buildForegroundSessionState(
@@ -440,7 +424,7 @@ function buildForegroundSessionState(
   resolvedProvider?: string,
   resolvedModel?: string,
   agentConfig?: AgentConfig,
-  conversationHistory?: ForegroundSessionState['conversationHistory']
+  conversationHistory?: ForegroundSessionState['conversationHistory'],
 ): ForegroundSessionState {
   return {
     hydratedSession,
@@ -463,22 +447,20 @@ function buildForegroundSessionState(
     resolvedProvider,
     resolvedModel,
     conversationHistory,
-  };
+  }
 }
 
 function buildConversationHistory(
   transcriptStore: TranscriptStore,
-  sessionId: string
+  sessionId: string,
 ): ForegroundSessionState['conversationHistory'] {
-  const transcripts = transcriptStore
-    .findBySession(sessionId)
-    .slice(-CONVERSATION_HISTORY_TURN_LIMIT);
+  const transcripts = transcriptStore.findBySession(sessionId).slice(-CONVERSATION_HISTORY_TURN_LIMIT)
 
-  const history: NonNullable<ForegroundSessionState['conversationHistory']> = [];
+  const history: NonNullable<ForegroundSessionState['conversationHistory']> = []
 
   for (const turn of transcripts) {
-    const userMessage = turn.input.userMessageSummary?.trim();
-    let hasUserMessage = false;
+    const userMessage = turn.input.userMessageSummary?.trim()
+    let hasUserMessage = false
 
     if (userMessage) {
       history.push({
@@ -486,14 +468,14 @@ function buildConversationHistory(
         role: 'user',
         message: userMessage,
         timestamp: turn.input.inboundTimestamp ?? turn.createdAt,
-      });
-      hasUserMessage = true;
+      })
+      hasUserMessage = true
     }
 
     for (const visibleMessage of turn.output.visibleMessages) {
-      const content = visibleMessage.content.trim();
+      const content = visibleMessage.content.trim()
       if (!content) {
-        continue;
+        continue
       }
 
       if (visibleMessage.role === 'assistant') {
@@ -502,35 +484,32 @@ function buildConversationHistory(
           role: 'assistant',
           message: content,
           timestamp: turn.createdAt,
-        });
+        })
       } else if (visibleMessage.role === 'user' && !hasUserMessage) {
         history.push({
           turnId: turn.turnId,
           role: 'user',
           message: content,
           timestamp: turn.input.inboundTimestamp ?? turn.createdAt,
-        });
-        hasUserMessage = true;
+        })
+        hasUserMessage = true
       }
     }
   }
 
-  return history.length > 0 ? history : undefined;
+  return history.length > 0 ? history : undefined
 }
 
 /**
  * Creates a successful processing output
  */
-function createSuccessOutput(
-  correlationId: string,
-  result: MessageProcessorResult
-): MessageProcessorOutput {
+function createSuccessOutput(correlationId: string, result: MessageProcessorResult): MessageProcessorOutput {
   return {
     correlationId,
     success: true,
     result,
     timestamp: new Date().toISOString(),
-  };
+  }
 }
 
 /**
@@ -540,7 +519,7 @@ function createErrorOutput(
   correlationId: string,
   code: string,
   message: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): MessageProcessorOutput {
   return {
     correlationId,
@@ -551,7 +530,7 @@ function createErrorOutput(
       details,
     },
     timestamp: new Date().toISOString(),
-  };
+  }
 }
 
 function resolveProviderWithFallback(
@@ -559,16 +538,16 @@ function resolveProviderWithFallback(
   eventStore: EventStore | undefined,
   agentConfigStore: AgentConfigStore | undefined,
   input: MessageProcessorInput,
-  sessionProviderSelection: { selectedProviderId?: string; selectedModel?: string }
+  sessionProviderSelection: { selectedProviderId?: string; selectedModel?: string },
 ): ReturnType<typeof resolveProviderAndModel> | null {
   if (!providerConfigStore) {
-    return null;
+    return null
   }
 
-  const agentConfig = agentConfigStore?.getByUser(input.userId);
+  const agentConfig = agentConfigStore?.getByUser(input.userId)
   const agentConfigProviderSettings = agentConfig
     ? { providerId: agentConfig.providerId ?? undefined, model: agentConfig.model ?? undefined }
-    : {};
+    : {}
 
   const resolution = resolveProviderAndModel({
     session: sessionProviderSelection,
@@ -576,21 +555,21 @@ function resolveProviderWithFallback(
     userId: input.userId,
     providerConfigStore,
     includeEnvProviders: true,
-  });
+  })
 
   if (resolution.type === 'success' && resolution.fallbackMetadata && eventStore) {
-    logProviderFallbackEvent(eventStore, input, resolution.fallbackMetadata);
+    logProviderFallbackEvent(eventStore, input, resolution.fallbackMetadata)
   }
 
-  return resolution;
+  return resolution
 }
 
 function logProviderFallbackEvent(
   eventStore: EventStore,
   input: MessageProcessorInput,
-  fallbackMetadata: FallbackMetadata
+  fallbackMetadata: FallbackMetadata,
 ): void {
-  const eventId = `evt-fallback-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const eventId = `evt-fallback-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 
   eventStore.append({
     eventId,
@@ -607,7 +586,7 @@ function logProviderFallbackEvent(
     sensitivity: 'low',
     retentionClass: 'standard',
     createdAt: new Date().toISOString(),
-  });
+  })
 }
 
 /**
@@ -618,9 +597,9 @@ function logProviderFallbackEvent(
 function persistTurnTranscript(
   input: MessageProcessorInput,
   output: MessageProcessorOutput,
-  transcriptStore: TranscriptStore
+  transcriptStore: TranscriptStore,
 ): boolean {
-  const visibleMessages: VisibleMessage[] = [];
+  const visibleMessages: VisibleMessage[] = []
 
   if (output.success && output.result) {
     if (output.result.text) {
@@ -628,32 +607,33 @@ function persistTurnTranscript(
         messageId: `msg-${input.correlationId}-assistant`,
         role: 'assistant',
         content: output.result.text,
-      });
+      })
     }
 
     if (output.result.route && output.result.route !== 'answer_directly') {
       const statusContent = output.result.data?.reason
         ? `${output.result.route}: ${output.result.data.reason}`
-        : `Processing via ${output.result.route}`;
+        : `Processing via ${output.result.route}`
       visibleMessages.push({
         messageId: `msg-${input.correlationId}-status`,
         role: 'system_status',
         content: statusContent,
-      });
+      })
     }
   } else if (!output.success && output.error) {
     visibleMessages.push({
       messageId: `msg-${input.correlationId}-error`,
       role: 'error',
       content: `[${output.error.code}] ${output.error.message}`,
-    });
+    })
   }
 
-  const inboundEventId = input.metadata?.inboundEventId as string | undefined;
+  const inboundEventId = input.metadata?.inboundEventId as string | undefined
 
-  const runtimeSummary = (output.success && output.result?.data?.runtimeSummary)
-    ? output.result.data.runtimeSummary as TurnTranscript['runtimeSummary']
-    : undefined;
+  const runtimeSummary =
+    output.success && output.result?.data?.runtimeSummary
+      ? (output.result.data.runtimeSummary as TurnTranscript['runtimeSummary'])
+      : undefined
 
   const transcript: TurnTranscript = {
     turnId: input.correlationId,
@@ -670,12 +650,12 @@ function persistTurnTranscript(
     runtimeSummary,
     visibility: 'public',
     createdAt: output.timestamp,
-  };
+  }
 
   try {
-    transcriptStore.saveTurn(transcript);
-    return true;
+    transcriptStore.saveTurn(transcript)
+    return true
   } catch {
-    return false;
+    return false
   }
 }

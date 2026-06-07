@@ -2,7 +2,7 @@
  * Unit tests for long-term memory extraction contract, prompt, canonicalization, and validator
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   type AllowedLongTermMemoryType,
   type AutoExtractedMemoryType,
@@ -15,7 +15,7 @@ import {
   canonicalizeMemoryCandidate,
   buildLongTermMemoryExtractionPrompt,
   buildMemoryExtractionDynamicWindow,
-} from '../../../src/memory/long-term-memory-extraction.js';
+} from '../../../src/memory/long-term-memory-extraction.js'
 
 describe('Long-term Memory Extraction', () => {
   // ============================================================================
@@ -30,14 +30,14 @@ describe('Long-term Memory Extraction', () => {
         'user_safety_rule',
         'project_state',
         'long_term_fact',
-      ];
-      expect(validTypes).toHaveLength(5);
-    });
+      ]
+      expect(validTypes).toHaveLength(5)
+    })
 
     it('AUTO_EXTRACTED_MEMORY_TYPES constant has exactly 5 entries', () => {
-      expect(AUTO_EXTRACTED_MEMORY_TYPES).toHaveLength(5);
-      expect(AUTO_EXTRACTED_MEMORY_TYPES).toContain('long_term_fact');
-    });
+      expect(AUTO_EXTRACTED_MEMORY_TYPES).toHaveLength(5)
+      expect(AUTO_EXTRACTED_MEMORY_TYPES).toContain('long_term_fact')
+    })
 
     it('AllowedLongTermMemoryType includes gated/backcompat types beyond auto-extraction', () => {
       const storageTypes: AllowedLongTermMemoryType[] = [
@@ -51,9 +51,9 @@ describe('Long-term Memory Extraction', () => {
         'episodic_summary',
         'routine',
         'workflow_preference',
-      ];
-      expect(storageTypes).toHaveLength(10);
-    });
+      ]
+      expect(storageTypes).toHaveLength(10)
+    })
 
     it('ExtractedMemoryCandidate should have required fields', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -72,9 +72,9 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1', 'turn-2'],
           },
         },
-      };
-      expect(candidate.memoryType).toBe('user_preference');
-    });
+      }
+      expect(candidate.memoryType).toBe('user_preference')
+    })
 
     it('ExtractedMemoryCandidate should support optional fields', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -85,9 +85,7 @@ describe('Long-term Memory Extraction', () => {
         importance: 'medium',
         sensitivity: 'low',
         keywords: ['profile', 'engineer'],
-        entities: [
-          { entityType: 'person', displayName: 'John Doe' },
-        ],
+        entities: [{ entityType: 'person', displayName: 'John Doe' }],
         scope: { visibility: 'private_user' },
         sourceRefs: {
           transcriptRefs: ['turn-1'],
@@ -98,10 +96,10 @@ describe('Long-term Memory Extraction', () => {
           },
         },
         discardReason: undefined,
-      };
-      expect(candidate.structured).toBeDefined();
-      expect(candidate.entities).toBeDefined();
-    });
+      }
+      expect(candidate.structured).toBeDefined()
+      expect(candidate.entities).toBeDefined()
+    })
 
     it('MemoryExtractionWindow should have all required fields', () => {
       const window: MemoryExtractionWindow = {
@@ -112,11 +110,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User conversation transcript...',
-      };
-      expect(window.userId).toBe('user-123');
-      expect(window.includedTurnIds).toHaveLength(5);
-    });
-  });
+      }
+      expect(window.userId).toBe('user-123')
+      expect(window.includedTurnIds).toHaveLength(5)
+    })
+  })
 
   // ============================================================================
   // stableJsonHash Tests
@@ -124,44 +122,44 @@ describe('Long-term Memory Extraction', () => {
 
   describe('stableJsonHash', () => {
     it('should produce deterministic hash for same object', () => {
-      const obj = { b: 2, a: 1, c: { y: 2, x: 1 } };
-      const hash1 = stableJsonHash(obj);
-      const hash2 = stableJsonHash(obj);
-      expect(hash1).toBe(hash2);
-    });
+      const obj = { b: 2, a: 1, c: { y: 2, x: 1 } }
+      const hash1 = stableJsonHash(obj)
+      const hash2 = stableJsonHash(obj)
+      expect(hash1).toBe(hash2)
+    })
 
     it('should produce same hash regardless of key order', () => {
-      const obj1 = { a: 1, b: 2 };
-      const obj2 = { b: 2, a: 1 };
-      expect(stableJsonHash(obj1)).toBe(stableJsonHash(obj2));
-    });
+      const obj1 = { a: 1, b: 2 }
+      const obj2 = { b: 2, a: 1 }
+      expect(stableJsonHash(obj1)).toBe(stableJsonHash(obj2))
+    })
 
     it('should handle nested objects with sorted keys', () => {
-      const obj1 = { outer: { b: 2, a: 1 } };
-      const obj2 = { outer: { a: 1, b: 2 } };
-      expect(stableJsonHash(obj1)).toBe(stableJsonHash(obj2));
-    });
+      const obj1 = { outer: { b: 2, a: 1 } }
+      const obj2 = { outer: { a: 1, b: 2 } }
+      expect(stableJsonHash(obj1)).toBe(stableJsonHash(obj2))
+    })
 
     it('should handle arrays (order preserved)', () => {
-      const obj = { items: ['a', 'b', 'c'] };
-      const hash = stableJsonHash(obj);
-      expect(typeof hash).toBe('string');
-      expect(hash.length).toBe(64); // SHA-256 produces 64 hex chars
-    });
+      const obj = { items: ['a', 'b', 'c'] }
+      const hash = stableJsonHash(obj)
+      expect(typeof hash).toBe('string')
+      expect(hash.length).toBe(64) // SHA-256 produces 64 hex chars
+    })
 
     it('should handle primitive values', () => {
-      expect(stableJsonHash('test')).toMatch(/^[a-f0-9]{64}$/);
-      expect(stableJsonHash(123)).toMatch(/^[a-f0-9]{64}$/);
-      expect(stableJsonHash(true)).toMatch(/^[a-f0-9]{64}$/);
-      expect(stableJsonHash(null)).toMatch(/^[a-f0-9]{64}$/);
-    });
+      expect(stableJsonHash('test')).toMatch(/^[a-f0-9]{64}$/)
+      expect(stableJsonHash(123)).toMatch(/^[a-f0-9]{64}$/)
+      expect(stableJsonHash(true)).toMatch(/^[a-f0-9]{64}$/)
+      expect(stableJsonHash(null)).toMatch(/^[a-f0-9]{64}$/)
+    })
 
     it('should produce different hashes for different values', () => {
-      const hash1 = stableJsonHash({ a: 1 });
-      const hash2 = stableJsonHash({ a: 2 });
-      expect(hash1).not.toBe(hash2);
-    });
-  });
+      const hash1 = stableJsonHash({ a: 1 })
+      const hash2 = stableJsonHash({ a: 2 })
+      expect(hash1).not.toBe(hash2)
+    })
+  })
 
   // ============================================================================
   // fingerprintMemoryCandidate Tests
@@ -185,12 +183,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const fp1 = fingerprintMemoryCandidate('user-123', candidate);
-      const fp2 = fingerprintMemoryCandidate('user-123', candidate);
-      expect(fp1).toBe(fp2);
-    });
+      const fp1 = fingerprintMemoryCandidate('user-123', candidate)
+      const fp2 = fingerprintMemoryCandidate('user-123', candidate)
+      expect(fp1).toBe(fp2)
+    })
 
     it('should produce different fingerprints for different users', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -209,12 +207,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const fp1 = fingerprintMemoryCandidate('user-123', candidate);
-      const fp2 = fingerprintMemoryCandidate('user-456', candidate);
-      expect(fp1).not.toBe(fp2);
-    });
+      const fp1 = fingerprintMemoryCandidate('user-123', candidate)
+      const fp2 = fingerprintMemoryCandidate('user-456', candidate)
+      expect(fp1).not.toBe(fp2)
+    })
 
     it('should NOT include windowHash in fingerprint', () => {
       const candidate1: ExtractedMemoryCandidate = {
@@ -233,7 +231,7 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
       const candidate2: ExtractedMemoryCandidate = {
         ...candidate1,
@@ -244,12 +242,12 @@ describe('Long-term Memory Extraction', () => {
             windowHash: 'hash2', // Different window hash
           },
         },
-      };
+      }
 
-      const fp1 = fingerprintMemoryCandidate('user-123', candidate1);
-      const fp2 = fingerprintMemoryCandidate('user-123', candidate2);
-      expect(fp1).toBe(fp2); // Should be same despite different windowHash
-    });
+      const fp1 = fingerprintMemoryCandidate('user-123', candidate1)
+      const fp2 = fingerprintMemoryCandidate('user-123', candidate2)
+      expect(fp1).toBe(fp2) // Should be same despite different windowHash
+    })
 
     it('should include normalized text and structured data', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -269,11 +267,11 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const fp = fingerprintMemoryCandidate('user-123', candidate);
-      expect(fp).toMatch(/^[a-f0-9]{64}$/);
-    });
+      const fp = fingerprintMemoryCandidate('user-123', candidate)
+      expect(fp).toMatch(/^[a-f0-9]{64}$/)
+    })
 
     it('should handle candidates without structured data', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -292,11 +290,11 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const fp = fingerprintMemoryCandidate('user-123', candidate);
-      expect(fp).toMatch(/^[a-f0-9]{64}$/);
-    });
+      const fp = fingerprintMemoryCandidate('user-123', candidate)
+      expect(fp).toMatch(/^[a-f0-9]{64}$/)
+    })
 
     it('should handle candidates without entities', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -316,12 +314,12 @@ describe('Long-term Memory Extraction', () => {
           },
         },
         // No entities field
-      };
+      }
 
-      const fp = fingerprintMemoryCandidate('user-123', candidate);
-      expect(fp).toMatch(/^[a-f0-9]{64}$/);
-    });
-  });
+      const fp = fingerprintMemoryCandidate('user-123', candidate)
+      expect(fp).toMatch(/^[a-f0-9]{64}$/)
+    })
+  })
 
   // ============================================================================
   // validateExtractedCandidate Tests
@@ -336,7 +334,7 @@ describe('Long-term Memory Extraction', () => {
       windowHash: 'sha256:abc123',
       sessionMemorySummaryId: 'summary-789',
       renderedInput: 'Transcript...',
-    };
+    }
 
     it('should accept valid candidate', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -355,11 +353,11 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(true);
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(true)
+    })
 
     it('should reject unsupported memory types', () => {
       const candidate = {
@@ -378,12 +376,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      } as ExtractedMemoryCandidate;
+      } as ExtractedMemoryCandidate
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('unsupported_memory_type');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('unsupported_memory_type')
+    })
 
     it('should reject missing transcriptRefs', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -402,12 +400,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('missing_transcript_refs');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('missing_transcript_refs')
+    })
 
     it('should reject empty transcriptRefs', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -426,12 +424,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('missing_transcript_refs');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('missing_transcript_refs')
+    })
 
     it('should reject missing extraction.windowHash', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -450,12 +448,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           } as ExtractedMemoryCandidate['sourceRefs']['extraction'],
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('missing_window_hash');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('missing_window_hash')
+    })
 
     it('should reject confidence below 0.7', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -474,12 +472,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('confidence_out_of_range');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('confidence_out_of_range')
+    })
 
     it('should accept confidence at exactly 0.7', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -498,11 +496,11 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(true);
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(true)
+    })
 
     it('should force visibility to private_user', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -521,12 +519,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(true);
-      expect(result.normalizedCandidate?.scope.visibility).toBe('private_user');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(true)
+      expect(result.normalizedCandidate?.scope.visibility).toBe('private_user')
+    })
 
     it('should strip extra scope fields (projectId, workflowId, connector)', () => {
       const candidate = {
@@ -545,15 +543,15 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(true);
-      expect(result.normalizedCandidate?.scope).toEqual({ visibility: 'private_user' });
-      expect(result.normalizedCandidate?.scope).not.toHaveProperty('projectId');
-      expect(result.normalizedCandidate?.scope).not.toHaveProperty('workflowId');
-      expect(result.normalizedCandidate?.scope).not.toHaveProperty('connector');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(true)
+      expect(result.normalizedCandidate?.scope).toEqual({ visibility: 'private_user' })
+      expect(result.normalizedCandidate?.scope).not.toHaveProperty('projectId')
+      expect(result.normalizedCandidate?.scope).not.toHaveProperty('workflowId')
+      expect(result.normalizedCandidate?.scope).not.toHaveProperty('connector')
+    })
 
     it('should reject invalid importance values', () => {
       const candidate = {
@@ -572,12 +570,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      } as ExtractedMemoryCandidate;
+      } as ExtractedMemoryCandidate
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('invalid_importance');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('invalid_importance')
+    })
 
     it('should reject missing importance', () => {
       const candidate = {
@@ -596,12 +594,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      } as ExtractedMemoryCandidate;
+      } as ExtractedMemoryCandidate
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('invalid_importance');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('invalid_importance')
+    })
 
     it('should reject sensitivity = restricted in P0', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -620,16 +618,16 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const result = validateExtractedCandidate(candidate, validWindow);
-      expect(result.valid).toBe(false);
-      expect(result.reason).toContain('restricted_sensitivity');
-    });
+      const result = validateExtractedCandidate(candidate, validWindow)
+      expect(result.valid).toBe(false)
+      expect(result.reason).toContain('restricted_sensitivity')
+    })
 
     it('should accept all valid importance levels', () => {
-      const importanceLevels: Array<'low' | 'medium' | 'high' | 'critical'> = ['low', 'medium', 'high', 'critical'];
-      
+      const importanceLevels: Array<'low' | 'medium' | 'high' | 'critical'> = ['low', 'medium', 'high', 'critical']
+
       for (const importance of importanceLevels) {
         const candidate: ExtractedMemoryCandidate = {
           memoryType: 'user_preference',
@@ -647,17 +645,17 @@ describe('Long-term Memory Extraction', () => {
               includedTurnIds: ['turn-1'],
             },
           },
-        };
+        }
 
-        const result = validateExtractedCandidate(candidate, validWindow);
-        expect(result.valid).toBe(true);
-        expect(result.normalizedCandidate?.importance).toBe(importance);
+        const result = validateExtractedCandidate(candidate, validWindow)
+        expect(result.valid).toBe(true)
+        expect(result.normalizedCandidate?.importance).toBe(importance)
       }
-    });
+    })
 
     it('should accept all valid sensitivity levels except restricted', () => {
-      const validSensitivities: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high'];
-      
+      const validSensitivities: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high']
+
       for (const sensitivity of validSensitivities) {
         const candidate: ExtractedMemoryCandidate = {
           memoryType: 'user_preference',
@@ -675,12 +673,12 @@ describe('Long-term Memory Extraction', () => {
               includedTurnIds: ['turn-1'],
             },
           },
-        };
+        }
 
-        const result = validateExtractedCandidate(candidate, validWindow);
-        expect(result.valid).toBe(true);
+        const result = validateExtractedCandidate(candidate, validWindow)
+        expect(result.valid).toBe(true)
       }
-    });
+    })
 
     it('should accept all auto-extracted memory types', () => {
       const autoTypes: AutoExtractedMemoryType[] = [
@@ -689,7 +687,7 @@ describe('Long-term Memory Extraction', () => {
         'user_safety_rule',
         'project_state',
         'long_term_fact',
-      ];
+      ]
 
       for (const memoryType of autoTypes) {
         const candidate: ExtractedMemoryCandidate = {
@@ -708,21 +706,15 @@ describe('Long-term Memory Extraction', () => {
               includedTurnIds: ['turn-1'],
             },
           },
-        };
+        }
 
-        const result = validateExtractedCandidate(candidate, validWindow);
-        expect(result.valid).toBe(true);
+        const result = validateExtractedCandidate(candidate, validWindow)
+        expect(result.valid).toBe(true)
       }
-    });
+    })
 
     it('should reject non-auto-extraction memory types', () => {
-      const gatedTypes = [
-        'routine',
-        'workflow_preference',
-        'relationship',
-        'durable_fact',
-        'episodic_summary',
-      ];
+      const gatedTypes = ['routine', 'workflow_preference', 'relationship', 'durable_fact', 'episodic_summary']
 
       for (const memoryType of gatedTypes) {
         const candidate = {
@@ -741,14 +733,14 @@ describe('Long-term Memory Extraction', () => {
               includedTurnIds: ['turn-1'],
             },
           },
-        } as ExtractedMemoryCandidate;
+        } as ExtractedMemoryCandidate
 
-        const result = validateExtractedCandidate(candidate, validWindow);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain('unsupported_memory_type');
+        const result = validateExtractedCandidate(candidate, validWindow)
+        expect(result.valid).toBe(false)
+        expect(result.reason).toContain('unsupported_memory_type')
       }
-    });
-  });
+    })
+  })
 
   // ============================================================================
   // canonicalizeMemoryCandidate Tests
@@ -772,11 +764,11 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const canonical = canonicalizeMemoryCandidate(candidate);
-      expect(canonical.normalizedText).toBe('prefers dark mode');
-    });
+      const canonical = canonicalizeMemoryCandidate(candidate)
+      expect(canonical.normalizedText).toBe('prefers dark mode')
+    })
 
     it('should normalize structured data with sorted keys', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -796,14 +788,14 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const canonical = canonicalizeMemoryCandidate(candidate);
-      expect(canonical.normalizedStructured).toBeDefined();
+      const canonical = canonicalizeMemoryCandidate(candidate)
+      expect(canonical.normalizedStructured).toBeDefined()
       // Should have sorted keys
-      const keys = Object.keys(canonical.normalizedStructured!);
-      expect(keys).toEqual(['a', 'm', 'z']);
-    });
+      const keys = Object.keys(canonical.normalizedStructured!)
+      expect(keys).toEqual(['a', 'm', 'z'])
+    })
 
     it('should handle candidates without structured data', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -822,11 +814,11 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const canonical = canonicalizeMemoryCandidate(candidate);
-      expect(canonical.normalizedStructured).toBeUndefined();
-    });
+      const canonical = canonicalizeMemoryCandidate(candidate)
+      expect(canonical.normalizedStructured).toBeUndefined()
+    })
 
     it('should normalize entities by sorting', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -849,12 +841,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const canonical = canonicalizeMemoryCandidate(candidate);
-      expect(canonical.normalizedEntities).toBeDefined();
-      expect(canonical.normalizedEntities).toHaveLength(2);
-    });
+      const canonical = canonicalizeMemoryCandidate(candidate)
+      expect(canonical.normalizedEntities).toBeDefined()
+      expect(canonical.normalizedEntities).toHaveLength(2)
+    })
 
     it('should handle candidates without entities', () => {
       const candidate: ExtractedMemoryCandidate = {
@@ -873,12 +865,12 @@ describe('Long-term Memory Extraction', () => {
             includedTurnIds: ['turn-1'],
           },
         },
-      };
+      }
 
-      const canonical = canonicalizeMemoryCandidate(candidate);
-      expect(canonical.normalizedEntities).toBeUndefined();
-    });
-  });
+      const canonical = canonicalizeMemoryCandidate(candidate)
+      expect(canonical.normalizedEntities).toBeUndefined()
+    })
+  })
 
   // ============================================================================
   // buildLongTermMemoryExtractionPrompt Tests
@@ -894,16 +886,16 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Hello\nAssistant: Hi there!',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt).toContain('JSON');
-      expect(prompt).toContain('user_preference');
-      expect(prompt).toContain('user_profile');
-      expect(prompt).toContain('user_safety_rule');
-      expect(prompt).toContain('project_state');
-      expect(prompt).toContain('long_term_fact');
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt).toContain('JSON')
+      expect(prompt).toContain('user_preference')
+      expect(prompt).toContain('user_profile')
+      expect(prompt).toContain('user_safety_rule')
+      expect(prompt).toContain('project_state')
+      expect(prompt).toContain('long_term_fact')
+    })
 
     it('should instruct model to discard one-off tasks', async () => {
       const window: MemoryExtractionWindow = {
@@ -914,11 +906,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Help me with this task...',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt.toLowerCase()).toMatch(/discard|one-off|transient/);
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt.toLowerCase()).toMatch(/discard|one-off|transient/)
+    })
 
     it('should instruct model to discard unsupported memory types', async () => {
       const window: MemoryExtractionWindow = {
@@ -929,11 +921,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Remember this...',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt.toLowerCase()).toMatch(/unsupported|memory type/);
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt.toLowerCase()).toMatch(/unsupported|memory type/)
+    })
 
     it('should instruct model to discard missing provenance', async () => {
       const window: MemoryExtractionWindow = {
@@ -944,11 +936,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Something...',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt.toLowerCase()).toMatch(/provenance|source/);
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt.toLowerCase()).toMatch(/provenance|source/)
+    })
 
     it('should instruct model to discard low-confidence claims', async () => {
       const window: MemoryExtractionWindow = {
@@ -959,11 +951,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Maybe...',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt.toLowerCase()).toMatch(/confidence|uncertain/);
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt.toLowerCase()).toMatch(/confidence|uncertain/)
+    })
 
     it('should instruct model to discard sensitive content', async () => {
       const window: MemoryExtractionWindow = {
@@ -974,11 +966,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Secret...',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt.toLowerCase()).toMatch(/sensitive|should not be stored/);
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt.toLowerCase()).toMatch(/sensitive|should not be stored/)
+    })
 
     it('should include rendered input in prompt', async () => {
       const window: MemoryExtractionWindow = {
@@ -989,11 +981,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: I prefer dark mode\nAssistant: Noted!',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt).toContain('I prefer dark mode');
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt).toContain('I prefer dark mode')
+    })
 
     it('should include window metadata in prompt', async () => {
       const window: MemoryExtractionWindow = {
@@ -1004,32 +996,32 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'Transcript...',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
-      expect(prompt).toContain('user-123');
-      expect(prompt).toContain('session-456');
-    });
-  });
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
+      expect(prompt).toContain('user-123')
+      expect(prompt).toContain('session-456')
+    })
+  })
 
   // ============================================================================
   // Template-Driven Extraction Tests
   // ============================================================================
 
   describe('Template-driven extraction', () => {
-    const originalEnv = process.env;
+    const originalEnv = process.env
 
     beforeEach(() => {
-      vi.resetModules();
-    });
+      vi.resetModules()
+    })
 
     afterEach(() => {
-      process.env = originalEnv;
-      vi.restoreAllMocks();
-    });
+      process.env = originalEnv
+      vi.restoreAllMocks()
+    })
 
     it('should use hardcoded fallback when PROMPT_MEMORY_P0_ENABLED is false', async () => {
-      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'false' };
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'false' }
 
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
@@ -1039,22 +1031,21 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: I prefer dark mode',
-      };
+      }
 
       // Re-import to pick up the env change
-      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
-        '../../../src/memory/long-term-memory-extraction.js'
-      );
-      const prompt = await buildPrompt(window);
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } =
+        await import('../../../src/memory/long-term-memory-extraction.js')
+      const prompt = await buildPrompt(window)
 
-      expect(prompt).toContain('You are a memory extraction system');
-      expect(prompt).toContain('ALLOWED MEMORY TYPES (P0)');
-      expect(prompt).toContain('DISCARD THE FOLLOWING');
-      expect(prompt).toContain('RESPONSE FORMAT (JSON only');
-    });
+      expect(prompt).toContain('You are a memory extraction system')
+      expect(prompt).toContain('ALLOWED MEMORY TYPES (P0)')
+      expect(prompt).toContain('DISCARD THE FOLLOWING')
+      expect(prompt).toContain('RESPONSE FORMAT (JSON only')
+    })
 
     it('should load template content when PROMPT_MEMORY_P0_ENABLED is true', async () => {
-      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' }
 
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
@@ -1064,25 +1055,24 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: I prefer dark mode',
-      };
+      }
 
       // Re-import to pick up the env change
-      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
-        '../../../src/memory/long-term-memory-extraction.js'
-      );
-      const prompt = await buildPrompt(window);
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } =
+        await import('../../../src/memory/long-term-memory-extraction.js')
+      const prompt = await buildPrompt(window)
 
-      expect(prompt).toContain('Long-Term Memory Extraction');
-      expect(prompt).toContain('ALLOWED MEMORY TYPES (P0)');
-      expect(prompt).toContain('user_preference');
-      expect(prompt).toContain('user_profile');
-      expect(prompt).toContain('user_safety_rule');
-      expect(prompt).toContain('project_state');
-      expect(prompt).toContain('long_term_fact');
-    });
+      expect(prompt).toContain('Long-Term Memory Extraction')
+      expect(prompt).toContain('ALLOWED MEMORY TYPES (P0)')
+      expect(prompt).toContain('user_preference')
+      expect(prompt).toContain('user_profile')
+      expect(prompt).toContain('user_safety_rule')
+      expect(prompt).toContain('project_state')
+      expect(prompt).toContain('long_term_fact')
+    })
 
     it('should include JSON schema from template when P0 enabled', async () => {
-      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' }
 
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
@@ -1092,25 +1082,24 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Hello',
-      };
+      }
 
-      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
-        '../../../src/memory/long-term-memory-extraction.js'
-      );
-      const prompt = await buildPrompt(window);
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } =
+        await import('../../../src/memory/long-term-memory-extraction.js')
+      const prompt = await buildPrompt(window)
 
-      expect(prompt).toContain('Memory Candidate JSON Schema');
-      expect(prompt).toContain('candidates');
-      expect(prompt).toContain('memoryType');
-      expect(prompt).toContain('confidence');
-      expect(prompt).toContain('importance');
-      expect(prompt).toContain('sensitivity');
-      expect(prompt).toContain('sourceRefs');
-      expect(prompt).toContain('transcriptRefs');
-    });
+      expect(prompt).toContain('Memory Candidate JSON Schema')
+      expect(prompt).toContain('candidates')
+      expect(prompt).toContain('memoryType')
+      expect(prompt).toContain('confidence')
+      expect(prompt).toContain('importance')
+      expect(prompt).toContain('sensitivity')
+      expect(prompt).toContain('sourceRefs')
+      expect(prompt).toContain('transcriptRefs')
+    })
 
     it('should include atomic facts rules when P0 enabled', async () => {
-      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' }
 
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
@@ -1120,15 +1109,14 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Hello',
-      };
+      }
 
-      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
-        '../../../src/memory/long-term-memory-extraction.js'
-      );
-      const prompt = await buildPrompt(window);
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } =
+        await import('../../../src/memory/long-term-memory-extraction.js')
+      const prompt = await buildPrompt(window)
 
-      expect(prompt).toContain('Atomic Facts Extraction Rules');
-    });
+      expect(prompt).toContain('Atomic Facts Extraction Rules')
+    })
 
     it('should append dynamic window correctly', async () => {
       const window: MemoryExtractionWindow = {
@@ -1139,20 +1127,20 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:custom-hash',
         sessionMemorySummaryId: 'summary-999',
         renderedInput: 'User: Custom conversation content here',
-      };
+      }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(window);
+      const prompt = await buildLongTermMemoryExtractionPrompt(window)
 
-      expect(prompt).toContain('CONTEXT:');
-      expect(prompt).toContain('User ID: user-abc');
-      expect(prompt).toContain('Session ID: session-xyz');
-      expect(prompt).toContain('Window Hash: sha256:custom-hash');
-      expect(prompt).toContain('Trigger Turn: turn-10');
-      expect(prompt).toContain('Included Turns: turn-5, turn-6, turn-7, turn-8, turn-9, turn-10');
-      expect(prompt).toContain('Session Memory Summary ID: summary-999');
-      expect(prompt).toContain('CONVERSATION:');
-      expect(prompt).toContain('Custom conversation content here');
-    });
+      expect(prompt).toContain('CONTEXT:')
+      expect(prompt).toContain('User ID: user-abc')
+      expect(prompt).toContain('Session ID: session-xyz')
+      expect(prompt).toContain('Window Hash: sha256:custom-hash')
+      expect(prompt).toContain('Trigger Turn: turn-10')
+      expect(prompt).toContain('Included Turns: turn-5, turn-6, turn-7, turn-8, turn-9, turn-10')
+      expect(prompt).toContain('Session Memory Summary ID: summary-999')
+      expect(prompt).toContain('CONVERSATION:')
+      expect(prompt).toContain('Custom conversation content here')
+    })
 
     it('should build dynamic window separately via buildMemoryExtractionDynamicWindow', () => {
       const window: MemoryExtractionWindow = {
@@ -1163,20 +1151,20 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'hash-xyz',
         sessionMemorySummaryId: 'summary-test',
         renderedInput: 'Test conversation',
-      };
+      }
 
-      const dynamicWindow = buildMemoryExtractionDynamicWindow(window);
+      const dynamicWindow = buildMemoryExtractionDynamicWindow(window)
 
-      expect(dynamicWindow).toContain('CONTEXT:');
-      expect(dynamicWindow).toContain('User ID: user-test');
-      expect(dynamicWindow).toContain('Session ID: session-test');
-      expect(dynamicWindow).toContain('Window Hash: hash-xyz');
-      expect(dynamicWindow).toContain('Trigger Turn: turn-3');
-      expect(dynamicWindow).toContain('Included Turns: turn-1, turn-2, turn-3');
-      expect(dynamicWindow).toContain('Session Memory Summary ID: summary-test');
-      expect(dynamicWindow).toContain('CONVERSATION:');
-      expect(dynamicWindow).toContain('Test conversation');
-    });
+      expect(dynamicWindow).toContain('CONTEXT:')
+      expect(dynamicWindow).toContain('User ID: user-test')
+      expect(dynamicWindow).toContain('Session ID: session-test')
+      expect(dynamicWindow).toContain('Window Hash: hash-xyz')
+      expect(dynamicWindow).toContain('Trigger Turn: turn-3')
+      expect(dynamicWindow).toContain('Included Turns: turn-1, turn-2, turn-3')
+      expect(dynamicWindow).toContain('Session Memory Summary ID: summary-test')
+      expect(dynamicWindow).toContain('CONVERSATION:')
+      expect(dynamicWindow).toContain('Test conversation')
+    })
 
     it('should handle missing sessionMemorySummaryId in dynamic window', () => {
       const window: MemoryExtractionWindow = {
@@ -1187,11 +1175,11 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'hash-xyz',
         sessionMemorySummaryId: '',
         renderedInput: 'Test',
-      };
+      }
 
-      const dynamicWindow = buildMemoryExtractionDynamicWindow(window);
-      expect(dynamicWindow).toContain('Session Memory Summary ID: none');
-    });
+      const dynamicWindow = buildMemoryExtractionDynamicWindow(window)
+      expect(dynamicWindow).toContain('Session Memory Summary ID: none')
+    })
 
     it('should reject unsupported memory types regardless of template loading', async () => {
       const validWindow: MemoryExtractionWindow = {
@@ -1202,15 +1190,9 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'Transcript...',
-      };
+      }
 
-      const unsupportedTypes = [
-        'relationship',
-        'durable_fact',
-        'episodic_summary',
-        'routine',
-        'workflow_preference',
-      ];
+      const unsupportedTypes = ['relationship', 'durable_fact', 'episodic_summary', 'routine', 'workflow_preference']
 
       for (const memoryType of unsupportedTypes) {
         const candidate = {
@@ -1229,13 +1211,13 @@ describe('Long-term Memory Extraction', () => {
               includedTurnIds: ['turn-1'],
             },
           },
-        } as ExtractedMemoryCandidate;
+        } as ExtractedMemoryCandidate
 
-        const result = validateExtractedCandidate(candidate, validWindow);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain('unsupported_memory_type');
+        const result = validateExtractedCandidate(candidate, validWindow)
+        expect(result.valid).toBe(false)
+        expect(result.reason).toContain('unsupported_memory_type')
       }
-    });
+    })
 
     it('should reject secret-like patterns in extracted text', async () => {
       const validWindow: MemoryExtractionWindow = {
@@ -1246,13 +1228,13 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'Transcript...',
-      };
+      }
 
       const secretPatterns = [
         'password: my-secret-password',
         'api_key: sk-1234567890',
         'private key: -----BEGIN RSA PRIVATE KEY-----',
-      ];
+      ]
 
       for (const secretText of secretPatterns) {
         const candidate: ExtractedMemoryCandidate = {
@@ -1271,20 +1253,20 @@ describe('Long-term Memory Extraction', () => {
               includedTurnIds: ['turn-1'],
             },
           },
-        };
+        }
 
-        const result = validateExtractedCandidate(candidate, validWindow);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain('secret_like_content');
+        const result = validateExtractedCandidate(candidate, validWindow)
+        expect(result.valid).toBe(false)
+        expect(result.reason).toContain('secret_like_content')
       }
 
-      const prompt = await buildLongTermMemoryExtractionPrompt(validWindow);
-      expect(prompt.toLowerCase()).toMatch(/sensitive|should not be stored|passwords|secrets/);
-    });
+      const prompt = await buildLongTermMemoryExtractionPrompt(validWindow)
+      expect(prompt.toLowerCase()).toMatch(/sensitive|should not be stored|passwords|secrets/)
+    })
 
     it('should reject ephemeral patterns when MEMORY_SEMANTIC_POLICY_ENABLED', async () => {
-      const originalSemanticPolicy = process.env.MEMORY_SEMANTIC_POLICY_ENABLED;
-      process.env.MEMORY_SEMANTIC_POLICY_ENABLED = 'true';
+      const originalSemanticPolicy = process.env.MEMORY_SEMANTIC_POLICY_ENABLED
+      process.env.MEMORY_SEMANTIC_POLICY_ENABLED = 'true'
 
       const validWindow: MemoryExtractionWindow = {
         userId: 'user-123',
@@ -1294,7 +1276,7 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'Transcript...',
-      };
+      }
 
       const ephemeralPatterns = [
         'commit abc123def456',
@@ -1302,12 +1284,11 @@ describe('Long-term Memory Extraction', () => {
         'git push origin main',
         'console.log("debug")',
         'passing test suite',
-      ];
+      ]
 
       // Re-import to pick up env change
-      const { validateExtractedCandidate: validate } = await import(
-        '../../../src/memory/long-term-memory-extraction.js'
-      );
+      const { validateExtractedCandidate: validate } =
+        await import('../../../src/memory/long-term-memory-extraction.js')
 
       for (const ephemeralText of ephemeralPatterns) {
         const candidate: ExtractedMemoryCandidate = {
@@ -1326,18 +1307,18 @@ describe('Long-term Memory Extraction', () => {
               includedTurnIds: ['turn-1'],
             },
           },
-        };
+        }
 
-        const result = validate(candidate, validWindow);
-        expect(result.valid).toBe(false);
-        expect(result.reason).toContain('ephemeral_pattern_detected');
+        const result = validate(candidate, validWindow)
+        expect(result.valid).toBe(false)
+        expect(result.reason).toContain('ephemeral_pattern_detected')
       }
 
-      process.env.MEMORY_SEMANTIC_POLICY_ENABLED = originalSemanticPolicy;
-    });
+      process.env.MEMORY_SEMANTIC_POLICY_ENABLED = originalSemanticPolicy
+    })
 
     it('should include extraction principles from template', async () => {
-      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' }
 
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
@@ -1347,20 +1328,19 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Hello',
-      };
+      }
 
-      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
-        '../../../src/memory/long-term-memory-extraction.js'
-      );
-      const prompt = await buildPrompt(window);
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } =
+        await import('../../../src/memory/long-term-memory-extraction.js')
+      const prompt = await buildPrompt(window)
 
-      expect(prompt).toContain('Extraction Principles');
-      expect(prompt).toContain('independently referenceable');
-      expect(prompt).toContain('confidence below 0.7');
-    });
+      expect(prompt).toContain('Extraction Principles')
+      expect(prompt).toContain('independently referenceable')
+      expect(prompt).toContain('confidence below 0.7')
+    })
 
     it('should include discard rules from template', async () => {
-      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' };
+      process.env = { ...originalEnv, PROMPT_MEMORY_P0_ENABLED: 'true' }
 
       const window: MemoryExtractionWindow = {
         userId: 'user-123',
@@ -1370,19 +1350,18 @@ describe('Long-term Memory Extraction', () => {
         windowHash: 'sha256:abc123',
         sessionMemorySummaryId: 'summary-789',
         renderedInput: 'User: Hello',
-      };
+      }
 
-      const { buildLongTermMemoryExtractionPrompt: buildPrompt } = await import(
-        '../../../src/memory/long-term-memory-extraction.js'
-      );
-      const prompt = await buildPrompt(window);
+      const { buildLongTermMemoryExtractionPrompt: buildPrompt } =
+        await import('../../../src/memory/long-term-memory-extraction.js')
+      const prompt = await buildPrompt(window)
 
-      expect(prompt).toContain('DISCARD THE FOLLOWING');
-      expect(prompt).toContain('One-off tasks');
-      expect(prompt).toContain('Low-confidence claims');
-      expect(prompt).toContain('Sensitive content');
-      expect(prompt).toContain('File names, commands, test steps');
-      expect(prompt).toContain('Commit/push/release details');
-    });
-  });
-});
+      expect(prompt).toContain('DISCARD THE FOLLOWING')
+      expect(prompt).toContain('One-off tasks')
+      expect(prompt).toContain('Low-confidence claims')
+      expect(prompt).toContain('Sensitive content')
+      expect(prompt).toContain('File names, commands, test steps')
+      expect(prompt).toContain('Commit/push/release details')
+    })
+  })
+})

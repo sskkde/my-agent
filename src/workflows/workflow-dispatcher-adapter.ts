@@ -11,29 +11,29 @@
  * - This trade-off is acceptable given the constraint to not modify WorkflowRuntime internals
  */
 
-import type { RuntimeDispatcher, DispatchResult, RuntimeActionType, TargetRuntime } from '../dispatcher/types.js';
-import type { RuntimeActionState, Source, TargetRef } from '../storage/runtime-action-store.js';
+import type { RuntimeDispatcher, DispatchResult, RuntimeActionType, TargetRuntime } from '../dispatcher/types.js'
+import type { RuntimeActionState, Source, TargetRef } from '../storage/runtime-action-store.js'
 
 /**
  * Simplified dispatcher interface expected by WorkflowRuntime.
  */
 interface WorkflowRuntimeDispatcher {
   dispatch(request: {
-    actionType: RuntimeActionType;
-    targetRuntime: string;
-    targetAction: string;
-    payload: Record<string, unknown>;
-    userId?: string;
-    sessionId?: string;
-    correlationId?: string;
-  }): Promise<{ success: boolean; result?: unknown; error?: string }>;
+    actionType: RuntimeActionType
+    targetRuntime: string
+    targetAction: string
+    payload: Record<string, unknown>
+    userId?: string
+    sessionId?: string
+    correlationId?: string
+  }): Promise<{ success: boolean; result?: unknown; error?: string }>
 }
 
 /**
  * Generates a unique ID for actions and requests.
  */
 function generateId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 11)}`;
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 11)}`
 }
 
 /**
@@ -43,33 +43,31 @@ function generateId(): string {
  * @param runtimeDispatcher - The actual RuntimeDispatcher instance
  * @returns A dispatcher compatible with WorkflowRuntime's interface
  */
-export function createWorkflowDispatcherAdapter(
-  runtimeDispatcher: RuntimeDispatcher
-): WorkflowRuntimeDispatcher {
+export function createWorkflowDispatcherAdapter(runtimeDispatcher: RuntimeDispatcher): WorkflowRuntimeDispatcher {
   return {
     async dispatch(request) {
-      const requestId = generateId();
-      const actionId = generateId();
-      const now = new Date().toISOString();
+      const requestId = generateId()
+      const actionId = generateId()
+      const now = new Date().toISOString()
 
       const action: {
-        actionId: string;
-        actionType: RuntimeActionType;
-        idempotencyKey?: string;
-        source: Source;
-        targetRuntime: TargetRuntime;
-        targetAction: string;
-        payload: Record<string, unknown>;
-        correlationId?: string;
-        causationId?: string;
-        sessionId?: string;
-        userId?: string;
-        targetRef: TargetRef;
-        status: RuntimeActionState;
-        statusMessage?: string;
-        result?: Record<string, unknown>;
-        createdAt: string;
-        updatedAt: string;
+        actionId: string
+        actionType: RuntimeActionType
+        idempotencyKey?: string
+        source: Source
+        targetRuntime: TargetRuntime
+        targetAction: string
+        payload: Record<string, unknown>
+        correlationId?: string
+        causationId?: string
+        sessionId?: string
+        userId?: string
+        targetRef: TargetRef
+        status: RuntimeActionState
+        statusMessage?: string
+        result?: Record<string, unknown>
+        createdAt: string
+        updatedAt: string
       } = {
         actionId,
         actionType: request.actionType,
@@ -87,25 +85,25 @@ export function createWorkflowDispatcherAdapter(
         status: 'created',
         createdAt: now,
         updatedAt: now,
-      };
+      }
 
       const context = {
         userId: request.userId,
         sessionId: request.sessionId,
         callerModule: 'workflow',
-      };
+      }
 
       const result: DispatchResult = await runtimeDispatcher.dispatch({
         requestId,
         action,
         context,
-      });
+      })
 
       return {
         success: result.status === 'completed',
         result: result.result,
         error: result.status === 'failed' ? result.error?.message : undefined,
-      };
+      }
     },
-  };
+  }
 }

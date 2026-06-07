@@ -1,8 +1,8 @@
-import { type DatabaseAdapter, DatabaseAdapterError } from '../../database-adapter.js';
-import { SqlDialect } from '../../sql-dialect.js';
-import { createConnectionManager, type ConnectionManager } from '../../connection.js';
+import { type DatabaseAdapter, DatabaseAdapterError } from '../../database-adapter.js'
+import { SqlDialect } from '../../sql-dialect.js'
+import { createConnectionManager, type ConnectionManager } from '../../connection.js'
 
-const ASYNC_NOT_SUPPORTED = 'Async operations are not supported on SQLite adapter. Use sync methods instead.';
+const ASYNC_NOT_SUPPORTED = 'Async operations are not supported on SQLite adapter. Use sync methods instead.'
 
 /**
  * SqliteAdapter — SQLite implementation of the DatabaseAdapter interface.
@@ -19,69 +19,69 @@ const ASYNC_NOT_SUPPORTED = 'Async operations are not supported on SQLite adapte
  * adapter.close();
  */
 export class SqliteAdapter implements DatabaseAdapter {
-  private connection: ConnectionManager;
-  private dialect: SqlDialect;
+  private connection: ConnectionManager
+  private dialect: SqlDialect
 
   constructor(path: string) {
-    this.connection = createConnectionManager(path);
-    this.dialect = SqlDialect.sqlite();
+    this.connection = createConnectionManager(path)
+    this.dialect = SqlDialect.sqlite()
   }
 
   open(): void {
-    this.connection.open();
+    this.connection.open()
   }
 
   close(): void {
-    this.connection.close();
+    this.connection.close()
   }
 
   isOpen(): boolean {
-    return this.connection.isOpen();
+    return this.connection.isOpen()
   }
 
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[] {
-    return this.connection.query<T>(sql, params);
+    return this.connection.query<T>(sql, params)
   }
 
   exec(sql: string, params?: unknown[]): void {
-    this.connection.exec(sql, params);
+    this.connection.exec(sql, params)
   }
 
   transaction<T>(fn: () => T): () => T {
-    return this.connection.transaction(fn);
+    return this.connection.transaction(fn)
   }
 
   asyncQuery<T = Record<string, unknown>>(_sql: string, _params?: unknown[]): Promise<T[]> {
-    throw new DatabaseAdapterError(ASYNC_NOT_SUPPORTED);
+    throw new DatabaseAdapterError(ASYNC_NOT_SUPPORTED)
   }
 
   asyncExec(_sql: string, _params?: unknown[]): Promise<void> {
-    throw new DatabaseAdapterError(ASYNC_NOT_SUPPORTED);
+    throw new DatabaseAdapterError(ASYNC_NOT_SUPPORTED)
   }
 
   asyncTransaction<T>(_fn: () => Promise<T>): Promise<T> {
-    throw new DatabaseAdapterError(ASYNC_NOT_SUPPORTED);
+    throw new DatabaseAdapterError(ASYNC_NOT_SUPPORTED)
   }
 
   getDialect(): SqlDialect {
-    return this.dialect;
+    return this.dialect
   }
 
   getType(): 'sqlite' {
-    return 'sqlite';
+    return 'sqlite'
   }
 
   async healthCheck(): Promise<boolean> {
     try {
-      this.connection.query('SELECT 1');
-      return true;
+      this.connection.query('SELECT 1')
+      return true
     } catch {
-      return false;
+      return false
     }
   }
 
   getPoolMetrics(): { totalCount: number; idleCount: number; waitingCount: number } {
-    return { totalCount: 1, idleCount: 1, waitingCount: 0 };
+    return { totalCount: 1, idleCount: 1, waitingCount: 0 }
   }
 }
 
@@ -92,5 +92,5 @@ export class SqliteAdapter implements DatabaseAdapter {
  * @returns A DatabaseAdapter backed by SQLite
  */
 export function createSqliteAdapter(path: string): DatabaseAdapter {
-  return new SqliteAdapter(path);
+  return new SqliteAdapter(path)
 }

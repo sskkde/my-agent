@@ -4,39 +4,35 @@
  * and returns raw ConnectorResponse.
  */
 
-import type {
-  ConnectorCallRequest,
-  ConnectorResponse,
-  ConnectorAdapter,
-} from '../types.js';
-import type { ConnectorInstance, ConnectorStore } from '../../storage/connector-store.js';
+import type { ConnectorCallRequest, ConnectorResponse, ConnectorAdapter } from '../types.js'
+import type { ConnectorInstance, ConnectorStore } from '../../storage/connector-store.js'
 
 export interface ConnectorRequestRouterConfig {
-  instanceStore: ConnectorStore;
-  adapterRegistry: ConnectorAdapterRegistry;
+  instanceStore: ConnectorStore
+  adapterRegistry: ConnectorAdapterRegistry
 }
 
 export interface ConnectorAdapterRegistry {
-  getAdapter(connectorType: string): ConnectorAdapter | undefined;
+  getAdapter(connectorType: string): ConnectorAdapter | undefined
 }
 
 export interface RouterResult {
-  response: ConnectorResponse;
-  instance: ConnectorInstance;
+  response: ConnectorResponse
+  instance: ConnectorInstance
 }
 
 export class ConnectorRequestRouter {
-  private instanceStore: ConnectorStore;
-  private adapterRegistry: ConnectorAdapterRegistry;
+  private instanceStore: ConnectorStore
+  private adapterRegistry: ConnectorAdapterRegistry
 
   constructor(config: ConnectorRequestRouterConfig) {
-    this.instanceStore = config.instanceStore;
-    this.adapterRegistry = config.adapterRegistry;
+    this.instanceStore = config.instanceStore
+    this.adapterRegistry = config.adapterRegistry
   }
 
   async route(request: ConnectorCallRequest): Promise<RouterResult> {
-    const instance = this.instanceStore.findInstanceById(request.connectorInstanceId);
-    
+    const instance = this.instanceStore.findInstanceById(request.connectorInstanceId)
+
     if (!instance) {
       return {
         response: {
@@ -50,14 +46,14 @@ export class ConnectorRequestRouter {
           },
         },
         instance: this.createPlaceholderInstance(request.connectorInstanceId),
-      };
+      }
     }
 
-    const definition = this.instanceStore.findDefinitionById(instance.connectorDefinitionId);
-    const connectorType = definition?.connectorType ?? 'unknown';
+    const definition = this.instanceStore.findDefinitionById(instance.connectorDefinitionId)
+    const connectorType = definition?.connectorType ?? 'unknown'
 
-    const adapter = this.adapterRegistry.getAdapter(connectorType);
-    
+    const adapter = this.adapterRegistry.getAdapter(connectorType)
+
     if (!adapter) {
       return {
         response: {
@@ -71,19 +67,19 @@ export class ConnectorRequestRouter {
           },
         },
         instance,
-      };
+      }
     }
 
     try {
-      const rawResult = await adapter.execute(instance, request);
-      
+      const rawResult = await adapter.execute(instance, request)
+
       const response: ConnectorResponse = this.normalizeRawResult(
         rawResult,
         request.requestId,
-        request.connectorInstanceId
-      );
-      
-      return { response, instance };
+        request.connectorInstanceId,
+      )
+
+      return { response, instance }
     } catch (error) {
       return {
         response: {
@@ -97,21 +93,17 @@ export class ConnectorRequestRouter {
           },
         },
         instance,
-      };
+      }
     }
   }
 
-  private normalizeRawResult(
-    raw: unknown,
-    requestId: string,
-    connectorInstanceId: string
-  ): ConnectorResponse {
+  private normalizeRawResult(raw: unknown, requestId: string, connectorInstanceId: string): ConnectorResponse {
     if (this.isConnectorResponse(raw)) {
       return {
         ...raw,
         requestId,
         connectorInstanceId,
-      };
+      }
     }
 
     return {
@@ -119,19 +111,16 @@ export class ConnectorRequestRouter {
       requestId,
       connectorInstanceId,
       data: raw,
-    };
+    }
   }
 
   private isConnectorResponse(value: unknown): value is ConnectorResponse {
     if (typeof value !== 'object' || value === null) {
-      return false;
+      return false
     }
-    
-    const obj = value as Record<string, unknown>;
-    return (
-      typeof obj.status === 'string' &&
-      typeof obj.requestId === 'string'
-    );
+
+    const obj = value as Record<string, unknown>
+    return typeof obj.status === 'string' && typeof obj.requestId === 'string'
   }
 
   private createPlaceholderInstance(id: string): ConnectorInstance {
@@ -145,12 +134,10 @@ export class ConnectorRequestRouter {
       status: 'inactive',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    };
+    }
   }
 }
 
-export function createConnectorRequestRouter(
-  config: ConnectorRequestRouterConfig
-): ConnectorRequestRouter {
-  return new ConnectorRequestRouter(config);
+export function createConnectorRequestRouter(config: ConnectorRequestRouterConfig): ConnectorRequestRouter {
+  return new ConnectorRequestRouter(config)
 }

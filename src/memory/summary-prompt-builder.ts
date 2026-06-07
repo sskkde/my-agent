@@ -17,8 +17,8 @@
  * @module memory/summary-prompt-builder
  */
 
-import { createTemplateLoader } from '../prompt/template-loader.js';
-import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
+import { createTemplateLoader } from '../prompt/template-loader.js'
+import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js'
 
 // ============================================================================
 // Types
@@ -29,17 +29,17 @@ import { isPromptMemoryP0Enabled } from '../prompt/feature-flags.js';
  */
 export interface SessionSummaryPromptInput {
   /** Session identifier */
-  sessionId: string;
+  sessionId: string
   /** User identifier */
-  userId: string;
+  userId: string
   /** Conversation transcript or summary text */
-  conversationContent: string;
+  conversationContent: string
   /** Turn count in the session */
-  turnCount?: number;
+  turnCount?: number
   /** Session start time (ISO string) */
-  startTime?: string;
+  startTime?: string
   /** Session end time (ISO string) */
-  endTime?: string;
+  endTime?: string
 }
 
 /**
@@ -47,13 +47,13 @@ export interface SessionSummaryPromptInput {
  */
 export interface DailySummaryPromptInput {
   /** User identifier */
-  userId: string;
+  userId: string
   /** Date for the summary (ISO date string) */
-  date: string;
+  date: string
   /** Session summaries to aggregate */
-  sessionSummaries: string[];
+  sessionSummaries: string[]
   /** Total turn count across sessions */
-  totalTurnCount?: number;
+  totalTurnCount?: number
 }
 
 /**
@@ -61,13 +61,13 @@ export interface DailySummaryPromptInput {
  */
 export interface WeeklySummaryPromptInput {
   /** User identifier */
-  userId: string;
+  userId: string
   /** Week start date (ISO date string) */
-  weekStartDate: string;
+  weekStartDate: string
   /** Week end date (ISO date string) */
-  weekEndDate: string;
+  weekEndDate: string
   /** Daily summaries to aggregate */
-  dailySummaries: string[];
+  dailySummaries: string[]
 }
 
 /**
@@ -75,11 +75,11 @@ export interface WeeklySummaryPromptInput {
  */
 export interface LongTermProfilePromptInput {
   /** User identifier */
-  userId: string;
+  userId: string
   /** Accumulated memory content */
-  memoryContent: string;
+  memoryContent: string
   /** Previous long-term profile (if any) */
-  previousProfile?: string;
+  previousProfile?: string
 }
 
 /**
@@ -89,11 +89,11 @@ export interface LongTermProfilePromptInput {
  */
 export interface AtomicFactsPromptInput {
   /** User identifier */
-  userId: string;
+  userId: string
   /** Session identifier */
-  sessionId: string;
+  sessionId: string
   /** Conversation content to extract facts from */
-  conversationContent: string;
+  conversationContent: string
 }
 
 /**
@@ -101,11 +101,11 @@ export interface AtomicFactsPromptInput {
  */
 export interface SummaryPromptOutput {
   /** The built prompt string */
-  prompt: string;
+  prompt: string
   /** Whether the template was successfully loaded */
-  templateLoaded: boolean;
+  templateLoaded: boolean
   /** The template ID that was attempted */
-  templateId: string;
+  templateId: string
 }
 
 // ============================================================================
@@ -132,7 +132,7 @@ Return a JSON object with fields:
 - \`keyDecisions\`: string array of decision summaries
 - \`actionItems\`: string array of pending actions
 - \`unresolvedQuestions\`: string array of open questions
-- \`currentState\`: brief description of session end state`;
+- \`currentState\`: brief description of session end state`
 
 const HARDCODED_DAILY_PROMPT = `Generate a daily-level summary spanning multiple sessions from the same day:
 
@@ -154,7 +154,7 @@ Return a JSON object with fields:
 - \`keyAchievements\`: string array of accomplishments
 - \`patternsObserved\`: string array of user patterns
 - \`blockers\`: string array of obstacles
-- \`crossSessionThemes\`: string array of recurring topics`;
+- \`crossSessionThemes\`: string array of recurring topics`
 
 const HARDCODED_WEEKLY_PROMPT = `Generate a weekly summary consolidating daily summaries:
 
@@ -176,7 +176,7 @@ Return a JSON object with fields:
 - \`highLevelProgress\`: string array of milestones
 - \`trends\`: string array of identified trends
 - \`strategicInsights\`: string array of strategic observations
-- \`longPoleIssues\`: string array of persistent blockers`;
+- \`longPoleIssues\`: string array of persistent blockers`
 
 const HARDCODED_LONG_TERM_PROMPT = `Build a long-term user profile from accumulated memory:
 
@@ -198,7 +198,7 @@ Return a JSON object with fields:
 - \`preferences\`: string array of user preferences
 - \`goals\`: string array of long-term goals
 - \`workStyle\`: string array of work style observations
-- \`domainExpertise\`: string array of expertise areas`;
+- \`domainExpertise\`: string array of expertise areas`
 
 const HARDCODED_ATOMIC_FACTS_PROMPT = `Extract atomic, independently-verifiable facts from conversation:
 
@@ -223,7 +223,7 @@ Return a JSON object with fields:
   - \`sourceRef\`: reference to origin (messageId or timestamp)
   - \`category\`: 'preference' | 'fact' | 'constraint' | 'goal'
 
-Keep each fact under 30 words.`;
+Keep each fact under 30 words.`
 
 // ============================================================================
 // Prompt Builder Functions
@@ -235,30 +235,28 @@ Keep each fact under 30 words.`;
  * @param input - Session summary prompt input data
  * @returns Promise resolving to the built prompt and metadata
  */
-export async function buildSessionSummaryPrompt(
-  input: SessionSummaryPromptInput
-): Promise<SummaryPromptOutput> {
-  const templateId = 'summary:session';
-  let stableRules: string;
-  let templateLoaded = false;
+export async function buildSessionSummaryPrompt(input: SessionSummaryPromptInput): Promise<SummaryPromptOutput> {
+  const templateId = 'summary:session'
+  let stableRules: string
+  let templateLoaded = false
 
   if (isPromptMemoryP0Enabled()) {
-    const templateLoader = createTemplateLoader();
+    const templateLoader = createTemplateLoader()
     try {
-      stableRules = await templateLoader.load(templateId);
-      templateLoaded = true;
+      stableRules = await templateLoader.load(templateId)
+      templateLoaded = true
     } catch (e) {
-      console.warn('[summary-prompt-builder] Failed to load summary:session template, using hardcoded fallback', e);
-      stableRules = HARDCODED_SESSION_PROMPT;
+      console.warn('[summary-prompt-builder] Failed to load summary:session template, using hardcoded fallback', e)
+      stableRules = HARDCODED_SESSION_PROMPT
     }
   } else {
-    stableRules = HARDCODED_SESSION_PROMPT;
+    stableRules = HARDCODED_SESSION_PROMPT
   }
 
-  const dynamicData = buildSessionDynamicData(input);
-  const prompt = `${stableRules}\n\n${dynamicData}`;
+  const dynamicData = buildSessionDynamicData(input)
+  const prompt = `${stableRules}\n\n${dynamicData}`
 
-  return { prompt, templateLoaded, templateId };
+  return { prompt, templateLoaded, templateId }
 }
 
 /**
@@ -267,30 +265,28 @@ export async function buildSessionSummaryPrompt(
  * @param input - Daily summary prompt input data
  * @returns Promise resolving to the built prompt and metadata
  */
-export async function buildDailySummaryPrompt(
-  input: DailySummaryPromptInput
-): Promise<SummaryPromptOutput> {
-  const templateId = 'summary:daily';
-  let stableRules: string;
-  let templateLoaded = false;
+export async function buildDailySummaryPrompt(input: DailySummaryPromptInput): Promise<SummaryPromptOutput> {
+  const templateId = 'summary:daily'
+  let stableRules: string
+  let templateLoaded = false
 
   if (isPromptMemoryP0Enabled()) {
-    const templateLoader = createTemplateLoader();
+    const templateLoader = createTemplateLoader()
     try {
-      stableRules = await templateLoader.load(templateId);
-      templateLoaded = true;
+      stableRules = await templateLoader.load(templateId)
+      templateLoaded = true
     } catch (e) {
-      console.warn('[summary-prompt-builder] Failed to load summary:daily template, using hardcoded fallback', e);
-      stableRules = HARDCODED_DAILY_PROMPT;
+      console.warn('[summary-prompt-builder] Failed to load summary:daily template, using hardcoded fallback', e)
+      stableRules = HARDCODED_DAILY_PROMPT
     }
   } else {
-    stableRules = HARDCODED_DAILY_PROMPT;
+    stableRules = HARDCODED_DAILY_PROMPT
   }
 
-  const dynamicData = buildDailyDynamicData(input);
-  const prompt = `${stableRules}\n\n${dynamicData}`;
+  const dynamicData = buildDailyDynamicData(input)
+  const prompt = `${stableRules}\n\n${dynamicData}`
 
-  return { prompt, templateLoaded, templateId };
+  return { prompt, templateLoaded, templateId }
 }
 
 /**
@@ -299,30 +295,28 @@ export async function buildDailySummaryPrompt(
  * @param input - Weekly summary prompt input data
  * @returns Promise resolving to the built prompt and metadata
  */
-export async function buildWeeklySummaryPrompt(
-  input: WeeklySummaryPromptInput
-): Promise<SummaryPromptOutput> {
-  const templateId = 'summary:weekly';
-  let stableRules: string;
-  let templateLoaded = false;
+export async function buildWeeklySummaryPrompt(input: WeeklySummaryPromptInput): Promise<SummaryPromptOutput> {
+  const templateId = 'summary:weekly'
+  let stableRules: string
+  let templateLoaded = false
 
   if (isPromptMemoryP0Enabled()) {
-    const templateLoader = createTemplateLoader();
+    const templateLoader = createTemplateLoader()
     try {
-      stableRules = await templateLoader.load(templateId);
-      templateLoaded = true;
+      stableRules = await templateLoader.load(templateId)
+      templateLoaded = true
     } catch (e) {
-      console.warn('[summary-prompt-builder] Failed to load summary:weekly template, using hardcoded fallback', e);
-      stableRules = HARDCODED_WEEKLY_PROMPT;
+      console.warn('[summary-prompt-builder] Failed to load summary:weekly template, using hardcoded fallback', e)
+      stableRules = HARDCODED_WEEKLY_PROMPT
     }
   } else {
-    stableRules = HARDCODED_WEEKLY_PROMPT;
+    stableRules = HARDCODED_WEEKLY_PROMPT
   }
 
-  const dynamicData = buildWeeklyDynamicData(input);
-  const prompt = `${stableRules}\n\n${dynamicData}`;
+  const dynamicData = buildWeeklyDynamicData(input)
+  const prompt = `${stableRules}\n\n${dynamicData}`
 
-  return { prompt, templateLoaded, templateId };
+  return { prompt, templateLoaded, templateId }
 }
 
 /**
@@ -331,30 +325,28 @@ export async function buildWeeklySummaryPrompt(
  * @param input - Long-term profile prompt input data
  * @returns Promise resolving to the built prompt and metadata
  */
-export async function buildLongTermProfilePrompt(
-  input: LongTermProfilePromptInput
-): Promise<SummaryPromptOutput> {
-  const templateId = 'summary:long-term';
-  let stableRules: string;
-  let templateLoaded = false;
+export async function buildLongTermProfilePrompt(input: LongTermProfilePromptInput): Promise<SummaryPromptOutput> {
+  const templateId = 'summary:long-term'
+  let stableRules: string
+  let templateLoaded = false
 
   if (isPromptMemoryP0Enabled()) {
-    const templateLoader = createTemplateLoader();
+    const templateLoader = createTemplateLoader()
     try {
-      stableRules = await templateLoader.load(templateId);
-      templateLoaded = true;
+      stableRules = await templateLoader.load(templateId)
+      templateLoaded = true
     } catch (e) {
-      console.warn('[summary-prompt-builder] Failed to load summary:long-term template, using hardcoded fallback', e);
-      stableRules = HARDCODED_LONG_TERM_PROMPT;
+      console.warn('[summary-prompt-builder] Failed to load summary:long-term template, using hardcoded fallback', e)
+      stableRules = HARDCODED_LONG_TERM_PROMPT
     }
   } else {
-    stableRules = HARDCODED_LONG_TERM_PROMPT;
+    stableRules = HARDCODED_LONG_TERM_PROMPT
   }
 
-  const dynamicData = buildLongTermDynamicData(input);
-  const prompt = `${stableRules}\n\n${dynamicData}`;
+  const dynamicData = buildLongTermDynamicData(input)
+  const prompt = `${stableRules}\n\n${dynamicData}`
 
-  return { prompt, templateLoaded, templateId };
+  return { prompt, templateLoaded, templateId }
 }
 
 /**
@@ -365,30 +357,28 @@ export async function buildLongTermProfilePrompt(
  * @param input - Atomic facts prompt input data
  * @returns Promise resolving to the built prompt and metadata
  */
-export async function buildAtomicFactsPrompt(
-  input: AtomicFactsPromptInput
-): Promise<SummaryPromptOutput> {
-  const templateId = 'summary:atomic-facts';
-  let stableRules: string;
-  let templateLoaded = false;
+export async function buildAtomicFactsPrompt(input: AtomicFactsPromptInput): Promise<SummaryPromptOutput> {
+  const templateId = 'summary:atomic-facts'
+  let stableRules: string
+  let templateLoaded = false
 
   if (isPromptMemoryP0Enabled()) {
-    const templateLoader = createTemplateLoader();
+    const templateLoader = createTemplateLoader()
     try {
-      stableRules = await templateLoader.load(templateId);
-      templateLoaded = true;
+      stableRules = await templateLoader.load(templateId)
+      templateLoaded = true
     } catch (e) {
-      console.warn('[summary-prompt-builder] Failed to load summary:atomic-facts template, using hardcoded fallback', e);
-      stableRules = HARDCODED_ATOMIC_FACTS_PROMPT;
+      console.warn('[summary-prompt-builder] Failed to load summary:atomic-facts template, using hardcoded fallback', e)
+      stableRules = HARDCODED_ATOMIC_FACTS_PROMPT
     }
   } else {
-    stableRules = HARDCODED_ATOMIC_FACTS_PROMPT;
+    stableRules = HARDCODED_ATOMIC_FACTS_PROMPT
   }
 
-  const dynamicData = buildAtomicFactsDynamicData(input);
-  const prompt = `${stableRules}\n\n${dynamicData}`;
+  const dynamicData = buildAtomicFactsDynamicData(input)
+  const prompt = `${stableRules}\n\n${dynamicData}`
 
-  return { prompt, templateLoaded, templateId };
+  return { prompt, templateLoaded, templateId }
 }
 
 // ============================================================================
@@ -396,92 +386,92 @@ export async function buildAtomicFactsPrompt(
 // ============================================================================
 
 function buildSessionDynamicData(input: SessionSummaryPromptInput): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  parts.push(`## Session Context`);
-  parts.push(`- Session ID: ${input.sessionId}`);
-  parts.push(`- User ID: ${input.userId}`);
+  parts.push(`## Session Context`)
+  parts.push(`- Session ID: ${input.sessionId}`)
+  parts.push(`- User ID: ${input.userId}`)
 
   if (input.turnCount !== undefined) {
-    parts.push(`- Turn Count: ${input.turnCount}`);
+    parts.push(`- Turn Count: ${input.turnCount}`)
   }
 
   if (input.startTime) {
-    parts.push(`- Start Time: ${input.startTime}`);
+    parts.push(`- Start Time: ${input.startTime}`)
   }
 
   if (input.endTime) {
-    parts.push(`- End Time: ${input.endTime}`);
+    parts.push(`- End Time: ${input.endTime}`)
   }
 
-  parts.push(``);
-  parts.push(`## Conversation Content`);
-  parts.push(input.conversationContent);
+  parts.push(``)
+  parts.push(`## Conversation Content`)
+  parts.push(input.conversationContent)
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 
 function buildDailyDynamicData(input: DailySummaryPromptInput): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  parts.push(`## Daily Context`);
-  parts.push(`- User ID: ${input.userId}`);
-  parts.push(`- Date: ${input.date}`);
+  parts.push(`## Daily Context`)
+  parts.push(`- User ID: ${input.userId}`)
+  parts.push(`- Date: ${input.date}`)
 
   if (input.totalTurnCount !== undefined) {
-    parts.push(`- Total Turns: ${input.totalTurnCount}`);
+    parts.push(`- Total Turns: ${input.totalTurnCount}`)
   }
 
-  parts.push(``);
-  parts.push(`## Session Summaries`);
-  parts.push(input.sessionSummaries.join('\n\n---\n\n'));
+  parts.push(``)
+  parts.push(`## Session Summaries`)
+  parts.push(input.sessionSummaries.join('\n\n---\n\n'))
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 
 function buildWeeklyDynamicData(input: WeeklySummaryPromptInput): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  parts.push(`## Weekly Context`);
-  parts.push(`- User ID: ${input.userId}`);
-  parts.push(`- Week Range: ${input.weekStartDate} to ${input.weekEndDate}`);
+  parts.push(`## Weekly Context`)
+  parts.push(`- User ID: ${input.userId}`)
+  parts.push(`- Week Range: ${input.weekStartDate} to ${input.weekEndDate}`)
 
-  parts.push(``);
-  parts.push(`## Daily Summaries`);
-  parts.push(input.dailySummaries.join('\n\n---\n\n'));
+  parts.push(``)
+  parts.push(`## Daily Summaries`)
+  parts.push(input.dailySummaries.join('\n\n---\n\n'))
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 
 function buildLongTermDynamicData(input: LongTermProfilePromptInput): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  parts.push(`## Profile Context`);
-  parts.push(`- User ID: ${input.userId}`);
+  parts.push(`## Profile Context`)
+  parts.push(`- User ID: ${input.userId}`)
 
   if (input.previousProfile) {
-    parts.push(``);
-    parts.push(`## Previous Profile`);
-    parts.push(input.previousProfile);
+    parts.push(``)
+    parts.push(`## Previous Profile`)
+    parts.push(input.previousProfile)
   }
 
-  parts.push(``);
-  parts.push(`## Accumulated Memory`);
-  parts.push(input.memoryContent);
+  parts.push(``)
+  parts.push(`## Accumulated Memory`)
+  parts.push(input.memoryContent)
 
-  return parts.join('\n');
+  return parts.join('\n')
 }
 
 function buildAtomicFactsDynamicData(input: AtomicFactsPromptInput): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  parts.push(`## Extraction Context`);
-  parts.push(`- User ID: ${input.userId}`);
-  parts.push(`- Session ID: ${input.sessionId}`);
+  parts.push(`## Extraction Context`)
+  parts.push(`- User ID: ${input.userId}`)
+  parts.push(`- Session ID: ${input.sessionId}`)
 
-  parts.push(``);
-  parts.push(`## Conversation`);
-  parts.push(input.conversationContent);
+  parts.push(``)
+  parts.push(`## Conversation`)
+  parts.push(input.conversationContent)
 
-  return parts.join('\n');
+  return parts.join('\n')
 }

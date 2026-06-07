@@ -4,7 +4,7 @@ export const paginationQuerySchema = {
     limit: { type: 'integer' as const, minimum: 1, maximum: 200, default: 50 },
     offset: { type: 'integer' as const, minimum: 0, default: 0 },
   },
-};
+}
 
 export const sessionIdParamsSchema = {
   type: 'object' as const,
@@ -12,7 +12,7 @@ export const sessionIdParamsSchema = {
   properties: {
     sessionId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const approvalIdParamsSchema = {
   type: 'object' as const,
@@ -20,7 +20,7 @@ export const approvalIdParamsSchema = {
   properties: {
     approvalId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const providerIdParamsSchema = {
   type: 'object' as const,
@@ -28,7 +28,7 @@ export const providerIdParamsSchema = {
   properties: {
     providerId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const agentIdParamsSchema = {
   type: 'object' as const,
@@ -36,7 +36,7 @@ export const agentIdParamsSchema = {
   properties: {
     agentId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const connectorIdParamsSchema = {
   type: 'object' as const,
@@ -44,7 +44,7 @@ export const connectorIdParamsSchema = {
   properties: {
     id: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const workflowDraftIdParamsSchema = {
   type: 'object' as const,
@@ -52,7 +52,7 @@ export const workflowDraftIdParamsSchema = {
   properties: {
     draftId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const workflowDefinitionIdParamsSchema = {
   type: 'object' as const,
@@ -60,7 +60,7 @@ export const workflowDefinitionIdParamsSchema = {
   properties: {
     workflowId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const workflowRunIdParamsSchema = {
   type: 'object' as const,
@@ -68,7 +68,7 @@ export const workflowRunIdParamsSchema = {
   properties: {
     workflowRunId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const scheduleIdParamsSchema = {
   type: 'object' as const,
@@ -76,7 +76,7 @@ export const scheduleIdParamsSchema = {
   properties: {
     scheduleId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const webhookIdParamsSchema = {
   type: 'object' as const,
@@ -84,7 +84,7 @@ export const webhookIdParamsSchema = {
   properties: {
     webhookId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const memoryIdParamsSchema = {
   type: 'object' as const,
@@ -92,7 +92,7 @@ export const memoryIdParamsSchema = {
   properties: {
     memoryId: { type: 'string' as const, minLength: 1 },
   },
-};
+}
 
 export const nameBodySchema = {
   type: 'object' as const,
@@ -100,4 +100,4 @@ export const nameBodySchema = {
   properties: {
     name: { type: 'string' as const, minLength: 1 },
   },
-};
+}

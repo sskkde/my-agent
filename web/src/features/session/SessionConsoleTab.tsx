@@ -12,6 +12,8 @@ import { loadPreferences } from '../../commands/preferences';
 import type { CommandContext, AuthContext } from '../../commands/types';
 import { ProcessingStatus } from './ProcessingStatus';
 import type { ProcessingStatusPayload } from '../../api/types';
+import { ApprovalDecisionModal } from './ApprovalDecisionModal';
+import { useSessionPendingApproval } from './useSessionPendingApproval';
 
 type StreamStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -127,7 +129,12 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
   // Mobile drawer state
   const [isSessionsDrawerOpen, setIsSessionsDrawerOpen] = useState(false);
 
+  const [submittingApproval, setSubmittingApproval] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const preferences = useMemo(() => loadPreferences(), []);
+
+  const { pendingApproval, refresh: refreshPendingApproval } = useSessionPendingApproval(selectedSessionId);
 
   const mountedRef = useRef(true);
   const sseReconnectAttemptsRef = useRef(0);
@@ -357,6 +364,10 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
           scheduleSessionRefresh();
         }
 
+        if (['approval_request', 'approval_requested', 'approval_decision', 'approval_resolved'].includes(event.eventType)) {
+          refreshPendingApproval();
+        }
+
         if (['assistant_message', 'error'].includes(event.eventType)) {
           const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined;
           const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined;
@@ -424,7 +435,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     );
 
     setStreamStatus('connected');
-  }, [clearAssistantActivity, scheduleSessionRefresh, updatePendingAssistantPlaceholders]);
+  }, [clearAssistantActivity, scheduleSessionRefresh, updatePendingAssistantPlaceholders, refreshPendingApproval]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -458,6 +469,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
         fetchSessions(true);
         if (selectedSessionId) {
           fetchTimeline(selectedSessionId);
+          refreshPendingApproval();
           if (streamStatus === 'disconnected') {
             sseReconnectAttemptsRef.current = 0;
             connectSse(selectedSessionId);
@@ -471,6 +483,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
         fetchSessions(true);
         if (selectedSessionId) {
           fetchTimeline(selectedSessionId);
+          refreshPendingApproval();
           if (streamStatus === 'disconnected') {
             sseReconnectAttemptsRef.current = 0;
             connectSse(selectedSessionId);
@@ -484,6 +497,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
         fetchSessions(true);
         if (selectedSessionId) {
           fetchTimeline(selectedSessionId);
+          refreshPendingApproval();
           if (streamStatus === 'disconnected') {
             sseReconnectAttemptsRef.current = 0;
             connectSse(selectedSessionId);
@@ -501,7 +515,21 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('pageshow', handlePageShow);
     };
-  }, [connectSse, fetchSessions, fetchTimeline, selectedSessionId, streamStatus]);
+  }, [connectSse, fetchSessions, fetchTimeline, selectedSessionId, streamStatus, refreshPendingApproval]);
+
+  useEffect(() => {
+    if (!selectedSessionId) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      refreshPendingApproval();
+    }, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [selectedSessionId, refreshPendingApproval]);
 
   useEffect(() => {
     if (selectedSessionId) {
@@ -621,6 +649,67 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     } catch (err) {
       console.warn('Failed to refresh providers:', err);
     }
+  }, []);
+
+  const handleReject = useCallback(async (reason?: string) => {
+    if (!pendingApproval) return;
+
+    setSubmittingApproval(true);
+    setSubmitError(null);
+
+    try {
+      await api.respondApproval(pendingApproval.id, 'reject', reason);
+      await refreshPendingApproval();
+      if (selectedSessionId) {
+        fetchTimeline(selectedSessionId);
+      }
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to reject approval');
+    } finally {
+      setSubmittingApproval(false);
+    }
+  }, [pendingApproval, refreshPendingApproval, selectedSessionId, fetchTimeline]);
+
+  const handleApproveOnce = useCallback(async (reason?: string) => {
+    if (!pendingApproval) return;
+
+    setSubmittingApproval(true);
+    setSubmitError(null);
+
+    try {
+      await api.respondApproval(pendingApproval.id, 'approve_once', reason);
+      await refreshPendingApproval();
+      if (selectedSessionId) {
+        fetchTimeline(selectedSessionId);
+      }
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to approve');
+    } finally {
+      setSubmittingApproval(false);
+    }
+  }, [pendingApproval, refreshPendingApproval, selectedSessionId, fetchTimeline]);
+
+  const handleApproveAlways = useCallback(async (reason?: string) => {
+    if (!pendingApproval) return;
+
+    setSubmittingApproval(true);
+    setSubmitError(null);
+
+    try {
+      await api.respondApproval(pendingApproval.id, 'approve_always', reason);
+      await refreshPendingApproval();
+      if (selectedSessionId) {
+        fetchTimeline(selectedSessionId);
+      }
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to approve');
+    } finally {
+      setSubmittingApproval(false);
+    }
+  }, [pendingApproval, refreshPendingApproval, selectedSessionId, fetchTimeline]);
+
+  const handleCloseApprovalModal = useCallback(() => {
+    setSubmitError(null);
   }, []);
 
   const createCommandContext = useCallback((): CommandContext => {
@@ -1088,6 +1177,16 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
           </>
         )}
       </main>
+
+      <ApprovalDecisionModal
+        approval={pendingApproval}
+        loading={submittingApproval}
+        error={submitError}
+        onReject={handleReject}
+        onApproveOnce={handleApproveOnce}
+        onApproveAlways={handleApproveAlways}
+        onClose={handleCloseApprovalModal}
+      />
     </div>
   );
 };

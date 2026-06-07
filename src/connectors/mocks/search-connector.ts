@@ -1,15 +1,10 @@
-import type {
-  ConnectorAdapter,
-  ConnectorCapability,
-  ConnectorCallRequest,
-  ConnectorResponse,
-} from '../types.js';
-import type { ConnectorInstance } from '../../storage/connector-store.js';
+import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest, ConnectorResponse } from '../types.js'
+import type { ConnectorInstance } from '../../storage/connector-store.js'
 
 export interface SearchConnectorConfig {
-  authState?: 'authenticated' | 'unauthenticated' | 'expired';
-  rateLimitMode?: 'none' | 'limited' | 'exhausted';
-  errorMode?: 'none' | 'transient' | 'permanent';
+  authState?: 'authenticated' | 'unauthenticated' | 'expired'
+  rateLimitMode?: 'none' | 'limited' | 'exhausted'
+  errorMode?: 'none' | 'transient' | 'permanent'
 }
 
 const mockSearchResults = [
@@ -37,57 +32,54 @@ const mockSearchResults = [
     source: 'web',
     relevanceScore: 0.82,
   },
-];
+]
 
 export interface SearchParams {
-  query: string;
-  limit?: number;
-  source?: 'web' | 'news' | 'all';
+  query: string
+  limit?: number
+  source?: 'web' | 'news' | 'all'
 }
 
 export class SearchConnectorAdapter implements ConnectorAdapter {
-  private authState: 'authenticated' | 'unauthenticated' | 'expired';
-  private rateLimitMode: 'none' | 'limited' | 'exhausted';
-  private errorMode: 'none' | 'transient' | 'permanent';
-  private callCount: number = 0;
+  private authState: 'authenticated' | 'unauthenticated' | 'expired'
+  private rateLimitMode: 'none' | 'limited' | 'exhausted'
+  private errorMode: 'none' | 'transient' | 'permanent'
+  private callCount: number = 0
 
   constructor(config: SearchConnectorConfig = {}) {
-    this.authState = config.authState ?? 'authenticated';
-    this.rateLimitMode = config.rateLimitMode ?? 'none';
-    this.errorMode = config.errorMode ?? 'none';
+    this.authState = config.authState ?? 'authenticated'
+    this.rateLimitMode = config.rateLimitMode ?? 'none'
+    this.errorMode = config.errorMode ?? 'none'
   }
 
   setAuthState(state: 'authenticated' | 'unauthenticated' | 'expired'): void {
-    this.authState = state;
+    this.authState = state
   }
 
   setRateLimitMode(mode: 'none' | 'limited' | 'exhausted'): void {
-    this.rateLimitMode = mode;
+    this.rateLimitMode = mode
   }
 
   setErrorMode(mode: 'none' | 'transient' | 'permanent'): void {
-    this.errorMode = mode;
+    this.errorMode = mode
   }
 
-  async execute(
-    _instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown> {
-    this.callCount++;
-    const preconditionError = this.checkPreconditions(request);
+  async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
+    this.callCount++
+    const preconditionError = this.checkPreconditions(request)
     if (preconditionError) {
-      return preconditionError;
+      return preconditionError
     }
 
-    const { operation, params } = request;
+    const { operation, params } = request
 
     switch (operation) {
       case 'search':
       case 'web_search':
       case 'news_search':
-        return this.search(params as unknown as SearchParams);
+        return this.search(params as unknown as SearchParams)
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation}`)
     }
   }
 
@@ -102,7 +94,7 @@ export class SearchConnectorAdapter implements ConnectorAdapter {
           message: 'Authentication required',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (this.authState === 'expired') {
@@ -115,7 +107,7 @@ export class SearchConnectorAdapter implements ConnectorAdapter {
           message: 'Authentication expired',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (this.rateLimitMode === 'exhausted') {
@@ -131,7 +123,7 @@ export class SearchConnectorAdapter implements ConnectorAdapter {
         metadata: {
           retryAfterMs: 30000,
         },
-      };
+      }
     }
 
     if (this.errorMode === 'permanent') {
@@ -144,10 +136,10 @@ export class SearchConnectorAdapter implements ConnectorAdapter {
           message: 'Permanent failure',
           recoverable: false,
         },
-      };
+      }
     }
 
-    return null;
+    return null
   }
 
   discoverCapabilities(_instance: ConnectorInstance): ConnectorCapability[] {
@@ -178,38 +170,36 @@ export class SearchConnectorAdapter implements ConnectorAdapter {
         requiresAuth: false,
         supportedOperations: ['news_search', 'search'],
       },
-    ];
+    ]
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
     if (this.errorMode === 'permanent') {
-      return { healthy: false, message: 'Permanent error mode' };
+      return { healthy: false, message: 'Permanent error mode' }
     }
-    return { healthy: true, message: 'Search mock connector is healthy' };
+    return { healthy: true, message: 'Search mock connector is healthy' }
   }
 
   private search(params: SearchParams): {
-    results: typeof mockSearchResults;
-    query: string;
-    totalResults: number;
+    results: typeof mockSearchResults
+    query: string
+    totalResults: number
   } {
-    const { query, limit = 10 } = params;
-    const lowerQuery = query.toLowerCase();
-    
+    const { query, limit = 10 } = params
+    const lowerQuery = query.toLowerCase()
+
     const filteredResults = mockSearchResults.filter(
-      r =>
-        r.title.toLowerCase().includes(lowerQuery) ||
-        r.snippet.toLowerCase().includes(lowerQuery)
-    );
+      (r) => r.title.toLowerCase().includes(lowerQuery) || r.snippet.toLowerCase().includes(lowerQuery),
+    )
 
     return {
       results: filteredResults.slice(0, limit),
       query,
       totalResults: filteredResults.length,
-    };
+    }
   }
 }
 
 export function createSearchConnectorAdapter(config?: SearchConnectorConfig): SearchConnectorAdapter {
-  return new SearchConnectorAdapter(config);
+  return new SearchConnectorAdapter(config)
 }

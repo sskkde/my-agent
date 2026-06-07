@@ -1,9 +1,5 @@
-import type {
-  ConnectorAdapter,
-  ConnectorCapability,
-  ConnectorCallRequest,
-} from '../types.js';
-import type { ConnectorInstance } from '../../storage/connector-store.js';
+import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest } from '../types.js'
+import type { ConnectorInstance } from '../../storage/connector-store.js'
 
 const mockEmails = [
   {
@@ -36,53 +32,50 @@ const mockEmails = [
     date: '2024-01-16T15:00:00Z',
     labels: ['SENT'],
   },
-];
+]
 
 const mockDrafts: Array<{
-  id: string;
-  to: string;
-  subject: string;
-  body: string;
-  createdAt: string;
-}> = [];
+  id: string
+  to: string
+  subject: string
+  body: string
+  createdAt: string
+}> = []
 
 export interface GmailSearchParams {
-  query?: string;
-  maxResults?: number;
+  query?: string
+  maxResults?: number
 }
 
 export interface GmailReadParams {
-  emailId: string;
+  emailId: string
 }
 
 export interface GmailCreateDraftParams {
-  to: string;
-  subject: string;
-  body: string;
+  to: string
+  subject: string
+  body: string
 }
 
 export interface GmailSendDraftParams {
-  draftId: string;
+  draftId: string
 }
 
 export class GmailConnectorAdapter implements ConnectorAdapter {
-  async execute(
-    _instance: ConnectorInstance,
-    request: ConnectorCallRequest
-  ): Promise<unknown> {
-    const { operation, params } = request;
+  async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
+    const { operation, params } = request
 
     switch (operation) {
       case 'search_emails':
-        return this.searchEmails(params as unknown as GmailSearchParams);
+        return this.searchEmails(params as unknown as GmailSearchParams)
       case 'read_email':
-        return this.readEmail(params as unknown as GmailReadParams);
+        return this.readEmail(params as unknown as GmailReadParams)
       case 'create_draft':
-        return this.createDraft(params as unknown as GmailCreateDraftParams);
+        return this.createDraft(params as unknown as GmailCreateDraftParams)
       case 'send_draft':
-        return this.sendDraft(params as unknown as GmailSendDraftParams);
+        return this.sendDraft(params as unknown as GmailSendDraftParams)
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation}`)
     }
   }
 
@@ -139,53 +132,53 @@ export class GmailConnectorAdapter implements ConnectorAdapter {
         requiresAuth: true,
         supportedOperations: ['send_draft'],
       },
-    ];
+    ]
   }
 
   checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
-    return { healthy: true, message: 'Gmail mock connector is healthy' };
+    return { healthy: true, message: 'Gmail mock connector is healthy' }
   }
 
   private searchEmails(params: GmailSearchParams): {
-    emails: typeof mockEmails;
-    totalResults: number;
+    emails: typeof mockEmails
+    totalResults: number
   } {
-    const { query, maxResults = 10 } = params;
+    const { query, maxResults = 10 } = params
 
-    let results = [...mockEmails];
+    let results = [...mockEmails]
 
     if (query) {
-      const lowerQuery = query.toLowerCase();
+      const lowerQuery = query.toLowerCase()
       results = results.filter(
         (email) =>
           email.subject.toLowerCase().includes(lowerQuery) ||
           email.body.toLowerCase().includes(lowerQuery) ||
           email.from.toLowerCase().includes(lowerQuery) ||
-          email.to.toLowerCase().includes(lowerQuery)
-      );
+          email.to.toLowerCase().includes(lowerQuery),
+      )
     }
 
     return {
       emails: results.slice(0, maxResults),
       totalResults: results.length,
-    };
+    }
   }
 
   private readEmail(params: GmailReadParams): (typeof mockEmails)[0] | null {
-    const { emailId } = params;
-    const email = mockEmails.find((e) => e.id === emailId);
-    return email || null;
+    const { emailId } = params
+    const email = mockEmails.find((e) => e.id === emailId)
+    return email || null
   }
 
   private createDraft(params: GmailCreateDraftParams): {
-    draftId: string;
-    to: string;
-    subject: string;
-    createdAt: string;
+    draftId: string
+    to: string
+    subject: string
+    createdAt: string
   } {
-    const { to, subject, body } = params;
-    const draftId = `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const createdAt = new Date().toISOString();
+    const { to, subject, body } = params
+    const draftId = `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    const createdAt = new Date().toISOString()
 
     mockDrafts.push({
       id: draftId,
@@ -193,40 +186,40 @@ export class GmailConnectorAdapter implements ConnectorAdapter {
       subject,
       body,
       createdAt,
-    });
+    })
 
     return {
       draftId,
       to,
       subject,
       createdAt,
-    };
+    }
   }
 
   private sendDraft(params: GmailSendDraftParams): {
-    success: boolean;
-    messageId: string;
-    sentAt: string;
+    success: boolean
+    messageId: string
+    sentAt: string
   } {
-    const { draftId } = params;
-    const draftIndex = mockDrafts.findIndex((d) => d.id === draftId);
+    const { draftId } = params
+    const draftIndex = mockDrafts.findIndex((d) => d.id === draftId)
 
     if (draftIndex === -1) {
-      throw new Error(`Draft not found: ${draftId}`);
+      throw new Error(`Draft not found: ${draftId}`)
     }
 
-    mockDrafts.splice(draftIndex, 1);
+    mockDrafts.splice(draftIndex, 1)
 
-    const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 
     return {
       success: true,
       messageId,
       sentAt: new Date().toISOString(),
-    };
+    }
   }
 }
 
 export function createGmailConnectorAdapter(): GmailConnectorAdapter {
-  return new GmailConnectorAdapter();
+  return new GmailConnectorAdapter()
 }

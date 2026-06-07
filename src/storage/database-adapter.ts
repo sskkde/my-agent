@@ -1,16 +1,16 @@
-import type { SqlDialect } from './sql-dialect.js';
+import type { SqlDialect } from './sql-dialect.js'
 
 /**
  * Async connection interface for PostgreSQL-style databases.
  * All operations return Promises since network-based databases are inherently async.
  */
 export interface AsyncConnectionManager {
-  open(): Promise<void>;
-  close(): Promise<void>;
-  isOpen(): boolean;
-  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
-  exec(sql: string, params?: unknown[]): Promise<void>;
-  transaction<T>(fn: () => Promise<T>): Promise<T>;
+  open(): Promise<void>
+  close(): Promise<void>
+  isOpen(): boolean
+  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>
+  exec(sql: string, params?: unknown[]): Promise<void>
+  transaction<T>(fn: () => Promise<T>): Promise<T>
 }
 
 /**
@@ -30,28 +30,28 @@ export interface AsyncConnectionManager {
  * adapter.close();
  */
 export interface DatabaseAdapter {
-  open(): void;
-  close(): void;
-  isOpen(): boolean;
+  open(): void
+  close(): void
+  isOpen(): boolean
 
-  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[];
-  exec(sql: string, params?: unknown[]): void;
-  transaction<T>(fn: () => T): () => T;
+  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[]
+  exec(sql: string, params?: unknown[]): void
+  transaction<T>(fn: () => T): () => T
 
-  asyncQuery<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
-  asyncExec(sql: string, params?: unknown[]): Promise<void>;
-  asyncTransaction<T>(fn: () => Promise<T>): Promise<T>;
+  asyncQuery<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>
+  asyncExec(sql: string, params?: unknown[]): Promise<void>
+  asyncTransaction<T>(fn: () => Promise<T>): Promise<T>
 
-  getDialect(): SqlDialect;
-  getType(): 'sqlite' | 'postgresql';
+  getDialect(): SqlDialect
+  getType(): 'sqlite' | 'postgresql'
 
-  healthCheck(): Promise<boolean>;
-  getPoolMetrics(): { totalCount: number; idleCount: number; waitingCount: number };
+  healthCheck(): Promise<boolean>
+  getPoolMetrics(): { totalCount: number; idleCount: number; waitingCount: number }
 }
 
 export class DatabaseAdapterError extends Error {
   constructor(message: string) {
-    super(message);
-    this.name = 'DatabaseAdapterError';
+    super(message)
+    this.name = 'DatabaseAdapterError'
   }
 }

@@ -227,7 +227,7 @@ describe('StatusTab', () => {
       });
     });
 
-    it('calls respondApproval with approved decision', async () => {
+    it('calls respondApproval with approve_once decision', async () => {
       vi.mocked(client.getHealth).mockResolvedValue({
         status: 'healthy',
         timestamp: new Date().toISOString(),
@@ -260,11 +260,11 @@ describe('StatusTab', () => {
       fireEvent.click(screen.getByTestId('approval-approve-approval-1'));
 
       await waitFor(() => {
-        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approved', undefined);
+        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined);
       });
     });
 
-    it('calls respondApproval with rejected decision and reason', async () => {
+    it('calls respondApproval with reject decision and reason', async () => {
       vi.mocked(client.getHealth).mockResolvedValue({
         status: 'healthy',
         timestamp: new Date().toISOString(),
@@ -300,7 +300,7 @@ describe('StatusTab', () => {
       fireEvent.click(screen.getByTestId('approval-reject-approval-1'));
 
       await waitFor(() => {
-        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'rejected', 'not authorized');
+        expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'reject', 'not authorized');
       });
     });
 

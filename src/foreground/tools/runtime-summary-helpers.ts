@@ -3,32 +3,28 @@
  * Reusable helpers for building runtime summaries from kernel/tool execution results
  */
 
-import type { KernelRunResult, KernelRunStatus } from '../../kernel/types.js';
-import type { ToolCallSummary } from '../../api/types.js';
-import type { TurnTranscript } from '../../storage/transcript-store.js';
+import type { KernelRunResult, KernelRunStatus } from '../../kernel/types.js'
+import type { ToolCallSummary } from '../../api/types.js'
+import type { TurnTranscript } from '../../storage/transcript-store.js'
 
 /**
  * Build runtime summary from kernel execution result.
  * Canonical location — also re-exported by the deprecated foreground-kernel-runner.
  */
-export function buildRuntimeSummary(
-  kernelResult?: KernelRunResult
-): TurnTranscript['runtimeSummary'] | undefined {
+export function buildRuntimeSummary(kernelResult?: KernelRunResult): TurnTranscript['runtimeSummary'] | undefined {
   if (kernelResult?.toolCalls && kernelResult.toolCalls.length > 0) {
-    const status: 'completed' | 'failed' = 
-      kernelResult.finalStatus === 'failed' || kernelResult.finalStatus === 'timeout'
-        ? 'failed'
-        : 'completed';
-    
+    const status: 'completed' | 'failed' =
+      kernelResult.finalStatus === 'failed' || kernelResult.finalStatus === 'timeout' ? 'failed' : 'completed'
+
     return {
-      toolCallSummaries: kernelResult.toolCalls.map(tc => ({
+      toolCallSummaries: kernelResult.toolCalls.map((tc) => ({
         toolCallId: tc.toolCallId,
         toolName: tc.toolName,
         status,
       })),
-    };
+    }
   }
-  return undefined;
+  return undefined
 }
 
 /**
@@ -39,52 +35,50 @@ export function summarizeToolCall(
   toolName: string,
   status: 'completed' | 'failed' | 'pending',
   transcriptSummary?: string,
-  resultRef?: string
+  resultRef?: string,
 ): ToolCallSummary {
   const summary: ToolCallSummary = {
     toolCallId,
     toolName,
     status,
-  };
-  
+  }
+
   if (transcriptSummary) {
-    summary.transcriptSummary = transcriptSummary;
+    summary.transcriptSummary = transcriptSummary
   }
-  
+
   if (resultRef) {
-    summary.resultRef = resultRef;
+    summary.resultRef = resultRef
   }
-  
-  return summary;
+
+  return summary
 }
 
 /**
  * Build runtime summary from a list of tool call summaries
  */
 export function buildRuntimeSummaryFromToolCalls(
-  toolCallSummaries: ToolCallSummary[]
+  toolCallSummaries: ToolCallSummary[],
 ): TurnTranscript['runtimeSummary'] | undefined {
   if (toolCallSummaries.length === 0) {
-    return undefined;
+    return undefined
   }
-  
+
   return {
     toolCallSummaries,
-  };
+  }
 }
 
 /**
  * Determine if a kernel status represents failure
  */
 export function isKernelFailure(status: KernelRunStatus): boolean {
-  return status === 'failed' || status === 'timeout';
+  return status === 'failed' || status === 'timeout'
 }
 
 /**
  * Map kernel status to tool call status
  */
-export function mapKernelStatusToToolStatus(
-  kernelStatus: KernelRunStatus
-): 'completed' | 'failed' {
-  return isKernelFailure(kernelStatus) ? 'failed' : 'completed';
+export function mapKernelStatusToToolStatus(kernelStatus: KernelRunStatus): 'completed' | 'failed' {
+  return isKernelFailure(kernelStatus) ? 'failed' : 'completed'
 }

@@ -6,13 +6,13 @@
 
 export interface RedactorOptions {
   /** Additional field names to redact (dotted paths supported, e.g. 'user.apiKey') */
-  extraRedactFields?: string[];
+  extraRedactFields?: string[]
   /** Additional regex patterns for content-based redaction */
-  extraSensitivePatterns?: Array<{ pattern: RegExp; replacement: string }>;
+  extraSensitivePatterns?: Array<{ pattern: RegExp; replacement: string }>
 }
 
 export interface ModelInputRedactor {
-  redact<T>(payload: T): T;
+  redact<T>(payload: T): T
 }
 
 /**
@@ -36,7 +36,7 @@ const SENSITIVE_FIELD_PATTERNS = [
   'auth_header',
   'webhook_secret',
   'pat', // Personal Access Token
-];
+]
 
 /**
  * Regex patterns for content-based redaction in string values.
@@ -65,7 +65,7 @@ const DEFAULT_SENSITIVE_PATTERNS: Array<{ pattern: RegExp; replacement: string }
   { pattern: /webhook[_\s-]?secret\s*[:=]\s*\S+/gi, replacement: 'webhook_secret: [REDACTED]' },
   // PEM certificate blocks
   { pattern: /-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----/g, replacement: '[REDACTED]' },
-];
+]
 
 /**
  * Field names for exact/dotted-path redaction (e.g. 'user.apiKey').
@@ -92,82 +92,72 @@ const DEFAULT_REDACT_FIELDS = [
   'refresh_token',
   'webhookSecret',
   'webhook_secret',
-];
+]
 
 class ModelInputRedactorImpl implements ModelInputRedactor {
-  private readonly sensitivePatterns: Array<{ pattern: RegExp; replacement: string }>;
-  private readonly redactFields: string[];
+  private readonly sensitivePatterns: Array<{ pattern: RegExp; replacement: string }>
+  private readonly redactFields: string[]
 
   constructor(options: RedactorOptions = {}) {
-    this.sensitivePatterns = [
-      ...DEFAULT_SENSITIVE_PATTERNS,
-      ...(options.extraSensitivePatterns ?? []),
-    ];
-    this.redactFields = [
-      ...DEFAULT_REDACT_FIELDS,
-      ...(options.extraRedactFields ?? []),
-    ];
+    this.sensitivePatterns = [...DEFAULT_SENSITIVE_PATTERNS, ...(options.extraSensitivePatterns ?? [])]
+    this.redactFields = [...DEFAULT_REDACT_FIELDS, ...(options.extraRedactFields ?? [])]
   }
 
   redact<T>(payload: T): T {
-    return this.redactValue(payload, '') as T;
+    return this.redactValue(payload, '') as T
   }
 
   private shouldRedactKey(key: string): boolean {
-    const keyLower = key.toLowerCase();
+    const keyLower = key.toLowerCase()
 
     for (const pattern of SENSITIVE_FIELD_PATTERNS) {
       if (keyLower.includes(pattern)) {
-        return true;
+        return true
       }
     }
 
     for (const field of this.redactFields) {
       if (keyLower === field.toLowerCase() || keyLower.endsWith('.' + field.toLowerCase())) {
-        return true;
+        return true
       }
     }
 
-    return false;
+    return false
   }
 
   private redactValue(value: unknown, keyPath: string): unknown {
     if (value === null || value === undefined) {
-      return value;
+      return value
     }
 
     if (typeof value === 'string') {
-      let redactedValue = value;
+      let redactedValue = value
       for (const { pattern, replacement } of this.sensitivePatterns) {
         if (pattern.test(redactedValue)) {
-          pattern.lastIndex = 0; // Reset lastIndex for global regex
-          redactedValue = redactedValue.replace(pattern, replacement);
+          pattern.lastIndex = 0 // Reset lastIndex for global regex
+          redactedValue = redactedValue.replace(pattern, replacement)
         }
       }
-      return redactedValue;
+      return redactedValue
     }
 
     if (Array.isArray(value)) {
-      return value.map((item, index) =>
-        this.redactValue(item, `${keyPath}[${index}]`)
-      );
+      return value.map((item, index) => this.redactValue(item, `${keyPath}[${index}]`))
     }
 
     if (typeof value === 'object') {
-      const result: Record<string, unknown> = {};
+      const result: Record<string, unknown> = {}
       for (const [key, val] of Object.entries(value)) {
-        const fullKey = keyPath ? `${keyPath}.${key}` : key;
-        result[key] = this.shouldRedactKey(key)
-          ? '[REDACTED]'
-          : this.redactValue(val, fullKey);
+        const fullKey = keyPath ? `${keyPath}.${key}` : key
+        result[key] = this.shouldRedactKey(key) ? '[REDACTED]' : this.redactValue(val, fullKey)
       }
-      return result;
+      return result
     }
 
-    return value;
+    return value
   }
 }
 
 export function createModelInputRedactor(options?: RedactorOptions): ModelInputRedactor {
-  return new ModelInputRedactorImpl(options);
+  return new ModelInputRedactorImpl(options)
 }

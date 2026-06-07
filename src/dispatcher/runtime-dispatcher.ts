@@ -9,27 +9,21 @@ import type {
   RuntimeDispatcher,
   TargetRuntime,
   SourceModule,
-  RuntimeActionType
-} from './types.js';
-import type { RuntimeActionState, RuntimeAction as StorageRuntimeAction } from '../storage/runtime-action-store.js';
+  RuntimeActionType,
+} from './types.js'
+import type { RuntimeActionState, RuntimeAction as StorageRuntimeAction } from '../storage/runtime-action-store.js'
 
-const WRITE_ACTION_TYPES: ReadonlySet<string> = new Set([
-  'write', 'delete', 'send', 'execute'
-]);
+const WRITE_ACTION_TYPES: ReadonlySet<string> = new Set(['write', 'delete', 'send', 'execute'])
 
 export function isWriteActionClass(actionType: string): boolean {
-  return WRITE_ACTION_TYPES.has(actionType);
+  return WRITE_ACTION_TYPES.has(actionType)
 }
 
 export function getWriteActionClass(actionType: string): string | null {
-  return isWriteActionClass(actionType) ? actionType : null;
+  return isWriteActionClass(actionType) ? actionType : null
 }
 
-const IN_FLIGHT_STATES: ReadonlySet<RuntimeActionState> = new Set([
-  'dispatching',
-  'queued',
-  'waiting_for_approval',
-]);
+const IN_FLIGHT_STATES: ReadonlySet<RuntimeActionState> = new Set(['dispatching', 'queued', 'waiting_for_approval'])
 
 const TERMINAL_STATES: ReadonlySet<RuntimeActionState> = new Set([
   'failed',
@@ -38,29 +32,29 @@ const TERMINAL_STATES: ReadonlySet<RuntimeActionState> = new Set([
   'duplicate',
   'denied',
   'completed',
-]);
+])
 
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 }
 
 function validateRuntimeAction(action: RuntimeAction): { valid: boolean; error?: string } {
   if (!action.actionType) {
-    return { valid: false, error: 'Missing required field: actionType' };
+    return { valid: false, error: 'Missing required field: actionType' }
   }
   if (!action.targetRuntime) {
-    return { valid: false, error: 'Missing required field: targetRuntime' };
+    return { valid: false, error: 'Missing required field: targetRuntime' }
   }
   if (!action.actionId) {
-    return { valid: false, error: 'Missing required field: actionId' };
+    return { valid: false, error: 'Missing required field: actionId' }
   }
   if (!action.source?.sourceModule) {
-    return { valid: false, error: 'Missing required field: source.sourceModule' };
+    return { valid: false, error: 'Missing required field: source.sourceModule' }
   }
   if (!action.targetAction) {
-    return { valid: false, error: 'Missing required field: targetAction' };
+    return { valid: false, error: 'Missing required field: targetAction' }
   }
-  return { valid: true };
+  return { valid: true }
 }
 
 function mapErrorToDispatchResult(
@@ -69,9 +63,9 @@ function mapErrorToDispatchResult(
   targetRuntime: TargetRuntime,
   code: string,
   message: string,
-  recoverable: boolean
+  recoverable: boolean,
 ): DispatchResult {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString()
   return {
     requestId,
     actionId,
@@ -79,17 +73,17 @@ function mapErrorToDispatchResult(
     targetRuntime,
     error: { code, message, recoverable },
     createdAt: now,
-    completedAt: now
-  };
+    completedAt: now,
+  }
 }
 
 function createDispatchEvent(
   eventType: DispatchEventType,
   request: DispatchRequest,
-  result?: DispatchResult
+  result?: DispatchResult,
 ): DispatchEvent {
-  const now = new Date().toISOString();
-  const { action, context, requestId } = request;
+  const now = new Date().toISOString()
+  const { action, context, requestId } = request
 
   return {
     eventId: generateId(),
@@ -108,36 +102,34 @@ function createDispatchEvent(
     idempotencyKey: action.idempotencyKey,
     timestamp: now,
     createdAt: now,
-    payload: result
-      ? { status: result.status, error: result.error }
-      : {},
+    payload: result ? { status: result.status, error: result.error } : {},
     sensitivity: 'medium',
-    retentionClass: 'standard'
-  };
+    retentionClass: 'standard',
+  }
 }
 
 class RuntimeDispatcherImpl implements RuntimeDispatcher {
-  private actionStore: RuntimeDispatcherConfig['actionStore'];
-  private eventStore: RuntimeDispatcherConfig['eventStore'];
-  private adapterRegistry: RuntimeDispatcherConfig['adapterRegistry'];
-  private permissionHook?: RuntimeDispatcherConfig['permissionHook'];
-  private traceStore?: RuntimeDispatcherConfig['traceStore'];
-  private auditRecorder?: RuntimeDispatcherConfig['auditRecorder'];
+  private actionStore: RuntimeDispatcherConfig['actionStore']
+  private eventStore: RuntimeDispatcherConfig['eventStore']
+  private adapterRegistry: RuntimeDispatcherConfig['adapterRegistry']
+  private permissionHook?: RuntimeDispatcherConfig['permissionHook']
+  private traceStore?: RuntimeDispatcherConfig['traceStore']
+  private auditRecorder?: RuntimeDispatcherConfig['auditRecorder']
 
   constructor(config: RuntimeDispatcherConfig) {
-    this.actionStore = config.actionStore;
-    this.eventStore = config.eventStore;
-    this.adapterRegistry = config.adapterRegistry;
-    this.permissionHook = config.permissionHook;
-    this.traceStore = config.traceStore;
-    this.auditRecorder = config.auditRecorder;
+    this.actionStore = config.actionStore
+    this.eventStore = config.eventStore
+    this.adapterRegistry = config.adapterRegistry
+    this.permissionHook = config.permissionHook
+    this.traceStore = config.traceStore
+    this.auditRecorder = config.auditRecorder
   }
 
   async dispatch(request: DispatchRequest): Promise<DispatchResult> {
-    const { action, requestId } = request;
-    const startTime = Date.now();
-    const traceId = request.context.traceId ?? action.correlationId ?? generateId();
-    const spanId = generateId();
+    const { action, requestId } = request
+    const startTime = Date.now()
+    const traceId = request.context.traceId ?? action.correlationId ?? generateId()
+    const spanId = generateId()
 
     this.traceStore?.createSpan({
       spanId,
@@ -153,13 +145,13 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         targetRuntime: action.targetRuntime,
         actionType: action.actionType,
       },
-    });
+    })
 
-    this.actionStore.save(action);
+    this.actionStore.save(action)
 
-    this.emitEvent('dispatch_requested', request);
+    this.emitEvent('dispatch_requested', request)
 
-    const validation = validateRuntimeAction(action);
+    const validation = validateRuntimeAction(action)
     if (!validation.valid) {
       const result = mapErrorToDispatchResult(
         requestId,
@@ -167,22 +159,22 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         action.targetRuntime as TargetRuntime,
         'invalid_action',
         validation.error ?? 'Invalid action',
-        false
-      );
-      this.updateActionStatus(action.actionId, 'failed', validation.error);
-      this.recordDispatchAudit(action, result.status, validation.error);
-      this.endDispatchSpan(spanId, 'failed', validation.error);
-      this.emitEvent('dispatch_failed', request, result);
-      return result;
+        false,
+      )
+      this.updateActionStatus(action.actionId, 'failed', validation.error)
+      this.recordDispatchAudit(action, result.status, validation.error)
+      this.endDispatchSpan(spanId, 'failed', validation.error)
+      this.emitEvent('dispatch_failed', request, result)
+      return result
     }
 
-    this.emitEvent('dispatch_accepted', request);
+    this.emitEvent('dispatch_accepted', request)
 
     if (action.idempotencyKey) {
-      const existing = this.actionStore.findByIdempotencyKey(action.idempotencyKey);
+      const existing = this.actionStore.findByIdempotencyKey(action.idempotencyKey)
       if (existing && existing.actionId !== action.actionId) {
-        const behavior = action.policy?.idempotency?.duplicateBehavior ?? 'return_previous';
-        const writeActionClass = getWriteActionClass(action.targetAction);
+        const behavior = action.policy?.idempotency?.duplicateBehavior ?? 'return_previous'
+        const writeActionClass = getWriteActionClass(action.targetAction)
 
         const idempotencyResult = this.resolveIdempotencyDuplicate(
           requestId,
@@ -190,22 +182,20 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
           existing,
           behavior,
           writeActionClass,
-          spanId
-        );
+          spanId,
+        )
 
         if (idempotencyResult) {
-          this.emitEvent('dispatch_duplicate', request, idempotencyResult);
-          this.recordDispatchAudit(action, idempotencyResult.status,
-            idempotencyResult.error?.message);
-          this.endDispatchSpan(spanId,
-            idempotencyResult.status === 'failed' ? 'failed' : 'completed');
-          return idempotencyResult;
+          this.emitEvent('dispatch_duplicate', request, idempotencyResult)
+          this.recordDispatchAudit(action, idempotencyResult.status, idempotencyResult.error?.message)
+          this.endDispatchSpan(spanId, idempotencyResult.status === 'failed' ? 'failed' : 'completed')
+          return idempotencyResult
         }
       }
     }
 
     if (this.permissionHook) {
-      const permissionResult = await this.permissionHook(action);
+      const permissionResult = await this.permissionHook(action)
       if (!permissionResult.allowed) {
         const result: DispatchResult = {
           requestId,
@@ -215,20 +205,20 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
           error: {
             code: 'permission_denied',
             message: permissionResult.reason ?? 'Permission denied',
-            recoverable: false
+            recoverable: false,
           },
           createdAt: new Date().toISOString(),
-          completedAt: new Date().toISOString()
-        };
-        this.updateActionStatus(action.actionId, 'denied', permissionResult.reason);
-        this.recordDispatchAudit(action, result.status, permissionResult.reason);
-        this.endDispatchSpan(spanId, 'failed', permissionResult.reason);
-        this.emitEvent('dispatch_denied', request, result);
-        return result;
+          completedAt: new Date().toISOString(),
+        }
+        this.updateActionStatus(action.actionId, 'denied', permissionResult.reason)
+        this.recordDispatchAudit(action, result.status, permissionResult.reason)
+        this.endDispatchSpan(spanId, 'failed', permissionResult.reason)
+        this.emitEvent('dispatch_denied', request, result)
+        return result
       }
     }
 
-    const adapter = this.adapterRegistry.getAdapter(action.targetRuntime as TargetRuntime);
+    const adapter = this.adapterRegistry.getAdapter(action.targetRuntime as TargetRuntime)
     if (!adapter) {
       const result = mapErrorToDispatchResult(
         requestId,
@@ -236,30 +226,23 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         action.targetRuntime as TargetRuntime,
         'target_runtime_unavailable',
         `No adapter registered for runtime: ${action.targetRuntime}`,
-        false
-      );
-      this.updateActionStatus(
-        action.actionId,
-        'failed',
-        `No adapter for runtime: ${action.targetRuntime}`
-      );
-      this.recordDispatchAudit(action, result.status, result.error?.message);
-      this.endDispatchSpan(spanId, 'failed', result.error?.message);
-      this.emitEvent('dispatch_failed', request, result);
-      return result;
+        false,
+      )
+      this.updateActionStatus(action.actionId, 'failed', `No adapter for runtime: ${action.targetRuntime}`)
+      this.recordDispatchAudit(action, result.status, result.error?.message)
+      this.endDispatchSpan(spanId, 'failed', result.error?.message)
+      this.emitEvent('dispatch_failed', request, result)
+      return result
     }
 
-    this.updateActionStatus(action.actionId, 'dispatching');
-    this.emitEvent('dispatch_started', request);
+    this.updateActionStatus(action.actionId, 'dispatching')
+    this.emitEvent('dispatch_started', request)
 
     try {
-      const timeoutMs = action.policy?.timeoutMs ?? 30000;
-      const targetResult = await this.executeWithTimeout(
-        () => adapter.execute(action),
-        timeoutMs
-      );
+      const timeoutMs = action.policy?.timeoutMs ?? 30000
+      const targetResult = await this.executeWithTimeout(() => adapter.execute(action), timeoutMs)
 
-      const completedAt = new Date().toISOString();
+      const completedAt = new Date().toISOString()
 
       const result: DispatchResult = {
         requestId,
@@ -271,20 +254,20 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         completedAt,
         trace: {
           traceId: request.context.traceId ?? generateId(),
-          spanId: generateId()
-        }
-      };
+          spanId: generateId(),
+        },
+      }
 
-      this.updateActionStatus(action.actionId, 'completed', undefined, targetResult as Record<string, unknown>);
-      this.recordDispatchAudit(action, result.status);
-      this.endDispatchSpan(spanId, 'completed');
-      this.emitEvent('dispatch_completed', request, result);
-      return result;
+      this.updateActionStatus(action.actionId, 'completed', undefined, targetResult as Record<string, unknown>)
+      this.recordDispatchAudit(action, result.status)
+      this.endDispatchSpan(spanId, 'completed')
+      this.emitEvent('dispatch_completed', request, result)
+      return result
     } catch (error) {
-      const isTimeout = error instanceof Error && error.message === 'Timeout';
-      const status: DispatchStatus = isTimeout ? 'timeout' : 'failed';
-      const errorCode = isTimeout ? 'timeout' : 'target_runtime_error';
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isTimeout = error instanceof Error && error.message === 'Timeout'
+      const status: DispatchStatus = isTimeout ? 'timeout' : 'failed'
+      const errorCode = isTimeout ? 'timeout' : 'target_runtime_error'
+      const errorMessage = error instanceof Error ? error.message : String(error)
 
       const result: DispatchResult = {
         requestId,
@@ -294,40 +277,37 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         error: {
           code: errorCode,
           message: errorMessage,
-          recoverable: false
+          recoverable: false,
         },
         createdAt: new Date(startTime).toISOString(),
-        completedAt: new Date().toISOString()
-      };
+        completedAt: new Date().toISOString(),
+      }
 
-      const actionStatus: RuntimeActionState = isTimeout ? 'timeout' : 'failed';
-      this.updateActionStatus(action.actionId, actionStatus, errorMessage);
-      this.recordDispatchAudit(action, result.status, errorMessage);
-      this.endDispatchSpan(spanId, 'failed', errorMessage);
-      this.emitEvent('dispatch_failed', request, result);
-      return result;
+      const actionStatus: RuntimeActionState = isTimeout ? 'timeout' : 'failed'
+      this.updateActionStatus(action.actionId, actionStatus, errorMessage)
+      this.recordDispatchAudit(action, result.status, errorMessage)
+      this.endDispatchSpan(spanId, 'failed', errorMessage)
+      this.emitEvent('dispatch_failed', request, result)
+      return result
     }
   }
 
-  private async executeWithTimeout<T>(
-    fn: () => Promise<T>,
-    timeoutMs: number
-  ): Promise<T> {
+  private async executeWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        reject(new Error('Timeout'));
-      }, timeoutMs);
+        reject(new Error('Timeout'))
+      }, timeoutMs)
 
       fn()
         .then((result) => {
-          clearTimeout(timeoutId);
-          resolve(result);
+          clearTimeout(timeoutId)
+          resolve(result)
         })
         .catch((error) => {
-          clearTimeout(timeoutId);
-          reject(error);
-        });
-    });
+          clearTimeout(timeoutId)
+          reject(error)
+        })
+    })
   }
 
   private resolveIdempotencyDuplicate(
@@ -336,19 +316,17 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
     existing: StorageRuntimeAction,
     behavior: 'return_previous' | 'drop' | 'fail',
     writeActionClass: string | null,
-    spanId: string
+    spanId: string,
   ): DispatchResult | null {
-    const effectiveBehavior = writeActionClass && behavior === 'return_previous'
-      ? 'fail'
-      : behavior;
+    const effectiveBehavior = writeActionClass && behavior === 'return_previous' ? 'fail' : behavior
 
     switch (effectiveBehavior) {
       case 'return_previous':
-        return this.buildReturnPreviousResult(requestId, action, existing, spanId);
+        return this.buildReturnPreviousResult(requestId, action, existing, spanId)
       case 'drop':
-        return this.buildDropResult(requestId, action, existing, spanId);
+        return this.buildDropResult(requestId, action, existing, spanId)
       case 'fail':
-        return this.buildFailResult(requestId, action, existing, spanId);
+        return this.buildFailResult(requestId, action, existing, spanId)
     }
   }
 
@@ -356,9 +334,9 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
     requestId: string,
     action: RuntimeAction,
     existing: StorageRuntimeAction,
-    _spanId: string
+    _spanId: string,
   ): DispatchResult {
-    const isInFlight = IN_FLIGHT_STATES.has(existing.status);
+    const isInFlight = IN_FLIGHT_STATES.has(existing.status)
     const base: DispatchResult = {
       requestId,
       actionId: action.actionId,
@@ -367,28 +345,27 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
       result: existing.result,
       idempotency: {
         key: action.idempotencyKey!,
-        duplicateOfActionId: existing.actionId
+        duplicateOfActionId: existing.actionId,
       },
-      createdAt: new Date().toISOString()
-    };
+      createdAt: new Date().toISOString(),
+    }
 
     if (isInFlight) {
       base.waitingState = {
-        waitingFor: existing.status === 'waiting_for_approval' ? 'approval' : 'target_runtime'
-      };
+        waitingFor: existing.status === 'waiting_for_approval' ? 'approval' : 'target_runtime',
+      }
     }
 
-    return base;
+    return base
   }
 
   private buildDropResult(
     requestId: string,
     action: RuntimeAction,
     existing: StorageRuntimeAction,
-    _spanId: string
+    _spanId: string,
   ): DispatchResult {
-    this.updateActionStatus(action.actionId, 'duplicate',
-      `Dropped duplicate of ${existing.actionId}`);
+    this.updateActionStatus(action.actionId, 'duplicate', `Dropped duplicate of ${existing.actionId}`)
 
     return {
       requestId,
@@ -397,28 +374,28 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
       targetRuntime: action.targetRuntime as TargetRuntime,
       idempotency: {
         key: action.idempotencyKey!,
-        duplicateOfActionId: existing.actionId
+        duplicateOfActionId: existing.actionId,
       },
-      createdAt: new Date().toISOString()
-    };
+      createdAt: new Date().toISOString(),
+    }
   }
 
   private buildFailResult(
     requestId: string,
     action: RuntimeAction,
     existing: StorageRuntimeAction,
-    _spanId: string
+    _spanId: string,
   ): DispatchResult {
-    const isInFlight = IN_FLIGHT_STATES.has(existing.status);
-    const isTerminal = TERMINAL_STATES.has(existing.status);
+    const isInFlight = IN_FLIGHT_STATES.has(existing.status)
+    const isTerminal = TERMINAL_STATES.has(existing.status)
 
     const reason = isInFlight
       ? `Duplicate action rejected: original action ${existing.actionId} is still in-flight (${existing.status})`
       : isTerminal
         ? `Duplicate action rejected: original action ${existing.actionId} already reached terminal state (${existing.status})`
-        : `Duplicate action rejected: original action ${existing.actionId} exists with status ${existing.status}`;
+        : `Duplicate action rejected: original action ${existing.actionId} exists with status ${existing.status}`
 
-    this.updateActionStatus(action.actionId, 'failed', reason);
+    this.updateActionStatus(action.actionId, 'failed', reason)
 
     return {
       requestId,
@@ -428,60 +405,51 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
       error: {
         code: 'duplicate_rejected',
         message: reason,
-        recoverable: false
+        recoverable: false,
       },
       idempotency: {
         key: action.idempotencyKey!,
-        duplicateOfActionId: existing.actionId
+        duplicateOfActionId: existing.actionId,
       },
       createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString()
-    };
+      completedAt: new Date().toISOString(),
+    }
   }
 
   private updateActionStatus(
     actionId: string,
     status: RuntimeActionState,
     statusMessage?: string,
-    result?: Record<string, unknown>
+    result?: Record<string, unknown>,
   ): void {
-    this.actionStore.updateStatus(actionId, status, statusMessage, result);
+    this.actionStore.updateStatus(actionId, status, statusMessage, result)
   }
 
-  private emitEvent(
-    eventType: DispatchEventType,
-    request: DispatchRequest,
-    result?: DispatchResult
-  ): void {
-    const event = createDispatchEvent(eventType, request, result);
-    this.eventStore.append(event);
+  private emitEvent(eventType: DispatchEventType, request: DispatchRequest, result?: DispatchResult): void {
+    const event = createDispatchEvent(eventType, request, result)
+    this.eventStore.append(event)
   }
 
   private endDispatchSpan(spanId: string, status: 'completed' | 'failed', error?: string): void {
-    this.traceStore?.endSpan(spanId, status, error);
+    this.traceStore?.endSpan(spanId, status, error)
   }
 
-  private recordDispatchAudit(
-    action: RuntimeAction,
-    status: DispatchStatus,
-    error?: string
-  ): void {
+  private recordDispatchAudit(action: RuntimeAction, status: DispatchStatus, error?: string): void {
     this.auditRecorder?.recordDispatch({
       actionId: action.actionId,
       userId: action.userId ?? 'system',
       sessionId: action.sessionId,
       targetRuntime: action.targetRuntime,
       targetAction: action.targetAction,
-      status: status === 'completed' || status === 'duplicate' ? 'completed' : status === 'denied' ? 'blocked' : 'failed',
+      status:
+        status === 'completed' || status === 'duplicate' ? 'completed' : status === 'denied' ? 'blocked' : 'failed',
       payloadSummary: error ?? action.actionType,
       correlationId: action.correlationId,
       causationId: action.causationId,
-    });
+    })
   }
 }
 
-export function createRuntimeDispatcher(
-  config: RuntimeDispatcherConfig
-): RuntimeDispatcher {
-  return new RuntimeDispatcherImpl(config);
+export function createRuntimeDispatcher(config: RuntimeDispatcherConfig): RuntimeDispatcher {
+  return new RuntimeDispatcherImpl(config)
 }

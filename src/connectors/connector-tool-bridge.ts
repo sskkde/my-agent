@@ -6,59 +6,64 @@ import type {
   ConnectorRuntime,
   ConnectorToolBridge,
   MCPToolDescriptor,
-} from './types.js';
-import type { ConnectorInstance } from '../storage/connector-store.js';
-import type { ToolDefinition, ToolCategory, ToolRegistry, ToolSensitivity, ToolSchema } from '../tools/types.js';
-import { createToolSchemaProvider, type ToolSchemaProvider } from '../tools/schema/tool-schema-provider.js';
-import { sanitizeToolName } from '../tools/tool-name.js';
+} from './types.js'
+import type { ConnectorInstance } from '../storage/connector-store.js'
+import type { ToolDefinition, ToolCategory, ToolRegistry, ToolSensitivity, ToolSchema } from '../tools/types.js'
+import { createToolSchemaProvider, type ToolSchemaProvider } from '../tools/schema/tool-schema-provider.js'
+import { sanitizeToolName } from '../tools/tool-name.js'
 
 type ConnectorToolInstance = ConnectorInstance & {
-  connectorId?: string;
-};
-
-export interface ConnectorToolBridgeOptions {
-  runtime?: ConnectorRuntime;
-  schemaProvider?: ToolSchemaProvider;
+  connectorId?: string
 }
 
-const CONNECTED_STATUSES = new Set(['active']);
-const HIGH_RISK_LEVELS: ToolSensitivity[] = ['high', 'restricted'];
+export interface ConnectorToolBridgeOptions {
+  runtime?: ConnectorRuntime
+  schemaProvider?: ToolSchemaProvider
+}
+
+const CONNECTED_STATUSES = new Set(['active'])
+const HIGH_RISK_LEVELS: ToolSensitivity[] = ['high', 'restricted']
 
 export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
-  private runtime?: ConnectorRuntime;
-  private schemaProvider: ToolSchemaProvider;
+  private runtime?: ConnectorRuntime
+  private schemaProvider: ToolSchemaProvider
 
   constructor(options: ConnectorToolBridgeOptions = {}) {
-    this.runtime = options.runtime;
-    this.schemaProvider = options.schemaProvider ?? createToolSchemaProvider();
+    this.runtime = options.runtime
+    this.schemaProvider = options.schemaProvider ?? createToolSchemaProvider()
   }
 
   bridgeCapabilityToToolDefinition(
     capability: ConnectorCapability,
-    connectorInstance?: ConnectorToolInstance
+    connectorInstance?: ConnectorToolInstance,
   ): ToolDefinition {
-    const category = this.determineToolCategory(capability);
-    const sensitivity = this.determineRiskLevel(capability);
-    const connectorId = this.determineConnectorId(capability, connectorInstance);
-    const operation = this.determineOperation(capability);
-    const toolName = sanitizeToolName(`connector.${connectorId}.${operation}`);
-    const connected = this.isConnected(connectorInstance);
+    const category = this.determineToolCategory(capability)
+    const sensitivity = this.determineRiskLevel(capability)
+    const connectorId = this.determineConnectorId(capability, connectorInstance)
+    const operation = this.determineOperation(capability)
+    const toolName = sanitizeToolName(`connector.${connectorId}.${operation}`)
+    const connected = this.isConnected(connectorInstance)
 
     const schema: ToolSchema = {
       type: 'object',
       properties: capability.inputSchema || {},
       description: capability.description,
-    };
+    }
 
     if (capability.inputSchema && typeof capability.inputSchema === 'object') {
-      const requiredFields: string[] = [];
+      const requiredFields: string[] = []
       for (const [key, value] of Object.entries(capability.inputSchema)) {
-        if (typeof value === 'object' && value !== null && 'required' in value && (value as Record<string, unknown>).required === true) {
-          requiredFields.push(key);
+        if (
+          typeof value === 'object' &&
+          value !== null &&
+          'required' in value &&
+          (value as Record<string, unknown>).required === true
+        ) {
+          requiredFields.push(key)
         }
       }
       if (requiredFields.length > 0) {
-        schema.required = requiredFields;
+        schema.required = requiredFields
       }
     }
 
@@ -83,11 +88,11 @@ export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
               connectorId,
               capabilityId: capability.capabilityId,
             },
-          };
+          }
         }
 
         if (!this.runtime) {
-          throw new Error('Connector runtime is required to execute connector tools');
+          throw new Error('Connector runtime is required to execute connector tools')
         }
 
         const request: ConnectorCallRequest = {
@@ -99,9 +104,9 @@ export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
           userId: context.userId,
           sessionId: context.sessionId,
           correlationId: context.toolCallId,
-        };
-        const response = await this.runtime.executeCall(request);
-        return this.mapConnectorExecutionResult(response, connectorId, capability.capabilityId);
+        }
+        const response = await this.runtime.executeCall(request)
+        return this.mapConnectorExecutionResult(response, connectorId, capability.capabilityId)
       },
       requiresPermission: HIGH_RISK_LEVELS.includes(sensitivity),
       idempotent: capability.category === 'read' || capability.category === 'search',
@@ -121,140 +126,169 @@ export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
         rateLimitInfo: capability.rateLimitInfo,
         outputSchema: capability.outputSchema,
       },
-    };
+    }
 
     definition.metadata = {
       ...definition.metadata,
       schemaExposureMode: connected ? this.schemaProvider.getExposureMode(definition) : 'hidden',
-    };
+    }
 
-    return definition;
+    return definition
   }
 
   determineToolCategory(capability: ConnectorCapability): ToolCategory {
-    if (capability.category &&
-        capability.category !== 'connector' &&
-        ['read', 'search', 'write', 'delete', 'send', 'automation', 'execute', 'admin', 'internal'].includes(capability.category)) {
-      return capability.category as ToolCategory;
+    if (
+      capability.category &&
+      capability.category !== 'connector' &&
+      ['read', 'search', 'write', 'delete', 'send', 'automation', 'execute', 'admin', 'internal'].includes(
+        capability.category,
+      )
+    ) {
+      return capability.category as ToolCategory
     }
 
-    const name = capability.name.toLowerCase();
-    const capabilityId = capability.capabilityId.toLowerCase();
+    const name = capability.name.toLowerCase()
+    const capabilityId = capability.capabilityId.toLowerCase()
 
-    if (name.includes('read') || name.includes('get') || name.includes('fetch') ||
-        capabilityId.includes('read') || capabilityId.includes('get') || capabilityId.includes('fetch')) {
-      return 'read';
+    if (
+      name.includes('read') ||
+      name.includes('get') ||
+      name.includes('fetch') ||
+      capabilityId.includes('read') ||
+      capabilityId.includes('get') ||
+      capabilityId.includes('fetch')
+    ) {
+      return 'read'
     }
 
-    if (name.includes('search') || name.includes('find') || name.includes('query') ||
-        capabilityId.includes('search') || capabilityId.includes('find') || capabilityId.includes('query')) {
-      return 'search';
+    if (
+      name.includes('search') ||
+      name.includes('find') ||
+      name.includes('query') ||
+      capabilityId.includes('search') ||
+      capabilityId.includes('find') ||
+      capabilityId.includes('query')
+    ) {
+      return 'search'
     }
 
     if (name.includes('send') || capabilityId.includes('send')) {
-      return 'send';
+      return 'send'
     }
 
-    if (name.includes('write') || name.includes('create') || name.includes('update') ||
-        name.includes('post') || name.includes('put') || name.includes('save') ||
-        name.includes('add') ||
-        capabilityId.includes('write') || capabilityId.includes('create') || capabilityId.includes('update')) {
-      return 'write';
+    if (
+      name.includes('write') ||
+      name.includes('create') ||
+      name.includes('update') ||
+      name.includes('post') ||
+      name.includes('put') ||
+      name.includes('save') ||
+      name.includes('add') ||
+      capabilityId.includes('write') ||
+      capabilityId.includes('create') ||
+      capabilityId.includes('update')
+    ) {
+      return 'write'
     }
 
-    if (name.includes('delete') || name.includes('remove') || name.includes('destroy') ||
-        capabilityId.includes('delete') || capabilityId.includes('remove')) {
-      return 'delete';
+    if (
+      name.includes('delete') ||
+      name.includes('remove') ||
+      name.includes('destroy') ||
+      capabilityId.includes('delete') ||
+      capabilityId.includes('remove')
+    ) {
+      return 'delete'
     }
 
-    if (name.includes('execute') || name.includes('run') || name.includes('invoke') ||
-        capabilityId.includes('execute') || capabilityId.includes('run')) {
-      return 'execute';
+    if (
+      name.includes('execute') ||
+      name.includes('run') ||
+      name.includes('invoke') ||
+      capabilityId.includes('execute') ||
+      capabilityId.includes('run')
+    ) {
+      return 'execute'
     }
 
-    return 'connector';
+    return 'connector'
   }
 
   determineRiskLevel(capability: ConnectorCapability): ToolSensitivity {
-    const category = this.determineToolCategory(capability);
+    const category = this.determineToolCategory(capability)
 
     switch (category) {
       case 'read':
       case 'search':
-        return 'low';
+        return 'low'
       case 'write':
       case 'send':
       case 'automation':
       case 'execute':
-        return 'medium';
+        return 'medium'
       case 'delete':
-        return 'high';
+        return 'high'
       case 'admin':
       case 'connector':
       case 'internal':
       default:
         return capability.riskLevel && ['low', 'medium', 'high', 'restricted'].includes(capability.riskLevel)
-          ? capability.riskLevel as ToolSensitivity
-          : 'medium';
+          ? (capability.riskLevel as ToolSensitivity)
+          : 'medium'
     }
   }
 
   registerConnectorTools(
     registry: ToolRegistry,
     connectorInstance: ConnectorToolInstance,
-    capabilities: ConnectorCapability[]
+    capabilities: ConnectorCapability[],
   ): void {
     for (const capability of capabilities) {
       registry.register(this.bridgeCapabilityToToolDefinition(capability, connectorInstance), {
         overwriteExisting: true,
-      });
+      })
     }
   }
 
-  unregisterConnectorTools(
-    registry: ToolRegistry,
-    connectorInstance: ConnectorToolInstance): void {
-    const instanceId = connectorInstance.connectorInstanceId;
+  unregisterConnectorTools(registry: ToolRegistry, connectorInstance: ConnectorToolInstance): void {
+    const instanceId = connectorInstance.connectorInstanceId
     for (const tool of registry.listTools()) {
       if (tool.metadata?.instanceId === instanceId) {
-        registry.unregister(tool.name);
+        registry.unregister(tool.name)
       }
     }
   }
 
-  private determineConnectorId(
-    capability: ConnectorCapability,
-    connectorInstance?: ConnectorToolInstance
-  ): string {
-    const configConnectorId = connectorInstance?.config?.connectorId;
-    if (typeof connectorInstance?.connectorId === 'string') return connectorInstance.connectorId;
-    if (typeof configConnectorId === 'string') return configConnectorId;
-    return capability.capabilityId.split('.')[0] ?? capability.capabilityId;
+  private determineConnectorId(capability: ConnectorCapability, connectorInstance?: ConnectorToolInstance): string {
+    const configConnectorId = connectorInstance?.config?.connectorId
+    if (typeof connectorInstance?.connectorId === 'string') return connectorInstance.connectorId
+    if (typeof configConnectorId === 'string') return configConnectorId
+    return capability.capabilityId.split('.')[0] ?? capability.capabilityId
   }
 
   private determineOperation(capability: ConnectorCapability): string {
-    return capability.supportedOperations[0] ?? capability.capabilityId.split('.').pop() ?? capability.name;
+    return capability.supportedOperations[0] ?? capability.capabilityId.split('.').pop() ?? capability.name
   }
 
   private supportsAsync(capability: ConnectorCapability): boolean {
-    return capability.supportedOperations.some(operation => operation.includes('async'));
+    return capability.supportedOperations.some((operation) => operation.includes('async'))
   }
 
   private isConnected(connectorInstance?: ConnectorToolInstance): boolean {
-    return connectorInstance ? CONNECTED_STATUSES.has(connectorInstance.status) : true;
+    return connectorInstance ? CONNECTED_STATUSES.has(connectorInstance.status) : true
   }
 
   private normalizeParams(params: unknown): Record<string, unknown> {
     if (typeof params === 'object' && params !== null && !Array.isArray(params)) {
-      return params as Record<string, unknown>;
+      return params as Record<string, unknown>
     }
-    return {};
+    return {}
   }
 
   private mapConnectorExecutionResult(
     response: ConnectorResponse | AsyncOperationRef,
     connectorId: string,
-    capabilityId: string
+    capabilityId: string,
   ) {
     if ('operationId' in response && !('requestId' in response)) {
       return {
@@ -267,10 +301,10 @@ export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
           capabilityId,
           operationId: response.operationId,
         },
-      };
+      }
     }
 
-    const connectorResponse = response as ConnectorResponse;
+    const connectorResponse = response as ConnectorResponse
 
     if (connectorResponse.status === 'success' || connectorResponse.status === 'partial_success') {
       return {
@@ -284,12 +318,15 @@ export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
           data: connectorResponse.data as Record<string, unknown> | undefined,
           metadata: connectorResponse.metadata,
         },
-      };
+      }
     }
 
     return {
       success: false,
-      status: connectorResponse.status === 'timeout' || connectorResponse.status === 'cancelled' ? connectorResponse.status : undefined,
+      status:
+        connectorResponse.status === 'timeout' || connectorResponse.status === 'cancelled'
+          ? connectorResponse.status
+          : undefined,
       data: connectorResponse.data,
       error: {
         code: connectorResponse.error?.code ?? connectorResponse.status.toUpperCase(),
@@ -303,7 +340,7 @@ export class ConnectorToolBridgeImpl implements ConnectorToolBridge {
         capabilityId,
         metadata: connectorResponse.metadata,
       },
-    };
+    }
   }
 }
 
@@ -311,16 +348,13 @@ export function registerConnectorTools(
   registry: ToolRegistry,
   connectorInstance: ConnectorToolInstance,
   capabilities: ConnectorCapability[],
-  options: ConnectorToolBridgeOptions = {}
+  options: ConnectorToolBridgeOptions = {},
 ): void {
-  new ConnectorToolBridgeImpl(options).registerConnectorTools(registry, connectorInstance, capabilities);
+  new ConnectorToolBridgeImpl(options).registerConnectorTools(registry, connectorInstance, capabilities)
 }
 
-export function unregisterConnectorTools(
-  registry: ToolRegistry,
-  connectorInstance: ConnectorToolInstance
-): void {
-  new ConnectorToolBridgeImpl().unregisterConnectorTools(registry, connectorInstance);
+export function unregisterConnectorTools(registry: ToolRegistry, connectorInstance: ConnectorToolInstance): void {
+  new ConnectorToolBridgeImpl().unregisterConnectorTools(registry, connectorInstance)
 }
 
 export function mapMCPDescriptorToToolDefinition(descriptor: MCPToolDescriptor): ToolDefinition {
@@ -328,41 +362,41 @@ export function mapMCPDescriptorToToolDefinition(descriptor: MCPToolDescriptor):
     type: 'object',
     properties: descriptor.inputSchema.properties || {},
     description: descriptor.description,
-  };
-
-  if (descriptor.inputSchema.required && descriptor.inputSchema.required.length > 0) {
-    schema.required = descriptor.inputSchema.required;
   }
 
-  let category: ToolCategory = 'connector';
-  let sensitivity: ToolSensitivity = 'medium';
+  if (descriptor.inputSchema.required && descriptor.inputSchema.required.length > 0) {
+    schema.required = descriptor.inputSchema.required
+  }
+
+  let category: ToolCategory = 'connector'
+  let sensitivity: ToolSensitivity = 'medium'
 
   if (descriptor.annotations) {
     if (descriptor.annotations.readOnlyHint) {
-      category = 'read';
-      sensitivity = 'low';
+      category = 'read'
+      sensitivity = 'low'
     } else if (descriptor.annotations.destructiveHint) {
-      category = 'delete';
-      sensitivity = 'high';
+      category = 'delete'
+      sensitivity = 'high'
     }
   }
 
-  const nameLower = descriptor.name.toLowerCase();
+  const nameLower = descriptor.name.toLowerCase()
   if (nameLower.includes('read') || nameLower.includes('get')) {
-    category = 'read';
-    sensitivity = 'low';
+    category = 'read'
+    sensitivity = 'low'
   } else if (nameLower.includes('search') || nameLower.includes('find')) {
-    category = 'search';
-    sensitivity = 'low';
+    category = 'search'
+    sensitivity = 'low'
   } else if (nameLower.includes('write') || nameLower.includes('create') || nameLower.includes('update')) {
-    category = 'write';
-    sensitivity = 'medium';
+    category = 'write'
+    sensitivity = 'medium'
   } else if (nameLower.includes('delete') || nameLower.includes('remove')) {
-    category = 'delete';
-    sensitivity = 'high';
+    category = 'delete'
+    sensitivity = 'high'
   } else if (nameLower.includes('execute') || nameLower.includes('run')) {
-    category = 'execute';
-    sensitivity = 'medium';
+    category = 'execute'
+    sensitivity = 'medium'
   }
 
   return {
@@ -372,7 +406,7 @@ export function mapMCPDescriptorToToolDefinition(descriptor: MCPToolDescriptor):
     sensitivity,
     schema,
     handler: async () => {
-      throw new Error('MCP tool handler should be implemented by the MCP runtime');
+      throw new Error('MCP tool handler should be implemented by the MCP runtime')
     },
     requiresPermission: sensitivity === 'high',
     idempotent: descriptor.annotations?.idempotentHint ?? false,
@@ -381,9 +415,9 @@ export function mapMCPDescriptorToToolDefinition(descriptor: MCPToolDescriptor):
       outputSchema: descriptor.outputSchema,
       annotations: descriptor.annotations,
     },
-  };
+  }
 }
 
 export function createConnectorToolBridge(options: ConnectorToolBridgeOptions = {}): ConnectorToolBridge {
-  return new ConnectorToolBridgeImpl(options);
+  return new ConnectorToolBridgeImpl(options)
 }

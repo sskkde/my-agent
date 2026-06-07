@@ -1,21 +1,21 @@
-import type { PlannerStatePatch, PlannerStatePatchData } from '../planner/types.js';
-import type { SessionMemoryPatch } from './types.js';
+import type { PlannerStatePatch, PlannerStatePatchData } from '../planner/types.js'
+import type { SessionMemoryPatch } from './types.js'
 
-export type { PlannerStatePatchData };
+export type { PlannerStatePatchData }
 
 export interface PlannerStateBridgeResult {
-  updates: SessionMemoryPatch;
-  warnings: string[];
+  updates: SessionMemoryPatch
+  warnings: string[]
 }
 
 export function plannerStateToSessionPatch(patch: PlannerStatePatch): PlannerStateBridgeResult {
-  const { patchData } = patch;
-  const warnings: string[] = [];
+  const { patchData } = patch
+  const warnings: string[] = []
 
   switch (patchData.patchType) {
     case 'state_transition': {
       if (!patchData.to) {
-        warnings.push('state_transition missing "to" field — skipping state update');
+        warnings.push('state_transition missing "to" field — skipping state update')
       }
       return {
         updates: {
@@ -29,12 +29,12 @@ export function plannerStateToSessionPatch(patch: PlannerStatePatch): PlannerSta
           },
         },
         warnings,
-      };
+      }
     }
 
     case 'plan_update': {
       if (!patchData.planId) {
-        warnings.push('plan_update missing "planId" — partial patch applied');
+        warnings.push('plan_update missing "planId" — partial patch applied')
       }
       return {
         updates: {
@@ -48,12 +48,12 @@ export function plannerStateToSessionPatch(patch: PlannerStatePatch): PlannerSta
           },
         },
         warnings,
-      };
+      }
     }
 
     case 'execution_ref_update': {
       if (!patchData.refId) {
-        warnings.push('execution_ref_update missing "refId" — partial patch applied');
+        warnings.push('execution_ref_update missing "refId" — partial patch applied')
       }
       return {
         updates: {
@@ -66,7 +66,7 @@ export function plannerStateToSessionPatch(patch: PlannerStatePatch): PlannerSta
           },
         },
         warnings,
-      };
+      }
     }
 
     case 'checkpoint_update': {
@@ -77,7 +77,7 @@ export function plannerStateToSessionPatch(patch: PlannerStatePatch): PlannerSta
           },
         },
         warnings,
-      };
+      }
     }
   }
 }

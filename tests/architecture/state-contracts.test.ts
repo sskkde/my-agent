@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest'
 import {
   FOREGROUND_STATES,
   PLANNER_STATES,
@@ -13,7 +13,7 @@ import {
   ACTIVE_STATES,
   WAITING_STATES,
   TERMINAL_STATES,
-} from '../../src/shared/states.js';
+} from '../../src/shared/states.js'
 
 describe('State Contracts', () => {
   describe('FOREGROUND_STATES', () => {
@@ -31,9 +31,9 @@ describe('State Contracts', () => {
         'handling_interrupt',
         'completed',
         'failed',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('PLANNER_STATES', () => {
     it('has expected state values', () => {
@@ -50,9 +50,9 @@ describe('State Contracts', () => {
         'failed',
         'cancelled',
         'archived',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('EXECUTION_PLAN_STATES', () => {
     it('has expected state values', () => {
@@ -67,9 +67,9 @@ describe('State Contracts', () => {
         'completed',
         'failed',
         'abandoned',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('RUNTIME_ACTION_STATES', () => {
     it('has expected state values', () => {
@@ -87,9 +87,9 @@ describe('State Contracts', () => {
         'failed',
         'timeout',
         'cancelled',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('KERNEL_RUN_STATES', () => {
     it('has expected state values', () => {
@@ -111,9 +111,9 @@ describe('State Contracts', () => {
         'interrupted',
         'partial_success',
         'max_iterations_reached',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('TOOL_EXECUTION_STATES', () => {
     it('has expected state values', () => {
@@ -131,9 +131,9 @@ describe('State Contracts', () => {
         'cancelled',
         'aborted',
         'discarded',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('BACKGROUND_SUBAGENT_STATES', () => {
     it('has expected state values', () => {
@@ -149,9 +149,9 @@ describe('State Contracts', () => {
         'failed',
         'cancelled',
         'expired',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('WORKFLOW_RUN_STATES', () => {
     it('has expected state values', () => {
@@ -167,21 +167,15 @@ describe('State Contracts', () => {
         'failed',
         'cancelled',
         'timeout',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('APPROVAL_STATES', () => {
     it('has expected state values', () => {
-      expect(Object.values(APPROVAL_STATES)).toEqual([
-        'pending',
-        'approved',
-        'rejected',
-        'expired',
-        'cancelled',
-      ]);
-    });
-  });
+      expect(Object.values(APPROVAL_STATES)).toEqual(['pending', 'approved', 'rejected', 'expired', 'cancelled'])
+    })
+  })
 
   describe('WAIT_CONDITION_STATES', () => {
     it('has expected state values', () => {
@@ -192,9 +186,9 @@ describe('State Contracts', () => {
         'failed',
         'timeout',
         'cancelled',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('Global State Classifications', () => {
     it('ACTIVE_STATES contains expected values', () => {
@@ -206,8 +200,8 @@ describe('State Contracts', () => {
         'executing',
         'replanning',
         'recovering',
-      ]);
-    });
+      ])
+    })
 
     it('WAITING_STATES contains expected values', () => {
       expect(WAITING_STATES).toEqual([
@@ -217,8 +211,8 @@ describe('State Contracts', () => {
         'waiting_for_external_event',
         'sleeping',
         'paused',
-      ]);
-    });
+      ])
+    })
 
     it('TERMINAL_STATES contains expected values', () => {
       expect(TERMINAL_STATES).toEqual([
@@ -229,13 +223,13 @@ describe('State Contracts', () => {
         'timeout',
         'expired',
         'archived',
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   describe('State Consistency', () => {
     it('documents shared state names across enums', () => {
-      const allStates = new Map<string, string[]>();
+      const allStates = new Map<string, string[]>()
       const stateEnums = [
         { name: 'FOREGROUND_STATES', states: Object.values(FOREGROUND_STATES) },
         { name: 'PLANNER_STATES', states: Object.values(PLANNER_STATES) },
@@ -247,21 +241,21 @@ describe('State Contracts', () => {
         { name: 'WORKFLOW_RUN_STATES', states: Object.values(WORKFLOW_RUN_STATES) },
         { name: 'APPROVAL_STATES', states: Object.values(APPROVAL_STATES) },
         { name: 'WAIT_CONDITION_STATES', states: Object.values(WAIT_CONDITION_STATES) },
-      ];
+      ]
 
       for (const { name, states } of stateEnums) {
         for (const state of states) {
           if (!allStates.has(state)) {
-            allStates.set(state, []);
+            allStates.set(state, [])
           }
-          allStates.get(state)!.push(name);
+          allStates.get(state)!.push(name)
         }
       }
 
-      const sharedStates: Array<{ state: string; enums: string[] }> = [];
+      const sharedStates: Array<{ state: string; enums: string[] }> = []
       for (const [state, enums] of allStates) {
         if (enums.length > 1) {
-          sharedStates.push({ state, enums });
+          sharedStates.push({ state, enums })
         }
       }
 
@@ -283,12 +277,12 @@ describe('State Contracts', () => {
         'running',
         'sleeping',
         'expired',
-      ];
+      ]
 
       for (const shared of sharedStates) {
-        expect(expectedSharedStates).toContain(shared.state);
+        expect(expectedSharedStates).toContain(shared.state)
       }
-    });
+    })
 
     it('all state values are lowercase strings with underscores', () => {
       const allStates = [
@@ -302,16 +296,16 @@ describe('State Contracts', () => {
         ...Object.values(WORKFLOW_RUN_STATES),
         ...Object.values(APPROVAL_STATES),
         ...Object.values(WAIT_CONDITION_STATES),
-      ];
+      ]
 
-      const invalidStates = allStates.filter((state) => !/^[a-z_]+$/.test(state));
+      const invalidStates = allStates.filter((state) => !/^[a-z_]+$/.test(state))
 
       if (invalidStates.length > 0) {
-        throw new Error(`Invalid state names (must be lowercase with underscores): ${invalidStates.join(', ')}`);
+        throw new Error(`Invalid state names (must be lowercase with underscores): ${invalidStates.join(', ')}`)
       }
 
-      expect(invalidStates).toHaveLength(0);
-    });
+      expect(invalidStates).toHaveLength(0)
+    })
 
     it('all states in global classifications are valid states', () => {
       const allValidStates = new Set([
@@ -325,16 +319,16 @@ describe('State Contracts', () => {
         ...Object.values(WORKFLOW_RUN_STATES),
         ...Object.values(APPROVAL_STATES),
         ...Object.values(WAIT_CONDITION_STATES),
-      ]);
+      ])
 
-      const globalStates = [...ACTIVE_STATES, ...WAITING_STATES, ...TERMINAL_STATES];
-      const invalidGlobalStates = globalStates.filter((s) => !allValidStates.has(s));
+      const globalStates = [...ACTIVE_STATES, ...WAITING_STATES, ...TERMINAL_STATES]
+      const invalidGlobalStates = globalStates.filter((s) => !allValidStates.has(s))
 
       if (invalidGlobalStates.length > 0) {
-        throw new Error(`Invalid states in global classifications: ${invalidGlobalStates.join(', ')}`);
+        throw new Error(`Invalid states in global classifications: ${invalidGlobalStates.join(', ')}`)
       }
 
-      expect(invalidGlobalStates).toHaveLength(0);
-    });
-  });
-});
+      expect(invalidGlobalStates).toHaveLength(0)
+    })
+  })
+})

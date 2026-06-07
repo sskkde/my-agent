@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js';
-import type { Migration } from '../../../src/storage/migrations.js';
-import { createOrganizationStore, type OrganizationStore } from '../../../src/storage/organization-store.js';
-import { resolveTenant } from '../../../src/tenancy/tenant-resolution.js';
-import { DEFAULT_TENANT_ID, createTenantContext } from '../../../src/tenancy/tenant-context.js';
-import type { TenantContext } from '../../../src/tenancy/tenant-context.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js'
+import type { Migration } from '../../../src/storage/migrations.js'
+import { createOrganizationStore, type OrganizationStore } from '../../../src/storage/organization-store.js'
+import { resolveTenant } from '../../../src/tenancy/tenant-resolution.js'
+import { DEFAULT_TENANT_ID, createTenantContext } from '../../../src/tenancy/tenant-context.js'
+import type { TenantContext } from '../../../src/tenancy/tenant-context.js'
 
 const orgMigrations: Migration[] = [
   {
@@ -22,7 +22,7 @@ const orgMigrations: Migration[] = [
         updated_at TEXT NOT NULL
       )
     `,
-    down: `DROP TABLE IF EXISTS users`
+    down: `DROP TABLE IF EXISTS users`,
   },
   {
     version: 2,
@@ -43,7 +43,7 @@ const orgMigrations: Migration[] = [
     down: `
       DROP INDEX IF EXISTS idx_organizations_slug;
       DROP TABLE IF EXISTS organizations
-    `
+    `,
   },
   {
     version: 3,
@@ -65,83 +65,83 @@ const orgMigrations: Migration[] = [
       DROP INDEX IF EXISTS idx_user_org_org;
       DROP INDEX IF EXISTS idx_user_org_user;
       DROP TABLE IF EXISTS user_organizations
-    `
-  }
-];
+    `,
+  },
+]
 
 describe('Tenant Resolution', () => {
-  let connection: ConnectionManager;
-  let migrationRunner: MigrationRunner;
-  let orgStore: OrganizationStore;
+  let connection: ConnectionManager
+  let migrationRunner: MigrationRunner
+  let orgStore: OrganizationStore
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrationRunner = createMigrationRunner(connection);
-    migrationRunner.init();
-    migrationRunner.apply(orgMigrations);
-    orgStore = createOrganizationStore(connection);
-  });
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrationRunner = createMigrationRunner(connection)
+    migrationRunner.init()
+    migrationRunner.apply(orgMigrations)
+    orgStore = createOrganizationStore(connection)
+  })
 
   afterEach(() => {
-    connection.close();
-  });
+    connection.close()
+  })
 
   describe('resolveTenant', () => {
     it('returns default tenant for undefined userId', () => {
-      const context = resolveTenant(undefined, orgStore);
+      const context = resolveTenant(undefined, orgStore)
 
-      expect(context.tenantId).toBe(DEFAULT_TENANT_ID);
-      expect(context.resolvedFrom).toBe('default');
-    });
+      expect(context.tenantId).toBe(DEFAULT_TENANT_ID)
+      expect(context.resolvedFrom).toBe('default')
+    })
 
     it('returns default tenant for known userId', () => {
       connection.exec(
         'INSERT INTO users (user_id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        ['user_1', 'testuser', 'hash', new Date().toISOString(), new Date().toISOString()]
-      );
+        ['user_1', 'testuser', 'hash', new Date().toISOString(), new Date().toISOString()],
+      )
 
-      const context = resolveTenant('user_1', orgStore);
+      const context = resolveTenant('user_1', orgStore)
 
-      expect(context.tenantId).toBe(DEFAULT_TENANT_ID);
-      expect(context.resolvedFrom).toBe('default');
-    });
+      expect(context.tenantId).toBe(DEFAULT_TENANT_ID)
+      expect(context.resolvedFrom).toBe('default')
+    })
 
     it('returns default tenant for user with org associations', () => {
       connection.exec(
         'INSERT INTO users (user_id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        ['user_1', 'testuser', 'hash', new Date().toISOString(), new Date().toISOString()]
-      );
-      orgStore.addUser('user_1', 'org_default', 'member');
+        ['user_1', 'testuser', 'hash', new Date().toISOString(), new Date().toISOString()],
+      )
+      orgStore.addUser('user_1', 'org_default', 'member')
 
-      const context = resolveTenant('user_1', orgStore);
+      const context = resolveTenant('user_1', orgStore)
 
-      expect(context.tenantId).toBe(DEFAULT_TENANT_ID);
-      expect(context.resolvedFrom).toBe('default');
-    });
+      expect(context.tenantId).toBe(DEFAULT_TENANT_ID)
+      expect(context.resolvedFrom).toBe('default')
+    })
 
     it('ignores X-Tenant-Id header for GA', () => {
-      const context = resolveTenant('user_1', orgStore, 'X-Tenant-Id');
+      const context = resolveTenant('user_1', orgStore, 'X-Tenant-Id')
 
-      expect(context.tenantId).toBe(DEFAULT_TENANT_ID);
-      expect(context.resolvedFrom).toBe('default');
-    });
-  });
+      expect(context.tenantId).toBe(DEFAULT_TENANT_ID)
+      expect(context.resolvedFrom).toBe('default')
+    })
+  })
 
   describe('createTenantContext', () => {
     it('creates context with default resolvedFrom', () => {
-      const context = createTenantContext('org_test');
+      const context = createTenantContext('org_test')
 
-      expect(context.tenantId).toBe('org_test');
-      expect(context.resolvedFrom).toBe('default');
-    });
+      expect(context.tenantId).toBe('org_test')
+      expect(context.resolvedFrom).toBe('default')
+    })
 
     it('creates context with explicit resolvedFrom', () => {
-      const context = createTenantContext('org_test', 'header');
+      const context = createTenantContext('org_test', 'header')
 
-      expect(context.tenantId).toBe('org_test');
-      expect(context.resolvedFrom).toBe('header');
-    });
+      expect(context.tenantId).toBe('org_test')
+      expect(context.resolvedFrom).toBe('header')
+    })
 
     it('creates context with optional org fields', () => {
       const context: TenantContext = {
@@ -149,16 +149,16 @@ describe('Tenant Resolution', () => {
         resolvedFrom: 'user',
         orgName: 'Test Org',
         orgSlug: 'test-org',
-      };
+      }
 
-      expect(context.orgName).toBe('Test Org');
-      expect(context.orgSlug).toBe('test-org');
-    });
-  });
+      expect(context.orgName).toBe('Test Org')
+      expect(context.orgSlug).toBe('test-org')
+    })
+  })
 
   describe('DEFAULT_TENANT_ID', () => {
     it('equals org_default', () => {
-      expect(DEFAULT_TENANT_ID).toBe('org_default');
-    });
-  });
-});
+      expect(DEFAULT_TENANT_ID).toBe('org_default')
+    })
+  })
+})

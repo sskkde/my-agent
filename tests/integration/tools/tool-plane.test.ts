@@ -1,42 +1,42 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import { createToolRegistry, createToolExecutor, assembleToolPool } from '../../../src/tools/index.js';
-import { createPermissionEngine } from '../../../src/permissions/permission-engine.js';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
+import { createToolRegistry, createToolExecutor, assembleToolPool } from '../../../src/tools/index.js'
+import { createPermissionEngine } from '../../../src/permissions/permission-engine.js'
 import type {
   ToolDefinition,
   ToolExecutorConfig,
   PermissionContext,
   ToolCategory,
   ToolSensitivity,
-} from '../../../src/tools/types.js';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createToolExecutionStore } from '../../../src/storage/tool-execution-store.js';
-import { createEventStore } from '../../../src/storage/event-store.js';
-import { createApprovalStore } from '../../../src/storage/approval-store.js';
-import { createPermissionGrantStore } from '../../../src/storage/permission-grant-store.js';
-import { createMigrationRunner } from '../../../src/storage/migrations.js';
-import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.js';
-import { generateId, GRANT_ID_PREFIX } from '../../../src/shared/ids.js';
+} from '../../../src/tools/types.js'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createToolExecutionStore } from '../../../src/storage/tool-execution-store.js'
+import { createEventStore } from '../../../src/storage/event-store.js'
+import { createApprovalStore } from '../../../src/storage/approval-store.js'
+import { createPermissionGrantStore } from '../../../src/storage/permission-grant-store.js'
+import { createMigrationRunner } from '../../../src/storage/migrations.js'
+import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.js'
+import { generateId, GRANT_ID_PREFIX } from '../../../src/shared/ids.js'
 
 describe('Tool Plane Integration', () => {
-  let connection: ConnectionManager;
-  let toolExecutionStore: ReturnType<typeof createToolExecutionStore>;
-  let eventStore: ReturnType<typeof createEventStore>;
-  let approvalStore: ReturnType<typeof createApprovalStore>;
-  let grantStore: ReturnType<typeof createPermissionGrantStore>;
-  let permissionEngine: ReturnType<typeof createPermissionEngine>;
+  let connection: ConnectionManager
+  let toolExecutionStore: ReturnType<typeof createToolExecutionStore>
+  let eventStore: ReturnType<typeof createEventStore>
+  let approvalStore: ReturnType<typeof createApprovalStore>
+  let grantStore: ReturnType<typeof createPermissionGrantStore>
+  let permissionEngine: ReturnType<typeof createPermissionEngine>
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    
-    const migrationRunner = createMigrationRunner(connection);
-    migrationRunner.init();
-    migrationRunner.apply(allStoreMigrations);
+    connection = createConnectionManager(':memory:')
+    connection.open()
 
-    toolExecutionStore = createToolExecutionStore(connection);
-    eventStore = createEventStore(connection);
-    approvalStore = createApprovalStore(connection);
-    grantStore = createPermissionGrantStore(connection);
+    const migrationRunner = createMigrationRunner(connection)
+    migrationRunner.init()
+    migrationRunner.apply(allStoreMigrations)
+
+    toolExecutionStore = createToolExecutionStore(connection)
+    eventStore = createEventStore(connection)
+    approvalStore = createApprovalStore(connection)
+    grantStore = createPermissionGrantStore(connection)
 
     permissionEngine = createPermissionEngine(
       {
@@ -46,17 +46,17 @@ describe('Tool Plane Integration', () => {
       },
       {
         auditAllDecisions: false,
-      }
-    );
-  });
+      },
+    )
+  })
 
   afterAll(() => {
-    connection.close();
-  });
+    connection.close()
+  })
 
   describe('Tool Registry', () => {
     it('should register and retrieve tools', () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       const tool: ToolDefinition = {
         name: 'file-read',
@@ -74,18 +74,18 @@ describe('Tool Plane Integration', () => {
           success: true,
           data: `Contents of ${(params as { path: string }).path}`,
         }),
-      };
+      }
 
-      registry.register(tool);
+      registry.register(tool)
 
-      const retrieved = registry.getTool('file-read');
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.name).toBe('file-read');
-      expect(retrieved?.category).toBe('read');
-    });
+      const retrieved = registry.getTool('file-read')
+      expect(retrieved).toBeDefined()
+      expect(retrieved?.name).toBe('file-read')
+      expect(retrieved?.category).toBe('read')
+    })
 
     it('should list tools by category', () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'read-tool',
@@ -94,7 +94,7 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'low' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => ({ success: true }),
-      });
+      })
 
       registry.register({
         name: 'write-tool',
@@ -103,15 +103,15 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'medium' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => ({ success: true }),
-      });
+      })
 
-      const readTools = registry.listToolsByCategory('read');
-      expect(readTools).toHaveLength(1);
-      expect(readTools[0].name).toBe('read-tool');
-    });
+      const readTools = registry.listToolsByCategory('read')
+      expect(readTools).toHaveLength(1)
+      expect(readTools[0].name).toBe('read-tool')
+    })
 
     it('should assemble tool pool for kernel context', () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'tool-1',
@@ -120,7 +120,7 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'low' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => ({ success: true }),
-      });
+      })
 
       registry.register({
         name: 'tool-2',
@@ -129,18 +129,18 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'medium' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => ({ success: true }),
-      });
+      })
 
-      const pool = assembleToolPool(registry, 'run-123');
+      const pool = assembleToolPool(registry, 'run-123')
 
-      expect(pool.tools).toHaveLength(2);
-      expect(pool.metadata.runId).toBe('run-123');
-      expect(pool.metadata.categoryCounts.read).toBe(1);
-      expect(pool.metadata.categoryCounts.write).toBe(1);
-    });
+      expect(pool.tools).toHaveLength(2)
+      expect(pool.metadata.runId).toBe('run-123')
+      expect(pool.metadata.categoryCounts.read).toBe(1)
+      expect(pool.metadata.categoryCounts.write).toBe(1)
+    })
 
     it('should filter tools by category when assembling pool', () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'read-tool',
@@ -149,7 +149,7 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'low' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => ({ success: true }),
-      });
+      })
 
       registry.register({
         name: 'write-tool',
@@ -158,20 +158,20 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'medium' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => ({ success: true }),
-      });
+      })
 
       const pool = assembleToolPool(registry, 'run-123', {
         includeCategories: ['read'],
-      });
+      })
 
-      expect(pool.tools).toHaveLength(1);
-      expect(pool.tools[0].name).toBe('read-tool');
-    });
-  });
+      expect(pool.tools).toHaveLength(1)
+      expect(pool.tools[0].name).toBe('read-tool')
+    })
+  })
 
   describe('Tool Executor - Schema Validation', () => {
     it('should reject invalid schema parameters', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'calculator',
@@ -188,34 +188,34 @@ describe('Tool Plane Integration', () => {
           required: ['a', 'b', 'operation'],
         },
         handler: async (params) => {
-          const { a, b, operation } = params as { a: number; b: number; operation: string };
-          let result = 0;
+          const { a, b, operation } = params as { a: number; b: number; operation: string }
+          let result = 0
           switch (operation) {
             case 'add':
-              result = a + b;
-              break;
+              result = a + b
+              break
             case 'subtract':
-              result = a - b;
-              break;
+              result = a - b
+              break
             default:
-              throw new Error('Unknown operation');
+              throw new Error('Unknown operation')
           }
           return {
             success: true,
             data: result,
             resultPreview: `${a} ${operation} ${b} = ${result}`,
-          };
+          }
         },
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -224,15 +224,15 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('SCHEMA_VALIDATION_FAILED');
-      expect(result.error?.message).toContain('Missing required field');
-    });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('SCHEMA_VALIDATION_FAILED')
+      expect(result.error?.message).toContain('Missing required field')
+    })
 
     it('should reject wrong parameter types', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'calculator',
@@ -248,16 +248,16 @@ describe('Tool Plane Integration', () => {
           required: ['a', 'b'],
         },
         handler: async () => ({ success: true }),
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -266,16 +266,16 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('SCHEMA_VALIDATION_FAILED');
-    });
-  });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('SCHEMA_VALIDATION_FAILED')
+    })
+  })
 
   describe('Tool Executor - Permission Coordination', () => {
     it('should execute read tool without approval', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'file-reader',
@@ -292,16 +292,16 @@ describe('Tool Plane Integration', () => {
           success: true,
           data: 'file contents',
         }),
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -310,14 +310,14 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      expect(result.success).toBe(true);
-      expect(result.data).toBe('file contents');
-    });
+      expect(result.success).toBe(true)
+      expect(result.data).toBe('file contents')
+    })
 
     it('should require approval for write tools in ask_on_write mode', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'file-writer',
@@ -335,16 +335,16 @@ describe('Tool Plane Integration', () => {
           success: true,
           data: 'written',
         }),
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -353,16 +353,16 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('APPROVAL_REQUIRED');
-      expect(result.error?.recoverable).toBe(true);
-      expect(result.structuredContent?.status).toBe('requires_approval');
-    });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.structuredContent?.status).toBe('requires_approval')
+    })
 
     it('should execute write tool with permission grant', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'file-writer',
@@ -380,7 +380,7 @@ describe('Tool Plane Integration', () => {
           success: true,
           data: 'written',
         }),
-      });
+      })
 
       grantStore.create({
         id: generateId(GRANT_ID_PREFIX),
@@ -389,18 +389,18 @@ describe('Tool Plane Integration', () => {
         action: 'tool:file-writer',
         resourcePattern: undefined,
         expiresAt: undefined,
-      });
+      })
 
-      const grants = grantStore.findActiveByUserAndScope('user-1', 'session-1');
+      const grants = grantStore.findActiveByUserAndScope('user-1', 'session-1')
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -414,14 +414,14 @@ describe('Tool Plane Integration', () => {
           mode: 'ask_on_write',
           grants,
         },
-      });
+      })
 
-      expect(result.success).toBe(true);
-      expect(result.data).toBe('written');
-    });
+      expect(result.success).toBe(true)
+      expect(result.data).toBe('written')
+    })
 
     it('should require approval for delete tools without permission', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'file-deleter',
@@ -438,16 +438,16 @@ describe('Tool Plane Integration', () => {
           success: true,
           data: 'deleted',
         }),
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -456,16 +456,16 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('APPROVAL_REQUIRED');
-      expect(result.error?.recoverable).toBe(true);
-      expect(result.structuredContent?.status).toBe('requires_approval');
-    });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.structuredContent?.status).toBe('requires_approval')
+    })
 
     it('should respect hard_deny mode', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'read-tool',
@@ -477,16 +477,16 @@ describe('Tool Plane Integration', () => {
           success: true,
           data: 'read',
         }),
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -500,16 +500,16 @@ describe('Tool Plane Integration', () => {
           mode: 'hard_deny',
           grants: [],
         },
-      });
+      })
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('PERMISSION_DENIED');
-    });
-  });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PERMISSION_DENIED')
+    })
+  })
 
   describe('Tool Executor - Result Normalization', () => {
     it('should emit RuntimeContextDelta for context updates', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'search-tool',
@@ -533,9 +533,9 @@ describe('Tool Plane Integration', () => {
             ],
           },
         }),
-      });
+      })
 
-      const mockApplyDelta = vi.fn();
+      const mockApplyDelta = vi.fn()
 
       const config: ToolExecutorConfig = {
         registry,
@@ -545,9 +545,9 @@ describe('Tool Plane Integration', () => {
         contextManager: {
           applyDelta: mockApplyDelta,
         },
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       await executor.execute({
         toolCallId: 'call-1',
@@ -557,19 +557,19 @@ describe('Tool Plane Integration', () => {
         sessionId: 'session-1',
         kernelRunId: 'run-123',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
       expect(mockApplyDelta).toHaveBeenCalledWith(
         expect.objectContaining({
           runId: 'run-123',
           source: 'tool_result',
           items: expect.any(Array),
-        })
-      );
-    });
+        }),
+      )
+    })
 
     it('should persist execution to ToolExecutionStore', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'test-tool',
@@ -582,16 +582,16 @@ describe('Tool Plane Integration', () => {
           resultPreview: 'Test completed',
           structuredContent: { key: 'value' },
         }),
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       await executor.execute({
         toolCallId: 'call-123',
@@ -600,27 +600,27 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      const execution = toolExecutionStore.getById('call-123');
-      expect(execution).toBeDefined();
-      expect(execution?.toolName).toBe('test-tool');
-      expect(execution?.resultPreview).toBe('Test completed');
-    });
-  });
+      const execution = toolExecutionStore.getById('call-123')
+      expect(execution).toBeDefined()
+      expect(execution?.toolName).toBe('test-tool')
+      expect(execution?.resultPreview).toBe('Test completed')
+    })
+  })
 
   describe('Tool Executor - Error Handling', () => {
     it('should handle tool not found', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -629,14 +629,14 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('TOOL_NOT_FOUND');
-    });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('TOOL_NOT_FOUND')
+    })
 
     it('should handle handler errors gracefully', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'failing-tool',
@@ -645,18 +645,18 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'low' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => {
-          throw new Error('Tool execution failed');
+          throw new Error('Tool execution failed')
         },
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       const result = await executor.execute({
         toolCallId: 'call-1',
@@ -665,15 +665,15 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('EXECUTION_FAILED');
-      expect(result.error?.message).toBe('Tool execution failed');
-    });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('EXECUTION_FAILED')
+      expect(result.error?.message).toBe('Tool execution failed')
+    })
 
     it('should persist failed execution status', async () => {
-      const registry = createToolRegistry();
+      const registry = createToolRegistry()
 
       registry.register({
         name: 'failing-tool',
@@ -682,18 +682,18 @@ describe('Tool Plane Integration', () => {
         sensitivity: 'low' as ToolSensitivity,
         schema: { type: 'object', properties: {} },
         handler: async () => {
-          throw new Error('Tool execution failed');
+          throw new Error('Tool execution failed')
         },
-      });
+      })
 
       const config: ToolExecutorConfig = {
         registry,
         permissionEngine,
         toolExecutionStore: toolExecutionStore as unknown as ToolExecutorConfig['toolExecutionStore'],
         eventStore: eventStore as unknown as ToolExecutorConfig['eventStore'],
-      };
+      }
 
-      const executor = createToolExecutor(config);
+      const executor = createToolExecutor(config)
 
       await executor.execute({
         toolCallId: 'call-fail-1',
@@ -702,14 +702,14 @@ describe('Tool Plane Integration', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         permissionContext: createTestPermissionContext(),
-      });
+      })
 
-      const execution = toolExecutionStore.getById('call-fail-1');
-      expect(execution).toBeDefined();
-      expect(execution?.status).toBe('failed');
-    });
-  });
-});
+      const execution = toolExecutionStore.getById('call-fail-1')
+      expect(execution).toBeDefined()
+      expect(execution?.status).toBe('failed')
+    })
+  })
+})
 
 function createTestPermissionContext(): PermissionContext {
   return {
@@ -717,5 +717,5 @@ function createTestPermissionContext(): PermissionContext {
     sessionId: 'session-1',
     mode: 'ask_on_write',
     grants: [],
-  };
+  }
 }

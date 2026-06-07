@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js';
-import type { ForegroundMessageInput, ForegroundSessionState } from '../../../src/foreground/types.js';
-import type { LLMAdapter } from '../../../src/llm/adapter.js';
-import type { LLMProvider } from '../../../src/llm/provider.js';
-import type { LLMResult } from '../../../src/llm/types.js';
-import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js';
-import type { BuiltModelInput } from '../../../src/kernel/model-input/model-input-types.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js'
+import type { ForegroundMessageInput, ForegroundSessionState } from '../../../src/foreground/types.js'
+import type { LLMAdapter } from '../../../src/llm/adapter.js'
+import type { LLMProvider } from '../../../src/llm/provider.js'
+import type { LLMResult } from '../../../src/llm/types.js'
+import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
+import type { BuiltModelInput } from '../../../src/kernel/model-input/model-input-types.js'
 
 function createMockState(overrides: Partial<ForegroundSessionState> = {}): ForegroundSessionState {
   return {
@@ -35,7 +35,7 @@ function createMockState(overrides: Partial<ForegroundSessionState> = {}): Foreg
       allowedToolCategories: ['read', 'search', 'internal'],
     },
     ...overrides,
-  } as ForegroundSessionState;
+  } as ForegroundSessionState
 }
 
 function createMockInput(overrides: Partial<ForegroundMessageInput> = {}): ForegroundMessageInput {
@@ -46,7 +46,7 @@ function createMockInput(overrides: Partial<ForegroundMessageInput> = {}): Foreg
     turnId: 'turn-1',
     timestamp: new Date().toISOString(),
     ...overrides,
-  };
+  }
 }
 
 function createSuccessLLMResult(responseJson: string): LLMResult {
@@ -61,7 +61,7 @@ function createSuccessLLMResult(responseJson: string): LLMResult {
       createdAt: new Date().toISOString(),
     },
     providerId: 'test-provider',
-  };
+  }
 }
 
 function createMockModelInputBuilder(): ModelInputBuilder {
@@ -88,117 +88,113 @@ function createMockModelInputBuilder(): ModelInputBuilder {
       providerFamily: 'openai',
       messageCount: 2,
     },
-  };
+  }
 
   return {
     build: vi.fn().mockResolvedValue(builtOutput),
-  } as unknown as ModelInputBuilder;
+  } as unknown as ModelInputBuilder
 }
 
 function createLegacyOnlyLLMAdapter(route: string, reason: string): LLMAdapter {
   return {
     complete: vi.fn().mockResolvedValue(createSuccessLLMResult(JSON.stringify({ route, reason }))),
-    getHealthyProviders: vi.fn().mockReturnValue([{
-      config: {
-        providerId: 'test-provider',
-        providerType: 'openrouter',
-        capabilities: { supportsJsonMode: true, supportsFunctionCalling: false },
+    getHealthyProviders: vi.fn().mockReturnValue([
+      {
+        config: {
+          providerId: 'test-provider',
+          providerType: 'openrouter',
+          capabilities: { supportsJsonMode: true, supportsFunctionCalling: false },
+        },
       },
-    }] as unknown as LLMProvider[]),
-  } as unknown as LLMAdapter;
+    ] as unknown as LLMProvider[]),
+  } as unknown as LLMAdapter
 }
 
 describe('Foreground Decide Shadow Mode', () => {
-  const originalEnv = process.env;
+  const originalEnv = process.env
 
   beforeEach(() => {
-    vi.restoreAllMocks();
-    process.env = { ...originalEnv };
-    process.env.MODEL_INPUT_BUILDER_ENABLED = 'true';
-  });
+    vi.restoreAllMocks()
+    process.env = { ...originalEnv }
+    process.env.MODEL_INPUT_BUILDER_ENABLED = 'true'
+  })
 
   afterEach(() => {
-    process.env = originalEnv;
-  });
+    process.env = originalEnv
+  })
 
   describe('Flag OFF: FOREGROUND_DECIDE_ENABLED=false', () => {
     it('should use legacy routing_json path when decide is disabled', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'false';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'false';
+      process.env.FOREGROUND_DECIDE_ENABLED = 'false'
+      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'false'
 
-      const llmAdapter = createLegacyOnlyLLMAdapter('answer_directly', 'Legacy direct answer');
-      const modelInputBuilder = createMockModelInputBuilder();
+      const llmAdapter = createLegacyOnlyLLMAdapter('answer_directly', 'Legacy direct answer')
+      const modelInputBuilder = createMockModelInputBuilder()
 
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
+      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder })
 
-      const result = await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
+      const result = await agent.processMessage(createMockInput({ message: 'Hello' }), createMockState())
 
-      expect(result.route).toBe('answer_directly');
-      expect(result.reason).toBe('Legacy direct answer');
-    });
+      expect(result.route).toBe('answer_directly')
+      expect(result.reason).toBe('Legacy direct answer')
+    })
 
     it('should use routing_json mode for dispatch_subagent when decide is disabled', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'false';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'false';
+      process.env.FOREGROUND_DECIDE_ENABLED = 'false'
+      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'false'
 
-      const llmAdapter = createLegacyOnlyLLMAdapter('dispatch_subagent', 'Background task detected');
-      const modelInputBuilder = createMockModelInputBuilder();
+      const llmAdapter = createLegacyOnlyLLMAdapter('dispatch_subagent', 'Background task detected')
+      const modelInputBuilder = createMockModelInputBuilder()
 
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
+      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder })
 
       const result = await agent.processMessage(
         createMockInput({ message: 'Process this in background' }),
         createMockState(),
-      );
+      )
 
-      expect(result.route).toBe('dispatch_subagent');
-      expect(result.reason).toBe('Background task detected');
-    });
+      expect(result.route).toBe('dispatch_subagent')
+      expect(result.reason).toBe('Background task detected')
+    })
 
     it('should not trigger decide path even when shadow mode env is set', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'false';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true';
+      process.env.FOREGROUND_DECIDE_ENABLED = 'false'
+      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'true'
 
-      const llmAdapter = createLegacyOnlyLLMAdapter('answer_directly', 'Legacy response');
-      const modelInputBuilder = createMockModelInputBuilder();
+      const llmAdapter = createLegacyOnlyLLMAdapter('answer_directly', 'Legacy response')
+      const modelInputBuilder = createMockModelInputBuilder()
 
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
+      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder })
 
-      const result = await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
+      const result = await agent.processMessage(createMockInput({ message: 'Hello' }), createMockState())
 
-      expect(result.route).toBe('answer_directly');
-      expect(result.reason).toBe('Legacy response');
-    });
+      expect(result.route).toBe('answer_directly')
+      expect(result.reason).toBe('Legacy response')
+    })
 
     it('should return same decision as before when flag is OFF', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'false';
-      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'false';
+      process.env.FOREGROUND_DECIDE_ENABLED = 'false'
+      process.env.FOREGROUND_DECIDE_SHADOW_MODE = 'false'
 
-      const llmAdapter = createLegacyOnlyLLMAdapter('spawn_planner', 'Complex multi-step task');
-      const modelInputBuilder = createMockModelInputBuilder();
+      const llmAdapter = createLegacyOnlyLLMAdapter('spawn_planner', 'Complex multi-step task')
+      const modelInputBuilder = createMockModelInputBuilder()
 
-      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder });
+      const agent = createForegroundAgent({ llmAdapter, modelInputBuilder })
 
       const result = await agent.processMessage(
         createMockInput({ message: 'Plan a complex project' }),
         createMockState(),
-      );
+      )
 
-      expect(result.route).toBe('spawn_planner');
-      expect(result.requiresPlanner).toBe(true);
-      expect(result.reason).toBe('Complex multi-step task');
-    });
-  });
+      expect(result.route).toBe('spawn_planner')
+      expect(result.requiresPlanner).toBe(true)
+      expect(result.reason).toBe('Complex multi-step task')
+    })
+  })
 
   describe('Edge cases', () => {
     it('should fallback to answer_directly when LLM fails with decide enabled', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'true';
+      process.env.FOREGROUND_DECIDE_ENABLED = 'true'
 
       const failingAdapter = {
         complete: vi.fn().mockResolvedValue({
@@ -214,41 +210,37 @@ describe('Foreground Decide Shadow Mode', () => {
           },
           providerId: 'test-provider',
         } as LLMResult),
-        getHealthyProviders: vi.fn().mockReturnValue([{
-          config: {
-            providerId: 'test-provider',
-            providerType: 'openrouter',
-            capabilities: { supportsJsonMode: true, supportsFunctionCalling: true },
+        getHealthyProviders: vi.fn().mockReturnValue([
+          {
+            config: {
+              providerId: 'test-provider',
+              providerType: 'openrouter',
+              capabilities: { supportsJsonMode: true, supportsFunctionCalling: true },
+            },
           },
-        }]),
-      } as unknown as LLMAdapter;
+        ]),
+      } as unknown as LLMAdapter
 
-      const modelInputBuilder = createMockModelInputBuilder();
+      const modelInputBuilder = createMockModelInputBuilder()
 
-      const agent = createForegroundAgent({ llmAdapter: failingAdapter, modelInputBuilder });
+      const agent = createForegroundAgent({ llmAdapter: failingAdapter, modelInputBuilder })
 
-      const result = await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
+      const result = await agent.processMessage(createMockInput({ message: 'Hello' }), createMockState())
 
-      expect(result.route).toBe('answer_directly');
-    });
+      expect(result.route).toBe('answer_directly')
+    })
 
     it('should return answer_directly with diagnostic reason when ModelInputBuilder is missing', async () => {
-      process.env.FOREGROUND_DECIDE_ENABLED = 'false';
+      process.env.FOREGROUND_DECIDE_ENABLED = 'false'
 
-      const llmAdapter = createLegacyOnlyLLMAdapter('answer_directly', 'Direct answer');
+      const llmAdapter = createLegacyOnlyLLMAdapter('answer_directly', 'Direct answer')
 
-      const agent = createForegroundAgent({ llmAdapter });
+      const agent = createForegroundAgent({ llmAdapter })
 
-      const result = await agent.processMessage(
-        createMockInput({ message: 'Hello' }),
-        createMockState(),
-      );
+      const result = await agent.processMessage(createMockInput({ message: 'Hello' }), createMockState())
 
-      expect(result.route).toBe('answer_directly');
-      expect(result.reason).toBe('ModelInputBuilder not available');
-    });
-  });
-});
+      expect(result.route).toBe('answer_directly')
+      expect(result.reason).toBe('ModelInputBuilder not available')
+    })
+  })
+})

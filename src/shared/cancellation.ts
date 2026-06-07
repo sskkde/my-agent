@@ -7,7 +7,7 @@ export type CancellationTargetType =
   | 'workflow_run'
   | 'workflow_step_run'
   | 'runtime_action'
-  | 'wait_condition';
+  | 'wait_condition'
 
 export const CANCELLATION_TARGET_TYPES = {
   PLANNER_RUN: 'planner_run',
@@ -19,34 +19,29 @@ export const CANCELLATION_TARGET_TYPES = {
   WORKFLOW_STEP_RUN: 'workflow_step_run',
   RUNTIME_ACTION: 'runtime_action',
   WAIT_CONDITION: 'wait_condition',
-} as const;
+} as const
 
 export interface CascadePolicy {
-  cancelChildren: boolean;
-  cancelActiveTools: boolean;
-  cancelBackgroundRuns: boolean;
-  cancelWaitConditions: boolean;
-  notifyUser: boolean;
+  cancelChildren: boolean
+  cancelActiveTools: boolean
+  cancelBackgroundRuns: boolean
+  cancelWaitConditions: boolean
+  notifyUser: boolean
 }
 
 export interface CancellationRequest {
-  cancellationId: string;
-  requestedBy: 'user' | 'system' | 'timeout' | 'policy';
-  reason: string;
+  cancellationId: string
+  requestedBy: 'user' | 'system' | 'timeout' | 'policy'
+  reason: string
   target: {
-    targetType: CancellationTargetType;
-    targetId: string;
-  };
-  cascadePolicy: CascadePolicy;
-  createdAt: string;
+    targetType: CancellationTargetType
+    targetId: string
+  }
+  cascadePolicy: CascadePolicy
+  createdAt: string
 }
 
-export type CancellationStatus =
-  | 'completed'
-  | 'partial'
-  | 'not_cancellable'
-  | 'already_terminal'
-  | 'failed';
+export type CancellationStatus = 'completed' | 'partial' | 'not_cancellable' | 'already_terminal' | 'failed'
 
 export const CANCELLATION_STATUSES = {
   COMPLETED: 'completed',
@@ -54,18 +49,18 @@ export const CANCELLATION_STATUSES = {
   NOT_CANCELLABLE: 'not_cancellable',
   ALREADY_TERMINAL: 'already_terminal',
   FAILED: 'failed',
-} as const;
+} as const
 
 export interface SideEffectNotice {
-  externalSideEffectsMayHaveOccurred: boolean;
-  summary?: string;
+  externalSideEffectsMayHaveOccurred: boolean
+  summary?: string
 }
 
 export interface CancellationResult {
-  cancellationId: string;
-  status: CancellationStatus;
-  cancelledRefs?: string[];
-  stillRunningRefs?: string[];
-  sideEffectNotice?: SideEffectNotice;
-  userVisibleSummary?: string;
+  cancellationId: string
+  status: CancellationStatus
+  cancelledRefs?: string[]
+  stillRunningRefs?: string[]
+  sideEffectNotice?: SideEffectNotice
+  userVisibleSummary?: string
 }

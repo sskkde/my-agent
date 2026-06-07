@@ -12,7 +12,7 @@
  * This is the base flag for P0 prompt features.
  */
 export function isPromptMemoryP0Enabled(): boolean {
-  return process.env.PROMPT_MEMORY_P0_ENABLED === 'true';
+  return process.env.PROMPT_MEMORY_P0_ENABLED === 'true'
 }
 
 /**
@@ -21,7 +21,7 @@ export function isPromptMemoryP0Enabled(): boolean {
  * when P0 is also enabled.
  */
 export function isPromptTemplateProjectionEnabled(): boolean {
-  return isPromptMemoryP0Enabled() && process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED === 'true';
+  return isPromptMemoryP0Enabled() && process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED === 'true'
 }
 
 /**
@@ -29,5 +29,5 @@ export function isPromptTemplateProjectionEnabled(): boolean {
  * This is the feature flag for the new tool loop implementation.
  */
 export function isToolLoopV2Enabled(): boolean {
-  return process.env.TOOL_LOOP_V2_ENABLED === 'true';
+  return process.env.TOOL_LOOP_V2_ENABLED === 'true'
 }

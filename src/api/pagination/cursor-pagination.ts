@@ -2,15 +2,15 @@
 // Cursor Pagination Utilities
 // =============================================================================
 
-import type { CursorPaginationParams, CursorPage } from './cursor-types.js';
+import type { CursorPaginationParams, CursorPage } from './cursor-types.js'
 
 /**
  * Encode cursor values into an opaque Base64 string.
  * Clients should treat the cursor as opaque and never parse or decode it.
  */
 export function encodeCursor(values: Record<string, unknown>): string {
-  const json = JSON.stringify(values);
-  return Buffer.from(json, 'utf-8').toString('base64');
+  const json = JSON.stringify(values)
+  return Buffer.from(json, 'utf-8').toString('base64')
 }
 
 /**
@@ -19,17 +19,17 @@ export function encodeCursor(values: Record<string, unknown>): string {
  */
 export function decodeCursor(cursor: string): Record<string, unknown> {
   try {
-    const json = Buffer.from(cursor, 'base64').toString('utf-8');
-    const parsed = JSON.parse(json);
+    const json = Buffer.from(cursor, 'base64').toString('utf-8')
+    const parsed = JSON.parse(json)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error('Cursor must decode to a JSON object');
+      throw new Error('Cursor must decode to a JSON object')
     }
-    return parsed as Record<string, unknown>;
+    return parsed as Record<string, unknown>
   } catch (err) {
     if (err instanceof Error && err.message === 'Cursor must decode to a JSON object') {
-      throw err;
+      throw err
     }
-    throw new Error('Invalid cursor: unable to decode');
+    throw new Error('Invalid cursor: unable to decode')
   }
 }
 
@@ -52,47 +52,40 @@ export function applyCursorPagination<T>(
   params: CursorPaginationParams,
   getCursorValue: (item: T) => Record<string, unknown>,
 ): CursorPage<T> {
-  const limit = params.limit ?? 50;
-  let startIndex = 0;
+  const limit = params.limit ?? 50
+  let startIndex = 0
 
   if (params.cursor) {
-    const cursorValues = decodeCursor(params.cursor);
+    const cursorValues = decodeCursor(params.cursor)
     const cursorIndex = items.findIndex((item) => {
-      const itemValues = getCursorValue(item);
-      return isCursorMatch(itemValues, cursorValues);
-    });
+      const itemValues = getCursorValue(item)
+      return isCursorMatch(itemValues, cursorValues)
+    })
 
-    startIndex = cursorIndex === -1 ? 0 : cursorIndex + 1;
+    startIndex = cursorIndex === -1 ? 0 : cursorIndex + 1
   }
 
-  const remaining = items.slice(startIndex);
-  const hasMore = remaining.length > limit;
-  const pageItems = remaining.slice(0, limit);
+  const remaining = items.slice(startIndex)
+  const hasMore = remaining.length > limit
+  const pageItems = remaining.slice(0, limit)
 
   const nextCursor =
-    hasMore && pageItems.length > 0
-      ? encodeCursor(getCursorValue(pageItems[pageItems.length - 1]))
-      : null;
+    hasMore && pageItems.length > 0 ? encodeCursor(getCursorValue(pageItems[pageItems.length - 1])) : null
 
   return {
     items: pageItems,
     nextCursor,
     hasMore,
-  };
+  }
 }
 
-function isCursorMatch(
-  itemValues: Record<string, unknown>,
-  cursorValues: Record<string, unknown>,
-): boolean {
-  const itemKeys = Object.keys(itemValues);
-  const cursorKeys = Object.keys(cursorValues);
+function isCursorMatch(itemValues: Record<string, unknown>, cursorValues: Record<string, unknown>): boolean {
+  const itemKeys = Object.keys(itemValues)
+  const cursorKeys = Object.keys(cursorValues)
 
   if (itemKeys.length !== cursorKeys.length) {
-    return false;
+    return false
   }
 
-  return itemKeys.every(
-    (key) => key in cursorValues && itemValues[key] === cursorValues[key],
-  );
+  return itemKeys.every((key) => key in cursorValues && itemValues[key] === cursorValues[key])
 }

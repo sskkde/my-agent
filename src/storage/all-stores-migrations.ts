@@ -1,5 +1,5 @@
-import type { Migration } from './migrations.js';
-import { alertTablesMigration } from './alert-store.js';
+import type { Migration } from './migrations.js'
+import { alertTablesMigration } from './alert-store.js'
 
 /**
  * Consolidated migrations for ALL stores in the agent platform.
@@ -94,8 +94,8 @@ export const eventsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_events_event_type;
     DROP INDEX IF EXISTS idx_events_source_module;
     DROP TABLE IF EXISTS events
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 2: RuntimeAction Store (version 2)
@@ -149,8 +149,8 @@ export const runtimeActionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_runtime_actions_session;
     DROP INDEX IF EXISTS idx_runtime_actions_user;
     DROP TABLE IF EXISTS runtime_actions
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 3: Transcript Store (version 3)
@@ -190,8 +190,8 @@ export const transcriptsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_transcripts_artifact_refs;
     DROP INDEX IF EXISTS idx_transcripts_planner_runs;
     DROP TABLE IF EXISTS transcripts
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 4: Summary Store (version 4)
@@ -235,8 +235,8 @@ export const summariesTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_summaries_run_id;
     DROP INDEX IF EXISTS idx_summaries_session_id;
     DROP TABLE IF EXISTS summaries
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 5: Plan Store (version 5)
@@ -272,8 +272,8 @@ export const plansTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_plans_status;
     DROP INDEX IF EXISTS idx_plans_objective_hash;
     DROP TABLE IF EXISTS plans
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 5b: Plan Patches (version 6)
@@ -300,8 +300,8 @@ export const planPatchesTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_plan_patches_plan_id;
     DROP INDEX IF EXISTS idx_plan_patches_versions;
     DROP TABLE IF EXISTS plan_patches
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 6: PlannerRun Store (version 7)
@@ -336,8 +336,8 @@ export const plannerRunsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_planner_runs_background_run;
     DROP INDEX IF EXISTS idx_planner_runs_workflow_run;
     DROP TABLE IF EXISTS planner_runs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 7: KernelRun Store (version 8)
@@ -378,8 +378,8 @@ export const kernelRunsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_kernel_runs_root_run;
     DROP INDEX IF EXISTS idx_kernel_runs_invocation;
     DROP TABLE IF EXISTS kernel_runs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 8: ToolExecution Store (version 9)
@@ -419,8 +419,8 @@ export const toolExecutionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_tool_executions_kernel_pending;
     DROP INDEX IF EXISTS idx_tool_executions_status;
     DROP TABLE IF EXISTS tool_executions
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 9: BackgroundRun Store (version 10)
@@ -464,8 +464,8 @@ export const backgroundRunsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_background_runs_launch_source;
     DROP INDEX IF EXISTS idx_background_runs_expires;
     DROP TABLE IF EXISTS background_runs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 10: WorkflowRun Store (version 11)
@@ -500,8 +500,8 @@ export const workflowRunsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_workflow_runs_owner_status;
     DROP INDEX IF EXISTS idx_workflow_runs_trigger;
     DROP TABLE IF EXISTS workflow_runs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 10b: WorkflowStepRun Store (version 12)
@@ -544,8 +544,8 @@ export const workflowStepRunsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_workflow_step_runs_tool;
     DROP INDEX IF EXISTS idx_workflow_step_runs_approval;
     DROP TABLE IF EXISTS workflow_step_runs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 11: Approval Store (version 13)
@@ -588,8 +588,8 @@ export const approvalRequestsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_approval_requests_expires;
     DROP INDEX IF EXISTS idx_approval_requests_source_context;
     DROP TABLE IF EXISTS approval_requests
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 12: PermissionGrant Store (version 14)
@@ -623,8 +623,8 @@ export const permissionGrantsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_permission_grants_scope;
     DROP INDEX IF EXISTS idx_permission_grants_expires;
     DROP TABLE IF EXISTS permission_grants
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 13: Trigger Store (version 15)
@@ -659,8 +659,8 @@ export const triggerRegistrationsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_trigger_registrations_status;
     DROP INDEX IF EXISTS idx_trigger_registrations_expires;
     DROP TABLE IF EXISTS trigger_registrations
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 14: WaitCondition Store (version 16)
@@ -695,8 +695,8 @@ export const waitConditionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_wait_conditions_status;
     DROP INDEX IF EXISTS idx_wait_conditions_timeout;
     DROP TABLE IF EXISTS wait_conditions
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 15: Artifact Store (version 17)
@@ -733,8 +733,8 @@ export const artifactsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_artifacts_user_updated;
     DROP INDEX IF EXISTS idx_artifacts_artifact_id;
     DROP TABLE IF EXISTS artifacts
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 16: ToolResult Store (version 18)
@@ -768,8 +768,8 @@ export const toolResultsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_tool_results_session_id;
     DROP INDEX IF EXISTS idx_tool_results_tool_call_id;
     DROP TABLE IF EXISTS tool_results
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 17: Connector Store (version 19-21)
@@ -799,8 +799,8 @@ export const connectorDefinitionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_connector_defs_status;
     DROP INDEX IF EXISTS idx_connector_defs_type;
     DROP TABLE IF EXISTS connector_definitions
-  `
-};
+  `,
+}
 
 export const connectorInstancesTableMigration: Migration = {
   version: 20,
@@ -828,8 +828,8 @@ export const connectorInstancesTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_connector_instances_status;
     DROP INDEX IF EXISTS idx_connector_instances_user_def;
     DROP TABLE IF EXISTS connector_instances
-  `
-};
+  `,
+}
 
 export const connectorEventsTableMigration: Migration = {
   version: 21,
@@ -854,8 +854,8 @@ export const connectorEventsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_connector_events_processed;
     DROP INDEX IF EXISTS idx_connector_events_instance;
     DROP TABLE IF EXISTS connector_events
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 18: Workflow Draft Store (version 22)
@@ -885,8 +885,8 @@ export const workflowDraftsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_workflow_drafts_status;
     DROP INDEX IF EXISTS idx_workflow_drafts_owner;
     DROP TABLE IF EXISTS workflow_drafts
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 19: Workflow Definition Store (version 23)
@@ -921,8 +921,8 @@ export const workflowDefinitionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_workflow_defs_status;
     DROP INDEX IF EXISTS idx_workflow_defs_owner;
     DROP TABLE IF EXISTS workflow_definitions
-  `
-};
+  `,
+}
 
 // ============================================================================
 // ALL MIGRATIONS ARRAY
@@ -958,8 +958,8 @@ export const traceContextsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_trace_contexts_user;
     DROP INDEX IF EXISTS idx_trace_contexts_correlation;
     DROP TABLE IF EXISTS trace_contexts
-  `
-};
+  `,
+}
 
 export const traceSpansTableMigration: Migration = {
   version: 25,
@@ -995,8 +995,8 @@ export const traceSpansTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_trace_spans_parent;
     DROP INDEX IF EXISTS idx_trace_spans_trace;
     DROP TABLE IF EXISTS trace_spans
-  `
-};
+  `,
+}
 
 export const metricsTableMigration: Migration = {
   version: 26,
@@ -1032,8 +1032,8 @@ export const metricsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_metrics_span;
     DROP INDEX IF EXISTS idx_metrics_trace;
     DROP TABLE IF EXISTS metrics
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 21: Audit Store (version 27)
@@ -1090,8 +1090,8 @@ export const auditRecordsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_audit_records_risk_level;
     DROP INDEX IF EXISTS idx_audit_records_sensitivity;
     DROP TABLE IF EXISTS audit_records
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 22: Sessions Store (version 28)
@@ -1119,8 +1119,8 @@ export const sessionsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_sessions_user_activity;
     DROP INDEX IF EXISTS idx_sessions_status;
     DROP TABLE IF EXISTS sessions
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 23: Users Store (version 29)
@@ -1140,8 +1140,8 @@ export const usersTableMigration: Migration = {
   `,
   down: `
     DROP TABLE IF EXISTS users
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 24: Auth Tokens Store (version 30)
@@ -1165,8 +1165,8 @@ export const authTokensTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_auth_tokens_expires;
     DROP INDEX IF EXISTS idx_auth_tokens_user;
     DROP TABLE IF EXISTS auth_tokens
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 25: Provider Configs Store (version 31)
@@ -1197,8 +1197,8 @@ export const providerConfigsTableMigration: Migration = {
   down: `
     DROP INDEX IF EXISTS idx_provider_configs_user;
     DROP TABLE IF EXISTS provider_configs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 26: Sessions Model Selection (version 32)
@@ -1213,8 +1213,8 @@ export const sessionsModelSelectionMigration: Migration = {
   down: `
     -- SQLite doesn't support dropping columns, would need table recreation
     -- This is a no-op for rollback
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 27: Custom Provider Type (version 33)
@@ -1286,8 +1286,8 @@ export const customProviderTypeMigration: Migration = {
     DROP TABLE provider_configs;
     ALTER TABLE provider_configs_old RENAME TO provider_configs;
     CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 28: Agent Config Store (version 34)
@@ -1326,8 +1326,8 @@ export const agentConfigsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_agent_configs_agent_id;
     DROP INDEX IF EXISTS idx_agent_configs_user_id;
     DROP TABLE IF EXISTS agent_configs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 29: Agent Config Runtime Defaults (version 35)
@@ -1436,8 +1436,8 @@ export const agentConfigRuntimeDefaultsMigration: Migration = {
     CREATE UNIQUE INDEX idx_agent_configs_user ON agent_configs(agent_id, scope, user_id) WHERE scope = 'user';
     CREATE INDEX idx_agent_configs_agent_id ON agent_configs(agent_id);
     CREATE INDEX idx_agent_configs_user_id ON agent_configs(user_id)
-  `
-};
+  `,
+}
 
 export const agentConfigPromptBindingMigration: Migration = {
   version: 36,
@@ -1500,8 +1500,8 @@ export const agentConfigPromptBindingMigration: Migration = {
     SET allowed_skill_ids = '[]',
         updated_at = datetime('now')
     WHERE allowed_skill_ids = '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]'
-  `
-};
+  `,
+}
 
 export const longTermMemoriesTableMigration: Migration = {
   version: 37,
@@ -1541,8 +1541,8 @@ export const longTermMemoriesTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_long_term_memories_importance;
     DROP INDEX IF EXISTS idx_long_term_memories_updated;
     DROP TABLE IF EXISTS long_term_memories
-  `
-};
+  `,
+}
 
 export const longTermMemoriesInvariantsMigration: Migration = {
   version: 38,
@@ -1606,8 +1606,8 @@ export const longTermMemoriesInvariantsMigration: Migration = {
     ALTER TABLE long_term_memories DROP COLUMN lifecycle_status;
     ALTER TABLE long_term_memories DROP COLUMN source_window_hash;
     ALTER TABLE long_term_memories DROP COLUMN fingerprint
-  `
-};
+  `,
+}
 
 export const memoryExtractionRunsFullSchemaMigration: Migration = {
   version: 39,
@@ -1707,8 +1707,8 @@ export const memoryExtractionRunsFullSchemaMigration: Migration = {
     
     CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_status
       ON memory_extraction_runs(user_id, status)
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 30: Webhook Triggers (version 40)
@@ -1738,8 +1738,8 @@ export const webhookTriggersTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_webhook_triggers_status;
     DROP INDEX IF EXISTS idx_webhook_triggers_owner;
     DROP TABLE IF EXISTS webhook_triggers
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 31: Webhook Deliveries (version 41) - for idempotency
@@ -1764,8 +1764,8 @@ export const webhookDeliveriesTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_webhook_deliveries_event;
     DROP INDEX IF EXISTS idx_webhook_deliveries_webhook;
     DROP TABLE IF EXISTS webhook_deliveries
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 32: Schedule Triggers (version 42)
@@ -1798,8 +1798,8 @@ export const scheduleTriggersTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_schedule_triggers_status;
     DROP INDEX IF EXISTS idx_schedule_triggers_owner;
     DROP TABLE IF EXISTS schedule_triggers
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 33: Agent Config Search LLM Fields (version 43)
@@ -1814,8 +1814,8 @@ export const agentConfigSearchLlmFieldsMigration: Migration = {
   down: `
     -- SQLite doesn't support DROP COLUMN, would need table recreation
     -- This is a no-op for rollback
-  `
-};
+  `,
+}
 
 export const toolResultBlobsTableMigration: Migration = {
   version: 44,
@@ -1843,8 +1843,8 @@ export const toolResultBlobsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_tool_result_blobs_user;
     DROP INDEX IF EXISTS idx_tool_result_blobs_tool_call;
     DROP TABLE IF EXISTS tool_result_blobs
-  `
-};
+  `,
+}
 
 export const approvalRequestScopedGrantsMigration: Migration = {
   version: 45,
@@ -1858,8 +1858,8 @@ export const approvalRequestScopedGrantsMigration: Migration = {
     ALTER TABLE approval_requests DROP COLUMN approval_code;
     ALTER TABLE approval_requests DROP COLUMN scope_ref;
     ALTER TABLE approval_requests DROP COLUMN scope_type
-  `
-};
+  `,
+}
 
 export const connectorPoliciesTableMigration: Migration = {
   version: 46,
@@ -1886,8 +1886,8 @@ export const connectorPoliciesTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_connector_policies_effect;
     DROP INDEX IF EXISTS idx_connector_policies_connector;
     DROP TABLE IF EXISTS connector_policies
-  `
-};
+  `,
+}
 
 export const deadLetterTableMigration: Migration = {
   version: 47,
@@ -1915,8 +1915,8 @@ export const deadLetterTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_dead_letter_source;
     DROP INDEX IF EXISTS idx_dead_letter_status;
     DROP TABLE IF EXISTS dead_letter
-  `
-};
+  `,
+}
 
 export const apiKeysTableMigration: Migration = {
   version: 48,
@@ -1944,8 +1944,8 @@ export const apiKeysTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_api_keys_hash;
     DROP INDEX IF EXISTS idx_api_keys_user;
     DROP TABLE IF EXISTS api_keys
-  `
-};
+  `,
+}
 
 export const usersRoleColumnMigration: Migration = {
   version: 49,
@@ -1956,8 +1956,8 @@ export const usersRoleColumnMigration: Migration = {
   `,
   down: `
     ALTER TABLE users DROP COLUMN role
-  `
-};
+  `,
+}
 
 export const organizationsTableMigration: Migration = {
   version: 51,
@@ -1978,8 +1978,8 @@ export const organizationsTableMigration: Migration = {
   down: `
     DROP INDEX IF EXISTS idx_organizations_slug;
     DROP TABLE IF EXISTS organizations
-  `
-};
+  `,
+}
 
 export const userOrganizationsTableMigration: Migration = {
   version: 52,
@@ -2002,8 +2002,8 @@ export const userOrganizationsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_user_org_org;
     DROP INDEX IF EXISTS idx_user_org_user;
     DROP TABLE IF EXISTS user_organizations
-  `
-};
+  `,
+}
 
 export const addTenantIdMigration: Migration = {
   version: 53,
@@ -2141,8 +2141,8 @@ export const addTenantIdMigration: Migration = {
     ALTER TABLE alert_states ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default';
     CREATE INDEX IF NOT EXISTS idx_alert_states_tenant ON alert_states(tenant_id)
   `,
-  down: ``
-};
+  down: ``,
+}
 
 export const shadowExtractionColumnsMigration: Migration = {
   version: 54,
@@ -2155,8 +2155,8 @@ export const shadowExtractionColumnsMigration: Migration = {
     CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_variant
       ON memory_extraction_runs(user_id, variant) WHERE variant IS NOT NULL
   `,
-  down: ``
-};
+  down: ``,
+}
 
 export const addEntityTimeIndexMigration: Migration = {
   version: 55,
@@ -2173,8 +2173,8 @@ export const addEntityTimeIndexMigration: Migration = {
   down: `
     DROP INDEX IF EXISTS idx_ltm_entity_names;
     DROP INDEX IF EXISTS idx_ltm_created_at
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 56: Subagent Runs Store (version 56)
@@ -2219,8 +2219,8 @@ export const subagentRunsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_subagent_runs_session_status;
     DROP INDEX IF EXISTS idx_subagent_runs_background;
     DROP TABLE IF EXISTS subagent_runs
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 57: Subagent Transcripts Store (version 57)
@@ -2247,8 +2247,8 @@ export const subagentTranscriptsTableMigration: Migration = {
     DROP INDEX IF EXISTS idx_subagent_transcripts_run_id;
     DROP INDEX IF EXISTS idx_subagent_transcripts_run_type;
     DROP TABLE IF EXISTS subagent_transcripts
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 58: Subagent Provider Preferences Store (version 58)
@@ -2270,8 +2270,8 @@ export const subagentProviderPreferencesTableMigration: Migration = {
   `,
   down: `
     DROP TABLE IF EXISTS subagent_provider_preferences
-  `
-};
+  `,
+}
 
 // ============================================================================
 // STORE 59: DeepSeek Provider Type (version 59)
@@ -2347,8 +2347,8 @@ export const deepseekProviderTypeMigration: Migration = {
     ALTER TABLE provider_configs_old RENAME TO provider_configs;
     CREATE INDEX idx_provider_configs_user ON provider_configs(user_id);
     CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)
-  `
-};
+  `,
+}
 
 export const extendProviderConfigsRuntimeMetadataMigration: Migration = {
   version: 60,
@@ -2363,142 +2363,140 @@ export const extendProviderConfigsRuntimeMetadataMigration: Migration = {
     ALTER TABLE provider_configs ADD COLUMN default_model TEXT DEFAULT NULL;
     ALTER TABLE provider_configs ADD COLUMN options_json TEXT DEFAULT NULL
   `,
-  down: ``
-};
+  down: ``,
+}
 
 export const allStoreMigrations: Migration[] = [
   // Core stores
-  eventsTableMigration,                    // v1
-  runtimeActionsTableMigration,            // v2
-  transcriptsTableMigration,               // v3
-  summariesTableMigration,                 // v4
+  eventsTableMigration, // v1
+  runtimeActionsTableMigration, // v2
+  transcriptsTableMigration, // v3
+  summariesTableMigration, // v4
 
   // Plan-related stores
-  plansTableMigration,                     // v5
-  planPatchesTableMigration,               // v6
-  plannerRunsTableMigration,               // v7
+  plansTableMigration, // v5
+  planPatchesTableMigration, // v6
+  plannerRunsTableMigration, // v7
 
   // Runtime stores
-  kernelRunsTableMigration,                // v8
-  toolExecutionsTableMigration,            // v9
-  backgroundRunsTableMigration,            // v10
+  kernelRunsTableMigration, // v8
+  toolExecutionsTableMigration, // v9
+  backgroundRunsTableMigration, // v10
 
   // Workflow stores
-  workflowRunsTableMigration,              // v11
-  workflowStepRunsTableMigration,          // v12
+  workflowRunsTableMigration, // v11
+  workflowStepRunsTableMigration, // v12
 
   // Approval & Permission stores
-  approvalRequestsTableMigration,          // v13
-  permissionGrantsTableMigration,          // v14
+  approvalRequestsTableMigration, // v13
+  permissionGrantsTableMigration, // v14
 
   // Trigger & Wait stores
-  triggerRegistrationsTableMigration,      // v15
-  waitConditionsTableMigration,            // v16
+  triggerRegistrationsTableMigration, // v15
+  waitConditionsTableMigration, // v16
 
   // Artifact & Result stores
-  artifactsTableMigration,                 // v17
-  toolResultsTableMigration,               // v18
+  artifactsTableMigration, // v17
+  toolResultsTableMigration, // v18
 
   // Connector stores
-  connectorDefinitionsTableMigration,      // v19
-  connectorInstancesTableMigration,        // v20
-  connectorEventsTableMigration,           // v21
+  connectorDefinitionsTableMigration, // v19
+  connectorInstancesTableMigration, // v20
+  connectorEventsTableMigration, // v21
 
   // Workflow Draft & Definition stores
-  workflowDraftsTableMigration,            // v22
-  workflowDefinitionsTableMigration,       // v23
+  workflowDraftsTableMigration, // v22
+  workflowDefinitionsTableMigration, // v23
 
   // Observability stores
-  traceContextsTableMigration,             // v24
-  traceSpansTableMigration,                // v25
-  metricsTableMigration,                   // v26
-  auditRecordsTableMigration,              // v27
+  traceContextsTableMigration, // v24
+  traceSpansTableMigration, // v25
+  metricsTableMigration, // v26
+  auditRecordsTableMigration, // v27
 
   // Console sessions store
-  sessionsTableMigration,                  // v28
+  sessionsTableMigration, // v28
 
   // Auth stores
-  usersTableMigration,                     // v29
-  authTokensTableMigration,                // v30
+  usersTableMigration, // v29
+  authTokensTableMigration, // v30
 
   // Provider config store
-  providerConfigsTableMigration,           // v31
+  providerConfigsTableMigration, // v31
 
   // Session model selection
-  sessionsModelSelectionMigration,         // v32
+  sessionsModelSelectionMigration, // v32
 
   // Custom provider type
-  customProviderTypeMigration,             // v33
+  customProviderTypeMigration, // v33
 
   // Agent Config store
-  agentConfigsTableMigration,              // v34
-  agentConfigRuntimeDefaultsMigration,     // v35
-  agentConfigPromptBindingMigration,       // v36
+  agentConfigsTableMigration, // v34
+  agentConfigRuntimeDefaultsMigration, // v35
+  agentConfigPromptBindingMigration, // v36
 
   // Long-term Memory store
-  longTermMemoriesTableMigration,          // v37
-  longTermMemoriesInvariantsMigration,     // v38
+  longTermMemoriesTableMigration, // v37
+  longTermMemoriesInvariantsMigration, // v38
   memoryExtractionRunsFullSchemaMigration, // v39
 
   // Webhook and Schedule Trigger stores
-  webhookTriggersTableMigration,           // v40
-  webhookDeliveriesTableMigration,         // v41
-  scheduleTriggersTableMigration,          // v42
+  webhookTriggersTableMigration, // v40
+  webhookDeliveriesTableMigration, // v41
+  scheduleTriggersTableMigration, // v42
 
   // Agent Config Search LLM fields
-  agentConfigSearchLlmFieldsMigration,     // v43
+  agentConfigSearchLlmFieldsMigration, // v43
 
   // Tool Result Blobs
-  toolResultBlobsTableMigration,            // v44
+  toolResultBlobsTableMigration, // v44
 
   // Scoped Grants and Approval Code
-  approvalRequestScopedGrantsMigration,      // v45
+  approvalRequestScopedGrantsMigration, // v45
 
   // Connector Policies
-  connectorPoliciesTableMigration,            // v46
+  connectorPoliciesTableMigration, // v46
 
   // Dead Letter Queue
-  deadLetterTableMigration,                   // v47
+  deadLetterTableMigration, // v47
 
   // API Keys
-  apiKeysTableMigration,                      // v48
+  apiKeysTableMigration, // v48
 
   // Users role column
-  usersRoleColumnMigration,                   // v49
+  usersRoleColumnMigration, // v49
 
   // Alert tables
-  alertTablesMigration,                       // v50
+  alertTablesMigration, // v50
 
   // Organizations and tenancy
-  organizationsTableMigration,                // v51
-  userOrganizationsTableMigration,            // v52
-  addTenantIdMigration,                       // v53
+  organizationsTableMigration, // v51
+  userOrganizationsTableMigration, // v52
+  addTenantIdMigration, // v53
 
   // Shadow extraction columns
-  shadowExtractionColumnsMigration,           // v54
+  shadowExtractionColumnsMigration, // v54
 
   // Entity/time index for long-term memories
-  addEntityTimeIndexMigration,                // v55
+  addEntityTimeIndexMigration, // v55
 
   // Subagent stores
-  subagentRunsTableMigration,                 // v56
-  subagentTranscriptsTableMigration,          // v57
-  subagentProviderPreferencesTableMigration,  // v58
+  subagentRunsTableMigration, // v56
+  subagentTranscriptsTableMigration, // v57
+  subagentProviderPreferencesTableMigration, // v58
 
   // DeepSeek provider type
-  deepseekProviderTypeMigration,              // v59
+  deepseekProviderTypeMigration, // v59
 
   // Extend provider configs runtime metadata
   extendProviderConfigsRuntimeMetadataMigration, // v60
-];
+]
 
 /**
  * Get the latest migration version number.
  */
 export function getLatestMigrationVersion(): number {
-  return allStoreMigrations.length > 0 
-    ? allStoreMigrations[allStoreMigrations.length - 1]!.version 
-    : 0;
+  return allStoreMigrations.length > 0 ? allStoreMigrations[allStoreMigrations.length - 1]!.version : 0
 }
 
 /**
@@ -2507,6 +2505,6 @@ export function getLatestMigrationVersion(): number {
 export function getMigrationStats(): { total: number; latestVersion: number } {
   return {
     total: allStoreMigrations.length,
-    latestVersion: getLatestMigrationVersion()
-  };
+    latestVersion: getLatestMigrationVersion(),
+  }
 }

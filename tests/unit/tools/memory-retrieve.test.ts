@@ -1,17 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner } from '../../../src/storage/migrations.js';
-import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.js';
-import { createSummaryStore, type SummaryStore } from '../../../src/storage/summary-store.js';
-import { createLongTermMemoryStore, type LongTermMemoryStore, type LongTermMemoryRecord } from '../../../src/storage/long-term-memory-store.js';
-import { createMemoryRetrieveTool, type MemoryRetrieveParams } from '../../../src/tools/builtins/memory-retrieve.js';
-import type { ToolDefinition, ToolExecutionContext } from '../../../src/tools/types.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner } from '../../../src/storage/migrations.js'
+import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.js'
+import { createSummaryStore, type SummaryStore } from '../../../src/storage/summary-store.js'
+import {
+  createLongTermMemoryStore,
+  type LongTermMemoryStore,
+  type LongTermMemoryRecord,
+} from '../../../src/storage/long-term-memory-store.js'
+import { createMemoryRetrieveTool, type MemoryRetrieveParams } from '../../../src/tools/builtins/memory-retrieve.js'
+import type { ToolDefinition, ToolExecutionContext } from '../../../src/tools/types.js'
 
 describe('memory_retrieve tool', () => {
-  let connection: ConnectionManager;
-  let summaryStore: SummaryStore;
-  let longTermMemoryStore: LongTermMemoryStore;
-  let tool: ToolDefinition;
+  let connection: ConnectionManager
+  let summaryStore: SummaryStore
+  let longTermMemoryStore: LongTermMemoryStore
+  let tool: ToolDefinition
 
   const createTestMemory = (overrides: Partial<LongTermMemoryRecord> = {}): LongTermMemoryRecord => ({
     memoryId: `mem-${Date.now()}-${Math.random()}`,
@@ -39,7 +43,7 @@ describe('memory_retrieve tool', () => {
       recallCount: 0,
     },
     ...overrides,
-  });
+  })
 
   const createToolContext = (overrides: Partial<ToolExecutionContext> = {}): ToolExecutionContext => ({
     toolCallId: 'tc-001',
@@ -60,24 +64,24 @@ describe('memory_retrieve tool', () => {
       },
     },
     ...overrides,
-  });
+  })
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
+    connection = createConnectionManager(':memory:')
+    connection.open()
 
-    const migrationRunner = createMigrationRunner(connection);
-    migrationRunner.init();
-    migrationRunner.apply(allStoreMigrations);
+    const migrationRunner = createMigrationRunner(connection)
+    migrationRunner.init()
+    migrationRunner.apply(allStoreMigrations)
 
-    summaryStore = createSummaryStore(connection);
-    longTermMemoryStore = createLongTermMemoryStore(connection);
-    tool = createMemoryRetrieveTool(summaryStore, longTermMemoryStore);
-  });
+    summaryStore = createSummaryStore(connection)
+    longTermMemoryStore = createLongTermMemoryStore(connection)
+    tool = createMemoryRetrieveTool(summaryStore, longTermMemoryStore)
+  })
 
   afterEach(() => {
-    connection.close();
-  });
+    connection.close()
+  })
 
   describe('Session Memory', () => {
     it('should retrieve session memory when sessionId is provided', async () => {
@@ -90,134 +94,134 @@ describe('memory_retrieve tool', () => {
         sourceRefs: { transcriptRefs: ['trans-001'] },
         status: 'active',
         createdAt: new Date().toISOString(),
-      });
+      })
 
       const params: MemoryRetrieveParams = {
         sessionId: 'session-001',
-      };
+      }
 
-      const context = createToolContext();
+      const context = createToolContext()
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      const data = result.data as { memories: Array<{ source: string }> };
-      expect(data.memories).toHaveLength(1);
-      expect(data.memories[0]?.source).toBe('session');
-    });
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
+      const data = result.data as { memories: Array<{ source: string }> }
+      expect(data.memories).toHaveLength(1)
+      expect(data.memories[0]?.source).toBe('session')
+    })
 
     it('should return empty array when session memory does not exist', async () => {
       const params: MemoryRetrieveParams = {
         sessionId: 'session-nonexistent',
-      };
+      }
 
-      const context = createToolContext();
+      const context = createToolContext()
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(true);
-      const data = result.data as { memories: Array<{ source: string }> };
-      expect(data.memories).toHaveLength(0);
-    });
-  });
+      expect(result.success).toBe(true)
+      const data = result.data as { memories: Array<{ source: string }> }
+      expect(data.memories).toHaveLength(0)
+    })
+  })
 
   describe('Long-term Memory', () => {
     it('should retrieve long-term memories when userId is provided', async () => {
-      const mem = createTestMemory({ memoryId: 'mem-001' });
-      longTermMemoryStore.save(mem);
+      const mem = createTestMemory({ memoryId: 'mem-001' })
+      longTermMemoryStore.save(mem)
 
       const params: MemoryRetrieveParams = {
         userId: 'user-123',
-      };
+      }
 
-      const context = createToolContext();
+      const context = createToolContext()
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(true);
-      const data = result.data as { memories: Array<{ source: string }> };
-      expect(data.memories).toHaveLength(1);
-      expect(data.memories[0]?.source).toBe('long_term');
-    });
+      expect(result.success).toBe(true)
+      const data = result.data as { memories: Array<{ source: string }> }
+      expect(data.memories).toHaveLength(1)
+      expect(data.memories[0]?.source).toBe('long_term')
+    })
 
     it('should use context.userId when userId param is not provided', async () => {
-      const mem = createTestMemory({ memoryId: 'mem-001', userId: 'user-123' });
-      longTermMemoryStore.save(mem);
+      const mem = createTestMemory({ memoryId: 'mem-001', userId: 'user-123' })
+      longTermMemoryStore.save(mem)
 
-      const params: MemoryRetrieveParams = {};
+      const params: MemoryRetrieveParams = {}
 
-      const context = createToolContext({ userId: 'user-123' });
+      const context = createToolContext({ userId: 'user-123' })
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(true);
-      const data = result.data as { memories: Array<{ source: string }> };
-      expect(data.memories).toHaveLength(1);
-    });
+      expect(result.success).toBe(true)
+      const data = result.data as { memories: Array<{ source: string }> }
+      expect(data.memories).toHaveLength(1)
+    })
 
     it('should return USER_MISMATCH error when userId param differs from context.userId', async () => {
       const params: MemoryRetrieveParams = {
         userId: 'user-456',
-      };
+      }
 
-      const context = createToolContext({ userId: 'user-123' });
+      const context = createToolContext({ userId: 'user-123' })
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('USER_MISMATCH');
-    });
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('USER_MISMATCH')
+    })
 
     it('should support query parameter for lexical search', async () => {
       const mem1 = createTestMemory({
         memoryId: 'mem-001',
         content: { text: 'User prefers dark mode' },
-      });
+      })
       const mem2 = createTestMemory({
         memoryId: 'mem-002',
         content: { text: 'User likes Python' },
         retrieval: { keywords: ['python'], recallCount: 0 },
-      });
+      })
 
-      longTermMemoryStore.save(mem1);
-      longTermMemoryStore.save(mem2);
+      longTermMemoryStore.save(mem1)
+      longTermMemoryStore.save(mem2)
 
       const params: MemoryRetrieveParams = {
         userId: 'user-123',
         query: 'dark',
-      };
+      }
 
-      const context = createToolContext();
+      const context = createToolContext()
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(true);
-      const data = result.data as { memories: Array<{ memoryId: string }> };
-      expect(data.memories).toHaveLength(1);
-      expect(data.memories[0]?.memoryId).toBe('mem-001');
-    });
+      expect(result.success).toBe(true)
+      const data = result.data as { memories: Array<{ memoryId: string }> }
+      expect(data.memories).toHaveLength(1)
+      expect(data.memories[0]?.memoryId).toBe('mem-001')
+    })
 
     it('should support limit parameter', async () => {
       for (let i = 0; i < 5; i++) {
-        const mem = createTestMemory({ memoryId: `mem-${i}` });
-        longTermMemoryStore.save(mem);
+        const mem = createTestMemory({ memoryId: `mem-${i}` })
+        longTermMemoryStore.save(mem)
       }
 
       const params: MemoryRetrieveParams = {
         userId: 'user-123',
         limit: 2,
-      };
+      }
 
-      const context = createToolContext();
+      const context = createToolContext()
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(true);
-      const data = result.data as { memories: Array<{ source: string }> };
-      expect(data.memories).toHaveLength(2);
-    });
-  });
+      expect(result.success).toBe(true)
+      const data = result.data as { memories: Array<{ source: string }> }
+      expect(data.memories).toHaveLength(2)
+    })
+  })
 
   describe('Combined Retrieval', () => {
     it('should retrieve both session and long-term memories', async () => {
@@ -230,27 +234,27 @@ describe('memory_retrieve tool', () => {
         sourceRefs: { transcriptRefs: ['trans-001'] },
         status: 'active',
         createdAt: new Date().toISOString(),
-      });
+      })
 
-      const mem = createTestMemory({ memoryId: 'mem-001' });
-      longTermMemoryStore.save(mem);
+      const mem = createTestMemory({ memoryId: 'mem-001' })
+      longTermMemoryStore.save(mem)
 
       const params: MemoryRetrieveParams = {
         sessionId: 'session-001',
         userId: 'user-123',
-      };
+      }
 
-      const context = createToolContext();
+      const context = createToolContext()
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(true);
-      const data = result.data as { memories: Array<{ source: string }> };
-      expect(data.memories).toHaveLength(2);
-      const sources = data.memories.map(m => m.source);
-      expect(sources).toContain('session');
-      expect(sources).toContain('long_term');
-    });
+      expect(result.success).toBe(true)
+      const data = result.data as { memories: Array<{ source: string }> }
+      expect(data.memories).toHaveLength(2)
+      const sources = data.memories.map((m) => m.source)
+      expect(sources).toContain('session')
+      expect(sources).toContain('long_term')
+    })
 
     it('should return memories with explicit source field', async () => {
       summaryStore.save({
@@ -262,39 +266,39 @@ describe('memory_retrieve tool', () => {
         sourceRefs: { transcriptRefs: ['trans-001'] },
         status: 'active',
         createdAt: new Date().toISOString(),
-      });
+      })
 
-      const mem = createTestMemory({ memoryId: 'mem-001' });
-      longTermMemoryStore.save(mem);
+      const mem = createTestMemory({ memoryId: 'mem-001' })
+      longTermMemoryStore.save(mem)
 
       const params: MemoryRetrieveParams = {
         sessionId: 'session-001',
         userId: 'user-123',
-      };
-
-      const context = createToolContext();
-
-      const result = await tool.handler(params, context);
-
-      expect(result.success).toBe(true);
-      const data = result.data as { memories: Array<{ source: string }> };
-      for (const memory of data.memories) {
-        expect(memory.source).toBeDefined();
-        expect(['session', 'long_term']).toContain(memory.source);
       }
-    });
-  });
+
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as { memories: Array<{ source: string }> }
+      for (const memory of data.memories) {
+        expect(memory.source).toBeDefined()
+        expect(['session', 'long_term']).toContain(memory.source)
+      }
+    })
+  })
 
   describe('Error Handling', () => {
     it('should return MISSING_PARAMETERS error when neither sessionId nor userId is provided', async () => {
-      const params: MemoryRetrieveParams = {};
+      const params: MemoryRetrieveParams = {}
 
-      const context = createToolContext({ userId: undefined as unknown as string });
+      const context = createToolContext({ userId: undefined as unknown as string })
 
-      const result = await tool.handler(params, context);
+      const result = await tool.handler(params, context)
 
-      expect(result.success).toBe(false);
-      expect(result.error?.code).toBe('MISSING_PARAMETERS');
-    });
-  });
-});
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('MISSING_PARAMETERS')
+    })
+  })
+})

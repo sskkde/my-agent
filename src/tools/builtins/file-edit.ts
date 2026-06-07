@@ -1,32 +1,32 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js';
-import type { ToolExecutionContext } from '../types.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { ToolExecutionContext } from '../types.js'
 import {
   validateWritePathSafety,
   readTextFileForEdit,
   writeTextFileAtomic,
   getWorkspaceRoot,
-} from './safe-file-write.js';
+} from './safe-file-write.js'
 
 export interface FileEditParams {
-  filePath: string;
-  oldString: string;
-  newString: string;
-  replaceAll?: boolean;
-  expectedHash?: string;
+  filePath: string
+  oldString: string
+  newString: string
+  replaceAll?: boolean
+  expectedHash?: string
 }
 
 export interface FileEditResult {
-  filePath: string;
-  replaced: number;
-  newHash: string;
+  filePath: string
+  replaced: number
+  newHash: string
 }
 
 export function createFileEditTool(): ToolDefinition {
   const handler: ToolHandler = async (
     params: unknown,
-    _context: ToolExecutionContext
+    _context: ToolExecutionContext,
   ): Promise<ToolExecutionResult> => {
-    const typedParams = params as FileEditParams;
+    const typedParams = params as FileEditParams
 
     if (!typedParams.filePath) {
       return {
@@ -36,7 +36,7 @@ export function createFileEditTool(): ToolDefinition {
           message: 'filePath parameter is required',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (typedParams.oldString === undefined || typedParams.oldString === null) {
@@ -47,7 +47,7 @@ export function createFileEditTool(): ToolDefinition {
           message: 'oldString parameter is required',
           recoverable: true,
         },
-      };
+      }
     }
 
     if (typedParams.newString === undefined || typedParams.newString === null) {
@@ -58,7 +58,7 @@ export function createFileEditTool(): ToolDefinition {
           message: 'newString parameter is required',
           recoverable: true,
         },
-      };
+      }
     }
 
     // Reject empty oldString
@@ -70,13 +70,13 @@ export function createFileEditTool(): ToolDefinition {
           message: 'oldString cannot be empty',
           recoverable: false,
         },
-      };
+      }
     }
 
-    const workspaceRoot = getWorkspaceRoot();
+    const workspaceRoot = getWorkspaceRoot()
 
     // Validate path safety
-    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, { allowNew: false });
+    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, { allowNew: false })
 
     if (!safetyResult.safe) {
       return {
@@ -86,18 +86,18 @@ export function createFileEditTool(): ToolDefinition {
           message: safetyResult.error?.message ?? 'Path validation failed',
           recoverable: false,
         },
-      };
+      }
     }
 
     // Read file for editing
-    let readResult;
+    let readResult
     try {
       readResult = readTextFileForEdit({
         filePath: typedParams.filePath,
         workspaceRoot,
-      });
+      })
     } catch (err) {
-      const error = err as Error & { code?: string };
+      const error = err as Error & { code?: string }
       return {
         success: false,
         error: {
@@ -105,7 +105,7 @@ export function createFileEditTool(): ToolDefinition {
           message: error.message,
           recoverable: false,
         },
-      };
+      }
     }
 
     // Check if file exists
@@ -117,7 +117,7 @@ export function createFileEditTool(): ToolDefinition {
           message: `File not found: ${safetyResult.relativePath}`,
           recoverable: true,
         },
-      };
+      }
     }
 
     // Check expected hash if provided
@@ -129,20 +129,20 @@ export function createFileEditTool(): ToolDefinition {
           message: `Hash mismatch: expected ${typedParams.expectedHash}, got ${readResult.hash}`,
           recoverable: true,
         },
-      };
+      }
     }
 
     // Count matches
-    const content = readResult.content;
-    const oldString = typedParams.oldString;
-    let matchCount = 0;
-    let searchPos = 0;
+    const content = readResult.content
+    const oldString = typedParams.oldString
+    let matchCount = 0
+    let searchPos = 0
 
     while (true) {
-      const idx = content.indexOf(oldString, searchPos);
-      if (idx === -1) break;
-      matchCount++;
-      searchPos = idx + 1;
+      const idx = content.indexOf(oldString, searchPos)
+      if (idx === -1) break
+      matchCount++
+      searchPos = idx + 1
     }
 
     // Handle match cases
@@ -154,7 +154,7 @@ export function createFileEditTool(): ToolDefinition {
           message: `oldString not found in file: ${safetyResult.relativePath}`,
           recoverable: true,
         },
-      };
+      }
     }
 
     if (matchCount > 1 && typedParams.replaceAll !== true) {
@@ -165,16 +165,16 @@ export function createFileEditTool(): ToolDefinition {
           message: `Found ${matchCount} matches of oldString. Use replaceAll: true to replace all occurrences.`,
           recoverable: true,
         },
-      };
+      }
     }
 
     // Perform replacement
-    let newContent: string;
+    let newContent: string
     if (typedParams.replaceAll === true) {
-      newContent = content.split(oldString).join(typedParams.newString);
+      newContent = content.split(oldString).join(typedParams.newString)
     } else {
-      const idx = content.indexOf(oldString);
-      newContent = content.slice(0, idx) + typedParams.newString + content.slice(idx + oldString.length);
+      const idx = content.indexOf(oldString)
+      newContent = content.slice(0, idx) + typedParams.newString + content.slice(idx + oldString.length)
     }
 
     // Write back atomically
@@ -185,27 +185,27 @@ export function createFileEditTool(): ToolDefinition {
         workspaceRoot,
         expectedHash: readResult.hash,
         createDirs: false,
-      });
+      })
 
       const editResult: FileEditResult = {
         filePath: writeResult.filePath,
         replaced: typedParams.replaceAll === true ? matchCount : 1,
         newHash: writeResult.newHash,
-      };
+      }
 
       // Build result preview (MUST NOT include newString)
-      const hashPrefix = writeResult.newHash.slice(0, 8);
-      const preview = `${editResult.filePath}: replaced ${editResult.replaced} occurrence(s), hash ${hashPrefix}`;
+      const hashPrefix = writeResult.newHash.slice(0, 8)
+      const preview = `${editResult.filePath}: replaced ${editResult.replaced} occurrence(s), hash ${hashPrefix}`
 
       return {
         success: true,
         data: editResult,
         resultPreview: preview,
         structuredContent: editResult as unknown as Record<string, unknown>,
-      };
+      }
     } catch (err) {
-      const error = err as Error & { code?: string };
-      
+      const error = err as Error & { code?: string }
+
       return {
         success: false,
         error: {
@@ -213,9 +213,9 @@ export function createFileEditTool(): ToolDefinition {
           message: error.message,
           recoverable: false,
         },
-      };
+      }
     }
-  };
+  }
 
   return {
     name: 'file_edit',
@@ -250,5 +250,5 @@ export function createFileEditTool(): ToolDefinition {
       required: ['filePath', 'oldString', 'newString'],
     },
     handler,
-  };
+  }
 }

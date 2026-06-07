@@ -12,24 +12,24 @@
  * userVisibleResponse, estimatedSteps, complexity, suggestedTools.
  */
 
-import type { ToolCall } from '../llm/types.js';
-import type { ForegroundDecision } from './types.js';
+import type { ToolCall } from '../llm/types.js'
+import type { ForegroundDecision } from './types.js'
 import {
   validateForegroundDecideParams,
   type ValidateForegroundDecideOptions,
   type ForegroundDecideErrorCode,
-} from './foreground-decision-validator.js';
+} from './foreground-decision-validator.js'
 
 export type ForegroundDecideFallbackReason =
   | 'missing_tool_call'
   | 'unexpected_tool_call'
   | 'multiple_tool_calls'
   | 'malformed_args'
-  | 'invalid_params';
+  | 'invalid_params'
 
 export type ForegroundDecideExtractionResult =
   | { success: true; decision: ForegroundDecision }
-  | { success: false; fallbackReason: ForegroundDecideFallbackReason; detail: string; canRetry: boolean };
+  | { success: false; fallbackReason: ForegroundDecideFallbackReason; detail: string; canRetry: boolean }
 
 /**
  * Extract and validate a `foreground_decide` tool call from an LLM response.
@@ -44,42 +44,62 @@ export function extractForegroundDecideToolCall(
   options: ValidateForegroundDecideOptions,
 ): ForegroundDecideExtractionResult {
   if (!toolCalls || toolCalls.length === 0) {
-    return { success: false, fallbackReason: 'missing_tool_call', detail: 'LLM response contained no tool calls', canRetry: false };
+    return {
+      success: false,
+      fallbackReason: 'missing_tool_call',
+      detail: 'LLM response contained no tool calls',
+      canRetry: false,
+    }
   }
 
   if (toolCalls.length > 1) {
-    return { success: false, fallbackReason: 'multiple_tool_calls', detail: `Expected exactly 1 tool call, got ${toolCalls.length}`, canRetry: false };
+    return {
+      success: false,
+      fallbackReason: 'multiple_tool_calls',
+      detail: `Expected exactly 1 tool call, got ${toolCalls.length}`,
+      canRetry: false,
+    }
   }
 
-  const toolCall = toolCalls[0]!;
+  const toolCall = toolCalls[0]!
   if (toolCall.function.name !== 'foreground_decide') {
-    return { success: false, fallbackReason: 'unexpected_tool_call', detail: `Expected "foreground_decide", got "${toolCall.function.name}"`, canRetry: false };
+    return {
+      success: false,
+      fallbackReason: 'unexpected_tool_call',
+      detail: `Expected "foreground_decide", got "${toolCall.function.name}"`,
+      canRetry: false,
+    }
   }
 
-  let parsed: unknown;
+  let parsed: unknown
   try {
-    parsed = JSON.parse(toolCall.function.arguments);
+    parsed = JSON.parse(toolCall.function.arguments)
   } catch {
-    return { success: false, fallbackReason: 'malformed_args', detail: 'Tool call arguments are not valid JSON', canRetry: true };
+    return {
+      success: false,
+      fallbackReason: 'malformed_args',
+      detail: 'Tool call arguments are not valid JSON',
+      canRetry: true,
+    }
   }
 
-  const result = validateForegroundDecideParams(parsed, options);
+  const result = validateForegroundDecideParams(parsed, options)
 
   if (result.valid && result.decision) {
     // SECURITY: result.decision comes from normalizeToForegroundDecision which
     // never includes runtimeAction. Only safe fields are passed through.
-    return { success: true, decision: result.decision };
+    return { success: true, decision: result.decision }
   }
 
-  const errorCode: ForegroundDecideErrorCode = result.error?.code ?? 'INVALID_PARAMS';
-  const errorMessage: string = result.error?.message ?? 'Unknown validation error';
+  const errorCode: ForegroundDecideErrorCode = result.error?.code ?? 'INVALID_PARAMS'
+  const errorMessage: string = result.error?.message ?? 'Unknown validation error'
 
   return {
     success: false,
     fallbackReason: 'invalid_params',
     detail: `[${errorCode}] ${errorMessage}`,
     canRetry: isRetryableValidationErrorCode(errorCode),
-  };
+  }
 }
 
 function isRetryableValidationErrorCode(code: ForegroundDecideErrorCode): boolean {
@@ -89,11 +109,11 @@ function isRetryableValidationErrorCode(code: ForegroundDecideErrorCode): boolea
     case 'INVALID_COMPLEXITY':
     case 'INVALID_ESTIMATED_STEPS':
     case 'INVALID_TOOLS':
-      return true;
+      return true
     case 'INVALID_PARAMS':
     case 'INVALID_SCHEMA_VERSION':
-      return false;
+      return false
     default:
-      return false;
+      return false
   }
 }

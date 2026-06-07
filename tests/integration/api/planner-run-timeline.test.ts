@@ -1,28 +1,32 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createAuthenticatedTestContext, closeAuthenticatedTestContext, type AuthenticatedTestContext } from '../../helpers/auth.js';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import {
+  createAuthenticatedTestContext,
+  closeAuthenticatedTestContext,
+  type AuthenticatedTestContext,
+} from '../../helpers/auth.js'
 
 describe('Planner Run Timeline / Summary API', () => {
-  let ctx: AuthenticatedTestContext;
-  let baseUrl: string;
-  let authCookie: string;
-  let plannerRunId: string;
-  let planId: string;
-  const originalEnv = { ...process.env };
+  let ctx: AuthenticatedTestContext
+  let baseUrl: string
+  let authCookie: string
+  let plannerRunId: string
+  let planId: string
+  const originalEnv = { ...process.env }
 
   beforeAll(async () => {
-    process.env.OPENROUTER_API_KEY = 'test-key';
-    process.env.OLLAMA_BASE_URL = 'http://localhost:11434';
+    process.env.OPENROUTER_API_KEY = 'test-key'
+    process.env.OLLAMA_BASE_URL = 'http://localhost:11434'
 
-    ctx = await createAuthenticatedTestContext(':memory:');
-    baseUrl = ctx.baseUrl;
-    authCookie = ctx.authCookie;
+    ctx = await createAuthenticatedTestContext(':memory:')
+    baseUrl = ctx.baseUrl
+    authCookie = ctx.authCookie
 
-    const stores = ctx.apiContext.stores;
-    const now = new Date().toISOString();
-    const userId = 'testuser';
+    const stores = ctx.apiContext.stores
+    const now = new Date().toISOString()
+    const userId = 'testuser'
 
-    planId = `plan-${Date.now()}`;
-    plannerRunId = `run-${Date.now()}`;
+    planId = `plan-${Date.now()}`
+    plannerRunId = `run-${Date.now()}`
 
     stores.planStore.createPlan({
       planId,
@@ -37,7 +41,7 @@ describe('Planner Run Timeline / Summary API', () => {
       ],
       createdAt: now,
       updatedAt: now,
-    });
+    })
 
     stores.plannerRunStore.create({
       plannerRunId,
@@ -47,7 +51,7 @@ describe('Planner Run Timeline / Summary API', () => {
       checkpoint: null,
       createdAt: now,
       updatedAt: now,
-    });
+    })
 
     stores.eventStore.append([
       {
@@ -89,116 +93,119 @@ describe('Planner Run Timeline / Summary API', () => {
         retentionClass: 'short',
         createdAt: new Date().toISOString(),
       },
-    ]);
-  }, 30000);
+    ])
+  }, 30000)
 
   afterAll(async () => {
-    process.env = originalEnv;
-    await closeAuthenticatedTestContext(ctx);
-  }, 30000);
+    process.env = originalEnv
+    await closeAuthenticatedTestContext(ctx)
+  }, 30000)
 
   describe('GET /api/planner-runs/:plannerRunId/events', () => {
     it('should return events sorted by timestamp for valid plannerRunId', async () => {
       const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/events`, {
-        headers: { 'Cookie': authCookie },
-      });
-      expect(response.status).toBe(200);
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(200)
 
-      const body = await response.json() as { ok: boolean; data: { events: Array<Record<string, unknown>> } };
-      expect(body.ok).toBe(true);
-      expect(body.data.events).toBeDefined();
-      expect(Array.isArray(body.data.events)).toBe(true);
-      expect(body.data.events.length).toBe(3);
+      const body = (await response.json()) as { ok: boolean; data: { events: Array<Record<string, unknown>> } }
+      expect(body.ok).toBe(true)
+      expect(body.data.events).toBeDefined()
+      expect(Array.isArray(body.data.events)).toBe(true)
+      expect(body.data.events.length).toBe(3)
 
-      const timestamps = body.data.events.map((e: Record<string, unknown>) => e.createdAt as string);
+      const timestamps = body.data.events.map((e: Record<string, unknown>) => e.createdAt as string)
       for (let i = 1; i < timestamps.length; i++) {
-        expect(timestamps[i]! >= timestamps[i - 1]!).toBe(true);
+        expect(timestamps[i]! >= timestamps[i - 1]!).toBe(true)
       }
-    });
+    })
 
     it('should redact sensitive fields in event payloads', async () => {
       const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/events`, {
-        headers: { 'Cookie': authCookie },
-      });
-      expect(response.status).toBe(200);
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(200)
 
-      const body = await response.json() as { ok: boolean; data: { events: Array<{ payload: Record<string, unknown> }> } };
-      expect(body.ok).toBe(true);
-      const sensitiveEvent = body.data.events[1];
-      expect(sensitiveEvent).toBeDefined();
+      const body = (await response.json()) as {
+        ok: boolean
+        data: { events: Array<{ payload: Record<string, unknown> }> }
+      }
+      expect(body.ok).toBe(true)
+      const sensitiveEvent = body.data.events[1]
+      expect(sensitiveEvent).toBeDefined()
 
-      const payload = sensitiveEvent!.payload;
-      expect(payload.apiKey).toBe('[REDACTED]');
-      expect((payload.config as Record<string, unknown>).secret).toBe('[REDACTED]');
-      expect((payload.config as Record<string, unknown>).token).toBe('[REDACTED]');
-      expect(((payload.nested as Record<string, unknown>)).password).toBe('[REDACTED]');
-      expect((payload.nested as Record<string, unknown>).normal).toBe('visible');
+      const payload = sensitiveEvent!.payload
+      expect(payload.apiKey).toBe('[REDACTED]')
+      expect((payload.config as Record<string, unknown>).secret).toBe('[REDACTED]')
+      expect((payload.config as Record<string, unknown>).token).toBe('[REDACTED]')
+      expect((payload.nested as Record<string, unknown>).password).toBe('[REDACTED]')
+      expect((payload.nested as Record<string, unknown>).normal).toBe('visible')
 
-      const items = payload.items as Array<Record<string, unknown>>;
-      expect(items[0]!.key).toBe('[REDACTED]');
-      expect(items[0]!.name).toBe('visible-name');
-    });
+      const items = payload.items as Array<Record<string, unknown>>
+      expect(items[0]!.key).toBe('[REDACTED]')
+      expect(items[0]!.name).toBe('visible-name')
+    })
 
     it('should return 404 for non-existent plannerRunId', async () => {
       const response = await fetch(`${baseUrl}/api/v1/planner-runs/nonexistent-run/events`, {
-        headers: { 'Cookie': authCookie },
-      });
-      expect(response.status).toBe(404);
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(404)
 
-      const body = await response.json() as { error: { code: string; message: string } };
-      expect(body.error.code).toBe('NOT_FOUND');
-    });
+      const body = (await response.json()) as { error: { code: string; message: string } }
+      expect(body.error.code).toBe('NOT_FOUND')
+    })
 
     it('should return 401 for unauthenticated request', async () => {
-      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/events`);
-      expect(response.status).toBe(401);
-    });
-  });
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/events`)
+      expect(response.status).toBe(401)
+    })
+  })
 
   describe('GET /api/planner-runs/:plannerRunId/summary', () => {
     it('should return status, stepCount, currentStep, and planVersion', async () => {
       const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/summary`, {
-        headers: { 'Cookie': authCookie },
-      });
-      expect(response.status).toBe(200);
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(200)
 
-      const body = await response.json() as {
-        ok: boolean;
+      const body = (await response.json()) as {
+        ok: boolean
         data: {
-          status: string;
-          stepCount: number;
-          currentStep: string | null;
-          planVersion: number;
-        };
-      };
+          status: string
+          stepCount: number
+          currentStep: string | null
+          planVersion: number
+        }
+      }
 
-      expect(body.ok).toBe(true);
-      expect(body.data.status).toBe('planning');
-      expect(body.data.stepCount).toBe(3);
-      expect(body.data.currentStep).toBe('step-2');
-      expect(body.data.planVersion).toBe(2);
-    });
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe('planning')
+      expect(body.data.stepCount).toBe(3)
+      expect(body.data.currentStep).toBe('step-2')
+      expect(body.data.planVersion).toBe(2)
+    })
 
     it('should return 404 for non-existent plannerRunId', async () => {
       const response = await fetch(`${baseUrl}/api/v1/planner-runs/nonexistent-run/summary`, {
-        headers: { 'Cookie': authCookie },
-      });
-      expect(response.status).toBe(404);
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(404)
 
-      const body = await response.json() as { error: { code: string; message: string } };
-      expect(body.error.code).toBe('NOT_FOUND');
-    });
+      const body = (await response.json()) as { error: { code: string; message: string } }
+      expect(body.error.code).toBe('NOT_FOUND')
+    })
 
     it('should return 401 for unauthenticated request', async () => {
-      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/summary`);
-      expect(response.status).toBe(401);
-    });
+      const response = await fetch(`${baseUrl}/api/v1/planner-runs/${plannerRunId}/summary`)
+      expect(response.status).toBe(401)
+    })
 
     it('should return null currentStep when no in_progress or completed steps', async () => {
-      const stores = ctx.apiContext.stores;
-      const emptyPlanId = `plan-${Date.now()}-empty`;
-      const emptyRunId = `run-${Date.now()}-empty`;
-      const now = new Date().toISOString();
+      const stores = ctx.apiContext.stores
+      const emptyPlanId = `plan-${Date.now()}-empty`
+      const emptyRunId = `run-${Date.now()}-empty`
+      const now = new Date().toISOString()
 
       stores.planStore.createPlan({
         planId: emptyPlanId,
@@ -209,7 +216,7 @@ describe('Planner Run Timeline / Summary API', () => {
         steps: [],
         createdAt: now,
         updatedAt: now,
-      });
+      })
 
       stores.plannerRunStore.create({
         plannerRunId: emptyRunId,
@@ -219,18 +226,21 @@ describe('Planner Run Timeline / Summary API', () => {
         checkpoint: null,
         createdAt: now,
         updatedAt: now,
-      });
+      })
 
       const response = await fetch(`${baseUrl}/api/v1/planner-runs/${emptyRunId}/summary`, {
-        headers: { 'Cookie': authCookie },
-      });
-      expect(response.status).toBe(200);
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(200)
 
-      const body = await response.json() as { ok: boolean; data: { currentStep: string | null; stepCount: number; planVersion: number } };
-      expect(body.ok).toBe(true);
-      expect(body.data.currentStep).toBeNull();
-      expect(body.data.stepCount).toBe(0);
-      expect(body.data.planVersion).toBe(1);
-    });
-  });
-});
+      const body = (await response.json()) as {
+        ok: boolean
+        data: { currentStep: string | null; stepCount: number; planVersion: number }
+      }
+      expect(body.ok).toBe(true)
+      expect(body.data.currentStep).toBeNull()
+      expect(body.data.stepCount).toBe(0)
+      expect(body.data.planVersion).toBe(1)
+    })
+  })
+})

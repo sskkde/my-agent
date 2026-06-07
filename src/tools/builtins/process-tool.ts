@@ -1,58 +1,55 @@
 /**
  * Process Tool
- * 
+ *
  * Manage background process sessions: list, poll, kill, clear.
  */
 
-import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js';
-import type { ProcessSessionStore } from './process-session-store.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js'
+import type { ProcessSessionStore } from './process-session-store.js'
 
-export type ProcessAction = 'list' | 'poll' | 'kill' | 'clear';
+export type ProcessAction = 'list' | 'poll' | 'kill' | 'clear'
 
 export interface ProcessParams {
-  action: ProcessAction;
-  sessionId?: string;
-  signal?: string;
+  action: ProcessAction
+  sessionId?: string
+  signal?: string
 }
 
 export interface ProcessResult {
-  action: ProcessAction;
+  action: ProcessAction
   sessions?: Array<{
-    id: string;
-    command: string;
-    status: string;
-    startedAt: string;
-    endedAt?: string;
-    exitCode?: number | null;
-  }>;
+    id: string
+    command: string
+    status: string
+    startedAt: string
+    endedAt?: string
+    exitCode?: number | null
+  }>
   session?: {
-    id: string;
-    command: string;
-    status: string;
-    startedAt: string;
-    endedAt?: string;
-    exitCode?: number | null;
-    output: string;
-    outputTruncated: boolean;
-  };
-  killed?: boolean;
-  cleared?: boolean;
+    id: string
+    command: string
+    status: string
+    startedAt: string
+    endedAt?: string
+    exitCode?: number | null
+    output: string
+    outputTruncated: boolean
+  }
+  killed?: boolean
+  cleared?: boolean
 }
 
 export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
-  const handler: ToolHandler = async (
-    params: unknown,
-    context: ToolExecutionContext
-  ): Promise<ToolExecutionResult> => {
-    const typedParams = params as ProcessParams;
-    const { action } = typedParams;
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+    const typedParams = params as ProcessParams
+    const { action } = typedParams
 
     switch (action) {
       case 'list': {
-        const sessions = store.list(context.userId);
+        const sessions = store.list(context.userId)
         const result: ProcessResult = {
           action: 'list',
-          sessions: sessions.map(s => ({
+          sessions: sessions.map((s) => ({
             id: s.id,
             command: s.command,
             status: s.status,
@@ -60,13 +57,13 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
             endedAt: s.endedAt,
             exitCode: s.exitCode,
           })),
-        };
+        }
         return {
           success: true,
           data: result,
           resultPreview: `${sessions.length} session(s) for user ${context.userId}`,
           structuredContent: result as unknown as Record<string, unknown>,
-        };
+        }
       }
 
       case 'poll': {
@@ -78,10 +75,10 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
               message: 'sessionId is required for poll action',
               recoverable: true,
             },
-          };
+          }
         }
 
-        const session = store.get(context.userId, typedParams.sessionId);
+        const session = store.get(context.userId, typedParams.sessionId)
         if (!session) {
           return {
             success: false,
@@ -90,7 +87,7 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
               message: `Session ${typedParams.sessionId} not found`,
               recoverable: true,
             },
-          };
+          }
         }
 
         const result: ProcessResult = {
@@ -105,13 +102,13 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
             output: session.output,
             outputTruncated: session.outputTruncated,
           },
-        };
+        }
         return {
           success: true,
           data: result,
           resultPreview: `Session ${session.id}: ${session.status}`,
           structuredContent: result as unknown as Record<string, unknown>,
-        };
+        }
       }
 
       case 'kill': {
@@ -123,10 +120,10 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
               message: 'sessionId is required for kill action',
               recoverable: true,
             },
-          };
+          }
         }
 
-        const killed = store.kill(context.userId, typedParams.sessionId, typedParams.signal);
+        const killed = store.kill(context.userId, typedParams.sessionId, typedParams.signal)
 
         if (!killed) {
           return {
@@ -136,19 +133,19 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
               message: 'Failed to kill session (not running or not found)',
               recoverable: false,
             },
-          };
+          }
         }
 
         const result: ProcessResult = {
           action: 'kill',
           killed: true,
-        };
+        }
         return {
           success: true,
           data: result,
           resultPreview: `Killed session ${typedParams.sessionId}`,
           structuredContent: result as unknown as Record<string, unknown>,
-        };
+        }
       }
 
       case 'clear': {
@@ -160,10 +157,10 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
               message: 'sessionId is required for clear action',
               recoverable: true,
             },
-          };
+          }
         }
 
-        const cleared = store.clear(context.userId, typedParams.sessionId);
+        const cleared = store.clear(context.userId, typedParams.sessionId)
 
         if (!cleared) {
           return {
@@ -173,19 +170,19 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
               message: 'Failed to clear session (still running or not found)',
               recoverable: false,
             },
-          };
+          }
         }
 
         const result: ProcessResult = {
           action: 'clear',
           cleared: true,
-        };
+        }
         return {
           success: true,
           data: result,
           resultPreview: `Cleared session ${typedParams.sessionId}`,
           structuredContent: result as unknown as Record<string, unknown>,
-        };
+        }
       }
 
       default:
@@ -196,9 +193,9 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
             message: `Invalid action: ${action}`,
             recoverable: true,
           },
-        };
+        }
     }
-  };
+  }
 
   return {
     name: 'process',
@@ -227,5 +224,5 @@ export function createProcessTool(store: ProcessSessionStore): ToolDefinition {
       required: ['action'],
     },
     handler,
-  };
+  }
 }

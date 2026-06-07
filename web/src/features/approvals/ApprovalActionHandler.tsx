@@ -16,7 +16,7 @@ export function useApprovalActions(): ApprovalActionsResult {
     setIsSubmitting(true);
     setError(null);
     try {
-      await client.respondApproval(approvalRequestId, 'approved');
+      await client.respondApproval(approvalRequestId, 'approve_once');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to approve';
       setError(message);
@@ -30,7 +30,7 @@ export function useApprovalActions(): ApprovalActionsResult {
     setIsSubmitting(true);
     setError(null);
     try {
-      await client.respondApproval(approvalRequestId, 'rejected', reason);
+      await client.respondApproval(approvalRequestId, 'reject', reason);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to reject';
       setError(message);

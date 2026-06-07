@@ -9,9 +9,9 @@
  */
 export interface CursorPaginationParams {
   /** Opaque cursor string from previous response to continue pagination */
-  cursor?: string;
+  cursor?: string
   /** Maximum number of items to return (default varies by endpoint) */
-  limit?: number;
+  limit?: number
 }
 
 /**
@@ -20,13 +20,13 @@ export interface CursorPaginationParams {
  */
 export interface CursorPaginatedResponse<T> {
   /** Array of items for the current page */
-  items: T[];
+  items: T[]
   /** Opaque cursor to fetch the next page, null if no more results */
-  nextCursor: string | null;
+  nextCursor: string | null
   /** Whether more results exist beyond this page */
-  hasMore: boolean;
+  hasMore: boolean
   /** Total count of items (may be approximate for large datasets) */
-  total: number;
+  total: number
 }
 
 /**
@@ -35,9 +35,9 @@ export interface CursorPaginatedResponse<T> {
  */
 export interface CursorPage<T> {
   /** Array of items for the current page */
-  items: T[];
+  items: T[]
   /** Opaque cursor to fetch the next page, null if no more results */
-  nextCursor: string | null;
+  nextCursor: string | null
   /** Whether more results exist beyond this page */
-  hasMore: boolean;
+  hasMore: boolean
 }

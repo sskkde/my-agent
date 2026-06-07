@@ -3,39 +3,34 @@
  * Orchestrates multiple LLM providers with automatic failover
  */
 
-import type { LLMProvider } from './provider';
-import type {
-  LLMRequest,
-  LLMResult,
-  ProviderConfig,
-  AllProvidersFailedError,
-} from './types';
-import type { ExactContextUsage } from '../api/types';
-import type { CircuitBreakerConfig } from './circuit-breaker';
-import type { RuntimeError, ErrorSource } from '../shared/errors';
-import type { RetryPolicy } from '../shared/retry';
+import type { LLMProvider } from './provider'
+import type { LLMRequest, LLMResult, ProviderConfig, AllProvidersFailedError } from './types'
+import type { ExactContextUsage } from '../api/types'
+import type { CircuitBreakerConfig } from './circuit-breaker'
+import type { RuntimeError, ErrorSource } from '../shared/errors'
+import type { RetryPolicy } from '../shared/retry'
 
 /**
  * LLM Adapter configuration
  */
 export interface LLMAdapterConfig {
   /** Provider configurations in priority order */
-  providers: ProviderConfig[];
+  providers: ProviderConfig[]
 
   /** Default timeout for requests */
-  defaultTimeoutMs: number;
+  defaultTimeoutMs: number
 
   /** Whether to enable circuit breakers */
-  enableCircuitBreaker: boolean;
+  enableCircuitBreaker: boolean
 
   /** Circuit breaker configuration */
-  circuitBreakerConfig?: Partial<CircuitBreakerConfig>;
+  circuitBreakerConfig?: Partial<CircuitBreakerConfig>
 
   /** Retry policy for failed requests */
-  retryPolicy?: RetryPolicy;
+  retryPolicy?: RetryPolicy
 
   /** Whether to enable request/response logging */
-  enableLogging?: boolean;
+  enableLogging?: boolean
 }
 
 /**
@@ -45,56 +40,56 @@ export const DEFAULT_ADAPTER_CONFIG: Omit<LLMAdapterConfig, 'providers'> = {
   defaultTimeoutMs: 60000,
   enableCircuitBreaker: true,
   enableLogging: false,
-};
-
-
+}
 
 /**
  * LLM Adapter with multi-provider support
  */
 export interface LLMAdapter {
   /** Adapter configuration */
-  readonly config: LLMAdapterConfig;
+  readonly config: LLMAdapterConfig
 
   /** Registered providers in priority order */
-  readonly providers: LLMProvider[];
+  readonly providers: LLMProvider[]
 
   /**
    * Execute a request with automatic failover
    * Tries providers in priority order until one succeeds
    */
-  complete(request: LLMRequest): Promise<LLMResult>;
+  complete(request: LLMRequest): Promise<LLMResult>
 
   /**
    * Stream a completion request with automatic failover
    * Falls back to complete() if provider doesn't support streaming
    */
-  stream(request: LLMRequest): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }>;
+  stream(
+    request: LLMRequest,
+  ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }>
 
   /**
    * Add a provider to the adapter
    */
-  addProvider(provider: LLMProvider): void;
+  addProvider(provider: LLMProvider): void
 
   /**
    * Remove a provider by ID
    */
-  removeProvider(providerId: string): void;
+  removeProvider(providerId: string): void
 
   /**
    * Get provider by ID
    */
-  getProvider(providerId: string): LLMProvider | undefined;
+  getProvider(providerId: string): LLMProvider | undefined
 
   /**
    * Get all healthy providers
    */
-  getHealthyProviders(): LLMProvider[];
+  getHealthyProviders(): LLMProvider[]
 
   /**
    * Update provider priority
    */
-  updateProviderPriority(providerId: string, priority: number): void;
+  updateProviderPriority(providerId: string, priority: number): void
 }
 
 /**
@@ -102,7 +97,7 @@ export interface LLMAdapter {
  */
 function createAllProvidersFailedError(
   attempts: Array<{ providerId: string; error: RuntimeError }>,
-  source: ErrorSource
+  source: ErrorSource,
 ): AllProvidersFailedError {
   return {
     errorId: `err_all_providers_failed_${Date.now()}`,
@@ -113,59 +108,54 @@ function createAllProvidersFailedError(
     source,
     attempts,
     createdAt: new Date().toISOString(),
-  };
+  }
 }
 
 /**
  * Create an LLM adapter with fallback support
  */
 export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
-  const providers: LLMProvider[] = [];
-  const finalConfig = { ...DEFAULT_ADAPTER_CONFIG, ...config };
+  const providers: LLMProvider[] = []
+  const finalConfig = { ...DEFAULT_ADAPTER_CONFIG, ...config }
 
   const getHealthyProviders = (): LLMProvider[] => {
-    return providers
-      .filter((p) => p.isHealthy())
-      .sort((a, b) => a.config.priority - b.config.priority);
-  };
+    return providers.filter((p) => p.isHealthy()).sort((a, b) => a.config.priority - b.config.priority)
+  }
 
   const complete = async (request: LLMRequest): Promise<LLMResult> => {
-    const healthyProviders = getHealthyProviders();
+    const healthyProviders = getHealthyProviders()
 
     if (healthyProviders.length === 0) {
-      const error = createAllProvidersFailedError(
-        [],
-        { module: 'llm_adapter' }
-      );
+      const error = createAllProvidersFailedError([], { module: 'llm_adapter' })
       return {
         success: false,
         error,
         providerId: 'none',
-      };
+      }
     }
 
-    const attempts: Array<{ providerId: string; error: RuntimeError }> = [];
+    const attempts: Array<{ providerId: string; error: RuntimeError }> = []
 
     for (const provider of healthyProviders) {
-      const startTime = Date.now();
+      const startTime = Date.now()
 
       try {
-        const result = await provider.complete(request);
-        const latencyMs = Date.now() - startTime;
+        const result = await provider.complete(request)
+        const latencyMs = Date.now() - startTime
 
         if (result.success) {
           if (finalConfig.enableLogging) {
-            console.log(`[LLM Adapter] Success via ${provider.id} in ${latencyMs}ms`);
+            console.log(`[LLM Adapter] Success via ${provider.id} in ${latencyMs}ms`)
           }
-          return result;
+          return result
         } else {
           attempts.push({
             providerId: provider.id,
             error: result.error,
-          });
+          })
         }
       } catch (error) {
-        const latencyMs = Date.now() - startTime;
+        const latencyMs = Date.now() - startTime
         const runtimeError: RuntimeError = {
           errorId: `err_provider_exception_${Date.now()}`,
           category: 'model_error',
@@ -174,89 +164,85 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
           recoverability: 'retryable_later',
           source: { module: 'llm_adapter', runId: request.model },
           createdAt: new Date().toISOString(),
-        };
+        }
 
         attempts.push({
           providerId: provider.id,
           error: runtimeError,
-        });
+        })
 
         if (finalConfig.enableLogging) {
-          console.error(
-            `[LLM Adapter] Provider ${provider.id} failed after ${latencyMs}ms:`,
-            runtimeError.message
-          );
+          console.error(`[LLM Adapter] Provider ${provider.id} failed after ${latencyMs}ms:`, runtimeError.message)
         }
       }
     }
 
     // All providers failed
-    const allFailedError = createAllProvidersFailedError(
-      attempts,
-      { module: 'llm_adapter' }
-    );
+    const allFailedError = createAllProvidersFailedError(attempts, { module: 'llm_adapter' })
 
     return {
       success: false,
       error: allFailedError,
       providerId: 'none',
-    };
-  };
+    }
+  }
 
-  async function* stream(request: LLMRequest): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }> {
-    const healthyProviders = getHealthyProviders();
+  async function* stream(
+    request: LLMRequest,
+  ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }> {
+    const healthyProviders = getHealthyProviders()
 
     if (healthyProviders.length === 0) {
-      return;
+      return
     }
 
     for (const provider of healthyProviders) {
       if (provider.stream) {
         try {
           for await (const chunk of provider.stream(request)) {
-            yield { delta: chunk, providerId: provider.id, model: request.model };
+            yield { delta: chunk, providerId: provider.id, model: request.model }
           }
-          return;
+          return
         } catch {
-          continue;
+          continue
         }
       }
     }
 
-    return;
+    return
   }
 
   const addProvider = (provider: LLMProvider): void => {
-    providers.push(provider);
+    providers.push(provider)
     // Keep sorted by priority
-    providers.sort((a, b) => a.config.priority - b.config.priority);
-  };
+    providers.sort((a, b) => a.config.priority - b.config.priority)
+  }
 
   const removeProvider = (providerId: string): void => {
-    const index = providers.findIndex((p) => p.id === providerId);
+    const index = providers.findIndex((p) => p.id === providerId)
     if (index !== -1) {
-      providers.splice(index, 1);
+      providers.splice(index, 1)
     }
-  };
+  }
 
   const getProvider = (providerId: string): LLMProvider | undefined => {
-    return providers.find((p) => p.id === providerId);
-  };
+    return providers.find((p) => p.id === providerId)
+  }
 
   const updateProviderPriority = (providerId: string, priority: number): void => {
-    const provider = providers.find((p) => p.id === providerId);
+    const provider = providers.find((p) => p.id === providerId)
     if (provider) {
-      provider.updateConfig({ ...provider.config, priority });
-      providers.sort((a, b) => a.config.priority - b.config.priority);
+      provider.updateConfig({ ...provider.config, priority })
+      providers.sort((a, b) => a.config.priority - b.config.priority)
     }
-  };
+  }
 
   return {
     get config() {
-      return finalConfig;
+      return finalConfig
     },
     get providers() {
-      return [...providers];
+      return [...providers]
     },
     complete,
     stream,
@@ -265,17 +251,13 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
     getProvider,
     getHealthyProviders,
     updateProviderPriority,
-  };
+  }
 }
 
 /**
  * Create a timeout error
  */
-export function createTimeoutError(
-  providerId: string,
-  timeoutMs: number,
-  source: ErrorSource
-): RuntimeError {
+export function createTimeoutError(providerId: string, timeoutMs: number, source: ErrorSource): RuntimeError {
   return {
     errorId: `err_timeout_${Date.now()}`,
     category: 'timeout',
@@ -287,5 +269,5 @@ export function createTimeoutError(
       retryAfterMs: Math.min(timeoutMs * 2, 60000),
     },
     createdAt: new Date().toISOString(),
-  };
+  }
 }

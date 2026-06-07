@@ -1,15 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js';
-import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js';
-import { createApprovalStore, type ApprovalStore } from '../../../src/storage/approval-store.js';
-import { createPermissionGrantStore, type PermissionGrantStore } from '../../../src/storage/permission-grant-store.js';
-import { createEventStore, type EventStore } from '../../../src/storage/event-store.js';
-import { createPermissionEngine, type PermissionEngine } from '../../../src/permissions/permission-engine.js';
-import {
-  createPermissionContext,
-  type PermissionCheckRequest,
-} from '../../../src/permissions/types.js';
-import { buildDefaultRiskPolicies } from '../../../src/permissions/tool-risk-policy.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
+import { createMigrationRunner, type MigrationRunner } from '../../../src/storage/migrations.js'
+import { createApprovalStore, type ApprovalStore } from '../../../src/storage/approval-store.js'
+import { createPermissionGrantStore, type PermissionGrantStore } from '../../../src/storage/permission-grant-store.js'
+import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
+import { createPermissionEngine, type PermissionEngine } from '../../../src/permissions/permission-engine.js'
+import { createPermissionContext, type PermissionCheckRequest } from '../../../src/permissions/types.js'
+import { buildDefaultRiskPolicies } from '../../../src/permissions/tool-risk-policy.js'
 
 const STORE_MIGRATIONS = [
   {
@@ -67,112 +64,112 @@ const STORE_MIGRATIONS = [
     `,
     down: 'DROP TABLE IF EXISTS events;',
   },
-];
+]
 
 describe('Write-tool approval required', () => {
-  let connection: ConnectionManager;
-  let migrationRunner: MigrationRunner;
-  let approvalStore: ApprovalStore;
-  let grantStore: PermissionGrantStore;
-  let eventStore: EventStore;
-  let permissionEngine: PermissionEngine;
+  let connection: ConnectionManager
+  let migrationRunner: MigrationRunner
+  let approvalStore: ApprovalStore
+  let grantStore: PermissionGrantStore
+  let eventStore: EventStore
+  let permissionEngine: PermissionEngine
 
   beforeEach(() => {
-    connection = createConnectionManager(':memory:');
-    connection.open();
-    migrationRunner = createMigrationRunner(connection);
-    migrationRunner.init();
-    migrationRunner.apply(STORE_MIGRATIONS);
+    connection = createConnectionManager(':memory:')
+    connection.open()
+    migrationRunner = createMigrationRunner(connection)
+    migrationRunner.init()
+    migrationRunner.apply(STORE_MIGRATIONS)
 
-    approvalStore = createApprovalStore(connection);
-    grantStore = createPermissionGrantStore(connection);
-    eventStore = createEventStore(connection);
-    permissionEngine = createPermissionEngine({ approvalStore, grantStore, eventStore });
-  });
+    approvalStore = createApprovalStore(connection)
+    grantStore = createPermissionGrantStore(connection)
+    eventStore = createEventStore(connection)
+    permissionEngine = createPermissionEngine({ approvalStore, grantStore, eventStore })
+  })
 
   afterEach(() => {
-    connection?.close();
-  });
+    connection?.close()
+  })
 
   describe('ask_on_write mode triggers approval for write operations', () => {
     it('write operationType → requires_approval', () => {
-      const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
+      const ctx = createPermissionContext('u1', 's1', 'ask_on_write')
       const req: PermissionCheckRequest = {
         context: ctx,
         actionType: 'artifact_create',
         operationType: 'write',
         resource: '/artifact/001',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('requires_approval');
-      expect(decision.allowed).toBe(false);
-      expect(decision.requestId).toBeDefined();
-      expect(decision.approvalRequest).toBeDefined();
-    });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('requires_approval')
+      expect(decision.allowed).toBe(false)
+      expect(decision.requestId).toBeDefined()
+      expect(decision.approvalRequest).toBeDefined()
+    })
 
     it('delete operationType → requires_approval', () => {
-      const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
+      const ctx = createPermissionContext('u1', 's1', 'ask_on_write')
       const req: PermissionCheckRequest = {
         context: ctx,
         actionType: 'artifact.delete',
         operationType: 'delete',
         resource: '/artifact/001',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('requires_approval');
-      expect(decision.allowed).toBe(false);
-      expect(decision.requestId).toBeDefined();
-    });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('requires_approval')
+      expect(decision.allowed).toBe(false)
+      expect(decision.requestId).toBeDefined()
+    })
 
     it('execute operationType → requires_approval', () => {
-      const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
+      const ctx = createPermissionContext('u1', 's1', 'ask_on_write')
       const req: PermissionCheckRequest = {
         context: ctx,
         actionType: 'command.run',
         operationType: 'execute',
         resource: 'npm install',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('requires_approval');
-      expect(decision.allowed).toBe(false);
-    });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('requires_approval')
+      expect(decision.allowed).toBe(false)
+    })
 
     it('read operationType → allowed (no approval)', () => {
-      const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
+      const ctx = createPermissionContext('u1', 's1', 'ask_on_write')
       const req: PermissionCheckRequest = {
         context: ctx,
         actionType: 'file_read',
         operationType: 'read',
         resource: '/data/file.txt',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('allowed');
-      expect(decision.allowed).toBe(true);
-    });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('allowed')
+      expect(decision.allowed).toBe(true)
+    })
 
     it('admin operationType → allowed (no approval needed for admin in ask_on_write)', () => {
-      const ctx = createPermissionContext('u1', 's1', 'ask_on_write');
+      const ctx = createPermissionContext('u1', 's1', 'ask_on_write')
       const req: PermissionCheckRequest = {
         context: ctx,
         actionType: 'admin.configure',
         operationType: 'admin',
         resource: '/settings',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('allowed');
-      expect(decision.allowed).toBe(true);
-    });
-  });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('allowed')
+      expect(decision.allowed).toBe(true)
+    })
+  })
 
   describe('risk level with grants', () => {
     it('grant with riskLevelMax covers low-risk request', () => {
-      const userId = 'u_rl';
-      const scope = 'sess_rl';
+      const userId = 'u_rl'
+      const scope = 'sess_rl'
 
       grantStore.create({
         id: `grant_rl_${Date.now()}`,
@@ -180,14 +177,14 @@ describe('Write-tool approval required', () => {
         scope,
         action: 'artifact_create',
         riskLevelMax: 'medium',
-      });
+      })
 
       const ctx = createPermissionContext(
         userId,
         's1',
         'ask_on_write',
         grantStore.findActiveByUserAndScope(userId, scope),
-      );
+      )
 
       const req: PermissionCheckRequest = {
         context: ctx,
@@ -195,16 +192,16 @@ describe('Write-tool approval required', () => {
         operationType: 'write',
         resource: '/artifact/001',
         riskLevel: 'low',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('allowed');
-      expect(decision.allowed).toBe(true);
-    });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('allowed')
+      expect(decision.allowed).toBe(true)
+    })
 
     it('grant with riskLevelMax does NOT cover higher-risk request', () => {
-      const userId = 'u_rl_high';
-      const scope = 'sess_rl_high';
+      const userId = 'u_rl_high'
+      const scope = 'sess_rl_high'
 
       grantStore.create({
         id: `grant_rl_high_${Date.now()}`,
@@ -212,14 +209,14 @@ describe('Write-tool approval required', () => {
         scope,
         action: 'artifact_create',
         riskLevelMax: 'medium',
-      });
+      })
 
       const ctx = createPermissionContext(
         userId,
         's1',
         'ask_on_write',
         grantStore.findActiveByUserAndScope(userId, scope),
-      );
+      )
 
       const req: PermissionCheckRequest = {
         context: ctx,
@@ -227,16 +224,16 @@ describe('Write-tool approval required', () => {
         operationType: 'write',
         resource: '/artifact/001',
         riskLevel: 'critical',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('requires_approval');
-      expect(decision.allowed).toBe(false);
-    });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('requires_approval')
+      expect(decision.allowed).toBe(false)
+    })
 
     it('grant with wildcard action covers specific action', () => {
-      const userId = 'u_wc';
-      const scope = 'sess_wc';
+      const userId = 'u_wc'
+      const scope = 'sess_wc'
 
       grantStore.create({
         id: `grant_wc_${Date.now()}`,
@@ -244,14 +241,14 @@ describe('Write-tool approval required', () => {
         scope,
         action: '*',
         riskLevelMax: 'high',
-      });
+      })
 
       const ctx = createPermissionContext(
         userId,
         's1',
         'ask_on_write',
         grantStore.findActiveByUserAndScope(userId, scope),
-      );
+      )
 
       const req: PermissionCheckRequest = {
         context: ctx,
@@ -259,49 +256,49 @@ describe('Write-tool approval required', () => {
         operationType: 'write',
         resource: '/artifact/001',
         riskLevel: 'high',
-      };
+      }
 
-      const decision = permissionEngine.checkPermission(req);
-      expect(decision.status).toBe('allowed');
-      expect(decision.allowed).toBe(true);
-    });
-  });
+      const decision = permissionEngine.checkPermission(req)
+      expect(decision.status).toBe('allowed')
+      expect(decision.allowed).toBe(true)
+    })
+  })
 
   describe('tool risk policy integration', () => {
     it('all built-in tools have a risk policy', () => {
-      const policies = buildDefaultRiskPolicies();
-      expect(policies).toHaveLength(BUILT_IN_TOOLS.length);
-    });
+      const policies = buildDefaultRiskPolicies()
+      expect(policies).toHaveLength(BUILT_IN_TOOLS.length)
+    })
 
     it('write-category tools all require approval per policy', () => {
-      const policies = buildDefaultRiskPolicies();
+      const policies = buildDefaultRiskPolicies()
       const writePolicies = policies.filter((p) => {
-        const tool = getToolSummary(p.toolName);
-        return tool && tool.category === 'write';
-      });
+        const tool = getToolSummary(p.toolName)
+        return tool && tool.category === 'write'
+      })
 
       for (const policy of writePolicies) {
-        expect(policy.requiresApproval).toBe(true);
+        expect(policy.requiresApproval).toBe(true)
       }
-    });
+    })
 
     it('non-action tools do NOT require approval per policy', () => {
-      const policies = buildDefaultRiskPolicies();
+      const policies = buildDefaultRiskPolicies()
       const nonAction = policies.filter((p) => {
-        const tool = getToolSummary(p.toolName);
-        return tool && !['write', 'delete', 'send', 'execute'].includes(tool.category);
-      });
+        const tool = getToolSummary(p.toolName)
+        return tool && !['write', 'delete', 'send', 'execute'].includes(tool.category)
+      })
 
       for (const policy of nonAction) {
-        expect(policy.requiresApproval).toBe(false);
+        expect(policy.requiresApproval).toBe(false)
       }
-    });
-  });
-});
+    })
+  })
+})
 
-import { BUILT_IN_TOOLS } from '../../../src/api/tool-catalog.js';
-import type { ToolSummary } from '../../../src/api/types.js';
+import { BUILT_IN_TOOLS } from '../../../src/api/tool-catalog.js'
+import type { ToolSummary } from '../../../src/api/types.js'
 
 function getToolSummary(name: string): ToolSummary | undefined {
-  return BUILT_IN_TOOLS.find((t) => t.name === name);
+  return BUILT_IN_TOOLS.find((t) => t.name === name)
 }

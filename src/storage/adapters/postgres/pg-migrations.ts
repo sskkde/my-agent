@@ -1,8 +1,8 @@
 export interface PgMigration {
-  version: number;
-  name: string;
-  up: string;
-  down: string;
+  version: number
+  name: string
+  up: string
+  down: string
 }
 
 export const eventsTableMigration: PgMigration = {
@@ -68,8 +68,8 @@ export const eventsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_events_event_type;
     DROP INDEX IF EXISTS idx_events_source_module;
     DROP TABLE IF EXISTS events
-  `
-};
+  `,
+}
 
 export const runtimeActionsTableMigration: PgMigration = {
   version: 2,
@@ -119,8 +119,8 @@ export const runtimeActionsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_runtime_actions_session;
     DROP INDEX IF EXISTS idx_runtime_actions_user;
     DROP TABLE IF EXISTS runtime_actions
-  `
-};
+  `,
+}
 
 export const transcriptsTableMigration: PgMigration = {
   version: 3,
@@ -156,8 +156,8 @@ export const transcriptsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_transcripts_artifact_refs;
     DROP INDEX IF EXISTS idx_transcripts_planner_runs;
     DROP TABLE IF EXISTS transcripts
-  `
-};
+  `,
+}
 
 export const summariesTableMigration: PgMigration = {
   version: 4,
@@ -197,8 +197,8 @@ export const summariesTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_summaries_run_id;
     DROP INDEX IF EXISTS idx_summaries_session_id;
     DROP TABLE IF EXISTS summaries
-  `
-};
+  `,
+}
 
 export const plansTableMigration: PgMigration = {
   version: 5,
@@ -230,8 +230,8 @@ export const plansTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_plans_status;
     DROP INDEX IF EXISTS idx_plans_objective_hash;
     DROP TABLE IF EXISTS plans
-  `
-};
+  `,
+}
 
 export const planPatchesTableMigration: PgMigration = {
   version: 6,
@@ -254,8 +254,8 @@ export const planPatchesTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_plan_patches_plan_id;
     DROP INDEX IF EXISTS idx_plan_patches_versions;
     DROP TABLE IF EXISTS plan_patches
-  `
-};
+  `,
+}
 
 export const plannerRunsTableMigration: PgMigration = {
   version: 7,
@@ -286,8 +286,8 @@ export const plannerRunsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_planner_runs_background_run;
     DROP INDEX IF EXISTS idx_planner_runs_workflow_run;
     DROP TABLE IF EXISTS planner_runs
-  `
-};
+  `,
+}
 
 export const kernelRunsTableMigration: PgMigration = {
   version: 8,
@@ -324,8 +324,8 @@ export const kernelRunsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_kernel_runs_root_run;
     DROP INDEX IF EXISTS idx_kernel_runs_invocation;
     DROP TABLE IF EXISTS kernel_runs
-  `
-};
+  `,
+}
 
 export const toolExecutionsTableMigration: PgMigration = {
   version: 9,
@@ -361,8 +361,8 @@ export const toolExecutionsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_tool_executions_kernel_pending;
     DROP INDEX IF EXISTS idx_tool_executions_status;
     DROP TABLE IF EXISTS tool_executions
-  `
-};
+  `,
+}
 
 export const backgroundRunsTableMigration: PgMigration = {
   version: 10,
@@ -402,8 +402,8 @@ export const backgroundRunsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_background_runs_launch_source;
     DROP INDEX IF EXISTS idx_background_runs_expires;
     DROP TABLE IF EXISTS background_runs
-  `
-};
+  `,
+}
 
 export const workflowRunsTableMigration: PgMigration = {
   version: 11,
@@ -434,8 +434,8 @@ export const workflowRunsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_workflow_runs_owner_status;
     DROP INDEX IF EXISTS idx_workflow_runs_trigger;
     DROP TABLE IF EXISTS workflow_runs
-  `
-};
+  `,
+}
 
 export const workflowStepRunsTableMigration: PgMigration = {
   version: 12,
@@ -474,8 +474,8 @@ export const workflowStepRunsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_workflow_step_runs_tool;
     DROP INDEX IF EXISTS idx_workflow_step_runs_approval;
     DROP TABLE IF EXISTS workflow_step_runs
-  `
-};
+  `,
+}
 
 export const approvalRequestsTableMigration: PgMigration = {
   version: 13,
@@ -514,8 +514,8 @@ export const approvalRequestsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_approval_requests_expires;
     DROP INDEX IF EXISTS idx_approval_requests_source_context;
     DROP TABLE IF EXISTS approval_requests
-  `
-};
+  `,
+}
 
 export const permissionGrantsTableMigration: PgMigration = {
   version: 14,
@@ -545,8 +545,8 @@ export const permissionGrantsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_permission_grants_scope;
     DROP INDEX IF EXISTS idx_permission_grants_expires;
     DROP TABLE IF EXISTS permission_grants
-  `
-};
+  `,
+}
 
 export const triggerRegistrationsTableMigration: PgMigration = {
   version: 15,
@@ -577,8 +577,8 @@ export const triggerRegistrationsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_trigger_registrations_status;
     DROP INDEX IF EXISTS idx_trigger_registrations_expires;
     DROP TABLE IF EXISTS trigger_registrations
-  `
-};
+  `,
+}
 
 export const waitConditionsTableMigration: PgMigration = {
   version: 16,
@@ -609,8 +609,8 @@ export const waitConditionsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_wait_conditions_status;
     DROP INDEX IF EXISTS idx_wait_conditions_timeout;
     DROP TABLE IF EXISTS wait_conditions
-  `
-};
+  `,
+}
 
 export const artifactsTableMigration: PgMigration = {
   version: 17,
@@ -643,8 +643,8 @@ export const artifactsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_artifacts_user_updated;
     DROP INDEX IF EXISTS idx_artifacts_artifact_id;
     DROP TABLE IF EXISTS artifacts
-  `
-};
+  `,
+}
 
 export const toolResultsTableMigration: PgMigration = {
   version: 18,
@@ -674,8 +674,8 @@ export const toolResultsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_tool_results_session_id;
     DROP INDEX IF EXISTS idx_tool_results_tool_call_id;
     DROP TABLE IF EXISTS tool_results
-  `
-};
+  `,
+}
 
 export const connectorDefinitionsTableMigration: PgMigration = {
   version: 19,
@@ -701,8 +701,8 @@ export const connectorDefinitionsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_connector_defs_status;
     DROP INDEX IF EXISTS idx_connector_defs_type;
     DROP TABLE IF EXISTS connector_definitions
-  `
-};
+  `,
+}
 
 export const connectorInstancesTableMigration: PgMigration = {
   version: 20,
@@ -729,8 +729,8 @@ export const connectorInstancesTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_connector_instances_status;
     DROP INDEX IF EXISTS idx_connector_instances_user_def;
     DROP TABLE IF EXISTS connector_instances
-  `
-};
+  `,
+}
 
 export const connectorEventsTableMigration: PgMigration = {
   version: 21,
@@ -754,8 +754,8 @@ export const connectorEventsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_connector_events_processed;
     DROP INDEX IF EXISTS idx_connector_events_instance;
     DROP TABLE IF EXISTS connector_events
-  `
-};
+  `,
+}
 
 export const workflowDraftsTableMigration: PgMigration = {
   version: 22,
@@ -781,8 +781,8 @@ export const workflowDraftsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_workflow_drafts_status;
     DROP INDEX IF EXISTS idx_workflow_drafts_owner;
     DROP TABLE IF EXISTS workflow_drafts
-  `
-};
+  `,
+}
 
 export const workflowDefinitionsTableMigration: PgMigration = {
   version: 23,
@@ -813,8 +813,8 @@ export const workflowDefinitionsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_workflow_defs_status;
     DROP INDEX IF EXISTS idx_workflow_defs_owner;
     DROP TABLE IF EXISTS workflow_definitions
-  `
-};
+  `,
+}
 
 export const traceContextsTableMigration: PgMigration = {
   version: 24,
@@ -842,8 +842,8 @@ export const traceContextsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_trace_contexts_user;
     DROP INDEX IF EXISTS idx_trace_contexts_correlation;
     DROP TABLE IF EXISTS trace_contexts
-  `
-};
+  `,
+}
 
 export const traceSpansTableMigration: PgMigration = {
   version: 25,
@@ -878,8 +878,8 @@ export const traceSpansTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_trace_spans_parent;
     DROP INDEX IF EXISTS idx_trace_spans_trace;
     DROP TABLE IF EXISTS trace_spans
-  `
-};
+  `,
+}
 
 export const metricsTableMigration: PgMigration = {
   version: 26,
@@ -914,8 +914,8 @@ export const metricsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_metrics_span;
     DROP INDEX IF EXISTS idx_metrics_trace;
     DROP TABLE IF EXISTS metrics
-  `
-};
+  `,
+}
 
 export const auditRecordsTableMigration: PgMigration = {
   version: 27,
@@ -968,8 +968,8 @@ export const auditRecordsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_audit_records_risk_level;
     DROP INDEX IF EXISTS idx_audit_records_sensitivity;
     DROP TABLE IF EXISTS audit_records
-  `
-};
+  `,
+}
 
 export const sessionsTableMigration: PgMigration = {
   version: 28,
@@ -993,8 +993,8 @@ export const sessionsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_sessions_user_activity;
     DROP INDEX IF EXISTS idx_sessions_status;
     DROP TABLE IF EXISTS sessions
-  `
-};
+  `,
+}
 
 export const usersTableMigration: PgMigration = {
   version: 29,
@@ -1010,8 +1010,8 @@ export const usersTableMigration: PgMigration = {
   `,
   down: `
     DROP TABLE IF EXISTS users
-  `
-};
+  `,
+}
 
 export const authTokensTableMigration: PgMigration = {
   version: 30,
@@ -1031,8 +1031,8 @@ export const authTokensTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_auth_tokens_expires;
     DROP INDEX IF EXISTS idx_auth_tokens_user;
     DROP TABLE IF EXISTS auth_tokens
-  `
-};
+  `,
+}
 
 export const providerConfigsTableMigration: PgMigration = {
   version: 31,
@@ -1059,8 +1059,8 @@ export const providerConfigsTableMigration: PgMigration = {
   down: `
     DROP INDEX IF EXISTS idx_provider_configs_user;
     DROP TABLE IF EXISTS provider_configs
-  `
-};
+  `,
+}
 
 export const sessionsModelSelectionMigration: PgMigration = {
   version: 32,
@@ -1072,8 +1072,8 @@ export const sessionsModelSelectionMigration: PgMigration = {
   down: `
     ALTER TABLE sessions DROP COLUMN selected_provider_id;
     ALTER TABLE sessions DROP COLUMN selected_model
-  `
-};
+  `,
+}
 
 export const customProviderTypeMigration: PgMigration = {
   version: 33,
@@ -1140,8 +1140,8 @@ export const customProviderTypeMigration: PgMigration = {
     DROP TABLE provider_configs;
     ALTER TABLE provider_configs_old RENAME TO provider_configs;
     CREATE INDEX idx_provider_configs_user ON provider_configs(user_id)
-  `
-};
+  `,
+}
 
 export const agentConfigsTableMigration: PgMigration = {
   version: 34,
@@ -1176,8 +1176,8 @@ export const agentConfigsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_agent_configs_agent_id;
     DROP INDEX IF EXISTS idx_agent_configs_user_id;
     DROP TABLE IF EXISTS agent_configs
-  `
-};
+  `,
+}
 
 export const agentConfigRuntimeDefaultsMigration: PgMigration = {
   version: 35,
@@ -1281,8 +1281,8 @@ export const agentConfigRuntimeDefaultsMigration: PgMigration = {
     CREATE UNIQUE INDEX idx_agent_configs_user ON agent_configs(agent_id, scope, user_id) WHERE scope = 'user';
     CREATE INDEX idx_agent_configs_agent_id ON agent_configs(agent_id);
     CREATE INDEX idx_agent_configs_user_id ON agent_configs(user_id)
-  `
-};
+  `,
+}
 
 export const agentConfigPromptBindingMigration: PgMigration = {
   version: 36,
@@ -1346,8 +1346,8 @@ export const agentConfigPromptBindingMigration: PgMigration = {
     WHERE allowed_skill_ids = '["artifact_create","artifact_update","ask_user","status_query","memory_retrieve","transcript_search","plan_patch","docs_search"]';
     ALTER TABLE agent_configs DROP COLUMN prompt_version;
     ALTER TABLE agent_configs DROP COLUMN prompt_type
-  `
-};
+  `,
+}
 
 export const longTermMemoriesTableMigration: PgMigration = {
   version: 37,
@@ -1386,8 +1386,8 @@ export const longTermMemoriesTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_long_term_memories_importance;
     DROP INDEX IF EXISTS idx_long_term_memories_updated;
     DROP TABLE IF EXISTS long_term_memories
-  `
-};
+  `,
+}
 
 export const longTermMemoriesInvariantsMigration: PgMigration = {
   version: 38,
@@ -1449,8 +1449,8 @@ export const longTermMemoriesInvariantsMigration: PgMigration = {
     ALTER TABLE long_term_memories DROP COLUMN lifecycle_status;
     ALTER TABLE long_term_memories DROP COLUMN source_window_hash;
     ALTER TABLE long_term_memories DROP COLUMN fingerprint
-  `
-};
+  `,
+}
 
 export const memoryExtractionRunsFullSchemaMigration: PgMigration = {
   version: 39,
@@ -1545,8 +1545,8 @@ export const memoryExtractionRunsFullSchemaMigration: PgMigration = {
     
     CREATE INDEX IF NOT EXISTS idx_memory_extraction_runs_status
       ON memory_extraction_runs(user_id, status)
-  `
-};
+  `,
+}
 
 export const webhookTriggersTableMigration: PgMigration = {
   version: 40,
@@ -1572,8 +1572,8 @@ export const webhookTriggersTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_webhook_triggers_status;
     DROP INDEX IF EXISTS idx_webhook_triggers_owner;
     DROP TABLE IF EXISTS webhook_triggers
-  `
-};
+  `,
+}
 
 export const webhookDeliveriesTableMigration: PgMigration = {
   version: 41,
@@ -1594,8 +1594,8 @@ export const webhookDeliveriesTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_webhook_deliveries_event;
     DROP INDEX IF EXISTS idx_webhook_deliveries_webhook;
     DROP TABLE IF EXISTS webhook_deliveries
-  `
-};
+  `,
+}
 
 export const scheduleTriggersTableMigration: PgMigration = {
   version: 42,
@@ -1624,8 +1624,8 @@ export const scheduleTriggersTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_schedule_triggers_status;
     DROP INDEX IF EXISTS idx_schedule_triggers_owner;
     DROP TABLE IF EXISTS schedule_triggers
-  `
-};
+  `,
+}
 
 export const agentConfigSearchLlmFieldsMigration: PgMigration = {
   version: 43,
@@ -1637,8 +1637,8 @@ export const agentConfigSearchLlmFieldsMigration: PgMigration = {
   down: `
     ALTER TABLE agent_configs DROP COLUMN search_llm_model;
     ALTER TABLE agent_configs DROP COLUMN search_llm_provider_id
-  `
-};
+  `,
+}
 
 export const toolResultBlobsTableMigration: PgMigration = {
   version: 44,
@@ -1665,8 +1665,8 @@ export const toolResultBlobsTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_tool_result_blobs_user;
     DROP INDEX IF EXISTS idx_tool_result_blobs_tool_call;
     DROP TABLE IF EXISTS tool_result_blobs
-  `
-};
+  `,
+}
 
 export const approvalRequestScopedGrantsMigration: PgMigration = {
   version: 45,
@@ -1680,8 +1680,8 @@ export const approvalRequestScopedGrantsMigration: PgMigration = {
     ALTER TABLE approval_requests DROP COLUMN approval_code;
     ALTER TABLE approval_requests DROP COLUMN scope_ref;
     ALTER TABLE approval_requests DROP COLUMN scope_type
-  `
-};
+  `,
+}
 
 export const connectorPoliciesTableMigration: PgMigration = {
   version: 46,
@@ -1707,8 +1707,8 @@ export const connectorPoliciesTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_connector_policies_effect;
     DROP INDEX IF EXISTS idx_connector_policies_connector;
     DROP TABLE IF EXISTS connector_policies
-  `
-};
+  `,
+}
 
 export const deadLetterTableMigration: PgMigration = {
   version: 47,
@@ -1735,8 +1735,8 @@ export const deadLetterTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_dead_letter_source;
     DROP INDEX IF EXISTS idx_dead_letter_status;
     DROP TABLE IF EXISTS dead_letter
-  `
-};
+  `,
+}
 
 export const apiKeysTableMigration: PgMigration = {
   version: 48,
@@ -1763,8 +1763,8 @@ export const apiKeysTableMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_api_keys_hash;
     DROP INDEX IF EXISTS idx_api_keys_user;
     DROP TABLE IF EXISTS api_keys
-  `
-};
+  `,
+}
 
 export const usersRoleColumnMigration: PgMigration = {
   version: 49,
@@ -1775,8 +1775,8 @@ export const usersRoleColumnMigration: PgMigration = {
   `,
   down: `
     ALTER TABLE users DROP COLUMN role
-  `
-};
+  `,
+}
 
 export const alertTablesMigration: PgMigration = {
   version: 50,
@@ -1827,7 +1827,7 @@ export const alertTablesMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_alert_rules_enabled;
     DROP TABLE IF EXISTS alert_rules
   `,
-};
+}
 
 export const organizationsTablePgMigration: PgMigration = {
   version: 51,
@@ -1848,8 +1848,8 @@ export const organizationsTablePgMigration: PgMigration = {
   down: `
     DROP INDEX IF EXISTS idx_organizations_slug;
     DROP TABLE IF EXISTS organizations
-  `
-};
+  `,
+}
 
 export const userOrganizationsTablePgMigration: PgMigration = {
   version: 52,
@@ -1872,8 +1872,8 @@ export const userOrganizationsTablePgMigration: PgMigration = {
     DROP INDEX IF EXISTS idx_user_org_org;
     DROP INDEX IF EXISTS idx_user_org_user;
     DROP TABLE IF EXISTS user_organizations
-  `
-};
+  `,
+}
 
 export const addTenantIdPgMigration: PgMigration = {
   version: 53,
@@ -2236,8 +2236,8 @@ export const addTenantIdPgMigration: PgMigration = {
     END $$;
     CREATE INDEX IF NOT EXISTS idx_trigger_subscriptions_tenant ON trigger_subscriptions(tenant_id)
   `,
-  down: ``
-};
+  down: ``,
+}
 
 export const deepseekProviderTypeMigration: PgMigration = {
   version: 59,
@@ -2310,8 +2310,8 @@ export const deepseekProviderTypeMigration: PgMigration = {
     ALTER TABLE provider_configs_old RENAME TO provider_configs;
     CREATE INDEX idx_provider_configs_user ON provider_configs(user_id);
     CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)
-  `
-};
+  `,
+}
 
 export const extendProviderConfigsRuntimeMetadataMigration: PgMigration = {
   version: 60,
@@ -2335,8 +2335,8 @@ export const extendProviderConfigsRuntimeMetadataMigration: PgMigration = {
     ALTER TABLE provider_configs DROP COLUMN IF EXISTS priority;
     ALTER TABLE provider_configs DROP COLUMN IF EXISTS protocol;
     ALTER TABLE provider_configs DROP COLUMN IF EXISTS family
-  `
-};
+  `,
+}
 
 export const pgStoreMigrations: PgMigration[] = [
   eventsTableMigration,
@@ -2394,17 +2394,15 @@ export const pgStoreMigrations: PgMigration[] = [
   addTenantIdPgMigration,
   deepseekProviderTypeMigration,
   extendProviderConfigsRuntimeMetadataMigration,
-];
+]
 
 export function getLatestPgMigrationVersion(): number {
-  return pgStoreMigrations.length > 0 
-    ? pgStoreMigrations[pgStoreMigrations.length - 1]!.version 
-    : 0;
+  return pgStoreMigrations.length > 0 ? pgStoreMigrations[pgStoreMigrations.length - 1]!.version : 0
 }
 
 export function getPgMigrationStats(): { total: number; latestVersion: number } {
   return {
     total: pgStoreMigrations.length,
-    latestVersion: getLatestPgMigrationVersion()
-  };
+    latestVersion: getLatestPgMigrationVersion(),
+  }
 }

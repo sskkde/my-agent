@@ -10,14 +10,11 @@ import type {
   ProviderProtocol,
   ProviderRuntimeConfig,
   ProviderCapabilities,
-} from '../types.js';
-import type {
-  ProviderConfigWithSecret,
-  ProviderType,
-} from '../../storage/provider-config-store.js';
-import type { ProviderCatalogEntry } from '../catalog/provider-catalog.js';
-import { getProviderCatalogEntry } from '../catalog/provider-catalog.js';
-import { resolveModelInfo } from '../catalog/model-catalog.js';
+} from '../types.js'
+import type { ProviderConfigWithSecret, ProviderType } from '../../storage/provider-config-store.js'
+import type { ProviderCatalogEntry } from '../catalog/provider-catalog.js'
+import { getProviderCatalogEntry } from '../catalog/provider-catalog.js'
+import { resolveModelInfo } from '../catalog/model-catalog.js'
 
 /**
  * Environment-derived provider descriptor
@@ -25,15 +22,15 @@ import { resolveModelInfo } from '../catalog/model-catalog.js';
  */
 export interface EnvProviderDescriptor {
   /** Provider type identifier */
-  providerType: ProviderType;
+  providerType: ProviderType
   /** Provider instance identifier */
-  providerId: string;
+  providerId: string
   /** API key (optional, some providers don't require it) */
-  apiKey?: string;
+  apiKey?: string
   /** Base URL for API endpoints */
-  baseUrl?: string;
+  baseUrl?: string
   /** Selected model ID */
-  model?: string;
+  model?: string
 }
 
 /**
@@ -41,15 +38,20 @@ export interface EnvProviderDescriptor {
  */
 export interface ResolveProviderCandidatesOptions {
   /** User's stored provider configurations from database */
-  dbProviders: ProviderConfigWithSecret[];
+  dbProviders: ProviderConfigWithSecret[]
   /** Environment-derived provider configurations */
-  envProviders: EnvProviderDescriptor[];
+  envProviders: EnvProviderDescriptor[]
   /** Preferred provider ID (gets highest priority) */
-  preferredProviderId?: string;
+  preferredProviderId?: string
   /** Custom model resolver function (defaults to resolveModelInfo) */
-  modelResolver?: (providerId: string, modelId: string, family?: ProviderFamily, protocol?: ProviderProtocol) => ModelInfo;
+  modelResolver?: (
+    providerId: string,
+    modelId: string,
+    family?: ProviderFamily,
+    protocol?: ProviderProtocol,
+  ) => ModelInfo
   /** Node environment (for test mode detection) */
-  nodeEnv?: string;
+  nodeEnv?: string
 }
 
 /**
@@ -63,22 +65,22 @@ const DEFAULT_CAPABILITIES: ProviderCapabilities = {
   supportsVision: false,
   maxTokens: 8192,
   supportedModels: [],
-};
+}
 
 /**
  * Merges boolean capability overrides from provider config into model capabilities
  * Only boolean fields are merged; non-boolean fields are ignored
- * 
+ *
  * @param modelCapabilities - Base model capabilities
  * @param providerCapabilities - Provider capability overrides (from capabilities_json)
  * @returns Merged model capabilities
  */
 function mergeCapabilityOverrides(
   modelCapabilities: ModelInfo['capabilities'],
-  providerCapabilities: Record<string, unknown> | null | undefined
+  providerCapabilities: Record<string, unknown> | null | undefined,
 ): ModelInfo['capabilities'] {
   if (!providerCapabilities) {
-    return modelCapabilities;
+    return modelCapabilities
   }
 
   const booleanFields: Array<keyof ModelInfo['capabilities']> = [
@@ -93,105 +95,97 @@ function mergeCapabilityOverrides(
     'toolChoice',
     'parallelToolCalls',
     'promptCache',
-  ];
+  ]
 
-  const merged = { ...modelCapabilities };
+  const merged = { ...modelCapabilities }
 
   for (const field of booleanFields) {
-    const value = providerCapabilities[field];
+    const value = providerCapabilities[field]
     if (typeof value === 'boolean') {
-      merged[field] = value;
+      merged[field] = value
     }
   }
 
-  return merged;
+  return merged
 }
 
 /**
  * Applies model-specific overrides from provider.models array
  * Finds matching model entry by modelId and applies overrides
- * 
+ *
  * @param model - Base model info
  * @param providerModels - Provider models array (from models_json)
  * @returns Model info with overrides applied
  */
 function applyModelOverrides(
   model: ModelInfo,
-  providerModels: Record<string, unknown>[] | null | undefined
+  providerModels: Record<string, unknown>[] | null | undefined,
 ): ModelInfo {
   if (!providerModels || providerModels.length === 0) {
-    return model;
+    return model
   }
 
-  const modelOverride = providerModels.find(
-    (entry) => entry.modelId === model.modelId
-  );
+  const modelOverride = providerModels.find((entry) => entry.modelId === model.modelId)
 
   if (!modelOverride) {
-    return model;
+    return model
   }
 
-  const overridden = { ...model };
+  const overridden = { ...model }
 
   if (typeof modelOverride.displayName === 'string') {
-    overridden.displayName = modelOverride.displayName;
+    overridden.displayName = modelOverride.displayName
   }
 
   if (modelOverride.capabilities && typeof modelOverride.capabilities === 'object') {
     overridden.capabilities = mergeCapabilityOverrides(
       model.capabilities,
-      modelOverride.capabilities as Record<string, unknown>
-    );
+      modelOverride.capabilities as Record<string, unknown>,
+    )
   }
 
   if (modelOverride.limits && typeof modelOverride.limits === 'object') {
-    const limitsOverride = modelOverride.limits as Record<string, unknown>;
-    overridden.limits = { ...model.limits };
+    const limitsOverride = modelOverride.limits as Record<string, unknown>
+    overridden.limits = { ...model.limits }
 
     if (typeof limitsOverride.contextTokens === 'number') {
-      overridden.limits.contextTokens = limitsOverride.contextTokens;
+      overridden.limits.contextTokens = limitsOverride.contextTokens
     }
     if (typeof limitsOverride.outputTokens === 'number') {
-      overridden.limits.outputTokens = limitsOverride.outputTokens;
+      overridden.limits.outputTokens = limitsOverride.outputTokens
     }
   }
 
-  return overridden;
+  return overridden
 }
 
 /**
  * Checks if a provider has usable credentials
  * Ollama requires baseUrl, all others require apiKey
- * 
+ *
  * @param provider - Provider configuration to check
  * @returns true if provider has usable credentials
  */
 function hasUsableCredentials(provider: {
-  providerType: ProviderType;
-  apiKey: string | null;
-  baseUrl: string | null;
+  providerType: ProviderType
+  apiKey: string | null
+  baseUrl: string | null
 }): boolean {
   if (provider.providerType === 'ollama') {
-    return Boolean(provider.baseUrl);
+    return Boolean(provider.baseUrl)
   }
-  return Boolean(provider.apiKey);
+  return Boolean(provider.apiKey)
 }
 
 /**
  * Derives provider capabilities from provider type and model
- * 
+ *
  * @param providerType - Type of provider
  * @param model - Model information
  * @returns Provider capabilities
  */
-function deriveProviderCapabilities(
-  providerType: ProviderType,
-  model: ModelInfo
-): ProviderCapabilities {
-  const supportsJsonMode =
-    providerType === 'openai' ||
-    providerType === 'openrouter' ||
-    providerType === 'deepseek';
+function deriveProviderCapabilities(providerType: ProviderType, model: ModelInfo): ProviderCapabilities {
+  const supportsJsonMode = providerType === 'openai' || providerType === 'openrouter' || providerType === 'deepseek'
 
   return {
     ...DEFAULT_CAPABILITIES,
@@ -200,18 +194,18 @@ function deriveProviderCapabilities(
     supportsVision: model.capabilities.vision,
     maxTokens: model.limits.outputTokens,
     supportedModels: [model.modelId],
-  };
+  }
 }
 
 /**
  * Builds runtime configuration for a provider
  * Merges database configuration with catalog defaults
- * 
+ *
  * @param provider - Database provider configuration with secrets
  * @param catalog - Provider catalog entry (or null if unknown type)
  * @param model - Resolved model information
  * @returns Provider runtime configuration
- * 
+ *
  * @example
  * ```typescript
  * const config = buildProviderRuntimeConfig(
@@ -224,29 +218,22 @@ function deriveProviderCapabilities(
 export function buildProviderRuntimeConfig(
   provider: ProviderConfigWithSecret,
   catalog: ProviderCatalogEntry | null,
-  model: ModelInfo
+  model: ModelInfo,
 ): ProviderRuntimeConfig {
   // Use provider overrides or catalog defaults
-  const family = (provider.family as ProviderFamily | null | undefined) ??
-    catalog?.family ??
-    'openai_compatible';
-  
-  const protocol = (provider.protocol as ProviderProtocol | null | undefined) ??
-    catalog?.protocol ??
-    'openai_chat';
-  
-  const defaultModel = provider.defaultModel ??
-    provider.selectedModel ??
-    catalog?.defaultModel ??
-    'gpt-4o-mini';
+  const family = (provider.family as ProviderFamily | null | undefined) ?? catalog?.family ?? 'openai_compatible'
+
+  const protocol = (provider.protocol as ProviderProtocol | null | undefined) ?? catalog?.protocol ?? 'openai_chat'
+
+  const defaultModel = provider.defaultModel ?? provider.selectedModel ?? catalog?.defaultModel ?? 'gpt-4o-mini'
 
   // Derive capabilities
-  const capabilities = deriveProviderCapabilities(provider.providerType, model);
+  const capabilities = deriveProviderCapabilities(provider.providerType, model)
 
   // Apply DeepSeek default baseUrl if not set
-  let baseUrl = provider.baseUrl ?? undefined;
+  let baseUrl = provider.baseUrl ?? undefined
   if (provider.providerType === 'deepseek' && !baseUrl) {
-    baseUrl = 'https://api.deepseek.com';
+    baseUrl = 'https://api.deepseek.com'
   }
 
   return {
@@ -266,23 +253,23 @@ export function buildProviderRuntimeConfig(
     customCapabilities: provider.capabilities as Partial<ModelInfo['capabilities']> | undefined,
     options: provider.options ?? undefined,
     promptFamily: catalog?.promptFamily,
-  };
+  }
 }
 
 /**
  * Resolves provider candidates from database and environment sources
  * Returns a prioritized list of provider candidates sorted by priority (lowest first)
- * 
+ *
  * Priority rules:
  * - Preferred provider: priority 1
  * - DB providers: start at 10, increment by 10
  * - Env providers: start at 100, increment by 10
  * - DB providers override env providers with same ID
  * - Env providers are skipped in test mode (NODE_ENV === 'test')
- * 
+ *
  * @param options - Resolution options
  * @returns Sorted array of provider candidates
- * 
+ *
  * @example
  * ```typescript
  * const candidates = resolveProviderCandidates({
@@ -293,55 +280,40 @@ export function buildProviderRuntimeConfig(
  * });
  * ```
  */
-export function resolveProviderCandidates(
-  options: ResolveProviderCandidatesOptions
-): ProviderCandidate[] {
-  const {
-    dbProviders,
-    envProviders,
-    preferredProviderId,
-    modelResolver,
-    nodeEnv,
-  } = options;
+export function resolveProviderCandidates(options: ResolveProviderCandidatesOptions): ProviderCandidate[] {
+  const { dbProviders, envProviders, preferredProviderId, modelResolver, nodeEnv } = options
 
-  const resolve = modelResolver ?? resolveModelInfo;
-  const candidates: ProviderCandidate[] = [];
-  const seen = new Set<string>();
+  const resolve = modelResolver ?? resolveModelInfo
+  const candidates: ProviderCandidate[] = []
+  const seen = new Set<string>()
 
   // Process database providers
-  let dbPriority = 10;
+  let dbPriority = 10
   for (const provider of dbProviders) {
     // Skip disabled providers
     if (!provider.enabled) {
-      continue;
+      continue
     }
 
     // Skip providers without usable credentials
     if (!hasUsableCredentials(provider)) {
-      continue;
+      continue
     }
 
-    const isPreferred = provider.providerId === preferredProviderId;
-    const priority = isPreferred ? 1 : (provider.priority ?? dbPriority);
+    const isPreferred = provider.providerId === preferredProviderId
+    const priority = isPreferred ? 1 : (provider.priority ?? dbPriority)
 
-    const catalog = getProviderCatalogEntry(provider.providerType);
-    const modelId = provider.selectedModel ??
-      catalog?.defaultModel ??
-      'gpt-4o-mini';
-    let model = resolve(
-      provider.providerType,
-      modelId,
-      catalog?.family,
-      catalog?.protocol
-    );
+    const catalog = getProviderCatalogEntry(provider.providerType)
+    const modelId = provider.selectedModel ?? catalog?.defaultModel ?? 'gpt-4o-mini'
+    let model = resolve(provider.providerType, modelId, catalog?.family, catalog?.protocol)
 
-    model = applyModelOverrides(model, provider.models);
+    model = applyModelOverrides(model, provider.models)
     model = {
       ...model,
       capabilities: mergeCapabilityOverrides(model.capabilities, provider.capabilities),
-    };
+    }
 
-    const config = buildProviderRuntimeConfig(provider, catalog, model);
+    const config = buildProviderRuntimeConfig(provider, catalog, model)
 
     candidates.push({
       providerId: provider.providerId,
@@ -349,36 +321,34 @@ export function resolveProviderCandidates(
       config: { ...config, priority },
       model,
       priority,
-    });
+    })
 
-    seen.add(provider.providerId);
-    
+    seen.add(provider.providerId)
+
     if (!isPreferred && (provider.priority === null || provider.priority === undefined)) {
-      dbPriority += 10;
+      dbPriority += 10
     }
   }
 
   // Process environment providers (skip in test mode)
   if (nodeEnv !== 'test') {
-    let envPriority = 100;
+    let envPriority = 100
     for (const env of envProviders) {
       // Skip if already have DB provider with same ID
       if (seen.has(env.providerId)) {
-        continue;
+        continue
       }
 
-      const catalog = getProviderCatalogEntry(env.providerType);
+      const catalog = getProviderCatalogEntry(env.providerType)
       if (!catalog) {
-        continue;
+        continue
       }
 
       // Check credentials for env provider
-      const hasCredentials = env.providerType === 'ollama'
-        ? Boolean(env.baseUrl)
-        : Boolean(env.apiKey);
-      
+      const hasCredentials = env.providerType === 'ollama' ? Boolean(env.baseUrl) : Boolean(env.apiKey)
+
       if (!hasCredentials) {
-        continue;
+        continue
       }
 
       // Create synthetic provider config from env
@@ -396,20 +366,15 @@ export function resolveProviderCandidates(
         lastTestedAt: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
+      }
 
-      const isPreferred = env.providerId === preferredProviderId;
-      const priority = isPreferred ? 1 : envPriority;
+      const isPreferred = env.providerId === preferredProviderId
+      const priority = isPreferred ? 1 : envPriority
 
-      const modelId = env.model ?? catalog.defaultModel ?? 'gpt-4o-mini';
-      const model = resolve(
-        env.providerId,
-        modelId,
-        catalog.family,
-        catalog.protocol
-      );
+      const modelId = env.model ?? catalog.defaultModel ?? 'gpt-4o-mini'
+      const model = resolve(env.providerId, modelId, catalog.family, catalog.protocol)
 
-      const config = buildProviderRuntimeConfig(syntheticProvider, catalog, model);
+      const config = buildProviderRuntimeConfig(syntheticProvider, catalog, model)
 
       candidates.push({
         providerId: env.providerId,
@@ -417,17 +382,17 @@ export function resolveProviderCandidates(
         config: { ...config, priority },
         model,
         priority,
-      });
+      })
 
       // Only increment priority if not preferred
       if (!isPreferred) {
-        envPriority += 10;
+        envPriority += 10
       }
     }
   }
 
   // Sort by priority ascending (lowest first)
-  candidates.sort((a, b) => a.priority - b.priority);
+  candidates.sort((a, b) => a.priority - b.priority)
 
-  return candidates;
+  return candidates
 }

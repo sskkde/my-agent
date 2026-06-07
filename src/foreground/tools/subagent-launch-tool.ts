@@ -3,30 +3,30 @@
  * Extracted from foreground-kernel-runner handleDispatchSubagent
  */
 
-import type { RuntimeDispatcher, DispatchResult } from '../../dispatcher/types.js';
-import type { ForegroundToolResult } from './foreground-tool-result.js';
-import { createSuccessResult, createErrorResult } from './foreground-tool-result.js';
-import { buildLaunchSubagentAction, inferSubagentType } from '../../subagents/action-mapper.js';
+import type { RuntimeDispatcher, DispatchResult } from '../../dispatcher/types.js'
+import type { ForegroundToolResult } from './foreground-tool-result.js'
+import { createSuccessResult, createErrorResult } from './foreground-tool-result.js'
+import { buildLaunchSubagentAction, inferSubagentType } from '../../subagents/action-mapper.js'
 
-export const LAUNCH_SUBAGENT_TOOL_ID = 'foreground_launch_subagent';
+export const LAUNCH_SUBAGENT_TOOL_ID = 'foreground_launch_subagent'
 
 export interface LaunchSubagentDeps {
-  runtimeDispatcher: RuntimeDispatcher;
-  userId: string;
-  sessionId: string;
-  turnId: string;
+  runtimeDispatcher: RuntimeDispatcher
+  userId: string
+  sessionId: string
+  turnId: string
 }
 
 export interface LaunchSubagentInput {
-  objective: string;
-  agentType: string;
-  suggestedTools?: string[];
+  objective: string
+  agentType: string
+  suggestedTools?: string[]
 }
 
 export interface LaunchSubagentData {
-  runtimeActionId: string;
-  agentType: string;
-  dispatchResult: DispatchResult;
+  runtimeActionId: string
+  agentType: string
+  dispatchResult: DispatchResult
 }
 
 /**
@@ -35,13 +35,15 @@ export interface LaunchSubagentData {
  */
 export async function handleLaunchSubagent(
   deps: LaunchSubagentDeps,
-  input: LaunchSubagentInput
+  input: LaunchSubagentInput,
 ): Promise<ForegroundToolResult<LaunchSubagentData>> {
   try {
-    const agentType = input.agentType || inferSubagentType({
-      message: input.objective,
-      suggestedTools: input.suggestedTools,
-    });
+    const agentType =
+      input.agentType ||
+      inferSubagentType({
+        message: input.objective,
+        suggestedTools: input.suggestedTools,
+      })
 
     const runtimeAction = buildLaunchSubagentAction({
       agentType,
@@ -56,7 +58,7 @@ export async function handleLaunchSubagent(
         sourceType: 'foreground_turn',
         turnId: deps.turnId,
       },
-    });
+    })
 
     const dispatchResult = await deps.runtimeDispatcher.dispatch({
       requestId: deps.turnId,
@@ -66,7 +68,7 @@ export async function handleLaunchSubagent(
         userId: deps.userId,
         sessionId: deps.sessionId,
       },
-    });
+    })
 
     return createSuccessResult(
       {
@@ -77,14 +79,14 @@ export async function handleLaunchSubagent(
       'Subagent launched successfully.',
       {
         runtimeActionIds: [runtimeAction.actionId],
-      }
-    );
+      },
+    )
   } catch (error) {
     return createErrorResult(
       'DISPATCH_SUBAGENT_ERROR',
       error instanceof Error ? error.message : 'Failed to dispatch subagent',
       false,
-      'Failed to launch subagent.'
-    );
+      'Failed to launch subagent.',
+    )
   }
 }

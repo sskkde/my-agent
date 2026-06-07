@@ -5,135 +5,131 @@
  * Verifies all required services are exposed and support test-friendly injection.
  */
 
-import { describe, it, expect } from 'vitest';
-import {
-  createApiContext,
-  DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS,
-  isApiContextError,
-} from '../../../src/api/context.js';
-import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../../../src/storage/agent-config-store.js';
-import type { MessageProcessor, MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js';
-import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js';
-import type { RuntimeDispatcher } from '../../../src/dispatcher/types.js';
-import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js';
-import type { AgentKernel } from '../../../src/kernel/agent-kernel.js';
-import type { LLMAdapter } from '../../../src/llm/adapter.js';
-import type { TimelineBroadcaster } from '../../../src/api/timeline-broadcaster.js';
-import type { ChannelRegistry } from '../../../src/gateway/channel-registry.js';
+import { describe, it, expect } from 'vitest'
+import { createApiContext, DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS, isApiContextError } from '../../../src/api/context.js'
+import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../../../src/storage/agent-config-store.js'
+import type { MessageProcessor, MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js'
+import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js'
+import type { RuntimeDispatcher } from '../../../src/dispatcher/types.js'
+import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js'
+import type { AgentKernel } from '../../../src/kernel/agent-kernel.js'
+import type { LLMAdapter } from '../../../src/llm/adapter.js'
+import type { TimelineBroadcaster } from '../../../src/api/timeline-broadcaster.js'
+import type { ChannelRegistry } from '../../../src/gateway/channel-registry.js'
 
 describe('ApiContext Dependencies - Task 4', () => {
   describe('Required Services Exposure', () => {
     it('should expose Gateway on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.gateway).toBeDefined();
-      expect(typeof result.gateway.receiveUserMessage).toBe('function');
-      expect(typeof result.gateway.formatOutbound).toBe('function');
-      expect(typeof result.gateway.assembleHydratedState).toBe('function');
+      expect(result.gateway).toBeDefined()
+      expect(typeof result.gateway.receiveUserMessage).toBe('function')
+      expect(typeof result.gateway.formatOutbound).toBe('function')
+      expect(typeof result.gateway.assembleHydratedState).toBe('function')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose ChannelRegistry on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.channelRegistry).toBeDefined();
-      expect(typeof result.channelRegistry.register).toBe('function');
-      expect(typeof result.channelRegistry.list).toBe('function');
-      expect(typeof result.channelRegistry.deliver).toBe('function');
+      expect(result.channelRegistry).toBeDefined()
+      expect(typeof result.channelRegistry.register).toBe('function')
+      expect(typeof result.channelRegistry.list).toBe('function')
+      expect(typeof result.channelRegistry.deliver).toBe('function')
 
-      const channels = result.channelRegistry.list();
-      const webuiChannel = channels.find(c => c.connectorId === 'webui');
-      expect(webuiChannel).toBeDefined();
-      expect(webuiChannel?.type).toBe('webui');
+      const channels = result.channelRegistry.list()
+      const webuiChannel = channels.find((c) => c.connectorId === 'webui')
+      expect(webuiChannel).toBeDefined()
+      expect(webuiChannel?.type).toBe('webui')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose TimelineBroadcaster on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.timelineBroadcaster).toBeDefined();
-      expect(typeof result.timelineBroadcaster.subscribe).toBe('function');
-      expect(typeof result.timelineBroadcaster.broadcast).toBe('function');
-      expect(typeof result.timelineBroadcaster.getConnectionCount).toBe('function');
+      expect(result.timelineBroadcaster).toBeDefined()
+      expect(typeof result.timelineBroadcaster.subscribe).toBe('function')
+      expect(typeof result.timelineBroadcaster.broadcast).toBe('function')
+      expect(typeof result.timelineBroadcaster.getConnectionCount).toBe('function')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose MessageProcessor on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.messageProcessor).toBeDefined();
-      expect(typeof result.messageProcessor.process).toBe('function');
+      expect(result.messageProcessor).toBeDefined()
+      expect(typeof result.messageProcessor.process).toBe('function')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose ForegroundAgent on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.foregroundAgent).toBeDefined();
-      expect(typeof result.foregroundAgent.processMessage).toBe('function');
+      expect(result.foregroundAgent).toBeDefined()
+      expect(typeof result.foregroundAgent.processMessage).toBe('function')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose RuntimeDispatcher on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.runtimeDispatcher).toBeDefined();
-      expect(typeof result.runtimeDispatcher.dispatch).toBe('function');
+      expect(result.runtimeDispatcher).toBeDefined()
+      expect(typeof result.runtimeDispatcher.dispatch).toBe('function')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose PlannerRuntime on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.plannerRuntime).toBeDefined();
-      expect(typeof result.plannerRuntime.createPlannerRun).toBe('function');
-      expect(typeof result.plannerRuntime.emitRuntimeAction).toBe('function');
+      expect(result.plannerRuntime).toBeDefined()
+      expect(typeof result.plannerRuntime.createPlannerRun).toBe('function')
+      expect(typeof result.plannerRuntime.emitRuntimeAction).toBe('function')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose AgentKernel on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.agentKernel).toBeDefined();
-      expect(typeof result.agentKernel.run).toBe('function');
+      expect(result.agentKernel).toBeDefined()
+      expect(typeof result.agentKernel.run).toBe('function')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should expose LLMAdapter on context', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.llmAdapter).toBeDefined();
-      expect(typeof result.llmAdapter.complete).toBe('function');
+      expect(result.llmAdapter).toBeDefined()
+      expect(typeof result.llmAdapter.complete).toBe('function')
 
-      result.connection.close();
-    });
-  });
+      result.connection.close()
+    })
+  })
 
   describe('Test-Friendly Dependency Injection', () => {
     it('should accept injected MessageProcessor via options', () => {
@@ -144,19 +140,19 @@ describe('ApiContext Dependencies - Task 4', () => {
           result: { text: 'mock response' },
           timestamp: new Date().toISOString(),
         }),
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         messageProcessor: mockProcessor,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.messageProcessor).toBe(mockProcessor);
-      result.connection.close();
-    });
+      expect(result.messageProcessor).toBe(mockProcessor)
+      result.connection.close()
+    })
 
     it('should accept injected ForegroundAgent via options', () => {
       const mockAgent: ForegroundAgent = {
@@ -166,19 +162,19 @@ describe('ApiContext Dependencies - Task 4', () => {
           reason: 'mock decision',
           userVisibleResponse: 'mock response',
         }),
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         foregroundAgent: mockAgent,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.foregroundAgent).toBe(mockAgent);
-      result.connection.close();
-    });
+      expect(result.foregroundAgent).toBe(mockAgent)
+      result.connection.close()
+    })
 
     it('should accept injected RuntimeDispatcher via options', () => {
       const mockDispatcher: RuntimeDispatcher = {
@@ -189,19 +185,19 @@ describe('ApiContext Dependencies - Task 4', () => {
           targetRuntime: 'tool_plane',
           createdAt: new Date().toISOString(),
         }),
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         runtimeDispatcher: mockDispatcher,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.runtimeDispatcher).toBe(mockDispatcher);
-      result.connection.close();
-    });
+      expect(result.runtimeDispatcher).toBe(mockDispatcher)
+      result.connection.close()
+    })
 
     it('should accept injected PlannerRuntime via options', () => {
       const mockPlanner: PlannerRuntime = {
@@ -232,19 +228,19 @@ describe('ApiContext Dependencies - Task 4', () => {
           status: 'created',
         }),
         saveCheckpoint: (_id, _data) => {},
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         plannerRuntime: mockPlanner,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.plannerRuntime).toBe(mockPlanner);
-      result.connection.close();
-    });
+      expect(result.plannerRuntime).toBe(mockPlanner)
+      result.connection.close()
+    })
 
     it('should accept injected AgentKernel via options', () => {
       const mockKernel = {
@@ -255,19 +251,19 @@ describe('ApiContext Dependencies - Task 4', () => {
           transcript: [],
           finalResponse: 'mock response',
         }),
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         agentKernel: mockKernel as unknown as AgentKernel,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.agentKernel).toBe(mockKernel);
-      result.connection.close();
-    });
+      expect(result.agentKernel).toBe(mockKernel)
+      result.connection.close()
+    })
 
     it('should accept injected LLMAdapter via options', () => {
       const mockAdapter: LLMAdapter = {
@@ -292,19 +288,19 @@ describe('ApiContext Dependencies - Task 4', () => {
         getProvider: (_id) => undefined,
         getHealthyProviders: () => [],
         updateProviderPriority: (_id, _priority) => {},
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         llmAdapter: mockAdapter,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.llmAdapter).toBe(mockAdapter);
-      result.connection.close();
-    });
+      expect(result.llmAdapter).toBe(mockAdapter)
+      result.connection.close()
+    })
 
     it('should accept injected TimelineBroadcaster via options', () => {
       const mockBroadcaster: TimelineBroadcaster = {
@@ -321,19 +317,19 @@ describe('ApiContext Dependencies - Task 4', () => {
         getConnectionCount: (_sessionId) => 0,
         closeSession: (_sessionId) => {},
         bindConnection: (_id, _write, _close) => {},
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         timelineBroadcaster: mockBroadcaster,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.timelineBroadcaster).toBe(mockBroadcaster);
-      result.connection.close();
-    });
+      expect(result.timelineBroadcaster).toBe(mockBroadcaster)
+      result.connection.close()
+    })
 
     it('should accept injected ChannelRegistry via options', () => {
       const mockRegistry: ChannelRegistry = {
@@ -343,89 +339,89 @@ describe('ApiContext Dependencies - Task 4', () => {
         list: () => [],
         has: (_id) => false,
         deliver: (_id, _envelope) => ({ success: false, error: { code: 'MOCK', message: 'mock' } }),
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         channelRegistry: mockRegistry,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.channelRegistry).toBe(mockRegistry);
-      result.connection.close();
-    });
-  });
+      expect(result.channelRegistry).toBe(mockRegistry)
+      result.connection.close()
+    })
+  })
 
   describe('Safe Fallback Without Provider Credentials', () => {
     it('should create context successfully without API keys or real providers', () => {
-      const originalEnv = process.env;
-      process.env = { ...originalEnv };
-      delete process.env.OPENROUTER_API_KEY;
-      delete process.env.OLLAMA_BASE_URL;
-      delete process.env.ANTHROPIC_API_KEY;
+      const originalEnv = process.env
+      process.env = { ...originalEnv }
+      delete process.env.OPENROUTER_API_KEY
+      delete process.env.OLLAMA_BASE_URL
+      delete process.env.ANTHROPIC_API_KEY
 
-      const result = createApiContext({ dbPath: ':memory:' });
+      const result = createApiContext({ dbPath: ':memory:' })
 
-      process.env = originalEnv;
+      process.env = originalEnv
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.gateway).toBeDefined();
-      expect(result.channelRegistry).toBeDefined();
-      expect(result.timelineBroadcaster).toBeDefined();
-      expect(result.messageProcessor).toBeDefined();
-      expect(result.foregroundAgent).toBeDefined();
-      expect(result.runtimeDispatcher).toBeDefined();
-      expect(result.plannerRuntime).toBeDefined();
-      expect(result.agentKernel).toBeDefined();
-      expect(result.llmAdapter).toBeDefined();
+      expect(result.gateway).toBeDefined()
+      expect(result.channelRegistry).toBeDefined()
+      expect(result.timelineBroadcaster).toBeDefined()
+      expect(result.messageProcessor).toBeDefined()
+      expect(result.foregroundAgent).toBeDefined()
+      expect(result.runtimeDispatcher).toBeDefined()
+      expect(result.plannerRuntime).toBeDefined()
+      expect(result.agentKernel).toBeDefined()
+      expect(result.llmAdapter).toBeDefined()
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should create context with only dbPath option', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
+      const result = createApiContext({ dbPath: ':memory:' })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.messageProcessor).toBeDefined();
-      expect(result.foregroundAgent).toBeDefined();
-      expect(result.runtimeDispatcher).toBeDefined();
-      expect(result.plannerRuntime).toBeDefined();
-      expect(result.agentKernel).toBeDefined();
-      expect(result.llmAdapter).toBeDefined();
+      expect(result.messageProcessor).toBeDefined()
+      expect(result.foregroundAgent).toBeDefined()
+      expect(result.runtimeDispatcher).toBeDefined()
+      expect(result.plannerRuntime).toBeDefined()
+      expect(result.agentKernel).toBeDefined()
+      expect(result.llmAdapter).toBeDefined()
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should create context with no options at all', () => {
-      const result = createApiContext();
+      const result = createApiContext()
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.messageProcessor).toBeDefined();
-      expect(result.foregroundAgent).toBeDefined();
-      expect(result.runtimeDispatcher).toBeDefined();
-      expect(result.plannerRuntime).toBeDefined();
-      expect(result.agentKernel).toBeDefined();
-      expect(result.llmAdapter).toBeDefined();
+      expect(result.messageProcessor).toBeDefined()
+      expect(result.foregroundAgent).toBeDefined()
+      expect(result.runtimeDispatcher).toBeDefined()
+      expect(result.plannerRuntime).toBeDefined()
+      expect(result.agentKernel).toBeDefined()
+      expect(result.llmAdapter).toBeDefined()
 
-      result.connection.close();
-    });
-  });
+      result.connection.close()
+    })
+  })
 
   describe('MessageProcessor Functionality', () => {
     it('should process messages with default processor', async () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const processor = result.messageProcessor;
+      const processor = result.messageProcessor
 
       const input: MessageProcessorInput = {
         correlationId: 'test-001',
@@ -433,18 +429,18 @@ describe('ApiContext Dependencies - Task 4', () => {
         sessionId: 'session-001',
         text: 'Hello, test!',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const output = await processor.process(input);
+      const output = await processor.process(input)
 
-      expect(output).toBeDefined();
-      expect(output.correlationId).toBe('test-001');
-      expect(output.success).toBe(false);
-      expect(output.error?.code).toBe('PROCESSING_ERROR');
-      expect(output.timestamp).toBeDefined();
+      expect(output).toBeDefined()
+      expect(output.correlationId).toBe('test-001')
+      expect(output.success).toBe(false)
+      expect(output.error?.code).toBe('PROCESSING_ERROR')
+      expect(output.timestamp).toBeDefined()
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should use configured database provider before processing a message', async () => {
       const foregroundAgent: ForegroundAgent = {
@@ -454,7 +450,7 @@ describe('ApiContext Dependencies - Task 4', () => {
           reason: 'Provider configured regression test',
           userVisibleResponse: 'Provider is available.',
         }),
-      };
+      }
 
       const llmAdapter: LLMAdapter = {
         config: { providers: [], defaultTimeoutMs: 1000, enableCircuitBreaker: false },
@@ -478,15 +474,15 @@ describe('ApiContext Dependencies - Task 4', () => {
         getProvider: () => undefined,
         getHealthyProviders: () => [],
         updateProviderPriority: () => {},
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         foregroundAgent,
         llmAdapter,
-      });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
       result.providerConfigStore.create({
         providerId: 'provider-user-001',
@@ -494,7 +490,7 @@ describe('ApiContext Dependencies - Task 4', () => {
         providerType: 'ollama',
         displayName: 'User Ollama',
         baseUrl: 'http://localhost:11434',
-      });
+      })
 
       const output = await result.messageProcessor.process({
         correlationId: 'test-provider-001',
@@ -502,13 +498,13 @@ describe('ApiContext Dependencies - Task 4', () => {
         sessionId: 'session-001',
         text: 'Hello with provider!',
         timestamp: new Date().toISOString(),
-      });
+      })
 
-      expect(output.success).toBe(true);
-      expect(output.result?.text).toBe('Provider is available.');
+      expect(output.success).toBe(true)
+      expect(output.result?.text).toBe('Provider is available.')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should not leak one user provider into another user during processing', async () => {
       const foregroundAgent: ForegroundAgent = {
@@ -518,14 +514,14 @@ describe('ApiContext Dependencies - Task 4', () => {
           reason: 'Provider isolation regression test',
           userVisibleResponse: 'Provider is isolated.',
         }),
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         foregroundAgent,
-      });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
       result.providerConfigStore.create({
         providerId: 'provider-user-001',
@@ -533,7 +529,7 @@ describe('ApiContext Dependencies - Task 4', () => {
         providerType: 'ollama',
         displayName: 'User Ollama',
         baseUrl: 'http://localhost:11434',
-      });
+      })
 
       const configuredUserOutput = await result.messageProcessor.process({
         correlationId: 'test-provider-user-001',
@@ -541,8 +537,8 @@ describe('ApiContext Dependencies - Task 4', () => {
         sessionId: 'session-001',
         text: 'Hello with provider!',
         timestamp: new Date().toISOString(),
-      });
-      expect(configuredUserOutput.success).toBe(true);
+      })
+      expect(configuredUserOutput.success).toBe(true)
 
       const unconfiguredUserOutput = await result.messageProcessor.process({
         correlationId: 'test-provider-user-002',
@@ -550,12 +546,14 @@ describe('ApiContext Dependencies - Task 4', () => {
         sessionId: 'session-002',
         text: 'Hello without provider!',
         timestamp: new Date().toISOString(),
-      });
-      expect(unconfiguredUserOutput.success).toBe(false);
-      expect(unconfiguredUserOutput.error?.message).toBe('No LLM providers configured. Message received but cannot be processed.');
+      })
+      expect(unconfiguredUserOutput.success).toBe(false)
+      expect(unconfiguredUserOutput.error?.message).toBe(
+        'No LLM providers configured. Message received but cannot be processed.',
+      )
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should handle processor errors gracefully', async () => {
       const mockProcessor: MessageProcessor = {
@@ -568,15 +566,15 @@ describe('ApiContext Dependencies - Task 4', () => {
           },
           timestamp: new Date().toISOString(),
         }),
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         messageProcessor: mockProcessor,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
       const input: MessageProcessorInput = {
         correlationId: 'test-002',
@@ -584,42 +582,42 @@ describe('ApiContext Dependencies - Task 4', () => {
         sessionId: 'session-001',
         text: 'Hello!',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const output = await result.messageProcessor.process(input);
+      const output = await result.messageProcessor.process(input)
 
-      expect(output.success).toBe(false);
-      expect(output.error?.code).toBe('TEST_ERROR');
+      expect(output.success).toBe(false)
+      expect(output.error?.code).toBe('TEST_ERROR')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should enforce processor timeout', async () => {
-      const { createMessageProcessor } = await import('../../../src/processing/message-processor.js');
+      const { createMessageProcessor } = await import('../../../src/processing/message-processor.js')
 
       const slowProcessorImpl: MessageProcessor = {
         process: async (_input): Promise<MessageProcessorOutput> => {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100))
           return {
             correlationId: _input.correlationId,
             success: true,
             timestamp: new Date().toISOString(),
-          };
+          }
         },
-      };
+      }
 
       const wrappedProcessor = createMessageProcessor({
         timeoutMs: 50,
         processorFn: (input) => slowProcessorImpl.process(input),
-      });
+      })
 
       const result = createApiContext({
         dbPath: ':memory:',
         messageProcessor: wrappedProcessor,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
       const input: MessageProcessorInput = {
         correlationId: 'test-003',
@@ -627,30 +625,30 @@ describe('ApiContext Dependencies - Task 4', () => {
         sessionId: 'session-001',
         text: 'Hello!',
         timestamp: new Date().toISOString(),
-      };
+      }
 
-      const output = await result.messageProcessor.process(input);
+      const output = await result.messageProcessor.process(input)
 
-      expect(output.success).toBe(false);
-      expect(output.error?.code).toBe('TIMEOUT');
+      expect(output.success).toBe(false)
+      expect(output.error?.code).toBe('TIMEOUT')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should budget default processor timeout for routing repair attempts', () => {
       expect(DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS).toBe(
-        DEFAULT_ROUTING_TIMEOUT_MS * (1 + DEFAULT_REPAIR_ATTEMPTS) + 10000
-      );
-    });
-  });
+        DEFAULT_ROUTING_TIMEOUT_MS * (1 + DEFAULT_REPAIR_ATTEMPTS) + 10000,
+      )
+    })
+  })
 
   describe('ForegroundAgent Functionality', () => {
     it('should make decisions with default agent', async () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const agent = result.foregroundAgent;
+      const agent = result.foregroundAgent
 
       const decision = await agent.processMessage(
         {
@@ -695,24 +693,24 @@ describe('ApiContext Dependencies - Task 4', () => {
             maxComplexity: 'medium',
             allowedToolCategories: ['read'],
           },
-        }
-      );
+        },
+      )
 
-      expect(decision).toBeDefined();
-      expect(decision.route).toBeDefined();
-      expect(decision.reason).toBeDefined();
+      expect(decision).toBeDefined()
+      expect(decision.route).toBeDefined()
+      expect(decision.reason).toBeDefined()
 
-      result.connection.close();
-    });
-  });
+      result.connection.close()
+    })
+  })
 
   describe('RuntimeDispatcher Functionality', () => {
     it('should dispatch actions with default dispatcher', async () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const dispatcher = result.runtimeDispatcher;
+      const dispatcher = result.runtimeDispatcher
 
       try {
         const dispatchResult = await dispatcher.dispatch({
@@ -742,40 +740,40 @@ describe('ApiContext Dependencies - Task 4', () => {
             userId: 'user-001',
             sessionId: 'session-001',
           },
-        });
+        })
 
-        expect(dispatchResult).toBeDefined();
-        expect(dispatchResult.requestId).toBe('req-001');
-        expect(dispatchResult.actionId).toBe('action-001');
+        expect(dispatchResult).toBeDefined()
+        expect(dispatchResult.requestId).toBe('req-001')
+        expect(dispatchResult.actionId).toBe('action-001')
       } catch (error) {
-        expect(error).toBeDefined();
+        expect(error).toBeDefined()
       }
 
-      result.connection.close();
-    });
-  });
+      result.connection.close()
+    })
+  })
 
   describe('PlannerRuntime Functionality', () => {
     it('should work with PlanStore available', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const planner = result.plannerRuntime;
+      const planner = result.plannerRuntime
 
       // PlanStore is now implemented, so createPlannerRun should work
       const plannerResult = planner.createPlannerRun({
         userId: 'user-001',
         sessionId: 'session-001',
         objective: 'Test planning task',
-      });
+      })
 
-      expect(plannerResult.plannerRunId).toBeDefined();
-      expect(plannerResult.planId).toBeDefined();
-      expect(plannerResult.status).toBe('initializing');
+      expect(plannerResult.plannerRunId).toBeDefined()
+      expect(plannerResult.planId).toBeDefined()
+      expect(plannerResult.status).toBe('initializing')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should work with injected planner runtime', () => {
       const mockPlanner: PlannerRuntime = {
@@ -806,71 +804,71 @@ describe('ApiContext Dependencies - Task 4', () => {
           status: 'created',
         }),
         saveCheckpoint: (_id, _data) => {},
-      };
+      }
 
       const result = createApiContext({
         dbPath: ':memory:',
         plannerRuntime: mockPlanner,
-      });
+      })
 
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
       const plannerResult = result.plannerRuntime.createPlannerRun({
         userId: 'user-001',
         sessionId: 'session-001',
         objective: 'Test planning task',
-      });
+      })
 
-      expect(plannerResult).toBeDefined();
-      expect(plannerResult.plannerRunId).toBe('mock-run-001');
-      expect(plannerResult.planId).toBe('mock-plan-001');
+      expect(plannerResult).toBeDefined()
+      expect(plannerResult.plannerRunId).toBe('mock-run-001')
+      expect(plannerResult.planId).toBe('mock-plan-001')
 
-      result.connection.close();
-    });
-  });
+      result.connection.close()
+    })
+  })
 
   describe('LLMAdapter Safe Fallback', () => {
     it('should return error result when no providers configured', async () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const adapter = result.llmAdapter;
+      const adapter = result.llmAdapter
 
       const llmResult = await adapter.complete({
         model: 'test-model',
         messages: [{ role: 'user', content: 'Hello!' }],
-      });
+      })
 
-      expect(llmResult).toBeDefined();
+      expect(llmResult).toBeDefined()
       // In test environment, mock LLM adapter is used and returns success
-      expect(llmResult.success).toBe(true);
+      expect(llmResult.success).toBe(true)
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should accept new providers after creation', async () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const adapter = result.llmAdapter;
+      const adapter = result.llmAdapter
 
       // In test environment, mock LLM adapter provides one provider
-      expect(adapter.getHealthyProviders()).toHaveLength(1);
+      expect(adapter.getHealthyProviders()).toHaveLength(1)
 
-      result.connection.close();
-    });
-  });
+      result.connection.close()
+    })
+  })
 
   describe('AgentKernel Safe Fallback', () => {
     it('should return error result when LLM fails', async () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const kernel = result.agentKernel;
+      const kernel = result.agentKernel
 
       const kernelResult = await kernel.run({
         contextBundle: {
@@ -888,26 +886,26 @@ describe('ApiContext Dependencies - Task 4', () => {
         agentId: 'agent-001',
         agentType: 'main',
         userId: 'test-user',
-      });
+      })
 
-      expect(kernelResult).toBeDefined();
+      expect(kernelResult).toBeDefined()
       // In test environment, mock LLM adapter is used so kernel completes successfully
-      expect(kernelResult.finalStatus).toBe('completed');
+      expect(kernelResult.finalStatus).toBe('completed')
 
-      result.connection.close();
-    });
-  });
+      result.connection.close()
+    })
+  })
 
   describe('Backward Compatibility', () => {
     it('should preserve existing channel registry behavior', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      const channels = result.channelRegistry.list();
-      const webui = channels.find(c => c.connectorId === 'webui');
-      expect(webui).toBeDefined();
-      expect(webui?.status).toBe('active');
+      const channels = result.channelRegistry.list()
+      const webui = channels.find((c) => c.connectorId === 'webui')
+      expect(webui).toBeDefined()
+      expect(webui?.status).toBe('active')
 
       const deliveryResult = result.channelRegistry.deliver('unknown-channel', {
         envelopeId: 'env-001',
@@ -919,27 +917,27 @@ describe('ApiContext Dependencies - Task 4', () => {
         content: { text: 'test' },
         correlationId: 'corr-001',
         timestamp: new Date().toISOString(),
-      });
+      })
 
-      expect(deliveryResult.success).toBe(false);
-      expect(deliveryResult.error?.code).toBe('CHANNEL_NOT_FOUND');
+      expect(deliveryResult.success).toBe(false)
+      expect(deliveryResult.error?.code).toBe('CHANNEL_NOT_FOUND')
 
-      result.connection.close();
-    });
+      result.connection.close()
+    })
 
     it('should preserve existing timeline broadcaster behavior', () => {
-      const result = createApiContext({ dbPath: ':memory:' });
-      expect(isApiContextError(result)).toBe(false);
-      if (isApiContextError(result)) return;
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
 
-      expect(result.timelineBroadcaster).toBeDefined();
+      expect(result.timelineBroadcaster).toBeDefined()
 
-      const connection = result.timelineBroadcaster.subscribe('session-001');
-      expect(connection).toBeDefined();
-      expect(connection.connectionId).toBeDefined();
-      expect(connection.sessionId).toBe('session-001');
+      const connection = result.timelineBroadcaster.subscribe('session-001')
+      expect(connection).toBeDefined()
+      expect(connection.connectionId).toBeDefined()
+      expect(connection.sessionId).toBe('session-001')
 
-      result.connection.close();
-    });
-  });
-});
+      result.connection.close()
+    })
+  })
+})

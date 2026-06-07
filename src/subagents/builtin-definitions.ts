@@ -1,4 +1,4 @@
-import type { SubagentDefinition, SubagentRegistry } from './registry.js';
+import type { SubagentDefinition, SubagentRegistry } from './registry.js'
 
 // ---------------------------------------------------------------------------
 // Built-in subagent definitions
@@ -10,14 +10,7 @@ const documentProcessor: SubagentDefinition = {
   description: '处理文档类内容，包括文本提取、摘要、分析和结构化输出。',
   modality: 'document',
   promptId: 'subagent.document_processor',
-  allowedToolIds: [
-    'file_read',
-    'file_glob',
-    'file_grep',
-    'docs_search',
-    'artifact_create',
-    'artifact_update',
-  ],
+  allowedToolIds: ['file_read', 'file_glob', 'file_grep', 'docs_search', 'artifact_create', 'artifact_update'],
   defaultMaxIterations: 8,
   defaultTimeoutMs: 120_000,
   supportedExecutionModes: ['sync', 'background'],
@@ -31,7 +24,7 @@ const documentProcessor: SubagentDefinition = {
     returnMode: 'summary_with_artifacts',
     maxSummaryTokens: 1500,
   },
-};
+}
 
 const imageProcessor: SubagentDefinition = {
   agentType: 'image_processor',
@@ -39,11 +32,7 @@ const imageProcessor: SubagentDefinition = {
   description: '处理图片类内容，包括视觉理解、描述生成和图像分析。',
   modality: 'image',
   promptId: 'subagent.image_processor',
-  allowedToolIds: [
-    'file_read',
-    'artifact_create',
-    'artifact_update',
-  ],
+  allowedToolIds: ['file_read', 'artifact_create', 'artifact_update'],
   defaultMaxIterations: 6,
   defaultTimeoutMs: 120_000,
   supportedExecutionModes: ['sync', 'background'],
@@ -57,7 +46,7 @@ const imageProcessor: SubagentDefinition = {
     returnMode: 'summary_with_artifacts',
     maxSummaryTokens: 1200,
   },
-};
+}
 
 const dataProcessor: SubagentDefinition = {
   agentType: 'data_processor',
@@ -65,12 +54,7 @@ const dataProcessor: SubagentDefinition = {
   description: '处理结构化数据，包括数据转换、分析和格式化输出。',
   modality: 'data',
   promptId: 'subagent.data_processor',
-  allowedToolIds: [
-    'file_read',
-    'file_glob',
-    'artifact_create',
-    'artifact_update',
-  ],
+  allowedToolIds: ['file_read', 'file_glob', 'artifact_create', 'artifact_update'],
   defaultMaxIterations: 10,
   defaultTimeoutMs: 180_000,
   supportedExecutionModes: ['sync', 'background'],
@@ -84,7 +68,7 @@ const dataProcessor: SubagentDefinition = {
     returnMode: 'summary_with_artifacts',
     maxSummaryTokens: 1500,
   },
-};
+}
 
 const audioProcessor: SubagentDefinition = {
   agentType: 'audio_processor',
@@ -92,11 +76,7 @@ const audioProcessor: SubagentDefinition = {
   description: '处理音频类内容，包括语音转录、音频分析和内容提取。',
   modality: 'audio',
   promptId: 'subagent.audio_processor',
-  allowedToolIds: [
-    'file_read',
-    'artifact_create',
-    'artifact_update',
-  ],
+  allowedToolIds: ['file_read', 'artifact_create', 'artifact_update'],
   defaultMaxIterations: 6,
   defaultTimeoutMs: 240_000,
   supportedExecutionModes: ['sync', 'background'],
@@ -110,7 +90,7 @@ const audioProcessor: SubagentDefinition = {
     returnMode: 'summary_with_artifacts',
     maxSummaryTokens: 1500,
   },
-};
+}
 
 const codeProcessor: SubagentDefinition = {
   agentType: 'code_processor',
@@ -118,13 +98,7 @@ const codeProcessor: SubagentDefinition = {
   description: '处理代码类内容，包括代码分析、重构建议和代码生成。',
   modality: 'code',
   promptId: 'subagent.code_processor',
-  allowedToolIds: [
-    'file_read',
-    'file_glob',
-    'file_grep',
-    'artifact_create',
-    'artifact_update',
-  ],
+  allowedToolIds: ['file_read', 'file_glob', 'file_grep', 'artifact_create', 'artifact_update'],
   defaultMaxIterations: 12,
   defaultTimeoutMs: 180_000,
   supportedExecutionModes: ['sync', 'background'],
@@ -138,7 +112,7 @@ const codeProcessor: SubagentDefinition = {
     returnMode: 'summary_with_artifacts',
     maxSummaryTokens: 1800,
   },
-};
+}
 
 const researchProcessor: SubagentDefinition = {
   agentType: 'research_processor',
@@ -146,13 +120,7 @@ const researchProcessor: SubagentDefinition = {
   description: '执行深度研究检索，包括多源信息聚合、分析和综合报告生成。',
   modality: 'text',
   promptId: 'subagent.research_processor',
-  allowedToolIds: [
-    'web_search',
-    'web_fetch',
-    'docs_search',
-    'artifact_create',
-    'artifact_update',
-  ],
+  allowedToolIds: ['web_search', 'web_fetch', 'docs_search', 'artifact_create', 'artifact_update'],
   defaultMaxIterations: 10,
   defaultTimeoutMs: 180_000,
   supportedExecutionModes: ['sync', 'background'],
@@ -166,7 +134,7 @@ const researchProcessor: SubagentDefinition = {
     returnMode: 'summary_with_artifacts',
     maxSummaryTokens: 1800,
   },
-};
+}
 
 const searchProcessor: SubagentDefinition = {
   agentType: 'search_processor',
@@ -174,10 +142,7 @@ const searchProcessor: SubagentDefinition = {
   description: '执行快速网络搜索，检索和汇总相关信息。',
   modality: 'text',
   promptId: 'subagent.search_processor',
-  allowedToolIds: [
-    'web_search',
-    'web_fetch',
-  ],
+  allowedToolIds: ['web_search', 'web_fetch'],
   defaultMaxIterations: 5,
   defaultTimeoutMs: 60_000,
   supportedExecutionModes: ['sync', 'background'],
@@ -191,7 +156,7 @@ const searchProcessor: SubagentDefinition = {
     returnMode: 'summary_with_artifacts',
     maxSummaryTokens: 1200,
   },
-};
+}
 
 // ---------------------------------------------------------------------------
 // All built-in definitions in registration order
@@ -205,7 +170,7 @@ const BUILTIN_DEFINITIONS: readonly SubagentDefinition[] = [
   codeProcessor,
   researchProcessor,
   searchProcessor,
-];
+]
 
 // ---------------------------------------------------------------------------
 // Registration helper
@@ -219,6 +184,6 @@ const BUILTIN_DEFINITIONS: readonly SubagentDefinition[] = [
  */
 export function registerBuiltInSubagents(registry: SubagentRegistry): void {
   for (const definition of BUILTIN_DEFINITIONS) {
-    registry.register(definition);
+    registry.register(definition)
   }
 }

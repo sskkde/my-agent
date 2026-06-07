@@ -11,15 +11,15 @@
  *     (these are server-assigned and must not be suggested by the LLM)
  */
 
-import type { ToolDefinition } from '../llm/types.js';
-import type { ForegroundDecisionRoute, TaskComplexity } from './types.js';
+import type { ToolDefinition } from '../llm/types.js'
+import type { ForegroundDecisionRoute, TaskComplexity } from './types.js'
 
 // ---------------------------------------------------------------------------
 // Schema version constant
 // ---------------------------------------------------------------------------
 
 /** Current schema version for `foreground_decide` tool parameters */
-export const FOREGROUND_DECIDE_SCHEMA_VERSION = '1.0' as const;
+export const FOREGROUND_DECIDE_SCHEMA_VERSION = '1.0' as const
 
 // ---------------------------------------------------------------------------
 // TypeScript interface (the "params" the LLM should produce)
@@ -33,49 +33,49 @@ export const FOREGROUND_DECIDE_SCHEMA_VERSION = '1.0' as const;
  */
 export interface ForegroundDecideParams {
   /** Schema version — must match {@link FOREGROUND_DECIDE_SCHEMA_VERSION} */
-  schemaVersion: string;
+  schemaVersion: string
 
   /**
    * The routing decision.
    * Determines how the foreground agent should handle the user's request.
    */
-  route: ForegroundDecisionRoute;
+  route: ForegroundDecisionRoute
 
   /**
    * Whether a planner agent is required to fulfil this request.
    * Set to `true` for multi-step or complex tasks.
    */
-  requiresPlanner: boolean;
+  requiresPlanner: boolean
 
   /**
    * Human-readable explanation of why this route was chosen.
    * Must be non-empty (max 1000 characters).
    */
-  reason: string;
+  reason: string
 
   /**
    * Optional response text shown to the user immediately
    * (e.g. acknowledgement, clarification question).
    */
-  userVisibleResponse?: string;
+  userVisibleResponse?: string
 
   /**
    * Suggested tool IDs when `route` is `'dispatch_tool'`.
    * Helps the dispatcher select the right tools.
    */
-  suggestedTools?: string[];
+  suggestedTools?: string[]
 
   /**
    * Estimated number of discrete steps needed to complete the task.
    * Valid range: 1–50. Useful for complexity heuristics.
    */
-  estimatedSteps?: number;
+  estimatedSteps?: number
 
   /**
    * Detected task complexity level.
    * Guides planner depth and resource allocation.
    */
-  complexity?: TaskComplexity;
+  complexity?: TaskComplexity
 
   /**
    * Non-privileged target references.
@@ -85,10 +85,10 @@ export interface ForegroundDecideParams {
    */
   targetRef?: {
     /** Existing planner run ID to resume */
-    plannerRunId?: string;
+    plannerRunId?: string
     /** Existing plan ID to resume */
-    planId?: string;
-  };
+    planId?: string
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -130,38 +130,32 @@ export const FOREGROUND_DECIDE_SCHEMA: ToolDefinition = {
             'cancel_or_modify_task',
             'status_query',
           ],
-          description:
-            'The routing decision. Determines how the foreground agent handles the request.',
+          description: 'The routing decision. Determines how the foreground agent handles the request.',
         },
         requiresPlanner: {
           type: 'boolean',
-          description:
-            'Whether a planner agent is required. Set true for multi-step or complex tasks.',
+          description: 'Whether a planner agent is required. Set true for multi-step or complex tasks.',
         },
         reason: {
           type: 'string',
           minLength: 1,
           maxLength: 1000,
-          description:
-            'Human-readable explanation of why this route was chosen (1–1000 chars).',
+          description: 'Human-readable explanation of why this route was chosen (1–1000 chars).',
         },
         userVisibleResponse: {
           type: 'string',
-          description:
-            'Optional text shown to the user immediately (acknowledgement, clarification, etc.).',
+          description: 'Optional text shown to the user immediately (acknowledgement, clarification, etc.).',
         },
         suggestedTools: {
           type: 'array',
           items: { type: 'string' },
-          description:
-            'Suggested tool IDs when route is "dispatch_tool". Helps the dispatcher.',
+          description: 'Suggested tool IDs when route is "dispatch_tool". Helps the dispatcher.',
         },
         estimatedSteps: {
           type: 'integer',
           minimum: 1,
           maximum: 50,
-          description:
-            'Estimated number of discrete steps to complete the task (1–50).',
+          description: 'Estimated number of discrete steps to complete the task (1–50).',
         },
         complexity: {
           type: 'string',
@@ -190,7 +184,7 @@ export const FOREGROUND_DECIDE_SCHEMA: ToolDefinition = {
       additionalProperties: false,
     },
   },
-};
+}
 
 // ---------------------------------------------------------------------------
 // Default params factory
@@ -210,5 +204,5 @@ export function createDefaultForegroundDecideParams(): ForegroundDecideParams {
     route: 'answer_directly',
     requiresPlanner: false,
     reason: '',
-  };
+  }
 }

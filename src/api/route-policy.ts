@@ -3,28 +3,22 @@
  * Maps every v1 route to appropriate resource + action for RBAC enforcement.
  */
 
-import { ResourceType, Action } from '../permissions/rbac-types.js';
+import { ResourceType, Action } from '../permissions/rbac-types.js'
 
 /**
  * Extended resource types that include additional resources not in the base ResourceType enum.
  * These are used for route-to-permission mapping where the resource doesn't fit the standard categories.
  */
-export type ExtendedResourceType = 
-  | ResourceType
-  | 'approval'
-  | 'run'
-  | 'provider'
-  | 'agent-config'
-  | 'tool-result';
+export type ExtendedResourceType = ResourceType | 'approval' | 'run' | 'provider' | 'agent-config' | 'tool-result'
 
 /**
  * Route policy entry that maps a route pattern to required permission.
  */
 export interface RoutePolicyEntry {
-  method: string;
-  pathPattern: string;
-  resource: ExtendedResourceType;
-  action: Action;
+  method: string
+  pathPattern: string
+  resource: ExtendedResourceType
+  action: Action
 }
 
 /**
@@ -38,14 +32,54 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   { method: 'POST', pathPattern: '/api/v1/sessions', resource: ResourceType.sessions, action: Action.create },
   { method: 'GET', pathPattern: '/api/v1/sessions', resource: ResourceType.sessions, action: Action.read },
   { method: 'GET', pathPattern: '/api/v1/sessions/:sessionId', resource: ResourceType.sessions, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/sessions/:sessionId/transcripts', resource: ResourceType.sessions, action: Action.read },
-  { method: 'POST', pathPattern: '/api/v1/sessions/:sessionId/messages', resource: ResourceType.sessions, action: Action.execute },
-  { method: 'POST', pathPattern: '/api/v1/sessions/:sessionId/resume', resource: ResourceType.sessions, action: Action.read },
-  { method: 'PATCH', pathPattern: '/api/v1/sessions/:sessionId', resource: ResourceType.sessions, action: Action.update },
-  { method: 'GET', pathPattern: '/api/v1/sessions/:sessionId/timeline', resource: ResourceType.sessions, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/sessions/:sessionId/timeline/stream', resource: ResourceType.sessions, action: Action.read },
-  { method: 'PATCH', pathPattern: '/api/v1/sessions/:sessionId/model', resource: ResourceType.sessions, action: Action.update },
-  { method: 'GET', pathPattern: '/api/v1/sessions/:sessionId/usage', resource: ResourceType.sessions, action: Action.read },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/sessions/:sessionId/transcripts',
+    resource: ResourceType.sessions,
+    action: Action.read,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/sessions/:sessionId/messages',
+    resource: ResourceType.sessions,
+    action: Action.execute,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/sessions/:sessionId/resume',
+    resource: ResourceType.sessions,
+    action: Action.read,
+  },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/sessions/:sessionId',
+    resource: ResourceType.sessions,
+    action: Action.update,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/sessions/:sessionId/timeline',
+    resource: ResourceType.sessions,
+    action: Action.read,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/sessions/:sessionId/timeline/stream',
+    resource: ResourceType.sessions,
+    action: Action.read,
+  },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/sessions/:sessionId/model',
+    resource: ResourceType.sessions,
+    action: Action.update,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/sessions/:sessionId/usage',
+    resource: ResourceType.sessions,
+    action: Action.read,
+  },
 
   // ===========================================
   // Status / Health
@@ -80,7 +114,12 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // ===========================================
   // Debug
   // ===========================================
-  { method: 'GET', pathPattern: '/api/v1/debug/replay/:sessionId', resource: ResourceType.sessions, action: Action.read },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/debug/replay/:sessionId',
+    resource: ResourceType.sessions,
+    action: Action.read,
+  },
 
   // ===========================================
   // Instances
@@ -137,8 +176,18 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // ===========================================
   // Memory
   // ===========================================
-  { method: 'GET', pathPattern: '/api/v1/memory/debug/extraction-runs', resource: ResourceType.memory, action: Action.read },
-  { method: 'POST', pathPattern: '/api/v1/memory/debug/extract', resource: ResourceType.memory, action: Action.execute },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/memory/debug/extraction-runs',
+    resource: ResourceType.memory,
+    action: Action.read,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/memory/debug/extract',
+    resource: ResourceType.memory,
+    action: Action.execute,
+  },
   { method: 'GET', pathPattern: '/api/v1/memory', resource: ResourceType.memory, action: Action.read },
   { method: 'GET', pathPattern: '/api/v1/memory/:memoryId', resource: ResourceType.memory, action: Action.read },
   { method: 'DELETE', pathPattern: '/api/v1/memory/:memoryId', resource: ResourceType.memory, action: Action.delete },
@@ -147,24 +196,64 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // Workflows - Drafts
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/workflows/drafts', resource: ResourceType.workflows, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/workflows/drafts/:draftId', resource: ResourceType.workflows, action: Action.read },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/workflows/drafts/:draftId',
+    resource: ResourceType.workflows,
+    action: Action.read,
+  },
   { method: 'POST', pathPattern: '/api/v1/workflows/drafts', resource: ResourceType.workflows, action: Action.create },
-  { method: 'PATCH', pathPattern: '/api/v1/workflows/drafts/:draftId', resource: ResourceType.workflows, action: Action.update },
-  { method: 'POST', pathPattern: '/api/v1/workflows/drafts/:draftId/validate', resource: ResourceType.workflows, action: Action.read },
-  { method: 'POST', pathPattern: '/api/v1/workflows/drafts/:draftId/publish', resource: ResourceType.workflows, action: Action.update },
-  { method: 'DELETE', pathPattern: '/api/v1/workflows/drafts/:draftId', resource: ResourceType.workflows, action: Action.delete },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/workflows/drafts/:draftId',
+    resource: ResourceType.workflows,
+    action: Action.update,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/workflows/drafts/:draftId/validate',
+    resource: ResourceType.workflows,
+    action: Action.read,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/workflows/drafts/:draftId/publish',
+    resource: ResourceType.workflows,
+    action: Action.update,
+  },
+  {
+    method: 'DELETE',
+    pathPattern: '/api/v1/workflows/drafts/:draftId',
+    resource: ResourceType.workflows,
+    action: Action.delete,
+  },
 
   // ===========================================
   // Workflows - Definitions
   // ===========================================
-  { method: 'GET', pathPattern: '/api/v1/workflows/definitions', resource: ResourceType.workflows, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/workflows/definitions/:workflowId', resource: ResourceType.workflows, action: Action.read },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/workflows/definitions',
+    resource: ResourceType.workflows,
+    action: Action.read,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/workflows/definitions/:workflowId',
+    resource: ResourceType.workflows,
+    action: Action.read,
+  },
 
   // ===========================================
   // Workflows - Runs
   // ===========================================
   { method: 'POST', pathPattern: '/api/v1/workflows/runs', resource: ResourceType.workflows, action: Action.execute },
-  { method: 'GET', pathPattern: '/api/v1/workflows/runs/:workflowRunId', resource: ResourceType.workflows, action: Action.read },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/workflows/runs/:workflowRunId',
+    resource: ResourceType.workflows,
+    action: Action.read,
+  },
   { method: 'GET', pathPattern: '/api/v1/workflows/runs', resource: ResourceType.workflows, action: Action.read },
 
   // ===========================================
@@ -176,31 +265,86 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // Triggers - Schedules
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/triggers', resource: ResourceType.triggers, action: Action.read },
-  { method: 'PATCH', pathPattern: '/api/v1/triggers/:triggerId', resource: ResourceType.triggers, action: Action.update },
-  { method: 'GET', pathPattern: '/api/v1/triggers/:triggerId/logs', resource: ResourceType.triggers, action: Action.read },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/triggers/:triggerId',
+    resource: ResourceType.triggers,
+    action: Action.update,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/triggers/:triggerId/logs',
+    resource: ResourceType.triggers,
+    action: Action.read,
+  },
   { method: 'POST', pathPattern: '/api/v1/triggers/schedules', resource: ResourceType.triggers, action: Action.create },
   { method: 'GET', pathPattern: '/api/v1/triggers/schedules', resource: ResourceType.triggers, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/triggers/schedules/:scheduleId', resource: ResourceType.triggers, action: Action.read },
-  { method: 'PATCH', pathPattern: '/api/v1/triggers/schedules/:scheduleId', resource: ResourceType.triggers, action: Action.update },
-  { method: 'DELETE', pathPattern: '/api/v1/triggers/schedules/:scheduleId', resource: ResourceType.triggers, action: Action.delete },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/triggers/schedules/:scheduleId',
+    resource: ResourceType.triggers,
+    action: Action.read,
+  },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/triggers/schedules/:scheduleId',
+    resource: ResourceType.triggers,
+    action: Action.update,
+  },
+  {
+    method: 'DELETE',
+    pathPattern: '/api/v1/triggers/schedules/:scheduleId',
+    resource: ResourceType.triggers,
+    action: Action.delete,
+  },
 
   // ===========================================
   // Triggers - Webhooks
   // ===========================================
   { method: 'POST', pathPattern: '/api/v1/triggers/webhooks', resource: ResourceType.triggers, action: Action.create },
   { method: 'GET', pathPattern: '/api/v1/triggers/webhooks', resource: ResourceType.triggers, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/triggers/webhooks/:webhookId', resource: ResourceType.triggers, action: Action.read },
-  { method: 'PATCH', pathPattern: '/api/v1/triggers/webhooks/:webhookId', resource: ResourceType.triggers, action: Action.update },
-  { method: 'DELETE', pathPattern: '/api/v1/triggers/webhooks/:webhookId', resource: ResourceType.triggers, action: Action.delete },
-  { method: 'POST', pathPattern: '/api/v1/webhooks/:webhookId/deliver', resource: ResourceType.triggers, action: Action.execute },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/triggers/webhooks/:webhookId',
+    resource: ResourceType.triggers,
+    action: Action.read,
+  },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/triggers/webhooks/:webhookId',
+    resource: ResourceType.triggers,
+    action: Action.update,
+  },
+  {
+    method: 'DELETE',
+    pathPattern: '/api/v1/triggers/webhooks/:webhookId',
+    resource: ResourceType.triggers,
+    action: Action.delete,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/webhooks/:webhookId/deliver',
+    resource: ResourceType.triggers,
+    action: Action.execute,
+  },
 
   // ===========================================
   // Connectors
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/connectors', resource: ResourceType.connectors, action: Action.read },
   { method: 'GET', pathPattern: '/api/v1/connectors/:id', resource: ResourceType.connectors, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/connectors/:id/instances', resource: ResourceType.connectors, action: Action.read },
-  { method: 'PATCH', pathPattern: '/api/v1/connectors/:id/instances/:iid/config', resource: ResourceType.connectors, action: Action.update },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/connectors/:id/instances',
+    resource: ResourceType.connectors,
+    action: Action.read,
+  },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/connectors/:id/instances/:iid/config',
+    resource: ResourceType.connectors,
+    action: Action.update,
+  },
 
   // ===========================================
   // Planner Runs
@@ -211,9 +355,24 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // ===========================================
   // Observability
   // ===========================================
-  { method: 'GET', pathPattern: '/api/v1/observability/runs', resource: ResourceType.observability, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/observability/runs/:runId/console', resource: ResourceType.observability, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/observability/runs/:runId/replay-preview', resource: ResourceType.observability, action: Action.read },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/observability/runs',
+    resource: ResourceType.observability,
+    action: Action.read,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/observability/runs/:runId/console',
+    resource: ResourceType.observability,
+    action: Action.read,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/observability/runs/:runId/replay-preview',
+    resource: ResourceType.observability,
+    action: Action.read,
+  },
   { method: 'GET', pathPattern: '/api/v1/metrics', resource: ResourceType.observability, action: Action.read },
 
   // ===========================================
@@ -221,20 +380,55 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/dlq', resource: ResourceType.observability, action: Action.read },
   { method: 'GET', pathPattern: '/api/v1/dlq/:eventId', resource: ResourceType.observability, action: Action.read },
-  { method: 'POST', pathPattern: '/api/v1/dlq/:eventId/retry', resource: ResourceType.observability, action: Action.update },
-  { method: 'POST', pathPattern: '/api/v1/dlq/batch-retry', resource: ResourceType.observability, action: Action.update },
-  { method: 'POST', pathPattern: '/api/v1/dlq/batch-discard', resource: ResourceType.observability, action: Action.update },
-  { method: 'DELETE', pathPattern: '/api/v1/dlq/:eventId', resource: ResourceType.observability, action: Action.delete },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/dlq/:eventId/retry',
+    resource: ResourceType.observability,
+    action: Action.update,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/dlq/batch-retry',
+    resource: ResourceType.observability,
+    action: Action.update,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/dlq/batch-discard',
+    resource: ResourceType.observability,
+    action: Action.update,
+  },
+  {
+    method: 'DELETE',
+    pathPattern: '/api/v1/dlq/:eventId',
+    resource: ResourceType.observability,
+    action: Action.delete,
+  },
 
   // ===========================================
   // Alerts
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/alerts/rules', resource: ResourceType.observability, action: Action.read },
-  { method: 'GET', pathPattern: '/api/v1/alerts/rules/:ruleId', resource: ResourceType.observability, action: Action.read },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/alerts/rules/:ruleId',
+    resource: ResourceType.observability,
+    action: Action.read,
+  },
   { method: 'POST', pathPattern: '/api/v1/alerts/rules', resource: ResourceType.observability, action: Action.create },
-  { method: 'DELETE', pathPattern: '/api/v1/alerts/rules/:ruleId', resource: ResourceType.observability, action: Action.delete },
+  {
+    method: 'DELETE',
+    pathPattern: '/api/v1/alerts/rules/:ruleId',
+    resource: ResourceType.observability,
+    action: Action.delete,
+  },
   { method: 'GET', pathPattern: '/api/v1/alerts/state', resource: ResourceType.observability, action: Action.read },
-  { method: 'POST', pathPattern: '/api/v1/alerts/evaluate', resource: ResourceType.observability, action: Action.execute },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/alerts/evaluate',
+    resource: ResourceType.observability,
+    action: Action.execute,
+  },
 
   // ===========================================
   // API Keys
@@ -247,20 +441,50 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // Agents
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/agents/:agentId/config', resource: 'agent-config', action: Action.read },
-  { method: 'PATCH', pathPattern: '/api/v1/agents/:agentId/config/global', resource: 'agent-config', action: Action.manage },
-  { method: 'PATCH', pathPattern: '/api/v1/agents/:agentId/config/override', resource: 'agent-config', action: Action.update },
-  { method: 'DELETE', pathPattern: '/api/v1/agents/:agentId/config/override', resource: 'agent-config', action: Action.delete },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/agents/:agentId/config/global',
+    resource: 'agent-config',
+    action: Action.manage,
+  },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/agents/:agentId/config/override',
+    resource: 'agent-config',
+    action: Action.update,
+  },
+  {
+    method: 'DELETE',
+    pathPattern: '/api/v1/agents/:agentId/config/override',
+    resource: 'agent-config',
+    action: Action.delete,
+  },
 
   // ===========================================
   // Admin
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/admin/users', resource: ResourceType.users, action: Action.manage },
-  { method: 'PATCH', pathPattern: '/api/v1/admin/users/:userId/role', resource: ResourceType.users, action: Action.manage },
-  { method: 'PATCH', pathPattern: '/api/v1/admin/users/:userId/status', resource: ResourceType.users, action: Action.manage },
-  { method: 'GET', pathPattern: '/api/v1/admin/connectors/health', resource: ResourceType.connectors, action: Action.read },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/admin/users/:userId/role',
+    resource: ResourceType.users,
+    action: Action.manage,
+  },
+  {
+    method: 'PATCH',
+    pathPattern: '/api/v1/admin/users/:userId/status',
+    resource: ResourceType.users,
+    action: Action.manage,
+  },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/admin/connectors/health',
+    resource: ResourceType.connectors,
+    action: Action.read,
+  },
   { method: 'GET', pathPattern: '/api/v1/admin/settings', resource: ResourceType.settings, action: Action.read },
   { method: 'PATCH', pathPattern: '/api/v1/admin/settings', resource: ResourceType.settings, action: Action.manage },
-];
+]
 
 /**
  * Converts a path pattern with parameters (e.g., "/api/v1/sessions/:sessionId")
@@ -268,10 +492,8 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
  */
 function pathPatternToRegex(pattern: string): RegExp {
   // Escape special regex characters except for the colon used in path params
-  const escaped = pattern
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/:[a-zA-Z_][a-zA-Z0-9_]*/g, '[^/]+');
-  return new RegExp(`^${escaped}$`);
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/:[a-zA-Z_][a-zA-Z0-9_]*/g, '[^/]+')
+  return new RegExp(`^${escaped}$`)
 }
 
 /**
@@ -285,21 +507,21 @@ function pathPatternToRegex(pattern: string): RegExp {
  */
 export function getRequiredPermission(
   method: string,
-  path: string
+  path: string,
 ): { resource: ExtendedResourceType; action: Action } | null {
   for (const entry of ROUTE_POLICY_MAP) {
     if (entry.method.toUpperCase() !== method.toUpperCase()) {
-      continue;
+      continue
     }
 
-    const regex = pathPatternToRegex(entry.pathPattern);
+    const regex = pathPatternToRegex(entry.pathPattern)
     if (regex.test(path)) {
       return {
         resource: entry.resource,
         action: entry.action,
-      };
+      }
     }
   }
 
-  return null;
+  return null
 }

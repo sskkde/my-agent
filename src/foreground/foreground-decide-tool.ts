@@ -10,15 +10,10 @@
  * that field is the server's responsibility after the decision is made.
  */
 
-import type {
-  ToolDefinition,
-  ToolHandler,
-  ToolExecutionResult,
-  ToolSchema,
-} from '../tools/types.js';
-import type { ForegroundDecideParams } from './foreground-decision-schema.js';
-import { FOREGROUND_DECIDE_SCHEMA } from './foreground-decision-schema.js';
-import type { ForegroundDecision } from './types.js';
+import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolSchema } from '../tools/types.js'
+import type { ForegroundDecideParams } from './foreground-decision-schema.js'
+import { FOREGROUND_DECIDE_SCHEMA } from './foreground-decision-schema.js'
+import type { ForegroundDecision } from './types.js'
 
 /**
  * Structured result returned by the `foreground_decide` tool handler.
@@ -28,8 +23,8 @@ import type { ForegroundDecision } from './types.js';
  * {@link ToolExecutionResult}).
  */
 export interface ForegroundDecideResult {
-  decision: ForegroundDecision;
-  validationErrors?: string[];
+  decision: ForegroundDecision
+  validationErrors?: string[]
 }
 
 /**
@@ -50,12 +45,12 @@ export interface ForegroundDecideResult {
  */
 export function createForegroundDecideTool(): ToolDefinition {
   const handler: ToolHandler = (params: unknown): ToolExecutionResult => {
-    const typedParams = params as ForegroundDecideParams;
+    const typedParams = params as ForegroundDecideParams
 
-    const validationErrors: string[] = [];
+    const validationErrors: string[] = []
 
     if (!typedParams.reason || typedParams.reason.trim().length === 0) {
-      validationErrors.push('reason must be a non-empty string');
+      validationErrors.push('reason must be a non-empty string')
     }
 
     if (validationErrors.length > 0) {
@@ -67,7 +62,7 @@ export function createForegroundDecideTool(): ToolDefinition {
           recoverable: true,
         },
         data: { validationErrors } satisfies Partial<ForegroundDecideResult>,
-      };
+      }
     }
 
     const decision: ForegroundDecision = {
@@ -84,20 +79,19 @@ export function createForegroundDecideTool(): ToolDefinition {
             planId: typedParams.targetRef.planId,
           }
         : undefined,
-    };
+    }
 
-    const result: ForegroundDecideResult = { decision };
+    const result: ForegroundDecideResult = { decision }
 
     return {
       success: true,
       data: result,
       resultPreview: `Decision: ${decision.route} — ${decision.reason}`,
       structuredContent: result as unknown as Record<string, unknown>,
-    };
-  };
+    }
+  }
 
-  const schema: ToolSchema =
-    FOREGROUND_DECIDE_SCHEMA.function.parameters as unknown as ToolSchema;
+  const schema: ToolSchema = FOREGROUND_DECIDE_SCHEMA.function.parameters as unknown as ToolSchema
 
   return {
     name: 'foreground_decide',
@@ -109,5 +103,5 @@ export function createForegroundDecideTool(): ToolDefinition {
     sensitivity: 'low',
     schema,
     handler,
-  };
+  }
 }

@@ -326,7 +326,7 @@ describe('TimelineEventCard Approval Actions', () => {
     fireEvent.click(screen.getByTestId('approval-approve-appr-click'));
 
     await waitFor(() => {
-      expect(mockRespondApproval).toHaveBeenCalledWith('appr-click', 'approved');
+      expect(mockRespondApproval).toHaveBeenCalledWith('appr-click', 'approve_once');
     });
 
     await waitFor(() => {
@@ -343,7 +343,7 @@ describe('TimelineEventCard Approval Actions', () => {
     fireEvent.click(screen.getByTestId('approval-reject-appr-reject-click'));
 
     await waitFor(() => {
-      expect(mockRespondApproval).toHaveBeenCalledWith('appr-reject-click', 'rejected', undefined);
+      expect(mockRespondApproval).toHaveBeenCalledWith('appr-reject-click', 'reject', undefined);
     });
 
     await waitFor(() => {

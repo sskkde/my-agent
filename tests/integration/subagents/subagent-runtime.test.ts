@@ -1,46 +1,46 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import type { ContextBundle, ContextItem } from '../../../src/context/types.js';
+import { describe, it, expect, beforeEach } from 'vitest'
+import type { ContextBundle, ContextItem } from '../../../src/context/types.js'
 import type {
   SubagentTaskSpec,
   SubagentConfig,
   LaunchSubagentInput,
   KernelAdapter,
   SubagentContextManager,
-} from '../../../src/subagents/types.js';
-import type { KernelRunResult } from '../../../src/kernel/types.js';
-import { SubagentRuntimeImpl } from '../../../src/subagents/subagent-runtime.js';
+} from '../../../src/subagents/types.js'
+import type { KernelRunResult } from '../../../src/kernel/types.js'
+import { SubagentRuntimeImpl } from '../../../src/subagents/subagent-runtime.js'
 
 class FakeKernelAdapter implements KernelAdapter {
-  private results: KernelRunResult[] = [];
-  private currentIndex = 0;
-  private cancelFlags = new Map<string, boolean>();
+  private results: KernelRunResult[] = []
+  private currentIndex = 0
+  private cancelFlags = new Map<string, boolean>()
 
   setResults(results: KernelRunResult[]) {
-    this.results = results;
-    this.currentIndex = 0;
+    this.results = results
+    this.currentIndex = 0
   }
 
   setCancelFlag(runId: string, value: boolean) {
-    this.cancelFlags.set(runId, value);
+    this.cancelFlags.set(runId, value)
   }
 
   async execute(options: {
-    contextBundle: ContextBundle;
-    maxIterations: number;
-    timeoutMs: number;
-    onCancel?: () => boolean;
+    contextBundle: ContextBundle
+    maxIterations: number
+    timeoutMs: number
+    onCancel?: () => boolean
   }): Promise<KernelRunResult> {
-    const result = this.results[this.currentIndex] ?? this.createDefaultResult();
-    this.currentIndex++;
+    const result = this.results[this.currentIndex] ?? this.createDefaultResult()
+    this.currentIndex++
 
     if (options.onCancel) {
-      const runId = options.contextBundle.runId;
+      const runId = options.contextBundle.runId
       if (this.cancelFlags.get(runId)) {
-        return this.createCancelledResult();
+        return this.createCancelledResult()
       }
     }
 
-    return result;
+    return result
   }
 
   private createDefaultResult(): KernelRunResult {
@@ -50,7 +50,7 @@ class FakeKernelAdapter implements KernelAdapter {
       iterationsUsed: 1,
       toolCalls: [],
       transcript: [],
-    };
+    }
   }
 
   private createCancelledResult(): KernelRunResult {
@@ -64,15 +64,15 @@ class FakeKernelAdapter implements KernelAdapter {
         code: 'CANCELLED',
         message: 'Subagent execution was cancelled',
       },
-    };
+    }
   }
 }
 
 class FakeContextManager implements SubagentContextManager {
   createIsolatedContext(options: {
-    parentContext: ContextBundle;
-    taskSpec: SubagentTaskSpec;
-    subagentRunId: string;
+    parentContext: ContextBundle
+    taskSpec: SubagentTaskSpec
+    subagentRunId: string
   }): ContextBundle {
     const isolatedItem: ContextItem = {
       itemId: `isolated-${options.subagentRunId}`,
@@ -80,7 +80,7 @@ class FakeContextManager implements SubagentContextManager {
       semanticType: 'instruction',
       content: `Objective: ${options.taskSpec.objective}`,
       estimatedTokens: 10,
-    };
+    }
 
     return {
       bundleId: `bundle-${options.subagentRunId}`,
@@ -92,20 +92,20 @@ class FakeContextManager implements SubagentContextManager {
       pinnedItems: [isolatedItem],
       orderedItems: [],
       tokenEstimate: 10,
-    };
+    }
   }
 }
 
 describe('Subagent Runtime', () => {
-  let runtime: SubagentRuntimeImpl;
-  let fakeKernelAdapter: FakeKernelAdapter;
-  let fakeContextManager: FakeContextManager;
-  let baseConfig: SubagentConfig;
-  let parentContext: ContextBundle;
+  let runtime: SubagentRuntimeImpl
+  let fakeKernelAdapter: FakeKernelAdapter
+  let fakeContextManager: FakeContextManager
+  let baseConfig: SubagentConfig
+  let parentContext: ContextBundle
 
   beforeEach(() => {
-    fakeKernelAdapter = new FakeKernelAdapter();
-    fakeContextManager = new FakeContextManager();
+    fakeKernelAdapter = new FakeKernelAdapter()
+    fakeContextManager = new FakeContextManager()
 
     baseConfig = {
       kernelAdapter: fakeKernelAdapter,
@@ -113,9 +113,9 @@ describe('Subagent Runtime', () => {
       maxConcurrent: 5,
       defaultTimeoutMs: 60000,
       defaultMaxIterations: 10,
-    };
+    }
 
-    runtime = new SubagentRuntimeImpl(baseConfig);
+    runtime = new SubagentRuntimeImpl(baseConfig)
 
     parentContext = {
       bundleId: 'parent-bundle-1',
@@ -135,8 +135,8 @@ describe('Subagent Runtime', () => {
         },
       ],
       tokenEstimate: 10,
-    };
-  });
+    }
+  })
 
   describe('SubagentRun launch', () => {
     it('should create subagent run with unique ID', () => {
@@ -147,14 +147,14 @@ describe('Subagent Runtime', () => {
           maxIterations: 5,
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.subagentRunId).toBeDefined();
-      expect(run.subagentRunId).toMatch(/^subagent-/);
-      expect(run.status).toBe('queued');
-    });
+      expect(run.subagentRunId).toBeDefined()
+      expect(run.subagentRunId).toMatch(/^subagent-/)
+      expect(run.status).toBe('queued')
+    })
 
     it('should link parentRunId from parent context', () => {
       const input: LaunchSubagentInput = {
@@ -162,12 +162,12 @@ describe('Subagent Runtime', () => {
           objective: 'Test objective',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.parentRunId).toBe('parent-run-1');
-    });
+      expect(run.parentRunId).toBe('parent-run-1')
+    })
 
     it('should use provided parentRunId when specified', () => {
       const input: LaunchSubagentInput = {
@@ -176,12 +176,12 @@ describe('Subagent Runtime', () => {
         },
         parentContext,
         parentRunId: 'custom-parent-run',
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.parentRunId).toBe('custom-parent-run');
-    });
+      expect(run.parentRunId).toBe('custom-parent-run')
+    })
 
     it('should link rootRunId same as parentRunId when not specified', () => {
       const input: LaunchSubagentInput = {
@@ -190,12 +190,12 @@ describe('Subagent Runtime', () => {
         },
         parentContext,
         parentRunId: 'custom-parent',
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.rootRunId).toBe('custom-parent');
-    });
+      expect(run.rootRunId).toBe('custom-parent')
+    })
 
     it('should use provided rootRunId when specified', () => {
       const input: LaunchSubagentInput = {
@@ -205,13 +205,13 @@ describe('Subagent Runtime', () => {
         parentContext,
         parentRunId: 'parent-run-2',
         rootRunId: 'root-run-1',
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.rootRunId).toBe('root-run-1');
-      expect(run.parentRunId).toBe('parent-run-2');
-    });
+      expect(run.rootRunId).toBe('root-run-1')
+      expect(run.parentRunId).toBe('parent-run-2')
+    })
 
     it('should store task spec correctly', () => {
       const taskSpec: SubagentTaskSpec = {
@@ -220,18 +220,18 @@ describe('Subagent Runtime', () => {
         maxIterations: 10,
         timeoutMs: 30000,
         agentType: 'analyzer',
-      };
+      }
 
       const input: LaunchSubagentInput = {
         taskSpec,
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.taskSpec).toEqual(taskSpec);
-    });
-  });
+      expect(run.taskSpec).toEqual(taskSpec)
+    })
+  })
 
   describe('Context isolation', () => {
     it('should create isolated context bundle', () => {
@@ -240,14 +240,14 @@ describe('Subagent Runtime', () => {
           objective: 'Isolated task',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.contextBundle).toBeDefined();
-      expect(run.contextBundle.runId).toBe(run.subagentRunId);
-      expect(run.contextBundle.bundleId).not.toBe(parentContext.bundleId);
-    });
+      expect(run.contextBundle).toBeDefined()
+      expect(run.contextBundle.runId).toBe(run.subagentRunId)
+      expect(run.contextBundle.bundleId).not.toBe(parentContext.bundleId)
+    })
 
     it('should not share mutable state with parent context', () => {
       const input: LaunchSubagentInput = {
@@ -255,22 +255,20 @@ describe('Subagent Runtime', () => {
           objective: 'Isolated task',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      const parentItemIds = new Set(
-        [...parentContext.pinnedItems, ...parentContext.orderedItems].map(i => i.itemId)
-      );
+      const parentItemIds = new Set([...parentContext.pinnedItems, ...parentContext.orderedItems].map((i) => i.itemId))
 
       const subagentItemIds = new Set(
-        [...run.contextBundle.pinnedItems, ...run.contextBundle.orderedItems].map(i => i.itemId)
-      );
+        [...run.contextBundle.pinnedItems, ...run.contextBundle.orderedItems].map((i) => i.itemId),
+      )
 
       for (const itemId of subagentItemIds) {
-        expect(parentItemIds.has(itemId)).toBe(false);
+        expect(parentItemIds.has(itemId)).toBe(false)
       }
-    });
+    })
 
     it('should include objective in isolated context', () => {
       const input: LaunchSubagentInput = {
@@ -278,18 +276,16 @@ describe('Subagent Runtime', () => {
           objective: 'Specific task to accomplish',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      const allItems = [...run.contextBundle.pinnedItems, ...run.contextBundle.orderedItems];
-      const objectiveItem = allItems.find(item =>
-        item.content.includes('Specific task to accomplish')
-      );
+      const allItems = [...run.contextBundle.pinnedItems, ...run.contextBundle.orderedItems]
+      const objectiveItem = allItems.find((item) => item.content.includes('Specific task to accomplish'))
 
-      expect(objectiveItem).toBeDefined();
-    });
-  });
+      expect(objectiveItem).toBeDefined()
+    })
+  })
 
   describe('Agent type selection', () => {
     it('should use specified agent type from task spec', () => {
@@ -299,12 +295,12 @@ describe('Subagent Runtime', () => {
           agentType: 'custom-agent',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.contextBundle.agentType).toBe('custom-agent');
-    });
+      expect(run.contextBundle.agentType).toBe('custom-agent')
+    })
 
     it('should default to subagent type when not specified', () => {
       const input: LaunchSubagentInput = {
@@ -312,12 +308,12 @@ describe('Subagent Runtime', () => {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.contextBundle.agentType).toBe('subagent');
-    });
+      expect(run.contextBundle.agentType).toBe('subagent')
+    })
 
     it('should have different agentId than parent', () => {
       const input: LaunchSubagentInput = {
@@ -325,13 +321,13 @@ describe('Subagent Runtime', () => {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.contextBundle.agentId).not.toBe(parentContext.agentId);
-    });
-  });
+      expect(run.contextBundle.agentId).not.toBe(parentContext.agentId)
+    })
+  })
 
   describe('Subagent execution', () => {
     it('should execute subagent and return result', async () => {
@@ -339,28 +335,26 @@ describe('Subagent Runtime', () => {
         finalStatus: 'completed',
         finalResponse: 'Task completed successfully',
         iterationsUsed: 3,
-        toolCalls: [
-          { toolCallId: 'call-1', toolName: 'search', params: { query: 'test' } },
-        ],
+        toolCalls: [{ toolCallId: 'call-1', toolName: 'search', params: { query: 'test' } }],
         transcript: [],
-      };
+      }
 
-      fakeKernelAdapter.setResults([kernelResult]);
+      fakeKernelAdapter.setResults([kernelResult])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
           objective: 'Execute task',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      const result = await runtime.executeSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      const result = await runtime.executeSubagent(run.subagentRunId)
 
-      expect(result.status).toBe('completed');
-      expect(result.response).toBe('Task completed successfully');
-      expect(result.iterationsUsed).toBe(3);
-    });
+      expect(result.status).toBe('completed')
+      expect(result.response).toBe('Task completed successfully')
+      expect(result.iterationsUsed).toBe(3)
+    })
 
     it('should update run status to running during execution', async () => {
       fakeKernelAdapter.setResults([
@@ -371,26 +365,26 @@ describe('Subagent Runtime', () => {
           toolCalls: [],
           transcript: [],
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
+      const run = runtime.launchSubagent(input)
 
-      expect(run.status).toBe('queued');
+      expect(run.status).toBe('queued')
 
-      const executionPromise = runtime.executeSubagent(run.subagentRunId);
+      const executionPromise = runtime.executeSubagent(run.subagentRunId)
 
-      const currentRun = runtime.getSubagentRun(run.subagentRunId);
-      expect(currentRun?.status).toBe('running');
+      const currentRun = runtime.getSubagentRun(run.subagentRunId)
+      expect(currentRun?.status).toBe('running')
 
-      await executionPromise;
-    });
+      await executionPromise
+    })
 
     it('should update run status to completed after successful execution', async () => {
       fakeKernelAdapter.setResults([
@@ -401,21 +395,21 @@ describe('Subagent Runtime', () => {
           toolCalls: [],
           transcript: [],
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      await runtime.executeSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      await runtime.executeSubagent(run.subagentRunId)
 
-      const currentRun = runtime.getSubagentRun(run.subagentRunId);
-      expect(currentRun?.status).toBe('completed');
-    });
+      const currentRun = runtime.getSubagentRun(run.subagentRunId)
+      expect(currentRun?.status).toBe('completed')
+    })
 
     it('should map tool calls from kernel result', async () => {
       fakeKernelAdapter.setResults([
@@ -429,22 +423,22 @@ describe('Subagent Runtime', () => {
           ],
           transcript: [],
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      const result = await runtime.executeSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      const result = await runtime.executeSubagent(run.subagentRunId)
 
-      expect(result.toolCalls).toHaveLength(2);
-      expect(result.toolCalls[0].toolName).toBe('search');
-      expect(result.toolCalls[1].toolName).toBe('analyze');
-    });
+      expect(result.toolCalls).toHaveLength(2)
+      expect(result.toolCalls[0].toolName).toBe('search')
+      expect(result.toolCalls[1].toolName).toBe('analyze')
+    })
 
     it('should handle kernel failure', async () => {
       fakeKernelAdapter.setResults([
@@ -459,23 +453,23 @@ describe('Subagent Runtime', () => {
             message: 'Something went wrong',
           },
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      const result = await runtime.executeSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      const result = await runtime.executeSubagent(run.subagentRunId)
 
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('KERNEL_ERROR');
-      expect(result.error?.message).toBe('Something went wrong');
-    });
-  });
+      expect(result.status).toBe('failed')
+      expect(result.error?.code).toBe('KERNEL_ERROR')
+      expect(result.error?.message).toBe('Something went wrong')
+    })
+  })
 
   describe('Subagent cancellation', () => {
     it('should return cancelled status when cancelled', async () => {
@@ -484,15 +478,15 @@ describe('Subagent Runtime', () => {
           objective: 'Long running task',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      fakeKernelAdapter.setCancelFlag(run.subagentRunId, true);
+      const run = runtime.launchSubagent(input)
+      fakeKernelAdapter.setCancelFlag(run.subagentRunId, true)
 
-      const cancelResult = runtime.cancelSubagent(run.subagentRunId);
+      const cancelResult = runtime.cancelSubagent(run.subagentRunId)
 
-      expect(cancelResult.status).toBe('cancelled');
-    });
+      expect(cancelResult.status).toBe('cancelled')
+    })
 
     it('should set isCancelled flag on run', () => {
       const input: LaunchSubagentInput = {
@@ -500,14 +494,14 @@ describe('Subagent Runtime', () => {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      runtime.cancelSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      runtime.cancelSubagent(run.subagentRunId)
 
-      const currentRun = runtime.getSubagentRun(run.subagentRunId);
-      expect(currentRun?.isCancelled).toBe(true);
-    });
+      const currentRun = runtime.getSubagentRun(run.subagentRunId)
+      expect(currentRun?.isCancelled).toBe(true)
+    })
 
     it('should include cancellation info in result', () => {
       const input: LaunchSubagentInput = {
@@ -515,14 +509,14 @@ describe('Subagent Runtime', () => {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      const result = runtime.cancelSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      const result = runtime.cancelSubagent(run.subagentRunId)
 
-      expect(result.status).toBe('cancelled');
-      expect(result.error?.code).toBe('CANCELLED');
-    });
+      expect(result.status).toBe('cancelled')
+      expect(result.error?.code).toBe('CANCELLED')
+    })
 
     it('should return structured result with iterations used', async () => {
       fakeKernelAdapter.setResults([
@@ -537,24 +531,24 @@ describe('Subagent Runtime', () => {
             message: 'Execution was cancelled',
           },
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      fakeKernelAdapter.setCancelFlag(run.subagentRunId, true);
+      const run = runtime.launchSubagent(input)
+      fakeKernelAdapter.setCancelFlag(run.subagentRunId, true)
 
-      const result = runtime.cancelSubagent(run.subagentRunId);
+      const result = runtime.cancelSubagent(run.subagentRunId)
 
-      expect(result.iterationsUsed).toBeDefined();
-      expect(result.status).toBe('cancelled');
-    });
-  });
+      expect(result.iterationsUsed).toBeDefined()
+      expect(result.status).toBe('cancelled')
+    })
+  })
 
   describe('Parent/root run linkage', () => {
     it('should persist parentRunId in result', async () => {
@@ -566,7 +560,7 @@ describe('Subagent Runtime', () => {
           toolCalls: [],
           transcript: [],
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
@@ -574,14 +568,14 @@ describe('Subagent Runtime', () => {
         },
         parentContext,
         parentRunId: 'parent-123',
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      await runtime.executeSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      await runtime.executeSubagent(run.subagentRunId)
 
-      const storedRun = runtime.getSubagentRun(run.subagentRunId);
-      expect(storedRun?.parentRunId).toBe('parent-123');
-    });
+      const storedRun = runtime.getSubagentRun(run.subagentRunId)
+      expect(storedRun?.parentRunId).toBe('parent-123')
+    })
 
     it('should persist rootRunId in result', async () => {
       fakeKernelAdapter.setResults([
@@ -592,7 +586,7 @@ describe('Subagent Runtime', () => {
           toolCalls: [],
           transcript: [],
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
@@ -601,21 +595,21 @@ describe('Subagent Runtime', () => {
         parentContext,
         parentRunId: 'parent-123',
         rootRunId: 'root-456',
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      await runtime.executeSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      await runtime.executeSubagent(run.subagentRunId)
 
-      const storedRun = runtime.getSubagentRun(run.subagentRunId);
-      expect(storedRun?.rootRunId).toBe('root-456');
-    });
-  });
+      const storedRun = runtime.getSubagentRun(run.subagentRunId)
+      expect(storedRun?.rootRunId).toBe('root-456')
+    })
+  })
 
   describe('getSubagentResult', () => {
     it('should return undefined for non-existent run', () => {
-      const result = runtime.getSubagentResult('non-existent');
-      expect(result).toBeUndefined();
-    });
+      const result = runtime.getSubagentResult('non-existent')
+      expect(result).toBeUndefined()
+    })
 
     it('should return result after execution', async () => {
       fakeKernelAdapter.setResults([
@@ -626,24 +620,24 @@ describe('Subagent Runtime', () => {
           toolCalls: [],
           transcript: [],
         },
-      ]);
+      ])
 
       const input: LaunchSubagentInput = {
         taskSpec: {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      await runtime.executeSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      await runtime.executeSubagent(run.subagentRunId)
 
-      const result = runtime.getSubagentResult(run.subagentRunId);
+      const result = runtime.getSubagentResult(run.subagentRunId)
 
-      expect(result).toBeDefined();
-      expect(result?.status).toBe('completed');
-      expect(result?.response).toBe('Success');
-    });
+      expect(result).toBeDefined()
+      expect(result?.status).toBe('completed')
+      expect(result?.response).toBe('Success')
+    })
 
     it('should return result after cancellation', () => {
       const input: LaunchSubagentInput = {
@@ -651,23 +645,23 @@ describe('Subagent Runtime', () => {
           objective: 'Test',
         },
         parentContext,
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      runtime.cancelSubagent(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      runtime.cancelSubagent(run.subagentRunId)
 
-      const result = runtime.getSubagentResult(run.subagentRunId);
+      const result = runtime.getSubagentResult(run.subagentRunId)
 
-      expect(result).toBeDefined();
-      expect(result?.status).toBe('cancelled');
-    });
-  });
+      expect(result).toBeDefined()
+      expect(result?.status).toBe('cancelled')
+    })
+  })
 
   describe('getSubagentRun', () => {
     it('should return undefined for non-existent run', () => {
-      const run = runtime.getSubagentRun('non-existent');
-      expect(run).toBeUndefined();
-    });
+      const run = runtime.getSubagentRun('non-existent')
+      expect(run).toBeUndefined()
+    })
 
     it('should return the run with correct properties', () => {
       const input: LaunchSubagentInput = {
@@ -677,17 +671,17 @@ describe('Subagent Runtime', () => {
         parentContext,
         parentRunId: 'parent-abc',
         rootRunId: 'root-xyz',
-      };
+      }
 
-      const run = runtime.launchSubagent(input);
-      const retrieved = runtime.getSubagentRun(run.subagentRunId);
+      const run = runtime.launchSubagent(input)
+      const retrieved = runtime.getSubagentRun(run.subagentRunId)
 
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.subagentRunId).toBe(run.subagentRunId);
-      expect(retrieved?.parentRunId).toBe('parent-abc');
-      expect(retrieved?.rootRunId).toBe('root-xyz');
-      expect(retrieved?.taskSpec.objective).toBe('Test objective');
-      expect(retrieved?.status).toBe('queued');
-    });
-  });
-});
+      expect(retrieved).toBeDefined()
+      expect(retrieved?.subagentRunId).toBe(run.subagentRunId)
+      expect(retrieved?.parentRunId).toBe('parent-abc')
+      expect(retrieved?.rootRunId).toBe('root-xyz')
+      expect(retrieved?.taskSpec.objective).toBe('Test objective')
+      expect(retrieved?.status).toBe('queued')
+    })
+  })
+})

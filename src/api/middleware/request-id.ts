@@ -1,9 +1,9 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { randomUUID } from 'crypto';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { randomUUID } from 'crypto'
 
 declare module 'fastify' {
   interface FastifyRequest {
-    requestId: string;
+    requestId: string
   }
 }
 
@@ -13,7 +13,7 @@ declare module 'fastify' {
  * while maintaining global uniqueness.
  */
 function generateRequestId(): string {
-  return randomUUID().slice(0, 8);
+  return randomUUID().slice(0, 8)
 }
 
 /**
@@ -24,15 +24,13 @@ function generateRequestId(): string {
  * - Makes `request.requestId` available in route handlers
  */
 export function registerRequestIdMiddleware(server: FastifyInstance): void {
-  server.decorateRequest('requestId', '');
+  server.decorateRequest('requestId', '')
 
   server.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
-    const clientId = request.headers['x-request-id'];
-    const requestId = typeof clientId === 'string' && clientId.length > 0
-      ? clientId
-      : generateRequestId();
+    const clientId = request.headers['x-request-id']
+    const requestId = typeof clientId === 'string' && clientId.length > 0 ? clientId : generateRequestId()
 
-    request.requestId = requestId;
-    reply.header('x-request-id', requestId);
-  });
+    request.requestId = requestId
+    reply.header('x-request-id', requestId)
+  })
 }

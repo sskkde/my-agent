@@ -7,27 +7,22 @@
  * @see src/foreground/tools/ for the replacement tool implementations
  * @see src/processing/processor-orchestration.ts for the replacement pipeline
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  createForegroundKernelRunner,
-  buildRuntimeSummary,
-} from '../../../src/foreground/foreground-kernel-runner.js';
-import type {
-  ForegroundTurnInput,
-} from '../../../src/foreground/foreground-runner-types.js';
-import type { ForegroundDecision, ForegroundSessionState } from '../../../src/foreground/types.js';
-import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js';
-import type { AgentKernel } from '../../../src/kernel/agent-kernel.js';
-import type { KernelRunResult } from '../../../src/kernel/types.js';
-import type { RuntimeDispatcher, DispatchResult } from '../../../src/dispatcher/types.js';
-import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js';
-import type { LLMAdapter } from '../../../src/llm/adapter.js';
-import type { LLMResult } from '../../../src/llm/types.js';
-import type { HydratedSessionState } from '../../../src/gateway/types.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { createForegroundKernelRunner, buildRuntimeSummary } from '../../../src/foreground/foreground-kernel-runner.js'
+import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js'
+import type { ForegroundDecision, ForegroundSessionState } from '../../../src/foreground/types.js'
+import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js'
+import type { AgentKernel } from '../../../src/kernel/agent-kernel.js'
+import type { KernelRunResult } from '../../../src/kernel/types.js'
+import type { RuntimeDispatcher, DispatchResult } from '../../../src/dispatcher/types.js'
+import type { PlannerRuntime } from '../../../src/planner/planner-runtime.js'
+import type { LLMAdapter } from '../../../src/llm/adapter.js'
+import type { LLMResult } from '../../../src/llm/types.js'
+import type { HydratedSessionState } from '../../../src/gateway/types.js'
 
-import type { EventRecord, EventStore } from '../../../src/storage/event-store.js';
-import type { SearchSubagent } from '../../../src/search/search-subagent.js';
-import type { AgentConfig } from '../../../src/storage/agent-config-store.js';
+import type { EventRecord, EventStore } from '../../../src/storage/event-store.js'
+import type { SearchSubagent } from '../../../src/search/search-subagent.js'
+import type { AgentConfig } from '../../../src/storage/agent-config-store.js'
 
 // Helper to create minimal ForegroundSessionState
 function createMockForegroundState(): ForegroundSessionState {
@@ -68,12 +63,12 @@ function createMockForegroundState(): ForegroundSessionState {
       allowedToolCategories: ['read', 'search', 'internal'],
     },
     conversationHistory: [],
-  };
+  }
 }
 
 // Helper to create ForegroundTurnInput
 function createMockInput(overrides?: Partial<ForegroundTurnInput>): ForegroundTurnInput {
-  const state = createMockForegroundState();
+  const state = createMockForegroundState()
   return {
     userId: 'user-123',
     sessionId: 'session-456',
@@ -83,15 +78,15 @@ function createMockInput(overrides?: Partial<ForegroundTurnInput>): ForegroundTu
     hydratedState: state.hydratedSession,
     foregroundState: state,
     ...overrides,
-  };
+  }
 }
 
 describe('ForegroundKernelRunner', () => {
-  let mockForegroundAgent: ForegroundAgent;
-  let mockAgentKernel: AgentKernel;
-  let mockRuntimeDispatcher: RuntimeDispatcher;
-  let mockPlannerRuntime: PlannerRuntime;
-  let mockLlmAdapter: LLMAdapter;
+  let mockForegroundAgent: ForegroundAgent
+  let mockAgentKernel: AgentKernel
+  let mockRuntimeDispatcher: RuntimeDispatcher
+  let mockPlannerRuntime: PlannerRuntime
+  let mockLlmAdapter: LLMAdapter
 
   beforeEach(() => {
     // Create mock foreground agent
@@ -101,7 +96,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Default mock response',
       } as ForegroundDecision),
-    };
+    }
 
     // Create mock agent kernel (minimal mock - only 'run' method is used)
     mockAgentKernel = {
@@ -109,12 +104,10 @@ describe('ForegroundKernelRunner', () => {
         finalStatus: 'completed',
         finalResponse: 'Kernel processed response',
         iterationsUsed: 1,
-        toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: { query: 'test' } },
-        ],
+        toolCalls: [{ toolCallId: 'tc-001', toolName: 'memory_retrieve', params: { query: 'test' } }],
         transcript: [],
       } as KernelRunResult),
-    } as unknown as AgentKernel;
+    } as unknown as AgentKernel
 
     // Create mock runtime dispatcher
     mockRuntimeDispatcher = {
@@ -126,7 +119,7 @@ describe('ForegroundKernelRunner', () => {
         result: { activeWork: [] },
         createdAt: '2024-01-15T10:00:00.000Z',
       } as DispatchResult),
-    };
+    }
 
     // Create mock planner runtime
     mockPlannerRuntime = {
@@ -146,7 +139,7 @@ describe('ForegroundKernelRunner', () => {
       addActiveExecutionRef: vi.fn(),
       emitRuntimeAction: vi.fn(),
       saveCheckpoint: vi.fn(),
-    };
+    }
 
     // Create mock LLM adapter
     mockLlmAdapter = {
@@ -161,13 +154,15 @@ describe('ForegroundKernelRunner', () => {
         },
       } as LLMResult),
       getProviderHealth: vi.fn().mockReturnValue({ healthy: true }),
-      getHealthyProviders: vi.fn().mockReturnValue([{ providerId: 'test-provider', config: { capabilities: { supportsJsonMode: true } } }]),
-    } as unknown as LLMAdapter;
-  });
+      getHealthyProviders: vi
+        .fn()
+        .mockReturnValue([{ providerId: 'test-provider', config: { capabilities: { supportsJsonMode: true } } }]),
+    } as unknown as LLMAdapter
+  })
 
   afterEach(() => {
-    vi.clearAllMocks();
-  });
+    vi.clearAllMocks()
+  })
 
   describe('createForegroundKernelRunner', () => {
     it('should create a ForegroundKernelRunner instance', () => {
@@ -177,23 +172,23 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
-      const runner = createForegroundKernelRunner(deps);
-      expect(runner).toBeDefined();
-      expect(typeof runner.runTurn).toBe('function');
-    });
-  });
+      }
+      const runner = createForegroundKernelRunner(deps)
+      expect(runner).toBeDefined()
+      expect(typeof runner.runTurn).toBe('function')
+    })
+  })
 
   describe.skip('Scenario 1: answer_directly returns finalResponse (never calls AgentKernel) [deprecated route-dispatch]', () => {
     it('should return userVisibleResponse without calling AgentKernel', async () => {
-      const userVisibleResponse = 'Hello! How can I help you today?';
+      const userVisibleResponse = 'Hello! How can I help you today?'
 
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'answer_directly',
         requiresPlanner: false,
         reason: 'Simple greeting detected',
         userVisibleResponse,
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -201,17 +196,17 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'Hello!' });
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'Hello!' })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.finalResponse).toBe('LLM response content');
-      expect(result.decisionTrace.route).toBe('answer_directly');
-      expect(mockAgentKernel.run).not.toHaveBeenCalled();
-    });
+      expect(result.status).toBe('completed')
+      expect(result.finalResponse).toBe('LLM response content')
+      expect(result.decisionTrace.route).toBe('answer_directly')
+      expect(mockAgentKernel.run).not.toHaveBeenCalled()
+    })
 
     it('should fallback to userVisibleResponse when LLM fails', async () => {
       vi.mocked(mockLlmAdapter.complete).mockResolvedValue({
@@ -226,14 +221,14 @@ describe('ForegroundKernelRunner', () => {
           createdAt: '2024-01-15T10:00:00.000Z',
         },
         providerId: 'test-provider',
-      } as LLMResult);
+      } as LLMResult)
 
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'answer_directly',
         requiresPlanner: false,
         reason: 'Simple question',
         userVisibleResponse: 'Fallback response',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -241,17 +236,17 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.finalResponse).toBe('Fallback response');
-      expect(mockAgentKernel.run).not.toHaveBeenCalled();
-    });
-  });
+      expect(result.status).toBe('completed')
+      expect(result.finalResponse).toBe('Fallback response')
+      expect(mockAgentKernel.run).not.toHaveBeenCalled()
+    })
+  })
 
   describe.skip('Scenario 2: dispatch_tool calls AgentKernel.run() [deprecated route-dispatch]', () => {
     it('should call AgentKernel.run with correct parameters', async () => {
@@ -260,7 +255,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch required',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -268,21 +263,21 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'Search for something' });
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'Search for something' })
+      const result = await runner.runTurn(input)
 
-      expect(mockAgentKernel.run).toHaveBeenCalled();
-      const kernelCallArgs = vi.mocked(mockAgentKernel.run).mock.calls[0][0];
-      expect(kernelCallArgs.agentId).toBe('foreground');
-      expect(kernelCallArgs.agentType).toBe('main');
-      expect(kernelCallArgs.userId).toBe('user-123');
-      expect(kernelCallArgs.sessionId).toBe('session-456');
-      expect(result.kernelResult).toBeDefined();
-      expect(result.kernelResult?.finalResponse).toBe('Kernel processed response');
-    });
+      expect(mockAgentKernel.run).toHaveBeenCalled()
+      const kernelCallArgs = vi.mocked(mockAgentKernel.run).mock.calls[0][0]
+      expect(kernelCallArgs.agentId).toBe('foreground')
+      expect(kernelCallArgs.agentType).toBe('main')
+      expect(kernelCallArgs.userId).toBe('user-123')
+      expect(kernelCallArgs.sessionId).toBe('session-456')
+      expect(result.kernelResult).toBeDefined()
+      expect(result.kernelResult?.finalResponse).toBe('Kernel processed response')
+    })
 
     it('should handle AgentKernel failure gracefully', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -290,7 +285,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch required',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'failed',
@@ -299,7 +294,7 @@ describe('ForegroundKernelRunner', () => {
         toolCalls: [],
         transcript: [],
         error: { code: 'KERNEL_ERROR', message: 'Kernel failed' },
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -307,38 +302,36 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('KERNEL_ERROR');
-    });
-  });
+      expect(result.status).toBe('failed')
+      expect(result.error).toBeDefined()
+      expect(result.error?.code).toBe('KERNEL_ERROR')
+    })
+  })
 
   describe.skip('Scenario 3: Tool results are processed through LLM (not returned as raw JSON) [deprecated route-dispatch]', () => {
     it('should return finalResponse from kernelResult, not raw tool result JSON', async () => {
-      const llmProcessedResponse = 'Based on the search results, here is the answer...';
+      const llmProcessedResponse = 'Based on the search results, here is the answer...'
 
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Tool dispatch required',
         suggestedTools: ['web_search'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'completed',
         finalResponse: llmProcessedResponse,
         iterationsUsed: 2,
-        toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'web_search', params: { query: 'test' } },
-        ],
+        toolCalls: [{ toolCallId: 'tc-001', toolName: 'web_search', params: { query: 'test' } }],
         transcript: [],
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -346,18 +339,18 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
       // The finalResponse should be the LLM-processed response, not raw JSON
-      expect(result.finalResponse).toBe(llmProcessedResponse);
-      expect(result.finalResponse).not.toContain('{"toolResult"');
-      expect(result.finalResponse).not.toContain('raw');
-      expect(result.finalResponse).not.toContain('tc-001');
-    });
+      expect(result.finalResponse).toBe(llmProcessedResponse)
+      expect(result.finalResponse).not.toContain('{"toolResult"')
+      expect(result.finalResponse).not.toContain('raw')
+      expect(result.finalResponse).not.toContain('tc-001')
+    })
 
     it('should include toolCallSummaries in runtimeSummary', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -365,7 +358,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch required',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'completed',
@@ -376,7 +369,7 @@ describe('ForegroundKernelRunner', () => {
           { toolCallId: 'tc-002', toolName: 'transcript_search', params: {} },
         ],
         transcript: [],
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -384,19 +377,19 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.runtimeSummary).toBeDefined();
-      expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(2);
-      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolCallId).toBe('tc-001');
-      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory_retrieve');
-      expect(result.runtimeSummary?.toolCallSummaries?.[0].status).toBe('completed');
-    });
-  });
+      expect(result.runtimeSummary).toBeDefined()
+      expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(2)
+      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolCallId).toBe('tc-001')
+      expect(result.runtimeSummary?.toolCallSummaries?.[0].toolName).toBe('memory_retrieve')
+      expect(result.runtimeSummary?.toolCallSummaries?.[0].status).toBe('completed')
+    })
+  })
 
   describe.skip('Scenario 4: status_query creates server-side RuntimeAction [deprecated route-dispatch]', () => {
     it('should dispatch server-created RuntimeAction for status_query', async () => {
@@ -405,7 +398,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'User requested status',
         userVisibleResponse: 'Checking status...',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -413,19 +406,19 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'What is the status?' });
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'What is the status?' })
+      const result = await runner.runTurn(input)
 
-      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalled();
-      const dispatchCallArgs = vi.mocked(mockRuntimeDispatcher.dispatch).mock.calls[0][0];
-      expect(dispatchCallArgs.action.actionType).toBe('query_active_work');
-      expect(dispatchCallArgs.action.targetRuntime).toBe('gateway');
-      expect(result.status).toBe('completed');
-      expect(result.finalResponse).toBe('Checking status...');
-    });
+      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalled()
+      const dispatchCallArgs = vi.mocked(mockRuntimeDispatcher.dispatch).mock.calls[0][0]
+      expect(dispatchCallArgs.action.actionType).toBe('query_active_work')
+      expect(dispatchCallArgs.action.targetRuntime).toBe('gateway')
+      expect(result.status).toBe('completed')
+      expect(result.finalResponse).toBe('Checking status...')
+    })
 
     it('should use decision.runtimeAction if provided by ForegroundAgent', async () => {
       const serverCreatedAction = {
@@ -441,7 +434,7 @@ describe('ForegroundKernelRunner', () => {
         createdAt: '2024-01-15T10:00:00.000Z',
         updatedAt: '2024-01-15T10:00:00.000Z',
         status: 'created' as const,
-      };
+      }
 
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'status_query',
@@ -449,7 +442,7 @@ describe('ForegroundKernelRunner', () => {
         reason: 'User requested status',
         userVisibleResponse: 'Checking status...',
         runtimeAction: serverCreatedAction,
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -457,17 +450,17 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      await runner.runTurn(input)
 
-      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalled();
-      const dispatchCallArgs = vi.mocked(mockRuntimeDispatcher.dispatch).mock.calls[0][0];
-      expect(dispatchCallArgs.action.actionId).toBe('server-action-001');
-    });
-  });
+      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalled()
+      const dispatchCallArgs = vi.mocked(mockRuntimeDispatcher.dispatch).mock.calls[0][0]
+      expect(dispatchCallArgs.action.actionId).toBe('server-action-001')
+    })
+  })
 
   describe.skip('Scenario 5: spawn_planner creates planner run [deprecated route-dispatch]', () => {
     it('should call plannerRuntime.createPlannerRun with correct parameters', async () => {
@@ -478,7 +471,7 @@ describe('ForegroundKernelRunner', () => {
         userVisibleResponse: 'Creating a plan for your task...',
         estimatedSteps: 5,
         complexity: 'high',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -486,11 +479,11 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'Plan a complex project' });
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'Plan a complex project' })
+      const result = await runner.runTurn(input)
 
       expect(mockPlannerRuntime.createPlannerRun).toHaveBeenCalledWith({
         objective: 'Creating a plan for your task...',
@@ -501,12 +494,12 @@ describe('ForegroundKernelRunner', () => {
           complexity: 'high',
           reason: 'Complex task detected',
         },
-      });
-      expect(result.status).toBe('completed');
-      expect(result.finalResponse).toContain("I've created a plan");
-      expect(result.finalResponse).toContain('plan-001');
-      expect(result.runtimeSummary?.plannerRunIds).toContain('planner-run-001');
-    });
+      })
+      expect(result.status).toBe('completed')
+      expect(result.finalResponse).toContain("I've created a plan")
+      expect(result.finalResponse).toContain('plan-001')
+      expect(result.runtimeSummary?.plannerRunIds).toContain('planner-run-001')
+    })
 
     it('should return natural language response, not raw planner result', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -514,7 +507,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: true,
         reason: 'Complex task',
         userVisibleResponse: 'Planning your task...',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -522,17 +515,17 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
       // Response should be natural language, not JSON
-      expect(result.finalResponse).not.toContain('{"plannerRunId"');
-      expect(result.finalResponse).not.toContain('Spawning planner...');
-      expect(result.finalResponse).toContain("I've created a plan");
-    });
+      expect(result.finalResponse).not.toContain('{"plannerRunId"')
+      expect(result.finalResponse).not.toContain('Spawning planner...')
+      expect(result.finalResponse).toContain("I've created a plan")
+    })
 
     it('should handle planner creation failure', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -540,11 +533,11 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: true,
         reason: 'Complex task',
         userVisibleResponse: 'Planning...',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockPlannerRuntime.createPlannerRun).mockImplementation(() => {
-        throw new Error('Planner unavailable');
-      });
+        throw new Error('Planner unavailable')
+      })
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -552,17 +545,17 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('SPAWN_PLANNER_ERROR');
-      expect(result.error?.message).toContain('Planner unavailable');
-    });
-  });
+      expect(result.status).toBe('failed')
+      expect(result.error?.code).toBe('SPAWN_PLANNER_ERROR')
+      expect(result.error?.message).toContain('Planner unavailable')
+    })
+  })
 
   describe.skip('Scenario 6: LLM-provided runtimeAction is ignored (server creates all runtime actions) [deprecated route-dispatch]', () => {
     it('should ignore runtimeAction from LLM and use server-created action', async () => {
@@ -573,7 +566,7 @@ describe('ForegroundKernelRunner', () => {
         reason: 'Status query',
         userVisibleResponse: 'Checking status...',
         // runtimeAction from LLM is NOT included here - ForegroundAgent strips it
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -581,19 +574,19 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      await runner.runTurn(input)
 
       // The dispatched action should be server-created, not the LLM-provided one
-      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalled();
-      const dispatchCallArgs = vi.mocked(mockRuntimeDispatcher.dispatch).mock.calls[0][0];
-      expect(dispatchCallArgs.action.actionId).not.toBe('malicious-action');
-      expect(dispatchCallArgs.action.actionType).toBe('query_active_work');
-    });
-  });
+      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalled()
+      const dispatchCallArgs = vi.mocked(mockRuntimeDispatcher.dispatch).mock.calls[0][0]
+      expect(dispatchCallArgs.action.actionId).not.toBe('malicious-action')
+      expect(dispatchCallArgs.action.actionType).toBe('query_active_work')
+    })
+  })
 
   describe.skip('Scenario 7: Disallowed suggestedTools are filtered [deprecated route-dispatch]', () => {
     it('should filter out tools not in tool catalog', async () => {
@@ -602,7 +595,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve', 'nonexistent.tool', 'another.fake.tool'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -610,21 +603,21 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      await runner.runTurn(input)
 
-      expect(mockAgentKernel.run).toHaveBeenCalled();
-      const kernelCallArgs = vi.mocked(mockAgentKernel.run).mock.calls[0][0];
+      expect(mockAgentKernel.run).toHaveBeenCalled()
+      const kernelCallArgs = vi.mocked(mockAgentKernel.run).mock.calls[0][0]
       // Only valid tools should be in the projection
-      expect(kernelCallArgs.toolProjection?.toolIds).toBeDefined();
+      expect(kernelCallArgs.toolProjection?.toolIds).toBeDefined()
       // The tool projection should filter out nonexistent tools
-      const projectedTools = kernelCallArgs.toolProjection?.toolIds ?? [];
-      expect(projectedTools).not.toContain('nonexistent.tool');
-      expect(projectedTools).not.toContain('another.fake.tool');
-    });
+      const projectedTools = kernelCallArgs.toolProjection?.toolIds ?? []
+      expect(projectedTools).not.toContain('nonexistent.tool')
+      expect(projectedTools).not.toContain('another.fake.tool')
+    })
 
     it('should handle empty suggestedTools array', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -632,7 +625,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: [],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -640,21 +633,21 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      await runner.runTurn(input)
 
-      expect(mockAgentKernel.run).toHaveBeenCalled();
-      const kernelCallArgs = vi.mocked(mockAgentKernel.run).mock.calls[0][0];
-      expect(kernelCallArgs.toolProjection?.toolIds).toEqual([]);
-    });
-  });
+      expect(mockAgentKernel.run).toHaveBeenCalled()
+      const kernelCallArgs = vi.mocked(mockAgentKernel.run).mock.calls[0][0]
+      expect(kernelCallArgs.toolProjection?.toolIds).toEqual([])
+    })
+  })
 
   describe.skip('Scenario 8: Route validation failure returns failed result [deprecated route-dispatch]', () => {
     it('should return failed result on unhandled exception', async () => {
-      vi.mocked(mockForegroundAgent.processMessage).mockRejectedValue(new Error('Agent crashed'));
+      vi.mocked(mockForegroundAgent.processMessage).mockRejectedValue(new Error('Agent crashed'))
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -662,19 +655,19 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('UNHANDLED_ERROR');
-      expect(result.error?.message).toContain('Agent crashed');
-    });
+      expect(result.status).toBe('failed')
+      expect(result.error?.code).toBe('UNHANDLED_ERROR')
+      expect(result.error?.message).toContain('Agent crashed')
+    })
 
     it('should handle non-Error exceptions', async () => {
-      vi.mocked(mockForegroundAgent.processMessage).mockRejectedValue('String error');
+      vi.mocked(mockForegroundAgent.processMessage).mockRejectedValue('String error')
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -682,16 +675,16 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('UNHANDLED_ERROR');
-    });
-  });
+      expect(result.status).toBe('failed')
+      expect(result.error?.code).toBe('UNHANDLED_ERROR')
+    })
+  })
 
   describe.skip('Additional route handlers [deprecated route-dispatch]', () => {
     it('should handle cancel_or_modify_task route', async () => {
@@ -701,7 +694,7 @@ describe('ForegroundKernelRunner', () => {
         reason: 'Cancel requested',
         userVisibleResponse: 'Cancelling task...',
         targetRef: { plannerRunId: 'planner-run-123' },
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -709,15 +702,15 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'Cancel my task' });
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'Cancel my task' })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('cancel_or_modify_task');
-    });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('cancel_or_modify_task')
+    })
 
     it('should handle resume_existing_planner route', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -726,7 +719,7 @@ describe('ForegroundKernelRunner', () => {
         reason: 'Resume requested',
         userVisibleResponse: 'Resuming task...',
         targetRef: { plannerRunId: 'planner-run-123' },
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -734,19 +727,19 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'Continue my task' });
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'Continue my task' })
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('resume_existing_planner');
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('resume_existing_planner')
       expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalledWith(
         'planner-run-123',
-        expect.objectContaining({ eventType: 'user_resume' })
-      );
-    });
+        expect.objectContaining({ eventType: 'user_resume' }),
+      )
+    })
 
     it('should handle approval_handler route', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -754,7 +747,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Processing approval',
         userVisibleResponse: 'Processing your approval...',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -762,15 +755,15 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
-      expect(result.decisionTrace.route).toBe('approval_handler');
-    });
+      expect(result.status).toBe('completed')
+      expect(result.decisionTrace.route).toBe('approval_handler')
+    })
 
     it('should fallback to answer_directly for unknown routes', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -778,7 +771,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Unknown',
         userVisibleResponse: 'Fallback response',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -786,17 +779,17 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('completed');
+      expect(result.status).toBe('completed')
       // Falls back to answer_directly behavior
-      expect(mockAgentKernel.run).not.toHaveBeenCalled();
-    });
-  });
+      expect(mockAgentKernel.run).not.toHaveBeenCalled()
+    })
+  })
 
   describe('buildRuntimeSummary', () => {
     it('should build runtimeSummary from KernelRunResult', () => {
@@ -809,23 +802,23 @@ describe('ForegroundKernelRunner', () => {
           { toolCallId: 'tc-002', toolName: 'web_search', params: {} },
         ],
         transcript: [],
-      };
+      }
 
-      const summary = buildRuntimeSummary(kernelResult);
+      const summary = buildRuntimeSummary(kernelResult)
 
-      expect(summary).toBeDefined();
-      expect(summary?.toolCallSummaries).toHaveLength(2);
+      expect(summary).toBeDefined()
+      expect(summary?.toolCallSummaries).toHaveLength(2)
       expect(summary?.toolCallSummaries?.[0]).toEqual({
         toolCallId: 'tc-001',
         toolName: 'memory_retrieve',
         status: 'completed',
-      });
+      })
       expect(summary?.toolCallSummaries?.[1]).toEqual({
         toolCallId: 'tc-002',
         toolName: 'web_search',
         status: 'completed',
-      });
-    });
+      })
+    })
 
     it('should return undefined for empty toolCalls', () => {
       const kernelResult: KernelRunResult = {
@@ -834,53 +827,49 @@ describe('ForegroundKernelRunner', () => {
         iterationsUsed: 1,
         toolCalls: [],
         transcript: [],
-      };
+      }
 
-      const summary = buildRuntimeSummary(kernelResult);
-      expect(summary).toBeUndefined();
-    });
+      const summary = buildRuntimeSummary(kernelResult)
+      expect(summary).toBeUndefined()
+    })
 
     it('should return undefined for undefined kernelResult', () => {
-      const summary = buildRuntimeSummary(undefined);
-      expect(summary).toBeUndefined();
-    });
+      const summary = buildRuntimeSummary(undefined)
+      expect(summary).toBeUndefined()
+    })
 
     it('should mark status as failed for failed kernel', () => {
       const kernelResult: KernelRunResult = {
         finalStatus: 'failed',
         finalResponse: undefined,
         iterationsUsed: 1,
-        toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
-        ],
+        toolCalls: [{ toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} }],
         transcript: [],
         error: { code: 'ERROR', message: 'Failed' },
-      };
+      }
 
-      const summary = buildRuntimeSummary(kernelResult);
+      const summary = buildRuntimeSummary(kernelResult)
 
-      expect(summary?.toolCallSummaries?.[0].status).toBe('failed');
-    });
+      expect(summary?.toolCallSummaries?.[0].status).toBe('failed')
+    })
 
     it('should mark status as failed for timeout kernel', () => {
       const kernelResult: KernelRunResult = {
         finalStatus: 'timeout',
         finalResponse: undefined,
         iterationsUsed: 5,
-        toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
-        ],
+        toolCalls: [{ toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} }],
         transcript: [],
-      };
+      }
 
-      const summary = buildRuntimeSummary(kernelResult);
+      const summary = buildRuntimeSummary(kernelResult)
 
-      expect(summary?.toolCallSummaries?.[0].status).toBe('failed');
-    });
-  });
+      expect(summary?.toolCallSummaries?.[0].status).toBe('failed')
+    })
+  })
 
   describe.skip('Event emission on failures [deprecated route-dispatch]', () => {
-    let mockEventStore: EventStore;
+    let mockEventStore: EventStore
 
     beforeEach(() => {
       mockEventStore = {
@@ -889,8 +878,8 @@ describe('ForegroundKernelRunner', () => {
         findByCorrelationId: vi.fn().mockReturnValue([]),
         findByCausationId: vi.fn().mockReturnValue([]),
         updateUserIdForSession: vi.fn().mockReturnValue(0),
-      };
-    });
+      }
+    })
 
     it('should emit search_subagent_failure event when searchSubagent returns failure', async () => {
       const mockSearchSubagent: SearchSubagent = {
@@ -899,14 +888,14 @@ describe('ForegroundKernelRunner', () => {
           errorCode: 'MODEL_UNAVAILABLE' as const,
           message: 'Search model not available',
         }),
-      };
+      }
 
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Web search required',
         suggestedTools: ['web_search'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -920,37 +909,37 @@ describe('ForegroundKernelRunner', () => {
           searchLlmProviderId: 'test-provider',
           searchLlmModel: 'test-model',
         } as AgentConfig,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'Search for cats' });
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'Search for cats' })
+      await runner.runTurn(input)
 
-      expect(mockEventStore.append).toHaveBeenCalled();
-      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
-      expect(event.eventType).toBe('search_subagent_failure');
-      expect(event.sourceModule).toBe('foreground_agent');
-      expect(event.userId).toBe('user-123');
-      expect(event.sessionId).toBe('session-456');
-      expect(event.sensitivity).toBe('low');
+      expect(mockEventStore.append).toHaveBeenCalled()
+      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord
+      expect(event.eventType).toBe('search_subagent_failure')
+      expect(event.sourceModule).toBe('foreground_agent')
+      expect(event.userId).toBe('user-123')
+      expect(event.sessionId).toBe('session-456')
+      expect(event.sensitivity).toBe('low')
       expect(event.payload).toMatchObject({
         errorCode: 'MODEL_UNAVAILABLE',
         errorMessage: 'Search model not available',
         fallbackBehavior: 'kernel_execution',
-      });
-    });
+      })
+    })
 
     it('should emit search_subagent_failure event when searchSubagent throws', async () => {
       const mockSearchSubagent: SearchSubagent = {
         execute: vi.fn().mockRejectedValue(new Error('Network timeout')),
-      };
+      }
 
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'dispatch_tool',
         requiresPlanner: false,
         reason: 'Web search required',
         suggestedTools: ['web_search'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -964,22 +953,22 @@ describe('ForegroundKernelRunner', () => {
           searchLlmProviderId: 'test-provider',
           searchLlmModel: 'test-model',
         } as AgentConfig,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ message: 'Search for cats' });
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'Search for cats' })
+      await runner.runTurn(input)
 
-      expect(mockEventStore.append).toHaveBeenCalled();
-      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
-      expect(event.eventType).toBe('search_subagent_failure');
-      expect(event.sourceModule).toBe('foreground_agent');
+      expect(mockEventStore.append).toHaveBeenCalled()
+      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord
+      expect(event.eventType).toBe('search_subagent_failure')
+      expect(event.sourceModule).toBe('foreground_agent')
       expect(event.payload).toMatchObject({
         errorCode: 'SEARCH_SUBAGENT_EXCEPTION',
         errorMessage: 'Network timeout',
         fallbackBehavior: 'kernel_execution',
-      });
-    });
+      })
+    })
 
     it('should emit kernel_dispatch_failure event when kernelResult finalStatus is failed', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -987,7 +976,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'failed',
@@ -996,7 +985,7 @@ describe('ForegroundKernelRunner', () => {
         toolCalls: [],
         transcript: [],
         error: { code: 'MODEL_ERROR', message: 'LLM provider returned an error' },
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1005,25 +994,25 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      await runner.runTurn(input)
 
-      expect(mockEventStore.append).toHaveBeenCalled();
-      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
-      expect(event.eventType).toBe('kernel_dispatch_failure');
-      expect(event.sourceModule).toBe('foreground_agent');
-      expect(event.userId).toBe('user-123');
-      expect(event.sessionId).toBe('session-456');
-      expect(event.sensitivity).toBe('low');
+      expect(mockEventStore.append).toHaveBeenCalled()
+      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord
+      expect(event.eventType).toBe('kernel_dispatch_failure')
+      expect(event.sourceModule).toBe('foreground_agent')
+      expect(event.userId).toBe('user-123')
+      expect(event.sessionId).toBe('session-456')
+      expect(event.sensitivity).toBe('low')
       expect(event.payload).toMatchObject({
         errorCode: 'MODEL_ERROR',
         errorMessage: 'LLM provider returned an error',
         fallbackBehavior: 'llm_error_context',
-      });
-    });
+      })
+    })
 
     it('should emit kernel_dispatch_failure event with default error when kernel has no error object', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1031,7 +1020,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'failed',
@@ -1039,7 +1028,7 @@ describe('ForegroundKernelRunner', () => {
         iterationsUsed: 1,
         toolCalls: [],
         transcript: [],
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1048,20 +1037,20 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      await runner.runTurn(input)
 
-      expect(mockEventStore.append).toHaveBeenCalled();
-      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
-      expect(event.eventType).toBe('kernel_dispatch_failure');
+      expect(mockEventStore.append).toHaveBeenCalled()
+      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord
+      expect(event.eventType).toBe('kernel_dispatch_failure')
       expect(event.payload).toMatchObject({
         errorCode: 'KERNEL_RUN_FAILED',
         errorMessage: 'Kernel execution failed',
-      });
-    });
+      })
+    })
 
     it('should emit dispatch_tool_failure event on unhandled exception', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1069,9 +1058,9 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
-      vi.mocked(mockAgentKernel.run).mockRejectedValue(new Error('Kernel crashed'));
+      vi.mocked(mockAgentKernel.run).mockRejectedValue(new Error('Kernel crashed'))
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1080,22 +1069,22 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      await runner.runTurn(input)
 
-      expect(mockEventStore.append).toHaveBeenCalled();
-      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
-      expect(event.eventType).toBe('dispatch_tool_failure');
-      expect(event.sourceModule).toBe('foreground_agent');
+      expect(mockEventStore.append).toHaveBeenCalled()
+      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord
+      expect(event.eventType).toBe('dispatch_tool_failure')
+      expect(event.sourceModule).toBe('foreground_agent')
       expect(event.payload).toMatchObject({
         errorCode: 'DISPATCH_TOOL_ERROR',
         errorMessage: 'Kernel crashed',
         fallbackBehavior: 'llm_error_context',
-      });
-    });
+      })
+    })
 
     it('should not call eventStore when eventStore is undefined', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1103,7 +1092,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'failed',
@@ -1112,7 +1101,7 @@ describe('ForegroundKernelRunner', () => {
         toolCalls: [],
         transcript: [],
         error: { code: 'MODEL_ERROR', message: 'LLM error' },
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1120,16 +1109,16 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('MODEL_ERROR');
-      expect(mockEventStore.append).not.toHaveBeenCalled();
-    });
+      expect(result.status).toBe('failed')
+      expect(result.error?.code).toBe('MODEL_ERROR')
+      expect(mockEventStore.append).not.toHaveBeenCalled()
+    })
 
     it('should include error code in foreground error message for kernel failure', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1137,7 +1126,7 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'failed',
@@ -1146,7 +1135,7 @@ describe('ForegroundKernelRunner', () => {
         toolCalls: [],
         transcript: [],
         error: { code: 'TIMEOUT_ERROR', message: 'Kernel execution timed out' },
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1155,17 +1144,17 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.finalResponse).toBe('LLM response content');
-      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
-      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('TIMEOUT_ERROR');
-    });
+      expect(result.status).toBe('failed')
+      expect(result.finalResponse).toBe('LLM response content')
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0]
+      expect(recoveryCall?.messages.map((message) => message.content).join('\n')).toContain('TIMEOUT_ERROR')
+    })
 
     it('should include error code in foreground error message for dispatch failure', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1173,9 +1162,9 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
-      vi.mocked(mockAgentKernel.run).mockRejectedValue(new Error('Kernel unavailable'));
+      vi.mocked(mockAgentKernel.run).mockRejectedValue(new Error('Kernel unavailable'))
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1184,33 +1173,33 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.finalResponse).toBe('LLM response content');
-      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
-      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('DISPATCH_TOOL_ERROR');
-    });
-  });
+      expect(result.status).toBe('failed')
+      expect(result.finalResponse).toBe('LLM response content')
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0]
+      expect(recoveryCall?.messages.map((message) => message.content).join('\n')).toContain('DISPATCH_TOOL_ERROR')
+    })
+  })
 
   describe.skip('Conversation history handling [deprecated route-dispatch]', () => {
     it('should include conversation history in direct answer LLM call', async () => {
-      const state = createMockForegroundState();
+      const state = createMockForegroundState()
       state.conversationHistory = [
         { turnId: 'turn-001', role: 'user', message: 'Previous question', timestamp: '2024-01-15T09:00:00.000Z' },
         { turnId: 'turn-001', role: 'assistant', message: 'Previous answer', timestamp: '2024-01-15T09:00:10.000Z' },
-      ];
+      ]
 
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
         route: 'answer_directly',
         requiresPlanner: false,
         reason: 'Direct answer',
         userVisibleResponse: 'Response',
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1218,26 +1207,26 @@ describe('ForegroundKernelRunner', () => {
         runtimeDispatcher: mockRuntimeDispatcher,
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput({ foregroundState: state, message: 'New question' });
-      await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ foregroundState: state, message: 'New question' })
+      await runner.runTurn(input)
 
-      expect(mockLlmAdapter.complete).toHaveBeenCalled();
-      const llmCallArgs = vi.mocked(mockLlmAdapter.complete).mock.calls[0][0];
-      expect(llmCallArgs.messages).toHaveLength(3); // 2 history + 1 current
-      expect(llmCallArgs.messages[0].role).toBe('user');
-      expect(llmCallArgs.messages[0].content).toBe('Previous question');
-      expect(llmCallArgs.messages[1].role).toBe('assistant');
-      expect(llmCallArgs.messages[1].content).toBe('Previous answer');
-      expect(llmCallArgs.messages[2].role).toBe('user');
-      expect(llmCallArgs.messages[2].content).toBe('New question');
-    });
-  });
+      expect(mockLlmAdapter.complete).toHaveBeenCalled()
+      const llmCallArgs = vi.mocked(mockLlmAdapter.complete).mock.calls[0][0]
+      expect(llmCallArgs.messages).toHaveLength(3) // 2 history + 1 current
+      expect(llmCallArgs.messages[0].role).toBe('user')
+      expect(llmCallArgs.messages[0].content).toBe('Previous question')
+      expect(llmCallArgs.messages[1].role).toBe('assistant')
+      expect(llmCallArgs.messages[1].content).toBe('Previous answer')
+      expect(llmCallArgs.messages[2].role).toBe('user')
+      expect(llmCallArgs.messages[2].content).toBe('New question')
+    })
+  })
 
   describe.skip('Non-completed kernel statuses treated as failures [deprecated route-dispatch]', () => {
-    let mockEventStore: EventStore;
+    let mockEventStore: EventStore
 
     beforeEach(() => {
       mockEventStore = {
@@ -1246,8 +1235,8 @@ describe('ForegroundKernelRunner', () => {
         findByCorrelationId: vi.fn().mockReturnValue([]),
         findByCausationId: vi.fn().mockReturnValue([]),
         updateUserIdForSession: vi.fn().mockReturnValue(0),
-      };
-    });
+      }
+    })
 
     it('should treat timeout as failure and emit kernel_dispatch_failure event', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1255,17 +1244,15 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'timeout',
         finalResponse: undefined,
         iterationsUsed: 5,
-        toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
-        ],
+        toolCalls: [{ toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} }],
         transcript: [],
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1274,26 +1261,26 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('KERNEL_TIMEOUT');
-      expect(result.error?.message).toBe('Kernel execution timed out');
-      expect(result.finalResponse).toBe('LLM response content');
-      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
-      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('KERNEL_TIMEOUT');
-      expect(mockEventStore.append).toHaveBeenCalled();
-      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
-      expect(event.eventType).toBe('kernel_dispatch_failure');
+      expect(result.status).toBe('failed')
+      expect(result.error?.code).toBe('KERNEL_TIMEOUT')
+      expect(result.error?.message).toBe('Kernel execution timed out')
+      expect(result.finalResponse).toBe('LLM response content')
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0]
+      expect(recoveryCall?.messages.map((message) => message.content).join('\n')).toContain('KERNEL_TIMEOUT')
+      expect(mockEventStore.append).toHaveBeenCalled()
+      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord
+      expect(event.eventType).toBe('kernel_dispatch_failure')
       expect(event.payload).toMatchObject({
         errorCode: 'KERNEL_TIMEOUT',
         errorMessage: 'Kernel execution timed out',
-      });
-    });
+      })
+    })
 
     it('should treat max_iterations_reached as failure and emit kernel_dispatch_failure event', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1301,17 +1288,15 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'max_iterations_reached',
         finalResponse: undefined,
         iterationsUsed: 10,
-        toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
-        ],
+        toolCalls: [{ toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} }],
         transcript: [],
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1320,26 +1305,26 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.status).toBe('failed');
-      expect(result.error?.code).toBe('KERNEL_MAX_ITERATIONS');
-      expect(result.error?.message).toBe('Kernel reached maximum iterations');
-      expect(result.finalResponse).toBe('LLM response content');
-      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0];
-      expect(recoveryCall?.messages.map(message => message.content).join('\n')).toContain('KERNEL_MAX_ITERATIONS');
-      expect(mockEventStore.append).toHaveBeenCalled();
-      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord;
-      expect(event.eventType).toBe('kernel_dispatch_failure');
+      expect(result.status).toBe('failed')
+      expect(result.error?.code).toBe('KERNEL_MAX_ITERATIONS')
+      expect(result.error?.message).toBe('Kernel reached maximum iterations')
+      expect(result.finalResponse).toBe('LLM response content')
+      const recoveryCall = vi.mocked(mockLlmAdapter.complete).mock.calls.at(-1)?.[0]
+      expect(recoveryCall?.messages.map((message) => message.content).join('\n')).toContain('KERNEL_MAX_ITERATIONS')
+      expect(mockEventStore.append).toHaveBeenCalled()
+      const event = vi.mocked(mockEventStore.append).mock.calls[0][0] as EventRecord
+      expect(event.eventType).toBe('kernel_dispatch_failure')
       expect(event.payload).toMatchObject({
         errorCode: 'KERNEL_MAX_ITERATIONS',
         errorMessage: 'Kernel reached maximum iterations',
-      });
-    });
+      })
+    })
 
     it('should include runtimeSummary even for non-completed statuses', async () => {
       vi.mocked(mockForegroundAgent.processMessage).mockResolvedValue({
@@ -1347,17 +1332,15 @@ describe('ForegroundKernelRunner', () => {
         requiresPlanner: false,
         reason: 'Tool dispatch',
         suggestedTools: ['memory_retrieve'],
-      } as ForegroundDecision);
+      } as ForegroundDecision)
 
       vi.mocked(mockAgentKernel.run).mockResolvedValue({
         finalStatus: 'timeout',
         finalResponse: undefined,
         iterationsUsed: 5,
-        toolCalls: [
-          { toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} },
-        ],
+        toolCalls: [{ toolCallId: 'tc-001', toolName: 'memory_retrieve', params: {} }],
         transcript: [],
-      } as KernelRunResult);
+      } as KernelRunResult)
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1366,17 +1349,17 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      const input = createMockInput();
-      const result = await runner.runTurn(input);
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput()
+      const result = await runner.runTurn(input)
 
-      expect(result.runtimeSummary).toBeDefined();
-      expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(1);
-      expect(result.runtimeSummary?.toolCallSummaries?.[0].status).toBe('failed');
-    });
-  });
+      expect(result.runtimeSummary).toBeDefined()
+      expect(result.runtimeSummary?.toolCallSummaries).toHaveLength(1)
+      expect(result.runtimeSummary?.toolCallSummaries?.[0].status).toBe('failed')
+    })
+  })
 
   describe('eventStore injection in createApiContext', () => {
     it('ForegroundKernelRunnerDeps includes eventStore field', () => {
@@ -1386,7 +1369,7 @@ describe('ForegroundKernelRunner', () => {
         findByCorrelationId: vi.fn().mockReturnValue([]),
         findByCausationId: vi.fn().mockReturnValue([]),
         updateUserIdForSession: vi.fn().mockReturnValue(0),
-      };
+      }
 
       const deps = {
         foregroundAgent: mockForegroundAgent,
@@ -1395,11 +1378,11 @@ describe('ForegroundKernelRunner', () => {
         plannerRuntime: mockPlannerRuntime,
         llmAdapter: mockLlmAdapter,
         eventStore: mockEventStore,
-      };
+      }
 
-      const runner = createForegroundKernelRunner(deps);
-      expect(runner).toBeDefined();
-      expect(typeof runner.runTurn).toBe('function');
-    });
-  });
-});
+      const runner = createForegroundKernelRunner(deps)
+      expect(runner).toBeDefined()
+      expect(typeof runner.runTurn).toBe('function')
+    })
+  })
+})

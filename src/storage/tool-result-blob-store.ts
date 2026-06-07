@@ -1,10 +1,10 @@
-import type { ConnectionManager } from './connection.js';
+import type { ConnectionManager } from './connection.js'
 
 /**
  * Sensitivity levels for tool result blobs.
  * Aligned with ToolSensitivity from tools/types.ts.
  */
-export type BlobSensitivity = 'low' | 'medium' | 'high' | 'restricted';
+export type BlobSensitivity = 'low' | 'medium' | 'high' | 'restricted'
 
 /**
  * A persisted blob representing a large tool execution result.
@@ -12,54 +12,54 @@ export type BlobSensitivity = 'low' | 'medium' | 'high' | 'restricted';
  * enters the transcript or model-facing context.
  */
 export interface ToolResultBlobRecord {
-  blobId: string;
-  toolCallId: string;
-  userId: string;
-  sessionId?: string;
-  contentType: string;
-  preview?: string;
-  storageRef: string;
-  sensitivity: BlobSensitivity;
-  sizeBytes: number;
-  createdAt: string;
+  blobId: string
+  toolCallId: string
+  userId: string
+  sessionId?: string
+  contentType: string
+  preview?: string
+  storageRef: string
+  sensitivity: BlobSensitivity
+  sizeBytes: number
+  createdAt: string
 }
 
 export interface ToolResultBlobStore {
   /** Persist a new blob record. Returns the stored record with generated id/timestamp. */
-  createBlob(data: Omit<ToolResultBlobRecord, 'blobId' | 'createdAt'>): ToolResultBlobRecord;
+  createBlob(data: Omit<ToolResultBlobRecord, 'blobId' | 'createdAt'>): ToolResultBlobRecord
   /** Retrieve a blob by its id. Enforces ownership: caller must match userId or sessionId. */
-  getBlob(blobId: string, accessor: { userId?: string; sessionId?: string }): ToolResultBlobRecord | undefined;
+  getBlob(blobId: string, accessor: { userId?: string; sessionId?: string }): ToolResultBlobRecord | undefined
   /** Find blobs by tool call id. */
-  getBlobByToolCall(toolCallId: string): ToolResultBlobRecord[];
+  getBlobByToolCall(toolCallId: string): ToolResultBlobRecord[]
   /** Delete a blob by id. Returns true if deleted. */
-  deleteBlob(blobId: string): boolean;
+  deleteBlob(blobId: string): boolean
   /** List blobs for a given user, ordered by creation time descending. */
-  listBlobsByUser(userId: string, options?: { limit?: number; offset?: number }): ToolResultBlobRecord[];
+  listBlobsByUser(userId: string, options?: { limit?: number; offset?: number }): ToolResultBlobRecord[]
 }
 
 interface BlobRow {
-  blob_id: string;
-  tool_call_id: string;
-  user_id: string;
-  session_id: string | null;
-  content_type: string;
-  preview: string | null;
-  storage_ref: string;
-  sensitivity: BlobSensitivity;
-  size_bytes: number;
-  created_at: string;
+  blob_id: string
+  tool_call_id: string
+  user_id: string
+  session_id: string | null
+  content_type: string
+  preview: string | null
+  storage_ref: string
+  sensitivity: BlobSensitivity
+  size_bytes: number
+  created_at: string
 }
 
 class ToolResultBlobStoreImpl implements ToolResultBlobStore {
-  private connection: ConnectionManager;
+  private connection: ConnectionManager
 
   constructor(connection: ConnectionManager) {
-    this.connection = connection;
+    this.connection = connection
   }
 
   createBlob(data: Omit<ToolResultBlobRecord, 'blobId' | 'createdAt'>): ToolResultBlobRecord {
-    const blobId = crypto.randomUUID();
-    const createdAt = new Date().toISOString();
+    const blobId = crypto.randomUUID()
+    const createdAt = new Date().toISOString()
 
     this.connection.exec(
       `INSERT INTO tool_result_blobs (
@@ -77,8 +77,8 @@ class ToolResultBlobStoreImpl implements ToolResultBlobStore {
         data.sensitivity,
         data.sizeBytes,
         createdAt,
-      ]
-    );
+      ],
+    )
 
     return {
       blobId,
@@ -91,60 +91,57 @@ class ToolResultBlobStoreImpl implements ToolResultBlobStore {
       sensitivity: data.sensitivity,
       sizeBytes: data.sizeBytes,
       createdAt,
-    };
+    }
   }
 
   getBlob(blobId: string, accessor: { userId?: string; sessionId?: string }): ToolResultBlobRecord | undefined {
-    const rows = this.connection.query<BlobRow>(
-      'SELECT * FROM tool_result_blobs WHERE blob_id = ?',
-      [blobId]
-    );
+    const rows = this.connection.query<BlobRow>('SELECT * FROM tool_result_blobs WHERE blob_id = ?', [blobId])
 
     if (rows.length === 0) {
-      return undefined;
+      return undefined
     }
 
-    const record = this.mapRow(rows[0]);
+    const record = this.mapRow(rows[0])
 
     // Enforce ownership: accessor must match userId OR sessionId
     if (accessor.userId && record.userId === accessor.userId) {
-      return record;
+      return record
     }
     if (accessor.sessionId && record.sessionId === accessor.sessionId) {
-      return record;
+      return record
     }
     // If no accessor provided, deny access
     if (!accessor.userId && !accessor.sessionId) {
-      return undefined;
+      return undefined
     }
 
-    return undefined;
+    return undefined
   }
 
   getBlobByToolCall(toolCallId: string): ToolResultBlobRecord[] {
     const rows = this.connection.query<BlobRow>(
       'SELECT * FROM tool_result_blobs WHERE tool_call_id = ? ORDER BY created_at ASC',
-      [toolCallId]
-    );
-    return rows.map(row => this.mapRow(row));
+      [toolCallId],
+    )
+    return rows.map((row) => this.mapRow(row))
   }
 
   deleteBlob(blobId: string): boolean {
-    this.connection.exec('DELETE FROM tool_result_blobs WHERE blob_id = ?', [blobId]);
+    this.connection.exec('DELETE FROM tool_result_blobs WHERE blob_id = ?', [blobId])
     const rows = this.connection.query<{ count: number }>(
       'SELECT COUNT(*) as count FROM tool_result_blobs WHERE blob_id = ?',
-      [blobId]
-    );
-    return rows[0]?.count === 0;
+      [blobId],
+    )
+    return rows[0]?.count === 0
   }
 
   listBlobsByUser(userId: string, options: { limit?: number; offset?: number } = {}): ToolResultBlobRecord[] {
-    const { limit = 100, offset = 0 } = options;
+    const { limit = 100, offset = 0 } = options
     const rows = this.connection.query<BlobRow>(
       'SELECT * FROM tool_result_blobs WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [userId, limit, offset]
-    );
-    return rows.map(row => this.mapRow(row));
+      [userId, limit, offset],
+    )
+    return rows.map((row) => this.mapRow(row))
   }
 
   private mapRow(row: BlobRow): ToolResultBlobRecord {
@@ -159,10 +156,10 @@ class ToolResultBlobStoreImpl implements ToolResultBlobStore {
       sensitivity: row.sensitivity,
       sizeBytes: row.size_bytes,
       createdAt: row.created_at,
-    };
+    }
   }
 }
 
 export function createToolResultBlobStore(connection: ConnectionManager): ToolResultBlobStore {
-  return new ToolResultBlobStoreImpl(connection);
+  return new ToolResultBlobStoreImpl(connection)
 }
