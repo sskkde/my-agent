@@ -11,16 +11,20 @@ vi.mock('../../api/client', () => ({
   getSessionTimeline: vi.fn(),
   sendMessage: vi.fn(),
   subscribeSessionTimeline: vi.fn(),
-}))
+  getApprovals: vi.fn(),
+  respondApproval: vi.fn(),
+}));
 
 import * as api from '../../api/client'
 
-const mockGetSessions = api.getSessions as ReturnType<typeof vi.fn>
-const mockCreateSession = api.createSession as ReturnType<typeof vi.fn>
-const mockGetSession = api.getSession as ReturnType<typeof vi.fn>
-const mockGetSessionTimeline = api.getSessionTimeline as ReturnType<typeof vi.fn>
-const mockSendMessage = api.sendMessage as ReturnType<typeof vi.fn>
-const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>
+const mockGetSessions = api.getSessions as ReturnType<typeof vi.fn>;
+const mockCreateSession = api.createSession as ReturnType<typeof vi.fn>;
+const mockGetSession = api.getSession as ReturnType<typeof vi.fn>;
+const mockGetSessionTimeline = api.getSessionTimeline as ReturnType<typeof vi.fn>;
+const mockSendMessage = api.sendMessage as ReturnType<typeof vi.fn>;
+const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>;
+const mockGetApprovals = api.getApprovals as ReturnType<typeof vi.fn>;
+const mockRespondApproval = api.respondApproval as ReturnType<typeof vi.fn>;
 
 const SELECTED_SESSION_KEY = 'session-console-selected-session'
 
@@ -2847,10 +2851,11 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
 
 describe('SessionConsoleTab - Mobile Responsive', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockSubscribeSessionTimeline.mockReturnValue(() => {})
-    resetMatchMedia()
-  })
+    vi.clearAllMocks();
+    mockSubscribeSessionTimeline.mockReturnValue(() => {});
+    mockGetApprovals.mockResolvedValue({ approvals: [], total: 0 });
+    localStorage.clear();
+  });
 
   it('shows sidebar toggle button on mobile viewport', async () => {
     mockViewport(390) // iPhone width
@@ -3020,9 +3025,9 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
     render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByText('加载中...')).toBeInTheDocument()
-    })
-  })
+      expect(screen.getByText('加载会话列表...')).toBeInTheDocument();
+    });
+  });
 
   it('renders error state in sidebar on mobile', async () => {
     mockViewport(390)
@@ -3031,7 +3036,422 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
     render(<SessionConsoleTab />)
 
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeInTheDocument()
-    })
-  })
-})
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+  });
+
+  describe('Approval Modal Integration', () => {
+    it('shows approval modal when pending approval exists for selected session', async () => {
+      const sessionId = 'session-123';
+      mockGetSessions.mockResolvedValue({
+        sessions: [
+          {
+            sessionId,
+            userId: 'user-1',
+            title: 'Test Session',
+            status: 'active',
+            messageCount: 5,
+            lastActivityAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        total: 1,
+      });
+
+      mockGetSession.mockResolvedValue({
+        session: {
+          sessionId,
+          userId: 'user-1',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
+
+      mockGetSessionTimeline.mockResolvedValue({
+        events: [],
+      });
+
+      mockGetApprovals.mockResolvedValue({
+        approvals: [
+          {
+            id: 'approval-123',
+            sessionId,
+            actionType: 'exec',
+            resource: '/bin/bash',
+            requestedBy: 'agent',
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+          },
+        ],
+        total: 1,
+      });
+
+      render(<SessionConsoleTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('session-item-session-123'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('approval-modal')).toBeInTheDocument();
+      });
+    });
+
+    it('does not show approval modal for different session', async () => {
+      const sessionId = 'session-123';
+      mockGetSessions.mockResolvedValue({
+        sessions: [
+          {
+            sessionId,
+            userId: 'user-1',
+            title: 'Test Session',
+            status: 'active',
+            messageCount: 5,
+            lastActivityAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        total: 1,
+      });
+
+      mockGetSession.mockResolvedValue({
+        session: {
+          sessionId,
+          userId: 'user-1',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
+
+      mockGetSessionTimeline.mockResolvedValue({
+        events: [],
+      });
+
+      mockGetApprovals.mockResolvedValue({
+        approvals: [
+          {
+            id: 'approval-456',
+            sessionId: 'session-456',
+            actionType: 'exec',
+            resource: '/bin/bash',
+            requestedBy: 'agent',
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+          },
+        ],
+        total: 1,
+      });
+
+      render(<SessionConsoleTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('session-item-session-123'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('approval-modal')).not.toBeInTheDocument();
+      });
+    });
+
+    it('calls respondApproval with approve_once when approve-once button clicked', async () => {
+      const sessionId = 'session-123';
+      mockGetSessions.mockResolvedValue({
+        sessions: [
+          {
+            sessionId,
+            userId: 'user-1',
+            title: 'Test Session',
+            status: 'active',
+            messageCount: 5,
+            lastActivityAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        total: 1,
+      });
+
+      mockGetSession.mockResolvedValue({
+        session: {
+          sessionId,
+          userId: 'user-1',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
+
+      mockGetSessionTimeline.mockResolvedValue({
+        events: [],
+      });
+
+      mockGetApprovals.mockResolvedValue({
+        approvals: [
+          {
+            id: 'approval-123',
+            sessionId,
+            actionType: 'exec',
+            resource: '/bin/bash',
+            requestedBy: 'agent',
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+          },
+        ],
+        total: 1,
+      });
+
+      mockRespondApproval.mockResolvedValue({
+        success: true,
+        approvalId: 'approval-123',
+        status: 'approved',
+      });
+
+      render(<SessionConsoleTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('session-item-session-123'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('approval-modal')).toBeInTheDocument();
+      });
+
+      const approveOnceButton = screen.getByTestId('approval-modal-approve-once');
+      fireEvent.click(approveOnceButton);
+
+      await waitFor(() => {
+        expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'approve_once', undefined);
+      });
+    });
+
+    it('calls respondApproval with reject when reject button clicked', async () => {
+      const sessionId = 'session-123';
+      mockGetSessions.mockResolvedValue({
+        sessions: [
+          {
+            sessionId,
+            userId: 'user-1',
+            title: 'Test Session',
+            status: 'active',
+            messageCount: 5,
+            lastActivityAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        total: 1,
+      });
+
+      mockGetSession.mockResolvedValue({
+        session: {
+          sessionId,
+          userId: 'user-1',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
+
+      mockGetSessionTimeline.mockResolvedValue({
+        events: [],
+      });
+
+      mockGetApprovals.mockResolvedValue({
+        approvals: [
+          {
+            id: 'approval-123',
+            sessionId,
+            actionType: 'exec',
+            resource: '/bin/bash',
+            requestedBy: 'agent',
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+          },
+        ],
+        total: 1,
+      });
+
+      mockRespondApproval.mockResolvedValue({
+        success: true,
+        approvalId: 'approval-123',
+        status: 'rejected',
+      });
+
+      render(<SessionConsoleTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('session-item-session-123'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('approval-modal')).toBeInTheDocument();
+      });
+
+      const rejectButton = screen.getByTestId('approval-modal-reject');
+      fireEvent.click(rejectButton);
+
+      await waitFor(() => {
+        expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'reject', undefined);
+      });
+    });
+
+    it('closes modal after successful approval', async () => {
+      const sessionId = 'session-123';
+      mockGetSessions.mockResolvedValue({
+        sessions: [
+          {
+            sessionId,
+            userId: 'user-1',
+            title: 'Test Session',
+            status: 'active',
+            messageCount: 5,
+            lastActivityAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        total: 1,
+      });
+
+      mockGetSession.mockResolvedValue({
+        session: {
+          sessionId,
+          userId: 'user-1',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
+
+      mockGetSessionTimeline.mockResolvedValue({
+        events: [],
+      });
+
+      mockGetApprovals
+        .mockResolvedValueOnce({
+          approvals: [
+            {
+              id: 'approval-123',
+              sessionId,
+              actionType: 'exec',
+              resource: '/bin/bash',
+              requestedBy: 'agent',
+              requestedAt: new Date().toISOString(),
+              status: 'pending',
+            },
+          ],
+          total: 1,
+        })
+        .mockResolvedValueOnce({
+          approvals: [],
+          total: 0,
+        });
+
+      mockRespondApproval.mockResolvedValue({
+        success: true,
+        approvalId: 'approval-123',
+        status: 'approved',
+      });
+
+      render(<SessionConsoleTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('session-item-session-123'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('approval-modal')).toBeInTheDocument();
+      });
+
+      const approveOnceButton = screen.getByTestId('approval-modal-approve-once');
+      fireEvent.click(approveOnceButton);
+
+      await waitFor(() => {
+        expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'approve_once', undefined);
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('approval-modal')).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows error message when approval fails', async () => {
+      const sessionId = 'session-123';
+      mockGetSessions.mockResolvedValue({
+        sessions: [
+          {
+            sessionId,
+            userId: 'user-1',
+            title: 'Test Session',
+            status: 'active',
+            messageCount: 5,
+            lastActivityAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        total: 1,
+      });
+
+      mockGetSession.mockResolvedValue({
+        session: {
+          sessionId,
+          userId: 'user-1',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
+
+      mockGetSessionTimeline.mockResolvedValue({
+        events: [],
+      });
+
+      mockGetApprovals.mockResolvedValue({
+        approvals: [
+          {
+            id: 'approval-123',
+            sessionId,
+            actionType: 'exec',
+            resource: '/bin/bash',
+            requestedBy: 'agent',
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+          },
+        ],
+        total: 1,
+      });
+
+      mockRespondApproval.mockRejectedValue(new Error('Network error'));
+
+      render(<SessionConsoleTab />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('session-item-session-123'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('approval-modal')).toBeInTheDocument();
+      });
+
+      const approveOnceButton = screen.getByTestId('approval-modal-approve-once');
+      fireEvent.click(approveOnceButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Network error')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('approval-modal')).toBeInTheDocument();
+    });
+  });
+});

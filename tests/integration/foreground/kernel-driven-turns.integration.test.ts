@@ -540,7 +540,7 @@ describe('Kernel-Driven Foreground Turn Integration Tests', () => {
       const input = createMockProcessorInput({ text: 'Test message' })
 
       // Spy on foregroundAgent.runTurn
-      const runTurnSpy = vi.spyOn(deps.foregroundAgent!, 'runTurn' as never)
+      const runTurnSpy = vi.spyOn(deps.foregroundAgent!, 'runTurn')
 
       await processor(input)
 

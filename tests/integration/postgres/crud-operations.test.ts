@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest'
-import { DatabaseAdapterError } from '../../../src/storage/database-adapter.js'
 import { PostgresAdapter } from '../../../src/storage/adapters/postgres/postgres-adapter.js'
 import type { DatabaseAdapter } from '../../../src/storage/database-adapter.js'
 
@@ -283,7 +282,8 @@ describe.skipIf(!hasDatabase)('PostgreSQL CRUD Operations', () => {
       expect(adapter.isOpen()).toBe(true)
     })
 
-    it('sync methods throw DatabaseAdapterError', () => {
+    it('sync methods throw DatabaseAdapterError', async () => {
+      const { DatabaseAdapterError } = await import('../../../src/storage/database-adapter.js')
       expect(() => adapter.query('SELECT 1')).toThrow(DatabaseAdapterError)
       expect(() => adapter.exec('SELECT 1')).toThrow(DatabaseAdapterError)
       expect(() => adapter.transaction(() => 1)).toThrow(DatabaseAdapterError)

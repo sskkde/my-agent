@@ -326,6 +326,105 @@ describe('ToolExecutor', () => {
       )
     })
 
+    it('should return recoverable APPROVAL_REQUIRED error for approval-required operations', async () => {
+      const tool: ToolDefinition = {
+        name: 'approval-tool',
+        description: 'Tool requiring approval',
+        category: 'write' as ToolCategory,
+        sensitivity: 'high' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({ success: true }),
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'requires_approval',
+        allowed: false,
+        reason: 'High-risk operation requires approval',
+        requestId: 'approval-456',
+        approvalRequest: {
+          id: 'approval-456',
+          userId: 'user-1',
+          sessionId: 'session-1',
+          status: 'pending',
+          actionType: 'tool:approval-tool',
+          operationType: 'write',
+          requestedBy: 'user-1',
+          requestedAt: new Date().toISOString(),
+        },
+      } as PermissionDecision)
+
+      const result = await executor.execute({
+        toolCallId: 'call-approval',
+        toolName: 'approval-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      })
+
+      // Verify error structure
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED')
+      expect(result.error?.recoverable).toBe(true)
+
+      // Verify WAITING_FOR_APPROVAL state is persisted
+      expect(mockToolExecutionStore.updateStatus).toHaveBeenCalledWith(
+        'call-approval',
+        'waiting_for_approval',
+        undefined,
+        expect.stringContaining('APPROVAL_REQUIRED'),
+      )
+    })
+
+    it('should NOT invoke tool handler when approval is required', async () => {
+      const handler = vi.fn().mockResolvedValue({ success: true, data: 'should-not-be-called' })
+
+      const tool: ToolDefinition = {
+        name: 'protected-tool',
+        description: 'Protected tool',
+        category: 'delete' as ToolCategory,
+        sensitivity: 'restricted' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'requires_approval',
+        allowed: false,
+        reason: 'Destructive operation requires approval',
+        requestId: 'approval-789',
+        approvalRequest: {
+          id: 'approval-789',
+          userId: 'user-1',
+          sessionId: 'session-1',
+          status: 'pending',
+          actionType: 'tool:protected-tool',
+          operationType: 'delete',
+          requestedBy: 'user-1',
+          requestedAt: new Date().toISOString(),
+        },
+      } as PermissionDecision)
+
+      const result = await executor.execute({
+        toolCallId: 'call-protected',
+        toolName: 'protected-tool',
+        params: { target: 'critical-file' },
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      })
+
+      // Verify handler was NEVER called
+      expect(handler).not.toHaveBeenCalled()
+
+      // Verify we still get proper error response
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED')
+    })
+
     it('should sanitize permission denied reason containing secrets', async () => {
       const fakeSecret = 'sk-testsecretkey12345678901234567890'
       const tool: ToolDefinition = {

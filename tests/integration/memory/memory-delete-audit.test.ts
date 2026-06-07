@@ -52,6 +52,9 @@ describe('Memory Delete Audit Trail', () => {
   })
 
   afterAll(async () => {
+    if (server.server.closeAllConnections) {
+      server.server.closeAllConnections()
+    }
     await server.close()
     apiContext.connection.close()
   })

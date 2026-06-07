@@ -14,6 +14,28 @@ vi.mock('../../../src/tools/builtins/safe-paths.js', async (importOriginal) => {
   }
 })
 
+async function waitForSessionStatus(
+  store: ProcessSessionStore,
+  userId: string,
+  sessionId: string,
+  predicate: (status: string) => boolean,
+  timeoutMs = 5000,
+) {
+  const startedAt = Date.now()
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const session = store.get(userId, sessionId)
+
+    if (session && predicate(session.status)) {
+      return session
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+
+  return store.get(userId, sessionId)
+}
+
 describe('ProcessSessionStore', () => {
   let store: ProcessSessionStore
   let testDir: string
@@ -67,10 +89,7 @@ describe('ProcessSessionStore', () => {
         maxOutputChars: 1000,
       })
 
-      // Wait for process to complete
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      const session = store.get(userId, sessionId)
+      const session = await waitForSessionStatus(store, userId, sessionId, (status) => status !== 'running')
       expect(session).toBeDefined()
       expect(session!.status).toBe('completed')
       expect(session!.output).toContain('hello')
@@ -340,8 +359,7 @@ describe('ProcessSessionStore', () => {
         maxOutputChars: 1000,
       })
 
-      // Wait for completion
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await waitForSessionStatus(store, userId, sessionId, (status) => status !== 'running')
 
       const result = store.kill(userId, sessionId)
       expect(result).toBe(false)

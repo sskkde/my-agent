@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { createConnectionManager } from '../../../src/storage/connection.js'
 import { createDeadLetterStore } from '../../../src/dead-letter/dead-letter-store.js'
 import { createDeadLetterQueue } from '../../../src/dead-letter/dead-letter-queue.js'
@@ -27,15 +28,15 @@ describe('DeadLetterQueue', () => {
   let connection: ConnectionManager
   let store: DeadLetterStore
   let queue: DeadLetterQueue
-  let retryHandler: ReturnType<typeof vi.fn<Parameters<RetryHandler>, ReturnType<RetryHandler>>>
+  let retryHandler: Mock<RetryHandler>
 
   beforeEach(() => {
     connection = createConnectionManager(':memory:')
     connection.open()
     connection.exec(CREATE_TABLE_SQL)
     store = createDeadLetterStore(connection)
-    retryHandler = vi.fn()
-    queue = createDeadLetterQueue(store, retryHandler as unknown as RetryHandler)
+    retryHandler = vi.fn<RetryHandler>()
+    queue = createDeadLetterQueue(store, retryHandler)
   })
 
   afterEach(() => {

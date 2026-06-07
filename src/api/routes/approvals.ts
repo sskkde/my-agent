@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import type { ApprovalDecisionRequest, ApprovalInfo } from '../types.js'
+import type { ApprovalDecisionRequest, ApprovalInfo, ApprovalResponseType } from '../types.js'
 import { success, envelopeError } from '../response-envelope.js'
 import type { ApiContext } from '../context.js'
 import { APPROVAL_STATES, type ApprovalRequest } from '../../storage/approval-store.js'
@@ -168,12 +168,40 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         return reply
       }
       const { approvalId } = request.params
-      const { decision, reason } = request.body
+      const { decision, responseType, reason } = request.body
 
-      if (!decision || (decision !== 'approved' && decision !== 'rejected')) {
+      // Normalize input: derive effectiveResponseType from either responseType or legacy decision
+      let effectiveResponseType: ApprovalResponseType
+      if (responseType) {
+        // New canonical responseType takes precedence
+        effectiveResponseType = responseType
+      } else if (decision) {
+        // Legacy decision mapping
+        if (decision === 'approved') {
+          effectiveResponseType = 'approve_once' // Default to approve_once for legacy approved
+        } else if (decision === 'rejected') {
+          effectiveResponseType = 'reject'
+        } else {
+          return reply
+            .code(400)
+            .send(envelopeError('BAD_REQUEST', 'Invalid decision. Must be "approved" or "rejected"', request.requestId))
+        }
+      } else {
         return reply
           .code(400)
-          .send(envelopeError('BAD_REQUEST', 'Invalid decision. Must be "approved" or "rejected"', request.requestId))
+          .send(envelopeError('BAD_REQUEST', 'Either responseType or decision is required', request.requestId))
+      }
+
+      if (!['reject', 'approve_once', 'approve_always'].includes(effectiveResponseType)) {
+        return reply
+          .code(400)
+          .send(
+            envelopeError(
+              'BAD_REQUEST',
+              `Invalid responseType. Must be "reject", "approve_once", or "approve_always"`,
+              request.requestId,
+            ),
+          )
       }
 
       const existing = context.stores.approvalStore.getById(approvalId)
@@ -193,7 +221,7 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
           )
       }
 
-      const newStatus = decision === 'approved' ? APPROVAL_STATES.APPROVED : APPROVAL_STATES.REJECTED
+      const newStatus = effectiveResponseType === 'reject' ? APPROVAL_STATES.REJECTED : APPROVAL_STATES.APPROVED
       const now = new Date().toISOString()
       const responseBy = request.user?.userId ?? 'local-user'
 
@@ -204,41 +232,10 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
         responseReason: reason,
       })
 
-      if (decision === 'approved') {
-        const grantId = generateId(GRANT_ID_PREFIX)
-        context.stores.permissionGrantStore.create({
-          id: grantId,
-          userId: existing.userId,
-          scope: existing.scope ?? 'tool',
-          action: existing.actionType,
-          resourcePattern: existing.resource ?? '*',
-          sourceContext: approvalId,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        })
+      let grantCreated = false
+      let grantId: string | undefined
 
-        context.stores.eventStore.append({
-          eventId: `evt-approval-${Date.now()}`,
-          eventType: 'approval_resolved',
-          sourceModule: 'permission',
-          userId: existing.userId,
-          sessionId: existing.sessionId,
-          relatedRefs: { approvalId },
-          payload: { approvalId, decision: 'approved', grantCreated: true },
-          sensitivity: 'medium',
-          retentionClass: 'standard',
-          createdAt: now,
-        })
-
-        await dispatchPendingAction(existing, 'approved', context)
-
-        if (context.triggerRuntime?.handleApprovalResolved) {
-          context.triggerRuntime.handleApprovalResolved({
-            approvalId,
-            status: 'approved',
-            result: { grantCreated: true },
-          })
-        }
-      } else {
+      if (effectiveResponseType === 'reject') {
         context.stores.eventStore.append({
           eventId: `evt-approval-${Date.now()}`,
           eventType: 'approval_resolved',
@@ -261,9 +258,65 @@ export function registerApprovalRoutes(server: FastifyInstance, context: ApiCont
             result: { grantCreated: false },
           })
         }
+      } else {
+        grantId = generateId(GRANT_ID_PREFIX)
+        grantCreated = true
+
+        // Determine TTL based on response type
+        // approve_once: 60 minutes (short TTL MVP fallback - not strict one-shot)
+        // approve_always: 24 hours (preserves existing behavior)
+        const ttlMs =
+          effectiveResponseType === 'approve_once'
+            ? 60 * 60 * 1000 // 60 minutes
+            : 24 * 60 * 60 * 1000 // 24 hours
+
+        context.stores.permissionGrantStore.create({
+          id: grantId,
+          userId: existing.userId,
+          scope: existing.scope ?? 'tool',
+          action: existing.actionType,
+          resourcePattern: existing.resource ?? '*',
+          sourceContext: approvalId,
+          expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+        })
+
+        context.stores.eventStore.append({
+          eventId: `evt-approval-${Date.now()}`,
+          eventType: 'approval_resolved',
+          sourceModule: 'permission',
+          userId: existing.userId,
+          sessionId: existing.sessionId,
+          relatedRefs: { approvalId },
+          payload: { approvalId, decision: 'approved', grantCreated: true, grantId },
+          sensitivity: 'medium',
+          retentionClass: 'standard',
+          createdAt: now,
+        })
+
+        await dispatchPendingAction(existing, 'approved', context)
+
+        if (context.triggerRuntime?.handleApprovalResolved) {
+          context.triggerRuntime.handleApprovalResolved({
+            approvalId,
+            status: 'approved',
+            result: { grantCreated: true, grantId },
+          })
+        }
       }
 
-      return reply.code(200).send(success({ success: true, approvalId, status: newStatus }, request.requestId))
+      return reply.code(200).send(
+        success(
+          {
+            success: true,
+            approvalId,
+            status: newStatus,
+            responseType: effectiveResponseType,
+            grantCreated,
+            grantId,
+          },
+          request.requestId,
+        ),
+      )
     },
   )
 }

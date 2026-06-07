@@ -90,9 +90,9 @@ describe('ApprovalCard', () => {
     fireEvent.click(screen.getByTestId('approval-approve-approval-123'))
 
     await waitFor(() => {
-      expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'approved')
-    })
-
+      expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'approve_once');
+    });
+    
     await waitFor(() => {
       expect(defaultProps.onApprove).toHaveBeenCalledWith('approval-123')
     })
@@ -110,9 +110,9 @@ describe('ApprovalCard', () => {
     fireEvent.click(screen.getByTestId('approval-reject-approval-123'))
 
     await waitFor(() => {
-      expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'rejected', undefined)
-    })
-
+      expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'reject', undefined);
+    });
+    
     await waitFor(() => {
       expect(defaultProps.onReject).toHaveBeenCalledWith('approval-123')
     })

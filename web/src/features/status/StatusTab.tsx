@@ -46,8 +46,8 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
 
   const pendingCount = approvals?.approvals.filter((a) => a.status === 'pending').length ?? 0
 
-  const handleApprovalAction = async (approvalId: string, decision: 'approved' | 'rejected') => {
-    setActionLoading(approvalId)
+  const handleApprovalAction = async (approvalId: string, decision: 'approve_once' | 'reject') => {
+    setActionLoading(approvalId);
     try {
       await client.respondApproval(approvalId, decision, reason || undefined)
       await fetchApprovals()
@@ -165,7 +165,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
                             <div className="action-buttons">
                               <button
                                 data-testid={`approval-approve-${approval.id}`}
-                                onClick={() => handleApprovalAction(approval.id, 'approved')}
+                                onClick={() => handleApprovalAction(approval.id, 'approve_once')}
                                 disabled={actionLoading === approval.id}
                                 className="approve-btn"
                               >
@@ -173,7 +173,7 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
                               </button>
                               <button
                                 data-testid={`approval-reject-${approval.id}`}
-                                onClick={() => handleApprovalAction(approval.id, 'rejected')}
+                                onClick={() => handleApprovalAction(approval.id, 'reject')}
                                 disabled={actionLoading === approval.id}
                                 className="reject-btn"
                               >

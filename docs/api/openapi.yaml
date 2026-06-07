@@ -1583,7 +1583,13 @@ paths:
     patch:
       tags: [Approvals]
       summary: Decide on approval
-      description: Approve or reject an approval request
+      description: |
+        Respond to an approval request with one of three choices:
+        - `reject`: Deny the request (no grant created)
+        - `approve_once`: Approve with 60-minute short-TTL grant
+        - `approve_always`: Approve with 24-hour grant
+
+        Legacy `approved`/`rejected` values are supported for backward compatibility.
       operationId: decideApproval
       security:
         - sessionAuth: []
@@ -4031,13 +4037,27 @@ components:
 
     ApprovalDecisionRequest:
       type: object
-      required: [decision]
       properties:
+        responseType:
+          type: string
+          enum: [reject, approve_once, approve_always]
+          description: |
+            Canonical tri-state approval response (preferred):
+            - `reject`: Deny request, no grant created
+            - `approve_once`: Approve with 60-minute short-TTL grant
+            - `approve_always`: Approve with 24-hour grant
         decision:
           type: string
           enum: [approved, rejected]
+          description: |
+            Legacy two-state approval response (backward compatibility).
+            Normalized to: `approved` → `approve_once`, `rejected` → `reject`
         reason:
           type: string
+          description: Optional reason for the decision
+      description: |
+        Provide either `responseType` (preferred) or `decision` (legacy).
+        If both are provided, `responseType` takes precedence.
 
     ApprovalDecisionResponse:
       allOf:
@@ -4046,14 +4066,28 @@ components:
           properties:
             data:
               type: object
-              required: [success, approvalId, status]
+              required: [success, approvalId, status, responseType, grantCreated]
               properties:
                 success:
                   type: boolean
+                  description: Whether the decision was recorded successfully
                 approvalId:
                   type: string
+                  description: ID of the approval request
                 status:
                   type: string
+                  enum: [approved, rejected]
+                  description: Final status of the approval (legacy field)
+                responseType:
+                  type: string
+                  enum: [reject, approve_once, approve_always]
+                  description: Canonical response type used
+                grantCreated:
+                  type: boolean
+                  description: Whether a permission grant was created
+                grantId:
+                  type: string
+                  description: ID of the created grant (if grantCreated is true)
 
     # ---- Memory ----
     MemoryContent:

@@ -15,7 +15,6 @@ describe.skipIf(!hasDatabase)('PostgreSQL Transactions', () => {
 
   afterAll(async () => {
     await adapter.asyncExec('DROP TABLE IF EXISTS _test_txn CASCADE')
-
     if ((adapter as any).isOpen()) {
       await (adapter as any).getConnection().close()
     }

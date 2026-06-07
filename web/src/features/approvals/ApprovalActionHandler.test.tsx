@@ -24,8 +24,8 @@ describe('useApprovalActions', () => {
       await result.current.approve('approval-123')
     })
 
-    expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'approved')
-  })
+    expect(mockRespondApproval).toHaveBeenCalledWith('approval-123', 'approve_once');
+  });
 
   it('reject calls API correctly', async () => {
     mockRespondApproval.mockResolvedValue({ success: true })
@@ -36,8 +36,8 @@ describe('useApprovalActions', () => {
       await result.current.reject('approval-456', 'Not valid')
     })
 
-    expect(mockRespondApproval).toHaveBeenCalledWith('approval-456', 'rejected', 'Not valid')
-  })
+    expect(mockRespondApproval).toHaveBeenCalledWith('approval-456', 'reject', 'Not valid');
+  });
 
   it('reject works without reason', async () => {
     mockRespondApproval.mockResolvedValue({ success: true })
@@ -48,8 +48,8 @@ describe('useApprovalActions', () => {
       await result.current.reject('approval-789')
     })
 
-    expect(mockRespondApproval).toHaveBeenCalledWith('approval-789', 'rejected', undefined)
-  })
+    expect(mockRespondApproval).toHaveBeenCalledWith('approval-789', 'reject', undefined);
+  });
 
   it('loading state is managed correctly', async () => {
     mockRespondApproval.mockResolvedValue({ success: true })

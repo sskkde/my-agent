@@ -51,7 +51,7 @@ describe('ApprovalsTab', () => {
     expect(screen.getByText('web.search')).toBeInTheDocument()
   })
 
-  it('click approve calls respondApproval with approved', async () => {
+  it('click approve calls respondApproval with approve_once', async () => {
     vi.mocked(client.getApprovals).mockResolvedValue({
       approvals: [
         {
@@ -88,11 +88,11 @@ describe('ApprovalsTab', () => {
     fireEvent.click(screen.getByTestId('approval-approve-approval-1'))
 
     await waitFor(() => {
-      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approved', undefined)
-    })
-  })
+      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined);
+    });
+  });
 
-  it('click reject calls respondApproval with rejected', async () => {
+  it('click reject calls respondApproval with reject', async () => {
     vi.mocked(client.getApprovals).mockResolvedValue({
       approvals: [
         {
@@ -132,9 +132,9 @@ describe('ApprovalsTab', () => {
     fireEvent.click(screen.getByTestId('approval-reject-approval-1'))
 
     await waitFor(() => {
-      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'rejected', 'not authorized')
-    })
-  })
+      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'reject', 'not authorized');
+    });
+  });
 
   it('shows empty state when list is empty', async () => {
     vi.mocked(client.getApprovals).mockResolvedValue({
@@ -294,8 +294,8 @@ describe('ApprovalsTab', () => {
     fireEvent.click(screen.getByTestId('approval-approve-approval-1'))
 
     await waitFor(() => {
-      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approved', undefined)
-    })
+      expect(client.respondApproval).toHaveBeenCalledWith('approval-1', 'approve_once', undefined);
+    });
 
     // Verify getApprovals was called again after approval
     expect(client.getApprovals).toHaveBeenCalledTimes(2)

@@ -1,5 +1,5 @@
-import pg from 'pg'
 import { AsyncLocalStorage } from 'node:async_hooks'
+import pg from 'pg'
 import type { AsyncConnectionManager } from '../../database-adapter.js'
 
 /**
@@ -87,9 +87,9 @@ export class PostgresConnectionManager implements AsyncConnectionManager {
    * Execute a query and return rows.
    */
   async query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]> {
-    const activeClient = this.transactionClient.getStore()
-    if (activeClient) {
-      const result = await activeClient.query(sql, params)
+    const transactionClient = this.transactionClient.getStore()
+    if (transactionClient) {
+      const result = await transactionClient.query(sql, params)
       return result.rows as T[]
     }
 
@@ -104,9 +104,9 @@ export class PostgresConnectionManager implements AsyncConnectionManager {
    * Execute a statement without returning rows.
    */
   async exec(sql: string, params?: unknown[]): Promise<void> {
-    const activeClient = this.transactionClient.getStore()
-    if (activeClient) {
-      await activeClient.query(sql, params)
+    const transactionClient = this.transactionClient.getStore()
+    if (transactionClient) {
+      await transactionClient.query(sql, params)
       return
     }
 
@@ -124,12 +124,6 @@ export class PostgresConnectionManager implements AsyncConnectionManager {
     if (!this.pool) {
       throw new Error('PostgreSQL connection pool is not open')
     }
-
-    const activeClient = this.transactionClient.getStore()
-    if (activeClient) {
-      return fn()
-    }
-
     const client = await this.pool.connect()
     try {
       await client.query('BEGIN')
