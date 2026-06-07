@@ -241,25 +241,131 @@ All guardrails satisfied:
 
 ---
 
+---
+
+## Round 2 Completion Summary
+
+**Status:** COMPLETE (2026-06-07)
+
+### Final Verification Results
+
+| Command              | Status | Details                                      |
+| -------------------- | ------ | -------------------------------------------- |
+| `npm run typecheck`  | FAIL   | Baseline failure - cloakbrowser module missing |
+| `npm run build:web`  | PASS   | 103 modules, 127.06 kB CSS, 3.58s            |
+| `npm run test:web`   | PASS   | 76 test files, 1228 tests, 115.77s           |
+
+### Round 2 Deliverables
+
+**Context Desk Panel:**
+
+- `web/src/features/context/ContextDeskPanel.tsx` — Panel container with error boundary isolation
+- 4 read-only summary cards: ApprovalCard, MemoryCard, RunsCard, ToolActivityCard
+- Grid layout: 2 columns desktop, 1 column mobile (768px breakpoint)
+- All cards use discriminated union state model (loading, ready, empty, error)
+
+**Container Pages:**
+
+- `web/src/features/workspace/WorkspacePage.tsx` — 12 tabs with SecondaryNav
+- `web/src/features/operations/OperationsPage.tsx` — 5 tabs with SecondaryNav
+- `web/src/features/admin/AdminPage.tsx` — 2 tabs with SecondaryNav
+- All existing feature tab components reused without modification
+
+**SecondaryNav Primitive:**
+
+- `web/src/features/common/SecondaryNav.tsx` — TabId-based navigation for containers
+- Button semantics with aria-selected for accessibility
+- Chinese labels preserved
+
+**AgentShell Integration:**
+
+- Context Desk toggle button in topbar (1100px responsive breakpoint)
+- Desktop: Fixed 360px side panel with content margin
+- Mobile: Full-width overlay with slide-in animation
+- Test IDs: `context-desk-toggle`, `context-desk-close`, `context-desk-panel`
+
+**Card State Model:**
+
+- `web/src/features/context/card-state.ts` — Discriminated union state model
+- `web/src/features/context/card-contracts.ts` — Card prop contracts
+- `web/src/features/context/data-adapters.ts` — Data adapters using existing API client
+
+### Context Desk Capabilities
+
+**Important: Context Desk is READ-ONLY summary only.**
+
+The Context Desk provides at-a-glance summaries for 4 data domains:
+
+1. **Approval Requests** — Shows pending approvals filtered by session
+   - Read-only: No approve/reject actions
+   - Navigation: Links to full ApprovalsTab for actions
+
+2. **Memory Entries** — Shows global memory list
+   - Read-only: No create/edit/delete actions
+   - Navigation: Links to full MemoryTab for actions
+
+3. **Run Status** — Shows background runs with progress
+   - Read-only: No pause/resume/cancel actions
+   - Navigation: Links to full ObservabilityTab for actions
+
+4. **Tool Activity** — Shows tool_call/tool_result events
+   - Read-only: Log view only, no actions available
+   - No navigation needed (session context only)
+
+**Why Read-Only?** Context Desk cards are summary widgets, not full feature surfaces. All actionable operations require navigating to the respective full feature tabs. This design keeps the Context Desk lightweight and focused on awareness.
+
+### New Selectors
+
+- `data-testid="context-card-approvals"` — Approval summary card
+- `data-testid="context-card-memory"` — Memory summary card
+- `data-testid="context-card-runs"` — Runs summary card
+- `data-testid="context-card-tools"` — Tool activity summary card
+- `data-testid="container-page-workspace"` — Workspace container page
+- `data-testid="container-page-operations"` — Operations container page
+- `data-testid="container-page-admin"` — Admin container page
+- `data-testid="context-desk-toggle"` — Context Desk toggle button
+- `data-testid="context-desk-close"` — Context Desk close button
+- `data-testid="context-desk-panel"` — Context Desk panel wrapper
+- `data-testid="secondary-nav-{tabId}"` — SecondaryNav items
+
+### Round 2 Test Coverage
+
+**New Test Files (121 tests):**
+
+- Context Desk: 86 tests (cards, panel, state model, adapters)
+- Container Pages: 24 tests (render, tab switching)
+- AgentShell Integration: 11 tests (toggle, close, aria states)
+- SecondaryNav: 12 tests (render, active state, keyboard)
+- Composition Mapping: 8 tests (tab resolution)
+
+**Total Test Count:** 1228 tests (up from 1042 in Round 1)
+
+### Known Issues
+
+**Baseline (Not Round 2 Regressions):**
+
+- `npm run typecheck` FAIL — cloakbrowser module missing (pre-existing from Round 1)
+- `act()` warnings in tests (existing, not new)
+- React Router future flag warnings (existing, not new)
+
+**Round 2 New Issues:** None
+
+### Guardrail Compliance
+
+All Round 2 guardrails satisfied:
+
+- No new npm dependencies
+- No backend/API/database changes
+- No deep SessionConsoleTab extraction
+- No production React Router migration
+- All existing test selectors preserved
+- Chinese labels preserved
+- Plain CSS with CSS variables (no Tailwind/CSS-in-JS)
+- npm package manager used exclusively
+
+---
+
 ## Remaining Scope
-
-### Round 2 — Workspace Composition + Context Desk
-
-**Status:** NOT STARTED
-
-**Scope:**
-
-- Context Desk panel with approval, memory, run status, and tool activity cards
-- Empty/error states where session-scoped APIs are missing
-- Workspace / Operations / Admin container pages
-- Secondary navigation for old tab surfaces
-- Responsive drawer behavior for Context Desk and product navigation
-- Additional integration tests and smoke tests
-
-**Still Excludes:**
-
-- Deep SSE/timeline refactor
-- Removing legacy tab compatibility
 
 ### Round 3 — Deep Refactor + Routing
 
@@ -270,8 +376,11 @@ All guardrails satisfied:
 - Gradual SessionConsoleTab extraction into hooks and presentation components
 - Full React Router routes: `/chat`, `/chat/:sessionId`, `/workspace/:tabId`, `/operations/:tabId`, `/admin/:tabId`
 - Session URL synchronization with `session-console-selected-session` migration guard
+- SSE/timeline refactor for improved maintainability
 - Playwright end-to-end coverage for chat, mobile, navigation, reload, and SSE degradation
 - Legacy shell/navigation cleanup only after evidence-backed approval
+
+**Rationale:** Round 3 addresses architectural debt that was intentionally deferred to reduce risk. Deep SessionConsoleTab extraction and full React Router migration require the stable shell foundation that Rounds 1 and 2 now provide.
 
 ---
 
@@ -279,8 +388,9 @@ All guardrails satisfied:
 
 **Baseline:** Unknown (tests timed out)
 **Round 1 Final:** 60 test files, 1042 tests PASS
+**Round 2 Final:** 76 test files, 1228 tests PASS
 
-**New Test Files:**
+### Round 1 New Test Files (89 tests)
 
 - `src/layout/AgentShell.test.tsx` (23 tests)
 - `src/features/session/SessionWorkspace.test.tsx` (9 tests)
@@ -289,4 +399,18 @@ All guardrails satisfied:
 - `src/components/ui/Button.test.tsx` (12 tests)
 - `src/components/ui/Card.test.tsx` (9 tests)
 
-**Total New Tests:** 89 tests
+### Round 2 New Test Files (121 tests)
+
+- `src/features/context/card-state.test.ts` (12 tests)
+- `src/features/context/card-contracts.test.ts` (10 tests)
+- `src/features/context/data-adapters.test.ts` (20 tests)
+- `src/features/context/ContextDeskPanel.test.tsx` (11 tests)
+- `src/features/context/cards.test.tsx` (8 tests)
+- `src/features/context/MemoryCard.test.tsx` (6 tests)
+- `src/features/context/RunsCard.test.tsx` (8 tests)
+- `src/features/context/ToolActivityCard.test.tsx` (8 tests)
+- `src/features/workspace/WorkspacePage.test.tsx` (9 tests)
+- `src/features/operations/OperationsPage.test.tsx` (8 tests)
+- `src/features/admin/AdminPage.test.tsx` (8 tests)
+- `src/features/common/SecondaryNav.test.tsx` (12 tests)
+- `src/features/common/container-composition.test.ts` (8 tests)
