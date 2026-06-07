@@ -579,4 +579,136 @@ describe('Approval Resume Flow Integration', () => {
       expect(dispatchedActions[0].payload.targetAlreadyCancelled).toBe(true);
     });
   });
+
+  describe('Grant creation for approve_always', () => {
+    it('should create permission grant for approve_always response', async () => {
+      const approvalRequest = approvalHandler.createApproval({
+        userId: 'user_123',
+        sessionId: 'sess_456',
+        actionType: 'tool_execution',
+        operationType: 'execute',
+        resource: 'file://sensitive.txt',
+        justification: 'Need to read sensitive file',
+        requestedBy: 'system',
+      });
+
+      const grantsBefore = permissionGrantStore.findByUser('user_123');
+
+      const approvalResponse: ApprovalResponse = {
+        requestId: approvalRequest.id,
+        responseType: 'approve_always',
+        respondedBy: 'user_123',
+        reason: 'Approved permanently',
+        respondedAt: new Date().toISOString(),
+        grantScope: 'tool',
+      };
+
+      const result = approvalHandler.processResponse(approvalResponse);
+      expect(result.success).toBe(true);
+      expect(result.approved).toBe(true);
+      expect(result.grant).toBeDefined();
+
+      const grantsAfter = permissionGrantStore.findByUser('user_123');
+      expect(grantsAfter.length).toBe(grantsBefore.length + 1);
+
+      const newGrant = grantsAfter.find(g => !grantsBefore.some(b => b.id === g.id));
+      expect(newGrant).toBeDefined();
+      expect(newGrant!.userId).toBe('user_123');
+      expect(newGrant!.scope).toBe('tool');
+      expect(newGrant!.action).toBe('tool_execution');
+      expect(newGrant!.resourcePattern).toBe('file://sensitive.txt');
+    });
+  });
+
+  describe('Grant creation before dispatch ordering', () => {
+    it('should verify grant exists before dispatching resume action', async () => {
+      const approvalRequest = approvalHandler.createApproval({
+        userId: 'user_123',
+        sessionId: 'sess_456',
+        actionType: 'tool_execution',
+        operationType: 'execute',
+        resource: 'file://test.txt',
+        justification: 'Test file read',
+        requestedBy: 'system',
+      });
+
+      const waitingAction: RuntimeAction = {
+        actionId: generateTestId('action'),
+        actionType: 'execute_tool',
+        source: { sourceModule: 'planner' },
+        targetRuntime: 'agent_kernel',
+        targetAction: 'execute_tool',
+        payload: { toolName: 'file_read', path: 'test.txt' },
+        sessionId: 'sess_456',
+        userId: 'user_123',
+        targetRef: { runId: 'run_123', approvalId: approvalRequest.id },
+        status: 'waiting_for_approval',
+        correlationId: generateTestId('corr'),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      runtimeActionStore.save(waitingAction);
+
+      const grantsBefore = permissionGrantStore.findByUser('user_123');
+
+      const approvalResponse: ApprovalResponse = {
+        requestId: approvalRequest.id,
+        responseType: 'approve_always',
+        respondedBy: 'user_123',
+        reason: 'Approved permanently',
+        respondedAt: new Date().toISOString(),
+        grantScope: 'tool',
+      };
+
+      const result = approvalHandler.processResponse(approvalResponse);
+      expect(result.success).toBe(true);
+      expect(result.approved).toBe(true);
+      expect(result.grant).toBeDefined();
+
+      const grantsAfter = permissionGrantStore.findByUser('user_123');
+      expect(grantsAfter.length).toBe(grantsBefore.length + 1);
+
+      const newGrant = grantsAfter.find(g => !grantsBefore.some(b => b.id === g.id));
+      expect(newGrant).toBeDefined();
+      expect(newGrant!.sourceContext).toContain(approvalRequest.id);
+
+      const resumeAction: RuntimeAction = {
+        actionId: generateTestId('resume'),
+        actionType: 'resume_agent_run',
+        source: { sourceModule: 'permission' },
+        targetRuntime: 'agent_kernel',
+        targetAction: 'resume_agent_run',
+        payload: {
+          originalActionId: waitingAction.actionId,
+          approvalId: approvalRequest.id,
+          decision: 'approved',
+        },
+        sessionId: 'sess_456',
+        userId: 'user_123',
+        targetRef: { runId: 'run_123', approvalId: approvalRequest.id },
+        status: 'created',
+        correlationId: waitingAction.correlationId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const dispatchRequest: DispatchRequest = {
+        requestId: generateTestId('req'),
+        action: resumeAction,
+        context: {
+          callerModule: 'permission',
+          userId: 'user_123',
+          sessionId: 'sess_456',
+        },
+      };
+
+      const dispatchResult = await dispatcher.dispatch(dispatchRequest);
+      expect(dispatchResult.status).toBe('completed');
+
+      expect(grantsAfter.length).toBe(grantsBefore.length + 1);
+      expect(newGrant).toBeDefined();
+      expect(newGrant!.id).toBeDefined();
+    });
+  });
 });
