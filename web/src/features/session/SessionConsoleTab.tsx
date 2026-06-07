@@ -4,6 +4,7 @@ import { TimelineList } from '../../components/timeline/TimelineList';
 import type { ConsoleSessionInfo, ConsoleTimelineEvent, CreateProviderRequest, UpdateProviderRequest } from '../../api/types';
 import type { TabId } from '../../components/TabNav';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import ComposerDock from '../../components/ComposerDock';
 
 import { executeCommand } from '../../commands/executor';
 import { parseInput, isCommand } from '../../commands/parser';
@@ -786,15 +787,6 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (draft.trim() && !sending) {
-        handleSend();
-      }
-    }
-  };
-
   const handleRetryStream = useCallback(() => {
     if (selectedSessionId) {
       sseReconnectAttemptsRef.current = 0;
@@ -1064,27 +1056,14 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({
               onRetry={handleRetryStream}
             />
 
-            {/* Input Dock */}
-            <div className="session-input-dock">
-              <input
-                type="text"
-                className="session-input"
-                data-testid="session-message-input"
-                placeholder="输入消息或 /help 查看命令..."
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={sending}
-              />
-              <button
-                className="session-send-button"
-                data-testid="session-send-button"
-                onClick={handleSend}
-                disabled={!draft.trim() || sending}
-              >
-                {sending ? '发送中...' : '发送'}
-              </button>
-            </div>
+            {/* Composer Dock */}
+            <ComposerDock
+              value={draft}
+              onChange={setDraft}
+              onSend={handleSend}
+              sending={sending}
+              placeholder="输入消息或 /help 查看命令..."
+            />
           </>
         )}
       </main>

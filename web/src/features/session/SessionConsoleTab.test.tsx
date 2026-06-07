@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import SessionConsoleTab from './SessionConsoleTab';
 import { mockViewport, resetMatchMedia } from '../../test/setup';
@@ -358,7 +358,8 @@ describe('SessionConsoleTab', () => {
     fireEvent.click(screen.getByTestId('session-send-button'));
 
     await waitFor(() => {
-      expect(screen.getByText('Queued hello')).toBeInTheDocument();
+      const timeline = screen.getByTestId('session-timeline');
+      expect(within(timeline).getByText('Queued hello')).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -424,7 +425,8 @@ describe('SessionConsoleTab', () => {
     fireEvent.click(screen.getByTestId('session-send-button'));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Repeat')).toHaveLength(2);
+      const timeline = screen.getByTestId('session-timeline');
+      expect(within(timeline).getAllByText('Repeat')).toHaveLength(2);
     });
   });
 
@@ -500,7 +502,8 @@ describe('SessionConsoleTab', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('Same')).toHaveLength(1);
+      const timeline = screen.getByTestId('session-timeline');
+      expect(within(timeline).getAllByText('Same')).toHaveLength(1);
     });
 
     fireEvent.change(screen.getByTestId('session-message-input'), {
@@ -509,7 +512,8 @@ describe('SessionConsoleTab', () => {
     fireEvent.click(screen.getByTestId('session-send-button'));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Same')).toHaveLength(2);
+      const timeline = screen.getByTestId('session-timeline');
+      expect(within(timeline).getAllByText('Same')).toHaveLength(2);
     });
   });
 
@@ -1764,7 +1768,8 @@ describe('SessionConsoleTab', () => {
 
     // Optimistic message appears immediately, before POST completes
     await waitFor(() => {
-      expect(screen.getByText('Optimistic test')).toBeInTheDocument();
+      const timeline = screen.getByTestId('session-timeline');
+      expect(within(timeline).getByText('Optimistic test')).toBeInTheDocument();
     });
 
     // Complete the POST
@@ -1778,7 +1783,8 @@ describe('SessionConsoleTab', () => {
     });
 
     // Verify optimistic message remains
-    expect(screen.getByText('Optimistic test')).toBeInTheDocument();
+    const timeline = screen.getByTestId('session-timeline');
+    expect(within(timeline).getByText('Optimistic test')).toBeInTheDocument();
 
     // Verify correlation/envelope IDs don't appear
     expect(screen.queryByText('returned-corr')).not.toBeInTheDocument();

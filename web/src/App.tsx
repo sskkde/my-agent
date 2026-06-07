@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import AppShell from './components/AppShell';
+import AgentShell from './layout/AgentShell';
 import AgentMonitorTab from './features/monitor/AgentMonitorTab';
 import DashboardTab from './features/dashboard/DashboardTab';
-import SessionConsoleTab from './features/session/SessionConsoleTab';
+import SessionWorkspace from './features/session/SessionWorkspace';
 import StatusTab from './features/status/StatusTab';
 import SessionsTab from './features/sessions/SessionsTab';
 import UsageTab from './features/usage/UsageTab';
@@ -27,7 +27,7 @@ import type { TabId } from './components/TabNav';
 import './styles.css';
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabId>('session-console');
   const { isAuthenticated, needsSetup, loading, logout, user } = useAuth();
 
   if (loading) {
@@ -57,7 +57,7 @@ function AppContent() {
       case 'dashboard':
         return <DashboardTab />;
       case 'session-console':
-        return <SessionConsoleTab />;
+        return <SessionWorkspace />;
       case 'agent-monitor':
         return <AgentMonitorTab />;
       case 'status':
@@ -98,14 +98,14 @@ function AppContent() {
   };
 
   return (
-    <AppShell
+    <AgentShell
       activeTab={activeTab}
       onTabChange={setActiveTab}
       user={user}
       onLogout={logout}
     >
       {renderContent()}
-    </AppShell>
+    </AgentShell>
   );
 }
 

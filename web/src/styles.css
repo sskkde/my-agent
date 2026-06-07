@@ -34,6 +34,89 @@
   --mobile-content-padding: 12px;
   --mobile-tablet-padding: 16px;
   --mobile-drawer-width: 280px;
+
+  /* ==========================================================================
+     Warm Paper Theme Tokens
+     ==========================================================================
+     Inspired by traditional paper aesthetics: warm cream backgrounds, ink-like
+     text, seal-stamp accents, and subtle paper texture effects.
+     
+     Color Philosophy:
+     - Paper tones: Warm creams and beiges (like aged rice paper)
+     - Ink tones: Warm browns (like traditional calligraphy ink)
+     - Accent: Seal blue-green (like a traditional Chinese seal)
+     - Minimal: Hairline borders, subtle radius, layered depth
+     ========================================================================== */
+
+  /* Paper Background Layers */
+  --warm-paper-bg: #FBF8F0;                    /* Primary paper surface */
+  --warm-paper-bg-elevated: #FFFCF7;           /* Elevated surfaces (cards, modals) */
+  --warm-paper-bg-deep: #F5EFE4;               /* Deeper layer (sidebars, wells) */
+  --warm-paper-bg-glass: rgba(251, 248, 240, 0.92); /* Glass overlay effect */
+
+  /* Ink Text Hierarchy */
+  --warm-paper-text: #2A2622;                  /* Dense ink - primary text */
+  --warm-paper-text-secondary: #4A433C;        /* Secondary text */
+  --warm-paper-text-muted: #6B6158;            /* Captions, placeholders */
+
+  /* Border & Line */
+  --warm-paper-border: #D8CFBE;                /* Ink-line - main divider */
+  --warm-paper-border-width: 0.5px;            /* Hairline border width */
+
+  /* Seal Accent (primary accent color) */
+  --warm-paper-accent: #5B8C85;                /* Seal blue-green - 一抹远山青 */
+  --warm-paper-accent-hover: #4A7A73;          /* Hover state */
+  --warm-paper-accent-subtle: rgba(91, 140, 133, 0.08); /* Subtle background */
+  --warm-paper-accent-rgb: 91, 140, 133;       /* RGB for rgba usage */
+
+  /* Semantic Colors (ink-dyed, minimal) */
+  --warm-paper-success: #4A6B4A;               /* Ink green */
+  --warm-paper-success-rgb: 74, 107, 74;
+  --warm-paper-warning: #8B6F47;               /* Aged paper amber */
+  --warm-paper-warning-rgb: 139, 111, 71;
+  --warm-paper-danger: #8B2C1F;                /* Deep coral (朱砂) */
+  --warm-paper-danger-rgb: 139, 44, 31;
+
+  /* Border Radius (minimal, seal-like) */
+  --warm-paper-radius-sm: 2px;                 /* Input, button, chip */
+  --warm-paper-radius-md: 3px;                 /* Card, list block */
+  --warm-paper-radius-lg: 4px;                 /* Modal */
+
+  /* Elevation Shadows (paper layering) */
+  --warm-paper-shadow-sm: 0 1px 2px rgba(42, 38, 34, 0.03);
+  --warm-paper-shadow-md: 0 2px 4px rgba(42, 38, 34, 0.04);
+  --warm-paper-shadow-lg: 0 4px 8px rgba(42, 38, 34, 0.05);
+
+  /* Interactive States */
+  --warm-paper-hover-overlay: rgba(42, 38, 34, 0.02);
+  --warm-paper-active-overlay: rgba(42, 38, 34, 0.04);
+  --warm-paper-focus-ring: rgba(91, 140, 133, 0.3);
+}
+
+/* ==========================================================================
+   Warm Paper Theme Utility Classes
+   ========================================================================== */
+
+.warm-paper {
+  background-color: var(--warm-paper-bg);
+  color: var(--warm-paper-text);
+  border-color: var(--warm-paper-border);
+}
+
+.warm-paper-card {
+  background-color: var(--warm-paper-bg-elevated);
+  border: var(--warm-paper-border-width) solid var(--warm-paper-border);
+  border-radius: var(--warm-paper-radius-md);
+  box-shadow: var(--warm-paper-shadow-sm);
+}
+
+.warm-paper-accent-text {
+  color: var(--warm-paper-accent);
+}
+
+.warm-paper-accent-bg {
+  background-color: var(--warm-paper-accent-subtle);
+  border: 1px solid var(--warm-paper-accent);
 }
 
 body {
@@ -746,6 +829,80 @@ body {
 .session-send-button:disabled {
   background-color: #9ca3af;
   cursor: not-allowed;
+}
+
+/* ==========================================================================
+   ComposerDock Styles (warm-paper themed)
+   ========================================================================== */
+
+.composer-dock {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
+  border-top: var(--warm-paper-border-width, 0.5px) solid var(--warm-paper-border, var(--border));
+}
+
+.composer-input {
+  flex: 1;
+  min-height: 44px;
+  max-height: 200px;
+  padding: 12px 16px;
+  border: var(--warm-paper-border-width, 0.5px) solid var(--warm-paper-border, var(--border));
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  background: var(--warm-paper-bg, var(--bg-elevated));
+  color: var(--warm-paper-text, var(--text));
+  resize: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composer-input::placeholder {
+  color: var(--warm-paper-text-muted, var(--muted));
+}
+
+.composer-input:focus {
+  outline: none;
+  border-color: var(--warm-paper-accent, var(--accent));
+  box-shadow: 0 0 0 2px var(--warm-paper-focus-ring, rgba(91, 140, 133, 0.3));
+}
+
+.composer-input:disabled {
+  background-color: var(--warm-paper-bg-deep, #f5efe4);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.composer-send-button {
+  padding: 12px 24px;
+  background-color: var(--warm-paper-accent, var(--accent));
+  color: white;
+  border: none;
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.composer-send-button:hover:not(:disabled) {
+  background-color: var(--warm-paper-accent-hover, #4A7A73);
+}
+
+.composer-send-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.composer-send-button:disabled {
+  background-color: var(--warm-paper-text-muted, #9ca3af);
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* ==========================================================================
@@ -8253,5 +8410,256 @@ body {
   .effective-config-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ==========================================================================
+   UI Primitives
+   ========================================================================== */
+
+/* Button */
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ui-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-button--small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.ui-button--medium {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.ui-button--large {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.ui-button--primary {
+  background: var(--accent);
+  color: white;
+}
+
+.ui-button--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.ui-button--secondary {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.ui-button--secondary:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.ui-button--ghost {
+  background: transparent;
+  color: var(--text);
+}
+
+.ui-button--ghost:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.ui-button__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ui-button-spin 0.6s linear infinite;
+}
+
+@keyframes ui-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Card */
+.ui-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ui-card__header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.ui-card__content {
+  padding: 16px;
+}
+
+.ui-card__footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* Badge */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+.ui-badge--small {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.ui-badge--medium {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.ui-badge--default {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.ui-badge--success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ui-badge--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ui-badge--error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ui-badge--info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* TextArea */
+.ui-textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.ui-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ui-textarea::placeholder {
+  color: var(--muted);
+}
+
+.ui-textarea--resize-none {
+  resize: none;
+}
+
+.ui-textarea--resize-vertical {
+  resize: vertical;
+}
+
+.ui-textarea--resize-horizontal {
+  resize: horizontal;
+}
+
+.ui-textarea--resize-both {
+  resize: both;
+}
+
+/* ==========================================================================
+   Agent Shell Layout
+   ========================================================================== */
+
+.agent-shell-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--warm-paper-bg, var(--bg));
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Product Navigation Bar
+   ========================================================================== */
+
+.product-nav {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
+  border-bottom: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, var(--border));
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.product-nav__item {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--warm-paper-text-secondary, var(--muted));
+  background: transparent;
+  border: none;
+  border-radius: var(--warm-paper-radius-sm, 4px);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.product-nav__item:hover {
+  color: var(--warm-paper-text, var(--text));
+  background: var(--warm-paper-hover-overlay, rgba(0, 0, 0, 0.02));
+}
+
+.product-nav__item--active {
+  color: var(--warm-paper-accent, var(--accent));
+  background: var(--warm-paper-accent-subtle, rgba(91, 140, 133, 0.08));
+  font-weight: 600;
+}
+
+.product-nav__item--active:hover {
+  background: var(--warm-paper-accent-subtle, rgba(91, 140, 133, 0.12));
+}
+
+/* ==========================================================================
+   Center Stage (Main Content Area)
+   ========================================================================== */
+
+.center-stage {
+  flex: 1;
+  overflow: auto;
+  background: var(--warm-paper-bg, var(--bg));
 }
 
