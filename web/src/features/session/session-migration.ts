@@ -17,7 +17,9 @@
 
 /**
  * Validates if a value is a valid session ID format.
- * Session IDs follow the pattern: ses_<alphanumeric>
+ * Session IDs follow either pattern:
+ * - ses_<alphanumeric> (legacy/test format)
+ * - session-<timestamp>-<random> (backend-generated format)
  *
  * @param value - The value to validate
  * @returns true if the value is a valid session ID, false otherwise
@@ -32,9 +34,10 @@ export function isValidSessionId(value: unknown): value is string {
     return false
   }
 
-  // Session IDs follow the pattern: ses_<alphanumeric>
-  // This is a basic validation - adjust pattern as needed for actual session ID format
-  const sessionIdPattern = /^ses_[a-zA-Z0-9_-]+$/
+  // Accept both formats:
+  // 1. ses_<alphanumeric> (legacy/test format)
+  // 2. session-<timestamp>-<random> (backend-generated format)
+  const sessionIdPattern = /^(ses_[a-zA-Z0-9_-]+|session-[a-zA-Z0-9_-]+)$/
   return sessionIdPattern.test(value)
 }
 

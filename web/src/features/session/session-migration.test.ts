@@ -15,6 +15,7 @@ describe('session-migration', () => {
       expect(isValidSessionId('ses_test-session-id')).toBe(true)
       expect(isValidSessionId('ses_1234567890')).toBe(true)
       expect(isValidSessionId('ses_ABCdefGHI')).toBe(true)
+      expect(isValidSessionId('session-1717834567890-abc123def')).toBe(true)
     })
 
     it('should return false for invalid session IDs', () => {
