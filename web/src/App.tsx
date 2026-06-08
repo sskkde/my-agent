@@ -1,38 +1,98 @@
-import { useState } from 'react'
+import { useCallback } from 'react'
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import AgentShell from './layout/AgentShell'
 import WorkspacePage from './features/workspace/WorkspacePage'
 import OperationsPage from './features/operations/OperationsPage'
 import AdminPage from './features/admin/AdminPage'
-import { getProductSection } from './navigation/product-navigation'
-import AgentMonitorTab from './features/monitor/AgentMonitorTab'
-import DashboardTab from './features/dashboard/DashboardTab'
 import SessionWorkspace from './features/session/SessionWorkspace'
-import StatusTab from './features/status/StatusTab'
-import SessionsTab from './features/sessions/SessionsTab'
-import UsageTab from './features/usage/UsageTab'
-import LogsDebugTab from './features/logs/LogsDebugTab'
-import ChannelsTab from './features/channels/ChannelsTab'
-import InstancesTab from './features/instances/InstancesTab'
-import SkillsTab from './features/skills/SkillsTab'
-import AgentsTab from './features/agents/AgentsTab'
-import SettingsTab from './features/settings/SettingsTab'
-import WorkflowsTab from './features/workflows/WorkflowsTab'
-import ApprovalsTab from './features/approvals/ApprovalsTab'
-import TriggersTab from './features/triggers/TriggersTab'
-import MemoryTab from './features/memory/MemoryTab'
-import ConnectorsTab from './features/connectors/ConnectorsTab'
-import ObservabilityTab from './features/observability/ObservabilityTab'
-import DLQTab from './features/dlq/DLQTab'
-import AdminTab from './features/admin/AdminTab'
 import LoginPage from './features/auth/LoginPage'
 import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { routeToNavigation, navigationToRoute } from './router/route-mapping'
+import { resolveSessionId, safeReadLocalStorage } from './features/session/session-migration'
+import { SELECTED_SESSION_KEY } from './features/session/session-constants'
 import type { TabId } from './components/TabNav'
 import './styles.css'
 
-function AppContent() {
-  const [activeTab, setActiveTab] = useState<TabId>('session-console')
+/**
+ * ChatRouteContent - Renders the Chat section for /, /chat, /chat/:sessionId routes.
+ *
+ * Integrates URL/localStorage precedence from Task 4:
+ * - URL sessionId takes priority when valid
+ * - localStorage is fallback when URL has no sessionId
+ * - Uses resolveSessionId for safe precedence handling
+ */
+function ChatRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
+  const location = useLocation()
+  const navState = routeToNavigation(location.pathname)
+  const localStorageSessionId = safeReadLocalStorage(SELECTED_SESSION_KEY)
+  const resolvedSessionId = resolveSessionId(navState.sessionId ?? null, localStorageSessionId)
+
+  return (
+    <SessionWorkspace
+      initialSessionId={resolvedSessionId ?? undefined}
+      onTabChange={onTabChange}
+    />
+  )
+}
+
+/**
+ * WorkspaceRouteContent - Renders WorkspacePage with tab derived from URL.
+ */
+function WorkspaceRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
+  const location = useLocation()
+  const navState = routeToNavigation(location.pathname)
+  return <WorkspacePage activeTab={navState.tabId} onTabChange={onTabChange} />
+}
+
+/**
+ * OperationsRouteContent - Renders OperationsPage with tab derived from URL.
+ */
+function OperationsRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
+  const location = useLocation()
+  const navState = routeToNavigation(location.pathname)
+  return <OperationsPage activeTab={navState.tabId} onTabChange={onTabChange} />
+}
+
+/**
+ * AdminRouteContent - Renders AdminPage with tab derived from URL.
+ */
+function AdminRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
+  const location = useLocation()
+  const navState = routeToNavigation(location.pathname)
+  return <AdminPage activeTab={navState.tabId} onTabChange={onTabChange} />
+}
+
+/**
+ * AppRoutes - Route-driven content rendering with compatibility adapter.
+ *
+ * URL is the primary source of truth for navigation state.
+ * activeTab is derived from the URL via routeToNavigation().
+ * handleTabChange is a compatibility adapter that navigates to the matching URL.
+ */
+function AppRoutes() {
   const { isAuthenticated, needsSetup, loading, logout, user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Derive activeTab from URL (primary source of truth)
+  const navState = routeToNavigation(location.pathname)
+  const activeTab = navState.tabId
+
+  /**
+   * Compatibility adapter: translates legacy tab-change calls to URL navigation.
+   * - AgentShell product section clicks: handleProductSectionClick → onTabChange(defaultTab)
+   * - AgentShell sidebar tab clicks: onTabChange(tabId)
+   * - Container page secondary nav: onTabChange(tabId)
+   * All result in navigation to the corresponding URL.
+   */
+  const handleTabChange = useCallback(
+    (tab: TabId) => {
+      const route = navigationToRoute(tab)
+      navigate(route)
+    },
+    [navigate],
+  )
 
   if (loading) {
     return (
@@ -56,72 +116,28 @@ function AppContent() {
     return <LoginPage mode="login" />
   }
 
-  const renderContent = () => {
-    const section = getProductSection(activeTab)
-
-    if (section === 'chat') {
-      return <SessionWorkspace />
-    }
-
-    if (section === 'workspace') {
-      return <WorkspacePage activeTab={activeTab} onTabChange={setActiveTab} />
-    }
-
-    if (section === 'operations') {
-      return <OperationsPage activeTab={activeTab} onTabChange={setActiveTab} />
-    }
-
-    if (section === 'admin') {
-      return <AdminPage activeTab={activeTab} onTabChange={setActiveTab} />
-    }
-
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardTab />
-      case 'session-console':
-        return <SessionWorkspace />
-      case 'agent-monitor':
-        return <AgentMonitorTab />
-      case 'status':
-        return <StatusTab onTabChange={setActiveTab} />
-      case 'sessions':
-        return <SessionsTab />
-      case 'usage':
-        return <UsageTab />
-      case 'logs-debug':
-        return <LogsDebugTab />
-      case 'channels':
-        return <ChannelsTab />
-      case 'instances':
-        return <InstancesTab />
-      case 'skills':
-        return <SkillsTab />
-      case 'agents':
-        return <AgentsTab />
-      case 'settings':
-        return <SettingsTab />
-      case 'workflows':
-        return <WorkflowsTab />
-      case 'approvals':
-        return <ApprovalsTab onTabChange={setActiveTab} />
-      case 'triggers':
-        return <TriggersTab />
-      case 'memory':
-        return <MemoryTab />
-      case 'observability':
-        return <ObservabilityTab />
-      case 'connectors':
-        return <ConnectorsTab />
-      case 'dlq':
-        return <DLQTab />
-      case 'admin':
-        return <AdminTab />
-    }
-  }
-
   return (
-    <AgentShell activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
-      {renderContent()}
+    <AgentShell activeTab={activeTab} onTabChange={handleTabChange} user={user} onLogout={logout}>
+      <Routes>
+        {/* Root → renders Chat section (same as /chat) */}
+        <Route path="/" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+
+        {/* Chat section routes */}
+        <Route path="/chat" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+        <Route path="/chat/:sessionId" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+
+        {/* Workspace section route with tab parameter */}
+        <Route path="/workspace/:tabId" element={<WorkspaceRouteContent onTabChange={handleTabChange} />} />
+
+        {/* Operations section route with tab parameter */}
+        <Route path="/operations/:tabId" element={<OperationsRouteContent onTabChange={handleTabChange} />} />
+
+        {/* Admin section route with tab parameter */}
+        <Route path="/admin/:tabId" element={<AdminRouteContent onTabChange={handleTabChange} />} />
+
+        {/* Catch-all: redirect to root (renders Chat) */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </AgentShell>
   )
 }
@@ -129,7 +145,7 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <AppRoutes />
     </AuthProvider>
   )
 }

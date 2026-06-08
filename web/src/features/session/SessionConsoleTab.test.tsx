@@ -3455,3 +3455,589 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
     })
   })
 })
+
+// =============================================================================
+// Command Parsing Characterization Tests (Task 2)
+// =============================================================================
+
+describe('SessionConsoleTab - Command Parsing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    localStorage.clear()
+  })
+
+  it('sends message with // prefix as escaped text (not command)', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-123' })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    // Wait for input to be available
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
+
+    // Type escaped command with // prefix
+    const input = screen.getByTestId('session-message-input')
+    fireEvent.change(input, { target: { value: '//help' } })
+    
+    // Verify input has the value
+    expect((input as HTMLInputElement).value).toBe('//help')
+    
+    // Now the send button should be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('session-send-button')).not.toBeDisabled()
+    })
+    
+    // Click send
+    fireEvent.click(screen.getByTestId('session-send-button'))
+
+    // Should send as regular message, not execute as command
+    await waitFor(() => {
+      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'help')
+    })
+  })
+
+  it('executes /help command without sending message', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
+
+    // Type /help command
+    fireEvent.change(screen.getByTestId('session-message-input'), {
+      target: { value: '/help' },
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
+
+    // Should NOT call sendMessage for commands
+    await waitFor(() => {
+      expect(mockSendMessage).not.toHaveBeenCalled()
+    })
+
+    // Input should be cleared after command execution
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toHaveValue('')
+    })
+  })
+
+  it('executes /providers command without sending message', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
+
+    // Type /providers command
+    fireEvent.change(screen.getByTestId('session-message-input'), {
+      target: { value: '/providers' },
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
+
+    // Should NOT call sendMessage for commands
+    await waitFor(() => {
+      expect(mockSendMessage).not.toHaveBeenCalled()
+    })
+
+    // Input should be cleared after command execution
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toHaveValue('')
+    })
+  })
+
+  it('shows error for unknown command', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
+
+    // Type unknown command
+    fireEvent.change(screen.getByTestId('session-message-input'), {
+      target: { value: '/unknown-command' },
+    })
+    fireEvent.click(screen.getByTestId('session-send-button'))
+
+    // Should show error message in timeline
+    await waitFor(() => {
+      expect(screen.getByText(/Unknown command: "unknown-command"/)).toBeInTheDocument()
+    })
+  })
+})
+
+// =============================================================================
+// SSE Status Characterization Tests (Task 2)
+// =============================================================================
+
+describe('SessionConsoleTab - SSE Status Transitions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    localStorage.clear()
+  })
+
+  it('shows stream status indicator with correct initial state', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+
+    let connectCallback: (() => void) | null = null
+    mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, onError) => {
+      connectCallback = onError
+      return () => {}
+    })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    // Should show stream status indicator
+    await waitFor(() => {
+      expect(screen.getByTestId('session-timeline-stream-status')).toBeInTheDocument()
+    })
+
+    // Should show connected status initially
+    await waitFor(() => {
+      const statusIndicator = screen.getByTestId('session-timeline-stream-status')
+      expect(statusIndicator.textContent).toContain('已连接')
+    })
+  })
+
+  it('shows disconnected status and retry button when SSE disconnects', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+
+    let disconnectCallback: (() => void) | null = null
+    mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, onError) => {
+      disconnectCallback = onError
+      return () => {}
+    })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-timeline-stream-status')).toBeInTheDocument()
+    })
+
+    // Simulate SSE disconnect
+    await act(async () => {
+      disconnectCallback?.()
+    })
+
+    // Should show disconnected status
+    await waitFor(() => {
+      const statusIndicator = screen.getByTestId('session-timeline-stream-status')
+      expect(statusIndicator.textContent).toContain('已断开')
+    })
+
+    // Should show retry button
+    await waitFor(() => {
+      expect(screen.getByText('重试')).toBeInTheDocument()
+    })
+  })
+
+  it('reconnects SSE when retry button is clicked', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+
+    let disconnectCallback: (() => void) | null = null
+    mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, onError) => {
+      disconnectCallback = onError
+      return () => {}
+    })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
+    })
+
+    // Simulate disconnect
+    await act(async () => {
+      disconnectCallback?.()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('重试')).toBeInTheDocument()
+    })
+
+    // Click retry
+    fireEvent.click(screen.getByText('重试'))
+
+    // Should reconnect
+    await waitFor(() => {
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(2)
+    })
+  })
+})
+
+// =============================================================================
+// Selector Coverage Verification (Task 2)
+// =============================================================================
+
+describe('SessionConsoleTab - Selector Coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('renders all key selectors when session is selected', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 5,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({
+      events: [],
+      total: 0,
+    })
+
+    render(<SessionConsoleTab />)
+
+    // Verify sessions-sidebar selector
+    await waitFor(() => {
+      expect(screen.getByTestId('sessions-sidebar')).toBeInTheDocument()
+    })
+
+    // Verify sessions-list selector
+    await waitFor(() => {
+      expect(screen.getByTestId('sessions-list')).toBeInTheDocument()
+    })
+
+    // Select session
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    // Verify session-timeline selector
+    await waitFor(() => {
+      expect(screen.getByTestId('session-timeline')).toBeInTheDocument()
+    })
+
+    // Verify session-timeline-stream-status selector
+    await waitFor(() => {
+      expect(screen.getByTestId('session-timeline-stream-status')).toBeInTheDocument()
+    })
+
+    // Verify session-message-input selector
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
+
+    // Verify session-send-button selector
+    await waitFor(() => {
+      expect(screen.getByTestId('session-send-button')).toBeInTheDocument()
+    })
+  })
+
+  it('renders approval-modal selector when approval is pending', async () => {
+    const sessionId = 'session-123'
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId,
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId,
+        userId: 'user-1',
+        messageCount: 5,
+        lastActivityAt: new Date().toISOString(),
+      },
+    })
+
+    mockGetSessionTimeline.mockResolvedValue({
+      events: [],
+    })
+
+    mockGetApprovals.mockResolvedValue({
+      approvals: [
+        {
+          id: 'approval-123',
+          sessionId,
+          actionType: 'exec',
+          resource: '/bin/bash',
+          requestedBy: 'agent',
+          requestedAt: new Date().toISOString(),
+          status: 'pending',
+        },
+      ],
+      total: 1,
+    })
+
+    render(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    // Verify approval-modal selector
+    await waitFor(() => {
+      expect(screen.getByTestId('approval-modal')).toBeInTheDocument()
+    })
+  })
+})

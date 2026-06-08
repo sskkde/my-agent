@@ -1,9 +1,18 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import App from './App'
 import * as client from './api/client'
 
 vi.mock('./api/client')
+
+const renderApp = (initialEntries: string[] = ['/']) => {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <App />
+    </MemoryRouter>,
+  )
+}
 
 describe('App', () => {
   beforeEach(() => {
@@ -11,14 +20,14 @@ describe('App', () => {
   })
 
   it('renders loading state initially', () => {
-    render(<App />)
+    renderApp()
     expect(screen.getByTestId('auth-loading')).toBeInTheDocument()
   })
 
   it('renders setup form when needsSetup is true', async () => {
     vi.mocked(client.getSetupStatus).mockResolvedValue({ needsSetup: true })
 
-    render(<App />)
+    renderApp()
 
     await waitFor(() => {
       expect(screen.getByTestId('production-setup-page')).toBeInTheDocument()
@@ -29,7 +38,7 @@ describe('App', () => {
     vi.mocked(client.getSetupStatus).mockResolvedValue({ needsSetup: false })
     vi.mocked(client.getMe).mockRejectedValue(new Error('Unauthorized'))
 
-    render(<App />)
+    renderApp()
 
     await waitFor(() => {
       expect(screen.getByTestId('auth-subtitle')).toHaveTextContent('请输入您的凭据')
@@ -46,7 +55,7 @@ describe('App', () => {
       },
     })
 
-    render(<App />)
+    renderApp()
 
     await waitFor(() => {
       expect(screen.getByTestId('app-shell')).toBeInTheDocument()
