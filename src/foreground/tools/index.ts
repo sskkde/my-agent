@@ -62,6 +62,11 @@ export { handleLaunchSubagent } from './subagent-launch-tool.js'
 export { handleCancelOrModifyTask } from './cancel-modify-task-tool.js'
 export { handleApprovalRequest, handleApprovalResponse } from './approval-request-tool.js'
 export { handleSearchSubagentTool } from '../../search/search-subagent-tool.js'
+export type { SearchSubagentToolDeps } from '../../search/search-subagent-tool.js'
+export { DefaultSearchQueryPlanner, DefaultSearchResultNormalizer } from '../../search/search-subagent-tool.js'
+export { assertSearchScope } from '../../search/search-subagent-types.js'
+
+import { handleSearchSubagentTool } from '../../search/search-subagent-tool.js'
 
 /**
  * Placeholder handler for foreground tools.
@@ -82,16 +87,18 @@ const foregroundToolPlaceholderHandler: ToolHandler = async (): Promise<ToolExec
 }
 
 /**
- * Create the search_subagent tool definition.
+ * Create the search_subagent tool definition with production dependencies.
  * - sensitivity: 'medium'
  * - category: 'search'
  * - requiresApproval: false
  */
-export function createSearchSubagentToolDefinition(): ToolDefinition {
+export function createSearchSubagentToolDefinition(
+  deps: import('../../search/search-subagent-tool.js').SearchSubagentToolDeps,
+): ToolDefinition {
   return {
     name: SEARCH_SUBAGENT_TOOL_ID,
     description:
-      'Search the web for information. Returns structured search results with extracted facts and source URLs. Uses a constrained subagent for safe web searching.',
+      'Search the web for information. Returns structured evidence with extracted facts and source URLs. Uses a synchronous search service.',
     category: 'search',
     sensitivity: 'medium',
     requiresPermission: false,
@@ -118,7 +125,15 @@ export function createSearchSubagentToolDefinition(): ToolDefinition {
       },
       required: ['originalQuestion'],
     },
-    handler: foregroundToolPlaceholderHandler,
+    handler: async (params: unknown): Promise<ToolExecutionResult> => {
+      const result = await handleSearchSubagentTool(deps, params as SearchSubagentToolInput)
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error,
+        resultPreview: result.userVisibleSummary,
+      }
+    },
     metadata: {
       requiresApproval: false,
     },
@@ -383,15 +398,55 @@ export function createForegroundHandleApprovalToolDefinition(): ToolDefinition {
 }
 
 /**
- * Register all foreground tools with a tool registry.
- *
- * This function creates tool definitions and registers them with the provided registry.
- * Each tool is registered with appropriate sensitivity, category, and approval metadata.
+ * Register all foreground tools with the provided registry.
+ * The search_subagent tool requires production dependencies.
  *
  * @param registry - The tool registry to register tools with
+ * @param searchSubagentDeps - Dependencies for the search_subagent tool (optional, uses placeholder if not provided)
  */
-export function registerAllForegroundTools(registry: ToolRegistry): void {
-  registry.register(createSearchSubagentToolDefinition())
+export function registerAllForegroundTools(
+  registry: ToolRegistry,
+  searchSubagentDeps?: import('../../search/search-subagent-tool.js').SearchSubagentToolDeps,
+): void {
+  if (searchSubagentDeps) {
+    registry.register(createSearchSubagentToolDefinition(searchSubagentDeps))
+  } else {
+    registry.register({
+      name: SEARCH_SUBAGENT_TOOL_ID,
+      description:
+        'Search the web for information. Returns structured evidence with extracted facts and source URLs. Uses a synchronous search service.',
+      category: 'search',
+      sensitivity: 'medium',
+      requiresPermission: false,
+      schema: {
+        type: 'object',
+        properties: {
+          originalQuestion: {
+            type: 'string',
+            description: 'The original question to search for',
+          },
+          intent: {
+            type: 'string',
+            enum: ['fact', 'definition', 'how_to', 'comparison', 'news', 'location', 'event'],
+            description: 'The search intent type',
+          },
+          locale: {
+            type: 'string',
+            description: 'Locale for search results (e.g., "en-US")',
+          },
+          freshnessRequired: {
+            type: 'boolean',
+            description: 'Whether fresh/recent results are required',
+          },
+        },
+        required: ['originalQuestion'],
+      },
+      handler: foregroundToolPlaceholderHandler,
+      metadata: {
+        requiresApproval: false,
+      },
+    })
+  }
   registry.register(createForegroundStatusQueryToolDefinition())
   registry.register(createForegroundSpawnPlannerToolDefinition())
   registry.register(createForegroundResumePlannerToolDefinition())

@@ -106,9 +106,15 @@ export function buildForegroundToolProjection(
 ): ForegroundToolProjectionResult {
   const safeTools = allTools.filter((tool) => isToolSafeForDefaultProjection(tool.category, tool.sensitivity))
 
-  const allowedToolIds = safeTools.map((tool) => tool.name)
+  // Apply preference: hide web_search when search_subagent is available
+  const hasSearchSubagent = safeTools.some((tool) => tool.name === 'search_subagent')
+  const projectedTools = hasSearchSubagent
+    ? safeTools.filter((tool) => tool.name !== 'web_search')
+    : safeTools
 
-  const toolDefinitions: ToolDefinition[] = safeTools.map((tool) => ({
+  const allowedToolIds = projectedTools.map((tool) => tool.name)
+
+  const toolDefinitions: ToolDefinition[] = projectedTools.map((tool) => ({
     type: 'function' as const,
     function: {
       name: tool.name,

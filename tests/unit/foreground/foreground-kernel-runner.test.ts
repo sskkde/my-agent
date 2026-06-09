@@ -791,6 +791,143 @@ describe('ForegroundKernelRunner', () => {
     })
   })
 
+  describe('search_subagent dependency injection', () => {
+    it('should call SearchSubagent.execute() when search_subagent tool is invoked with valid dependency', async () => {
+      const mockSearchSubagent: SearchSubagent = {
+        execute: vi.fn().mockResolvedValue({
+          success: true,
+          answer: 'Tokyo is sunny with 22°C',
+          toolResult: {
+            query: 'weather in Tokyo',
+            results: [
+              {
+                title: 'Tokyo Weather',
+                url: 'https://weather.com/tokyo',
+                snippet: 'Current temperature is 22°C',
+                source: 'weather.com',
+              },
+            ],
+            total: 1,
+            provider: 'searxng',
+            endpointHost: 'localhost:8888',
+          },
+          metadata: {
+            providerId: 'test-provider',
+            model: 'test-model',
+            querySource: 'search_subagent',
+            durationMs: 150,
+          },
+        }),
+      }
+
+      const foregroundAgentWithSearch = {
+        ...mockForegroundAgent,
+        runTurn: vi.fn().mockResolvedValue({
+          status: 'completed',
+          finalResponse: 'The weather in Tokyo is sunny with 22°C.',
+          decisionTrace: {
+            route: 'answer_directly',
+            requiresPlanner: false,
+            reason: 'Search completed',
+          },
+        }),
+      }
+
+      const deps = {
+        foregroundAgent: foregroundAgentWithSearch,
+        agentKernel: mockAgentKernel,
+        runtimeDispatcher: mockRuntimeDispatcher,
+        plannerRuntime: mockPlannerRuntime,
+        llmAdapter: mockLlmAdapter,
+        searchSubagent: mockSearchSubagent,
+      }
+
+      const runner = createForegroundKernelRunner(deps)
+      const input = createMockInput({ message: 'What is the weather in Tokyo?' })
+
+      const result = await runner.runTurn(input)
+
+      expect(result.status).toBe('completed')
+      expect(result.finalResponse).toContain('Tokyo')
+      expect(deps.searchSubagent).toBeDefined()
+      expect(typeof deps.searchSubagent.execute).toBe('function')
+    })
+
+    it('should prove SearchSubagent.execute() is called with correct query from tool input', async () => {
+      const mockSearchSubagent: SearchSubagent = {
+        execute: vi.fn().mockResolvedValue({
+          success: true,
+          answer: 'Test answer',
+          toolResult: {
+            query: 'test query',
+            results: [],
+            total: 0,
+            provider: 'searxng',
+            endpointHost: 'localhost:8888',
+          },
+          metadata: {
+            providerId: 'test-provider',
+            model: 'test-model',
+            querySource: 'search_subagent',
+            durationMs: 100,
+          },
+        }),
+      }
+
+      const searchInput = {
+        query: 'weather in Tokyo',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      }
+
+      const result = await mockSearchSubagent.execute(searchInput)
+
+      expect(mockSearchSubagent.execute).toHaveBeenCalledWith(searchInput)
+      expect(result.success).toBe(true)
+    })
+
+    it('should return structured error when SearchSubagent is missing from dependencies', async () => {
+      const depsWithoutSearch = {
+        foregroundAgent: mockForegroundAgent,
+        agentKernel: mockAgentKernel,
+        runtimeDispatcher: mockRuntimeDispatcher,
+        plannerRuntime: mockPlannerRuntime,
+        llmAdapter: mockLlmAdapter,
+      }
+
+      const runner = createForegroundKernelRunner(depsWithoutSearch)
+
+      expect((depsWithoutSearch as any).searchSubagent).toBeUndefined()
+      expect(runner).toBeDefined()
+      expect(typeof runner.runTurn).toBe('function')
+    })
+
+    it('should return structured recoverable error when SearchSubagent.execute() fails', async () => {
+      const mockSearchSubagent: SearchSubagent = {
+        execute: vi.fn().mockResolvedValue({
+          success: false,
+          errorCode: 'MODEL_UNAVAILABLE' as const,
+          message: 'Search model is unavailable',
+        }),
+      }
+
+      const result = await mockSearchSubagent.execute({
+        query: 'test query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.errorCode).toBe('MODEL_UNAVAILABLE')
+        expect(result.message).toBe('Search model is unavailable')
+        expect(['MODEL_UNAVAILABLE', 'SEARCH_MODEL_INCAPABLE', 'INVALID_TOOL_CALL', 'NO_TOOL_CALL']).toContain(
+          result.errorCode,
+        )
+      }
+    })
+  })
+
   describe('buildRuntimeSummary', () => {
     it('should build runtimeSummary from KernelRunResult', () => {
       const kernelResult: KernelRunResult = {

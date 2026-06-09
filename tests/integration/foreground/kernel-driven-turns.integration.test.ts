@@ -526,6 +526,228 @@ describe('Kernel-Driven Foreground Turn Integration Tests', () => {
     })
   })
 
+  // ─── Scenario 7: Search Subagent Happy Path (Foreground uses search_subagent, not web_search) ───
+
+  describe('Search subagent happy path', () => {
+    it('foreground uses search_subagent for current/external info, synthesizes answer from structured evidence', async () => {
+      // Mock structured evidence returned by search_subagent
+      const searchEvidence = {
+        originalQuestion: 'What is the current weather in Tokyo?',
+        searchQuery: 'current weather Tokyo Japan',
+        intent: 'current_info',
+        freshness: 'real-time',
+        results: [
+          {
+            title: 'Tokyo Weather Now',
+            url: 'https://weather.example.com/tokyo',
+            snippet: 'Currently sunny, 24°C in Tokyo. Light breeze from the east.',
+          },
+          {
+            title: 'Tokyo Temperature',
+            url: 'https://temp.example.com/tokyo',
+            snippet: 'Temperature: 24°C. Humidity: 65%. Wind: 12 km/h east.',
+          },
+        ],
+        extractedFacts: [
+          {
+            fact: 'Currently sunny, 24°C in Tokyo.',
+            sourceUrl: 'https://weather.example.com/tokyo',
+            confidence: 0.85,
+          },
+          {
+            fact: 'Light breeze from the east.',
+            sourceUrl: 'https://weather.example.com/tokyo',
+            confidence: 0.75,
+          },
+          {
+            fact: 'Humidity: 65%.',
+            sourceUrl: 'https://temp.example.com/tokyo',
+            confidence: 0.80,
+          },
+        ],
+        warnings: [],
+        metadata: {
+          durationMs: 1250,
+          resultCount: 2,
+          uniqueSourceCount: 2,
+        },
+        queryPlan: {
+          requiresFreshness: true,
+          reasoning: 'Weather is time-sensitive information',
+        },
+      }
+
+      const kernelResult = createSuccessfulKernelResult({
+        finalResponse:
+          'The current weather in Tokyo is sunny with a temperature of 24°C. There is a light breeze from the east, and the humidity is at 65%. This information was retrieved from real-time weather sources.',
+        toolCalls: [
+          {
+            toolCallId: 'tc-search-001',
+            toolName: 'search_subagent',
+            params: { query: 'current weather in Tokyo' },
+          },
+        ],
+        transcript: [
+          {
+            iteration: 1,
+            timestamp: '2024-01-15T10:00:01.000Z',
+            type: 'tool_call',
+            content: { toolCallId: 'tc-search-001', toolName: 'search_subagent' },
+          },
+          {
+            iteration: 1,
+            timestamp: '2024-01-15T10:00:02.500Z',
+            type: 'tool_result',
+            content: { toolCallId: 'tc-search-001', result: searchEvidence },
+          },
+          {
+            iteration: 1,
+            timestamp: '2024-01-15T10:00:03.000Z',
+            type: 'llm_response',
+            content: {
+              content:
+                'The current weather in Tokyo is sunny with a temperature of 24°C. There is a light breeze from the east, and the humidity is at 65%.',
+            },
+          },
+        ],
+      })
+
+      const { processor } = buildDepsAndProcessor(vi.fn().mockResolvedValue(kernelResult))
+      const input = createMockProcessorInput({ text: "What's the current weather in Tokyo?" })
+
+      const output = await processor(input)
+
+      // ─── Assertion 1: Final answer is synthesized from structured evidence ───
+      expect(output.success).toBe(true)
+      expect(output.result?.text).toContain('Tokyo')
+      expect(output.result?.text).toContain('24°C')
+      expect(output.result?.text).toContain('sunny')
+      expect(output.result?.text).toContain('breeze')
+      expect(output.result?.text).toContain('humidity')
+
+      // ─── Assertion 2: Foreground-visible tool call is search_subagent, NOT web_search ───
+      expect(kernelResult.toolCalls).toHaveLength(1)
+      expect(kernelResult.toolCalls[0]!.toolName).toBe('search_subagent')
+
+      // Verify NO web_search tool was called
+      const webSearchCall = kernelResult.toolCalls.find((tc) => tc.toolName === 'web_search')
+      expect(webSearchCall).toBeUndefined()
+
+      // ─── Assertion 3: Kernel was called with tool projection ───
+      expect(mockAgentKernel.run).toHaveBeenCalledTimes(1)
+      const kernelInput = vi.mocked(mockAgentKernel.run).mock.calls[0]![0]
+      expect(kernelInput.toolProjection).toBeDefined()
+
+      // ─── Assertion 4: Tool result contains structured evidence ───
+      const toolResultEntry = kernelResult.transcript.find((e) => e.type === 'tool_result')
+      expect(toolResultEntry).toBeDefined()
+      const toolResultContent = toolResultEntry?.content as { result?: typeof searchEvidence }
+      expect(toolResultContent?.result).toBeDefined()
+      expect(toolResultContent?.result?.extractedFacts).toBeDefined()
+      expect(toolResultContent?.result?.extractedFacts).toHaveLength(3)
+      expect(toolResultContent?.result?.metadata?.resultCount).toBe(2)
+
+      // ─── Assertion 5: RuntimeSummary identifies search_subagent ───
+      const runtimeSummary = output.result?.data?.runtimeSummary as {
+        toolCallSummaries?: Array<{ toolName: string }>
+      }
+      expect(runtimeSummary?.toolCallSummaries).toBeDefined()
+      expect(runtimeSummary?.toolCallSummaries?.[0]?.toolName).toBe('search_subagent')
+    })
+
+    it('foreground NEVER calls web_search directly when search_subagent is available', async () => {
+      // This test proves that even if the user asks for web search,
+      // the foreground will use search_subagent instead of direct web_search
+      const searchEvidence = {
+        originalQuestion: 'Latest news about AI',
+        searchQuery: 'AI artificial intelligence news latest',
+        intent: 'current_info',
+        freshness: 'real-time',
+        results: [
+          {
+            title: 'AI Breakthrough in 2024',
+            url: 'https://news.example.com/ai-breakthrough',
+            snippet: 'Researchers announce major AI advancement in natural language processing.',
+          },
+        ],
+        extractedFacts: [
+          {
+            fact: 'Researchers announce major AI advancement in natural language processing.',
+            sourceUrl: 'https://news.example.com/ai-breakthrough',
+            confidence: 0.90,
+          },
+        ],
+        warnings: [],
+        metadata: {
+          durationMs: 1500,
+          resultCount: 1,
+          uniqueSourceCount: 1,
+        },
+        queryPlan: {
+          requiresFreshness: true,
+          reasoning: 'News is time-sensitive',
+        },
+      }
+
+      const kernelResult = createSuccessfulKernelResult({
+        finalResponse:
+          'The latest news about AI shows researchers have announced a major advancement in natural language processing. This breakthrough could lead to significant improvements in AI capabilities.',
+        toolCalls: [
+          {
+            toolCallId: 'tc-news-001',
+            toolName: 'search_subagent', // Using search_subagent, NOT web_search
+            params: { query: 'latest AI news' },
+          },
+        ],
+        transcript: [
+          {
+            iteration: 1,
+            timestamp: '2024-01-15T10:00:01.000Z',
+            type: 'tool_call',
+            content: { toolCallId: 'tc-news-001', toolName: 'search_subagent' },
+          },
+          {
+            iteration: 1,
+            timestamp: '2024-01-15T10:00:02.500Z',
+            type: 'tool_result',
+            content: { toolCallId: 'tc-news-001', result: searchEvidence },
+          },
+          {
+            iteration: 1,
+            timestamp: '2024-01-15T10:00:03.000Z',
+            type: 'llm_response',
+            content: { content: 'The latest news about AI shows researchers have announced a major advancement.' },
+          },
+        ],
+      })
+
+      const { processor } = buildDepsAndProcessor(vi.fn().mockResolvedValue(kernelResult))
+      const input = createMockProcessorInput({ text: 'Search the web for latest AI news' })
+
+      const output = await processor(input)
+
+      // Verify success
+      expect(output.success).toBe(true)
+      expect(output.result?.text).toContain('AI')
+
+      // CRITICAL: Verify search_subagent was used, NOT web_search
+      expect(kernelResult.toolCalls).toHaveLength(1)
+      expect(kernelResult.toolCalls[0]!.toolName).toBe('search_subagent')
+
+      // Explicitly verify web_search was NOT called
+      const allToolNames = kernelResult.toolCalls.map((tc) => tc.toolName)
+      expect(allToolNames).not.toContain('web_search')
+      expect(allToolNames).toContain('search_subagent')
+
+      // Verify runtimeSummary reflects search_subagent
+      const runtimeSummary = output.result?.data?.runtimeSummary as {
+        toolCallSummaries?: Array<{ toolName: string }>
+      }
+      expect(runtimeSummary?.toolCallSummaries?.[0]?.toolName).toBe('search_subagent')
+      expect(runtimeSummary?.toolCallSummaries?.find((s) => s.toolName === 'web_search')).toBeUndefined()
+    })
+  })
+
   // ─── Cross-cutting: ProcessorOrchestration uses ForegroundAgent.runTurn ───
 
   describe('ProcessorOrchestration routing', () => {

@@ -496,3 +496,140 @@ export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefin
     handler,
   }
 }
+
+/**
+ * Execute a web search with the configured backend.
+ * This is a reusable function for programmatic search execution.
+ */
+export async function executeWebSearch(
+  params: WebSearchParams,
+  config: WebSearchToolConfig = {},
+): Promise<WebSearchResult & { success: boolean }> {
+  const query = typeof params.query === 'string' ? params.query.trim() : ''
+
+  if (!query) {
+    return {
+      query: params.query,
+      results: [],
+      total: 0,
+      provider: 'none',
+      endpointHost: '',
+      success: false,
+    }
+  }
+
+  const limit = normalizeLimit(params.limit)
+  const timeoutMs = validateTimeout(params.timeoutMs)
+  const fetchImpl = config.fetchImpl ?? globalThis.fetch
+
+  const backend = getBackendFromEnv()
+  const searxngBaseUrl = process.env.SEARXNG_BASE_URL
+  const tavilyApiKey = process.env.TAVILY_API_KEY
+  const tavilyBaseUrl = process.env.TAVILY_BASE_URL
+  const remoteApiUrl = config.endpointUrl ?? process.env.WEB_SEARCH_API_URL
+  const remoteApiKey = config.apiKey ?? process.env.WEB_SEARCH_API_KEY
+
+  const backendResult = resolveSearchBackend({
+    backend,
+    searxngBaseUrl,
+    tavilyApiKey,
+    remoteApiUrl,
+  })
+
+  if (backendResult.selectedBackend === 'none') {
+    return {
+      query,
+      results: [],
+      total: 0,
+      provider: 'none',
+      endpointHost: '',
+      success: false,
+    }
+  }
+
+  let searchResult:
+    | { success: true; result: WebSearchResult }
+    | { success: false; errorCode: SearchErrorCode; message: string }
+
+  switch (backendResult.selectedBackend) {
+    case 'searxng':
+      if (!backendResult.baseUrl) {
+        return {
+          query,
+          results: [],
+          total: 0,
+          provider: 'none',
+          endpointHost: '',
+          success: false,
+        }
+      }
+      searchResult = await fetchWithSearXNG(backendResult.baseUrl, query, limit, timeoutMs, fetchImpl)
+      break
+
+    case 'tavily':
+      if (!tavilyApiKey) {
+        return {
+          query,
+          results: [],
+          total: 0,
+          provider: 'none',
+          endpointHost: '',
+          success: false,
+        }
+      }
+      searchResult = await fetchWithTavily(tavilyApiKey, query, limit, timeoutMs, fetchImpl, tavilyBaseUrl)
+      break
+
+    case 'remote':
+      if (!backendResult.baseUrl) {
+        return {
+          query,
+          results: [],
+          total: 0,
+          provider: 'none',
+          endpointHost: '',
+          success: false,
+        }
+      }
+      searchResult = await fetchWithLegacyRemote(
+        backendResult.baseUrl,
+        remoteApiKey,
+        query,
+        limit,
+        timeoutMs,
+        fetchImpl,
+        config.provider,
+      )
+      break
+
+    case 'playwright':
+      searchResult = await fetchWithPlaywright(query, limit, timeoutMs, config.browser, config.browserProvider)
+      break
+
+    default:
+      return {
+        query,
+        results: [],
+        total: 0,
+        provider: 'none',
+        endpointHost: '',
+        success: false,
+      }
+  }
+
+  if (!searchResult.success) {
+    return {
+      query,
+      results: [],
+      total: 0,
+      provider: 'none',
+      endpointHost: '',
+      success: false,
+    }
+  }
+
+  return {
+    ...searchResult.result,
+    success: true,
+  }
+}

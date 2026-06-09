@@ -95,6 +95,14 @@ import { createPromptProjectionResolver } from '../prompt/prompt-projection-reso
 import { createModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js'
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js'
 import { createCloakBrowserProvider, type CloakBrowserProvider } from '../search/browser/cloakbrowser-launcher.js'
+import { createSearchSubagent, type SearchSubagent } from '../search/search-subagent.js'
+import { executeWebSearch } from '../tools/builtins/web-search.js'
+import {
+  registerAllForegroundTools,
+  DefaultSearchQueryPlanner,
+  DefaultSearchResultNormalizer,
+} from '../foreground/tools/index.js'
+import { assertSearchScope } from '../search/search-subagent-types.js'
 
 export interface ApiContext {
   gateway: Gateway
@@ -541,6 +549,38 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
   })
 
+  const globalAgentConfig = agentConfigStore.getGlobalDefault()
+  const searchLlmProviderId = globalAgentConfig?.searchLlmProviderId ?? globalAgentConfig?.providerId ?? undefined
+  const searchLlmModel = globalAgentConfig?.searchLlmModel ?? globalAgentConfig?.model ?? undefined
+
+  let searchSubagent: SearchSubagent | undefined
+  if (searchLlmProviderId && searchLlmModel) {
+    const searchProviderFamily = resolveProviderFamily(searchLlmProviderId)
+    searchSubagent = createSearchSubagent({
+      llmAdapter,
+      webSearchExecutor: async (params) => {
+        const result = await executeWebSearch({ query: params.query })
+        return result
+      },
+      modelInputBuilder,
+      providerFamily: searchProviderFamily,
+      searchLlmProviderId,
+      searchLlmModel,
+    })
+  }
+
+  if (searchSubagent) {
+    const searchSubagentDeps = {
+      searchSubagent,
+      queryPlanner: new DefaultSearchQueryPlanner(),
+      resultNormalizer: new DefaultSearchResultNormalizer(),
+      scopeGuard: assertSearchScope,
+    }
+    registerAllForegroundTools(toolRegistry, searchSubagentDeps)
+  } else {
+    registerAllForegroundTools(toolRegistry)
+  }
+
   // Create tool executor
   const toolExecutor = createToolExecutor({
     registry: toolRegistry,
@@ -593,11 +633,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   }
 
   // Resolve default model for AgentKernel using agent-provider-resolver
-  const globalAgentConfig = agentConfigStore.getGlobalDefault()
+  const kernelAgentConfig = agentConfigStore.getGlobalDefault()
   const modelResolution = resolveProviderAndModel({
     session: {},
-    agentConfig: globalAgentConfig
-      ? { providerId: globalAgentConfig.providerId ?? undefined, model: globalAgentConfig.model ?? undefined }
+    agentConfig: kernelAgentConfig
+      ? { providerId: kernelAgentConfig.providerId ?? undefined, model: kernelAgentConfig.model ?? undefined }
       : {},
     userId: 'default',
     providerConfigStore,

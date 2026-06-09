@@ -165,12 +165,47 @@ describe('Foreground Tool Registry Registration', () => {
 
     it('should NOT include web_search in default projection when search_subagent is available', () => {
       registerAllForegroundTools(registry)
-      const allTools = registry.listTools()
+      
+      registry.register({
+        name: 'web_search',
+        description: 'Search the public web for information',
+        category: 'search',
+        sensitivity: 'medium',
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({ success: true, result: 'placeholder' }),
+      })
 
+      const allTools = registry.listTools()
       const projection = buildForegroundToolProjection({} as any, allTools)
 
       expect(projection.allowedToolIds).toContain(SEARCH_SUBAGENT_TOOL_ID)
       expect(projection.allowedToolIds).not.toContain('web_search')
+    })
+
+    it('should include web_search in fallback projection when search_subagent is unavailable', () => {
+      registry.register({
+        name: 'web_search',
+        description: 'Search the public web for information',
+        category: 'search',
+        sensitivity: 'medium',
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({ success: true, result: 'placeholder' }),
+      })
+
+      registry.register({
+        name: STATUS_QUERY_TOOL_ID,
+        description: 'Query status',
+        category: 'read',
+        sensitivity: 'low',
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({ success: true, result: 'placeholder' }),
+      })
+
+      const allTools = registry.listTools()
+      const projection = buildForegroundToolProjection({} as any, allTools)
+
+      expect(projection.allowedToolIds).toContain('web_search')
+      expect(projection.allowedToolIds).not.toContain(SEARCH_SUBAGENT_TOOL_ID)
     })
 
     it('should NOT include high-risk tools in default projection', () => {

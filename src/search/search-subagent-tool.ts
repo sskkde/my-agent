@@ -222,3 +222,41 @@ export async function handleSearchSubagentTool(
     )
   }
 }
+
+/**
+ * Default implementation of SearchQueryPlanner.
+ * Transforms tool input into a search query plan.
+ */
+export class DefaultSearchQueryPlanner implements SearchQueryPlanner {
+  plan(input: SearchSubagentToolInput): SearchQueryPlan {
+    const intent = input.intent ?? 'general'
+    let searchQuery = input.originalQuestion
+
+    if (intent === 'weather') {
+      searchQuery = `weather ${input.originalQuestion}`
+    } else if (intent === 'news') {
+      searchQuery = `news ${input.originalQuestion}`
+    } else if (intent === 'technical') {
+      searchQuery = `${input.originalQuestion} documentation tutorial`
+    }
+
+    return {
+      originalQuestion: input.originalQuestion,
+      searchQuery,
+      intent,
+      requiresFreshness: input.freshnessRequired ?? false,
+      locale: input.locale,
+      missingCriticalContext: [],
+    }
+  }
+}
+
+/**
+ * Default implementation of SearchResultNormalizer.
+ * Extracts facts from search results using sentence splitting.
+ */
+export class DefaultSearchResultNormalizer implements SearchResultNormalizer {
+  extractFacts(results: WebSearchResultItem[]): ExtractedFact[] {
+    return extractFacts(results)
+  }
+}

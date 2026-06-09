@@ -175,7 +175,8 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
   },
   {
     name: 'search_subagent',
-    description: 'Search the web for information using a constrained subagent',
+    description:
+      'Search the web for information. Returns structured evidence with extracted facts and source URLs. Uses a synchronous search service.',
     category: 'search',
     sensitivity: 'medium',
   },

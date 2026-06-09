@@ -954,4 +954,330 @@ describe('SearchSubagent contract tests', () => {
       expect(mockModelInputBuilder.build).toHaveBeenCalledTimes(2)
     })
   })
+
+  /**
+   * ─── Boundary Validation Tests ─────────────────────────────────────────────────
+   * 
+   * These tests document the boundary between SearchSubagent.execute() and
+   * handleSearchSubagentTool(). They confirm the synchronous search path has:
+   * - MAX_RESULTS = 10 (result cropping limit)
+   * - Forced web_search tool choice (no tool selection freedom)
+   * - No subagent_runtime dependency (direct execution, not delegated)
+   * 
+   * Architecture:
+   * 
+   * SearchSubagent.execute() responsibilities:
+   *   - Phase 1: Build function_calling request with forced web_search toolChoice
+   *   - Phase 2: Build structured_json request for answer generation
+   *   - Execute LLM calls directly via llmAdapter.complete()
+   *   - Execute web search via webSearchExecutor()
+   *   - Return raw SearchSubagentResult with answer, toolResult, metadata
+   *   - NO result cropping, deduplication, or post-processing
+   * 
+   * handleSearchSubagentTool() responsibilities:
+   *   - Scope guard check (assertSearchScope)
+   *   - Query planning (queryPlanner.plan)
+   *   - Delegate to SearchSubagent.execute()
+   *   - Post-process results: deduplicate → clean → sort → crop to MAX_RESULTS
+   *   - Extract facts and check freshness warnings
+   *   - Return ForegroundToolResult with structured evidence
+   */
+  describe('boundary validation: execute() vs handleSearchSubagentTool()', () => {
+    it('execute() performs raw search without result cropping', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi
+          .fn()
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-1',
+              content: '',
+              model: 'gpt-4.1-mini',
+              toolCalls: [
+                {
+                  id: 'tc-1',
+                  type: 'function',
+                  function: {
+                    name: 'web_search',
+                    arguments: '{"query": "test"}',
+                  },
+                },
+              ],
+              finishReason: 'tool_calls',
+            },
+          })
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-2',
+              content: 'Answer',
+              model: 'gpt-4.1-mini',
+              finishReason: 'stop',
+            },
+          }),
+      }
+
+      // Create 20 results - more than MAX_RESULTS
+      const manyResults = Array.from({ length: 20 }, (_, i) => ({
+        title: `Result ${i}`,
+        url: `https://example.com/${i}`,
+        snippet: `Snippet ${i}`,
+      }))
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test',
+        results: manyResults,
+        total: 20,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      })
+
+      const result = await subagent.execute({
+        query: 'test query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      })
+
+      expect(result.success).toBe(true)
+      assertSuccess(result)
+      // execute() returns ALL 20 results - no cropping
+      expect(result.toolResult.results).toHaveLength(20)
+    })
+
+    it('handleSearchSubagentTool() crops results to MAX_RESULTS = 10', async () => {
+      const { handleSearchSubagentTool } = await import(
+        '../../../src/search/search-subagent-tool.js'
+      )
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi
+          .fn()
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-1',
+              content: '',
+              model: 'gpt-4.1-mini',
+              toolCalls: [
+                {
+                  id: 'tc-1',
+                  type: 'function',
+                  function: {
+                    name: 'web_search',
+                    arguments: '{"query": "test"}',
+                  },
+                },
+              ],
+              finishReason: 'tool_calls',
+            },
+          })
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-2',
+              content: 'Answer',
+              model: 'gpt-4.1-mini',
+              finishReason: 'stop',
+            },
+          }),
+      }
+
+      // Create 20 results - more than MAX_RESULTS
+      const manyResults = Array.from({ length: 20 }, (_, i) => ({
+        title: `Result ${i}`,
+        url: `https://example.com/${i}`,
+        snippet: `Snippet ${i}`,
+      }))
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test',
+        results: manyResults,
+        total: 20,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      })
+
+      const mockQueryPlanner = {
+        plan: vi.fn().mockReturnValue({
+          originalQuestion: 'test query',
+          searchQuery: 'test',
+          intent: 'informational',
+          requiresFreshness: false,
+          locale: undefined,
+        }),
+      }
+
+      const mockResultNormalizer = {
+        extractFacts: vi.fn().mockReturnValue([]),
+      }
+
+      const mockScopeGuard = vi.fn()
+
+      const result = await handleSearchSubagentTool(
+        {
+          searchSubagent: subagent,
+          queryPlanner: mockQueryPlanner,
+          resultNormalizer: mockResultNormalizer,
+          scopeGuard: mockScopeGuard,
+        },
+        {
+          originalQuestion: 'test query',
+        },
+      )
+
+      expect(result.success).toBe(true)
+      if (result.success && result.data) {
+        // handleSearchSubagentTool() crops to MAX_RESULTS = 10
+        expect(result.data.results).toHaveLength(10)
+        expect(result.data.metadata.resultCount).toBe(10)
+      }
+    })
+
+    it('execute() forces toolChoice to web_search (no freedom)', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi.fn().mockResolvedValue({
+          success: true,
+          response: {
+            id: 'resp-123',
+            content: '',
+            model: 'gpt-4.1-mini',
+            toolCalls: [
+              {
+                id: 'tc-1',
+                type: 'function',
+                function: {
+                  name: 'web_search',
+                  arguments: '{"query": "test"}',
+                },
+              },
+            ],
+            finishReason: 'tool_calls',
+          },
+        }),
+      }
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test',
+        results: [],
+        total: 0,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      })
+
+      await subagent.execute({
+        query: 'test query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      })
+
+      const llmCall = mockLlmAdapter.complete.mock.calls[0]
+      const llmRequest = llmCall[0]
+
+      // Forced toolChoice - model has no freedom to choose
+      expect(llmRequest.toolChoice).toEqual({
+        type: 'function',
+        function: { name: 'web_search' },
+      })
+    })
+
+    it('execute() uses direct llmAdapter.complete() - no subagent_runtime', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi
+          .fn()
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-1',
+              content: '',
+              model: 'gpt-4.1-mini',
+              toolCalls: [
+                {
+                  id: 'tc-1',
+                  type: 'function',
+                  function: {
+                    name: 'web_search',
+                    arguments: '{"query": "test"}',
+                  },
+                },
+              ],
+              finishReason: 'tool_calls',
+            },
+          })
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-2',
+              content: 'Answer',
+              model: 'gpt-4.1-mini',
+              finishReason: 'stop',
+            },
+          }),
+      }
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test',
+        results: [],
+        total: 0,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      })
+
+      await subagent.execute({
+        query: 'test query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      })
+
+      // Direct execution via llmAdapter.complete() - 2 calls (Phase 1 + Phase 2)
+      expect(mockLlmAdapter.complete).toHaveBeenCalledTimes(2)
+      // No subagent_runtime.launchSubagent() or similar delegation
+    })
+  })
 })

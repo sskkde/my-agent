@@ -455,6 +455,135 @@ describe('SearchSubagentTool', () => {
       expect(result.success).toBe(false)
       expect(result.error).toBeDefined()
       expect(result.error!.code).toBe('MODEL_UNAVAILABLE')
+      expect(result.error!.recoverable).toBe(true)
+      expect(result.error!.message).toBe('Search model is unavailable')
+    })
+  })
+
+  describe('Empty results contract', () => {
+    it('returns success with empty results array when search returns no results', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'No results found',
+            toolResult: {
+              query: 'nonexistent query xyz123',
+              results: [],
+              total: 0,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 50,
+            },
+          }),
+        },
+      })
+
+      const input: SearchSubagentToolInput = {
+        originalQuestion: 'nonexistent query xyz123',
+      }
+
+      const result = await handleSearchSubagentTool(deps, input)
+
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
+
+      const toolResult = result.data as SearchSubagentToolResult
+      expect(toolResult.results).toBeDefined()
+      expect(toolResult.results).toEqual([])
+      expect(toolResult.results).toHaveLength(0)
+      expect(toolResult.metadata.resultCount).toBe(0)
+      expect(toolResult.extractedFacts).toEqual([])
+      expect(toolResult.warnings).toEqual([])
+    })
+
+    it('empty results do NOT crash or throw', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'No results',
+            toolResult: {
+              query: 'test',
+              results: [],
+              total: 0,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 10,
+            },
+          }),
+        },
+      })
+
+      const input: SearchSubagentToolInput = {
+        originalQuestion: 'test',
+      }
+
+      await expect(handleSearchSubagentTool(deps, input)).resolves.toBeDefined()
+      const result = await handleSearchSubagentTool(deps, input)
+      expect(result.success).toBe(true)
+    })
+
+    it('empty results include all required evidence fields', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'No results',
+            toolResult: {
+              query: 'test',
+              results: [],
+              total: 0,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 10,
+            },
+          }),
+        },
+      })
+
+      const input: SearchSubagentToolInput = {
+        originalQuestion: 'test query',
+        intent: 'general',
+      }
+
+      const result = await handleSearchSubagentTool(deps, input)
+
+      expect(result.success).toBe(true)
+      const toolResult = result.data as SearchSubagentToolResult
+
+      expect(toolResult.originalQuestion).toBe('test query')
+      expect(toolResult.searchQuery).toBeDefined()
+      expect(toolResult.intent).toBe('general')
+      expect(toolResult.freshness).toBeDefined()
+      expect(toolResult.results).toEqual([])
+      expect(toolResult.extractedFacts).toEqual([])
+      expect(toolResult.warnings).toEqual([])
+      expect(toolResult.metadata).toBeDefined()
+      expect(toolResult.metadata.resultCount).toBe(0)
+      expect(toolResult.metadata.uniqueSourceCount).toBe(0)
+      expect(toolResult.queryPlan).toBeDefined()
     })
   })
 })
