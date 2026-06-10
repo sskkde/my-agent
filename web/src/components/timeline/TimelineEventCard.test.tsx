@@ -67,12 +67,11 @@ describe('TimelineEventCard - Formatter Integration', () => {
 
       const content = screen.getByTestId('streaming-assistant-draft')
       expect(content.innerHTML).not.toContain('<script>')
-      expect(content.innerHTML).not.toContain('alert')
       expect(content.innerHTML).toContain('Hello')
       expect(content.innerHTML).toContain('world')
     })
 
-    it('removes event handlers in streaming draft', () => {
+    it('escapes event handlers in streaming draft', () => {
       const event = createEvent({
         eventType: 'assistant_message',
         content: '<img src="x" onerror="alert(\'XSS\')">',
@@ -82,8 +81,7 @@ describe('TimelineEventCard - Formatter Integration', () => {
       render(<TimelineEventCard event={event} />)
 
       const content = screen.getByTestId('streaming-assistant-draft')
-      expect(content.innerHTML).not.toContain('onerror')
-      expect(content.innerHTML).not.toContain('alert')
+      expect(content.innerHTML).not.toContain('<img')
     })
   })
 
@@ -128,9 +126,7 @@ describe('TimelineEventCard - Formatter Integration', () => {
 
       const content = screen.getByTestId('timeline-event-test-event-1')
       expect(content.innerHTML).not.toContain('<script>')
-      expect(content.innerHTML).not.toContain('steal')
-      expect(content.innerHTML).not.toContain('onerror')
-      expect(content.innerHTML).not.toContain('alert')
+      expect(content.innerHTML).not.toContain('<img')
       expect(content.innerHTML).toContain('Check this')
     })
 

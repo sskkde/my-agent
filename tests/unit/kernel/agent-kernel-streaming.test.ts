@@ -422,8 +422,8 @@ describe('AgentKernel streaming behavior', () => {
       // Create adapter that only supports complete(), not stream()
       class NonStreamingAdapter extends FakeStreamingLLMAdapter {
         async *stream() {
-          // Empty generator - no streaming support
-          return
+          // Yield nothing - simulates no streaming support
+          yield* []
         }
       }
 

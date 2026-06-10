@@ -135,8 +135,11 @@ function processMarkdownBlock(text: string): string {
  * Only supports: **bold**, *italic*, _italic_, and line breaks
  */
 function processLightweightFormat(text: string): string {
+  // First escape HTML to prevent XSS
+  let processed = escapeHtml(text)
+  
   // Apply bold formatting: **text**
-  let processed = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   
   // Apply italic formatting: *text* or _text_
   // Need to be careful not to match ** as italic

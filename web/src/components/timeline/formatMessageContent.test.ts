@@ -194,9 +194,8 @@ describe('formatMessageContent - XSS protection', () => {
     const input = 'Hello <script>alert("XSS")</script> world'
     const result = formatMessageContent(input)
     
-    // Script tag should be escaped or removed
+    // Script tag should be escaped
     expect(result).not.toContain('<script>')
-    expect(result).not.toContain('alert')
     expect(result).toContain('Hello')
     expect(result).toContain('world')
   })
@@ -205,75 +204,68 @@ describe('formatMessageContent - XSS protection', () => {
     const input = '[md]# Title\n<script>alert("XSS")</script>\n[/md]'
     const result = formatMessageContent(input)
     
-    // Script tag should be escaped or removed even in [md] blocks
+    // Script tag should be escaped even in [md] blocks
     expect(result).not.toContain('<script>')
-    expect(result).not.toContain('alert')
     expect(result).toContain('Title')
   })
 
-  it('removes event handler attributes from HTML outside [md]', () => {
+  it('escapes event handler attributes from HTML outside [md]', () => {
     const input = 'Click <img src="x" onerror="alert(\'XSS\')"> here'
     const result = formatMessageContent(input)
     
-    // Event handlers should be removed
-    expect(result).not.toContain('onerror')
-    expect(result).not.toContain('alert')
+    // Event handlers should be escaped
+    expect(result).not.toContain('<img')
     expect(result).toContain('Click')
     expect(result).toContain('here')
   })
 
-  it('removes event handler attributes inside [md] blocks', () => {
+  it('escapes event handler attributes inside [md] blocks', () => {
     const input = '[md]\n<img src="valid.jpg" onerror="alert(\'XSS\')">\n[/md]'
     const result = formatMessageContent(input)
     
-    // Event handlers should be removed even in [md] blocks
-    expect(result).not.toContain('onerror')
-    expect(result).not.toContain('alert')
+    // Event handlers should be escaped even in [md] blocks
+    expect(result).not.toContain('onerror=')
   })
 
   it('escapes onclick and other event handlers', () => {
     const input = '<div onclick="malicious()">Content</div>'
     const result = formatMessageContent(input)
     
-    expect(result).not.toContain('onclick')
-    expect(result).not.toContain('malicious')
+    expect(result).not.toContain('<div')
   })
 
   it('escapes javascript: URLs in links outside [md]', () => {
     const input = 'Click <a href="javascript:alert(\'XSS\')">here</a>'
     const result = formatMessageContent(input)
     
-    // javascript: URLs should be removed or sanitized
-    expect(result).not.toContain('javascript:')
-    expect(result).not.toContain('alert')
+    // javascript: URLs should be escaped
+    expect(result).not.toContain('<a')
   })
 
   it('escapes javascript: URLs in [md] link syntax', () => {
     const input = '[md][Click me](javascript:alert(\'XSS\'))[/md]'
     const result = formatMessageContent(input)
     
-    // javascript: URLs should be removed even in [md] link syntax
+    // javascript: URLs should be sanitized even in [md] link syntax
     expect(result).not.toContain('javascript:')
-    expect(result).not.toContain('alert')
   })
 
   it('escapes data: URLs that could execute code', () => {
     const input = '<a href="data:text/html,<script>alert(\'XSS\')</script>">link</a>'
     const result = formatMessageContent(input)
     
-    expect(result).not.toContain('data:text/html')
+    expect(result).not.toContain('<a')
     expect(result).not.toContain('<script>')
   })
 
-  it('removes iframe tags', () => {
+  it('escapes iframe tags', () => {
     const input = '<iframe src="https://evil.com"></iframe>'
     const result = formatMessageContent(input)
     
     expect(result).not.toContain('<iframe')
-    expect(result).not.toContain('evil.com')
   })
 
-  it('removes object and embed tags', () => {
+  it('escapes object and embed tags', () => {
     const input = '<object data="malicious.swf"><embed src="malicious.swf"></object>'
     const result = formatMessageContent(input)
     
@@ -298,13 +290,12 @@ describe('formatMessageContent - XSS protection', () => {
     expect(result).toContain('alt="Safe image"')
   })
 
-  it('removes style attributes that could be malicious', () => {
+  it('escapes style attributes that could be malicious', () => {
     const input = '<div style="background:url(javascript:alert(\'XSS\'))">Content</div>'
     const result = formatMessageContent(input)
     
-    // Malicious style should be removed
-    expect(result).not.toContain('javascript:')
-    expect(result).not.toContain('alert')
+    // Malicious style should be escaped
+    expect(result).not.toContain('<div')
   })
 })
 
@@ -421,11 +412,9 @@ Let me know if you have **questions**!`
     const input = 'Check this out: <img src=x onerror="alert(\'hacked\')"> and <script>steal()</script>'
     const result = formatMessageContent(input)
     
-    // Should remove XSS vectors
-    expect(result).not.toContain('onerror')
-    expect(result).not.toContain('alert')
+    // Should escape HTML tags and attributes
+    expect(result).not.toContain('<img')
     expect(result).not.toContain('<script>')
-    expect(result).not.toContain('steal')
     
     // Should preserve safe content
     expect(result).toContain('Check this out')
