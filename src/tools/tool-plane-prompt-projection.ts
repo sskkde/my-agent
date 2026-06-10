@@ -54,7 +54,7 @@ function filterHiddenTools(tools: ToolDef[], exposurePlans: Map<string, ToolExpo
   })
 }
 
-function toLLMToolDefinition(tool: ToolDef): LLMToolDefinition {
+export function toLLMToolDefinition(tool: ToolDef): LLMToolDefinition {
   return {
     type: 'function',
     function: {
@@ -63,6 +63,17 @@ function toLLMToolDefinition(tool: ToolDef): LLMToolDefinition {
       parameters: tool.schema as unknown as Record<string, unknown>,
     },
   }
+}
+
+export function convertToolDefinitionsToLLM(
+  tools: ToolDef[],
+  selectedToolIds?: string[],
+): LLMToolDefinition[] {
+  const filtered = selectedToolIds
+    ? tools.filter((tool) => selectedToolIds.includes(tool.name))
+    : tools
+
+  return filtered.map(toLLMToolDefinition)
 }
 
 function generateToolSummaries(tools: ToolDef[]): string {

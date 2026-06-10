@@ -10,7 +10,8 @@
 import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js'
 import type { ToolDefinition } from '../llm/types.js'
 import type { ForegroundTurnInput } from './foreground-runner-types.js'
-import type { ToolCategory, ToolSensitivity } from '../tools/types.js'
+import type { ToolCategory, ToolSensitivity, ToolRegistry } from '../tools/types.js'
+import { toLLMToolDefinition } from '../tools/tool-plane-prompt-projection.js'
 
 /**
  * Maps suggested tool names to a ToolPlaneProjection.
@@ -81,16 +82,14 @@ export interface ForegroundToolProjectionResult {
  * projecting only safe tools (read/search/internal) unless explicitly
  * allowed by policy or approval.
  *
- * The input parameter provides context for future policy-based filtering
- * and approval integration.
- *
  * @param input - Foreground turn input containing context and configuration
  * @param allTools - Array of all available tool definitions
+ * @param toolRegistry - Optional ToolRegistry for looking up full tool definitions with schemas
  * @returns Tool projection result with allowed tool IDs and definitions
  *
  * @example
  * ```typescript
- * const projection = buildForegroundToolProjection(input, allTools);
+ * const projection = buildForegroundToolProjection(input, allTools, toolRegistry);
  * // projection.allowedToolIds = ['web_search', 'status_query', 'ask_user', ...]
  * // projection.toolDefinitions = [{ type: 'function', function: { ... } }, ...]
  * ```
@@ -102,7 +101,9 @@ export function buildForegroundToolProjection(
     category: ToolCategory
     sensitivity: ToolSensitivity
     description: string
+    schema?: { type: 'object'; properties: Record<string, unknown>; required?: string[]; additionalProperties?: boolean; description?: string }
   }>,
+  toolRegistry?: ToolRegistry,
 ): ForegroundToolProjectionResult {
   const safeTools = allTools.filter((tool) => isToolSafeForDefaultProjection(tool.category, tool.sensitivity))
 
@@ -114,14 +115,27 @@ export function buildForegroundToolProjection(
 
   const allowedToolIds = projectedTools.map((tool) => tool.name)
 
-  const toolDefinitions: ToolDefinition[] = projectedTools.map((tool) => ({
-    type: 'function' as const,
-    function: {
-      name: tool.name,
-      description: tool.description,
-      parameters: { type: 'object' as const, properties: {} },
-    },
-  }))
+  // Use ToolRegistry to get full tool definitions with real schemas
+  const toolDefinitions: ToolDefinition[] = projectedTools.map((tool) => {
+    // If ToolRegistry is provided, look up the full tool definition
+    if (toolRegistry) {
+      const fullTool = toolRegistry.getTool(tool.name)
+      if (fullTool) {
+        // Use the helper to convert with real schema
+        return toLLMToolDefinition(fullTool)
+      }
+    }
+    
+    // Fallback: use the schema from the summary if available, otherwise empty schema
+    return {
+      type: 'function' as const,
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.schema ?? { type: 'object' as const, properties: {} },
+      },
+    }
+  })
 
   return {
     allowedToolIds,

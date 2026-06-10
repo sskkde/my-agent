@@ -472,15 +472,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 
   const modelInputSnapshotStore = createModelInputSnapshotStore(createModelInputRedactor())
 
-  const foregroundAgent =
-    injectedForegroundAgent ??
-    createForegroundAgent({
-      llmAdapter,
-      agentConfig: agentConfigStore.getByUser('default') ?? undefined,
-      modelInputBuilder,
-      modelInputSnapshotStore,
-      promptProjectionResolver,
-    })
   const refreshProvidersForUser = (_userId: string): void => {
     // Request-scoped adapters read provider configs on each processing scope.
     // This hook remains for provider CRUD routes and injected adapters.
@@ -581,6 +572,18 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     registerAllForegroundTools(toolRegistry)
   }
 
+  // Create foreground agent with tool registry for schema projection
+  const foregroundAgent =
+    injectedForegroundAgent ??
+    createForegroundAgent({
+      llmAdapter,
+      agentConfig: agentConfigStore.getByUser('default') ?? undefined,
+      modelInputBuilder,
+      modelInputSnapshotStore,
+      promptProjectionResolver,
+      toolRegistry,
+    })
+
   // Create tool executor
   const toolExecutor = createToolExecutor({
     registry: toolRegistry,
@@ -680,6 +683,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     })
 
   foregroundAgent.setAgentKernel?.(agentKernel)
+  foregroundAgent.setToolRegistry?.(toolRegistry)
 
   // Create processing observer that broadcasts status to SSE subscribers
   const processingObserver = {
@@ -744,6 +748,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     providerConfigStore,
     agentConfigStore,
     sessionStore,
+    toolRegistry,
     preferenceStore: subagentProviderPreferenceStore,
     runWithProvidersForUser,
   })

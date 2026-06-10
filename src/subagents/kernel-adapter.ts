@@ -9,16 +9,33 @@ import type { ProviderConfigStore } from '../storage/provider-config-store.js'
 import type { AgentConfigStore } from '../storage/agent-config-store.js'
 import type { SessionStore } from '../storage/session-store.js'
 import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js'
+import type { ToolRegistry } from '../tools/types.js'
+import { toLLMToolDefinition } from '../tools/tool-plane-prompt-projection.js'
 
-function buildToolProjection(definition: SubagentDefinition, taskSpec: SubagentTaskSpec): ToolPlaneProjection {
+export function buildToolProjection(
+  definition: SubagentDefinition,
+  taskSpec: SubagentTaskSpec,
+  toolRegistry: ToolRegistry,
+): ToolPlaneProjection {
   const allowedIds = definition.allowedToolIds ?? []
   const requestedIds = taskSpec.tools ?? []
 
   const effectiveIds = requestedIds.length > 0 ? allowedIds.filter((id) => requestedIds.includes(id)) : allowedIds
 
+  const tools: ToolPlaneProjection['tools'] = []
+  for (const toolId of effectiveIds) {
+    const toolDef = toolRegistry.getTool(toolId)
+    if (toolDef) {
+      tools.push(toLLMToolDefinition(toolDef))
+    } else {
+      // Explicit safe failure: skip missing tools rather than granting broad access
+      console.warn(`[SubagentAdapter] Tool "${toolId}" not found in registry, skipping`)
+    }
+  }
+
   return {
     toolIds: effectiveIds,
-    tools: [],
+    tools,
   }
 }
 
@@ -43,6 +60,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
     private readonly providerConfigStore: ProviderConfigStore,
     private readonly agentConfigStore: AgentConfigStore,
     private readonly sessionStore: SessionStore,
+    private readonly toolRegistry: ToolRegistry,
     private readonly preferenceStore?: SubagentProviderPreferenceStore,
     private readonly runWithProvidersForUser?: <T>(
       userId: string,
@@ -128,7 +146,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       preferenceStore: this.preferenceStore,
     })
 
-    const toolProjection = buildToolProjection(definition, taskSpec)
+    const toolProjection = buildToolProjection(definition, taskSpec, this.toolRegistry)
 
     const kernelInput: KernelRunInput = {
       contextBundle,
@@ -159,6 +177,7 @@ export function createSubagentKernelAdapter(deps: {
   providerConfigStore: ProviderConfigStore
   agentConfigStore: AgentConfigStore
   sessionStore: SessionStore
+  toolRegistry: ToolRegistry
   preferenceStore?: SubagentProviderPreferenceStore
   runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>
 }): KernelAdapter {
@@ -168,6 +187,7 @@ export function createSubagentKernelAdapter(deps: {
     deps.providerConfigStore,
     deps.agentConfigStore,
     deps.sessionStore,
+    deps.toolRegistry,
     deps.preferenceStore,
     deps.runWithProvidersForUser,
   )

@@ -93,6 +93,7 @@ import {
 import { buildForegroundToolProjection, toToolPlaneProjection } from './tool-projection-mapper.js'
 import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
 import { mapKernelResultToTranscript } from './tools/transcript-redaction-mapper.js'
+import type { ToolRegistry } from '../tools/types.js'
 
 // ─── Feature Flags ──────────────────────────────────────────────────────────
 export function isMemorySemanticPolicyEnabled(): boolean {
@@ -127,6 +128,8 @@ export interface ForegroundAgent {
   runTurn?(input: ForegroundTurnInput): Promise<ForegroundTurnResult>
   /** Inject AgentKernel for kernel-backed foreground_decide routing. No-op if not supported. */
   setAgentKernel?(kernel: AgentKernel): void
+  /** Inject ToolRegistry for schema projection. No-op if not supported. */
+  setToolRegistry?(registry: ToolRegistry): void
 }
 
 function generateActionId(): string {
@@ -141,6 +144,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private promptProjectionResolver?: PromptProjectionResolver
   private agentKernel?: AgentKernel
   private toolCatalog?: ReturnType<typeof getToolCatalog>
+  private toolRegistry?: import('../tools/types.js').ToolRegistry
   private maxIterations: number
   private timeoutMs: number
 
@@ -153,6 +157,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     promptProjectionResolver?: PromptProjectionResolver,
     agentKernel?: AgentKernel,
     toolCatalog?: ReturnType<typeof getToolCatalog>,
+    toolRegistry?: import('../tools/types.js').ToolRegistry,
     maxIterations?: number,
     timeoutMs?: number,
   ) {
@@ -163,12 +168,17 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.promptProjectionResolver = promptProjectionResolver
     this.agentKernel = agentKernel
     this.toolCatalog = toolCatalog
+    this.toolRegistry = toolRegistry
     this.maxIterations = maxIterations ?? DEFAULT_FOREGROUND_MAX_ITERATIONS
     this.timeoutMs = timeoutMs ?? DEFAULT_FOREGROUND_TIMEOUT_MS
   }
 
   setAgentKernel(kernel: AgentKernel): void {
     this.agentKernel = kernel
+  }
+
+  setToolRegistry(registry: ToolRegistry): void {
+    this.toolRegistry = registry
   }
 
   async runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult> {
@@ -191,7 +201,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     const contextBundle = buildContextBundleFromForegroundState(input.foregroundState, input)
 
     const allTools = this.toolCatalog ?? getToolCatalog()
-    const projectionResult = buildForegroundToolProjection(input, allTools)
+    const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)
 
     const effectiveConfig = input.agentConfig ?? this.agentConfig
@@ -1423,6 +1433,7 @@ export interface CreateForegroundAgentOptions {
   promptProjectionResolver?: PromptProjectionResolver
   agentKernel?: AgentKernel
   toolCatalog?: ReturnType<typeof getToolCatalog>
+  toolRegistry?: import('../tools/types.js').ToolRegistry
   maxIterations?: number
   timeoutMs?: number
 }
@@ -1437,6 +1448,7 @@ export function createForegroundAgent(options?: CreateForegroundAgentOptions): F
     options?.promptProjectionResolver,
     options?.agentKernel,
     options?.toolCatalog,
+    options?.toolRegistry,
     options?.maxIterations,
     options?.timeoutMs,
   )

@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { buildForegroundToolProjection, toToolPlaneProjection } from '../../../src/foreground/tool-projection-mapper.js'
 import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js'
 import type { ToolCategory, ToolSensitivity } from '../../../src/tools/types.js'
+import { createToolRegistry } from '../../../src/tools/tool-registry.js'
+import { createSessionHistoryTool } from '../../../src/tools/builtins/session-history.js'
+import { createTranscriptSearchTool } from '../../../src/tools/builtins/transcript-search.js'
+import { createStatusQueryTool } from '../../../src/tools/builtins/status-query.js'
+import { createSessionStore } from '../../../src/storage/session-store.js'
+import { createTranscriptStore } from '../../../src/storage/transcript-store.js'
+import { createConnectionManager } from '../../../src/storage/connection.js'
 
 describe('buildForegroundToolProjection', () => {
   const createMockInput = (): ForegroundTurnInput => ({
@@ -145,6 +152,126 @@ describe('buildForegroundToolProjection', () => {
           parameters: { type: 'object', properties: {} },
         },
       })
+    })
+
+    it('should expose session_history tool with correct schema including sessionId parameter', () => {
+      // Create ToolRegistry with real tool definitions
+      const connection = createConnectionManager(':memory:')
+      connection.open()
+      const sessionStore = createSessionStore(connection)
+      const transcriptStore = createTranscriptStore(connection)
+      const toolRegistry = createToolRegistry()
+      toolRegistry.register(createSessionHistoryTool(sessionStore, transcriptStore))
+      
+      const allTools = [
+        createTool('session_history', 'read', 'medium', 'Get session message history'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools, toolRegistry)
+
+      expect(result.allowedToolIds).toContain('session_history')
+      expect(result.toolDefinitions).toHaveLength(1)
+      
+      const sessionHistoryDef = result.toolDefinitions[0]
+      expect(sessionHistoryDef.function.name).toBe('session_history')
+      
+      expect(sessionHistoryDef.function.parameters).toHaveProperty('properties')
+      expect(sessionHistoryDef.function.parameters).toHaveProperty('required')
+      
+      const properties = sessionHistoryDef.function.parameters.properties as Record<string, unknown>
+      expect(properties).toHaveProperty('sessionId')
+      expect(properties.sessionId).toMatchObject({
+        type: 'string',
+        description: expect.stringContaining('Session ID'),
+      })
+      
+      const required = sessionHistoryDef.function.parameters.required as string[]
+      expect(required).toContain('sessionId')
+    })
+
+    it('should expose transcript_search tool with correct schema including query parameter', () => {
+      // Create ToolRegistry with real tool definitions
+      const connection = createConnectionManager(':memory:')
+      connection.open()
+      const transcriptStore = createTranscriptStore(connection)
+      const toolRegistry = createToolRegistry()
+      toolRegistry.register(createTranscriptSearchTool(transcriptStore))
+      
+      const allTools = [
+        createTool('transcript_search', 'search', 'medium', 'Search transcript records for matching content'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools, toolRegistry)
+
+      expect(result.allowedToolIds).toContain('transcript_search')
+      expect(result.toolDefinitions).toHaveLength(1)
+      
+      const transcriptSearchDef = result.toolDefinitions[0]
+      expect(transcriptSearchDef.function.name).toBe('transcript_search')
+      
+      expect(transcriptSearchDef.function.parameters).toHaveProperty('properties')
+      expect(transcriptSearchDef.function.parameters).toHaveProperty('required')
+      
+      const properties = transcriptSearchDef.function.parameters.properties as Record<string, unknown>
+      expect(properties).toHaveProperty('query')
+      expect(properties.query).toMatchObject({
+        type: 'string',
+        description: expect.stringContaining('Search query'),
+      })
+      
+      const required = transcriptSearchDef.function.parameters.required as string[]
+      expect(required).toContain('query')
+    })
+
+    it('should NOT project high-risk tools like exec and file_write in default foreground', () => {
+      const allTools = [
+        createTool('exec', 'execute', 'high', 'Execute shell command'),
+        createTool('bash', 'execute', 'high', 'Execute bash command'),
+        createTool('file_write', 'write', 'high', 'Write content to file'),
+        createTool('file_delete', 'delete', 'high', 'Delete file'),
+        createTool('web_search', 'search', 'low', 'Search the web'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools)
+
+      expect(result.allowedToolIds).not.toContain('exec')
+      expect(result.allowedToolIds).not.toContain('bash')
+      expect(result.allowedToolIds).not.toContain('file_write')
+      expect(result.allowedToolIds).not.toContain('file_delete')
+      
+      expect(result.allowedToolIds).toEqual(['web_search'])
+      expect(result.toolDefinitions).toHaveLength(1)
+      expect(result.toolDefinitions[0].function.name).toBe('web_search')
+    })
+
+    it('should expose status_query tool with optional targetId parameter (no required fields)', () => {
+      const toolRegistry = createToolRegistry()
+      toolRegistry.register(createStatusQueryTool())
+      
+      const allTools = [
+        createTool('status_query', 'internal', 'low', 'Query active work status'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools, toolRegistry)
+
+      expect(result.allowedToolIds).toContain('status_query')
+      expect(result.toolDefinitions).toHaveLength(1)
+      
+      const statusQueryDef = result.toolDefinitions[0]
+      expect(statusQueryDef.function.name).toBe('status_query')
+      
+      expect(statusQueryDef.function.parameters).toHaveProperty('properties')
+      expect(statusQueryDef.function.parameters).toHaveProperty('required')
+      
+      const properties = statusQueryDef.function.parameters.properties as Record<string, unknown>
+      expect(properties).toHaveProperty('targetId')
+      expect(properties.targetId).toMatchObject({
+        type: 'string',
+        description: expect.stringContaining('Optional'),
+      })
+      
+      const required = statusQueryDef.function.parameters.required as string[]
+      expect(required).toEqual([])
     })
   })
 
