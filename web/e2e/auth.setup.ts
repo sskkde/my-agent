@@ -12,10 +12,11 @@ setup('authenticate', async ({ page, request }) => {
   await page.goto('/');
 
   if (setupStatus.data.needsSetup) {
-    await expect(page.getByTestId('setup-username')).toBeVisible();
-    await page.getByTestId('setup-username').fill(TEST_USERNAME);
-    await page.getByTestId('setup-password').fill(TEST_PASSWORD);
-    await page.getByTestId('setup-submit').click();
+    await expect(page.getByTestId('admin-username-input')).toBeVisible();
+    await page.getByTestId('admin-username-input').fill(TEST_USERNAME);
+    await page.getByTestId('admin-password-input').fill(TEST_PASSWORD);
+    await page.getByTestId('admin-confirm-password-input').fill(TEST_PASSWORD);
+    await page.getByTestId('admin-create-submit').click();
   } else {
     await expect(page.getByTestId('login-username')).toBeVisible();
     await page.getByTestId('login-username').fill(TEST_USERNAME);
@@ -23,6 +24,6 @@ setup('authenticate', async ({ page, request }) => {
     await page.getByTestId('login-submit').click();
   }
 
-  await page.waitForSelector('[data-testid="tab-dashboard"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="sidebar"], [data-testid="product-nav"]', { timeout: 10000 });
   await page.context().storageState({ path: authFile });
 });
