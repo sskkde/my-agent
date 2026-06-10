@@ -2014,6 +2014,25 @@ body {
   font-style: italic;
 }
 
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: var(--accent, #3b82f6);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
 /* Assistant Placeholder Animation */
 .timeline-event-card--assistant-placeholder {
   align-self: flex-start;

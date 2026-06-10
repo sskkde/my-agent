@@ -101,9 +101,12 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
     }
 
     if (isStreamingDraft) {
-      return formattedContent ? (
-        <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
-      ) : null
+      return (
+        <div className="timeline-event-content">
+          {formattedContent && <span dangerouslySetInnerHTML={{ __html: formattedContent }} />}
+          <span className="streaming-cursor" />
+        </div>
+      )
     }
 
     switch (event.eventType) {
