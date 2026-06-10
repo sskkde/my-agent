@@ -135,10 +135,10 @@ describe('Search runtime boundary - sync search does not use subagent_runtime', 
 
       // Verify no subagent_run_id references in transcripts
       const transcripts = context.stores.transcriptStore.findBySession('session-no-runtime')
-      const runtimeOrientedSummaries = transcripts.filter(t =>
-        t.runtimeSummary?.toolCallSummaries?.some(s =>
-          s.toolName.includes('search_processor') || s.toolName.includes('subagent_runtime')
-        )
+      const runtimeOrientedSummaries = transcripts.filter((t) =>
+        t.runtimeSummary?.toolCallSummaries?.some(
+          (s) => s.toolName.includes('search_processor') || s.toolName.includes('subagent_runtime'),
+        ),
       )
       expect(runtimeOrientedSummaries).toHaveLength(0)
     })
@@ -205,7 +205,9 @@ describe('Search runtime boundary - sync search does not use subagent_runtime', 
       // Verify SubagentRuntimeImpl is not in the module dependency graph for search
       // This is verified by checking that no subagent_runs records exist
       const runs = context.subagentRunStore.query({ userId })
-      const searchRuns = runs.filter((r: { agentType: string }) => r.agentType === 'search_processor' || r.agentType === 'search')
+      const searchRuns = runs.filter(
+        (r: { agentType: string }) => r.agentType === 'search_processor' || r.agentType === 'search',
+      )
       expect(searchRuns).toHaveLength(0)
     })
   })
@@ -269,10 +271,8 @@ describe('Search runtime boundary - sync search does not use subagent_runtime', 
 
       // Verify no dispatch to subagent_runtime
       const transcripts = context.stores.transcriptStore.findBySession('session-no-dispatch')
-      const runtimeDispatches = transcripts.filter(t =>
-        t.runtimeSummary?.toolCallSummaries?.some(s =>
-          s.toolName === 'search_processor'
-        )
+      const runtimeDispatches = transcripts.filter((t) =>
+        t.runtimeSummary?.toolCallSummaries?.some((s) => s.toolName === 'search_processor'),
       )
       expect(runtimeDispatches).toHaveLength(0)
     })
@@ -338,9 +338,7 @@ describe('Search runtime boundary - sync search does not use subagent_runtime', 
 
       // Verify no subagent_runs with search-related agentTypes
       const runs = context.subagentRunStore.query({ userId })
-      const searchAgentRuns = runs.filter((r: { agentType: string }) =>
-        r.agentType.includes('search')
-      )
+      const searchAgentRuns = runs.filter((r: { agentType: string }) => r.agentType.includes('search'))
       expect(searchAgentRuns).toHaveLength(0)
     })
   })

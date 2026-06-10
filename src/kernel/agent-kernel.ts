@@ -393,10 +393,7 @@ export class AgentKernel {
     request: LLMRequest,
     timeoutMs: number,
     input: KernelRunInput,
-  ): Promise<
-    | { success: true; response: LLMResponse; providerId: string }
-    | { success: false }
-  > {
+  ): Promise<{ success: true; response: LLMResponse; providerId: string } | { success: false }> {
     if (timeoutMs <= 0) {
       throw new Error('LLM request timeout before dispatch')
     }

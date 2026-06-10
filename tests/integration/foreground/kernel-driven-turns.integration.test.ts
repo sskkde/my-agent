@@ -562,7 +562,7 @@ describe('Kernel-Driven Foreground Turn Integration Tests', () => {
           {
             fact: 'Humidity: 65%.',
             sourceUrl: 'https://temp.example.com/tokyo',
-            confidence: 0.80,
+            confidence: 0.8,
           },
         ],
         warnings: [],
@@ -674,7 +674,7 @@ describe('Kernel-Driven Foreground Turn Integration Tests', () => {
           {
             fact: 'Researchers announce major AI advancement in natural language processing.',
             sourceUrl: 'https://news.example.com/ai-breakthrough',
-            confidence: 0.90,
+            confidence: 0.9,
           },
         ],
         warnings: [],

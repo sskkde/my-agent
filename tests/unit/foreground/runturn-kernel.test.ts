@@ -305,9 +305,7 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
       expect(kernelInput.toolProjection!.tools!.length).toBeGreaterThan(0)
 
       // Find session_history tool in projection
-      const sessionHistoryProj = kernelInput.toolProjection!.tools!.find(
-        (t) => t.function.name === 'session_history',
-      )
+      const sessionHistoryProj = kernelInput.toolProjection!.tools!.find((t) => t.function.name === 'session_history')
       expect(sessionHistoryProj).toBeDefined()
       expect(sessionHistoryProj!.function.parameters).toBeDefined()
       expect(sessionHistoryProj!.function.parameters!.type).toBe('object')
@@ -333,9 +331,7 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
       expect((transcriptSearchProps.query as { type: string }).type).toBe('string')
 
       // HIGH-RISK TOOL EXCLUSION: Verify exec tool is NOT projected
-      const execProj = kernelInput.toolProjection!.tools!.find(
-        (t) => t.function.name === 'exec',
-      )
+      const execProj = kernelInput.toolProjection!.tools!.find((t) => t.function.name === 'exec')
       expect(execProj).toBeUndefined()
 
       // Verify exec is also not in toolIds
@@ -388,9 +384,7 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
       const projectedTools = kernelInput.toolProjection!.tools!
 
       const registeredToolNames = parameterizedTools.map((t) => t.name)
-      const projectedRegisteredTools = projectedTools.filter((t) =>
-        registeredToolNames.includes(t.function.name),
-      )
+      const projectedRegisteredTools = projectedTools.filter((t) => registeredToolNames.includes(t.function.name))
 
       expect(projectedRegisteredTools.length).toBeGreaterThan(0)
 

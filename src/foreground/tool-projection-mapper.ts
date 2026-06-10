@@ -101,7 +101,13 @@ export function buildForegroundToolProjection(
     category: ToolCategory
     sensitivity: ToolSensitivity
     description: string
-    schema?: { type: 'object'; properties: Record<string, unknown>; required?: string[]; additionalProperties?: boolean; description?: string }
+    schema?: {
+      type: 'object'
+      properties: Record<string, unknown>
+      required?: string[]
+      additionalProperties?: boolean
+      description?: string
+    }
   }>,
   toolRegistry?: ToolRegistry,
 ): ForegroundToolProjectionResult {
@@ -109,9 +115,7 @@ export function buildForegroundToolProjection(
 
   // Apply preference: hide web_search when search_subagent is available
   const hasSearchSubagent = safeTools.some((tool) => tool.name === 'search_subagent')
-  const projectedTools = hasSearchSubagent
-    ? safeTools.filter((tool) => tool.name !== 'web_search')
-    : safeTools
+  const projectedTools = hasSearchSubagent ? safeTools.filter((tool) => tool.name !== 'web_search') : safeTools
 
   const allowedToolIds = projectedTools.map((tool) => tool.name)
 
@@ -125,7 +129,7 @@ export function buildForegroundToolProjection(
         return toLLMToolDefinition(fullTool)
       }
     }
-    
+
     // Fallback: use the schema from the summary if available, otherwise empty schema
     return {
       type: 'function' as const,

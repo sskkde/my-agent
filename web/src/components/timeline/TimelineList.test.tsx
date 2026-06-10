@@ -227,8 +227,9 @@ describe('TimelineEventCard', () => {
   it('sanitizes HTML content to prevent XSS', () => {
     const event = createMockEvent('xss-1', 'user_message', '<script>alert("xss")</script>Hello')
     render(<TimelineEventCard event={event} />)
+    // Script tag is removed entirely by DOMPurify, leaving only "Hello"
     expect(screen.queryByText('<script>alert("xss")</script>Hello')).not.toBeInTheDocument()
-    expect(screen.getByText('alert("xss")Hello')).toBeInTheDocument()
+    expect(screen.getByText('Hello')).toBeInTheDocument()
   })
 
   it('displays actor when present', () => {

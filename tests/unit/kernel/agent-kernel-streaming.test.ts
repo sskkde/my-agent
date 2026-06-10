@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { LLMResult, LLMRequest } from '../../../src/llm/types.js'
 import type { ContextBundle } from '../../../src/context/types.js'
-import type { KernelRunInput, KernelConfig, ToolExecutor, ContextManager, RuntimeDispatcher } from '../../../src/kernel/types.js'
+import type {
+  KernelRunInput,
+  KernelConfig,
+  ToolExecutor,
+  ContextManager,
+  RuntimeDispatcher,
+} from '../../../src/kernel/types.js'
 import { AgentKernel } from '../../../src/kernel/agent-kernel.js'
 import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js'
 import type { LLMProvider } from '../../../src/llm/provider.js'
@@ -20,7 +26,7 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
   private deltas: string[] = []
   private shouldFail = false
   private failureAfterDelta?: number
-  
+
   config: LLMAdapterConfig = {
     providers: [],
     defaultTimeoutMs: 60000,
@@ -43,7 +49,7 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
 
   async complete(request: LLMRequest): Promise<LLMResult> {
     this.lastRequest = request
-    
+
     if (this.shouldFail) {
       return {
         success: false,
@@ -79,12 +85,12 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
     request: LLMRequest,
   ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: any }> {
     this.lastRequest = request
-    
+
     for (let i = 0; i < this.deltas.length; i++) {
       if (this.shouldFail && this.failureAfterDelta !== undefined && i >= this.failureAfterDelta) {
         throw new Error('Streaming failed mid-stream')
       }
-      
+
       yield {
         delta: this.deltas[i],
         providerId: 'fake-streaming',
@@ -271,18 +277,18 @@ describe('AgentKernel streaming behavior', () => {
     it('emits ordered deltas with increasing sequence numbers', async () => {
       const deltas = ['Hello', ' ', 'world', '!']
       fakeLLM.setDeltas(deltas)
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       // After Task 10: kernel.run() will use streaming and broadcast deltas
       await kernel.run(makeRunInput())
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      
+
       // Should emit one broadcast per delta
       expect(broadcasts.length).toBe(deltas.length)
-      
+
       // Each broadcast should have increasing sequence
       for (let i = 0; i < broadcasts.length; i++) {
         expect(broadcasts[i].token.sequence).toBe(i)
@@ -293,20 +299,20 @@ describe('AgentKernel streaming behavior', () => {
     it('includes sessionId and attemptId in TokenStreamPayload', async () => {
       const sessionId = 'session-stream-001'
       const attemptId = 'attempt-stream-001'
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       const input: KernelRunInput = {
         ...makeRunInput(),
         sessionId,
         runId: attemptId,
       }
-      
+
       await kernel.run(input)
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      
+
       expect(broadcasts.length).toBeGreaterThan(0)
       broadcasts.forEach((b) => {
         expect(b.sessionId).toBe(sessionId)
@@ -316,14 +322,14 @@ describe('AgentKernel streaming behavior', () => {
 
     it('sets isFinal=true on last delta', async () => {
       fakeLLM.setDeltas(['A', 'B', 'C'])
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       await kernel.run(makeRunInput())
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      
+
       expect(broadcasts.length).toBe(3)
       expect(broadcasts[0].token.isFinal).toBe(false)
       expect(broadcasts[1].token.isFinal).toBe(false)
@@ -332,15 +338,15 @@ describe('AgentKernel streaming behavior', () => {
 
     it('includes timestamp in each TokenStreamPayload', async () => {
       const beforeTime = new Date().toISOString()
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       await kernel.run(makeRunInput())
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
       const afterTime = new Date().toISOString()
-      
+
       expect(broadcasts.length).toBeGreaterThan(0)
       broadcasts.forEach((b) => {
         expect(b.token.timestamp).toBeDefined()
@@ -354,10 +360,10 @@ describe('AgentKernel streaming behavior', () => {
     it('final response equals concatenated deltas', async () => {
       const deltas = ['The ', 'quick ', 'brown ', 'fox']
       fakeLLM.setDeltas(deltas)
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       const result = await kernel.run(makeRunInput())
 
       expect(result.finalStatus).toBe('completed')
@@ -366,30 +372,30 @@ describe('AgentKernel streaming behavior', () => {
 
     it('handles empty deltas gracefully', async () => {
       fakeLLM.setDeltas([])
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       const result = await kernel.run(makeRunInput())
 
       expect(result.finalStatus).toBe('completed')
       expect(result.finalResponse).toBe('')
-      
+
       const broadcasts = fakeBroadcaster.getBroadcasts()
       expect(broadcasts.length).toBe(0)
     })
 
     it('handles single delta', async () => {
       fakeLLM.setDeltas(['Single response'])
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       const result = await kernel.run(makeRunInput())
 
       expect(result.finalStatus).toBe('completed')
       expect(result.finalResponse).toBe('Single response')
-      
+
       const broadcasts = fakeBroadcaster.getBroadcasts()
       expect(broadcasts.length).toBe(1)
       expect(broadcasts[0].token.isFinal).toBe(true)
@@ -400,10 +406,10 @@ describe('AgentKernel streaming behavior', () => {
     it('produces controlled error when streaming fails mid-stream', async () => {
       fakeLLM.setDeltas(['Start', ' ', 'middle', ' ', 'end'])
       fakeLLM.setShouldFail(true, 2) // Fail after 2 deltas
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       const result = await kernel.run(makeRunInput())
 
       // Should fail gracefully
@@ -420,11 +426,11 @@ describe('AgentKernel streaming behavior', () => {
           return
         }
       }
-      
+
       const nonStreamingAdapter = new NonStreamingAdapter(['Fallback', ' ', 'content'])
       const config = makeBaseConfig({ llmAdapter: nonStreamingAdapter })
       const kernel = new AgentKernel(config)
-      
+
       const result = await kernel.run(makeRunInput())
 
       // Should fallback to complete() and succeed
@@ -435,18 +441,18 @@ describe('AgentKernel streaming behavior', () => {
     it('no duplicate final messages on streaming error', async () => {
       fakeLLM.setDeltas(['A', 'B', 'C'])
       fakeLLM.setShouldFail(true, 1) // Fail after 1 delta
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       await kernel.run(makeRunInput())
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      
+
       // Should only have broadcasts up to the failure point
       // No duplicate error messages
       expect(broadcasts.length).toBe(1) // Only 'A' before failure
-      
+
       // Last broadcast should NOT be marked as final since it failed
       expect(broadcasts[0].token.isFinal).toBe(false)
     })
@@ -454,14 +460,14 @@ describe('AgentKernel streaming behavior', () => {
     it('preserves partial deltas before streaming failure', async () => {
       fakeLLM.setDeltas(['Part1', ' ', 'Part2', ' ', 'Part3'])
       fakeLLM.setShouldFail(true, 2) // Fail after 2 deltas
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       await kernel.run(makeRunInput())
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      
+
       // Should have broadcasts for 'Part1' and ' '
       expect(broadcasts.length).toBe(2)
       expect(broadcasts[0].token.delta).toBe('Part1')
@@ -497,28 +503,30 @@ describe('AgentKernel streaming behavior', () => {
           }
         }
       }
-      
+
       const toolCallAdapter = new ToolCallStreamingAdapter()
       const config = makeBaseConfig({ llmAdapter: toolCallAdapter })
       const kernel = new AgentKernel(config)
-      
+
       await kernel.run({
         ...makeRunInput(),
         toolProjection: {
           toolIds: ['test_tool'],
-          tools: [{
-            type: 'function',
-            function: {
-              name: 'test_tool',
-              description: 'A test tool',
-              parameters: { type: 'object', properties: {} },
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'test_tool',
+                description: 'A test tool',
+                parameters: { type: 'object', properties: {} },
+              },
             },
-          }],
+          ],
         },
       })
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      
+
       expect(broadcasts.length).toBe(0)
     })
   })
@@ -528,16 +536,16 @@ describe('AgentKernel streaming behavior', () => {
       // Large number of deltas
       const manyDeltas = Array(1000).fill('x')
       fakeLLM.setDeltas(manyDeltas)
-      
+
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
-      
+
       const result = await kernel.run(makeRunInput())
 
       // Should still work with many deltas
       expect(result.finalStatus).toBe('completed')
       expect(result.finalResponse).toBe('x'.repeat(1000))
-      
+
       // Each delta should be broadcast individually
       const broadcasts = fakeBroadcaster.getBroadcasts()
       expect(broadcasts.length).toBe(1000)
@@ -548,13 +556,13 @@ describe('AgentKernel streaming behavior', () => {
 describe('AgentKernel streaming integration', () => {
   it('streaming respects maxIterations limit', async () => {
     const fakeLLM = new FakeStreamingLLMAdapter(['Test'])
-    
-    const config = makeBaseConfig({ 
+
+    const config = makeBaseConfig({
       llmAdapter: fakeLLM,
       maxIterations: 1,
     })
     const kernel = new AgentKernel(config)
-    
+
     const result = await kernel.run({
       ...makeRunInput(),
       maxIterations: 1,
@@ -565,7 +573,7 @@ describe('AgentKernel streaming integration', () => {
 
   it('streaming respects timeout', async () => {
     vi.useFakeTimers()
-    
+
     class SlowStreamingAdapter extends FakeStreamingLLMAdapter {
       async *stream(request: LLMRequest) {
         yield { delta: 'Slow', providerId: 'slow', model: request.model }
@@ -574,16 +582,16 @@ describe('AgentKernel streaming integration', () => {
         yield { delta: 'End', providerId: 'slow', model: request.model }
       }
     }
-    
+
     const slowAdapter = new SlowStreamingAdapter()
     const config = makeBaseConfig({ llmAdapter: slowAdapter })
     const kernel = new AgentKernel(config)
-    
+
     const runPromise = kernel.run({
       ...makeRunInput(),
       timeoutMs: 100,
     })
-    
+
     await vi.advanceTimersByTimeAsync(150)
     const result = await runPromise
     vi.useRealTimers()

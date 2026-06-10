@@ -571,8 +571,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
       const transcripts = context.stores.transcriptStore.findBySession('session-transcript-check')
       expect(transcripts.length).toBeGreaterThan(0)
 
-      const transcriptWithToolSummaries = transcripts.find(t =>
-        t.runtimeSummary?.toolCallSummaries?.some(s => s.toolName === 'search_subagent')
+      const transcriptWithToolSummaries = transcripts.find((t) =>
+        t.runtimeSummary?.toolCallSummaries?.some((s) => s.toolName === 'search_subagent'),
       )
       expect(transcriptWithToolSummaries).toBeDefined()
 
@@ -640,9 +640,7 @@ describe('Processor orchestration SearchSubagent branch', () => {
       })
 
       const runs = context.subagentRunStore.query({ userId })
-      const searchRuns = runs.filter((r: { sessionId?: string }) =>
-        r.sessionId === 'session-no-subagent-run'
-      )
+      const searchRuns = runs.filter((r: { sessionId?: string }) => r.sessionId === 'session-no-subagent-run')
 
       expect(searchRuns).toHaveLength(0)
     })
@@ -666,7 +664,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
         processMessage: vi.fn(),
         runTurn: vi.fn().mockResolvedValue({
           status: 'completed',
-          finalResponse: 'I searched for your query but found no relevant results. You may want to try different keywords or broaden your search.',
+          finalResponse:
+            'I searched for your query but found no relevant results. You may want to try different keywords or broaden your search.',
           decisionTrace: {
             route: 'dispatch_tool',
             requiresPlanner: false,
@@ -720,12 +719,12 @@ describe('Processor orchestration SearchSubagent branch', () => {
       // Assert: Success with safe response
       expect(result.success).toBe(true)
       expect(result.result?.text).toContain('no relevant results')
-      
+
       // Assert: Response does NOT contain fake/hallucinated results
       expect(result.result?.text).not.toContain('according to the results')
       expect(result.result?.text).not.toContain('the search found')
       expect(result.result?.text).not.toContain('sources indicate')
-      
+
       // Assert: Tool summary shows completed status (not failed)
       expect(result.result?.data?.runtimeSummary).toBeDefined()
       const summary = result.result?.data?.runtimeSummary as {
@@ -733,7 +732,7 @@ describe('Processor orchestration SearchSubagent branch', () => {
       }
       expect(summary.toolCallSummaries[0].toolName).toBe('search_subagent')
       expect(summary.toolCallSummaries[0].status).toBe('completed')
-      
+
       // Assert: No uncaught exception
       expect(result.error).toBeUndefined()
     })
@@ -814,11 +813,11 @@ describe('Processor orchestration SearchSubagent branch', () => {
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe('PROCESSING_ERROR')
       expect(result.error?.message).toContain('unavailable')
-      
+
       // Assert: Error details contain foreground error code
       expect(result.error?.details).toBeDefined()
       expect(result.error?.details?.foregroundErrorCode).toBe('MODEL_UNAVAILABLE')
-      
+
       // Assert: No uncaught exception escaped
       expect(result.error?.message).not.toContain('TypeError')
       expect(result.error?.message).not.toContain('Cannot read')
@@ -841,7 +840,8 @@ describe('Processor orchestration SearchSubagent branch', () => {
         processMessage: vi.fn(),
         runTurn: vi.fn().mockResolvedValue({
           status: 'completed',
-          finalResponse: 'I apologize, but I could not find any information about that topic. The search returned empty results.',
+          finalResponse:
+            'I apologize, but I could not find any information about that topic. The search returned empty results.',
           decisionTrace: {
             route: 'dispatch_tool',
             requiresPlanner: false,
@@ -884,11 +884,11 @@ describe('Processor orchestration SearchSubagent branch', () => {
       })
 
       expect(result.success).toBe(true)
-      
+
       // Assert: Response explicitly mentions no results found
       expect(result.result?.text).toBeDefined()
       expect(result.result?.text?.toLowerCase()).toMatch(/could not find|no.*results|empty results/)
-      
+
       // Assert: Response does NOT invent fake URLs or sources
       expect(result.result?.text).not.toMatch(/https?:\/\//)
       expect(result.result?.text).not.toMatch(/according to|source:|cited from/i)
@@ -965,11 +965,11 @@ describe('Processor orchestration SearchSubagent branch', () => {
       expect(result.error).toBeDefined()
       expect(result.error?.code).toBe('PROCESSING_ERROR')
       expect(result.error?.details?.foregroundErrorCode).toBe('SEARCH_MODEL_INCAPABLE')
-      
+
       // Assert: Error is informative and recoverable
       expect(result.error?.message).not.toContain('uncaught')
       expect(result.error?.message).not.toContain('UnhandledPromiseRejection')
-      
+
       // Assert: Tool summary shows failure status
       expect(result.result).toBeUndefined()
     })

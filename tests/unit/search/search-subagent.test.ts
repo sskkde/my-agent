@@ -957,15 +957,15 @@ describe('SearchSubagent contract tests', () => {
 
   /**
    * ─── Boundary Validation Tests ─────────────────────────────────────────────────
-   * 
+   *
    * These tests document the boundary between SearchSubagent.execute() and
    * handleSearchSubagentTool(). They confirm the synchronous search path has:
    * - MAX_RESULTS = 10 (result cropping limit)
    * - Forced web_search tool choice (no tool selection freedom)
    * - No subagent_runtime dependency (direct execution, not delegated)
-   * 
+   *
    * Architecture:
-   * 
+   *
    * SearchSubagent.execute() responsibilities:
    *   - Phase 1: Build function_calling request with forced web_search toolChoice
    *   - Phase 2: Build structured_json request for answer generation
@@ -973,7 +973,7 @@ describe('SearchSubagent contract tests', () => {
    *   - Execute web search via webSearchExecutor()
    *   - Return raw SearchSubagentResult with answer, toolResult, metadata
    *   - NO result cropping, deduplication, or post-processing
-   * 
+   *
    * handleSearchSubagentTool() responsibilities:
    *   - Scope guard check (assertSearchScope)
    *   - Query planning (queryPlanner.plan)
@@ -1057,9 +1057,7 @@ describe('SearchSubagent contract tests', () => {
     })
 
     it('handleSearchSubagentTool() crops results to MAX_RESULTS = 10', async () => {
-      const { handleSearchSubagentTool } = await import(
-        '../../../src/search/search-subagent-tool.js'
-      )
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
 
       const mockLlmAdapter = {

@@ -165,7 +165,7 @@ describe('Foreground Tool Registry Registration', () => {
 
     it('should NOT include web_search in default projection when search_subagent is available', () => {
       registerAllForegroundTools(registry)
-      
+
       registry.register({
         name: 'web_search',
         description: 'Search the public web for information',

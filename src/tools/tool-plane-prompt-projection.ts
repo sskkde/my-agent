@@ -65,13 +65,8 @@ export function toLLMToolDefinition(tool: ToolDef): LLMToolDefinition {
   }
 }
 
-export function convertToolDefinitionsToLLM(
-  tools: ToolDef[],
-  selectedToolIds?: string[],
-): LLMToolDefinition[] {
-  const filtered = selectedToolIds
-    ? tools.filter((tool) => selectedToolIds.includes(tool.name))
-    : tools
+export function convertToolDefinitionsToLLM(tools: ToolDef[], selectedToolIds?: string[]): LLMToolDefinition[] {
+  const filtered = selectedToolIds ? tools.filter((tool) => selectedToolIds.includes(tool.name)) : tools
 
   return filtered.map(toLLMToolDefinition)
 }
