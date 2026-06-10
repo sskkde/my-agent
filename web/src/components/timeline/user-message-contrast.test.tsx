@@ -2,7 +2,7 @@
  * Contrast tests for user message text readability
  * 
  * Tests that user message text color tokens meet WCAG AA contrast requirements.
- * Tests both light theme (--accent: #2563eb) and warm-paper theme (--warm-paper-accent: #5B8C85)
+ * Tests both light theme (--accent: #2563eb) and warm-paper theme (--warm-paper-accent: #3D6B64)
  * against white foreground text.
  */
 
@@ -59,15 +59,14 @@ describe('Color Token Contrast Tests', () => {
 
   describe('--warm-paper-accent token (warm-paper theme user messages)', () => {
     it('should have sufficient contrast with white text', () => {
-      const warmAccent = hexToRgb('#5B8C85')
+      const warmAccent = hexToRgb('#3D6B64')
       expect(warmAccent).not.toBeNull()
       
       const contrastRatio = getContrastRatio(warmAccent!, white)
       
       expect(contrastRatio).toBeGreaterThanOrEqual(
         WCAG_AA_MINIMUM,
-        `--warm-paper-accent #5B8C85 has contrast ratio ${contrastRatio.toFixed(2)}:1 with white, below WCAG AA minimum ${WCAG_AA_MINIMUM}:1. ` +
-        `Consider using a darker shade like #4A7A73 or #3D6B64 for better readability.`
+        `--warm-paper-accent #3D6B64 has contrast ratio ${contrastRatio.toFixed(2)}:1 with white, below WCAG AA minimum ${WCAG_AA_MINIMUM}:1`
       )
     })
   })

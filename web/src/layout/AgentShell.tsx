@@ -275,7 +275,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
             </div>
 
             <div className="sidebar-shell__body">
-              <TabNav activeTab={activeTab} onTabChange={handleTabChange} />
+              <TabNav activeTab={activeTab} onTabChange={handleTabChange} activeSection={activeProductSection} />
             </div>
 
             <div className="sidebar-shell__footer">

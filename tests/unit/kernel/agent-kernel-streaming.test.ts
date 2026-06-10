@@ -179,6 +179,8 @@ class FakeDispatcher implements RuntimeDispatcher {
 
 // ─── Test Setup ───────────────────────────────────────────────────────────────
 
+const defaultBroadcaster = new FakeTimelineBroadcaster()
+
 function createModelInputBuilder(): ModelInputBuilder {
   const registry = new PromptTemplateRegistry(
     new Map([
@@ -225,6 +227,7 @@ function makeBaseConfig(overrides?: Partial<KernelConfig>): KernelConfig {
     modelInputBuilder: createModelInputBuilder(),
     maxIterations: 10,
     timeoutMs: 30000,
+    timelineBroadcaster: defaultBroadcaster,
     ...overrides,
   }
 }
@@ -246,6 +249,7 @@ function makeRunInput(): KernelRunInput {
     agentId: 'test-agent',
     agentType: 'main',
     userId: 'test-user',
+    sessionId: 'test-session',
     maxIterations: 1,
     timeoutMs: 5000,
   }
@@ -259,7 +263,8 @@ describe('AgentKernel streaming behavior', () => {
 
   beforeEach(() => {
     fakeLLM = new FakeStreamingLLMAdapter()
-    fakeBroadcaster = new FakeTimelineBroadcaster()
+    fakeBroadcaster = defaultBroadcaster
+    fakeBroadcaster.clear()
   })
 
   describe('TokenStreamPayload emission', () => {
@@ -466,7 +471,6 @@ describe('AgentKernel streaming behavior', () => {
 
   describe('Streaming with tool calls', () => {
     it('does not stream when tool calls are present', async () => {
-      // Create adapter that returns tool calls
       class ToolCallStreamingAdapter extends FakeStreamingLLMAdapter {
         async complete(request: LLMRequest): Promise<LLMResult> {
           return {
@@ -498,11 +502,23 @@ describe('AgentKernel streaming behavior', () => {
       const config = makeBaseConfig({ llmAdapter: toolCallAdapter })
       const kernel = new AgentKernel(config)
       
-      await kernel.run(makeRunInput())
+      await kernel.run({
+        ...makeRunInput(),
+        toolProjection: {
+          toolIds: ['test_tool'],
+          tools: [{
+            type: 'function',
+            function: {
+              name: 'test_tool',
+              description: 'A test tool',
+              parameters: { type: 'object', properties: {} },
+            },
+          }],
+        },
+      })
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
       
-      // Should not emit any token streams when tool calls are present
       expect(broadcasts.length).toBe(0)
     })
   })

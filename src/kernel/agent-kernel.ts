@@ -23,6 +23,7 @@ import {
 } from '../tools/runtime/tool-dispatch-contract.js'
 import type { RuntimeContextDelta } from '../context/types.js'
 import type { ToolExecutionResult } from '../tools/types.js'
+import type { TokenStreamPayload } from '../api/types.js'
 
 function stateSafeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -79,7 +80,34 @@ export class AgentKernel {
           messages: llmRequest.messages,
         })
 
-        const llmResult = await this.callLLMWithTimeout(llmRequest, timeoutMs - (Date.now() - startTime))
+        const remainingTimeout = timeoutMs - (Date.now() - startTime)
+        const useStreaming = this.shouldUseStreaming(llmRequest)
+
+        let llmResult: Awaited<ReturnType<typeof this.callLLMWithTimeout>>
+
+        if (useStreaming) {
+          const streamResult = await this.callLLMWithStreaming(llmRequest, remainingTimeout, input)
+          if (streamResult.success) {
+            llmResult = {
+              success: true,
+              response: streamResult.response,
+              providerId: streamResult.providerId,
+            }
+          } else {
+            const fallbackResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout)
+            if (
+              fallbackResult.success &&
+              !fallbackResult.response.content &&
+              !this.hasToolCalls(fallbackResult.response)
+            ) {
+              state.status = 'completed'
+              return this.buildResult(state, 'completed', undefined, '')
+            }
+            llmResult = fallbackResult
+          }
+        } else {
+          llmResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout)
+        }
 
         if (!llmResult.success) {
           this.flushPairingGuard(pairingGuard, state, 'llm_error')
@@ -194,10 +222,11 @@ export class AgentKernel {
       this.flushPairingGuard(pairingGuard, state, 'kernel_error')
       state.status = 'failed'
       const errorMessage = error instanceof Error ? error.message : String(error)
+      const streamingErrorMatch = errorMessage.match(/^STREAMING_ERROR: (.+)$/)
       this.commitTranscript(state, 'error', { message: errorMessage })
       return this.buildResult(state, 'failed', {
-        code: 'KERNEL_ERROR',
-        message: errorMessage,
+        code: streamingErrorMatch ? 'STREAMING_ERROR' : 'KERNEL_ERROR',
+        message: streamingErrorMatch ? streamingErrorMatch[1] : errorMessage,
       })
     }
   }
@@ -352,6 +381,115 @@ export class AgentKernel {
     })
 
     return Promise.race([this.config.llmAdapter.complete(request), timeoutPromise])
+  }
+
+  private shouldUseStreaming(request: LLMRequest): boolean {
+    if (!this.config.timelineBroadcaster) return false
+    if (request.tools && request.tools.length > 0) return false
+    return true
+  }
+
+  private async callLLMWithStreaming(
+    request: LLMRequest,
+    timeoutMs: number,
+    input: KernelRunInput,
+  ): Promise<
+    | { success: true; response: LLMResponse; providerId: string }
+    | { success: false }
+  > {
+    if (timeoutMs <= 0) {
+      throw new Error('LLM request timeout before dispatch')
+    }
+
+    const broadcaster = this.config.timelineBroadcaster!
+    const sessionId = input.sessionId
+    const attemptId = input.runId
+    const accumulated: string[] = []
+    let sequence = 0
+    let providerId = 'unknown'
+    let previousDelta: { delta: string; providerId: string; model?: string } | undefined
+
+    try {
+      const streamGenerator = this.config.llmAdapter.stream(request)
+
+      const streamLoop = async (): Promise<void> => {
+        for await (const chunk of streamGenerator) {
+          if (previousDelta && sessionId) {
+            const payload: TokenStreamPayload = {
+              sessionId,
+              attemptId,
+              sequence,
+              delta: previousDelta.delta,
+              accumulated: accumulated.join(''),
+              isFinal: false,
+              timestamp: new Date().toISOString(),
+            }
+            broadcaster.broadcastTokenStream(sessionId, payload)
+            sequence++
+          }
+          accumulated.push(chunk.delta)
+          providerId = chunk.providerId
+          previousDelta = chunk
+        }
+      }
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`LLM stream timeout after ${timeoutMs}ms`)), timeoutMs)
+      })
+
+      await Promise.race([streamLoop(), timeoutPromise])
+
+      if (accumulated.length === 0) {
+        return { success: false }
+      }
+
+      if (previousDelta && sessionId) {
+        const payload: TokenStreamPayload = {
+          sessionId,
+          attemptId,
+          sequence,
+          delta: previousDelta.delta,
+          accumulated: accumulated.join(''),
+          isFinal: true,
+          timestamp: new Date().toISOString(),
+        }
+        broadcaster.broadcastTokenStream(sessionId, payload)
+      }
+
+      const fullContent = accumulated.join('')
+      return {
+        success: true,
+        response: {
+          id: `stream-${Date.now()}`,
+          model: request.model,
+          content: fullContent,
+          role: 'assistant',
+          finishReason: 'stop',
+          createdAt: new Date().toISOString(),
+        },
+        providerId,
+      }
+    } catch (error) {
+      if (previousDelta && sessionId) {
+        const payload: TokenStreamPayload = {
+          sessionId,
+          attemptId,
+          sequence,
+          delta: previousDelta.delta,
+          accumulated: accumulated.join(''),
+          isFinal: false,
+          timestamp: new Date().toISOString(),
+        }
+        broadcaster.broadcastTokenStream(sessionId, payload)
+      }
+
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const isTimeout = errorMessage.includes('timeout')
+      if (isTimeout) {
+        throw error
+      }
+      throw new Error(`STREAMING_ERROR: ${errorMessage}`)
+    }
   }
 
   private parseToolUseRequests(response: LLMResponse): ToolUseRequest[] {

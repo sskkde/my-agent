@@ -355,9 +355,9 @@ describe('formatMessageContent - Edge cases', () => {
     const input = '[md]\n```\nconst html = "<div>test</div>";\n```\n[/md]'
     const result = formatMessageContent(input)
     
-    // Code blocks should preserve HTML as text
-    expect(result).toContain('<div>')
-    expect(result).toContain('</div>')
+    expect(result).toContain('&lt;div&gt;')
+    expect(result).toContain('&lt;/div&gt;')
+    expect(result).toContain('test')
   })
 
   it('handles very long content without performance issues', () => {
@@ -442,10 +442,9 @@ Let me know if you have **questions**!`
 
     const result = formatMessageContent(input)
     
-    // HTML in code blocks should be escaped as text, not rendered
-    expect(result).toContain('<div')
-    expect(result).toContain('<p>')
-    expect(result).toContain('</p>')
-    expect(result).toContain('</div>')
+    expect(result).toContain('&lt;div')
+    expect(result).toContain('&lt;p&gt;')
+    expect(result).toContain('&lt;/p&gt;')
+    expect(result).toContain('&lt;/div&gt;')
   })
 })

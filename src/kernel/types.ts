@@ -8,6 +8,7 @@ import type {
   ToolSelectionPolicyProjection,
 } from './model-input/model-input-types.js'
 import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js'
+import type { TokenStreamPayload } from '../api/types.js'
 
 export interface ToolUseRequest {
   toolCallId: string
@@ -193,6 +194,14 @@ export interface RuntimeDispatcher {
   }>
 }
 
+/**
+ * Minimal interface for broadcasting token stream events.
+ * Decouples the kernel from the full TimelineBroadcaster API surface.
+ */
+export interface TokenStreamBroadcaster {
+  broadcastTokenStream(sessionId: string, token: TokenStreamPayload): void
+}
+
 export interface KernelConfig {
   llmAdapter: LLMAdapter
   toolExecutor: ToolExecutor
@@ -207,6 +216,8 @@ export interface KernelConfig {
   toolProjection?: ToolPlaneProjection
   modelInputSnapshotStore?: import('./model-input/model-input-snapshot-store.js').ModelInputSnapshotStore
   promptProjectionResolver?: PromptProjectionResolver
+  /** Optional broadcaster for real-time token streaming to connected clients. */
+  timelineBroadcaster?: TokenStreamBroadcaster
 }
 
 export interface CompactTriggerResult {

@@ -303,9 +303,12 @@ describe('AgentShell', () => {
         </AgentShell>,
       )
 
-      // TabNav is rendered inside sidebar
+      // TabNav is rendered inside sidebar with section-scoped tabs
+      // When activeTab is dashboard (workspace section), only workspace tabs are shown
       expect(screen.getByTestId('tab-dashboard')).toBeInTheDocument()
-      expect(screen.getByTestId('tab-session-console')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-sessions')).toBeInTheDocument()
+      // session-console is in chat section, not visible when workspace is active
+      expect(screen.queryByTestId('tab-session-console')).not.toBeInTheDocument()
     })
 
     it('switches active tab on click', async () => {
@@ -321,10 +324,11 @@ describe('AgentShell', () => {
       }
       render(<MockAgentShell />)
 
-      const sessionTab = screen.getByTestId('tab-session-console')
-      fireEvent.click(sessionTab)
+      // When dashboard is active (workspace section), only workspace tabs are visible
+      const sessionsTab = screen.getByTestId('tab-sessions')
+      fireEvent.click(sessionsTab)
 
-      expect(screen.getByTestId('tab-session-console')).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByTestId('tab-sessions')).toHaveAttribute('aria-selected', 'true')
       expect(screen.getByTestId('tab-dashboard')).toHaveAttribute('aria-selected', 'false')
     })
   })

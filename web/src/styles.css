@@ -64,10 +64,10 @@
   --warm-paper-border-width: 0.5px;            /* Hairline border width */
 
   /* Seal Accent (primary accent color) */
-  --warm-paper-accent: #5B8C85;                /* Seal blue-green - 一抹远山青 */
-  --warm-paper-accent-hover: #4A7A73;          /* Hover state */
-  --warm-paper-accent-subtle: rgba(91, 140, 133, 0.08); /* Subtle background */
-  --warm-paper-accent-rgb: 91, 140, 133;       /* RGB for rgba usage */
+  --warm-paper-accent: #3D6B64;                /* Seal blue-green - 一抹远山青 - Darker for WCAG AA contrast */
+  --warm-paper-accent-hover: #2F5A54;          /* Hover state */
+  --warm-paper-accent-subtle: rgba(61, 107, 100, 0.08); /* Subtle background */
+  --warm-paper-accent-rgb: 61, 107, 100;       /* RGB for rgba usage */
 
   /* Semantic Colors (ink-dyed, minimal) */
   --warm-paper-success: #4A6B4A;               /* Ink green */
@@ -786,6 +786,7 @@ body {
   padding: 16px 24px;
   border-top: 1px solid var(--border);
   background: var(--bg-elevated);
+  flex-shrink: 0;
 }
 
 .session-input {
@@ -1287,8 +1288,6 @@ body {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  overflow-y: auto;
-  flex: 1;
 }
 
 .timeline-list--loading,

@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { NAV_GROUPS, TabId } from '../navigation/navigation-config'
 import { ICONS } from '../navigation/icons'
+import type { ProductSection } from '../navigation/product-navigation'
+import { getAllTabsForSection } from '../navigation/product-navigation'
 
 export type { TabId }
 
@@ -8,9 +10,10 @@ interface TabNavProps {
   activeTab: TabId
   onTabChange: (tab: TabId) => void
   isExpanded?: boolean
+  activeSection?: ProductSection
 }
 
-const TabNav: React.FC<TabNavProps> = ({ activeTab, onTabChange, isExpanded = true }) => {
+const TabNav: React.FC<TabNavProps> = ({ activeTab, onTabChange, isExpanded = true, activeSection }) => {
   const handleKeyDown = (e: React.KeyboardEvent, tabId: TabId) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
@@ -18,9 +21,22 @@ const TabNav: React.FC<TabNavProps> = ({ activeTab, onTabChange, isExpanded = tr
     }
   }
 
+  const filteredGroups = useMemo(() => {
+    if (!activeSection) {
+      return NAV_GROUPS
+    }
+
+    const sectionTabIds = new Set(getAllTabsForSection(activeSection))
+
+    return NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => sectionTabIds.has(item.id)),
+    })).filter((group) => group.items.length > 0)
+  }, [activeSection])
+
   return (
     <nav role="tablist" aria-label="主导航">
-      {NAV_GROUPS.map((group) => (
+      {filteredGroups.map((group) => (
         <section key={group.id} data-testid={group.testId}>
           {isExpanded && <div className="nav-section__label">{group.label}</div>}
           {group.items.map((item) => {
