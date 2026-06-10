@@ -2101,6 +2101,8 @@ body {
 @media (max-width: 480px) {
   .session-console-rich {
     position: relative;
+    height: 100vh;
+    overflow: hidden;
   }
 
   /* Mobile drawer behavior - following shell__nav-wrapper pattern */
@@ -9157,5 +9159,59 @@ body {
   .context-desk-toggle {
     width: var(--mobile-touch-target);
     height: var(--mobile-touch-target);
+  }
+}
+
+/* ==========================================================================
+   Product Navigation Mobile Styles
+   ========================================================================== */
+
+/* Tablet and smaller: Allow horizontal scroll for product nav */
+@media (max-width: 768px) {
+  .product-nav {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar on mobile */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .product-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .product-nav__item {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: var(--mobile-touch-target);
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  /* Add scroll hint gradient on mobile */
+  .product-nav::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to right, transparent, var(--warm-paper-bg-elevated, var(--bg-elevated)));
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+/* Phone: Smaller padding and ensure touch targets */
+@media (max-width: 480px) {
+  .product-nav {
+    padding: 0 var(--mobile-content-padding);
+    gap: 2px;
+  }
+
+  .product-nav__item {
+    padding: 8px 12px;
+    font-size: 13px;
   }
 }

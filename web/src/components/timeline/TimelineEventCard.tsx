@@ -3,6 +3,7 @@ import type { ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/t
 import { ToolCallCard } from '../ToolCallCard'
 import { ApprovalCard } from '../ApprovalCard'
 import { BackgroundTaskCard } from '../BackgroundTaskCard'
+import { formatMessageContent } from './formatMessageContent'
 
 export interface TimelineEventCardProps {
   event: ConsoleTimelineEvent
@@ -35,11 +36,6 @@ const formatTimestamp = (timestamp: string): string => {
     minute: '2-digit',
     second: '2-digit',
   })
-}
-
-const sanitizeContent = (content: string | undefined): string => {
-  if (!content) return ''
-  return content.replace(/<[^>]*>/g, '')
 }
 
 export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) => {
@@ -79,7 +75,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
 
   const label = isStreamingDraft ? 'Assistant (streaming)' : eventTypeLabels[event.eventType]
   const timestamp = formatTimestamp(event.timestamp)
-  const sanitizedContent = sanitizeContent(event.content)
+  const formattedContent = formatMessageContent(event.content)
 
   const getEventClassName = (): string => {
     const baseClass = 'timeline-event-card'
@@ -105,7 +101,9 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
     }
 
     if (isStreamingDraft) {
-      return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
+      return formattedContent ? (
+        <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+      ) : null
     }
 
     switch (event.eventType) {
@@ -120,7 +118,9 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
               <span className="timeline-thinking-icon">{isExpanded ? '▼' : '▶'}</span>
               <span>{isExpanded ? '思考中...' : 'Thinking...'}</span>
             </button>
-            {isExpanded && sanitizedContent && <div className="timeline-thinking-content">{sanitizedContent}</div>}
+            {isExpanded && formattedContent && (
+              <div className="timeline-thinking-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+            )}
           </div>
         )
 
@@ -140,7 +140,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         return (
           <div className="timeline-code-block">
             <pre className="timeline-code-content">
-              <code>{sanitizedContent || '(No content)'}</code>
+              <code>{formattedContent || '(No content)'}</code>
             </pre>
           </div>
         )
@@ -161,9 +161,13 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
           )
         }
         if (!approvalRequestId) {
-          return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
+          return formattedContent ? (
+            <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+          ) : null
         }
-        return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
+        return formattedContent ? (
+          <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+        ) : null
 
       case 'run_started':
       case 'run_progress':
@@ -188,10 +192,14 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
             />
           )
         }
-        return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
+        return formattedContent ? (
+          <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+        ) : null
 
       default:
-        return sanitizedContent ? <div className="timeline-event-content">{sanitizedContent}</div> : null
+        return formattedContent ? (
+          <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+        ) : null
     }
   }
 
