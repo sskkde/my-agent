@@ -85,4 +85,136 @@ describe('TabNav', () => {
     expect(monitorTab.querySelector('svg')).toBeInTheDocument()
     expect(statusTab.querySelector('svg')).toBeInTheDocument()
   })
+
+  // =============================================================================
+  // Section-Scoped Rendering Tests (Task 6 - Failing Tests)
+  // These tests verify that TabNav renders ONLY tabs for the active product section
+  // =============================================================================
+
+  describe('Section-Scoped Rendering', () => {
+    it('renders only chat tabs when activeSection is chat', () => {
+      render(<TabNav activeTab="session-console" onTabChange={mockOnChange} activeSection="chat" />)
+
+      // Should show chat tabs
+      expect(screen.getByTestId('tab-session-console')).toBeInTheDocument()
+
+      // Should NOT show workspace tabs
+      expect(screen.queryByTestId('tab-dashboard')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tab-sessions')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tab-workflows')).not.toBeInTheDocument()
+
+      // Should NOT show operations tabs
+      expect(screen.queryByTestId('tab-agent-monitor')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tab-skills')).not.toBeInTheDocument()
+
+      // Should NOT show admin tabs
+      expect(screen.queryByTestId('tab-settings')).not.toBeInTheDocument()
+    })
+
+    it('renders only workspace tabs when activeSection is workspace', () => {
+      render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} activeSection="workspace" />)
+
+      // Should show all workspace tabs
+      expect(screen.getByTestId('tab-dashboard')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-sessions')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-usage')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-workflows')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-observability')).toBeInTheDocument()
+
+      // Should NOT show chat tabs
+      expect(screen.queryByTestId('tab-session-console')).not.toBeInTheDocument()
+
+      // Should NOT show operations tabs
+      expect(screen.queryByTestId('tab-agent-monitor')).not.toBeInTheDocument()
+
+      // Should NOT show admin tabs
+      expect(screen.queryByTestId('tab-settings')).not.toBeInTheDocument()
+    })
+
+    it('renders only operations tabs when activeSection is operations', () => {
+      render(<TabNav activeTab="agent-monitor" onTabChange={mockOnChange} activeSection="operations" />)
+
+      // Should show all operations tabs
+      expect(screen.getByTestId('tab-agent-monitor')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-skills')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-agents')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-connectors')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-dlq')).toBeInTheDocument()
+
+      // Should NOT show workspace tabs
+      expect(screen.queryByTestId('tab-dashboard')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tab-workflows')).not.toBeInTheDocument()
+
+      // Should NOT show chat tabs
+      expect(screen.queryByTestId('tab-session-console')).not.toBeInTheDocument()
+
+      // Should NOT show admin tabs
+      expect(screen.queryByTestId('tab-settings')).not.toBeInTheDocument()
+    })
+
+    it('renders only admin tabs when activeSection is admin', () => {
+      render(<TabNav activeTab="settings" onTabChange={mockOnChange} activeSection="admin" />)
+
+      // Should show all admin tabs
+      expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-admin')).toBeInTheDocument()
+
+      // Should NOT show workspace tabs
+      expect(screen.queryByTestId('tab-dashboard')).not.toBeInTheDocument()
+
+      // Should NOT show operations tabs
+      expect(screen.queryByTestId('tab-agent-monitor')).not.toBeInTheDocument()
+
+      // Should NOT show chat tabs
+      expect(screen.queryByTestId('tab-session-console')).not.toBeInTheDocument()
+    })
+
+    it('tab count matches section tab count for chat (1 tab)', () => {
+      render(<TabNav activeTab="session-console" onTabChange={mockOnChange} activeSection="chat" />)
+
+      const tabs = screen.getAllByRole('tab')
+      expect(tabs).toHaveLength(1)
+    })
+
+    it('tab count matches section tab count for workspace (12 tabs)', () => {
+      render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} activeSection="workspace" />)
+
+      const tabs = screen.getAllByRole('tab')
+      expect(tabs).toHaveLength(12)
+    })
+
+    it('tab count matches section tab count for operations (5 tabs)', () => {
+      render(<TabNav activeTab="agent-monitor" onTabChange={mockOnChange} activeSection="operations" />)
+
+      const tabs = screen.getAllByRole('tab')
+      expect(tabs).toHaveLength(5)
+    })
+
+    it('tab count matches section tab count for admin (2 tabs)', () => {
+      render(<TabNav activeTab="settings" onTabChange={mockOnChange} activeSection="admin" />)
+
+      const tabs = screen.getAllByRole('tab')
+      expect(tabs).toHaveLength(2)
+    })
+
+    it('updates rendered tabs when activeSection changes', () => {
+      const { rerender } = render(
+        <TabNav activeTab="dashboard" onTabChange={mockOnChange} activeSection="workspace" />,
+      )
+
+      // Initially shows workspace tabs
+      expect(screen.getByTestId('tab-dashboard')).toBeInTheDocument()
+      expect(screen.queryByTestId('tab-agent-monitor')).not.toBeInTheDocument()
+
+      // Switch to operations section
+      rerender(
+        <TabNav activeTab="agent-monitor" onTabChange={mockOnChange} activeSection="operations" />,
+      )
+
+      // Now shows operations tabs
+      expect(screen.queryByTestId('tab-dashboard')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tab-agent-monitor')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-skills')).toBeInTheDocument()
+    })
+  })
 })

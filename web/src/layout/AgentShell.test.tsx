@@ -517,4 +517,218 @@ describe('AgentShell', () => {
       expect(screen.getByText('Settings Content')).toBeInTheDocument()
     })
   })
+
+  // =============================================================================
+  // Primary Menu and Secondary Navigation Tests (Task 6 - Failing Tests)
+  // =============================================================================
+
+  describe('Primary Menu Structure', () => {
+    it('product-nav is the primary top-level navigation', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const productNav = screen.getByTestId('product-nav')
+      expect(productNav).toBeInTheDocument()
+      expect(productNav).toHaveAttribute('role', 'navigation')
+      expect(productNav).toHaveAttribute('aria-label', 'Product sections')
+    })
+
+    it('product-nav contains exactly 4 sections in correct order', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const productNav = screen.getByTestId('product-nav')
+      const buttons = productNav.querySelectorAll('button')
+
+      expect(buttons).toHaveLength(4)
+      expect(buttons[0]).toHaveAttribute('data-testid', 'product-nav-chat')
+      expect(buttons[1]).toHaveAttribute('data-testid', 'product-nav-workspace')
+      expect(buttons[2]).toHaveAttribute('data-testid', 'product-nav-operations')
+      expect(buttons[3]).toHaveAttribute('data-testid', 'product-nav-admin')
+    })
+
+    it('product-nav is rendered outside sidebar', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const productNav = screen.getByTestId('product-nav')
+      const sidebar = screen.getByTestId('sidebar')
+
+      expect(productNav).not.toContainElement(sidebar)
+      expect(sidebar).not.toContainElement(productNav)
+    })
+  })
+
+  describe('Secondary Navigation Scope', () => {
+    it('sidebar shows only chat tabs when chat section is active', () => {
+      renderWithRouter(
+        <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const sidebar = screen.getByTestId('sidebar')
+
+      expect(screen.getByTestId('tab-session-console')).toBeInTheDocument()
+
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-dashboard'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-agent-monitor'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-settings'))
+    })
+
+    it('sidebar shows only workspace tabs when workspace section is active', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const sidebar = screen.getByTestId('sidebar')
+
+      expect(screen.getByTestId('tab-dashboard')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-sessions')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-workflows')).toBeInTheDocument()
+
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-session-console'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-agent-monitor'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-settings'))
+    })
+
+    it('sidebar shows only operations tabs when operations section is active', () => {
+      renderWithRouter(
+        <AgentShell activeTab="agent-monitor" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const sidebar = screen.getByTestId('sidebar')
+
+      expect(screen.getByTestId('tab-agent-monitor')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-skills')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-connectors')).toBeInTheDocument()
+
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-dashboard'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-session-console'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-settings'))
+    })
+
+    it('sidebar shows only admin tabs when admin section is active', () => {
+      renderWithRouter(
+        <AgentShell activeTab="settings" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const sidebar = screen.getByTestId('sidebar')
+
+      expect(screen.getByTestId('tab-settings')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-admin')).toBeInTheDocument()
+
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-dashboard'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-agent-monitor'))
+      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-session-console'))
+    })
+
+    it('sidebar tab count matches active section tab count', () => {
+      const { rerender } = renderWithRouter(
+        <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      expect(screen.getAllByRole('tab')).toHaveLength(1)
+
+      rerender(
+        <BrowserRouter>
+          <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+            <div>Content</div>
+          </AgentShell>
+        </BrowserRouter>,
+      )
+
+      expect(screen.getAllByRole('tab')).toHaveLength(12)
+    })
+
+    it('sidebar updates tabs when product section changes', async () => {
+      const MockAgentShell = () => {
+        const [activeTab, setActiveTab] = React.useState<TabId>('dashboard')
+        return (
+          <BrowserRouter>
+            <AgentShell activeTab={activeTab} onTabChange={setActiveTab}>
+              <div>Content</div>
+            </AgentShell>
+          </BrowserRouter>
+        )
+      }
+      render(<MockAgentShell />)
+
+      expect(screen.getByTestId('tab-dashboard')).toBeInTheDocument()
+      expect(screen.queryByTestId('tab-agent-monitor')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('product-nav-operations'))
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('tab-agent-monitor')).toBeInTheDocument()
+        expect(screen.queryByTestId('tab-dashboard')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Navigation Hierarchy', () => {
+    it('product nav click updates sidebar content', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      expect(screen.getByTestId('tab-dashboard')).toBeInTheDocument()
+      expect(screen.queryByTestId('tab-agent-monitor')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('product-nav-operations'))
+      expect(mockOnTabChange).toHaveBeenCalledWith('agent-monitor')
+    })
+
+    it('sidebar tab click does not change product nav active state', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const workspaceButton = screen.getByTestId('product-nav-workspace')
+      expect(workspaceButton).toHaveAttribute('aria-current', 'page')
+
+      fireEvent.click(screen.getByTestId('tab-sessions'))
+
+      expect(workspaceButton).toHaveAttribute('aria-current', 'page')
+    })
+
+    it('product nav sections are top-level, sidebar tabs are secondary', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      const productNav = screen.getByTestId('product-nav')
+      const sidebar = screen.getByTestId('sidebar')
+
+      const productNavButtons = productNav.querySelectorAll('button.product-nav__item')
+      expect(productNavButtons).toHaveLength(4)
+
+      const sidebarTabs = sidebar.querySelectorAll('button[role="tab"]')
+      expect(sidebarTabs.length).toBeGreaterThan(4)
+      expect(sidebarTabs.length).toBe(12)
+    })
+  })
 })
