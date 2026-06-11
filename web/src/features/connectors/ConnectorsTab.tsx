@@ -279,7 +279,15 @@ const ConnectorsTab: React.FC = () => {
             size="large"
           />
         ) : connectors.length === 0 ? (
-          <EmptyState icon="🔌" title="暂无连接器" description="系统中还没有配置连接器" />
+          <EmptyState
+            icon="🔌"
+            title="暂无连接器"
+            description="系统中还没有配置连接器，点击下方按钮添加连接器"
+            action={{
+              label: '查看连接器文档',
+              onClick: () => window.open('/docs/connectors', '_blank'),
+            }}
+          />
         ) : (
           <div className="connectors-list">
             {connectors.map((connector) => (

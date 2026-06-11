@@ -141,11 +141,11 @@ describe('UsageTab', () => {
     render(<UsageTab />)
 
     await waitFor(() => {
-      expect(screen.getAllByText('session-abc1')[0]).toBeInTheDocument()
+      expect(screen.getAllByText('session-abc123xyz')[0]).toBeInTheDocument()
     })
 
-    expect(screen.getAllByText('session-abc1')[0]).toBeInTheDocument()
-    expect(screen.getAllByText('session-def4')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('session-abc123xyz')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('session-def456uvw')[0]).toBeInTheDocument()
     expect(screen.getAllByText('10')[0]).toBeInTheDocument()
     expect(screen.getAllByText('20')[0]).toBeInTheDocument()
     expect(screen.getAllByText('1,500')[0]).toBeInTheDocument()
@@ -231,7 +231,7 @@ describe('UsageTab', () => {
     })
   })
 
-  it('truncates session IDs to 12 characters', async () => {
+  it('formats session IDs with ellipsis for long IDs', async () => {
     const mockUsages = [createMockUsage({ sessionId: 'very-long-session-id-that-needs-truncation' })]
 
     vi.mocked(client.getUsage).mockResolvedValue({
@@ -242,7 +242,7 @@ describe('UsageTab', () => {
     render(<UsageTab />)
 
     await waitFor(() => {
-      expect(screen.getAllByText('very-long-se')[0]).toBeInTheDocument()
+      expect(screen.getAllByText('very-long-...ncation')[0]).toBeInTheDocument()
     })
     expect(screen.queryByText('very-long-session-id-that-needs-truncation')).not.toBeInTheDocument()
   })

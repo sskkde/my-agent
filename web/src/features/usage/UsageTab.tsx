@@ -69,8 +69,9 @@ const UsageTab: React.FC = () => {
     return num.toLocaleString()
   }
 
-  const truncateSessionId = (sessionId: string): string => {
-    return sessionId.slice(0, 12)
+  const formatSessionId = (sessionId: string): string => {
+    if (sessionId.length <= 20) return sessionId
+    return sessionId.slice(0, 10) + '...' + sessionId.slice(-7)
   }
 
   if (state.loading) {
@@ -159,7 +160,7 @@ const UsageTab: React.FC = () => {
             <tbody>
               {usages.map((usage) => (
                 <tr key={usage.sessionId}>
-                  <td className="usage-table__session-id">{truncateSessionId(usage.sessionId)}</td>
+                  <td className="usage-table__session-id" title={usage.sessionId}>{formatSessionId(usage.sessionId)}</td>
                   <td>{formatNumber(usage.messageCount)}</td>
                   <td>{formatNumber(usage.estimatedTotalTokens)}</td>
                   <td>
@@ -179,9 +180,9 @@ const UsageTab: React.FC = () => {
             <div key={usage.sessionId} className="usage-mobile-card" data-testid={`usage-card-${usage.sessionId}`}>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">会话ID</span>
-                <span className="usage-mobile-card__value usage-mobile-card__value--monospace">
-                  {truncateSessionId(usage.sessionId)}
-                </span>
+                  <span className="usage-mobile-card__value usage-mobile-card__value--monospace" title={usage.sessionId}>
+                    {formatSessionId(usage.sessionId)}
+                  </span>
               </div>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">消息数</span>

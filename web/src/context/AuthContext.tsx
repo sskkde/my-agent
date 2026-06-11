@@ -49,7 +49,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user: userData.user,
           loading: false,
         })
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('401')) {
+          console.debug('Auth: User not authenticated (401)')
+        }
         setState({
           needsSetup: false,
           isAuthenticated: false,
