@@ -5550,9 +5550,47 @@ body {
 
   .logs-debug-payload-preview {
     margin-top: 8px;
+    min-width: 0;
   }
 
-  .logs-debug-preview,
+  .logs-debug-preview {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .logs-debug-code-block {
+    display: block;
+    max-width: 100%;
+    margin: 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--border-color, #d0d7de);
+    border-radius: 6px;
+    background: var(--code-background, #f6f8fa);
+    color: var(--text-primary, #24292f);
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .logs-debug-payload-toggle {
+    margin-top: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #d0d7de);
+    border-radius: 4px;
+    background: var(--button-background, #ffffff);
+    color: var(--text-link, #0969da);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .logs-debug-payload-toggle:hover {
+    background: var(--button-hover-background, #f6f8fa);
+  }
+
   .logs-debug-redacted {
     font-size: 12px;
   }

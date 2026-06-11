@@ -16,6 +16,57 @@ const severityIcons: Record<string, string> = {
   error: '❌',
 }
 
+const LONG_PAYLOAD_PREVIEW_LENGTH = 600
+
+const formatPayloadPreview = (preview: string): string => {
+  const trimmedPreview = preview.trim()
+  const looksLikeJson =
+    (trimmedPreview.startsWith('{') && trimmedPreview.endsWith('}')) ||
+    (trimmedPreview.startsWith('[') && trimmedPreview.endsWith(']'))
+
+  if (!looksLikeJson) {
+    return preview
+  }
+
+  try {
+    return JSON.stringify(JSON.parse(trimmedPreview), null, 2)
+  } catch {
+    return preview
+  }
+}
+
+interface PayloadPreviewProps {
+  preview: string
+}
+
+const PayloadPreview: React.FC<PayloadPreviewProps> = ({ preview }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const formattedPreview = formatPayloadPreview(preview)
+  const isLongPayload = formattedPreview.length > LONG_PAYLOAD_PREVIEW_LENGTH
+  const visiblePreview =
+    isLongPayload && !isExpanded
+      ? `${formattedPreview.slice(0, LONG_PAYLOAD_PREVIEW_LENGTH).trimEnd()}…`
+      : formattedPreview
+
+  return (
+    <div className="logs-debug-preview">
+      <pre className="logs-debug-code-block">
+        <code>{visiblePreview}</code>
+      </pre>
+      {isLongPayload && (
+        <button
+          type="button"
+          className="logs-debug-payload-toggle"
+          onClick={() => setIsExpanded((current) => !current)}
+          aria-expanded={isExpanded}
+        >
+          {isExpanded ? '收起 payload' : '展开 payload'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 const LogsDebugTab: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [total, setTotal] = useState(0)
@@ -92,7 +143,8 @@ const LogsDebugTab: React.FC = () => {
     if (preview === '[redacted]') {
       return <span className="logs-debug-redacted">[redacted]</span>
     }
-    return <span className="logs-debug-preview">{preview}</span>
+
+    return <PayloadPreview preview={preview} />
   }
 
   return (

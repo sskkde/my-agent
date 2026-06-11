@@ -234,6 +234,71 @@ describe('LogsDebugTab', () => {
     })
   })
 
+  it('formats JSON payload preview with indentation', async () => {
+    const mockLogs: LogEntry[] = [
+      {
+        eventId: 'evt-json',
+        eventType: 'tool_result',
+        sourceModule: 'tools',
+        sessionId: 'sess-123',
+        severity: 'info',
+        summary: 'Tool result payload',
+        createdAt: '2025-04-29T10:00:00Z',
+        payloadPreview: '{"status":"ok","nested":{"count":2}}',
+      },
+    ]
+    mockedGetLogs.mockResolvedValue({ logs: mockLogs, total: 1 })
+
+    render(<LogsDebugTab />)
+
+    await waitFor(() => {
+      const payloadElement = screen.getByTestId('log-payload-evt-json')
+      expect(payloadElement.querySelector('pre.logs-debug-code-block code')?.textContent).toBe(`{
+  "status": "ok",
+  "nested": {
+    "count": 2
+  }
+}`)
+    })
+  })
+
+  it('expands and collapses long payload previews', async () => {
+    const longPayload = `payload-${'x'.repeat(700)}-end`
+    const mockLogs: LogEntry[] = [
+      {
+        eventId: 'evt-long',
+        eventType: 'model_output',
+        sourceModule: 'kernel',
+        sessionId: 'sess-123',
+        severity: 'info',
+        summary: 'Long payload',
+        createdAt: '2025-04-29T10:00:00Z',
+        payloadPreview: longPayload,
+      },
+    ]
+    mockedGetLogs.mockResolvedValue({ logs: mockLogs, total: 1 })
+
+    render(<LogsDebugTab />)
+
+    const toggleButton = await screen.findByRole('button', { name: '展开 payload' })
+    const payloadCode = screen.getByTestId('log-payload-evt-long').querySelector('code')
+
+    expect(payloadCode).toHaveTextContent('…')
+    expect(payloadCode).not.toHaveTextContent('-end')
+
+    await userEvent.click(toggleButton)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '收起 payload' })).toHaveAttribute('aria-expanded', 'true')
+      expect(payloadCode).toHaveTextContent(longPayload)
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: '收起 payload' }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '展开 payload' })).toHaveAttribute('aria-expanded', 'false')
+      expect(payloadCode).not.toHaveTextContent('-end')
+    })
+  })
+
   it('displays debug replay summary card with data-testid', async () => {
     const mockLogs: LogEntry[] = [
       {
