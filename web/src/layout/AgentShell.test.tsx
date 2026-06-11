@@ -1,10 +1,11 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import AgentShell from './AgentShell'
 import type { TabId } from '../components/TabNav'
 import { ready, loading, empty, error } from '../features/context/card-state'
+import { useAgentShellSidebar } from './AgentShellSidebarContext'
 
 const renderWithRouter = (ui: React.ReactElement) => {
   return render(<BrowserRouter>{ui}</BrowserRouter>)
@@ -751,4 +752,43 @@ describe('AgentShell', () => {
       expect(sidebarTabs.length).toBe(12)
     })
   })
+  describe('Chat Session Sidebar Slot', () => {
+    const MockChatSidebarRegistrar: React.FC = () => {
+      const shellSidebar = useAgentShellSidebar()
+
+      React.useEffect(() => {
+        if (!shellSidebar) return undefined
+
+        shellSidebar.setChatSidebarContent(<div data-testid="mock-chat-session-sidebar">Chat sessions</div>)
+        return () => shellSidebar.setChatSidebarContent(null)
+      }, [shellSidebar])
+
+      return <div>Chat content</div>
+    }
+
+    it('renders registered chat session content inside the AgentShell sidebar for chat routes', async () => {
+      renderWithRouter(
+        <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
+          <MockChatSidebarRegistrar />
+        </AgentShell>,
+      )
+
+      const panel = await screen.findByTestId('sidebar-session-panel')
+      expect(panel).toContainElement(screen.getByTestId('mock-chat-session-sidebar'))
+      expect(screen.getByTestId('sidebar')).toContainElement(panel)
+      expect(screen.getByTestId('center-stage')).not.toContainElement(panel)
+    })
+
+    it('hides registered chat session content outside the chat product section', async () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <MockChatSidebarRegistrar />
+        </AgentShell>,
+      )
+
+      await waitFor(() => expect(screen.queryByTestId('mock-chat-session-sidebar')).not.toBeInTheDocument())
+      expect(screen.queryByTestId('sidebar-session-panel')).not.toBeInTheDocument()
+    })
+  })
+
 })
