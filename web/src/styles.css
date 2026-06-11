@@ -6,9 +6,13 @@
 
 :root {
   /* Design Tokens */
-  --shell-nav-width: 258px;
+  --titlebar-h: 52px;
+  --sidebar-width: 258px;
+  --companion-panel-width: 360px;
+  --panel-edge-gap: 12px;
+  --shell-nav-width: var(--sidebar-width);
   --shell-nav-rail-width: 78px;
-  --shell-topbar-height: 52px;
+  --shell-topbar-height: var(--titlebar-h);
   --accent: #2563eb;
   --accent-subtle: #eff6ff;
   --bg: #f5f5f5;
@@ -145,17 +149,26 @@ body {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--shell-nav-width) minmax(0, 1fr);
-  grid-template-rows: var(--shell-topbar-height) 1fr;
-  grid-template-areas:
-    "nav topbar"
-    "nav content";
-  height: 100vh;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "sidebar main companion";
+  gap: var(--panel-edge-gap);
+  height: calc(100vh - var(--titlebar-h));
+  min-height: 0;
   overflow: hidden;
+  padding: 0 var(--panel-edge-gap) var(--panel-edge-gap);
 }
 
 .shell--nav-collapsed {
-  grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr);
+  grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr) 0;
+}
+
+.shell--context-desk-open {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--companion-panel-width);
+}
+
+.shell--nav-collapsed.shell--context-desk-open {
+  grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr) var(--companion-panel-width);
 }
 
 /* ==========================================================================
@@ -163,8 +176,7 @@ body {
    ========================================================================== */
 
 .shell__topbar {
-  grid-area: topbar;
-  height: var(--shell-topbar-height);
+  height: var(--titlebar-h);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -196,7 +208,8 @@ body {
    ========================================================================== */
 
 .shell__nav-wrapper {
-  grid-area: nav;
+  grid-area: sidebar;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -371,7 +384,8 @@ body {
    ========================================================================== */
 
 .shell__content {
-  grid-area: content;
+  grid-area: main;
+  min-width: 0;
   overflow-y: auto;
   background: var(--bg);
   display: flex;
@@ -390,17 +404,15 @@ body {
 
   .shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "topbar"
-      "content";
+    grid-template-areas: "main";
+    gap: 0;
+    padding: 0;
   }
 
   .shell--mobile {
     /* Same as base shell on mobile - single column */
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "topbar"
-      "content";
+    grid-template-areas: "main";
   }
 
   .shell__nav-wrapper {
@@ -8921,11 +8933,28 @@ body {
    ========================================================================== */
 
 .agent-shell-container {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: var(--titlebar-h) minmax(0, 1fr);
   height: 100vh;
+  min-height: 0;
   background: var(--warm-paper-bg, var(--bg));
   overflow: hidden;
+}
+
+.app-titlebar {
+  grid-row: 1;
+}
+
+.app-titlebar__brand {
+  color: var(--warm-paper-text, var(--text-strong));
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.app-body {
+  grid-row: 2;
 }
 
 /* ==========================================================================
@@ -8935,22 +8964,23 @@ body {
 .product-nav {
   display: flex;
   align-items: center;
-  height: 48px;
-  padding: 0 16px;
-  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
-  border-bottom: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, var(--border));
-  gap: 4px;
+  min-height: 32px;
+  padding: 3px;
+  background: var(--warm-paper-bg-deep, var(--bg));
+  border: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, var(--border));
+  border-radius: 999px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
 .product-nav__item {
-  padding: 8px 16px;
-  font-size: 13px;
+  padding: 5px 12px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--warm-paper-text-secondary, var(--muted));
   background: transparent;
   border: none;
-  border-radius: var(--warm-paper-radius-sm, 4px);
+  border-radius: 999px;
   cursor: pointer;
   transition: all 150ms ease;
 }
@@ -8962,7 +8992,8 @@ body {
 
 .product-nav__item--active {
   color: var(--warm-paper-accent, var(--accent));
-  background: var(--warm-paper-accent-subtle, rgba(91, 140, 133, 0.08));
+  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
+  box-shadow: var(--warm-paper-shadow-sm, 0 1px 2px rgba(42, 38, 34, 0.03));
   font-weight: 600;
 }
 
@@ -9257,18 +9288,17 @@ body {
    ========================================================================== */
 
 .context-desk {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 360px;
+  grid-area: companion;
+  min-width: 0;
+  width: var(--companion-panel-width);
+  height: 100%;
   background: var(--bg-elevated);
-  border-left: 1px solid var(--border);
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--warm-paper-shadow-sm, 0 1px 2px rgba(42, 38, 34, 0.03));
   display: flex;
   flex-direction: column;
-  z-index: 60;
-  animation: slide-in-right 200ms var(--ease-out);
+  overflow: hidden;
 }
 
 @keyframes slide-in-right {
@@ -9331,26 +9361,25 @@ body {
 }
 
 /* ==========================================================================
-   Shell Context Desk Open State
-   ========================================================================== */
-
-.shell--context-desk-open .shell__content {
-  margin-right: 360px;
-}
-
-/* ==========================================================================
    Context Desk Responsive (1100px breakpoint)
    ========================================================================== */
 
 @media (max-width: 1100px) {
   .context-desk {
+    position: fixed;
+    top: var(--titlebar-h);
+    right: 0;
+    bottom: 0;
     width: 100%;
     max-width: min(86vw, 400px);
+    height: auto;
+    border-radius: 0;
+    border-top: 1px solid var(--border);
+    border-right: 0;
+    border-bottom: 0;
     z-index: 75;
-  }
-
-  .shell--context-desk-open .shell__content {
-    margin-right: 0;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    animation: slide-in-right 200ms var(--ease-out);
   }
 
   .context-desk-toggle {
