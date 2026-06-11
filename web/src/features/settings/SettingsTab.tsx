@@ -7,6 +7,26 @@ import type { SettingsConfig } from '../../api/types'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
 
+type AppTheme = 'default' | 'warm-paper' | 'dark'
+
+const THEME_STORAGE_KEY = 'agent-platform-theme'
+const THEME_OPTIONS: Array<{ value: AppTheme; label: string; description: string }> = [
+  { value: 'default', label: '默认主题', description: '清爽中性的默认界面' },
+  { value: 'warm-paper', label: 'Warm Paper', description: '温润纸张质感与低对比墨色' },
+]
+const APP_THEMES = new Set<AppTheme>(['default', 'warm-paper', 'dark'])
+
+function readStoredTheme(): AppTheme {
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return APP_THEMES.has(storedTheme as AppTheme) ? (storedTheme as AppTheme) : 'default'
+}
+
+function persistTheme(theme: AppTheme) {
+  window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  document.documentElement.dataset.theme = theme
+  window.dispatchEvent(new CustomEvent<AppTheme>('agent-platform-theme-change', { detail: theme }))
+}
+
 interface SettingsData {
   settings: SettingsConfig | null
   loading: boolean
@@ -15,6 +35,7 @@ interface SettingsData {
 
 const SettingsTab: React.FC = () => {
   const { isAuthenticated } = useAuth()
+  const [theme, setTheme] = useState<AppTheme>(() => readStoredTheme())
   const [data, setData] = useState<SettingsData>({
     settings: null,
     loading: true,
@@ -42,6 +63,11 @@ const SettingsTab: React.FC = () => {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  const handleThemeChange = useCallback((selectedTheme: AppTheme) => {
+    setTheme(selectedTheme)
+    persistTheme(selectedTheme)
+  }, [])
 
   const { settings, loading, error } = data
 
@@ -81,6 +107,30 @@ const SettingsTab: React.FC = () => {
                 <span className="setting-value" data-testid="retention-days">
                   {settings.retentionDays} 天
                 </span>
+              </div>
+            </div>
+
+            <div className="settings-section theme-settings-section" data-testid="theme-settings-section">
+              <h3>外观主题</h3>
+              <div className="theme-switcher" role="radiogroup" aria-label="选择界面主题">
+                {THEME_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`theme-option ${theme === option.value ? 'theme-option--active' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="app-theme"
+                      value={option.value}
+                      checked={theme === option.value}
+                      onChange={() => handleThemeChange(option.value)}
+                    />
+                    <span className="theme-option__content">
+                      <span className="theme-option__label">{option.label}</span>
+                      <span className="theme-option__description">{option.description}</span>
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
 

@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import AgentShell from './layout/AgentShell'
 import WorkspacePage from './features/workspace/WorkspacePage'
@@ -13,6 +13,20 @@ import { resolveSessionId, safeReadLocalStorage } from './features/session/sessi
 import { SELECTED_SESSION_KEY } from './features/session/session-constants'
 import type { TabId } from './components/TabNav'
 import './styles.css'
+
+type AppTheme = 'default' | 'warm-paper' | 'dark'
+
+const THEME_STORAGE_KEY = 'agent-platform-theme'
+const APP_THEMES = new Set<AppTheme>(['default', 'warm-paper', 'dark'])
+
+function readStoredTheme(): AppTheme {
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return APP_THEMES.has(storedTheme as AppTheme) ? (storedTheme as AppTheme) : 'default'
+}
+
+function applyDocumentTheme(theme: AppTheme) {
+  document.documentElement.dataset.theme = theme
+}
 
 /**
  * ChatRouteContent - Renders the Chat section for /, /chat, /chat/:sessionId routes.
@@ -143,6 +157,20 @@ function AppRoutes() {
 }
 
 function App() {
+  useEffect(() => {
+    applyDocumentTheme(readStoredTheme())
+
+    const handleThemeChange = (event: Event) => {
+      const selectedTheme = (event as CustomEvent<AppTheme>).detail
+      if (APP_THEMES.has(selectedTheme)) {
+        applyDocumentTheme(selectedTheme)
+      }
+    }
+
+    window.addEventListener('agent-platform-theme-change', handleThemeChange)
+    return () => window.removeEventListener('agent-platform-theme-change', handleThemeChange)
+  }, [])
+
   return (
     <AuthProvider>
       <AppRoutes />
