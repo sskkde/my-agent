@@ -87,7 +87,16 @@ function generateSessionId(): string {
 }
 
 function generateDefaultTitle(): string {
-  return `New Session ${new Date().toLocaleString()}`
+  const timestamp = new Date().toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  return `新会话 ${timestamp}`
 }
 
 function canAccessSession(request: FastifyRequest, session: Session): boolean {
