@@ -67,10 +67,10 @@ export const PRODUCT_SECTIONS: readonly ProductSection[] = ['chat', 'workspace',
  * Display labels for product sections.
  */
 export const PRODUCT_SECTION_LABELS: Record<ProductSection, string> = {
-  chat: 'Chat',
-  workspace: 'Workspace',
-  operations: 'Operations',
-  admin: 'Admin',
+  chat: '会话',
+  workspace: '工作区',
+  operations: '运维',
+  admin: '管理',
 }
 
 /**

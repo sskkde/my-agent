@@ -69,7 +69,14 @@ describe('product-navigation', () => {
   })
 
   describe('PRODUCT_SECTION_LABELS', () => {
-    it('has labels for all sections', () => {
+    it('has localized labels for all sections', () => {
+      expect(PRODUCT_SECTION_LABELS).toEqual({
+        chat: '会话',
+        workspace: '工作区',
+        operations: '运维',
+        admin: '管理',
+      })
+
       for (const section of PRODUCT_SECTIONS) {
         expect(PRODUCT_SECTION_LABELS[section], `Section '${section}' should have a label`).toBeDefined()
         expect(typeof PRODUCT_SECTION_LABELS[section]).toBe('string')
