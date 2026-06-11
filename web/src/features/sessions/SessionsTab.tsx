@@ -3,8 +3,12 @@ import { getSessions, updateSession } from '../../api/client'
 import type { ConsoleSessionInfo, SessionsResponse } from '../../api/types'
 import ErrorMessage from '../../components/ErrorMessage'
 import LoadingSpinner from '../../components/LoadingSpinner'
-
-type SessionStatus = 'active' | 'archived' | 'closed'
+import {
+  SESSION_STATUS_OPTIONS,
+  formatDateTimeZhCN,
+  getSessionStatusLabel,
+  type SessionStatus,
+} from '../../i18n/labels'
 
 interface SessionsState {
   sessions: ConsoleSessionInfo[]
@@ -135,17 +139,6 @@ const SessionsTab: React.FC = () => {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
   const getStatusBadgeClass = (status: SessionStatus) => {
     switch (status) {
       case 'active':
@@ -181,9 +174,11 @@ const SessionsTab: React.FC = () => {
               className="filter-select"
             >
               <option value="">全部</option>
-              <option value="active">活跃</option>
-              <option value="archived">已归档</option>
-              <option value="closed">已关闭</option>
+              {SESSION_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -243,13 +238,11 @@ const SessionsTab: React.FC = () => {
                       </td>
                       <td className="col-status">
                         <span className={getStatusBadgeClass(session.status)}>
-                          {session.status === 'active' && '活跃'}
-                          {session.status === 'archived' && '已归档'}
-                          {session.status === 'closed' && '已关闭'}
+                          {getSessionStatusLabel(session.status)}
                         </span>
                       </td>
                       <td className="col-messages">{session.messageCount}</td>
-                      <td className="col-activity">{formatDate(session.lastActivityAt)}</td>
+                      <td className="col-activity">{formatDateTimeZhCN(session.lastActivityAt)}</td>
                       <td className="col-actions">
                         <div className="action-buttons">
                           {session.status !== 'archived' && (
@@ -320,7 +313,7 @@ const SessionsTab: React.FC = () => {
                       </div>
                       <div className="session-card__meta-item">
                         <span className="meta-label">最后活动</span>
-                        <span className="meta-value">{formatDate(session.lastActivityAt)}</span>
+                        <span className="meta-value">{formatDateTimeZhCN(session.lastActivityAt)}</span>
                       </div>
                     </div>
                     <div className="session-card__actions">
