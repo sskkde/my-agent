@@ -59,6 +59,17 @@ describe('SessionWorkspace', () => {
       expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
     })
 
+    it('marks the root as a flex workspace for chat height containment', () => {
+      mockGetSessions.mockResolvedValue({
+        sessions: [],
+        total: 0,
+      })
+
+      render(<SessionWorkspace />)
+
+      expect(screen.getByTestId('session-workspace')).toHaveClass('session-workspace')
+    })
+
     it('renders SessionConsoleTab as child', async () => {
       mockGetSessions.mockResolvedValue({
         sessions: [],

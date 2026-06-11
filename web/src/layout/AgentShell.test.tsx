@@ -183,6 +183,26 @@ describe('AgentShell', () => {
       expect(screen.getByTestId('center-stage')).toBeInTheDocument()
     })
 
+    it('adds chat overflow guard class on the center-stage for chat tabs only', () => {
+      const { rerender } = renderWithRouter(
+        <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      expect(screen.getByTestId('center-stage')).toHaveClass('shell__content--chat')
+
+      rerender(
+        <BrowserRouter>
+          <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+            <div>Content</div>
+          </AgentShell>
+        </BrowserRouter>,
+      )
+
+      expect(screen.getByTestId('center-stage')).not.toHaveClass('shell__content--chat')
+    })
+
     it('renders children in center-stage area', () => {
       renderWithRouter(
         <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
@@ -401,11 +421,11 @@ describe('AgentShell', () => {
       )
 
       const toggle = screen.getByTestId('context-desk-toggle')
-      
+
       fireEvent.click(toggle)
       expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
       expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      
+
       fireEvent.click(toggle)
       expect(screen.queryByTestId('context-desk-panel')).not.toBeInTheDocument()
       expect(toggle).toHaveAttribute('aria-expanded', 'false')
@@ -491,7 +511,7 @@ describe('AgentShell', () => {
       )
 
       fireEvent.click(screen.getByTestId('context-desk-toggle'))
-      
+
       expect(screen.getByTestId('agent-shell')).toBeInTheDocument()
       expect(screen.getByTestId('app-shell')).toBeInTheDocument()
       expect(screen.getByTestId('center-stage')).toBeInTheDocument()
@@ -507,11 +527,7 @@ describe('AgentShell', () => {
       }
 
       renderWithRouter(
-        <AgentShell
-          activeTab="settings"
-          onTabChange={mockOnTabChange}
-          contextDeskCards={contextDeskCards}
-        >
+        <AgentShell activeTab="settings" onTabChange={mockOnTabChange} contextDeskCards={contextDeskCards}>
           <div>Settings Content</div>
         </AgentShell>,
       )

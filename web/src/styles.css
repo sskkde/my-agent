@@ -393,7 +393,19 @@ body {
   flex-direction: column;
 }
 
-.shell__content--chat {
+/* Keep this selector more specific than the later .center-stage rule so chat cannot reopen page-level scrolling. */
+.shell__content.shell__content--chat {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shell__content--chat > .session-workspace,
+.shell__content--chat > [data-testid='session-workspace'] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 

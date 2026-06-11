@@ -30,19 +30,10 @@ interface SessionWorkspaceProps {
  *
  * Supports URL-driven session selection via initialSessionId prop (Task 10).
  */
-const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({
-  setActiveTab,
-  auth,
-  initialSessionId,
-  onTabChange,
-}) => {
+const SessionWorkspace: React.FC<SessionWorkspaceProps> = ({ setActiveTab, auth, initialSessionId, onTabChange }) => {
   return (
-    <div data-testid="session-workspace">
-      <SessionConsoleTab
-        setActiveTab={onTabChange ?? setActiveTab}
-        auth={auth}
-        initialSessionId={initialSessionId}
-      />
+    <div data-testid="session-workspace" className="session-workspace">
+      <SessionConsoleTab setActiveTab={onTabChange ?? setActiveTab} auth={auth} initialSessionId={initialSessionId} />
     </div>
   )
 }
