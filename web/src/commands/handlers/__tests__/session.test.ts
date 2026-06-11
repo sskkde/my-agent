@@ -209,7 +209,7 @@ describe('Session Command Handlers', () => {
       const result = await handleSessions([], mockContext)
 
       expect(result.success).toBe(true)
-      expect(result.output?.content).toBe('No sessions found')
+      expect(result.output?.content).toBe('暂无会话')
       expect((result.data as { sessions: unknown[] }).sessions).toEqual([])
       expect((result.data as { total: number }).total).toBe(0)
     })
