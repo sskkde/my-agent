@@ -138,7 +138,7 @@ export const handleSessions: CommandHandler = async (
         success: true,
         output: {
           type: 'text',
-          content: 'No sessions found',
+          content: '暂无会话',
         },
         data: { sessions: [], total: 0 },
       }

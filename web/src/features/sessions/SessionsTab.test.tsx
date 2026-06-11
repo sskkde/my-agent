@@ -346,7 +346,7 @@ describe('SessionsTab', () => {
     render(<SessionsTab />)
 
     await waitFor(() => {
-      expect(screen.getByText('No sessions found')).toBeInTheDocument()
+      expect(screen.getByText('暂无符合条件的会话')).toBeInTheDocument()
     })
   })
 
@@ -741,7 +741,7 @@ describe('SessionsTab - Mobile Responsive', () => {
     render(<SessionsTab />)
 
     await waitFor(() => {
-      expect(screen.getByText('No sessions found')).toBeInTheDocument()
+      expect(screen.getByText('暂无符合条件的会话')).toBeInTheDocument()
     })
   })
 })

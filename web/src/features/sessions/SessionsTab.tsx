@@ -189,7 +189,8 @@ const SessionsTab: React.FC = () => {
             </div>
           ) : sessionsState.sessions.length === 0 ? (
             <div className="sessions-empty-state">
-              <p>No sessions found</p>
+              <p>暂无符合条件的会话</p>
+              <p>创建新会话后会显示在这里。</p>
             </div>
           ) : (
             <>
