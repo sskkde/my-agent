@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">Default agent avatar</title>
+  <desc id="desc">A friendly geometric agent face on a paper circle.</desc>
+  <defs>
+    <radialGradient id="paper" cx="45%" cy="35%" r="70%">
+      <stop stop-color="#FFFCF7"/>
+      <stop offset="1" stop-color="#F1E7D8"/>
+    </radialGradient>
+    <linearGradient id="ink" x1="42" x2="120" y1="30" y2="132">
+      <stop stop-color="#5B8C85"/>
+      <stop offset="1" stop-color="#2F5A54"/>
+    </linearGradient>
+  </defs>
+  <circle cx="80" cy="80" r="72" fill="url(#paper)"/>
+  <path fill="url(#ink)" d="M44 69c0-18 15-33 33-33h6c18 0 33 15 33 33v21c0 18-15 33-33 33h-6c-18 0-33-15-33-33V69Z"/>
+  <path fill="#FBF8F0" d="M57 75c0-9 7-16 16-16h14c9 0 16 7 16 16v14c0 9-7 16-16 16H73c-9 0-16-7-16-16V75Z"/>
+  <circle cx="71" cy="82" r="5" fill="#2A2622"/>
+  <circle cx="90" cy="82" r="5" fill="#2A2622"/>
+  <path d="M71 95c5 4 13 4 18 0" fill="none" stroke="#2A2622" stroke-width="4" stroke-linecap="round"/>
+  <path d="M80 26v14" stroke="#D9A441" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="80" cy="24" r="7" fill="#D9A441"/>
+</svg>

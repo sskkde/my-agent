@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Platform logo</title>
+  <desc id="desc">A seal-inspired monogram with an orbiting agent node.</desc>
+  <defs>
+    <linearGradient id="seal" x1="10" x2="54" y1="8" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5B8C85"/>
+      <stop offset="1" stop-color="#274E49"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#FBF8F0"/>
+  <path fill="url(#seal)" d="M18 14h22c7 0 12 5 12 12v24H28c-8 0-14-6-14-14v-8c0-8 6-14 14-14Zm10 11c-3 0-5 2-5 5v6c0 3 2 5 5 5h13V28c0-2-2-3-4-3h-9Z"/>
+  <circle cx="45" cy="20" r="6" fill="#D9A441"/>
+  <path d="M24 51c8-9 17-17 28-23" fill="none" stroke="#2A2622" stroke-opacity=".22" stroke-width="2" stroke-linecap="round"/>
+</svg>

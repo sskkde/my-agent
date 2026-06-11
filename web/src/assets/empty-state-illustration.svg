@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 180" role="img" aria-labelledby="title desc">
+  <title id="title">Empty session illustration</title>
+  <desc id="desc">Layered prompt cards on a warm paper desk.</desc>
+  <rect width="260" height="180" rx="24" fill="#FBF8F0"/>
+  <ellipse cx="130" cy="145" rx="88" ry="14" fill="#2A2622" opacity=".06"/>
+  <rect x="55" y="42" width="132" height="92" rx="14" fill="#FFFCF7" stroke="#D8CFBE"/>
+  <rect x="75" y="64" width="74" height="8" rx="4" fill="#3D6B64" opacity=".24"/>
+  <rect x="75" y="84" width="92" height="7" rx="3.5" fill="#D8CFBE"/>
+  <rect x="75" y="101" width="62" height="7" rx="3.5" fill="#D8CFBE"/>
+  <rect x="151" y="72" width="58" height="42" rx="12" fill="#E8F1EF" stroke="#AFCAC5"/>
+  <path d="M166 93h28M180 79v28" stroke="#3D6B64" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="201" cy="50" r="10" fill="#D9A441" opacity=".9"/>
+  <path d="M43 119c28 7 55 7 80 0" stroke="#3D6B64" stroke-opacity=".25" stroke-width="3" stroke-linecap="round" fill="none"/>
+</svg>

@@ -10,6 +10,7 @@ import {
 } from '../navigation/product-navigation'
 import type { UserMetadata } from '../api/types'
 import ContextDeskPanel from '../features/context/ContextDeskPanel'
+import logoUrl from '../assets/logo.svg?url'
 import type {
   ApprovalCardData,
   MemoryCardData,
@@ -260,7 +261,10 @@ const AgentShell: React.FC<AgentShellProps> = ({
             className={`sidebar-shell ${isNavCollapsed ? 'sidebar-shell--collapsed' : ''}`}
           >
             <div className="sidebar-shell__header">
-              <h1 className="sidebar-shell__brand">Agent Platform</h1>
+              <h1 className="sidebar-shell__brand">
+                <img className="sidebar-shell__brand-logo" src={logoUrl} alt="" aria-hidden="true" />
+                <span className="sidebar-shell__brand-name">Agent Platform</span>
+              </h1>
               <button
                 data-testid="sidebar-collapse-toggle"
                 className="sidebar-collapse-toggle"
