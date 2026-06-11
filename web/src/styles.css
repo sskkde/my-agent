@@ -422,7 +422,7 @@ body {
     bottom: 0;
     left: 0;
     z-index: 70;
-    width: min(86vw, 320px);
+    width: min(75vw, 280px);
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
@@ -1817,6 +1817,33 @@ body {
 
 .timeline-event-card--error .timeline-event-content {
   color: #991b1b;
+}
+
+.timeline-error-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.timeline-error-icon {
+  font-size: 20px;
+  align-self: center;
+}
+
+.timeline-error-message {
+  font-size: 14px;
+  font-weight: 500;
+  color: #991b1b;
+  word-break: break-word;
+}
+
+.timeline-error-hint {
+  font-size: 12px;
+  color: #b91c1c;
+  opacity: 0.8;
+  padding-top: 4px;
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 /* Loading Skeleton */
@@ -7549,7 +7576,13 @@ body {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-strong);
+}
+
+.tool-call-card__tool-name-original {
+  font-size: 11px;
+  color: var(--muted);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  margin-left: 4px;
 }
 
 .tool-call-card__duration {
@@ -10827,4 +10860,59 @@ body {
 .diff-block__line-content {
   white-space: pre;
   flex: 1;
+}
+
+/* ==========================================================================
+   Secondary Navigation Styles
+   ========================================================================== */
+
+.secondary-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.secondary-nav__item {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+
+.secondary-nav__item:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.secondary-nav__item--active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.secondary-nav__empty {
+  padding: 8px 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .secondary-nav {
+    padding: 8px 12px;
+    gap: 2px;
+  }
+
+  .secondary-nav__item {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
 }
