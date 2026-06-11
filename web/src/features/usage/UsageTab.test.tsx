@@ -9,6 +9,11 @@ vi.mock('../../api/client', () => ({
   getUsage: vi.fn(),
 }))
 
+const getDesktopSessionIds = (): string[] =>
+  Array.from(document.querySelectorAll<HTMLTableRowElement>('.usage-table tbody tr')).map(
+    (row) => row.querySelector('.usage-table__session-id')?.textContent ?? '',
+  )
+
 const createMockUsage = (overrides: Partial<UsageSummary> = {}): UsageSummary => ({
   sessionId: 'sess_' + Math.random().toString(36).slice(2),
   messageCount: 10,
@@ -167,6 +172,70 @@ describe('UsageTab', () => {
       const tableCostCell = costCells.find((el) => el.classList.contains('usage-cost--muted'))
       expect(tableCostCell).toBeInTheDocument()
     })
+  })
+
+  it('toggles sorting when sortable table headers are clicked', async () => {
+    const user = userEvent.setup()
+    const mockUsages = [
+      createMockUsage({
+        sessionId: 'session-low-count',
+        messageCount: 5,
+        estimatedTotalTokens: 3000,
+        estimatedCostCents: 200,
+      }),
+      createMockUsage({
+        sessionId: 'session-high-count',
+        messageCount: 30,
+        estimatedTotalTokens: 1000,
+        estimatedCostCents: 100,
+      }),
+      createMockUsage({
+        sessionId: 'session-mid-count',
+        messageCount: 15,
+        estimatedTotalTokens: 2000,
+        estimatedCostCents: 300,
+      }),
+    ]
+
+    vi.mocked(client.getUsage).mockResolvedValue({
+      usages: mockUsages,
+      total: 3,
+    } as UsageResponse)
+
+    render(<UsageTab />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /消息数/ })).toBeInTheDocument()
+    })
+
+    expect(getDesktopSessionIds()).toEqual(['session-high', 'session-mid-', 'session-low-'])
+
+    await user.click(screen.getByRole('button', { name: /消息数/ }))
+    expect(getDesktopSessionIds()).toEqual(['session-low-', 'session-mid-', 'session-high'])
+
+    await user.click(screen.getByRole('button', { name: /Token数/ }))
+    expect(getDesktopSessionIds()).toEqual(['session-low-', 'session-mid-', 'session-high'])
+
+    await user.click(screen.getByRole('button', { name: /Token数/ }))
+    expect(getDesktopSessionIds()).toEqual(['session-high', 'session-mid-', 'session-low-'])
+  })
+
+  it('displays explanatory copy and configuration entry when cost is not configured', async () => {
+    const mockUsages = [createMockUsage({ sessionId: 'session-abc123xyz', estimatedCostCents: null })]
+
+    vi.mocked(client.getUsage).mockResolvedValue({
+      usages: mockUsages,
+      total: 1,
+    } as UsageResponse)
+
+    render(<UsageTab />)
+
+    await waitFor(() => {
+      expect(screen.getByText('尚未配置模型/计费价格，成本仅在配置后显示。')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('link', { name: '前往模型/计费配置' })).toHaveAttribute('href', '#settings')
+    expect(screen.getAllByTitle('该会话缺少模型/计费价格配置，无法估算成本。').length).toBeGreaterThan(0)
   })
 
   it('displays pagination when there are multiple pages', async () => {

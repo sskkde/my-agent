@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { getUsage } from '../../api/client'
 import type { UsageResponse, UsageSummary } from '../../api/types'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -9,6 +9,14 @@ interface UsageState {
   error: string | null
 }
 
+type UsageSortKey = 'messageCount' | 'estimatedTotalTokens' | 'estimatedCostCents'
+type UsageSortDirection = 'asc' | 'desc'
+
+interface UsageSortState {
+  sortKey: UsageSortKey
+  sortDirection: UsageSortDirection
+}
+
 const UsageTab: React.FC = () => {
   const [state, setState] = useState<UsageState>({
     data: null,
@@ -16,6 +24,10 @@ const UsageTab: React.FC = () => {
     error: null,
   })
   const [offset, setOffset] = useState(0)
+  const [sortState, setSortState] = useState<UsageSortState>({
+    sortKey: 'messageCount',
+    sortDirection: 'desc',
+  })
   const limit = 10
 
   const fetchUsage = useCallback(async () => {
@@ -74,6 +86,53 @@ const UsageTab: React.FC = () => {
     return sessionId.slice(0, 10) + '...' + sessionId.slice(-7)
   }
 
+  const handleSort = (key: UsageSortKey) => {
+    setSortState((currentSort) => {
+      if (currentSort.sortKey === key) {
+        return {
+          sortKey: key,
+          sortDirection: currentSort.sortDirection === 'asc' ? 'desc' : 'asc',
+        }
+      }
+
+      return { sortKey: key, sortDirection: 'desc' }
+    })
+  }
+
+  const getSortIndicator = (key: UsageSortKey): string => {
+    if (sortState.sortKey !== key) return ''
+    return sortState.sortDirection === 'asc' ? ' ↑' : ' ↓'
+  }
+
+  const renderSortButton = (key: UsageSortKey, label: string) => (
+    <button
+      type="button"
+      className="usage-table__sort-button"
+      onClick={() => handleSort(key)}
+      aria-sort={sortState.sortKey === key ? (sortState.sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+      title={`按${label}${sortState.sortKey === key && sortState.sortDirection === 'asc' ? '降序' : '升序'}排列`}
+    >
+      {label}
+      <span aria-hidden="true">{getSortIndicator(key)}</span>
+    </button>
+  )
+
+  const usages = state.data?.usages ?? []
+  const sortedUsages = useMemo(() => {
+    return [...usages].sort((a, b) => {
+      const aValue = a[sortState.sortKey]
+      const bValue = b[sortState.sortKey]
+
+      if (aValue === null && bValue === null) return 0
+      if (aValue === null) return 1
+      if (bValue === null) return -1
+
+      const comparison = aValue - bValue
+      return sortState.sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [usages, sortState])
+  const total = state.data?.total ?? 0
+
   if (state.loading) {
     return (
       <div className="usage-tab" data-testid="usage-panel">
@@ -94,9 +153,6 @@ const UsageTab: React.FC = () => {
       </div>
     )
   }
-
-  const usages = state.data?.usages ?? []
-  const total = state.data?.total ?? 0
 
   if (usages.length === 0) {
     return (
@@ -137,9 +193,20 @@ const UsageTab: React.FC = () => {
         </div>
         <div className="usage-card">
           <div className="usage-card__label">预估总成本</div>
-          <div className={`usage-card__value ${!aggregates.hasCostConfigured ? 'usage-card__value--muted' : ''}`}>
+          <div
+            className={`usage-card__value ${!aggregates.hasCostConfigured ? 'usage-card__value--muted' : ''}`}
+            title={!aggregates.hasCostConfigured ? '尚未配置模型/计费价格，无法估算成本。' : undefined}
+          >
             {aggregates.hasCostConfigured ? formatCost(aggregates.totalCostCents) : '未配置'}
           </div>
+          {!aggregates.hasCostConfigured && (
+            <p className="usage-card__hint">
+              尚未配置模型/计费价格，成本仅在配置后显示。
+              <a href="#settings" className="usage-card__link">
+                前往模型/计费配置
+              </a>
+            </p>
+          )}
         </div>
       </div>
 
@@ -152,19 +219,24 @@ const UsageTab: React.FC = () => {
             <thead>
               <tr>
                 <th>会话ID</th>
-                <th>消息数</th>
-                <th>Token数</th>
-                <th>预估成本</th>
+                <th>{renderSortButton('messageCount', '消息数')}</th>
+                <th>{renderSortButton('estimatedTotalTokens', 'Token数')}</th>
+                <th>{renderSortButton('estimatedCostCents', '预估成本')}</th>
               </tr>
             </thead>
             <tbody>
-              {usages.map((usage) => (
+              {sortedUsages.map((usage) => (
                 <tr key={usage.sessionId}>
                   <td className="usage-table__session-id" title={usage.sessionId}>{formatSessionId(usage.sessionId)}</td>
                   <td>{formatNumber(usage.messageCount)}</td>
                   <td>{formatNumber(usage.estimatedTotalTokens)}</td>
                   <td>
-                    <span className={usage.estimatedCostCents === null ? 'usage-cost--muted' : ''}>
+                    <span
+                      className={usage.estimatedCostCents === null ? 'usage-cost--muted' : ''}
+                      title={
+                        usage.estimatedCostCents === null ? '该会话缺少模型/计费价格配置，无法估算成本。' : undefined
+                      }
+                    >
                       {formatCost(usage.estimatedCostCents)}
                     </span>
                   </td>
@@ -176,7 +248,7 @@ const UsageTab: React.FC = () => {
 
         {/* Mobile card list - visible only on phone */}
         <div className="usage-mobile-list" data-testid="usage-mobile-list">
-          {usages.map((usage) => (
+          {sortedUsages.map((usage) => (
             <div key={usage.sessionId} className="usage-mobile-card" data-testid={`usage-card-${usage.sessionId}`}>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">会话ID</span>
@@ -198,6 +270,7 @@ const UsageTab: React.FC = () => {
                   className={`usage-mobile-card__value ${
                     usage.estimatedCostCents === null ? 'usage-mobile-card__value--muted' : ''
                   }`}
+                  title={usage.estimatedCostCents === null ? '该会话缺少模型/计费价格配置，无法估算成本。' : undefined}
                 >
                   {formatCost(usage.estimatedCostCents)}
                 </span>
