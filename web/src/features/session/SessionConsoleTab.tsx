@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import './SessionConsole.css'
 import * as api from '../../api/client'
 import type {
   ConsoleSessionInfo,

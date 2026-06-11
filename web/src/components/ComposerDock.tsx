@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react'
+import './ComposerDock.css'
 
 interface ComposerDockProps {
   /** Current draft text value */
