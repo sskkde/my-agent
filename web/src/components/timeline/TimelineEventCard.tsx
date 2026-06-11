@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import './Timeline.css'
 import type { ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/types'
 import { ToolCallCard } from '../ToolCallCard'
 import { ApprovalCard } from '../ApprovalCard'

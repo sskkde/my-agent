@@ -92,6 +92,10 @@ function AppRoutes() {
   // Derive activeTab from URL (primary source of truth)
   const navState = routeToNavigation(location.pathname)
   const activeTab = navState.tabId
+  const selectedSessionId = resolveSessionId(
+    navState.sessionId ?? null,
+    safeReadLocalStorage(SELECTED_SESSION_KEY),
+  )
 
   /**
    * Compatibility adapter: translates legacy tab-change calls to URL navigation.
@@ -131,7 +135,13 @@ function AppRoutes() {
   }
 
   return (
-    <AgentShell activeTab={activeTab} onTabChange={handleTabChange} user={user} onLogout={logout}>
+    <AgentShell
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      user={user}
+      onLogout={logout}
+      sessionId={selectedSessionId}
+    >
       <Routes>
         {/* Root → renders Chat section (same as /chat) */}
         <Route path="/" element={<ChatRouteContent onTabChange={handleTabChange} />} />
