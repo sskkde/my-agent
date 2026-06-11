@@ -96,6 +96,15 @@ const AppShell: React.FC<AppShellProps> = ({
     return `Agent Platform › ${navItem.label}`
   }, [activeTab])
 
+  useEffect(() => {
+    const navItem = getNavItemById(activeTab)
+    if (navItem) {
+      document.title = `${navItem.label} - Agent Platform`
+    } else {
+      document.title = 'Agent Platform'
+    }
+  }, [activeTab])
+
   const shellClasses = [
     'shell',
     isNavCollapsed ? 'shell--nav-collapsed' : '',

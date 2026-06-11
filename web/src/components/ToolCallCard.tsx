@@ -17,6 +17,23 @@ const statusLabels: Record<ToolCallCardProps['status'], string> = {
   failed: '失败',
 }
 
+const toolNameLabels: Record<string, string> = {
+  web_search: '网页搜索',
+  web_fetch: '网页抓取',
+  read_file: '读取文件',
+  write_file: '写入文件',
+  exec_command: '执行命令',
+  search_subagent: '搜索子代理',
+  session_history: '会话历史',
+  transcript_search: '转录搜索',
+  memory_retrieve: '记忆检索',
+  status_query: '状态查询',
+}
+
+const getToolDisplayName = (toolName: string): string => {
+  return toolNameLabels[toolName] || toolName
+}
+
 export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   toolName,
   parameters,
@@ -66,7 +83,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
         <span className="tool-call-card__expand-icon" aria-hidden="true">
           {isExpanded ? '▼' : '▶'}
         </span>
-        <span className="tool-call-card__tool-name">{toolName}</span>
+        <span className="tool-call-card__tool-name">{getToolDisplayName(toolName)}</span>
+        <span className="tool-call-card__tool-name-original">{toolName}</span>
         <span className={`status-badge status-badge--${status}`}>
           {status === 'running' && <LoadingSpinner size="small" inline label="" />}
           {statusLabels[status]}

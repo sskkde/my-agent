@@ -411,7 +411,7 @@ const a = 1
 
       const toolCard = screen.getByTestId('tool-call-card')
       expect(toolCard).toBeInTheDocument()
-      expect(screen.getByText('file.read')).toBeInTheDocument()
+      expect(screen.getAllByText('file.read')[0]).toBeInTheDocument()
     })
 
     it('renders tool parameters as JSON code block', () => {

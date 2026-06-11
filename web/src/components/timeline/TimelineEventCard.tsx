@@ -172,6 +172,18 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
       )
     }
 
+    if (event.eventType === 'error') {
+      return (
+        <div className="timeline-error-content">
+          <div className="timeline-error-icon">⚠️</div>
+          <div className="timeline-error-message">
+            <MessageContent text={event.content} role={messageRole} mode={messageMode} />
+          </div>
+          <div className="timeline-error-hint">系统处理时遇到错误，请稍后重试或联系管理员</div>
+        </div>
+      )
+    }
+
     switch (event.eventType) {
       case 'thinking_summary':
         return (
@@ -315,7 +327,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
                 复制
               </button>
               {messageGroupRole === 'assistant' && (
-                <button className="message-group__action" type="button" aria-disabled="true">
+                <button className="message-group__action" type="button" title="重试该消息" onClick={() => window.alert('重试功能即将上线')}>
                   重试
                 </button>
               )}

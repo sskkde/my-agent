@@ -54,7 +54,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'control',
-    label: '控制',
+    label: '控制台',
     testId: 'nav-group-control',
     items: [
       {
