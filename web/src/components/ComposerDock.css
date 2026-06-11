@@ -9,6 +9,10 @@
   padding: 16px 24px;
   background: var(--warm-paper-bg-elevated, var(--bg-elevated));
   border-top: var(--warm-paper-border-width, 0.5px) solid var(--warm-paper-border, var(--border));
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
 }
 
 .composer-input {
@@ -24,7 +28,9 @@
   background: var(--warm-paper-bg, var(--bg-elevated));
   color: var(--warm-paper-text, var(--text));
   resize: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .composer-input::placeholder {
@@ -53,13 +59,15 @@
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .composer-send-button:hover:not(:disabled) {
-  background-color: var(--warm-paper-accent-hover, #4A7A73);
+  background-color: var(--warm-paper-accent-hover, #4a7a73);
 }
 
 .composer-send-button:active:not(:disabled) {

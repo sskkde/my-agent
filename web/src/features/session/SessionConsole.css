@@ -5,6 +5,8 @@
 .session-console-rich {
   display: flex;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg);
 }
 
@@ -14,6 +16,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: var(--bg-elevated);
   border-right: 1px solid var(--border);
 }
@@ -140,7 +143,16 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg-elevated);
+}
+
+.timeline-toolbar-stage,
+.session-error,
+.processing-status-indicator,
+.composer-dock {
+  flex: 0 0 auto;
 }
 
 .session-main .session-empty-state {
@@ -233,7 +245,7 @@
 
 /* Timeline Container */
 .session-timeline-container {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
 }
@@ -276,7 +288,9 @@
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
-    transition: transform 250ms var(--ease-out), opacity 250ms;
+    transition:
+      transform 250ms var(--ease-out),
+      opacity 250ms;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
   }
 
@@ -422,7 +436,6 @@
   .session-timeline-container .timeline-list {
     padding: 16px;
   }
-
 
   .session-input-dock {
     padding: 16px;

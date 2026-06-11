@@ -51,38 +51,38 @@
      ========================================================================== */
 
   /* Paper Background Layers */
-  --warm-paper-bg: #FBF8F0;                    /* Primary paper surface */
-  --warm-paper-bg-elevated: #FFFCF7;           /* Elevated surfaces (cards, modals) */
-  --warm-paper-bg-deep: #F5EFE4;               /* Deeper layer (sidebars, wells) */
+  --warm-paper-bg: #fbf8f0; /* Primary paper surface */
+  --warm-paper-bg-elevated: #fffcf7; /* Elevated surfaces (cards, modals) */
+  --warm-paper-bg-deep: #f5efe4; /* Deeper layer (sidebars, wells) */
   --warm-paper-bg-glass: rgba(251, 248, 240, 0.92); /* Glass overlay effect */
 
   /* Ink Text Hierarchy */
-  --warm-paper-text: #2A2622;                  /* Dense ink - primary text */
-  --warm-paper-text-secondary: #4A433C;        /* Secondary text */
-  --warm-paper-text-muted: #6B6158;            /* Captions, placeholders */
+  --warm-paper-text: #2a2622; /* Dense ink - primary text */
+  --warm-paper-text-secondary: #4a433c; /* Secondary text */
+  --warm-paper-text-muted: #6b6158; /* Captions, placeholders */
 
   /* Border & Line */
-  --warm-paper-border: #D8CFBE;                /* Ink-line - main divider */
-  --warm-paper-border-width: 0.5px;            /* Hairline border width */
+  --warm-paper-border: #d8cfbe; /* Ink-line - main divider */
+  --warm-paper-border-width: 0.5px; /* Hairline border width */
 
   /* Seal Accent (primary accent color) */
-  --warm-paper-accent: #3D6B64;                /* Seal blue-green - 一抹远山青 - Darker for WCAG AA contrast */
-  --warm-paper-accent-hover: #2F5A54;          /* Hover state */
+  --warm-paper-accent: #3d6b64; /* Seal blue-green - 一抹远山青 - Darker for WCAG AA contrast */
+  --warm-paper-accent-hover: #2f5a54; /* Hover state */
   --warm-paper-accent-subtle: rgba(61, 107, 100, 0.08); /* Subtle background */
-  --warm-paper-accent-rgb: 61, 107, 100;       /* RGB for rgba usage */
+  --warm-paper-accent-rgb: 61, 107, 100; /* RGB for rgba usage */
 
   /* Semantic Colors (ink-dyed, minimal) */
-  --warm-paper-success: #4A6B4A;               /* Ink green */
+  --warm-paper-success: #4a6b4a; /* Ink green */
   --warm-paper-success-rgb: 74, 107, 74;
-  --warm-paper-warning: #8B6F47;               /* Aged paper amber */
+  --warm-paper-warning: #8b6f47; /* Aged paper amber */
   --warm-paper-warning-rgb: 139, 111, 71;
-  --warm-paper-danger: #8B2C1F;                /* Deep coral (朱砂) */
+  --warm-paper-danger: #8b2c1f; /* Deep coral (朱砂) */
   --warm-paper-danger-rgb: 139, 44, 31;
 
   /* Border Radius (minimal, seal-like) */
-  --warm-paper-radius-sm: 2px;                 /* Input, button, chip */
-  --warm-paper-radius-md: 3px;                 /* Card, list block */
-  --warm-paper-radius-lg: 4px;                 /* Modal */
+  --warm-paper-radius-sm: 2px; /* Input, button, chip */
+  --warm-paper-radius-md: 3px; /* Card, list block */
+  --warm-paper-radius-lg: 4px; /* Modal */
 
   /* Elevation Shadows (paper layering) */
   --warm-paper-shadow-sm: 0 1px 2px rgba(42, 38, 34, 0.03);
@@ -150,8 +150,8 @@ body {
   grid-template-columns: var(--shell-nav-width) minmax(0, 1fr);
   grid-template-rows: var(--shell-topbar-height) 1fr;
   grid-template-areas:
-    "nav topbar"
-    "nav content";
+    'nav topbar'
+    'nav content';
   height: 100vh;
   overflow: hidden;
 }
@@ -163,8 +163,8 @@ body {
 .shell--context-desk-open:not(.shell--mobile) {
   grid-template-columns: var(--shell-nav-width) minmax(0, 1fr) var(--companion-panel-width);
   grid-template-areas:
-    "nav topbar topbar"
-    "nav content companion";
+    'nav topbar topbar'
+    'nav content companion';
 }
 
 .shell--nav-collapsed.shell--context-desk-open:not(.shell--mobile) {
@@ -323,7 +323,9 @@ body {
   min-height: 40px;
   padding: 0 9px;
   border-radius: var(--radius-md);
-  transition: background 150ms, color 150ms;
+  transition:
+    background 150ms,
+    color 150ms;
   cursor: pointer;
   border: none;
   background: transparent;
@@ -391,6 +393,10 @@ body {
   flex-direction: column;
 }
 
+.shell__content--chat {
+  overflow: hidden;
+}
+
 /* ==========================================================================
    Mobile Breakpoint
    ========================================================================== */
@@ -404,16 +410,16 @@ body {
   .shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "topbar"
-      "content";
+      'topbar'
+      'content';
   }
 
   .shell--mobile {
     /* Same as base shell on mobile - single column */
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "topbar"
-      "content";
+      'topbar'
+      'content';
   }
 
   .shell__nav-wrapper {
@@ -426,7 +432,9 @@ body {
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
-    transition: transform 250ms var(--ease-out), opacity 250ms;
+    transition:
+      transform 250ms var(--ease-out),
+      opacity 250ms;
   }
 
   .shell--nav-drawer-open .shell__nav-wrapper {
@@ -574,7 +582,9 @@ body {
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 14px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .input-field:focus {
@@ -1498,23 +1508,20 @@ body {
    ========================================================================== */
 
 /* User Message - right-aligned blue */
-.timeline-event-card--user_message {
+.timeline-event-card--user_message.message-group {
   align-self: flex-end;
-  background-color: var(--accent);
-  border-color: var(--accent);
+  background: transparent;
+  border-color: transparent;
+  padding: 8px 0;
 }
 
-.timeline-event-card--user_message .timeline-event-label,
-.timeline-event-card--user_message .timeline-event-content {
-  color: white;
+.timeline-event-card--user_message .timeline-event-label {
+  color: var(--text-strong);
 }
 
-.timeline-event-card--user_message .timeline-event-timestamp {
-  color: rgba(255, 255, 255, 0.7);
-}
-
+.timeline-event-card--user_message .timeline-event-timestamp,
 .timeline-event-card--user_message .timeline-event-actor {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
 }
 
 /* Assistant Message - left-aligned gray */
@@ -2032,9 +2039,11 @@ body {
    Chat Layout Tokens
    ========================================================================== */
 
---chat-column-width: 720px;
---chat-input-column-width: 680px;
---chat-side-gutter: 24px;
+:root {
+  --chat-column-width: 720px;
+  --chat-input-column-width: 680px;
+  --chat-side-gutter: 24px;
+}
 
 .timeline-toolbar-stage {
   display: flex;
@@ -2366,23 +2375,20 @@ body {
    ========================================================================== */
 
 /* User Message - right-aligned blue */
-.timeline-event-card--user_message {
+.timeline-event-card--user_message.message-group {
   align-self: flex-end;
-  background-color: var(--accent);
-  border-color: var(--accent);
+  background: transparent;
+  border-color: transparent;
+  padding: 8px 0;
 }
 
-.timeline-event-card--user_message .timeline-event-label,
-.timeline-event-card--user_message .timeline-event-content {
-  color: white;
+.timeline-event-card--user_message .timeline-event-label {
+  color: var(--text-strong);
 }
 
-.timeline-event-card--user_message .timeline-event-timestamp {
-  color: rgba(255, 255, 255, 0.7);
-}
-
+.timeline-event-card--user_message .timeline-event-timestamp,
 .timeline-event-card--user_message .timeline-event-actor {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
 }
 
 /* Assistant Message - left-aligned gray */
@@ -2699,7 +2705,7 @@ body {
 }
 
 /* Command Events - subtle styling for command output */
-.timeline-event-card[data-is-command="true"] {
+.timeline-event-card[data-is-command='true'] {
   align-self: stretch;
   background-color: #f8fafc;
   border-color: #e2e8f0;
@@ -2707,7 +2713,7 @@ body {
   padding: 8px 12px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-label {
+.timeline-event-card[data-is-command='true'] .timeline-event-label {
   color: #475569;
   font-size: 11px;
   font-weight: 600;
@@ -2715,22 +2721,22 @@ body {
   letter-spacing: 0.05em;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-content {
+.timeline-event-card[data-is-command='true'] .timeline-event-content {
   color: #334155;
   font-size: 13px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-timestamp {
+.timeline-event-card[data-is-command='true'] .timeline-event-timestamp {
   color: #94a3b8;
   font-size: 10px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-actor {
+.timeline-event-card[data-is-command='true'] .timeline-event-actor {
   color: #64748b;
   font-size: 10px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-header {
+.timeline-event-card[data-is-command='true'] .timeline-event-header {
   margin-bottom: 4px;
 }
 
@@ -2744,7 +2750,6 @@ body {
 .timeline-event-card--error .timeline-event-header {
   margin-bottom: 4px;
 }
-
 
 /* ==========================================================================
    Chat Message Groups and Subtle System Events
@@ -2870,8 +2875,14 @@ body {
 }
 
 .message-group--user .message-group__bubble .timeline-event-content,
+.message-group--user .message-group__bubble .message-content,
+.message-group--user .message-group__bubble .plaintext-content {
+  color: inherit;
+  background: transparent;
+}
+
 .message-group--user .message-group__bubble .message-markdown {
-  color: white;
+  color: inherit;
 }
 
 .message-group--user .message-group__bubble .message-markdown a,
@@ -2910,7 +2921,9 @@ body {
   opacity: 0;
   transform: translateY(-2px);
   pointer-events: none;
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
 }
 
 .message-group:hover .message-group__actions,
@@ -2937,7 +2950,7 @@ body {
 }
 
 .message-group__action:disabled,
-.message-group__action[aria-disabled="true"] {
+.message-group__action[aria-disabled='true'] {
   cursor: default;
   opacity: 0.65;
 }
@@ -3017,6 +3030,8 @@ body {
 .session-console-rich {
   display: flex;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg);
 }
 
@@ -3026,6 +3041,7 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: var(--bg-elevated);
   border-right: 1px solid var(--border);
 }
@@ -3152,7 +3168,16 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg-elevated);
+}
+
+.timeline-toolbar-stage,
+.session-error,
+.processing-status-indicator,
+.composer-dock {
+  flex: 0 0 auto;
 }
 
 .session-main .session-empty-state {
@@ -3275,10 +3300,12 @@ body {
 }
 
 @keyframes cursor-blink {
-  0%, 50% {
+  0%,
+  50% {
     opacity: 1;
   }
-  51%, 100% {
+  51%,
+  100% {
     opacity: 0;
   }
 }
@@ -3323,7 +3350,9 @@ body {
 }
 
 @keyframes placeholder-pulse {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     opacity: 0.3;
     transform: scale(0.8);
   }
@@ -3342,7 +3371,7 @@ body {
 
 /* Timeline Container */
 .session-timeline-container {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
 }
@@ -3385,7 +3414,9 @@ body {
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
-    transition: transform 250ms var(--ease-out), opacity 250ms;
+    transition:
+      transform 250ms var(--ease-out),
+      opacity 250ms;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
   }
 
@@ -6085,7 +6116,7 @@ body {
   background: var(--accent-subtle);
 }
 
-.multi-select-item input[type="checkbox"] {
+.multi-select-item input[type='checkbox'] {
   margin-top: 2px;
   width: 16px;
   height: 16px;
@@ -9554,7 +9585,7 @@ body {
   color: var(--accent);
 }
 
-.subagent-expand-btn[aria-expanded="true"] {
+.subagent-expand-btn[aria-expanded='true'] {
   background: var(--accent-subtle);
   border-color: var(--accent);
   color: var(--accent);
@@ -10115,7 +10146,10 @@ body {
   background: transparent;
   border-radius: var(--warm-paper-radius-sm, 4px);
   cursor: pointer;
-  transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .secondary-nav__item:hover {
@@ -10156,7 +10190,6 @@ body {
   overflow: auto;
   background: var(--warm-paper-bg, var(--bg));
 }
-
 
 /* ==========================================================================
    Context Desk Panel Styles
@@ -10358,7 +10391,7 @@ body {
 
 .context-card__error-text {
   font-size: 14px;
-  color: var(--warm-paper-danger, #8B2C1F);
+  color: var(--warm-paper-danger, #8b2c1f);
   line-height: 1.4;
 }
 
@@ -10456,7 +10489,7 @@ body {
 .context-card__progress-bar {
   width: 100%;
   height: 4px;
-  background: var(--warm-paper-bg-deep, #F5EFE4);
+  background: var(--warm-paper-bg-deep, #f5efe4);
   border-radius: 2px;
   overflow: hidden;
   margin-top: 8px;
@@ -10621,7 +10654,7 @@ body {
 }
 
 .shell--context-desk-open:not(.shell--mobile) .shell__content > .session-workspace,
-.shell--context-desk-open:not(.shell--mobile) .shell__content > [data-testid="session-workspace"] {
+.shell--context-desk-open:not(.shell--mobile) .shell__content > [data-testid='session-workspace'] {
   max-width: var(--chat-column-max-width);
   width: 100%;
 }

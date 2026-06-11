@@ -5,7 +5,7 @@ import type { ConsoleTimelineEvent } from '../../api/types'
 
 /**
  * Tests for TimelineEventCard integration with formatMessageContent
- * 
+ *
  * Verifies that:
  * - Streaming drafts use the safe formatter
  * - Final messages use the safe formatter
@@ -147,6 +147,22 @@ const a = 1
       expect(content.innerHTML).not.toContain('<strong>')
       expect(content.innerHTML).not.toContain('<em>')
     })
+    it('renders user message content directly inside the bubble without timeline content wrappers', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'Readable user message',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const card = screen.getByTestId('timeline-event-test-event-1')
+      const bubble = card.querySelector('.message-group__bubble')
+      expect(bubble).not.toBeNull()
+      expect(bubble?.querySelector(':scope > .message-content--user')).not.toBeNull()
+      expect(bubble?.querySelector(':scope > .timeline-event-content')).toBeNull()
+      expect(screen.getByTestId('plaintext-content')).toHaveTextContent('Readable user message')
+    })
 
     it('escapes XSS in user messages - renders as plain text', () => {
       const event = createEvent({
@@ -184,7 +200,7 @@ const a = 1
     it('removes javascript: URLs in links', () => {
       const event = createEvent({
         eventType: 'assistant_message',
-        content: '[md][Click me](javascript:alert(\'XSS\'))[/md]',
+        content: "[md][Click me](javascript:alert('XSS'))[/md]",
       })
 
       render(<TimelineEventCard event={event} />)
@@ -600,7 +616,8 @@ const a = 1
     it('renders thinking summary with [md] blocks when expanded', () => {
       const event = createEvent({
         eventType: 'thinking_summary',
-        content: 'Analysis:\n\n[md]\n## Key Points\n\n1. First point\n2. Second point\n\n```ts\nconst x = 1;\n```\n[/md]',
+        content:
+          'Analysis:\n\n[md]\n## Key Points\n\n1. First point\n2. Second point\n\n```ts\nconst x = 1;\n```\n[/md]',
       })
 
       render(<TimelineEventCard event={event} />)
@@ -684,7 +701,8 @@ const a = 1
     it('renders message with [md] blocks and plain text correctly', () => {
       const event = createEvent({
         eventType: 'assistant_message',
-        content: 'Here is some plain text with **bold**.\n\n[md]\n## Markdown Section\n\n- List item\n[/md]\n\nMore plain text with *italic*.',
+        content:
+          'Here is some plain text with **bold**.\n\n[md]\n## Markdown Section\n\n- List item\n[/md]\n\nMore plain text with *italic*.',
       })
 
       render(<TimelineEventCard event={event} />)
