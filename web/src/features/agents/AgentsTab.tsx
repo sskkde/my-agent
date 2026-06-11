@@ -44,6 +44,65 @@ const AGENT_ID = 'foreground.default'
 const MIN_TIMEOUT = 1 // seconds
 const MAX_TIMEOUT = 60 // seconds (matching backend max of 60000ms)
 
+interface LocalizedCatalogEntry {
+  displayName: string
+  description?: string
+}
+
+const BUILT_IN_TOOL_DISPLAY: Record<string, LocalizedCatalogEntry> = {
+  artifact_create: { displayName: '创建工件', description: '使用指定标题和内容创建新的工件。' },
+  artifact_update: { displayName: '更新工件', description: '使用新内容更新已有工件。' },
+  ask_user: { displayName: '询问用户', description: '向用户请求澄清或补充输入。' },
+  status_query: { displayName: '查询状态', description: '查询当前用户或指定运行的工作状态。' },
+  memory_retrieve: { displayName: '检索记忆', description: '从会话或用户记忆中检索相关记录。' },
+  transcript_search: { displayName: '搜索转录', description: '搜索匹配内容的会话转录记录。' },
+  plan_patch: { displayName: '修改计划', description: '对执行计划应用补丁或变更。' },
+  docs_search: { displayName: '搜索文档', description: '搜索相关文档内容。' },
+  file_read: { displayName: '读取文件', description: '读取工作区中的文件内容。' },
+  file_glob: { displayName: '匹配文件', description: '按 glob 模式查找工作区文件。' },
+  file_grep: { displayName: '搜索文件', description: '在工作区文件中搜索匹配模式。' },
+  file_write: { displayName: '写入文件', description: '向工作区文件写入内容。' },
+  file_edit: { displayName: '编辑文件', description: '通过替换指定字符串编辑工作区文件。' },
+  file_apply_patch: { displayName: '应用补丁', description: '应用包含新增、更新或删除操作的多文件补丁。' },
+  session_list: { displayName: '列出会话', description: '列出当前用户的会话。' },
+  session_history: { displayName: '会话历史', description: '获取会话消息历史。' },
+  web_fetch: { displayName: '获取网页', description: '安全地读取指定 URL 的网页内容。' },
+  web_search: { displayName: '网络搜索', description: '通过外部搜索提供商检索公开网页信息。' },
+  exec: { displayName: '执行命令', description: '执行带安全校验、超时和输出管理的 shell 命令。' },
+  bash: { displayName: '执行 Bash', description: '执行 Bash 命令。' },
+  process: { displayName: '管理进程', description: '管理后台进程会话，包括列出、轮询、写入标准输入和终止。' },
+  code_execution: { displayName: '执行代码', description: '执行 JavaScript、TypeScript 或 Bash 代码。' },
+}
+
+const BUILT_IN_SKILL_DISPLAY: Record<string, LocalizedCatalogEntry> = {
+  artifact_create: BUILT_IN_TOOL_DISPLAY.artifact_create,
+  artifact_update: BUILT_IN_TOOL_DISPLAY.artifact_update,
+  ask_user: BUILT_IN_TOOL_DISPLAY.ask_user,
+  status_query: BUILT_IN_TOOL_DISPLAY.status_query,
+  memory_retrieve: BUILT_IN_TOOL_DISPLAY.memory_retrieve,
+  transcript_search: BUILT_IN_TOOL_DISPLAY.transcript_search,
+  plan_patch: BUILT_IN_TOOL_DISPLAY.plan_patch,
+  docs_search: BUILT_IN_TOOL_DISPLAY.docs_search,
+  web_search: BUILT_IN_TOOL_DISPLAY.web_search,
+}
+
+const getToolDisplay = (tool: ToolSummary): Required<LocalizedCatalogEntry> => {
+  const localized = BUILT_IN_TOOL_DISPLAY[tool.name]
+  return {
+    displayName: localized?.displayName ?? tool.name,
+    description: localized?.description ?? tool.description,
+  }
+}
+
+const getSkillDisplay = (skill: SkillSummary): LocalizedCatalogEntry => {
+  const localized = BUILT_IN_SKILL_DISPLAY[skill.skillId] ?? BUILT_IN_SKILL_DISPLAY[skill.name]
+  const originalDescription = (skill as SkillSummary & { description?: string }).description
+  return {
+    displayName: localized?.displayName ?? skill.name,
+    description: localized?.description ?? originalDescription,
+  }
+}
+
 const AgentsTab: React.FC = () => {
   const [config, setConfig] = useState<AgentConfig | null>(null)
   const [providers, setProviders] = useState<ProviderSummary[]>([])
@@ -372,8 +431,10 @@ const AgentsTab: React.FC = () => {
           </p>
         </div>
 
-        <div className="agents-section">
-          <h3>模型配置</h3>
+        <details className="agents-section" open>
+          <summary>
+            <h3>模型配置</h3>
+          </summary>
           {!config.effective.providerId && (
             <div className="unconfigured-banner" data-testid="unconfigured-banner">
               全局代理尚未配置服务提供商和模型，请先设置后再使用代理功能。
@@ -410,10 +471,12 @@ const AgentsTab: React.FC = () => {
               data-testid="model-input"
             />
           </div>
-        </div>
+        </details>
 
-        <div className="agents-section">
-          <h3>提示词配置</h3>
+        <details className="agents-section" open>
+          <summary>
+            <h3>提示词配置</h3>
+          </summary>
 
           <div className="form-group">
             <label htmlFor="systemPrompt">系统提示词</label>
@@ -442,10 +505,12 @@ const AgentsTab: React.FC = () => {
             />
             <span className="form-hint">定义任务路由和决策逻辑。</span>
           </div>
-        </div>
+        </details>
 
-        <div className="agents-section">
-          <h3>允许的工具</h3>
+        <details className="agents-section" open>
+          <summary>
+            <h3>允许的工具</h3>
+          </summary>
           {activeScope === 'override' && (
             <div className="tool-scope-mode" data-testid="tool-scope-mode">
               <label className="radio-label">
@@ -505,28 +570,34 @@ const AgentsTab: React.FC = () => {
                 </button>
               </div>
               <div className="multi-select-grid" data-testid="tools-multi-select">
-                {tools.map((tool) => (
-                  <label key={tool.name} className="multi-select-item">
-                    <input
-                      type="checkbox"
-                      checked={formData.allowedToolIds.includes(tool.name)}
-                      onChange={() => handleToolToggle(tool.name)}
-                      data-testid={`tool-checkbox-${tool.name}`}
-                    />
-                    <span className="multi-select-label">
-                      <span className="multi-select-name">{tool.name}</span>
-                      <span className="multi-select-desc">{tool.description}</span>
-                    </span>
-                  </label>
-                ))}
+                {tools.map((tool) => {
+                  const display = getToolDisplay(tool)
+                  return (
+                    <label key={tool.name} className="multi-select-item">
+                      <input
+                        type="checkbox"
+                        checked={formData.allowedToolIds.includes(tool.name)}
+                        onChange={() => handleToolToggle(tool.name)}
+                        data-testid={`tool-checkbox-${tool.name}`}
+                      />
+                      <span className="multi-select-label">
+                        <span className="multi-select-name">{display.displayName}</span>
+                        <span className="multi-select-desc">({tool.name})</span>
+                        <span className="multi-select-desc">{display.description}</span>
+                      </span>
+                    </label>
+                  )
+                })}
               </div>
               {tools.length === 0 && <p className="empty-hint">暂无可用的工具</p>}
             </>
           )}
-        </div>
+        </details>
 
-        <div className="agents-section">
-          <h3>允许的技能</h3>
+        <details className="agents-section" open>
+          <summary>
+            <h3>允许的技能</h3>
+          </summary>
           <div className="multi-select-actions">
             <button className="action-link" onClick={handleSelectAllSkills} data-testid="select-all-skills-btn">
               全选
@@ -536,26 +607,33 @@ const AgentsTab: React.FC = () => {
             </button>
           </div>
           <div className="multi-select-grid" data-testid="skills-multi-select">
-            {skills.map((skill) => (
-              <label key={skill.skillId} className="multi-select-item">
-                <input
-                  type="checkbox"
-                  checked={formData.allowedSkillIds.includes(skill.skillId)}
-                  onChange={() => handleSkillToggle(skill.skillId)}
-                  data-testid={`skill-checkbox-${skill.skillId}`}
-                />
-                <span className="multi-select-label">
-                  <span className="multi-select-name">{skill.name}</span>
-                  <span className={`type-badge ${skill.type.toLowerCase()}`}>{skill.type}</span>
-                </span>
-              </label>
-            ))}
+            {skills.map((skill) => {
+              const display = getSkillDisplay(skill)
+              return (
+                <label key={skill.skillId} className="multi-select-item">
+                  <input
+                    type="checkbox"
+                    checked={formData.allowedSkillIds.includes(skill.skillId)}
+                    onChange={() => handleSkillToggle(skill.skillId)}
+                    data-testid={`skill-checkbox-${skill.skillId}`}
+                  />
+                  <span className="multi-select-label">
+                    <span className="multi-select-name">{display.displayName}</span>
+                    <span className="multi-select-desc">({skill.skillId})</span>
+                    {display.description && <span className="multi-select-desc">{display.description}</span>}
+                    <span className={`type-badge ${skill.type.toLowerCase()}`}>{skill.type}</span>
+                  </span>
+                </label>
+              )
+            })}
           </div>
           {skills.length === 0 && <p className="empty-hint">暂无可用的技能</p>}
-        </div>
+        </details>
 
-        <div className="agents-section">
-          <h3>超时配置</h3>
+        <details className="agents-section" open>
+          <summary>
+            <h3>高级设置/超时配置</h3>
+          </summary>
           <div className="form-group">
             <label htmlFor="routingTimeoutMs">
               路由超时时间 (秒) *
@@ -579,7 +657,7 @@ const AgentsTab: React.FC = () => {
               路由请求的超时时间，范围 {MIN_TIMEOUT}-{MAX_TIMEOUT} 秒。
             </span>
           </div>
-        </div>
+        </details>
 
         {saveError && (
           <div className="agents-save-error" data-testid="agents-save-error">
