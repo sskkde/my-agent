@@ -11,6 +11,59 @@ import type {
 
 const SUPPORTED_STEP_TYPES: WorkflowStepType[] = ['tool_call', 'agent_run', 'subagent_run', 'approval', 'wait']
 
+const STEP_TYPE_LABELS: Record<WorkflowStepType, string> = {
+  tool_call: '工具调用',
+  agent_run: '代理运行',
+  subagent_run: '子代理运行',
+  approval: '审批',
+  wait: '等待',
+}
+
+const DRAFT_STATUS_LABELS: Record<string, string> = {
+  draft: '草稿',
+  validating: '验证中',
+  invalid: '无效',
+  published: '已发布',
+}
+
+const RUN_STATUS_LABELS: Record<string, string> = {
+  pending: '待处理',
+  queued: '已排队',
+  running: '运行中',
+  waiting_for_user: '等待用户',
+  waiting_for_approval: '等待审批',
+  waiting_for_external_event: '等待外部事件',
+  sleeping: '休眠中',
+  paused: '已暂停',
+  completed: '已完成',
+  failed: '失败',
+  cancelled: '已取消',
+  timeout: '已超时',
+}
+
+const VALIDATION_ISSUE_LABELS: Record<string, string> = {
+  MISSING_NAME: '缺少工作流名称',
+  NO_STEPS: '缺少步骤',
+  MISSING_STEP_NAME: '缺少步骤名称',
+  MISSING_TOOL_NAME: '缺少工具名称',
+}
+
+function localizeStepType(stepType: string): string {
+  return STEP_TYPE_LABELS[stepType as WorkflowStepType] ?? '未知步骤类型'
+}
+
+function localizeDraftStatus(status: string): string {
+  return DRAFT_STATUS_LABELS[status] ?? '未知状态'
+}
+
+function localizeRunStatus(status: string): string {
+  return RUN_STATUS_LABELS[status] ?? '未知状态'
+}
+
+function localizeValidationIssueCode(code: string): string {
+  return VALIDATION_ISSUE_LABELS[code] ?? '校验问题'
+}
+
 function createEmptyStep(index: number): WorkflowStep {
   return {
     stepId: `step-${Date.now()}-${index}`,
@@ -301,7 +354,7 @@ const WorkflowsTab: React.FC = () => {
               data-testid={`workflow-draft-${d.draftId}`}
             >
               <span className="draft-name">{d.name}</span>
-              <span className="draft-status">{d.status}</span>
+              <span className="draft-status">{localizeDraftStatus(d.status)}</span>
             </button>
           ))}
         </div>
@@ -458,7 +511,7 @@ const WorkflowsTab: React.FC = () => {
                     >
                       {SUPPORTED_STEP_TYPES.map((t) => (
                         <option key={t} value={t}>
-                          {t}
+                          {localizeStepType(t)}
                         </option>
                       ))}
                     </select>
@@ -553,7 +606,7 @@ const WorkflowsTab: React.FC = () => {
             <ul>
               {validationIssues.map((issue, i) => (
                 <li key={i} className={`validation-issue ${issue.severity}`}>
-                  <span className="issue-code">[{issue.code}]</span> {issue.message}
+                  <span className="issue-code">[{localizeValidationIssueCode(issue.code)}]</span> {issue.message}
                   {issue.stepId && <span className="issue-step"> (步骤: {issue.stepId})</span>}
                 </li>
               ))}
@@ -574,7 +627,7 @@ const WorkflowsTab: React.FC = () => {
               <div className="run-field">
                 <span className="run-label">状态:</span>
                 <span className="run-value" data-testid="workflow-run-status">
-                  {runResult.status}
+                  {localizeRunStatus(runResult.status)}
                 </span>
               </div>
               <div className="run-field">
@@ -586,7 +639,7 @@ const WorkflowsTab: React.FC = () => {
                   <span className="run-label">步骤:</span>
                   {runResult.stepRuns.map((sr) => (
                     <div key={sr.stepRunId} className="run-step-item">
-                      {sr.stepId}: {sr.status}
+                      {sr.stepId}: {localizeRunStatus(sr.status)}
                     </div>
                   ))}
                 </div>
