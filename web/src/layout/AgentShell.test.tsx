@@ -751,4 +751,30 @@ describe('AgentShell', () => {
       expect(sidebarTabs.length).toBe(12)
     })
   })
+  describe('Chat Session Sidebar Slot', () => {
+    it('renders a dedicated chat session sidebar portal root inside the AgentShell sidebar for chat routes', () => {
+      renderWithRouter(
+        <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
+          <div>Chat content</div>
+        </AgentShell>,
+      )
+
+      const panel = screen.getByTestId('sidebar-session-panel')
+      expect(panel).toHaveAttribute('id', 'chat-session-sidebar-root')
+      expect(screen.getByTestId('sidebar')).toContainElement(panel)
+      expect(screen.getByTestId('center-stage')).not.toContainElement(panel)
+    })
+
+    it('hides the chat session sidebar portal root outside the chat product section', () => {
+      renderWithRouter(
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
+          <div>Workspace content</div>
+        </AgentShell>,
+      )
+
+      expect(screen.queryByTestId('sidebar-session-panel')).not.toBeInTheDocument()
+    })
+  })
+
+
 })
