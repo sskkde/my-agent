@@ -1938,6 +1938,271 @@ body {
   margin-bottom: 4px;
 }
 
+
+/* ==========================================================================
+   Chat Message Groups and Subtle System Events
+   ========================================================================== */
+
+.message-group {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  width: min(100%, 860px);
+  max-width: 92%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.message-group--user {
+  align-self: flex-end;
+  grid-template-columns: minmax(0, 1fr) 36px;
+}
+
+.message-group--user .message-group__avatar {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.message-group--user .message-group__main {
+  grid-column: 1;
+  grid-row: 1;
+  align-items: flex-end;
+}
+
+.message-group__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--warm-paper-bg-deep, var(--bg));
+  border: 1px solid var(--warm-paper-border, var(--border));
+  color: var(--warm-paper-accent, var(--accent));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.message-group--user .message-group__avatar {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.message-group__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.message-group__avatar-fallback {
+  line-height: 1;
+}
+
+.message-group__main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.message-group__identity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  min-height: 18px;
+  font-size: 12px;
+}
+
+.message-group--user .message-group__identity-row {
+  flex-direction: row-reverse;
+}
+
+.message-group__name {
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.message-group--user .message-group__name {
+  color: var(--accent);
+}
+
+.message-group__role {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.message-group__bubble {
+  max-width: min(100%, 720px);
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--warm-paper-border, var(--border));
+  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
+  color: var(--warm-paper-text, var(--text));
+  box-shadow: var(--warm-paper-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+  overflow-wrap: anywhere;
+}
+
+.message-group--assistant .message-group__bubble {
+  border-top-left-radius: 6px;
+}
+
+.message-group--user .message-group__bubble {
+  border-top-right-radius: 6px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.message-group--user .message-group__bubble .timeline-event-content,
+.message-group--user .message-group__bubble .message-markdown {
+  color: white;
+}
+
+.message-group--user .message-group__bubble .message-markdown a,
+.message-group--user .message-group__bubble .message-markdown code {
+  color: white;
+}
+
+.message-group--user .message-group__bubble .message-markdown code {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.message-group__bubble > .timeline-event-content,
+.message-group__bubble .timeline-event-content {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.message-group__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.message-group--user .message-group__footer {
+  flex-direction: row-reverse;
+}
+
+.message-group__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(-2px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.message-group:hover .message-group__actions,
+.message-group:focus-within .message-group__actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.message-group__action {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 8px;
+  line-height: 1.4;
+}
+
+.message-group__action:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.message-group__action:disabled,
+.message-group__action[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.message-group__action--time {
+  cursor: default;
+}
+
+.message-group--user .timeline-event-timestamp,
+.message-group--user .timeline-event-actor {
+  color: var(--muted);
+}
+
+.timeline-event-card--system-event {
+  align-self: flex-start;
+  max-width: min(92%, 760px);
+  padding: 8px 12px;
+  border-color: color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+.timeline-event-card--system-event .timeline-event-header {
+  margin-bottom: 4px;
+}
+
+.timeline-event-card--system-event .timeline-event-label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timeline-system-event-body {
+  font-size: 13px;
+}
+
+.timeline-event-card--system-event .tool-call-card,
+.timeline-event-card--system-event .approval-card,
+.timeline-event-card--system-event .bg-task-card {
+  max-width: 100%;
+  border-color: color-mix(in srgb, var(--border) 80%, transparent);
+  box-shadow: none;
+}
+
+.timeline-event-card--system-event .tool-call-card__header,
+.timeline-event-card--system-event .bg-task-card__header,
+.timeline-event-card--system-event .approval-card__header {
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+}
+
+.timeline-event-card--system-event .approval-card {
+  background: #fffdf1;
+  border-left-width: 2px;
+}
+
+.timeline-event-card--system-event .bg-task-card__message,
+.timeline-event-card--system-event .tool-call-card__body {
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+}
+
+.timeline-event-card--system-event .timeline-code-block {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.timeline-event-card--system-event .timeline-code-content {
+  color: #475569;
+}
+
 /* ==========================================================================
    Rich Session Console Tab Styles
    ========================================================================== */
