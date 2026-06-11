@@ -37,6 +37,10 @@ const MemoryTab: React.FC = () => {
     fetchMemories(searchQuery || undefined)
   }
 
+  const handleStartConversation = () => {
+    window.location.assign('/chat')
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSearch()
   }
@@ -163,7 +167,14 @@ const MemoryTab: React.FC = () => {
                   </button>
                 </div>
               ))}
-              {memories.length === 0 && <EmptyState icon="🧠" title="暂无记忆" description="系统还没有存储任何记忆" />}
+              {memories.length === 0 && (
+                <EmptyState
+                  icon="🧠"
+                  title="暂无记忆"
+                  description="与代理对话并允许保存长期记忆后，相关内容会显示在这里。"
+                  action={{ label: '开始对话', onClick: handleStartConversation }}
+                />
+              )}
             </div>
 
             {selectedMemory && (

@@ -77,6 +77,8 @@ describe('MemoryTab', () => {
     })
 
     expect(screen.getByText('暂无记忆')).toBeInTheDocument()
+    expect(screen.getByText('与代理对话并允许保存长期记忆后，相关内容会显示在这里。')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '开始对话' })).toBeInTheDocument()
   })
 
   it('shows error state on fetch failure', async () => {
