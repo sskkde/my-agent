@@ -39,6 +39,21 @@ const ChannelsTab: React.FC = () => {
 
   const { channels, loading, error } = data
 
+  const getLocalizedStatus = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return '活跃'
+      case 'inactive':
+        return '未启用'
+      case 'error':
+        return '异常'
+      case 'degraded':
+        return '降级'
+      default:
+        return status
+    }
+  }
+
   const getStatusClass = (status: string): string => {
     switch (status.toLowerCase()) {
       case 'connected':
@@ -96,7 +111,7 @@ const ChannelsTab: React.FC = () => {
                       <td className="cell-connector">{channel.connectorId}</td>
                       <td className="cell-type">{channel.type}</td>
                       <td className="cell-status">
-                        <span className={getStatusClass(channel.status)}>{channel.status}</span>
+                        <span className={getStatusClass(channel.status)}>{getLocalizedStatus(channel.status)}</span>
                       </td>
                       <td className="cell-configured">
                         {channel.configured ? (
@@ -127,7 +142,7 @@ const ChannelsTab: React.FC = () => {
                   </div>
                   <div className="channel-card__row">
                     <span className="channel-card__label">状态</span>
-                    <span className={getStatusClass(channel.status)}>{channel.status}</span>
+                    <span className={getStatusClass(channel.status)}>{getLocalizedStatus(channel.status)}</span>
                   </div>
                   <div className="channel-card__row">
                     <span className="channel-card__label">已配置</span>
