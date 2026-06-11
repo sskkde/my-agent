@@ -49,6 +49,7 @@ const SecondaryNav: React.FC<SecondaryNavProps> = ({
             role="tab"
             data-testid={`secondary-nav-${item.id}`}
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => onTabChange(item.id)}
             onKeyDown={(e) => handleKeyDown(e, item.id)}
             className={`secondary-nav__item ${isActive ? 'secondary-nav__item--active' : ''}`}
