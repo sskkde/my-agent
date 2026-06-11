@@ -55,6 +55,36 @@ const getRoleForEventType = (eventType: ConsoleTimelineEventType): MessageRole =
   }
 }
 
+const getMetadataString = (metadata: Record<string, unknown> | undefined, keys: string[]): string | undefined => {
+  for (const key of keys) {
+    const value = metadata?.[key]
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value
+    }
+  }
+  return undefined
+}
+
+const getInitials = (name: string): string => {
+  const trimmed = name.trim()
+  if (!trimmed) return 'A'
+  const words = trimmed.split(/\s+/).slice(0, 2)
+  return words.map((word) => word[0]?.toUpperCase() ?? '').join('') || 'A'
+}
+
+const isMessageEvent = (
+  event: ConsoleTimelineEvent,
+  isAssistantPlaceholder: boolean,
+  isStreamingDraft: boolean,
+): boolean => {
+  return (
+    event.eventType === 'user_message' ||
+    event.eventType === 'assistant_message' ||
+    isAssistantPlaceholder ||
+    isStreamingDraft
+  )
+}
+
 export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) => {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -94,17 +124,33 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
   const timestamp = formatTimestamp(event.timestamp)
   const messageMode: MessageMode = isStreamingDraft ? 'streaming' : 'static'
   const messageRole = getRoleForEventType(event.eventType)
+  const isChatMessage = isMessageEvent(event, isAssistantPlaceholder, isStreamingDraft)
+  const messageGroupRole = event.eventType === 'user_message' ? 'user' : 'assistant'
+  const messageDisplayName =
+    messageGroupRole === 'assistant'
+      ? (getMetadataString(event.metadata, ['assistantName', 'agentName', 'name']) ?? 'Agent')
+      : (getMetadataString(event.metadata, ['userName', 'displayName', 'name']) ?? 'You')
+  const assistantAvatarUrl = getMetadataString(event.metadata, ['assistantAvatarUrl', 'agentAvatarUrl', 'avatarUrl'])
+  const messageAvatarLabel = messageGroupRole === 'assistant' ? getInitials(messageDisplayName) : '你'
 
   const getEventClassName = (): string => {
     const baseClass = 'timeline-event-card'
-    if (isAssistantPlaceholder) {
-      return `${baseClass} timeline-event-card--assistant-placeholder`
-    }
-    if (isStreamingDraft) {
-      return `${baseClass} timeline-event-card--streaming-draft`
-    }
-    const typeClass = `timeline-event-card--${event.eventType}`
-    return `${baseClass} ${typeClass}`
+    const eventTypeClass = `timeline-event-card--${event.eventType}`
+    const stateClass = isAssistantPlaceholder
+      ? 'timeline-event-card--assistant-placeholder'
+      : isStreamingDraft
+        ? 'timeline-event-card--streaming-draft'
+        : ''
+    const typeClass = stateClass ? `${eventTypeClass} ${stateClass}` : eventTypeClass
+    const groupClass = isChatMessage
+      ? `message-group message-group--${messageGroupRole}`
+      : 'timeline-event-card--system-event'
+    return `${baseClass} ${typeClass} ${groupClass}`
+  }
+
+  const handleCopyMessage = () => {
+    if (!event.content || !navigator.clipboard) return
+    void navigator.clipboard.writeText(event.content)
   }
 
   const renderContent = (): React.ReactNode => {
@@ -121,11 +167,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
     if (isStreamingDraft) {
       return (
         <div className="timeline-event-content">
-          <MessageContent
-            text={event.content}
-            role={messageRole}
-            mode={messageMode}
-          />
+          <MessageContent text={event.content} role={messageRole} mode={messageMode} />
         </div>
       )
     }
@@ -144,11 +186,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
             </button>
             {isExpanded && event.content && (
               <div className="timeline-thinking-content">
-                <MessageContent
-                  text={event.content}
-                  role={messageRole}
-                  mode={messageMode}
-                />
+                <MessageContent text={event.content} role={messageRole} mode={messageMode} />
               </div>
             )}
           </div>
@@ -192,11 +230,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         }
         return event.content ? (
           <div className="timeline-event-content">
-            <MessageContent
-              text={event.content}
-              role={messageRole}
-              mode={messageMode}
-            />
+            <MessageContent text={event.content} role={messageRole} mode={messageMode} />
           </div>
         ) : null
 
@@ -225,37 +259,80 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         }
         return event.content ? (
           <div className="timeline-event-content">
-            <MessageContent
-              text={event.content}
-              role={messageRole}
-              mode={messageMode}
-            />
+            <MessageContent text={event.content} role={messageRole} mode={messageMode} />
           </div>
         ) : null
 
       default:
         return event.content ? (
           <div className="timeline-event-content">
-            <MessageContent
-              text={event.content}
-              role={messageRole}
-              mode={messageMode}
-            />
+            <MessageContent text={event.content} role={messageRole} mode={messageMode} />
           </div>
         ) : null
     }
   }
 
+  const testId = isAssistantPlaceholder
+    ? 'assistant-placeholder'
+    : isStreamingDraft
+      ? 'streaming-assistant-draft'
+      : `timeline-event-${event.eventId}`
+
+  if (isChatMessage) {
+    return (
+      <div
+        className={getEventClassName()}
+        data-testid={testId}
+        data-event-type={event.eventType}
+        data-is-command={event.actor === 'command' ? 'true' : undefined}
+        data-attempt-id={attemptId}
+      >
+        <div className="message-group__avatar" aria-hidden="true">
+          {messageGroupRole === 'assistant' && assistantAvatarUrl ? (
+            <img src={assistantAvatarUrl} alt="" className="message-group__avatar-image" />
+          ) : (
+            <span className="message-group__avatar-fallback">{messageAvatarLabel}</span>
+          )}
+        </div>
+        <div className="message-group__main">
+          <div className="message-group__identity-row timeline-event-header">
+            <span className="message-group__name timeline-event-label">{messageDisplayName}</span>
+            <span className="message-group__role">{label}</span>
+            {event.actor && <span className="timeline-event-actor">@{event.actor}</span>}
+          </div>
+          <div className="message-group__bubble timeline-event-body">
+            <div className="timeline-event-content">{renderContent()}</div>
+          </div>
+          <div className="message-group__footer">
+            <span className="message-group__timestamp timeline-event-timestamp">{timestamp}</span>
+            <div className="message-group__actions" aria-label="Message actions">
+              <button
+                className="message-group__action"
+                type="button"
+                onClick={handleCopyMessage}
+                disabled={!event.content}
+              >
+                复制
+              </button>
+              {messageGroupRole === 'assistant' && (
+                <button className="message-group__action" type="button" aria-disabled="true">
+                  重试
+                </button>
+              )}
+              <span className="message-group__action message-group__action--time" aria-label={`时间 ${timestamp}`}>
+                时间
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={getEventClassName()}
-      data-testid={
-        isAssistantPlaceholder
-          ? 'assistant-placeholder'
-          : isStreamingDraft
-            ? 'streaming-assistant-draft'
-            : `timeline-event-${event.eventId}`
-      }
+      data-testid={testId}
       data-event-type={event.eventType}
       data-is-command={event.actor === 'command' ? 'true' : undefined}
       data-attempt-id={attemptId}
@@ -265,7 +342,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         <span className="timeline-event-timestamp">{timestamp}</span>
         {event.actor && <span className="timeline-event-actor">@{event.actor}</span>}
       </div>
-      <div className="timeline-event-body">{renderContent()}</div>
+      <div className="timeline-event-body timeline-system-event-body">{renderContent()}</div>
     </div>
   )
 }
