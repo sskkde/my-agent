@@ -69,6 +69,23 @@ describe('WorkflowsTab', () => {
     })
   })
 
+  it('renders Chinese step type labels while preserving enum values', async () => {
+    render(<WorkflowsTab />)
+    await waitFor(() => {
+      expect(screen.getByTestId('workflows-panel')).toBeInTheDocument()
+    })
+
+    const select = screen.getByTestId('workflow-step-type-0') as HTMLSelectElement
+    expect(select).toHaveValue('tool_call')
+    expect(Array.from(select.options).map((option) => ({ label: option.text, value: option.value }))).toEqual([
+      { label: '工具调用', value: 'tool_call' },
+      { label: '代理运行', value: 'agent_run' },
+      { label: '子代理运行', value: 'subagent_run' },
+      { label: '审批', value: 'approval' },
+      { label: '等待', value: 'wait' },
+    ])
+  })
+
   it('blocks publish for empty workflow with validation errors', async () => {
     render(<WorkflowsTab />)
     await waitFor(() => {
@@ -82,6 +99,8 @@ describe('WorkflowsTab', () => {
     })
 
     expect(screen.getByText(/工作流名称不能为空/)).toBeInTheDocument()
+    expect(screen.getByText(/缺少工作流名称/)).toBeInTheDocument()
+    expect(screen.queryByText(/MISSING_NAME/)).not.toBeInTheDocument()
     expect(screen.getByTestId('workflow-publish')).toBeDisabled()
   })
 
@@ -210,6 +229,8 @@ describe('WorkflowsTab', () => {
       expect(screen.getByTestId('workflow-validation-errors')).toBeInTheDocument()
     })
 
+    expect(screen.getAllByText(/缺少工具名称/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/MISSING_TOOL_NAME/)).not.toBeInTheDocument()
     expect(screen.getByTestId('workflow-publish')).toBeDisabled()
     await userEvent.click(screen.getByTestId('workflow-publish'))
     expect(client.publishWorkflowDraft).not.toHaveBeenCalled()
@@ -285,7 +306,9 @@ describe('WorkflowsTab', () => {
     })
 
     expect(screen.getByTestId('workflow-run-id')).toHaveTextContent('run-1')
-    expect(screen.getByTestId('workflow-run-status')).toHaveTextContent('pending')
+    expect(screen.getByTestId('workflow-run-status')).toHaveTextContent('待处理')
+    expect(screen.getByTestId('workflow-run-result')).toHaveTextContent('s1: 待处理')
+    expect(screen.getByTestId('workflow-run-result')).not.toHaveTextContent('pending')
   })
 
   it('adds and removes steps', async () => {
@@ -309,15 +332,18 @@ describe('WorkflowsTab', () => {
     expect(screen.getByTestId('workflow-step-0')).toBeInTheDocument()
   })
 
-  it('displays existing drafts in sidebar', async () => {
+  it('displays existing drafts in sidebar with localized draft status', async () => {
     vi.mocked(client.listWorkflowDrafts).mockResolvedValue([
-      makeDraft({ draftId: 'draft-existing', name: 'Existing Draft' }),
+      makeDraft({ draftId: 'draft-existing', name: 'Existing Draft', status: 'validating' }),
     ])
 
     render(<WorkflowsTab />)
     await waitFor(() => {
       expect(screen.getByText('Existing Draft')).toBeInTheDocument()
     })
+
+    expect(screen.getByText('验证中')).toBeInTheDocument()
+    expect(screen.queryByText('validating')).not.toBeInTheDocument()
   })
 
   it('shows error when save fails', async () => {
