@@ -8,8 +8,7 @@ import type {
   WorkflowStepType,
   WorkflowValidationIssue,
 } from '../../api/types'
-
-const SUPPORTED_STEP_TYPES: WorkflowStepType[] = ['tool_call', 'agent_run', 'subagent_run', 'approval', 'wait']
+import { WORKFLOW_STEP_TYPES, getWorkflowStatusLabel, getWorkflowStepTypeLabel } from '../../i18n/labels'
 
 function createEmptyStep(index: number): WorkflowStep {
   return {
@@ -301,7 +300,7 @@ const WorkflowsTab: React.FC = () => {
               data-testid={`workflow-draft-${d.draftId}`}
             >
               <span className="draft-name">{d.name}</span>
-              <span className="draft-status">{d.status}</span>
+              <span className="draft-status">{getWorkflowStatusLabel(d.status)}</span>
             </button>
           ))}
         </div>
@@ -454,11 +453,11 @@ const WorkflowsTab: React.FC = () => {
                       className="input-field"
                       data-testid={`workflow-step-type-${index}`}
                       value={step.stepType}
-                      onChange={(e) => handleStepChange(index, 'stepType', e.target.value)}
+                      onChange={(e) => handleStepChange(index, 'stepType', e.target.value as WorkflowStepType)}
                     >
-                      {SUPPORTED_STEP_TYPES.map((t) => (
+                      {WORKFLOW_STEP_TYPES.map((t) => (
                         <option key={t} value={t}>
-                          {t}
+                          {getWorkflowStepTypeLabel(t)}
                         </option>
                       ))}
                     </select>
@@ -574,7 +573,7 @@ const WorkflowsTab: React.FC = () => {
               <div className="run-field">
                 <span className="run-label">状态:</span>
                 <span className="run-value" data-testid="workflow-run-status">
-                  {runResult.status}
+                  {getWorkflowStatusLabel(runResult.status)}
                 </span>
               </div>
               <div className="run-field">
@@ -586,7 +585,7 @@ const WorkflowsTab: React.FC = () => {
                   <span className="run-label">步骤:</span>
                   {runResult.stepRuns.map((sr) => (
                     <div key={sr.stepRunId} className="run-step-item">
-                      {sr.stepId}: {sr.status}
+                      {sr.stepId}: {getWorkflowStatusLabel(sr.status)}
                     </div>
                   ))}
                 </div>

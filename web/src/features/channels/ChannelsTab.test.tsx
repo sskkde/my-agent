@@ -78,8 +78,8 @@ describe('ChannelsTab', () => {
     expect(screen.getAllByText('discord-1').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('slack').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('discord').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('connected').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('disconnected').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('已连接').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('已断开').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows configured checkmark correctly in desktop table', async () => {
@@ -189,7 +189,7 @@ describe('ChannelsTab', () => {
     const card = screen.getByTestId('channel-card-0')
     expect(card).toHaveTextContent('slack-1')
     expect(card).toHaveTextContent('slack')
-    expect(card).toHaveTextContent('connected')
+    expect(card).toHaveTextContent('已连接')
     expect(card).toHaveTextContent('✓')
   })
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { getUsage } from '../../api/client'
 import type { UsageResponse, UsageSummary } from '../../api/types'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import { formatNumberZhCN, formatUsdCents } from '../../i18n/labels'
 
 interface UsageState {
   data: UsageResponse | null
@@ -60,15 +61,6 @@ const UsageTab: React.FC = () => {
     )
   }
 
-  const formatCost = (cents: number | null): string => {
-    if (cents === null) return '未配置'
-    return `$${(cents / 100).toFixed(2)}`
-  }
-
-  const formatNumber = (num: number): string => {
-    return num.toLocaleString()
-  }
-
   const truncateSessionId = (sessionId: string): string => {
     return sessionId.slice(0, 12)
   }
@@ -116,28 +108,28 @@ const UsageTab: React.FC = () => {
       <div className="usage-aggregates">
         <div className="usage-card">
           <div className="usage-card__label">总会话数</div>
-          <div className="usage-card__value">{formatNumber(aggregates.totalSessions)}</div>
+          <div className="usage-card__value">{formatNumberZhCN(aggregates.totalSessions)}</div>
         </div>
         <div className="usage-card">
           <div className="usage-card__label">总消息数</div>
-          <div className="usage-card__value">{formatNumber(aggregates.totalMessages)}</div>
+          <div className="usage-card__value">{formatNumberZhCN(aggregates.totalMessages)}</div>
         </div>
         <div className="usage-card">
           <div className="usage-card__label">总工具调用</div>
-          <div className="usage-card__value">{formatNumber(aggregates.totalToolCalls)}</div>
+          <div className="usage-card__value">{formatNumberZhCN(aggregates.totalToolCalls)}</div>
         </div>
         <div className="usage-card">
           <div className="usage-card__label">总审批数</div>
-          <div className="usage-card__value">{formatNumber(aggregates.totalApprovals)}</div>
+          <div className="usage-card__value">{formatNumberZhCN(aggregates.totalApprovals)}</div>
         </div>
         <div className="usage-card">
           <div className="usage-card__label">总Token数</div>
-          <div className="usage-card__value">{formatNumber(aggregates.totalTokens)}</div>
+          <div className="usage-card__value">{formatNumberZhCN(aggregates.totalTokens)}</div>
         </div>
         <div className="usage-card">
           <div className="usage-card__label">预估总成本</div>
           <div className={`usage-card__value ${!aggregates.hasCostConfigured ? 'usage-card__value--muted' : ''}`}>
-            {aggregates.hasCostConfigured ? formatCost(aggregates.totalCostCents) : '未配置'}
+            {aggregates.hasCostConfigured ? formatUsdCents(aggregates.totalCostCents) : '未配置'}
           </div>
         </div>
       </div>
@@ -160,11 +152,11 @@ const UsageTab: React.FC = () => {
               {usages.map((usage) => (
                 <tr key={usage.sessionId}>
                   <td className="usage-table__session-id">{truncateSessionId(usage.sessionId)}</td>
-                  <td>{formatNumber(usage.messageCount)}</td>
-                  <td>{formatNumber(usage.estimatedTotalTokens)}</td>
+                  <td>{formatNumberZhCN(usage.messageCount)}</td>
+                  <td>{formatNumberZhCN(usage.estimatedTotalTokens)}</td>
                   <td>
                     <span className={usage.estimatedCostCents === null ? 'usage-cost--muted' : ''}>
-                      {formatCost(usage.estimatedCostCents)}
+                      {formatUsdCents(usage.estimatedCostCents)}
                     </span>
                   </td>
                 </tr>
@@ -185,11 +177,11 @@ const UsageTab: React.FC = () => {
               </div>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">消息数</span>
-                <span className="usage-mobile-card__value">{formatNumber(usage.messageCount)}</span>
+                <span className="usage-mobile-card__value">{formatNumberZhCN(usage.messageCount)}</span>
               </div>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">Token数</span>
-                <span className="usage-mobile-card__value">{formatNumber(usage.estimatedTotalTokens)}</span>
+                <span className="usage-mobile-card__value">{formatNumberZhCN(usage.estimatedTotalTokens)}</span>
               </div>
               <div className="usage-mobile-card__row">
                 <span className="usage-mobile-card__label">预估成本</span>
@@ -198,7 +190,7 @@ const UsageTab: React.FC = () => {
                     usage.estimatedCostCents === null ? 'usage-mobile-card__value--muted' : ''
                   }`}
                 >
-                  {formatCost(usage.estimatedCostCents)}
+                  {formatUsdCents(usage.estimatedCostCents)}
                 </span>
               </div>
             </div>

@@ -17,6 +17,7 @@ import type {
   UpdateAgentUserOverrideRequest,
 } from '../../api/types'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import { getSkillTypeLabel, getToolDisplayName } from '../../i18n/labels'
 
 interface FormData {
   providerId: string
@@ -514,7 +515,7 @@ const AgentsTab: React.FC = () => {
                       data-testid={`tool-checkbox-${tool.name}`}
                     />
                     <span className="multi-select-label">
-                      <span className="multi-select-name">{tool.name}</span>
+                      <span className="multi-select-name">{getToolDisplayName(tool.name)}</span>
                       <span className="multi-select-desc">{tool.description}</span>
                     </span>
                   </label>
@@ -546,7 +547,7 @@ const AgentsTab: React.FC = () => {
                 />
                 <span className="multi-select-label">
                   <span className="multi-select-name">{skill.name}</span>
-                  <span className={`type-badge ${skill.type.toLowerCase()}`}>{skill.type}</span>
+                  <span className={`type-badge ${skill.type.toLowerCase()}`}>{getSkillTypeLabel(skill.type)}</span>
                 </span>
               </label>
             ))}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { getChannels } from '../../api/client'
 import type { ChannelSummary } from '../../api/types'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import { getChannelStatusLabel } from '../../i18n/labels'
 
 interface ChannelsData {
   channels: ChannelSummary[]
@@ -96,7 +97,7 @@ const ChannelsTab: React.FC = () => {
                       <td className="cell-connector">{channel.connectorId}</td>
                       <td className="cell-type">{channel.type}</td>
                       <td className="cell-status">
-                        <span className={getStatusClass(channel.status)}>{channel.status}</span>
+                        <span className={getStatusClass(channel.status)}>{getChannelStatusLabel(channel.status)}</span>
                       </td>
                       <td className="cell-configured">
                         {channel.configured ? (
@@ -127,7 +128,7 @@ const ChannelsTab: React.FC = () => {
                   </div>
                   <div className="channel-card__row">
                     <span className="channel-card__label">状态</span>
-                    <span className={getStatusClass(channel.status)}>{channel.status}</span>
+                    <span className={getStatusClass(channel.status)}>{getChannelStatusLabel(channel.status)}</span>
                   </div>
                   <div className="channel-card__row">
                     <span className="channel-card__label">已配置</span>

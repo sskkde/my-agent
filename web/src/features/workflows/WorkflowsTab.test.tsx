@@ -285,7 +285,7 @@ describe('WorkflowsTab', () => {
     })
 
     expect(screen.getByTestId('workflow-run-id')).toHaveTextContent('run-1')
-    expect(screen.getByTestId('workflow-run-status')).toHaveTextContent('pending')
+    expect(screen.getByTestId('workflow-run-status')).toHaveTextContent('待处理')
   })
 
   it('adds and removes steps', async () => {
