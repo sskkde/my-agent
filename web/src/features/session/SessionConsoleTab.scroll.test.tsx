@@ -325,7 +325,7 @@ describe('Scroll Container Structure (Mobile)', () => {
     const inputDock = await screen.findByTestId('session-message-input')
     expect(inputDock).toBeVisible()
 
-    const dock = inputDock.closest('.session-input-dock')
+    const dock = inputDock.closest('.composer-dock')
     expect(dock).toBeTruthy()
   })
 })
