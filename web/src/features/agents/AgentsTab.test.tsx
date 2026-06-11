@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import AgentsTab from './AgentsTab'
 import * as client from '../../api/client'
 import type { AgentConfig, ProviderSummary, ToolsResponse, SkillsResponse } from '../../api/types'
@@ -74,15 +74,35 @@ describe('AgentsTab', () => {
 
   const mockTools: ToolsResponse = {
     tools: [
+      {
+        name: 'artifact_create',
+        description: 'Create a new artifact with the given title and content',
+        category: 'write',
+        sensitivity: 'medium',
+      },
+      {
+        name: 'memory_retrieve',
+        description: 'Retrieve memory records from session or user memory',
+        category: 'read',
+        sensitivity: 'medium',
+      },
+      {
+        name: 'web_search',
+        description: 'Search the public web for information using an external search provider',
+        category: 'search',
+        sensitivity: 'medium',
+      },
       { name: 'read_file', description: 'Read file contents', category: 'read', sensitivity: 'low' },
       { name: 'write_file', description: 'Write file contents', category: 'write', sensitivity: 'medium' },
       { name: 'execute_command', description: 'Execute shell command', category: 'execute', sensitivity: 'high' },
     ],
-    total: 3,
+    total: 6,
   }
 
   const mockSkills: SkillsResponse = {
     skills: [
+      { skillId: 'artifact_create', name: 'artifact_create', type: 'builtin', enabled: true },
+      { skillId: 'memory_retrieve', name: 'memory_retrieve', type: 'builtin', enabled: true },
       { skillId: 'git', name: 'Git', type: 'native', enabled: true },
       { skillId: 'docker', name: 'Docker', type: 'native', enabled: true },
       { skillId: 'custom-skill', name: 'Custom Skill', type: 'custom', enabled: false },
@@ -192,12 +212,69 @@ describe('AgentsTab', () => {
       })
     })
 
+    it('should display localized built-in tool names while preserving English IDs', async () => {
+      render(<AgentsTab />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tools-multi-select')).toBeInTheDocument()
+      })
+
+      const toolsList = within(screen.getByTestId('tools-multi-select'))
+      expect(toolsList.getByText('创建工件')).toBeInTheDocument()
+      expect(toolsList.getByText('(artifact_create)')).toBeInTheDocument()
+      expect(toolsList.getByText('检索记忆')).toBeInTheDocument()
+      expect(toolsList.getByText('(memory_retrieve)')).toBeInTheDocument()
+      expect(toolsList.getByText('网络搜索')).toBeInTheDocument()
+      expect(toolsList.getByText('(web_search)')).toBeInTheDocument()
+      expect(toolsList.getByText('使用指定标题和内容创建新的工件。')).toBeInTheDocument()
+    })
+
+    it('should fall back to original tool name and description for unknown tools', async () => {
+      render(<AgentsTab />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tools-multi-select')).toBeInTheDocument()
+      })
+
+      const toolsList = within(screen.getByTestId('tools-multi-select'))
+      expect(toolsList.getByText('read_file')).toBeInTheDocument()
+      expect(toolsList.getByText('(read_file)')).toBeInTheDocument()
+      expect(toolsList.getByText('Read file contents')).toBeInTheDocument()
+    })
+
     it('should display skills multi-select', async () => {
       render(<AgentsTab />)
 
       await waitFor(() => {
         expect(screen.getByTestId('skills-multi-select')).toBeInTheDocument()
       })
+    })
+
+    it('should display localized built-in skill names while preserving English IDs', async () => {
+      render(<AgentsTab />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('skills-multi-select')).toBeInTheDocument()
+      })
+
+      const skillsList = within(screen.getByTestId('skills-multi-select'))
+      expect(skillsList.getByText('创建工件')).toBeInTheDocument()
+      expect(skillsList.getByText('(artifact_create)')).toBeInTheDocument()
+      expect(skillsList.getByText('检索记忆')).toBeInTheDocument()
+      expect(skillsList.getByText('(memory_retrieve)')).toBeInTheDocument()
+      expect(skillsList.getByText('使用指定标题和内容创建新的工件。')).toBeInTheDocument()
+    })
+
+    it('should fall back to original skill name while preserving the skill ID', async () => {
+      render(<AgentsTab />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('skills-multi-select')).toBeInTheDocument()
+      })
+
+      const skillsList = within(screen.getByTestId('skills-multi-select'))
+      expect(skillsList.getByText('Git')).toBeInTheDocument()
+      expect(skillsList.getByText('(git)')).toBeInTheDocument()
     })
 
     it('should display timeout input', async () => {
