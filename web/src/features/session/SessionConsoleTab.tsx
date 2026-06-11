@@ -23,6 +23,7 @@ import { SessionSidebar } from './components/SessionSidebar'
 import { TimelinePanel } from './components/TimelinePanel'
 import { SessionEmptyState } from './components/SessionEmptyState'
 import { MobileSessionDrawer } from './components/MobileSessionDrawer'
+import ComposerDock from '../../components/ComposerDock'
 
 interface SessionConsoleTabProps {
   setActiveTab?: (tabId: TabId) => void
@@ -330,7 +331,6 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     sendError,
     setSendError,
     handleSend,
-    handleKeyDown,
     localCommandEvents,
     localMessageEvents,
     clearPostSendPollTimeout,
@@ -714,26 +714,13 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
             />
 
             {/* Input Dock */}
-            <div className="session-input-dock">
-              <input
-                type="text"
-                className="session-input"
-                data-testid="session-message-input"
-                placeholder="输入消息或 /help 查看命令..."
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={sending}
-              />
-              <button
-                className="session-send-button"
-                data-testid="session-send-button"
-                onClick={handleSend}
-                disabled={!draft.trim() || sending}
-              >
-                {sending ? '发送中...' : '发送'}
-              </button>
-            </div>
+            <ComposerDock
+              value={draft}
+              onChange={setDraft}
+              onSend={handleSend}
+              sending={sending}
+              placeholder="输入消息或 /help 查看命令..."
+            />
           </>
         )}
       </main>

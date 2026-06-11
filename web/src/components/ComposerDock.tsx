@@ -79,15 +79,18 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
         disabled={sending}
         rows={1}
       />
-      <button
-        className="composer-send-button"
-        data-testid="session-send-button"
-        onClick={handleSendClick}
-        disabled={isSendDisabled}
-        type="button"
-      >
-        {sending ? '发送中...' : '发送'}
-      </button>
+      <div className="composer-actions-row">
+        <div className="composer-toolbar" aria-hidden="true" />
+        <button
+          className="composer-send-button"
+          data-testid="session-send-button"
+          onClick={handleSendClick}
+          disabled={isSendDisabled}
+          type="button"
+        >
+          {sending ? '发送中...' : '发送'}
+        </button>
+      </div>
     </div>
   )
 }

@@ -47,6 +47,12 @@ describe('ComposerDock', () => {
 
       expect(container.querySelector('.custom-dock')).toBeInTheDocument()
     })
+
+    it('renders an empty toolbar slot for future composer actions', () => {
+      const { container } = render(<ComposerDock value="" onChange={mockOnChange} onSend={mockOnSend} />)
+
+      expect(container.querySelector('.composer-toolbar')).toBeInTheDocument()
+    })
   })
 
   // =============================================================================
