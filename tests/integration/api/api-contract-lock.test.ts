@@ -132,6 +132,18 @@ describe('API Contract Lock', () => {
       expect(body.ok).toBe(true)
       expect(body.data.session.sessionId).toBeDefined()
       expect(body.data.session.userId).toBeDefined()
+
+      const listResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
+        headers: { Cookie: authCookie },
+      })
+      expect(listResponse.status).toBe(200)
+
+      const listBody = (await listResponse.json()) as {
+        data: { items: Array<{ sessionId: string; title: string }> }
+      }
+      const createdSession = listBody.data.items.find((session) => session.sessionId === body.data.session.sessionId)
+
+      expect(createdSession?.title).toMatch(/^新会话 \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/)
     })
 
     it('GET /api/v1/sessions/:sessionId should return 200 with session details', async () => {
