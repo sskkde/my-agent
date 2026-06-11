@@ -40,7 +40,7 @@ export interface NavGroup {
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'chat',
-    label: 'Chat',
+    label: '会话',
     testId: 'nav-group-chat',
     items: [
       {
@@ -54,7 +54,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'control',
-    label: 'Control',
+    label: '控制',
     testId: 'nav-group-control',
     items: [
       {
@@ -145,7 +145,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'agent',
-    label: 'Agent',
+    label: '代理',
     testId: 'nav-group-agent',
     items: [
       {
@@ -187,7 +187,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'settings',
-    label: 'Settings',
+    label: '设置',
     testId: 'nav-group-settings',
     items: [
       {

@@ -45,12 +45,12 @@ describe('AgentShell', () => {
         </AgentShell>,
       )
 
-      // Product section labels (English) - check they are in product nav buttons
+      // Product section labels (Chinese) - check they are in product nav buttons
       const productNav = screen.getByTestId('product-nav')
-      expect(productNav).toHaveTextContent('Chat')
-      expect(productNav).toHaveTextContent('Workspace')
-      expect(productNav).toHaveTextContent('Operations')
-      expect(productNav).toHaveTextContent('Admin')
+      expect(productNav).toHaveTextContent('会话')
+      expect(productNav).toHaveTextContent('工作区')
+      expect(productNav).toHaveTextContent('运维')
+      expect(productNav).toHaveTextContent('管理')
     })
 
     it('marks active product section with aria-current="page"', () => {
