@@ -32,7 +32,7 @@ describe('SecondaryNav', () => {
     expect(screen.getByText('可观测')).toBeInTheDocument()
   })
 
-  it('marks active tab with aria-selected true', () => {
+  it('marks only the active tab with aria-selected true', () => {
     render(<SecondaryNav items={defaultItems} activeTabId="memory" onTabChange={mockOnChange} />)
 
     expect(screen.getByTestId('secondary-nav-memory')).toHaveAttribute('aria-selected', 'true')
@@ -40,11 +40,22 @@ describe('SecondaryNav', () => {
     expect(screen.getByTestId('secondary-nav-observability')).toHaveAttribute('aria-selected', 'false')
   })
 
-  it('applies active class to active tab', () => {
+  it('keeps the active tab in the tab order for keyboard accessibility', () => {
+    render(<SecondaryNav items={defaultItems} activeTabId="memory" onTabChange={mockOnChange} />)
+
+    expect(screen.getByTestId('secondary-nav-memory')).toHaveAttribute('tabindex', '0')
+    expect(screen.getByTestId('secondary-nav-approvals')).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByTestId('secondary-nav-observability')).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('applies active class only to the active tab', () => {
     render(<SecondaryNav items={defaultItems} activeTabId="observability" onTabChange={mockOnChange} />)
 
     const activeTab = screen.getByTestId('secondary-nav-observability')
+    const inactiveTab = screen.getByTestId('secondary-nav-approvals')
+
     expect(activeTab).toHaveClass('secondary-nav__item--active')
+    expect(inactiveTab).not.toHaveClass('secondary-nav__item--active')
   })
 
   it('calls onTabChange when tab is clicked', () => {
@@ -73,14 +84,16 @@ describe('SecondaryNav', () => {
   it('renders empty state message when items array is empty', () => {
     render(<SecondaryNav items={[]} activeTabId="approvals" onTabChange={mockOnChange} />)
 
-    expect(screen.getByText('暂无导航项')).toBeInTheDocument()
+    expect(screen.getByText('暂无导航项')).toHaveClass('secondary-nav__empty')
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
   })
 
-  it('renders nav element with correct role and aria-label', () => {
+  it('renders nav element with correct role, aria-label, and styling hook', () => {
     render(<SecondaryNav items={defaultItems} activeTabId="approvals" onTabChange={mockOnChange} />)
 
     const nav = screen.getByRole('tablist')
     expect(nav).toHaveAttribute('aria-label', '二级导航')
+    expect(nav).toHaveClass('secondary-nav')
   })
 
   it('renders buttons with type="button"', () => {

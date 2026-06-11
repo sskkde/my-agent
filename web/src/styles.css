@@ -10018,6 +10018,65 @@ body {
 }
 
 /* ==========================================================================
+   Secondary Navigation Bar
+   ========================================================================== */
+
+.secondary-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
+  border-bottom: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, var(--border));
+  flex-shrink: 0;
+}
+
+.secondary-nav__item {
+  appearance: none;
+  border: none;
+  min-height: 36px;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--warm-paper-text-secondary, var(--muted));
+  background: transparent;
+  border-radius: var(--warm-paper-radius-sm, 4px);
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.secondary-nav__item:hover {
+  color: var(--warm-paper-text, var(--text));
+  background: var(--warm-paper-hover-overlay, rgba(0, 0, 0, 0.02));
+}
+
+.secondary-nav__item:focus-visible {
+  outline: 2px solid var(--warm-paper-focus-ring, rgba(37, 99, 235, 0.3));
+  outline-offset: 2px;
+}
+
+.secondary-nav__item--active {
+  color: var(--warm-paper-accent, var(--accent));
+  background: var(--warm-paper-accent-subtle, rgba(91, 140, 133, 0.08));
+  font-weight: 600;
+}
+
+.secondary-nav__item--active:hover {
+  background: var(--warm-paper-accent-subtle, rgba(91, 140, 133, 0.12));
+}
+
+.secondary-nav__empty {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  color: var(--warm-paper-text-muted, var(--muted));
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+/* ==========================================================================
    Center Stage (Main Content Area)
    ========================================================================== */
 
@@ -10526,20 +10585,24 @@ body {
 
 /* Tablet and smaller: Allow horizontal scroll for product nav */
 @media (max-width: 768px) {
-  .product-nav {
+  .product-nav,
+  .secondary-nav {
     overflow-x: auto;
     overflow-y: hidden;
+    flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
     /* Hide scrollbar on mobile */
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
 
-  .product-nav::-webkit-scrollbar {
+  .product-nav::-webkit-scrollbar,
+  .secondary-nav::-webkit-scrollbar {
     display: none;
   }
 
-  .product-nav__item {
+  .product-nav__item,
+  .secondary-nav__item {
     flex-shrink: 0;
     white-space: nowrap;
     min-height: var(--mobile-touch-target);
@@ -10568,7 +10631,13 @@ body {
     gap: 2px;
   }
 
-  .product-nav__item {
+  .secondary-nav {
+    padding: 8px var(--mobile-content-padding);
+    gap: 2px;
+  }
+
+  .product-nav__item,
+  .secondary-nav__item {
     padding: 8px 12px;
     font-size: 13px;
   }
