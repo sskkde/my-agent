@@ -27,25 +27,31 @@ export const TimelinePanel: React.FC<TimelinePanelProps> = ({
   return (
     <>
       {/* Timeline Header */}
-      <div className="timeline-header">
-        {/* Mobile session sidebar toggle */}
-        <button
-          className="session-sidebar-toggle"
-          data-testid="session-sidebar-toggle"
-          onClick={onToggleSidebar}
-          aria-controls="sessions-sidebar"
-          aria-label="打开会话列表"
-          aria-expanded={isDrawerOpen}
-        >
-          ☰
-        </button>
-        <h3>{sessionTitle}</h3>
-        <StreamStatusIndicator streamStatus={streamStatus} onRetry={onRetryStream} />
+      <div className="timeline-toolbar-stage">
+        <div className="timeline-header">
+          {/* Mobile session sidebar toggle */}
+          <button
+            className="session-sidebar-toggle"
+            data-testid="session-sidebar-toggle"
+            onClick={onToggleSidebar}
+            aria-controls="sessions-sidebar"
+            aria-label="打开会话列表"
+            aria-expanded={isDrawerOpen}
+          >
+            ☰
+          </button>
+          <h3>{sessionTitle}</h3>
+          <StreamStatusIndicator streamStatus={streamStatus} onRetry={onRetryStream} />
+        </div>
       </div>
 
       {/* Timeline */}
       <div className="session-timeline-container" data-testid="session-timeline">
-        <TimelineList events={events} loading={loading} error={error} />
+        <div className="timeline-stage">
+          <div className="timeline-column">
+            <TimelineList events={events} loading={loading} error={error} />
+          </div>
+        </div>
       </div>
     </>
   )
