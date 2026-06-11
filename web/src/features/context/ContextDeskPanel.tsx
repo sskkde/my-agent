@@ -27,6 +27,8 @@ import type {
   ToolActivityCardData,
 } from './card-contracts'
 import type { CardState } from './card-state'
+import { isReady } from './card-state'
+import type { TabId } from '../../components/TabNav'
 
 // =============================================================================
 // Error Boundary for Card Isolation
@@ -78,6 +80,7 @@ export interface ContextDeskPanelProps {
   runsState: CardState<RunsCardData>
   toolActivityState: CardState<ToolActivityCardData>
   sessionId?: string | null
+  activeTab?: TabId
   maxItems?: number
   className?: string
   testId?: string
@@ -91,7 +94,7 @@ export interface ContextDeskPanelProps {
  * Error fallback for individual cards
  */
 const CardErrorFallback = (err: Error): ReactNode => (
-  <div className="context-card context-card--error">
+  <div className="context-card companion-card context-card--error">
     <div className="context-card__error">
       <span className="context-card__error-icon">⚠️</span>
       <span className="context-card__error-text">
@@ -120,40 +123,92 @@ const ContextDeskPanel: React.FC<ContextDeskPanelProps> = ({
   runsState,
   toolActivityState,
   sessionId,
+  activeTab,
   maxItems = 5,
   className = '',
   testId = 'context-desk-panel',
 }) => {
+  const scopedSessionId = sessionId || null
+  const sessionLabel = scopedSessionId ?? '未选择会话'
+  const activeRun = isReady(runsState)
+    ? runsState.data.runs.find((run) => run.status === 'running') ?? runsState.data.runs[0]
+    : null
+  const pendingApprovalCount = isReady(approvalState)
+    ? approvalState.data.approvals.filter((approval) => approval.status === 'pending').length
+    : null
+
   return (
     <div
-      className={`context-desk-panel ${className}`}
+      className={`context-desk-panel companion-panel ${className}`}
       data-testid={testId}
+      data-active-tab={activeTab}
+      data-session-id={scopedSessionId ?? undefined}
     >
-      <div className="context-desk-panel__grid">
-        {/* Approvals Card */}
-        <CardErrorBoundary fallback={CardErrorFallback}>
-          <ApprovalCard state={approvalState} maxItems={maxItems} />
-        </CardErrorBoundary>
+      <section className="companion-section" aria-labelledby="context-current-session-title">
+        <div className="companion-section__header">
+          <h3 id="context-current-session-title" className="companion-section__title">当前 Session</h3>
+        </div>
+        <div className="companion-card companion-card--summary" data-testid="context-current-session">
+          <dl className="context-session-summary">
+            <div className="context-session-summary__row">
+              <dt>Session</dt>
+              <dd>{sessionLabel}</dd>
+            </div>
+            <div className="context-session-summary__row">
+              <dt>Active tab</dt>
+              <dd>{activeTab ?? 'unknown'}</dd>
+            </div>
+            <div className="context-session-summary__row">
+              <dt>Active run</dt>
+              <dd>{activeRun ? (activeRun.objective || activeRun.runId) : '暂无活动 run'}</dd>
+            </div>
+            <div className="context-session-summary__row">
+              <dt>Pending approvals</dt>
+              <dd>{pendingApprovalCount ?? '—'}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
 
-        {/* Memory Card */}
+      <section className="companion-section" aria-labelledby="context-active-run-title">
+        <div className="companion-section__header">
+          <h3 id="context-active-run-title" className="companion-section__title">活动 Run</h3>
+        </div>
+        <CardErrorBoundary fallback={CardErrorFallback}>
+          <RunsCard state={runsState} sessionId={scopedSessionId} maxItems={maxItems} />
+        </CardErrorBoundary>
+      </section>
+
+      <section className="companion-section" aria-labelledby="context-memory-title">
+        <div className="companion-section__header">
+          <h3 id="context-memory-title" className="companion-section__title">Memory</h3>
+        </div>
         <CardErrorBoundary fallback={CardErrorFallback}>
           <MemoryCard state={memoryState} maxItems={maxItems} />
         </CardErrorBoundary>
+      </section>
 
-        {/* Runs Card */}
-        <CardErrorBoundary fallback={CardErrorFallback}>
-          <RunsCard state={runsState} maxItems={maxItems} />
-        </CardErrorBoundary>
-
-        {/* Tool Activity Card */}
+      <section className="companion-section" aria-labelledby="context-tool-activity-title">
+        <div className="companion-section__header">
+          <h3 id="context-tool-activity-title" className="companion-section__title">Tool Activity</h3>
+        </div>
         <CardErrorBoundary fallback={CardErrorFallback}>
           <ToolActivityCard
             state={toolActivityState}
-            sessionId={sessionId || 'unknown'}
+            sessionId={scopedSessionId || 'unknown'}
             maxItems={maxItems}
           />
         </CardErrorBoundary>
-      </div>
+      </section>
+
+      <section className="companion-section" aria-labelledby="context-pending-approvals-title">
+        <div className="companion-section__header">
+          <h3 id="context-pending-approvals-title" className="companion-section__title">Pending Approvals</h3>
+        </div>
+        <CardErrorBoundary fallback={CardErrorFallback}>
+          <ApprovalCard state={approvalState} sessionId={scopedSessionId} maxItems={maxItems} />
+        </CardErrorBoundary>
+      </section>
     </div>
   )
 }
