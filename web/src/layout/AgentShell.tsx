@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import TabNav, { TabId } from '../components/TabNav'
 import { NAV_GROUPS, getNavItemById, NavGroup } from '../navigation/navigation-config'
 import { ICONS } from '../navigation/icons'
@@ -19,6 +19,7 @@ import type {
 } from '../features/context/card-contracts'
 import type { CardState } from '../features/context/card-state'
 import { loading } from '../features/context/card-state'
+import { AgentShellSidebarContext } from './AgentShellSidebarContext'
 import '../styles.css'
 
 interface AgentShellProps {
@@ -53,6 +54,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isContextDeskOpen, setIsContextDeskOpen] = useState(false)
+  const [chatSidebarContent, setChatSidebarContent] = useState<React.ReactNode | null>(null)
 
   const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed
 
@@ -102,6 +104,14 @@ const AgentShell: React.FC<AgentShellProps> = ({
     setIsNavDrawerOpen((prev) => !prev)
   }
 
+  const openNavDrawer = useCallback(() => {
+    setIsNavDrawerOpen(true)
+  }, [])
+
+  const closeNavDrawer = useCallback(() => {
+    setIsNavDrawerOpen(false)
+  }, [])
+
   const handleLogout = () => {
     if (onLogout) {
       onLogout()
@@ -140,6 +150,15 @@ const AgentShell: React.FC<AgentShellProps> = ({
     setIsContextDeskOpen(false)
   }
 
+  const sidebarContextValue = useMemo(
+    () => ({
+      setChatSidebarContent,
+      openNavDrawer,
+      closeNavDrawer,
+    }),
+    [openNavDrawer, closeNavDrawer],
+  )
+
   const contextDeskMode = isMobile ? 'drawer' : 'companion'
   const contextDeskLabel = isContextDeskOpen ? 'Collapse context desk' : 'Open context desk'
 
@@ -176,7 +195,8 @@ const AgentShell: React.FC<AgentShellProps> = ({
   const CollapseIcon = ICONS.chevronLeft
 
   return (
-    <div data-testid="agent-shell" className="agent-shell-container">
+    <AgentShellSidebarContext.Provider value={sidebarContextValue}>
+      <div data-testid="agent-shell" className="agent-shell-container">
       {/* Product Navigation Bar */}
       <nav className="product-nav" data-testid="product-nav" role="navigation" aria-label="Product sections">
         {PRODUCT_SECTIONS.map((section) => (
@@ -282,7 +302,14 @@ const AgentShell: React.FC<AgentShellProps> = ({
             </div>
 
             <div className="sidebar-shell__body">
-              <TabNav activeTab={activeTab} onTabChange={handleTabChange} activeSection={activeProductSection} />
+              <div className="sidebar-shell__primary-nav">
+                <TabNav activeTab={activeTab} onTabChange={handleTabChange} activeSection={activeProductSection} />
+              </div>
+              {activeProductSection === 'chat' && chatSidebarContent && (
+                <div className="sidebar-shell__session-panel" data-testid="sidebar-session-panel">
+                  {chatSidebarContent}
+                </div>
+              )}
             </div>
 
             <div className="sidebar-shell__footer">
@@ -333,7 +360,8 @@ const AgentShell: React.FC<AgentShellProps> = ({
           </aside>
         )}
       </div>
-    </div>
+      </div>
+    </AgentShellSidebarContext.Provider>
   )
 }
 

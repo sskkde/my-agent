@@ -25,6 +25,7 @@ import { TimelinePanel } from './components/TimelinePanel'
 import { SessionEmptyState } from './components/SessionEmptyState'
 import { MobileSessionDrawer } from './components/MobileSessionDrawer'
 import ComposerDock from '../../components/ComposerDock'
+import { useAgentShellSidebar } from '../../layout/AgentShellSidebarContext'
 
 interface SessionConsoleTabProps {
   setActiveTab?: (tabId: TabId) => void
@@ -71,6 +72,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
 
   const preferences = useMemo(() => loadPreferences(), [])
 
+  const shellSidebar = useAgentShellSidebar()
   const { pendingApproval, refresh: refreshPendingApproval } = useSessionPendingApproval(selectedSessionId)
 
   const mountedRef = useRef(true)
@@ -504,12 +506,26 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     resetStreamStatus,
   ])
 
+  const closeSessionsSidebar = useCallback(() => {
+    setIsSessionsDrawerOpen(false)
+    shellSidebar?.closeNavDrawer()
+  }, [shellSidebar])
+
+  const openSessionsSidebar = useCallback(() => {
+    if (shellSidebar) {
+      shellSidebar.openNavDrawer()
+      return
+    }
+
+    setIsSessionsDrawerOpen(true)
+  }, [shellSidebar])
+
   const handleSelectSession = useCallback((sessionId: string) => {
     selectSession(sessionId)
     setDraft('')
     setSendError(null)
-    setIsSessionsDrawerOpen(false)
-  }, [selectSession, setDraft, setSendError])
+    closeSessionsSidebar()
+  }, [selectSession, setDraft, setSendError, closeSessionsSidebar])
 
   const handleReject = useCallback(
     async (reason?: string) => {
@@ -580,6 +596,39 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
   const handleCloseApprovalModal = useCallback(() => {
     setSubmitError(null)
   }, [])
+
+  const sessionsSidebar = useMemo(
+    () => (
+      <SessionSidebar
+        sessions={sessions}
+        loading={sessionsLoading}
+        error={sessionsError}
+        selectedSessionId={selectedSessionId}
+        onSelectSession={handleSelectSession}
+        onCreateSession={handleCreateSession}
+        onCloseDrawer={closeSessionsSidebar}
+      />
+    ),
+    [
+      sessions,
+      sessionsLoading,
+      sessionsError,
+      selectedSessionId,
+      handleSelectSession,
+      handleCreateSession,
+      closeSessionsSidebar,
+    ],
+  )
+
+  useEffect(() => {
+    if (!shellSidebar) return undefined
+
+    shellSidebar.setChatSidebarContent(sessionsSidebar)
+
+    return () => {
+      shellSidebar.setChatSidebarContent(null)
+    }
+  }, [shellSidebar, sessionsSidebar])
 
   const mergedEvents = useMemo(() => {
     const sessionLocalEvents = selectedSessionId ? localCommandEvents.get(selectedSessionId) || [] : []
@@ -670,23 +719,15 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
   return (
     <div className={`session-console-rich ${isSessionsDrawerOpen ? 'session-console-rich--drawer-open' : ''}`}>
       {/* Mobile Drawer Backdrop */}
-      <MobileSessionDrawer isOpen={isSessionsDrawerOpen} onClose={() => setIsSessionsDrawerOpen(false)} />
+      {!shellSidebar && <MobileSessionDrawer isOpen={isSessionsDrawerOpen} onClose={closeSessionsSidebar} />}
 
-      {/* Sessions List Sidebar */}
-      <SessionSidebar
-        sessions={sessions}
-        loading={sessionsLoading}
-        error={sessionsError}
-        selectedSessionId={selectedSessionId}
-        onSelectSession={handleSelectSession}
-        onCreateSession={handleCreateSession}
-        onCloseDrawer={() => setIsSessionsDrawerOpen(false)}
-      />
+      {/* Standalone fallback: AgentShell owns this sidebar in the routed app. */}
+      {!shellSidebar && sessionsSidebar}
 
       {/* Main Content Area */}
       <main className="session-main">
         {!selectedSessionId ? (
-          <SessionEmptyState onToggleSidebar={() => setIsSessionsDrawerOpen(true)} isDrawerOpen={isSessionsDrawerOpen} />
+          <SessionEmptyState onToggleSidebar={openSessionsSidebar} isDrawerOpen={isSessionsDrawerOpen} />
         ) : (
           <>
             <TimelinePanel
@@ -696,7 +737,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
               loading={timelineLoading}
               error={timelineError || undefined}
               onRetryStream={handleRetryStream}
-              onToggleSidebar={() => setIsSessionsDrawerOpen(true)}
+              onToggleSidebar={openSessionsSidebar}
               isDrawerOpen={isSessionsDrawerOpen}
             />
 
