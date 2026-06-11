@@ -1377,6 +1377,184 @@ body {
 }
 
 /* ==========================================================================
+   Message Markdown Scoped Styles
+   ========================================================================== */
+
+.message-markdown {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--warm-paper-text, var(--text));
+}
+
+/* Headings */
+.message-markdown h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.67em 0;
+  color: var(--warm-paper-text, var(--text-strong));
+  line-height: 1.3;
+}
+
+.message-markdown h2 {
+  font-size: 1.35em;
+  font-weight: 600;
+  margin: 0.75em 0;
+  color: var(--warm-paper-text, var(--text-strong));
+  line-height: 1.35;
+}
+
+.message-markdown h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 0.85em 0;
+  color: var(--warm-paper-text, var(--text-strong));
+  line-height: 1.4;
+}
+
+.message-markdown h4 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.9em 0;
+  color: var(--warm-paper-text, var(--text-strong));
+}
+
+.message-markdown h5 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 1em 0;
+  color: var(--warm-paper-text-secondary, var(--text));
+}
+
+.message-markdown h6 {
+  font-size: 0.9em;
+  font-weight: 600;
+  margin: 1em 0;
+  color: var(--warm-paper-text-muted, var(--muted));
+}
+
+/* Paragraphs */
+.message-markdown p {
+  margin: 0.75em 0;
+}
+
+/* Lists */
+.message-markdown ul,
+.message-markdown ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+
+.message-markdown li {
+  margin: 0.25em 0;
+}
+
+.message-markdown li > ul,
+.message-markdown li > ol {
+  margin: 0.25em 0;
+}
+
+/* Blockquote */
+.message-markdown blockquote {
+  margin: 0.75em 0;
+  padding: 0.5em 1em;
+  border-left: 3px solid var(--warm-paper-accent, var(--accent));
+  background-color: var(--warm-paper-accent-subtle, var(--accent-subtle));
+  color: var(--warm-paper-text-secondary, var(--text));
+}
+
+.message-markdown blockquote p {
+  margin: 0;
+}
+
+/* Inline Code */
+.message-markdown code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 0.875em;
+  padding: 0.15em 0.35em;
+  background-color: var(--warm-paper-bg-deep, #f1f5f9);
+  border-radius: var(--warm-paper-radius-sm, 3px);
+  color: var(--warm-paper-text, var(--text));
+}
+
+/* Code Block */
+.message-markdown pre {
+  margin: 0.75em 0;
+  padding: 0.75em 1em;
+  background-color: #1e293b;
+  border-radius: var(--warm-paper-radius-md, 6px);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.message-markdown pre code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 0.875em;
+  padding: 0;
+  background-color: transparent;
+  color: #e2e8f0;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+/* Table */
+.message-markdown table {
+  width: 100%;
+  margin: 0.75em 0;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  overflow-x: auto;
+  display: block;
+  max-width: 100%;
+}
+
+.message-markdown thead {
+  background-color: var(--warm-paper-bg-deep, #f1f5f9);
+}
+
+.message-markdown th {
+  padding: 0.5em 0.75em;
+  text-align: left;
+  font-weight: 600;
+  border: 1px solid var(--warm-paper-border, var(--border));
+  color: var(--warm-paper-text, var(--text-strong));
+}
+
+.message-markdown td {
+  padding: 0.5em 0.75em;
+  border: 1px solid var(--warm-paper-border, var(--border));
+  color: var(--warm-paper-text, var(--text));
+}
+
+.message-markdown tbody tr:nth-child(even) {
+  background-color: var(--warm-paper-bg-deep, rgba(0, 0, 0, 0.02));
+}
+
+/* Links */
+.message-markdown a {
+  color: var(--warm-paper-accent, var(--accent));
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.message-markdown a:hover {
+  color: var(--warm-paper-accent-hover, var(--accent));
+  text-decoration-thickness: 2px;
+}
+
+/* Horizontal Rule */
+.message-markdown hr {
+  border: none;
+  border-top: 1px solid var(--warm-paper-border, var(--border));
+  margin: 1em 0;
+}
+
+/* Image - disabled for security */
+.message-markdown img {
+  display: none;
+}
+
+/* ==========================================================================
    Event Type Variants
    ========================================================================== */
 
@@ -9233,4 +9411,259 @@ body {
     padding: 8px 12px;
     font-size: 13px;
   }
+}
+
+/* ==========================================================================
+   CodeBlock Component Styles
+   ========================================================================== */
+
+.code-block {
+  background-color: #1e293b;
+  border-radius: var(--warm-paper-radius-md, 3px);
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.code-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #0f172a;
+  border-bottom: 1px solid #334155;
+}
+
+.code-block__language {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.code-block__copy-btn {
+  padding: 4px 10px;
+  background-color: transparent;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.code-block__copy-btn:hover {
+  background-color: #334155;
+  border-color: #64748b;
+  color: #e2e8f0;
+}
+
+.code-block__copy-btn:active {
+  background-color: #1e293b;
+}
+
+.code-block__pre {
+  margin: 0;
+  padding: 12px;
+  background-color: #0f172a;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: 600px;
+}
+
+.code-block__code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: pre;
+  display: block;
+}
+
+/* ==========================================================================
+   JSON Block Component
+   ========================================================================== */
+
+.json-block {
+  background-color: #1e293b;
+  border-radius: var(--warm-paper-radius-md, 3px);
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.json-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #0f172a;
+  border-bottom: 1px solid #334155;
+}
+
+.json-block__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.json-block__copy-btn {
+  padding: 4px 10px;
+  background-color: transparent;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.json-block__copy-btn:hover {
+  background-color: #334155;
+  border-color: #64748b;
+  color: #e2e8f0;
+}
+
+.json-block__copy-btn:active {
+  background-color: #1e293b;
+}
+
+.json-block__pre {
+  margin: 0;
+  padding: 12px;
+  background-color: #0f172a;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: 600px;
+}
+
+.json-block__code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: pre;
+  display: block;
+}
+
+/* ==========================================================================
+   Diff Block Component
+   ========================================================================== */
+
+.diff-block {
+  background-color: #1e293b;
+  border-radius: var(--warm-paper-radius-md, 3px);
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.diff-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #0f172a;
+  border-bottom: 1px solid #334155;
+}
+
+.diff-block__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.diff-block__copy-btn {
+  padding: 4px 10px;
+  background-color: transparent;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.diff-block__copy-btn:hover {
+  background-color: #334155;
+  border-color: #64748b;
+  color: #e2e8f0;
+}
+
+.diff-block__copy-btn:active {
+  background-color: #1e293b;
+}
+
+.diff-block__content {
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.diff-block__line {
+  display: flex;
+  padding: 0 12px;
+  min-height: 22px;
+  align-items: center;
+}
+
+.diff-block__line--header {
+  background-color: #1e293b;
+  color: #94a3b8;
+}
+
+.diff-block__line--hunk {
+  background-color: #1e3a5f;
+  color: #7dd3fc;
+}
+
+.diff-block__line--added {
+  background-color: #14532d;
+}
+
+.diff-block__line--added .diff-block__line-content {
+  color: #4ade80;
+}
+
+.diff-block__line--removed {
+  background-color: #7f1d1d;
+}
+
+.diff-block__line--removed .diff-block__line-content {
+  color: #fca5a5;
+}
+
+.diff-block__line--context {
+  color: #e2e8f0;
+}
+
+.diff-block__line-number {
+  min-width: 40px;
+  padding-right: 12px;
+  color: #475569;
+  text-align: right;
+  user-select: none;
+  font-size: 11px;
+}
+
+.diff-block__line-content {
+  white-space: pre;
+  flex: 1;
 }
