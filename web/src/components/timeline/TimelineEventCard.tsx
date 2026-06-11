@@ -165,11 +165,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
     }
 
     if (isStreamingDraft) {
-      return (
-        <div className="timeline-event-content">
-          <MessageContent text={event.content} role={messageRole} mode={messageMode} />
-        </div>
-      )
+      return <MessageContent text={event.content} role={messageRole} mode={messageMode} />
     }
 
     if (event.eventType === 'error') {
@@ -276,11 +272,17 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         ) : null
 
       default:
-        return event.content ? (
+        if (!event.content) {
+          return null
+        }
+
+        return isChatMessage ? (
+          <MessageContent text={event.content} role={messageRole} mode={messageMode} />
+        ) : (
           <div className="timeline-event-content">
             <MessageContent text={event.content} role={messageRole} mode={messageMode} />
           </div>
-        ) : null
+        )
     }
   }
 
@@ -312,9 +314,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
             <span className="message-group__role">{label}</span>
             {event.actor && <span className="timeline-event-actor">@{event.actor}</span>}
           </div>
-          <div className="message-group__bubble timeline-event-body">
-            <div className="timeline-event-content">{renderContent()}</div>
-          </div>
+          <div className="message-group__bubble timeline-event-body">{renderContent()}</div>
           <div className="message-group__footer">
             <span className="message-group__timestamp timeline-event-timestamp">{timestamp}</span>
             <div className="message-group__actions" aria-label="Message actions">
@@ -327,7 +327,12 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
                 复制
               </button>
               {messageGroupRole === 'assistant' && (
-                <button className="message-group__action" type="button" title="重试该消息" onClick={() => window.alert('重试功能即将上线')}>
+                <button
+                  className="message-group__action"
+                  type="button"
+                  title="重试该消息"
+                  onClick={() => window.alert('重试功能即将上线')}
+                >
                   重试
                 </button>
               )}

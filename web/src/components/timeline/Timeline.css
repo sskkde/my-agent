@@ -15,7 +15,6 @@
   color: var(--text-strong);
 }
 
-
 /* ==========================================================================
    Timeline Components Styles
    ========================================================================== */
@@ -292,27 +291,177 @@
 }
 
 /* ==========================================================================
+   Chat Message Group Layout
+   ========================================================================== */
+
+.message-group {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+}
+
+.message-group--user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-group__avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+
+.message-group__avatar-image,
+.message-group__avatar-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.message-group__avatar-image {
+  display: block;
+  object-fit: cover;
+}
+
+.message-group__avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.message-group__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: min(640px, 72vw);
+}
+
+.message-group--user .message-group__main {
+  align-items: flex-end;
+}
+
+.message-group__identity-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.message-group--user .message-group__identity-row {
+  justify-content: flex-end;
+}
+
+.message-group__role {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.message-group__bubble {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+}
+
+.message-group--assistant .message-group__bubble {
+  border-top-left-radius: 6px;
+}
+
+.message-group--user .message-group__bubble {
+  border-top-right-radius: 6px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.message-group--user .message-group__bubble .timeline-event-content,
+.message-group--user .message-group__bubble .message-content,
+.message-group--user .message-group__bubble .plaintext-content {
+  color: inherit;
+  background: transparent;
+}
+
+.message-group--user .message-group__bubble .message-markdown {
+  color: inherit;
+}
+
+.message-group--user .message-group__bubble .message-markdown a,
+.message-group--user .message-group__bubble .message-markdown code {
+  color: inherit;
+}
+
+.message-group--user .message-group__bubble .message-markdown code {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.message-group__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 18px;
+}
+
+.message-group--user .message-group__footer {
+  justify-content: flex-end;
+}
+
+.message-group__actions {
+  display: inline-flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.message-group:hover .message-group__actions,
+.message-group:focus-within .message-group__actions {
+  opacity: 1;
+}
+
+.message-group__action {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+}
+
+.message-group__action:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.message-group__action:disabled,
+.message-group__action[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ==========================================================================
    Event Type Variants
    ========================================================================== */
 
 /* User Message - right-aligned blue */
-.timeline-event-card--user_message {
+.timeline-event-card--user_message.message-group {
   align-self: flex-end;
-  background-color: var(--accent);
-  border-color: var(--accent);
+  background: transparent;
+  border-color: transparent;
+  padding: 8px 0;
 }
 
-.timeline-event-card--user_message .timeline-event-label,
-.timeline-event-card--user_message .timeline-event-content {
-  color: white;
+.timeline-event-card--user_message .timeline-event-label {
+  color: var(--text-strong);
 }
 
-.timeline-event-card--user_message .timeline-event-timestamp {
-  color: rgba(255, 255, 255, 0.7);
-}
-
+.timeline-event-card--user_message .timeline-event-timestamp,
 .timeline-event-card--user_message .timeline-event-actor {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
 }
 
 /* Assistant Message - left-aligned gray */
@@ -629,7 +778,7 @@
 }
 
 /* Command Events - subtle styling for command output */
-.timeline-event-card[data-is-command="true"] {
+.timeline-event-card[data-is-command='true'] {
   align-self: stretch;
   background-color: #f8fafc;
   border-color: #e2e8f0;
@@ -637,7 +786,7 @@
   padding: 8px 12px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-label {
+.timeline-event-card[data-is-command='true'] .timeline-event-label {
   color: #475569;
   font-size: 11px;
   font-weight: 600;
@@ -645,22 +794,22 @@
   letter-spacing: 0.05em;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-content {
+.timeline-event-card[data-is-command='true'] .timeline-event-content {
   color: #334155;
   font-size: 13px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-timestamp {
+.timeline-event-card[data-is-command='true'] .timeline-event-timestamp {
   color: #94a3b8;
   font-size: 10px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-actor {
+.timeline-event-card[data-is-command='true'] .timeline-event-actor {
   color: #64748b;
   font-size: 10px;
 }
 
-.timeline-event-card[data-is-command="true"] .timeline-event-header {
+.timeline-event-card[data-is-command='true'] .timeline-event-header {
   margin-bottom: 4px;
 }
 
@@ -697,10 +846,12 @@
 }
 
 @keyframes cursor-blink {
-  0%, 50% {
+  0%,
+  50% {
     opacity: 1;
   }
-  51%, 100% {
+  51%,
+  100% {
     opacity: 0;
   }
 }
@@ -745,7 +896,9 @@
 }
 
 @keyframes placeholder-pulse {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     opacity: 0.3;
     transform: scale(0.8);
   }
@@ -774,7 +927,6 @@
   .timeline-header--empty {
     border-bottom: 1px solid var(--border);
   }
-
 }
 
 @media (min-width: 481px) and (max-width: 768px) {

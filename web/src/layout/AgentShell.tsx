@@ -292,7 +292,10 @@ const AgentShell: React.FC<AgentShellProps> = ({
         </div>
 
         {/* Center Stage - main content area */}
-        <main data-testid="center-stage" className="shell__content center-stage">
+        <main
+          data-testid="center-stage"
+          className={`shell__content center-stage ${activeProductSection === 'chat' ? 'shell__content--chat' : ''}`}
+        >
           {children}
         </main>
 

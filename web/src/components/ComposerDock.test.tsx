@@ -53,6 +53,12 @@ describe('ComposerDock', () => {
 
       expect(container.querySelector('.composer-toolbar')).toBeInTheDocument()
     })
+
+    it('renders the composer as a dock container for bottom anchoring styles', () => {
+      const { container } = render(<ComposerDock value="" onChange={mockOnChange} onSend={mockOnSend} />)
+
+      expect(container.firstElementChild).toHaveClass('composer-dock')
+    })
   })
 
   // =============================================================================
