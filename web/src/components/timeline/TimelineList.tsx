@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react'
+import './Timeline.css'
 import type { ConsoleTimelineEvent } from '../../api/types'
 import { TimelineEventCard } from './TimelineEventCard'
 
