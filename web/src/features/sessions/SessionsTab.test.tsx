@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import SessionsTab from './SessionsTab'
 import * as client from '../../api/client'
 import type { ConsoleSessionInfo } from '../../api/types'
@@ -46,6 +46,10 @@ describe('SessionsTab', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders with data-testid="sessions-panel"', async () => {
@@ -139,7 +143,30 @@ describe('SessionsTab', () => {
     expect(closeBtn).toHaveTextContent('关闭')
   })
 
-  it('calls PATCH when archive button is clicked', async () => {
+  it('does not call PATCH when archive confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
+      sessions: [mockSessions[0]],
+      total: 1,
+    })
+
+    const { container } = render(<SessionsTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
+    })
+
+    const row = container.querySelector('[data-testid="session-row-session-1"]')
+    const archiveBtn = row?.querySelector('[data-testid="session-archive-button-session-1"]')
+    expect(archiveBtn).toBeInTheDocument()
+    fireEvent.click(archiveBtn!)
+
+    expect(window.confirm).toHaveBeenCalledWith('确定要归档此会话吗？')
+    expect(client.updateSession).not.toHaveBeenCalled()
+  })
+
+  it('calls PATCH when archive button is clicked after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
       sessions: [mockSessions[0]],
       total: 1,
@@ -166,7 +193,30 @@ describe('SessionsTab', () => {
     })
   })
 
-  it('calls PATCH when close button is clicked', async () => {
+  it('does not call PATCH when close confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
+      sessions: [mockSessions[0]],
+      total: 1,
+    })
+
+    const { container } = render(<SessionsTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
+    })
+
+    const row = container.querySelector('[data-testid="session-row-session-1"]')
+    const closeBtn = row?.querySelector('[data-testid="session-close-button-session-1"]')
+    expect(closeBtn).toBeInTheDocument()
+    fireEvent.click(closeBtn!)
+
+    expect(window.confirm).toHaveBeenCalledWith('确定要关闭此会话吗？')
+    expect(client.updateSession).not.toHaveBeenCalled()
+  })
+
+  it('calls PATCH when close button is clicked after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
       sessions: [mockSessions[0]],
       total: 1,
@@ -194,6 +244,7 @@ describe('SessionsTab', () => {
   })
 
   it('updates row state after archive action', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
       sessions: [mockSessions[0]],
       total: 1,
@@ -494,6 +545,10 @@ describe('SessionsTab - Mobile Responsive', () => {
     resetMatchMedia()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('displays mobile card list at phone viewport (390px)', async () => {
     mockViewport(390)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -656,6 +711,7 @@ describe('SessionsTab - Mobile Responsive', () => {
   })
 
   it('mobile cards trigger archive action when clicked', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     mockViewport(390)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
       sessions: [mockSessions[0]],
@@ -684,6 +740,7 @@ describe('SessionsTab - Mobile Responsive', () => {
   })
 
   it('mobile cards trigger close action when clicked', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     mockViewport(390)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockResolvedValue({
       sessions: [mockSessions[0]],

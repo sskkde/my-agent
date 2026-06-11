@@ -61,6 +61,10 @@ const SessionsTab: React.FC = () => {
   }
 
   const handleArchiveSession = async (sessionId: string) => {
+    if (!window.confirm('确定要归档此会话吗？')) {
+      return
+    }
+
     try {
       await updateSession(sessionId, { status: 'archived' })
       setSessionsState((prev) => ({
@@ -76,6 +80,10 @@ const SessionsTab: React.FC = () => {
   }
 
   const handleCloseSession = async (sessionId: string) => {
+    if (!window.confirm('确定要关闭此会话吗？')) {
+      return
+    }
+
     try {
       await updateSession(sessionId, { status: 'closed' })
       setSessionsState((prev) => ({
