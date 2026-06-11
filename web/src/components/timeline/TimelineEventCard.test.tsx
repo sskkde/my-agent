@@ -71,7 +71,7 @@ describe('TimelineEventCard - Formatter Integration', () => {
       expect(content.innerHTML).toContain('world')
     })
 
-    it('escapes event handlers in streaming draft', () => {
+    it('strips event handlers in streaming draft', () => {
       const event = createEvent({
         eventType: 'assistant_message',
         content: '<img src="x" onerror="alert(\'XSS\')">',
@@ -81,7 +81,9 @@ describe('TimelineEventCard - Formatter Integration', () => {
       render(<TimelineEventCard event={event} />)
 
       const content = screen.getByTestId('streaming-assistant-draft')
-      expect(content.innerHTML).not.toContain('<img')
+      // onerror handler should be stripped (XSS prevented)
+      expect(content.innerHTML).not.toContain('onerror')
+      expect(content.innerHTML).not.toContain('alert')
     })
   })
 
@@ -102,7 +104,34 @@ describe('TimelineEventCard - Formatter Integration', () => {
       expect(content.innerHTML).toContain('<li>')
     })
 
-    it('renders user message with formatted content', () => {
+    it('renders assistant message with full markdown without [md] tags', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: `## 结论
+
+1. 第一项
+
+\`\`\`ts
+const a = 1
+\`\`\``,
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+      expect(content.innerHTML).toContain('<h2>')
+      expect(content.innerHTML).toContain('结论')
+      expect(content.innerHTML).toContain('<ol>')
+      expect(content.innerHTML).toContain('<li>')
+      expect(content.innerHTML).toContain('第一项')
+      // Code blocks are rendered in a special code-block container
+      expect(content.innerHTML).toContain('code-block')
+      expect(content.innerHTML).toContain('<code')
+      expect(content.innerHTML).toContain('const a = 1')
+      expect(content.innerHTML).not.toContain('[md]')
+    })
+
+    it('renders user message as plain text (no markdown)', () => {
       const event = createEvent({
         eventType: 'user_message',
         actor: 'user',
@@ -112,8 +141,28 @@ describe('TimelineEventCard - Formatter Integration', () => {
       render(<TimelineEventCard event={event} />)
 
       const content = screen.getByTestId('timeline-event-test-event-1')
-      expect(content.innerHTML).toContain('<strong>question</strong>')
-      expect(content.innerHTML).toContain('<em>this</em>')
+      // User messages should be plain text, no markdown formatting
+      expect(content.innerHTML).toContain('**question**')
+      expect(content.innerHTML).toContain('_this_')
+      expect(content.innerHTML).not.toContain('<strong>')
+      expect(content.innerHTML).not.toContain('<em>')
+    })
+
+    it('escapes XSS in user messages - renders as plain text', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: '<img src=x onerror=alert(1)>',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+      // User messages should NOT render as HTML - must be escaped
+      expect(content.innerHTML).toContain('&lt;img')
+      expect(content.innerHTML).not.toContain('<img src')
+      // Verify no actual img element in DOM
+      expect(content.querySelector('img')).toBeNull()
     })
 
     it('sanitizes XSS in final messages', () => {
@@ -125,8 +174,10 @@ describe('TimelineEventCard - Formatter Integration', () => {
       render(<TimelineEventCard event={event} />)
 
       const content = screen.getByTestId('timeline-event-test-event-1')
+      // Script tag should be removed
       expect(content.innerHTML).not.toContain('<script>')
-      expect(content.innerHTML).not.toContain('<img')
+      // XSS onerror handler should be stripped (even if img tag is kept)
+      expect(content.innerHTML).not.toContain('onerror')
       expect(content.innerHTML).toContain('Check this')
     })
 
@@ -238,7 +289,7 @@ describe('TimelineEventCard - Formatter Integration', () => {
       expect(code.innerHTML).toContain('&lt;strong&gt;')
     })
 
-    it('renders error message with formatted content', () => {
+    it('renders error message as plain text (no markdown)', () => {
       const event = createEvent({
         eventType: 'error',
         content: 'Error: **Failed** to process',
@@ -247,7 +298,9 @@ describe('TimelineEventCard - Formatter Integration', () => {
       render(<TimelineEventCard event={event} />)
 
       const content = screen.getByTestId('timeline-event-test-event-1')
-      expect(content.innerHTML).toContain('<strong>Failed</strong>')
+      // Error messages should be plain text, no markdown formatting
+      expect(content.innerHTML).toContain('**Failed**')
+      expect(content.innerHTML).not.toContain('<strong>')
     })
   })
 
@@ -309,7 +362,7 @@ describe('TimelineEventCard - Formatter Integration', () => {
 
   describe('Consistency between streaming and final', () => {
     it('renders identical content the same way in streaming and final', () => {
-      const content = '**Bold** and *italic* with [md]# Heading[/md]'
+      const content = '**Bold** and *italic*\n\n# Heading'
 
       const streamingEvent = createEvent({
         eventType: 'assistant_message',
@@ -337,6 +390,481 @@ describe('TimelineEventCard - Formatter Integration', () => {
       expect(finalHtml).toContain('<em>italic</em>')
       expect(streamingHtml).toContain('<h1>')
       expect(finalHtml).toContain('<h1>')
+    })
+  })
+
+  describe('Tool result content type handling', () => {
+    it('renders tool result with ToolCallCard component', () => {
+      const event = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: '',
+        metadata: {
+          toolName: 'file.read',
+          parameters: { path: '/src/config.json' },
+          result: '{"name": "test", "value": 123}',
+          status: 'completed',
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const toolCard = screen.getByTestId('tool-call-card')
+      expect(toolCard).toBeInTheDocument()
+      expect(screen.getByText('file.read')).toBeInTheDocument()
+    })
+
+    it('renders tool parameters as JSON code block', () => {
+      const event = createEvent({
+        eventType: 'tool_call',
+        actor: 'tool',
+        content: '',
+        metadata: {
+          toolName: 'exec',
+          parameters: { command: 'npm test' },
+          status: 'running',
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      act(() => {
+        screen.getByRole('button', { expanded: false }).click()
+      })
+
+      const codeBlocks = screen.getAllByTestId('code-block-container')
+      expect(codeBlocks.length).toBeGreaterThan(0)
+      expect(screen.getByText('json')).toBeInTheDocument()
+    })
+
+    it('renders tool result as bash code block', () => {
+      const event = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: '',
+        metadata: {
+          toolName: 'exec',
+          parameters: { command: 'npm test' },
+          result: '$ npm test\n\nPASS src/App.test.tsx\nTests: 5 passed',
+          status: 'completed',
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      act(() => {
+        screen.getByRole('button', { expanded: false }).click()
+      })
+
+      const codeBlocks = screen.getAllByTestId('code-block-container')
+      expect(codeBlocks.length).toBe(2)
+      expect(screen.getByText('bash')).toBeInTheDocument()
+    })
+
+    it('renders tool result content safely (XSS protected via CodeBlock)', () => {
+      const event = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: '',
+        metadata: {
+          toolName: 'custom.tool',
+          parameters: {},
+          result: '<script>alert("xss")</script>',
+          status: 'completed',
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      act(() => {
+        screen.getByRole('button', { expanded: false }).click()
+      })
+
+      const codeBlocks = screen.getAllByTestId('code-block-container')
+      const resultBlock = codeBlocks[1]
+      expect(resultBlock).toBeInTheDocument()
+      expect(resultBlock.textContent).toContain('<script>')
+    })
+
+    it('renders tool result with diff content as bash code block', () => {
+      const event = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: '',
+        metadata: {
+          toolName: 'git.diff',
+          parameters: { file: '/src/index.ts' },
+          result: '--- a/file.txt\n+++ b/file.txt\n@@ -1,3 +1,4 @@\n line1\n+line2\n line3',
+          status: 'completed',
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      act(() => {
+        screen.getByRole('button', { expanded: false }).click()
+      })
+
+      const codeBlocks = screen.getAllByTestId('code-block-container')
+      expect(codeBlocks.length).toBe(2)
+    })
+  })
+
+  describe('Streaming incomplete Markdown handling', () => {
+    it('renders streaming draft with incomplete code fence safely', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: '```typescript\nconst x = 1\n',
+        metadata: { streamingDraft: true },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('streaming-assistant-draft')
+      expect(content.innerHTML).toContain('const x = 1')
+    })
+
+    it('renders streaming draft with incomplete bold syntax', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: 'This is **important but incomplete',
+        metadata: { streamingDraft: true },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('streaming-assistant-draft')
+      expect(content.innerHTML).toContain('important but incomplete')
+    })
+
+    it('renders streaming draft with incomplete link syntax', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: 'Check out [this link](https://example',
+        metadata: { streamingDraft: true },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('streaming-assistant-draft')
+      expect(content.innerHTML).toContain('Check out')
+    })
+
+    it('renders streaming draft with mixed complete and incomplete syntax', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: '**bold** and *italic* but **incomplete\n\n# Heading\n\n```js\ncode',
+        metadata: { streamingDraft: true },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('streaming-assistant-draft')
+      expect(content.innerHTML).toContain('bold')
+      expect(content.innerHTML).toContain('italic')
+      expect(content.innerHTML).toContain('Heading')
+      expect(content.innerHTML).toContain('code')
+    })
+
+    it('shows streaming cursor indicator during streaming', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: 'Processing...',
+        metadata: { streamingDraft: true },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('streaming-assistant-draft')
+      const cursor = content.querySelector('.streaming-cursor')
+      expect(cursor).toBeTruthy()
+    })
+
+    it('sanitizes XSS in streaming draft', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: 'Hello <script>alert("XSS")</script> world',
+        metadata: { streamingDraft: true },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('streaming-assistant-draft')
+      expect(content.innerHTML).not.toContain('<script>')
+      expect(content.innerHTML).toContain('Hello')
+      expect(content.innerHTML).toContain('world')
+    })
+  })
+
+  describe('Thinking summary with Markdown content', () => {
+    it('renders thinking summary with [md] blocks when expanded', () => {
+      const event = createEvent({
+        eventType: 'thinking_summary',
+        content: 'Analysis:\n\n[md]\n## Key Points\n\n1. First point\n2. Second point\n\n```ts\nconst x = 1;\n```\n[/md]',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      // Click to expand
+      const toggle = screen.getByRole('button', { name: /thinking/i })
+      act(() => {
+        toggle.click()
+      })
+
+      const content = document.querySelector('.timeline-thinking-content')
+      expect(content).not.toBeNull()
+      // Should render markdown features
+      expect(content?.innerHTML).toContain('<h2>')
+      expect(content?.innerHTML).toContain('Key Points')
+      expect(content?.innerHTML).toContain('<ol>')
+      expect(content?.innerHTML).toContain('<li>')
+      // Code block should render with CodeBlock component
+      expect(content?.innerHTML).toContain('code-block')
+    })
+
+    it('renders thinking summary without [md] blocks as full markdown (assistant role)', () => {
+      const event = createEvent({
+        eventType: 'thinking_summary',
+        content: '## Analysis\n\nThinking about **important** decisions\n\n- Point one\n- Point two',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      act(() => {
+        screen.getByRole('button', { name: /thinking/i }).click()
+      })
+
+      const content = document.querySelector('.timeline-thinking-content')
+      // Thinking summary uses assistant role, so full markdown works
+      expect(content?.innerHTML).toContain('<h2>')
+      expect(content?.innerHTML).toContain('<strong>important</strong>')
+      expect(content?.innerHTML).toContain('<ul>')
+      expect(content?.innerHTML).toContain('<li>')
+    })
+
+    it('sanitizes XSS in thinking summary content', () => {
+      const event = createEvent({
+        eventType: 'thinking_summary',
+        content: 'Thinking about <script>evil()</script> things',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      act(() => {
+        screen.getByRole('button', { name: /thinking/i }).click()
+      })
+
+      const content = document.querySelector('.timeline-thinking-content')
+      expect(content?.innerHTML).not.toContain('<script>')
+      expect(content?.innerHTML).toContain('Thinking about')
+    })
+
+    it('collapses thinking summary by default', () => {
+      const event = createEvent({
+        eventType: 'thinking_summary',
+        content: 'Hidden content until expanded',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      // Content should not be visible initially
+      expect(screen.queryByText('Hidden content until expanded')).not.toBeInTheDocument()
+
+      // Expand
+      act(() => {
+        screen.getByRole('button', { name: /thinking/i }).click()
+      })
+
+      // Now content should be visible
+      expect(screen.getByText('Hidden content until expanded')).toBeInTheDocument()
+    })
+  })
+
+  describe('Mixed [md] and plain text sections', () => {
+    it('renders message with [md] blocks and plain text correctly', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: 'Here is some plain text with **bold**.\n\n[md]\n## Markdown Section\n\n- List item\n[/md]\n\nMore plain text with *italic*.',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+
+      // Plain text sections have lightweight formatting
+      expect(content.innerHTML).toContain('<strong>bold</strong>')
+      expect(content.innerHTML).toContain('<em>italic</em>')
+
+      // [md] block has full markdown
+      expect(content.innerHTML).toContain('<h2>')
+      expect(content.innerHTML).toContain('Markdown Section')
+      expect(content.innerHTML).toContain('<ul>')
+      expect(content.innerHTML).toContain('<li>')
+
+      // [md] tags should be stripped
+      expect(content.innerHTML).not.toContain('[md]')
+      expect(content.innerHTML).not.toContain('[/md]')
+    })
+
+    it('handles multiple [md] blocks separated by plain text', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: '[md]# First[/md]\nPlain middle\n[md]# Second[/md]',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+
+      // Both headings should render
+      expect(content.innerHTML).toContain('<h1>')
+      expect(content.innerHTML).toContain('First')
+      expect(content.innerHTML).toContain('Second')
+
+      // Plain text between should be present
+      expect(content.innerHTML).toContain('Plain middle')
+    })
+  })
+
+  describe('REGRESSION: Role-based rendering safety', () => {
+    it('REGRESSION: User message MUST NOT render full markdown - XSS safety', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: '# Not a heading\n\n**Not bold**\n\n- Not a list\n\n<script>alert("xss")</script>',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+
+      // User messages are PLAIN TEXT - no markdown rendering
+      expect(content.innerHTML).not.toContain('<h1>')
+      expect(content.innerHTML).not.toContain('<strong>')
+      expect(content.innerHTML).not.toContain('<ul>')
+      expect(content.innerHTML).not.toContain('<li>')
+
+      // Raw syntax should be visible
+      expect(content.innerHTML).toContain('# Not a heading')
+      expect(content.innerHTML).toContain('**Not bold**')
+      expect(content.innerHTML).toContain('- Not a list')
+
+      // XSS should be escaped
+      expect(content.innerHTML).toContain('&lt;script&gt;')
+      expect(content.innerHTML).not.toContain('<script>')
+    })
+
+    it('REGRESSION: User message with XSS payload MUST be escaped, not rendered', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: '<img src=x onerror=alert(1)>',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+
+      // MUST be escaped as HTML entities
+      expect(content.innerHTML).toContain('&lt;img')
+      expect(content.innerHTML).not.toContain('<img')
+
+      // No actual img element in DOM
+      expect(content.querySelector('img')).toBeNull()
+    })
+
+    it('REGRESSION: Error message MUST NOT render markdown', () => {
+      const event = createEvent({
+        eventType: 'error',
+        content: '**Error**: Something went **wrong**\n\n# Not a heading',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+
+      // Error messages are PLAIN TEXT
+      expect(content.innerHTML).not.toContain('<strong>')
+      expect(content.innerHTML).not.toContain('<h1>')
+      expect(content.innerHTML).toContain('**Error**')
+      expect(content.innerHTML).toContain('**wrong**')
+      expect(content.innerHTML).toContain('# Not a heading')
+    })
+
+    it('REGRESSION: Tool result without explicit markdown type renders as bash code block (safe)', () => {
+      const event = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: '',
+        metadata: {
+          toolName: 'unknown.tool',
+          parameters: {},
+          result: '# This is NOT a heading\n\n**Not bold** - just plain text',
+          status: 'completed',
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      act(() => {
+        screen.getByRole('button', { expanded: false }).click()
+      })
+
+      const codeBlocks = screen.getAllByTestId('code-block-container')
+      expect(codeBlocks.length).toBeGreaterThan(0)
+      expect(screen.getByText('bash')).toBeInTheDocument()
+      const resultBlock = codeBlocks[1]
+      expect(resultBlock.textContent).toContain('# This is NOT a heading')
+      expect(resultBlock.textContent).toContain('**Not bold**')
+    })
+
+    it('REGRESSION: System message MUST NOT render markdown', () => {
+      const event = createEvent({
+        eventType: 'run_started',
+        actor: 'system',
+        content: 'Run **started** at #1\n\n- Item 1\n- Item 2',
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+
+      // System messages are PLAIN TEXT (role: system)
+      expect(content.innerHTML).not.toContain('<strong>')
+      expect(content.innerHTML).not.toContain('<ol>')
+      expect(content.innerHTML).toContain('**started**')
+      expect(content.innerHTML).toContain('- Item 1')
+    })
+
+    it('REGRESSION: Assistant message renders full markdown WITHOUT [md] tags', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: `## Header
+
+This is a paragraph with **bold** and *italic*.
+
+1. First item
+2. Second item
+
+\`\`\`typescript
+const x: number = 42;
+\`\`\``,
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const content = screen.getByTestId('timeline-event-test-event-1')
+
+      // Assistant messages get FULL markdown without needing [md] tags
+      expect(content.innerHTML).toContain('<h2>')
+      expect(content.innerHTML).toContain('<strong>bold</strong>')
+      expect(content.innerHTML).toContain('<em>italic</em>')
+      expect(content.innerHTML).toContain('<ol>')
+      expect(content.innerHTML).toContain('<li>First item</li>')
+
+      // Code block rendered as CodeBlock component
+      expect(content.innerHTML).toContain('code-block')
+      expect(content.innerHTML).toContain('const x: number = 42')
     })
   })
 })

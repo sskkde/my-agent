@@ -6,12 +6,20 @@ import DOMPurify from 'dompurify'
  * and full Markdown inside [md] blocks, with XSS protection.
  * 
  * @param content - The message content to format
+ * @param fullMarkdown - If true, parse entire content as markdown (strips [md] tags if present)
  * @returns Sanitized HTML string
  */
-export function formatMessageContent(content: string | null | undefined): string {
+export function formatMessageContent(content: string | null | undefined, fullMarkdown = false): string {
   // Handle null/undefined/empty
   if (!content) {
     return ''
+  }
+
+  // If fullMarkdown mode, parse entire content as markdown
+  if (fullMarkdown) {
+    // Strip any [md] and [/md] tags for backward compatibility
+    const strippedContent = content.replace(/\[\/?md\]/g, '')
+    return sanitizeHtml(processMarkdownBlock(strippedContent))
   }
 
   // Split content by [md]...[/md] tags

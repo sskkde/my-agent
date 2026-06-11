@@ -437,3 +437,286 @@ Let me know if you have **questions**!`
     expect(result).toContain('&lt;/div&gt;')
   })
 })
+
+/**
+ * REGRESSION LOCK TESTS
+ * 
+ * These tests lock legacy formatter behavior before refactor.
+ * They explicitly document that the plain-text path is conservative and escape-first.
+ * 
+ * DO NOT change these expectations during refactor - they define the contract.
+ */
+describe('formatMessageContent - Regression lock: [md] full Markdown features', () => {
+  it('REGRESSION: renders h1-h6 headings in [md] blocks', () => {
+    const input = '[md]# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6[/md]'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<h1>')
+    expect(result).toContain('<h2>')
+    expect(result).toContain('<h3>')
+    expect(result).toContain('<h4>')
+    expect(result).toContain('<h5>')
+    expect(result).toContain('<h6>')
+  })
+
+  it('REGRESSION: renders unordered lists with - and * in [md] blocks', () => {
+    const input1 = '[md]\n- Item A\n- Item B\n[/md]'
+    const result1 = formatMessageContent(input1)
+    expect(result1).toContain('<ul>')
+    expect(result1).toContain('<li>Item A</li>')
+    expect(result1).toContain('<li>Item B</li>')
+    
+    const input2 = '[md]\n* Item C\n* Item D\n[/md]'
+    const result2 = formatMessageContent(input2)
+    expect(result2).toContain('<ul>')
+    expect(result2).toContain('<li>Item C</li>')
+  })
+
+  it('REGRESSION: renders inline code with backticks in [md] blocks', () => {
+    const input = '[md]Use the `formatMessageContent()` function with `args`[/md]'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<code>formatMessageContent()</code>')
+    expect(result).toContain('<code>args</code>')
+  })
+
+  it('REGRESSION: renders fenced code blocks with language in [md] blocks', () => {
+    const input = '[md]\n```typescript\nconst x: number = 42;\n```\n[/md]'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<pre>')
+    expect(result).toContain('<code')
+    expect(result).toContain('const x: number = 42;')
+    expect(result).toContain('</code>')
+    expect(result).toContain('</pre>')
+  })
+
+  it('REGRESSION: renders bold and italic inline formatting in [md] blocks', () => {
+    const input = '[md]**bold** and *italic* and ***both***[/md]'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<strong>bold</strong>')
+    expect(result).toContain('<em>italic</em>')
+  })
+
+  it('REGRESSION: renders links and images in [md] blocks', () => {
+    const input = '[md][Link text](https://example.com) and ![Alt](image.png)[/md]'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<a href="https://example.com"')
+    expect(result).toContain('Link text')
+    expect(result).toContain('<img')
+    expect(result).toContain('src="image.png"')
+  })
+})
+
+describe('formatMessageContent - Regression lock: Mixed [md]/plain sections', () => {
+  it('REGRESSION: [md] block renders Markdown, plain text stays lightweight', () => {
+    const input = `Plain intro # Not a heading
+[md]
+# This IS a heading
+- List item
+[/md]
+Plain outro # Also not a heading`
+    const result = formatMessageContent(input)
+    
+    // Inside [md]: heading rendered
+    expect(result).toContain('<h1>')
+    expect(result).toContain('This IS a heading')
+    expect(result).toContain('<ul>')
+    
+    // Outside [md]: heading syntax NOT rendered
+    // The # characters should be escaped or preserved as text
+    expect(result).toContain('Plain intro')
+    expect(result).toContain('Plain outro')
+  })
+
+  it('REGRESSION: Multiple [md] blocks with plain text between them', () => {
+    const input = '[md]# First[/md] middle text [md]# Second[/md]'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<h1>')
+    expect(result).toContain('First')
+    expect(result).toContain('middle text')
+    expect(result).toContain('Second')
+    expect(result).not.toContain('[md]')
+    expect(result).not.toContain('[/md]')
+  })
+
+  it('REGRESSION: Plain text with **bold** renders lightweight, not Markdown bold', () => {
+    const input = '**bold** text here'
+    const result = formatMessageContent(input)
+    
+    // Lightweight formatting should render bold
+    expect(result).toContain('<strong>')
+    expect(result).toContain('bold')
+    expect(result).toContain('</strong>')
+    // But NOT as Markdown paragraph-wrapped
+    expect(result).not.toContain('<p>')
+  })
+
+  it('REGRESSION: Plain text with newlines becomes <br>, not <p>', () => {
+    const input = 'Line 1\nLine 2\nLine 3'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('Line 1')
+    expect(result).toContain('Line 2')
+    expect(result).toContain('Line 3')
+    expect(result).toContain('<br>')
+    expect(result).not.toContain('<p>')
+  })
+})
+
+describe('formatMessageContent - Regression lock: XSS protection (escape-first)', () => {
+  it('REGRESSION: <script> tags are ESCAPED, rendering them harmless', () => {
+    const input = '<script>alert("XSS")</script>'
+    const result = formatMessageContent(input)
+    
+    // Tags are escaped, not rendered as HTML
+    expect(result).not.toContain('<script>')
+    expect(result).not.toContain('</script>')
+    // Content is escaped as HTML entities (forward slash becomes &#x2F;)
+    expect(result).toContain('&lt;script&gt;')
+  })
+
+  it('REGRESSION: Event handlers (onclick, onerror, onload) are escaped', () => {
+    const input = '<img src="x" onerror="alert(1)">'
+    const result = formatMessageContent(input)
+    
+    // Event handlers are escaped, not functional
+    expect(result).not.toContain('<img')
+    expect(result).toContain('&lt;img')
+    // The onerror text may be present but as escaped text, not an attribute
+  })
+
+  it('REGRESSION: javascript: URLs are escaped in raw HTML', () => {
+    const input = '<a href="javascript:alert(1)">click</a>'
+    const result = formatMessageContent(input)
+    
+    // Raw HTML with javascript: is escaped
+    expect(result).not.toContain('<a')
+    expect(result).toContain('&lt;a')
+  })
+
+  it('REGRESSION: javascript: URLs are sanitized from [md] link syntax', () => {
+    const input = '[md][click](javascript:alert(1))[/md]'
+    const result = formatMessageContent(input)
+    
+    // In [md] blocks, javascript: URLs are sanitized by DOMPurify
+    expect(result).not.toContain('javascript:')
+  })
+
+  it('REGRESSION: data:text/html URLs are stripped', () => {
+    const input = '<a href="data:text/html,<script>alert(1)</script>">link</a>'
+    const result = formatMessageContent(input)
+    
+    expect(result).not.toContain('data:text/html')
+    expect(result).not.toContain('<script>')
+  })
+
+  it('REGRESSION: <iframe> tags are completely stripped', () => {
+    const input = '<iframe src="https://evil.com" width="100" height="100"></iframe>'
+    const result = formatMessageContent(input)
+    
+    expect(result).not.toContain('<iframe')
+    expect(result).not.toContain('</iframe>')
+  })
+
+  it('REGRESSION: <object> and <embed> tags are stripped', () => {
+    const input = '<object data="malicious.swf"><embed src="malicious.swf"></object>'
+    const result = formatMessageContent(input)
+    
+    expect(result).not.toContain('<object')
+    expect(result).not.toContain('<embed')
+  })
+
+  it('REGRESSION: Plain text path is ESCAPE-FIRST - HTML chars are escaped', () => {
+    const input = 'Text with <angle> brackets & ampersands "quotes"'
+    const result = formatMessageContent(input)
+    
+    // HTML entities should be escaped in plain text
+    expect(result).toContain('&lt;')
+    expect(result).toContain('&gt;')
+    expect(result).toContain('&amp;')
+    expect(result).toContain('&quot;')
+    
+    // Raw HTML should NOT appear
+    expect(result).not.toContain('<angle>')
+  })
+
+  it('REGRESSION: XSS in [md] blocks is still sanitized', () => {
+    const input = '[md]\n<script>alert(1)</script>\n<img src="x" onerror="alert(1)">\n[/md]'
+    const result = formatMessageContent(input)
+    
+    expect(result).not.toContain('<script')
+    expect(result).not.toContain('onerror')
+  })
+})
+
+describe('formatMessageContent - Regression lock: Lightweight formatting outside [md]', () => {
+  it('REGRESSION: **text** becomes <strong> outside [md]', () => {
+    const input = 'This is **important** text'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<strong>important</strong>')
+    expect(result).not.toContain('**important**')
+  })
+
+  it('REGRESSION: *text* becomes <em> outside [md]', () => {
+    const input = 'This is *emphasized* text'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<em>emphasized</em>')
+    expect(result).not.toContain('*emphasized*')
+  })
+
+  it('REGRESSION: _text_ becomes <em> outside [md]', () => {
+    const input = 'This is _underlined_ text'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<em>underlined</em>')
+    expect(result).not.toContain('_underlined_')
+  })
+
+  it('REGRESSION: \\n becomes <br> outside [md]', () => {
+    const input = 'Line one\nLine two\nLine three'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('Line one<br>Line two<br>Line three')
+  })
+
+  it('REGRESSION: # Heading outside [md] is NOT converted to <h1>', () => {
+    const input = '# This is not a heading'
+    const result = formatMessageContent(input)
+    
+    expect(result).not.toContain('<h1>')
+    // The # should be escaped or preserved as text
+    expect(result).toContain('#')
+  })
+
+  it('REGRESSION: - List outside [md] is NOT converted to <ul><li>', () => {
+    const input = '- This is not a list item'
+    const result = formatMessageContent(input)
+    
+    expect(result).not.toContain('<ul>')
+    expect(result).not.toContain('<li>')
+    expect(result).toContain('-')
+  })
+
+  it('REGRESSION: ``` code block outside [md] is NOT rendered', () => {
+    const input = '```\ncode here\n```'
+    const result = formatMessageContent(input)
+    
+    expect(result).not.toContain('<pre>')
+    expect(result).not.toContain('<code>')
+  })
+
+  it('REGRESSION: Mixed lightweight formatting works correctly', () => {
+    const input = '**bold** and *italic* with\nnewlines'
+    const result = formatMessageContent(input)
+    
+    expect(result).toContain('<strong>bold</strong>')
+    expect(result).toContain('<em>italic</em>')
+    expect(result).toContain('<br>')
+  })
+})

@@ -3,6 +3,7 @@ import type { ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/t
 import { ToolCallCard } from '../ToolCallCard'
 import { ApprovalCard } from '../ApprovalCard'
 import { BackgroundTaskCard } from '../BackgroundTaskCard'
+import { MessageContent, type MessageRole, type MessageMode } from '../message/MessageContent'
 import { formatMessageContent } from './formatMessageContent'
 
 export interface TimelineEventCardProps {
@@ -36,6 +37,21 @@ const formatTimestamp = (timestamp: string): string => {
     minute: '2-digit',
     second: '2-digit',
   })
+}
+
+const getRoleForEventType = (eventType: ConsoleTimelineEventType): MessageRole => {
+  switch (eventType) {
+    case 'assistant_message':
+      return 'assistant'
+    case 'user_message':
+      return 'user'
+    case 'thinking_summary':
+      return 'assistant'
+    case 'error':
+      return 'error'
+    default:
+      return 'system'
+  }
 }
 
 export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) => {
@@ -75,7 +91,8 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
 
   const label = isStreamingDraft ? 'Assistant (streaming)' : eventTypeLabels[event.eventType]
   const timestamp = formatTimestamp(event.timestamp)
-  const formattedContent = formatMessageContent(event.content)
+  const messageMode: MessageMode = isStreamingDraft ? 'streaming' : 'static'
+  const messageRole = getRoleForEventType(event.eventType)
 
   const getEventClassName = (): string => {
     const baseClass = 'timeline-event-card'
@@ -103,8 +120,11 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
     if (isStreamingDraft) {
       return (
         <div className="timeline-event-content">
-          {formattedContent && <span dangerouslySetInnerHTML={{ __html: formattedContent }} />}
-          <span className="streaming-cursor" />
+          <MessageContent
+            text={event.content}
+            role={messageRole}
+            mode={messageMode}
+          />
         </div>
       )
     }
@@ -121,8 +141,14 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
               <span className="timeline-thinking-icon">{isExpanded ? '▼' : '▶'}</span>
               <span>{isExpanded ? '思考中...' : 'Thinking...'}</span>
             </button>
-            {isExpanded && formattedContent && (
-              <div className="timeline-thinking-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+            {isExpanded && event.content && (
+              <div className="timeline-thinking-content">
+                <MessageContent
+                  text={event.content}
+                  role={messageRole}
+                  mode={messageMode}
+                />
+              </div>
             )}
           </div>
         )
@@ -143,7 +169,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         return (
           <div className="timeline-code-block">
             <pre className="timeline-code-content">
-              <code>{formattedContent || '(No content)'}</code>
+              <code>{formatMessageContent(event.content) || '(No content)'}</code>
             </pre>
           </div>
         )
@@ -163,13 +189,14 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
             />
           )
         }
-        if (!approvalRequestId) {
-          return formattedContent ? (
-            <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
-          ) : null
-        }
-        return formattedContent ? (
-          <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+        return event.content ? (
+          <div className="timeline-event-content">
+            <MessageContent
+              text={event.content}
+              role={messageRole}
+              mode={messageMode}
+            />
+          </div>
         ) : null
 
       case 'run_started':
@@ -195,13 +222,25 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
             />
           )
         }
-        return formattedContent ? (
-          <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+        return event.content ? (
+          <div className="timeline-event-content">
+            <MessageContent
+              text={event.content}
+              role={messageRole}
+              mode={messageMode}
+            />
+          </div>
         ) : null
 
       default:
-        return formattedContent ? (
-          <div className="timeline-event-content" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+        return event.content ? (
+          <div className="timeline-event-content">
+            <MessageContent
+              text={event.content}
+              role={messageRole}
+              mode={messageMode}
+            />
+          </div>
         ) : null
     }
   }

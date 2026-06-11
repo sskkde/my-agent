@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import LoadingSpinner from './LoadingSpinner'
+import { CodeBlock } from './message/CodeBlock'
 
 export interface ToolCallCardProps {
   toolName: string
@@ -80,9 +81,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
           <div className="tool-call-card__section">
             <div className="tool-call-card__section-label">参数</div>
             <div className="tool-call-card__json">
-              <pre>
-                <code>{formatJson(parameters)}</code>
-              </pre>
+              <CodeBlock code={formatJson(parameters)} language="json" />
             </div>
           </div>
 
@@ -90,9 +89,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
             <div className="tool-call-card__section">
               <div className="tool-call-card__section-label">结果</div>
               <div className="tool-call-card__json tool-call-card__json--result">
-                <pre>
-                  <code>{result}</code>
-                </pre>
+                <CodeBlock code={result} language="bash" />
               </div>
             </div>
           )}
