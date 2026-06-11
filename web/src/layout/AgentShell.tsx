@@ -140,6 +140,9 @@ const AgentShell: React.FC<AgentShellProps> = ({
     setIsContextDeskOpen(false)
   }
 
+  const contextDeskMode = isMobile ? 'drawer' : 'companion'
+  const contextDeskLabel = isContextDeskOpen ? 'Collapse context desk' : 'Open context desk'
+
   const breadcrumb = useMemo(() => {
     const navItem = getNavItemById(activeTab)
     if (!navItem) return 'Agent Platform'
@@ -199,7 +202,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
             className="context-desk-toggle"
             onClick={handleToggleContextDesk}
             aria-expanded={isContextDeskOpen}
-            aria-label={isContextDeskOpen ? 'Close context desk' : 'Open context desk'}
+            aria-label={contextDeskLabel}
             title="Context Desk"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -293,9 +296,13 @@ const AgentShell: React.FC<AgentShellProps> = ({
           {children}
         </main>
 
-        {/* Context Desk Panel - side panel */}
+        {/* Context Desk Panel - desktop companion, mobile drawer */}
         {isContextDeskOpen && (
-          <aside data-testid="context-desk-panel" className="context-desk">
+          <aside
+            data-testid="context-desk-panel"
+            className={`context-desk context-desk--${contextDeskMode}`}
+            aria-label="Context desk"
+          >
             <div className="context-desk__header">
               <h2 className="context-desk__title">Context Desk</h2>
               <button
@@ -315,6 +322,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
                 runsState={cards.runsState}
                 toolActivityState={cards.toolActivityState}
                 sessionId={sessionId}
+                activeTab={activeTab}
                 maxItems={5}
                 testId="context-desk-panel-content"
               />
