@@ -259,7 +259,10 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
     try {
       const timeoutMs = action.policy?.timeoutMs ?? 30000
-      const targetResult = await this.executeWithTimeout(() => adapter.execute(action), timeoutMs)
+      const targetResult = await this.executeWithTimeout(
+        (executionContext) => adapter.execute(action, executionContext),
+        timeoutMs,
+      )
 
       const completedAt = new Date().toISOString()
 
@@ -304,27 +307,44 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
       const actionStatus: RuntimeActionState = isTimeout ? 'timeout' : 'failed'
       this.updateActionStatus(action.actionId, actionStatus, errorMessage)
-      this.recordDispatchAudit(action, result.status, errorMessage)
+      this.recordDispatchAudit(
+        action,
+        result.status,
+        adapter.cancelUnsupported && isTimeout ? `${errorMessage}; cancelUnsupported: true` : errorMessage,
+      )
       this.endDispatchSpan(spanId, 'failed', errorMessage)
       this.emitEvent('dispatch_failed', request, result)
       return result
     }
   }
 
-  private async executeWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
+  private async executeWithTimeout<T>(
+    fn: (context: { signal: AbortSignal; timeoutMs: number }) => Promise<T>,
+    timeoutMs: number,
+  ): Promise<T> {
+    const controller = new AbortController()
+
     return new Promise((resolve, reject) => {
+      let settled = false
+      const settle = (callback: () => void) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeoutId)
+        callback()
+      }
+
       const timeoutId = setTimeout(() => {
-        reject(new Error('Timeout'))
+        controller.abort()
+        settle(() => reject(new Error('Timeout')))
       }, timeoutMs)
 
-      fn()
+      Promise.resolve()
+        .then(() => fn({ signal: controller.signal, timeoutMs }))
         .then((result) => {
-          clearTimeout(timeoutId)
-          resolve(result)
+          settle(() => resolve(result))
         })
         .catch((error) => {
-          clearTimeout(timeoutId)
-          reject(error)
+          settle(() => reject(error))
         })
     })
   }

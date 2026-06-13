@@ -30,6 +30,7 @@ export interface HttpTransportRequest {
   headers?: Record<string, string>
   body?: unknown
   params?: Record<string, string>
+  signal?: AbortSignal
 }
 
 // HTTP Transport Response
@@ -53,9 +54,9 @@ export interface HttpTransportError {
 // HTTP Transport Interface
 export interface IHttpTransport {
   request<T>(req: HttpTransportRequest): Promise<HttpTransportResponse<T>>
-  get<T>(path: string, params?: Record<string, string>): Promise<HttpTransportResponse<T>>
-  post<T>(path: string, body?: unknown): Promise<HttpTransportResponse<T>>
-  put<T>(path: string, body?: unknown): Promise<HttpTransportResponse<T>>
-  patch<T>(path: string, body?: unknown): Promise<HttpTransportResponse<T>>
-  delete<T>(path: string): Promise<HttpTransportResponse<T>>
+  get<T>(path: string, params?: Record<string, string>, signal?: AbortSignal): Promise<HttpTransportResponse<T>>
+  post<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<HttpTransportResponse<T>>
+  put<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<HttpTransportResponse<T>>
+  patch<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<HttpTransportResponse<T>>
+  delete<T>(path: string, signal?: AbortSignal): Promise<HttpTransportResponse<T>>
 }

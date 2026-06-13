@@ -61,6 +61,7 @@ export interface ToolExecutionContext {
   kernelRunId?: string
   permissionContext: PermissionContext
   executionStartTime: string
+  signal?: AbortSignal
   // Access to stores (injected by executor)
   stores: {
     toolExecutionStore: {
@@ -131,6 +132,7 @@ export interface ToolExecutionRequest {
   sessionId?: string
   kernelRunId?: string
   permissionContext: PermissionContext
+  signal?: AbortSignal
 }
 
 // Tool execution status

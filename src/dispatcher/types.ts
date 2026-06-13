@@ -178,8 +178,18 @@ export interface PermissionCheckResult {
 
 export type PermissionHook = (action: RuntimeAction) => Promise<PermissionCheckResult>
 
+export interface RuntimeAdapterExecutionContext {
+  signal: AbortSignal
+  timeoutMs: number
+}
+
 export interface RuntimeAdapter {
-  execute(action: RuntimeAction): Promise<unknown>
+  /**
+   * Execute a runtime action. Adapters that cannot cooperatively stop on context.signal
+   * should set cancelUnsupported so timeout/cancellation audit trails are explicit.
+   */
+  execute(action: RuntimeAction, context: RuntimeAdapterExecutionContext): Promise<unknown>
+  cancelUnsupported?: boolean
 }
 
 export interface AdapterRegistry {
