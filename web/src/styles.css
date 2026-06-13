@@ -787,7 +787,7 @@ body {
 }
 
 .message-bubble {
-  max-width: 70%;
+  max-width: min(85%, 900px);
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 14px;
@@ -1304,7 +1304,7 @@ body {
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg-elevated);
-  max-width: 85%;
+  max-width: min(85%, 900px);
 }
 
 .timeline-event-header {
@@ -1439,6 +1439,7 @@ body {
 
 /* Code Block */
 .message-markdown pre {
+  min-width: 0;
   margin: 0.75em 0;
   padding: 0.75em 1em;
   background-color: #1e293b;
@@ -1460,6 +1461,7 @@ body {
 /* Table */
 .message-markdown table {
   width: 100%;
+  min-width: 0;
   margin: 0.75em 0;
   border-collapse: collapse;
   font-size: 0.9em;
@@ -1493,6 +1495,7 @@ body {
 /* Links */
 .message-markdown a {
   color: var(--warm-paper-accent, var(--accent));
+  overflow-wrap: anywhere;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
@@ -1967,7 +1970,7 @@ body {
 }
 
 .message-group__bubble {
-  max-width: 70%;
+  max-width: min(85%, 900px);
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 14px;
@@ -2094,7 +2097,7 @@ body {
 
 @media (max-width: 768px) {
   .timeline-event-card {
-    max-width: 95%;
+    max-width: min(95%, 900px);
   }
 
   .timeline-header {
@@ -2170,7 +2173,7 @@ body {
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg-elevated);
-  max-width: 85%;
+  max-width: min(85%, 900px);
 }
 
 .timeline-event-header {
@@ -2305,6 +2308,7 @@ body {
 
 /* Code Block */
 .message-markdown pre {
+  min-width: 0;
   margin: 0.75em 0;
   padding: 0.75em 1em;
   background-color: #1e293b;
@@ -2326,6 +2330,7 @@ body {
 /* Table */
 .message-markdown table {
   width: 100%;
+  min-width: 0;
   margin: 0.75em 0;
   border-collapse: collapse;
   font-size: 0.9em;
@@ -2359,6 +2364,7 @@ body {
 /* Links */
 .message-markdown a {
   color: var(--warm-paper-accent, var(--accent));
+  overflow-wrap: anywhere;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
@@ -2770,8 +2776,8 @@ body {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr);
   gap: 10px;
-  width: min(100%, 860px);
-  max-width: 92%;
+  width: min(85%, 900px);
+  max-width: 100%;
   padding: 0;
   border: none;
   background: transparent;
@@ -2781,6 +2787,11 @@ body {
 .message-group--user {
   align-self: flex-end;
   grid-template-columns: minmax(0, 1fr) 36px;
+  width: min(85%, 900px);
+}
+
+.timeline-event-card--assistant_message.message-group {
+  width: min(92%, 1040px);
 }
 
 .message-group--user .message-group__avatar {
@@ -2864,7 +2875,8 @@ body {
 }
 
 .message-group__bubble {
-  max-width: min(100%, 720px);
+  max-width: min(85%, 900px);
+  min-width: 0;
   padding: 10px 14px;
   border-radius: 16px;
   border: 1px solid var(--warm-paper-border, var(--border));
@@ -2875,10 +2887,16 @@ body {
 }
 
 .message-group--assistant .message-group__bubble {
+  max-width: 100%;
   border-top-left-radius: 6px;
 }
 
+.timeline-event-card--assistant_message .message-markdown {
+  max-width: 100%;
+}
+
 .message-group--user .message-group__bubble {
+  max-width: min(70%, 520px);
   border-top-right-radius: 6px;
   background: var(--accent);
   border-color: var(--accent);
