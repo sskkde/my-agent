@@ -99,6 +99,8 @@ export async function registerRbacMiddleware(
 
   server.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
     if (isPathExempt(request.url, exemptPaths)) {
+      request.rbacCheck = (): boolean => true
+      request.requirePermission = (): boolean => true
       return
     }
 

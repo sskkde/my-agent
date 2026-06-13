@@ -188,7 +188,7 @@ export interface RuntimeAdapter {
    * Execute a runtime action. Adapters that cannot cooperatively stop on context.signal
    * should set cancelUnsupported so timeout/cancellation audit trails are explicit.
    */
-  execute(action: RuntimeAction, context: RuntimeAdapterExecutionContext): Promise<unknown>
+  execute(action: RuntimeAction, context?: RuntimeAdapterExecutionContext): Promise<unknown>
   cancelUnsupported?: boolean
 }
 

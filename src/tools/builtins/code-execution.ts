@@ -10,8 +10,15 @@ import type { ProcessSessionStore } from './process-session-store.js'
 import { DEFAULT_EXEC_TIMEOUT_MS, DEFAULT_EXEC_OUTPUT_CHARS } from './command-safety.js'
 import { getWorkspaceRoot } from './safe-paths.js'
 import { randomBytes } from 'crypto'
+import { createRequire } from 'module'
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs'
 import { join, resolve } from 'path'
+
+const require = createRequire(import.meta.url)
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
 
 export type CodeLanguage = 'javascript' | 'typescript' | 'bash'
 
@@ -76,7 +83,7 @@ export function createCodeExecutionTool(store: ProcessSessionStore): ToolDefinit
       case 'javascript': {
         tempFile = join(tmpDir, `${randomId}.mjs`)
         writeFileSync(tempFile, typedParams.code, 'utf8')
-        command = `node ${tempFile}`
+        command = `${shellQuote(process.execPath)} ${shellQuote(tempFile)}`
         break
       }
 
@@ -100,9 +107,11 @@ export function createCodeExecutionTool(store: ProcessSessionStore): ToolDefinit
           }
         }
 
+        const tsxPackageJson = require.resolve('tsx/package.json')
+        const tsxCliPath = resolve(tsxPackageJson, '..', './dist/cli.mjs')
         tempFile = join(tmpDir, `${randomId}.ts`)
         writeFileSync(tempFile, typedParams.code, 'utf8')
-        command = `npx tsx ${tempFile}`
+        command = `${shellQuote(process.execPath)} ${shellQuote(tsxCliPath)} ${shellQuote(tempFile)}`
         break
       }
 
@@ -134,7 +143,7 @@ export function createCodeExecutionTool(store: ProcessSessionStore): ToolDefinit
 
         tempFile = join(tmpDir, `${randomId}.sh`)
         writeFileSync(tempFile, typedParams.code, 'utf8')
-        command = `bash ${tempFile}`
+        command = `bash ${shellQuote(tempFile)}`
         break
       }
     }

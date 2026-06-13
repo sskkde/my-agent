@@ -260,7 +260,8 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
     try {
       const timeoutMs = action.policy?.timeoutMs ?? 30000
       const targetResult = await this.executeWithTimeout(
-        (executionContext) => adapter.execute(action, executionContext),
+        (executionContext) =>
+          adapter.execute.length >= 2 ? adapter.execute(action, executionContext) : adapter.execute(action),
         timeoutMs,
       )
 

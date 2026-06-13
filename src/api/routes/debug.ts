@@ -74,6 +74,15 @@ function createRedactedPreview(event: EventRecord): RedactedPreview {
 }
 
 export function registerDebugRoutes(server: FastifyInstance, context: ApiContext): void {
+  server.get('/api/v1/debug/events', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.observability, Action.read)) {
+      return reply
+    }
+
+    const events = context.stores.eventStore.query({ limit: 100 })
+    return reply.code(200).send(success({ events }, request.requestId))
+  })
+
   server.get<{
     Params: ReplayParams
   }>(

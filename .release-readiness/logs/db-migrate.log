@@ -1,0 +1,8 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> agent-platform@0.8.0-ga-candidate db:migrate
+> tsx src/cli/migrate.ts
+
+Current database version: 0
+Migrated to version: 60
+Applied 60 migration(s).

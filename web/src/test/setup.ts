@@ -2,6 +2,19 @@ import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 
+
+// React Router creates Request objects during memory-router navigation. In jsdom on
+// newer Node versions its AbortSignal can come from a different realm than undici's
+// Request expects, so test navigation drops the signal before constructing Request.
+const NativeRequest = globalThis.Request
+if (NativeRequest) {
+  globalThis.Request = class TestRequest extends NativeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      const normalizedInit = init && 'signal' in init ? { ...init, signal: undefined } : init
+      super(input, normalizedInit)
+    }
+  } as typeof Request
+}
 Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
   writable: true,
   value: vi.fn(),

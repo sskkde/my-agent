@@ -1,0 +1,16 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> agent-platform@0.8.0-ga-candidate db:backup
+> tsx src/cli/db-backup.ts
+
+Database Backup Tool
+
+Usage:
+  db:backup create [options]     Create a backup of the database
+  db:backup export [options]     Export database to SQL file
+  db:backup list                 List available backups
+
+Options:
+  --output <path>               Output file path
+  --include-wal                 Include WAL files in backup
+  --json                        Output in JSON format

@@ -48,6 +48,15 @@ function deriveCurrentStep(steps: Array<{ stepId: string; status: string }>): st
 }
 
 export function registerPlannerRunRoutes(server: FastifyInstance, context: ApiContext): void {
+  server.get('/api/v1/planner-runs', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission('run' as ResourceType, Action.read)) {
+      return reply
+    }
+
+    const runs = context.stores.plannerRunStore.findByUser('default')
+    return reply.code(200).send(success({ runs }, request.requestId))
+  })
+
   server.get<{ Params: { plannerRunId: string } }>(
     '/api/v1/planner-runs/:plannerRunId/events',
     async (request: FastifyRequest<{ Params: { plannerRunId: string } }>, reply: FastifyReply) => {

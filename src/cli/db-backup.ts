@@ -62,16 +62,29 @@ async function createBackup(options: BackupOptions = {}): Promise<BackupResult> 
       sourceConn.query('PRAGMA wal_checkpoint(TRUNCATE)')
 
       // Create backup using SQLite backup
+      if (fs.existsSync(outputPath)) {
+        fs.rmSync(outputPath)
+      }
+
       const backupConn = createConnectionManager(outputPath)
       backupConn.open()
 
       try {
         // Copy schema and data
         const schema = sourceConn.query<{ sql: string }>(`
-          SELECT sql FROM sqlite_master 
+          SELECT sql FROM sqlite_master
           WHERE type IN ('table', 'index', 'view', 'trigger') 
           AND sql IS NOT NULL
-          ORDER BY type, name
+          AND name NOT LIKE 'sqlite_%'
+          ORDER BY
+            CASE type
+              WHEN 'table' THEN 1
+              WHEN 'view' THEN 2
+              WHEN 'index' THEN 3
+              WHEN 'trigger' THEN 4
+              ELSE 5
+            END,
+            name
         `)
 
         for (const { sql } of schema) {
@@ -312,7 +325,7 @@ async function listBackups(): Promise<void> {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
-  const command = args[0]
+  const command = args[0] ?? 'create'
   const useJson = args.includes('--json')
 
   try {
