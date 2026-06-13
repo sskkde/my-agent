@@ -2052,7 +2052,6 @@ body {
    ========================================================================== */
 
 :root {
-  --chat-column-width: 720px;
   --chat-input-column-width: 680px;
   --chat-side-gutter: 24px;
 }
@@ -2071,7 +2070,7 @@ body {
 
 .timeline-column {
   width: 100%;
-  max-width: var(--chat-column-width);
+  max-width: min(100%, 1120px);
 }
 
 .timeline-header {
