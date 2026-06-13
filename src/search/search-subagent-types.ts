@@ -80,6 +80,9 @@ export interface SearchSubagentMetadata {
 
   /** Number of unique sources (domains) in results */
   uniqueSourceCount: number
+
+  /** Optional ranking strategy version used to order search results */
+  rankingVersion?: string
 }
 
 /**
