@@ -186,6 +186,32 @@ function limitResultsPerDomain(
   return limited
 }
 
+function selectSearchResults(results: WebSearchResultItem[]): WebSearchResultItem[] {
+  const domainLimited = limitResultsPerDomain(results)
+  if (domainLimited.length >= MAX_RESULTS || results.length <= MAX_RESULTS) {
+    return domainLimited.slice(0, MAX_RESULTS)
+  }
+
+  const selectedUrls = new Set(domainLimited.map((result) => result.url.toLowerCase().trim()))
+  const selected = [...domainLimited]
+
+  for (const result of results) {
+    const normalizedUrl = result.url.toLowerCase().trim()
+    if (selectedUrls.has(normalizedUrl)) {
+      continue
+    }
+
+    selected.push(result)
+    selectedUrls.add(normalizedUrl)
+
+    if (selected.length >= MAX_RESULTS) {
+      break
+    }
+  }
+
+  return selected
+}
+
 export function deduplicateResults(results: WebSearchResultItem[]): WebSearchResultItem[] {
   const seen = new Set<string>()
   const deduplicated: WebSearchResultItem[] = []
@@ -297,8 +323,7 @@ export async function handleSearchSubagentTool(
     const deduplicated = deduplicateResults(rawResults)
     const cleaned = cleanSnippets(deduplicated)
     const sorted = rankSearchResults(cleaned, plan)
-    const domainLimited = limitResultsPerDomain(sorted)
-    const cropped = domainLimited.slice(0, MAX_RESULTS)
+    const cropped = selectSearchResults(sorted)
 
     const extractedFacts = deps.resultNormalizer.extractFacts(cropped)
     const warnings = checkFreshnessWarning(plan, cropped)

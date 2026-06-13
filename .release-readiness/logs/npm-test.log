@@ -1,0 +1,27 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> agent-platform@0.8.0-ga-candidate test
+> vitest run
+
+
+ RUN  v4.1.8 /workspace/my-agent
+
+stdout | tests/unit/search/search-subagent.test.ts > SearchSubagent contract tests > boundary validation: execute() vs handleSearchSubagentTool() > handleSearchSubagentTool() crops results to MAX_RESULTS = 10
+[SearchSubagent] Segment A cache check: {
+  phase1SegmentA: 'aaaaaaaa',
+  phase2SegmentA: 'aaaaaaaa',
+  matched: true
+}
+
+ ❯ tests/unit/search/search-subagent.test.ts (18 tests | 1 failed) 707ms
+       × handleSearchSubagentTool() crops results to MAX_RESULTS = 10 170ms
+ ❯ tests/unit/tools/code-execution.test.ts (8 tests | 1 failed) 2488ms
+       × returns unavailable when tsx not installed 1361ms
+ ❯ tests/integration/dispatcher/runtime-dispatcher.test.ts (30 tests | 5 failed) 205ms
+       × should support tool_plane adapter 51ms
+       × should support kernel_run adapter 5ms
+       × should support subagent_runtime adapter 4ms
+       × should support workflow_runtime adapter 7ms
+       × should support planner_run adapter 8ms
+
+[release-readiness] Command terminated early after reproducing root suite failures/hangs; see unit/integration/e2e logs for isolated failures.

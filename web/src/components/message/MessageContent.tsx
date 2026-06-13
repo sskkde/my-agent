@@ -64,7 +64,9 @@ export const MessageContent: React.FC<MessageContentProps> = ({
     return role === 'assistant'
   }
 
-  const useMarkdown = shouldUseMarkdown()
+  const textValue = text ?? ''
+  const hasMarkdownSyntax = /(?:\[md\]|[*_`#>-]|\n\s*(?:[-*+] |\d+\. )|```)/.test(textValue)
+  const useMarkdown = shouldUseMarkdown() && (contentType === 'markdown' || isStreaming || hasMarkdownSyntax)
   
   // Determine if full markdown mode should be used (for assistant role)
   const useFullMarkdown = role === 'assistant'

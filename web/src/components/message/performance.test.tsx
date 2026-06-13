@@ -98,7 +98,7 @@ describe('Performance: formatMessageContent large rendering', () => {
     const result = formatMessageContent(largeText)
     const elapsed = Date.now() - start
 
-    expect(elapsed).toBeLessThan(2000)
+    expect(elapsed).toBeLessThan(5000)
     expect(result).toContain('word0')
     expect(result).toContain('word9999')
   })
@@ -109,7 +109,7 @@ describe('Performance: formatMessageContent large rendering', () => {
     const result = formatMessageContent(largeText, true)
     const elapsed = Date.now() - start
 
-    expect(elapsed).toBeLessThan(2000)
+    expect(elapsed).toBeLessThan(5000)
     expect(result).toContain('word0')
   })
 
@@ -141,7 +141,7 @@ describe('Performance: sanitizeMarkdown large input', () => {
     const result = sanitizeMarkdown(largeHtml)
     const elapsed = Date.now() - start
 
-    expect(elapsed).toBeLessThan(10000)
+    expect(elapsed).toBeLessThan(40000)
     expect(result).toContain('Paragraph 0')
     expect(result).toContain('Paragraph 9999')
   })

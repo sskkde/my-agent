@@ -208,16 +208,16 @@ describe('UsageTab', () => {
       expect(screen.getByRole('button', { name: /消息数/ })).toBeInTheDocument()
     })
 
-    expect(getDesktopSessionIds()).toEqual(['session-high', 'session-mid-', 'session-low-'])
+    expect(getDesktopSessionIds()).toEqual(['session-high-count', 'session-mid-count', 'session-low-count'])
 
     await user.click(screen.getByRole('button', { name: /消息数/ }))
-    expect(getDesktopSessionIds()).toEqual(['session-low-', 'session-mid-', 'session-high'])
+    expect(getDesktopSessionIds()).toEqual(['session-low-count', 'session-mid-count', 'session-high-count'])
 
     await user.click(screen.getByRole('button', { name: /Token数/ }))
-    expect(getDesktopSessionIds()).toEqual(['session-low-', 'session-mid-', 'session-high'])
+    expect(getDesktopSessionIds()).toEqual(['session-low-count', 'session-mid-count', 'session-high-count'])
 
     await user.click(screen.getByRole('button', { name: /Token数/ }))
-    expect(getDesktopSessionIds()).toEqual(['session-high', 'session-mid-', 'session-low-'])
+    expect(getDesktopSessionIds()).toEqual(['session-high-count', 'session-mid-count', 'session-low-count'])
   })
 
   it('displays explanatory copy and configuration entry when cost is not configured', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import TabNav from './TabNav'
 
 describe('TabNav', () => {
@@ -20,7 +20,7 @@ describe('TabNav', () => {
   it('displays correct Chinese labels', () => {
     render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} />)
     expect(screen.getByText('概览')).toBeInTheDocument()
-    expect(screen.getByText('会话')).toBeInTheDocument()
+    expect(within(screen.getByTestId('tab-session-console')).getByText('会话')).toBeInTheDocument()
     expect(screen.getByText('监控')).toBeInTheDocument()
     expect(screen.getByText('状态')).toBeInTheDocument()
   })
@@ -68,9 +68,9 @@ describe('TabNav', () => {
 
   it('renders group section labels in expanded mode', () => {
     render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} isExpanded={true} />)
-    expect(screen.getByText('Chat')).toBeInTheDocument()
-    expect(screen.getByText('Control')).toBeInTheDocument()
-    expect(screen.getByText('Agent')).toBeInTheDocument()
+    expect(screen.getByTestId('nav-group-chat').querySelector('.nav-section__label')).toHaveTextContent('会话')
+    expect(screen.getByTestId('nav-group-control').querySelector('.nav-section__label')).toHaveTextContent('控制台')
+    expect(screen.getByTestId('nav-group-agent').querySelector('.nav-section__label')).toHaveTextContent('代理')
   })
 
   it('renders tab nav items with SVG icons', () => {

@@ -1,0 +1,66 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> agent-platform@0.8.0-ga-candidate test:unit
+> vitest run tests/unit
+
+
+ RUN  v4.1.8 /workspace/my-agent
+
+stdout | tests/unit/search/search-subagent.test.ts > SearchSubagent contract tests > boundary validation: execute() vs handleSearchSubagentTool() > handleSearchSubagentTool() crops results to MAX_RESULTS = 10
+[SearchSubagent] Segment A cache check: {
+  phase1SegmentA: 'aaaaaaaa',
+  phase2SegmentA: 'aaaaaaaa',
+  matched: true
+}
+
+ ❯ tests/unit/search/search-subagent.test.ts (18 tests | 1 failed) 1550ms
+       × handleSearchSubagentTool() crops results to MAX_RESULTS = 10 212ms
+ ❯ tests/unit/tools/code-execution.test.ts (8 tests | 1 failed) 3609ms
+       × returns unavailable when tsx not installed 2036ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/search/search-subagent.test.ts > SearchSubagent contract tests > boundary validation: execute() vs handleSearchSubagentTool() > handleSearchSubagentTool() crops results to MAX_RESULTS = 10
+AssertionError: expected [ { title: 'Result 0', …(2) }, …(2) ] to have a length of 10 but got 3
+
+- Expected
++ Received
+
+- 10
++ 3
+
+ ❯ tests/unit/search/search-subagent.test.ts:1152:37
+    1150|       if (result.success && result.data) {
+    1151|         // handleSearchSubagentTool() crops to MAX_RESULTS = 10
+    1152|         expect(result.data.results).toHaveLength(10)
+       |                                     ^
+    1153|         expect(result.data.metadata.resultCount).toBe(10)
+    1154|       }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/unit/tools/code-execution.test.ts > code-execution > typescript > returns unavailable when tsx not installed
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/tools/code-execution.test.ts:161:32
+    159|         const result = await tool.handler(params, context)
+    160|
+    161|         expect(result.success).toBe(true)
+       |                                ^
+    162|         const data = result.data as CodeExecutionResult
+    163|         expect(data.status).toBe('completed')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 167 passed (169)
+      Tests  2 failed | 3556 passed | 41 skipped (3599)
+   Start at  10:15:32
+   Duration  28.69s (transform 73.87s, setup 0ms, import 112.88s, tests 109.88s, environment 65ms)
+

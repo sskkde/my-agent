@@ -16,6 +16,7 @@ import type { HttpTransportConfig } from '../base-http-transport-types.js'
 import { CalendarMockTransport } from './calendar-mock-transport.js'
 
 const GOOGLE_CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3'
+const GOOGLE_CALENDAR_TIMEOUT_MS = 5000
 
 const CALENDAR_CAPABILITIES: ConnectorCapability[] = [
   {
@@ -175,8 +176,8 @@ export class CalendarRealTransport implements CalendarTransport {
   constructor(accessToken?: string) {
     const config: HttpTransportConfig = {
       baseURL: GOOGLE_CALENDAR_BASE_URL,
-      timeout: 30000,
-      retries: 3,
+      timeout: GOOGLE_CALENDAR_TIMEOUT_MS,
+      retries: 0,
       headers: {
         Accept: 'application/json',
       },

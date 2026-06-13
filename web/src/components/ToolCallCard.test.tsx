@@ -11,7 +11,7 @@ describe('ToolCallCard', () => {
 
   it('renders tool name and status badge', () => {
     render(<ToolCallCard {...defaultProps} />)
-    expect(screen.getByText('file.read')).toBeInTheDocument()
+    expect(screen.getAllByText('file.read')).toHaveLength(2)
     expect(screen.getByText('已完成')).toBeInTheDocument()
   })
 
