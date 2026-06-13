@@ -18,7 +18,7 @@ class ToolExecutorImpl implements ToolExecutor {
   }
 
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
-    const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext } = request
+    const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext, signal } = request
     const traceId = kernelRunId || toolCallId
     const spanId = `span_${toolCallId}`
     const startedAt = Date.now()
@@ -129,6 +129,17 @@ class ToolExecutorImpl implements ToolExecutor {
 
       this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.EXECUTING)
 
+      if (signal?.aborted) {
+        this.config.toolExecutionStore.updateStatus(
+          toolCallId,
+          TOOL_EXECUTION_STATES.FAILED,
+          undefined,
+          'CANCELLED: Tool execution was cancelled',
+        )
+        this.endToolSpan(spanId, startedAt, 'failed', 'Tool execution was cancelled')
+        return this.createErrorResult('CANCELLED', 'Tool execution was cancelled', true)
+      }
+
       const executionContext: ToolExecutionContext = {
         toolCallId,
         toolName,
@@ -137,6 +148,7 @@ class ToolExecutorImpl implements ToolExecutor {
         kernelRunId,
         permissionContext,
         executionStartTime: new Date().toISOString(),
+        signal,
         stores: {
           toolExecutionStore: {
             updateStatus: (id: string, status: string, errorMessage?: string) => {
@@ -157,6 +169,17 @@ class ToolExecutorImpl implements ToolExecutor {
       }
 
       const handlerResult = await tool.handler(params, executionContext)
+
+      if (signal?.aborted) {
+        this.config.toolExecutionStore.updateStatus(
+          toolCallId,
+          TOOL_EXECUTION_STATES.FAILED,
+          undefined,
+          'CANCELLED: Tool execution was cancelled',
+        )
+        this.endToolSpan(spanId, startedAt, 'failed', 'Tool execution was cancelled')
+        return this.createErrorResult('CANCELLED', 'Tool execution was cancelled', true)
+      }
 
       const finalResult: ToolExecutionResult = {
         ...handlerResult,

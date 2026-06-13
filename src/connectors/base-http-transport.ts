@@ -64,6 +64,9 @@ export class BaseHttpTransport implements IHttpTransport {
       }
 
       const controller = new AbortController()
+      const abortFromRequest = () => controller.abort()
+      if (req.signal?.aborted) controller.abort()
+      req.signal?.addEventListener('abort', abortFromRequest, { once: true })
       const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
       const startTime = Date.now()
@@ -77,6 +80,7 @@ export class BaseHttpTransport implements IHttpTransport {
         })
 
         clearTimeout(timeoutId)
+        req.signal?.removeEventListener('abort', abortFromRequest)
         const duration = Date.now() - startTime
         const responseHeaders = this.extractHeaders(response.headers)
 
@@ -105,6 +109,7 @@ export class BaseHttpTransport implements IHttpTransport {
         })
       } catch (err) {
         clearTimeout(timeoutId)
+        req.signal?.removeEventListener('abort', abortFromRequest)
 
         if (err instanceof TransportError) {
           if (!err.retryable || attempt >= this.retries) {
@@ -129,24 +134,24 @@ export class BaseHttpTransport implements IHttpTransport {
     throw lastError ?? new TransportError('network', 'Request failed after retries', { retryable: false })
   }
 
-  async get<T>(path: string, params?: Record<string, string>): Promise<HttpTransportResponse<T>> {
-    return this.request<T>({ method: 'GET', path, params })
+  async get<T>(path: string, params?: Record<string, string>, signal?: AbortSignal): Promise<HttpTransportResponse<T>> {
+    return this.request<T>({ method: 'GET', path, params, signal })
   }
 
-  async post<T>(path: string, body?: unknown): Promise<HttpTransportResponse<T>> {
-    return this.request<T>({ method: 'POST', path, body })
+  async post<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<HttpTransportResponse<T>> {
+    return this.request<T>({ method: 'POST', path, body, signal })
   }
 
-  async put<T>(path: string, body?: unknown): Promise<HttpTransportResponse<T>> {
-    return this.request<T>({ method: 'PUT', path, body })
+  async put<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<HttpTransportResponse<T>> {
+    return this.request<T>({ method: 'PUT', path, body, signal })
   }
 
-  async patch<T>(path: string, body?: unknown): Promise<HttpTransportResponse<T>> {
-    return this.request<T>({ method: 'PATCH', path, body })
+  async patch<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<HttpTransportResponse<T>> {
+    return this.request<T>({ method: 'PATCH', path, body, signal })
   }
 
-  async delete<T>(path: string): Promise<HttpTransportResponse<T>> {
-    return this.request<T>({ method: 'DELETE', path })
+  async delete<T>(path: string, signal?: AbortSignal): Promise<HttpTransportResponse<T>> {
+    return this.request<T>({ method: 'DELETE', path, signal })
   }
 
   private buildUrl(path: string, params?: Record<string, string>): string {

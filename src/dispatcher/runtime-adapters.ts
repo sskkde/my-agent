@@ -1,4 +1,4 @@
-import type { AdapterRegistry, RuntimeAdapter, RuntimeAction } from './types.js'
+import type { AdapterRegistry, RuntimeAdapter, RuntimeAction, RuntimeAdapterExecutionContext } from './types.js'
 import type { ToolExecutor, ToolRegistry } from '../tools/types.js'
 import { createToolOrchestrator, type ToolUse } from '../tools/runtime/tool-orchestrator.js'
 import type { PlannerRuntime } from '../planner/planner-runtime.js'
@@ -55,7 +55,7 @@ export function registerDefaultRuntimeAdapters(deps: {
 
   // Tool plane adapter - executes tools
   const toolPlaneAdapter: RuntimeAdapter = {
-    async execute(action: RuntimeAction): Promise<unknown> {
+    async execute(action: RuntimeAction, context: RuntimeAdapterExecutionContext): Promise<unknown> {
       // Read userId/sessionId from action top-level (with fallback to payload for backward compatibility)
       const userId = action.userId ?? ((action.payload as Record<string, unknown>)?.userId as string | undefined)
       const sessionId =
@@ -104,7 +104,7 @@ export function registerDefaultRuntimeAdapters(deps: {
         })
 
         const orchestrator = createToolOrchestrator({ executor: toolExecutor, registry: toolRegistry })
-        return orchestrator.executeBatch(toolUses, { timeoutMs: action.policy?.timeoutMs })
+        return orchestrator.executeBatch(toolUses, { timeoutMs: action.policy?.timeoutMs, signal: context.signal })
       }
 
       if (!payload.toolCallId || !payload.toolName || !userId) {
@@ -126,6 +126,7 @@ export function registerDefaultRuntimeAdapters(deps: {
         sessionId,
         kernelRunId: payload.kernelRunId,
         permissionContext,
+        signal: context.signal,
       })
 
       return result
@@ -165,6 +166,8 @@ export function registerDefaultRuntimeAdapters(deps: {
           throw new Error(`Unknown planner_runtime action type: ${actionType}`)
       }
     },
+    // Underlying runtime API does not currently accept AbortSignal; dispatcher audit records cancelUnsupported on timeout.
+    cancelUnsupported: true,
   }
 
   // Workflow runtime adapter - handles workflow run operations
@@ -198,6 +201,8 @@ export function registerDefaultRuntimeAdapters(deps: {
           throw new Error(`Unknown workflow_runtime action type: ${actionType}`)
       }
     },
+    // Underlying runtime API does not currently accept AbortSignal; dispatcher audit records cancelUnsupported on timeout.
+    cancelUnsupported: true,
   }
 
   // Event trigger runtime adapter - handles trigger and wait condition registration
@@ -267,6 +272,8 @@ export function registerDefaultRuntimeAdapters(deps: {
           throw new Error(`Unknown event_trigger_runtime action type: ${actionType}`)
       }
     },
+    // Underlying runtime API does not currently accept AbortSignal; dispatcher audit records cancelUnsupported on timeout.
+    cancelUnsupported: true,
   }
 
   // Agent kernel adapter - runs agent kernel execution
@@ -275,6 +282,8 @@ export function registerDefaultRuntimeAdapters(deps: {
       const payload = action.payload as unknown as KernelRunInput
       return agentKernel.run(payload)
     },
+    // Underlying runtime API does not currently accept AbortSignal; dispatcher audit records cancelUnsupported on timeout.
+    cancelUnsupported: true,
   }
 
   // Subagent runtime adapter - handles background subagent operations
@@ -435,6 +444,8 @@ export function registerDefaultRuntimeAdapters(deps: {
           throw new Error(`Unknown subagent_runtime action type: ${actionType}`)
       }
     },
+    // Underlying runtime API does not currently accept AbortSignal; dispatcher audit records cancelUnsupported on timeout.
+    cancelUnsupported: true,
   }
 
   // Register all adapters

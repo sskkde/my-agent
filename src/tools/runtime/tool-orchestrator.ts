@@ -120,32 +120,82 @@ class ToolOrchestratorImpl implements ToolOrchestrator {
     }
 
     const timeoutMs = toolUse.timeoutMs ?? options.timeoutMs
-    const execution = this.executor.execute(toolUse)
+    const execution = this.executor.execute({ ...toolUse, signal: options.signal })
 
     if (timeoutMs === undefined) {
-      return execution
+      return this.withAbort(execution, options.signal)
     }
 
-    return this.withTimeout(execution, timeoutMs)
+    return this.withTimeout(execution, timeoutMs, options.signal)
   }
 
-  private withTimeout(execution: Promise<ToolExecutionResult>, timeoutMs: number): Promise<ToolExecutionResult> {
+  private withTimeout(
+    execution: Promise<ToolExecutionResult>,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<ToolExecutionResult> {
     if (timeoutMs <= 0) {
       return Promise.resolve(createSyntheticResult('timeout', 'TIMEOUT', 'Tool execution timed out.'))
     }
 
     return new Promise<ToolExecutionResult>((resolve) => {
+      if (signal?.aborted) {
+        resolve(createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled.'))
+        return
+      }
+
+      const onAbort = () => {
+        clearTimeout(timeout)
+        resolve(createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled.'))
+      }
       const timeout = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort)
         resolve(createSyntheticResult('timeout', 'TIMEOUT', `Tool execution timed out after ${timeoutMs}ms.`))
       }, timeoutMs)
+      signal?.addEventListener('abort', onAbort, { once: true })
 
       execution.then(
         (result) => {
           clearTimeout(timeout)
-          resolve(result)
+          signal?.removeEventListener('abort', onAbort)
+          resolve(
+            signal?.aborted ? createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled.') : result,
+          )
         },
         (error: unknown) => {
           clearTimeout(timeout)
+          signal?.removeEventListener('abort', onAbort)
+          resolve({
+            success: false,
+            error: {
+              code: 'EXECUTION_FAILED',
+              message: error instanceof Error ? error.message : String(error),
+              recoverable: false,
+            },
+          })
+        },
+      )
+    })
+  }
+
+  private withAbort(execution: Promise<ToolExecutionResult>, signal?: AbortSignal): Promise<ToolExecutionResult> {
+    if (!signal) return execution
+    if (signal.aborted) {
+      return Promise.resolve(createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled.'))
+    }
+
+    return new Promise<ToolExecutionResult>((resolve) => {
+      const onAbort = () => resolve(createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled.'))
+      signal.addEventListener('abort', onAbort, { once: true })
+      execution.then(
+        (result) => {
+          signal.removeEventListener('abort', onAbort)
+          resolve(
+            signal.aborted ? createSyntheticResult('cancelled', 'CANCELLED', 'Tool execution was cancelled.') : result,
+          )
+        },
+        (error: unknown) => {
+          signal.removeEventListener('abort', onAbort)
           resolve({
             success: false,
             error: {
