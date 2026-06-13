@@ -432,6 +432,148 @@ describe('SearchSubagentTool', () => {
     })
   })
 
+  describe('Relevance ranking', () => {
+    it('does not rank a short but irrelevant title first', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'Test answer',
+            toolResult: {
+              query: 'typescript module resolution',
+              results: [
+                { title: 'A', url: 'https://short.example/a', snippet: 'An unrelated homepage about gardening.' },
+                {
+                  title: 'TypeScript module resolution guide',
+                  url: 'https://docs.example/typescript-module-resolution',
+                  snippet: 'TypeScript module resolution explains how imports are found by the compiler.',
+                },
+              ],
+              total: 2,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 100,
+            },
+          }),
+        },
+      })
+
+      const result = await handleSearchSubagentTool(deps, {
+        originalQuestion: 'typescript module resolution',
+        intent: 'technical',
+      })
+
+      expect(result.success).toBe(true)
+      const toolResult = result.data as SearchSubagentToolResult
+      expect(toolResult.results[0].title).toBe('TypeScript module resolution guide')
+      expect(toolResult.metadata.rankingVersion).toBe('relevance-v1')
+    })
+
+    it('prioritizes dated results when freshness is required', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'Test answer',
+            toolResult: {
+              query: 'latest node release',
+              results: [
+                {
+                  title: 'Node release overview',
+                  url: 'https://example.com/node-release-overview',
+                  snippet: 'Node release information and version overview.',
+                },
+                {
+                  title: 'Node release notes',
+                  url: 'https://nodejs.org/en/blog/release',
+                  snippet: 'Published on 2026-06-12 with the latest Node release notes.',
+                },
+              ],
+              total: 2,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 100,
+            },
+          }),
+        },
+      })
+
+      const result = await handleSearchSubagentTool(deps, {
+        originalQuestion: 'latest node release',
+        intent: 'news',
+        freshnessRequired: true,
+      })
+
+      expect(result.success).toBe(true)
+      const toolResult = result.data as SearchSubagentToolResult
+      expect(toolResult.results[0].url).toBe('https://nodejs.org/en/blog/release')
+    })
+
+    it('limits excessive results from the same domain', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const sameDomainResults = Array.from({ length: 5 }, (_, index) => ({
+        title: `TypeScript module resolution deep dive ${index}`,
+        url: `https://docs.example/typescript/module-resolution/${index}`,
+        snippet: 'TypeScript module resolution imports compiler configuration documentation.',
+      }))
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'Test answer',
+            toolResult: {
+              query: 'typescript module resolution',
+              results: [
+                ...sameDomainResults,
+                {
+                  title: 'TypeScript module resolution alternate source',
+                  url: 'https://alt.example/typescript-module-resolution',
+                  snippet: 'Alternate TypeScript module resolution documentation.',
+                },
+              ],
+              total: 6,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 100,
+            },
+          }),
+        },
+      })
+
+      const result = await handleSearchSubagentTool(deps, {
+        originalQuestion: 'typescript module resolution',
+        intent: 'technical',
+      })
+
+      expect(result.success).toBe(true)
+      const toolResult = result.data as SearchSubagentToolResult
+      const docsExampleCount = toolResult.results.filter((r) => r.url.includes('docs.example')).length
+      expect(docsExampleCount).toBe(3)
+      expect(toolResult.results.some((r) => r.url.includes('alt.example'))).toBe(true)
+    })
+  })
+
   describe('Search subagent failure handling', () => {
     it('returns error result when search subagent fails', async () => {
       const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')

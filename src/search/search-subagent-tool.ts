@@ -23,6 +23,8 @@ import {
 export const SEARCH_SUBAGENT_TOOL_ID = 'search_subagent' as const
 
 const MAX_RESULTS = 10
+const MAX_RESULTS_PER_DOMAIN = 3
+export const SEARCH_RESULT_RANKING_VERSION = 'relevance-v1' as const
 
 export interface SearchSubagentToolInput {
   originalQuestion: string
@@ -44,6 +46,144 @@ export interface SearchSubagentToolDeps {
   queryPlanner: SearchQueryPlanner
   resultNormalizer: SearchResultNormalizer
   scopeGuard: typeof assertSearchScope
+}
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return url.toLowerCase().trim()
+  }
+}
+
+function tokenizeQuery(query: string): string[] {
+  const stopWords = new Set([
+    'a',
+    'an',
+    'and',
+    'are',
+    'as',
+    'at',
+    'for',
+    'from',
+    'how',
+    'in',
+    'is',
+    'latest',
+    'of',
+    'on',
+    'or',
+    'the',
+    'to',
+    'today',
+    'what',
+    'when',
+    'where',
+    'with',
+  ])
+
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .map((token) => token.trim())
+        .filter((token) => token.length > 2 && !stopWords.has(token)),
+    ),
+  )
+}
+
+function countKeywordMatches(text: string, keywords: string[]): number {
+  const normalizedText = text.toLowerCase()
+  return keywords.filter((keyword) => normalizedText.includes(keyword)).length
+}
+
+function hasTimeSignal(result: WebSearchResultItem): boolean {
+  const text = `${result.title} ${result.snippet} ${result.source ?? ''}`
+  return (
+    /\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b/.test(text) ||
+    /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b/i.test(text) ||
+    /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{4}\b/i.test(text) ||
+    /\b(?:published|updated|posted|last updated|date|today|yesterday|\d+\s+(?:minute|hour|day|week|month|year)s?\s+ago)\b/i.test(
+      text,
+    )
+  )
+}
+
+function getProviderRank(result: WebSearchResultItem): number | undefined {
+  const ranked = result as WebSearchResultItem & {
+    rank?: unknown
+    position?: unknown
+    providerRank?: unknown
+    originalRank?: unknown
+  }
+  const candidates = [ranked.rank, ranked.position, ranked.providerRank, ranked.originalRank]
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) {
+      return candidate
+    }
+  }
+  return undefined
+}
+
+export function scoreSearchResult(result: WebSearchResultItem, plan: SearchQueryPlan): number {
+  const keywords = tokenizeQuery(plan.searchQuery || plan.originalQuestion)
+  const titleMatches = countKeywordMatches(result.title, keywords)
+  const snippetMatches = countKeywordMatches(result.snippet, keywords)
+  const timeSignal = hasTimeSignal(result)
+  const providerRank = getProviderRank(result)
+
+  let score = 0
+  score += titleMatches * 12
+  score += snippetMatches * 5
+  score += Math.min(keywords.length, titleMatches + snippetMatches) * 2
+
+  if (timeSignal) {
+    score += plan.requiresFreshness ? 18 : 4
+  } else if (plan.requiresFreshness) {
+    score -= 8
+  }
+
+  if (providerRank !== undefined) {
+    score += Math.max(0, 10 - providerRank)
+  }
+
+  if (extractDomain(result.url)) {
+    score += 1
+  }
+
+  return score
+}
+
+function rankSearchResults(results: WebSearchResultItem[], plan: SearchQueryPlan): WebSearchResultItem[] {
+  return results
+    .map((result, index) => ({
+      result,
+      index,
+      score: scoreSearchResult({ ...result, providerRank: index + 1 } as WebSearchResultItem, plan),
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ result }) => result)
+}
+
+function limitResultsPerDomain(
+  results: WebSearchResultItem[],
+  maxPerDomain = MAX_RESULTS_PER_DOMAIN,
+): WebSearchResultItem[] {
+  const domainCounts = new Map<string, number>()
+  const limited: WebSearchResultItem[] = []
+
+  for (const result of results) {
+    const domain = extractDomain(result.url)
+    const count = domainCounts.get(domain) ?? 0
+    if (count >= maxPerDomain) {
+      continue
+    }
+    domainCounts.set(domain, count + 1)
+    limited.push(result)
+  }
+
+  return limited
 }
 
 export function deduplicateResults(results: WebSearchResultItem[]): WebSearchResultItem[] {
@@ -156,8 +296,9 @@ export async function handleSearchSubagentTool(
     const rawResults = searchResult.toolResult.results
     const deduplicated = deduplicateResults(rawResults)
     const cleaned = cleanSnippets(deduplicated)
-    const sorted = [...cleaned].sort((a, b) => a.title.length - b.title.length)
-    const cropped = sorted.slice(0, MAX_RESULTS)
+    const sorted = rankSearchResults(cleaned, plan)
+    const domainLimited = limitResultsPerDomain(sorted)
+    const cropped = domainLimited.slice(0, MAX_RESULTS)
 
     const extractedFacts = deps.resultNormalizer.extractFacts(cropped)
     const warnings = checkFreshnessWarning(plan, cropped)
@@ -167,6 +308,7 @@ export async function handleSearchSubagentTool(
       durationMs,
       resultCount: cropped.length,
       uniqueSourceCount: countUniqueSources(cropped),
+      rankingVersion: SEARCH_RESULT_RANKING_VERSION,
     }
 
     const toolResult: SearchSubagentToolResult = {
