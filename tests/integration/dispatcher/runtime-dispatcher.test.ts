@@ -45,7 +45,7 @@ function createMockRuntimeActionStore(): RuntimeActionStore {
 
 function createMockEventStore(): EventStore {
   return {
-    append: () => {},
+    append: vi.fn(),
     query: () => [],
     findByCorrelationId: () => [],
     findByCausationId: () => [],
@@ -129,6 +129,89 @@ describe('RuntimeDispatcher Integration', () => {
       expect(result.status).toBe('failed')
       expect(result.error?.code).toBe('invalid_action')
     })
+
+    it.each([
+      {
+        name: 'missing actionId',
+        actionPatch: { actionId: undefined },
+        expectedMessage: 'Missing required field: actionId',
+      },
+      {
+        name: 'invalid targetRuntime',
+        actionPatch: { targetRuntime: 'not_a_runtime' },
+        expectedMessage: 'Invalid targetRuntime: not_a_runtime',
+      },
+      {
+        name: 'missing source.sourceModule',
+        actionPatch: { source: {} },
+        expectedMessage: 'Missing required field: source.sourceModule',
+      },
+    ])(
+      'should reject $name before saving executable action and record validation failure telemetry',
+      async ({ actionPatch, expectedMessage }) => {
+        const auditRecorder = {
+          recordDispatch: vi.fn(),
+        }
+        const localActionStore = createMockRuntimeActionStore()
+        const saveSpy = vi.spyOn(localActionStore, 'save')
+        const updateStatusSpy = vi.spyOn(localActionStore, 'updateStatus')
+        const localEventStore = createMockEventStore()
+        const localDispatcher = createRuntimeDispatcher({
+          actionStore: localActionStore,
+          eventStore: localEventStore,
+          adapterRegistry,
+          permissionHook: createAllowPermissionHook(),
+          auditRecorder: auditRecorder as never,
+        })
+
+        const action = {
+          actionId: 'invalid-action',
+          actionType: 'execute_tool' as const,
+          source: { sourceModule: 'gateway' as const },
+          targetRuntime: 'tool_plane' as const,
+          targetAction: 'test_tool',
+          payload: {},
+          status: 'created' as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          ...actionPatch,
+        }
+
+        const result = await localDispatcher.dispatch({
+          requestId: 'req-invalid-validation',
+          action: action as unknown as RuntimeAction,
+          context: { callerModule: 'gateway' },
+        })
+
+        expect(result.status).toBe('failed')
+        expect(result.error?.code).toBe('invalid_action')
+        expect(result.error?.message).toBe(expectedMessage)
+        expect(saveSpy).not.toHaveBeenCalled()
+        expect(updateStatusSpy).not.toHaveBeenCalled()
+        expect(localActionStore.findById('invalid-action')).toBeNull()
+        expect(localEventStore.append).toHaveBeenCalledWith(
+          expect.objectContaining({ eventType: 'dispatch_requested' }),
+        )
+        expect(localEventStore.append).toHaveBeenCalledWith(
+          expect.objectContaining({
+            eventType: 'dispatch_validation_failed',
+            payload: expect.objectContaining({
+              status: 'failed',
+              error: expect.objectContaining({ message: expectedMessage }),
+            }),
+          }),
+        )
+        expect(localEventStore.append).not.toHaveBeenCalledWith(
+          expect.objectContaining({ eventType: 'dispatch_accepted' }),
+        )
+        expect(auditRecorder.recordDispatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: 'failed',
+            payloadSummary: `validation failure: ${expectedMessage}`,
+          }),
+        )
+      },
+    )
 
     it('should accept valid action', async () => {
       const mockResult = { success: true, data: 'test' }

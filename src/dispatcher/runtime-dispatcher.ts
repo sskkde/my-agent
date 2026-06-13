@@ -15,6 +15,23 @@ import type { RuntimeActionState, RuntimeAction as StorageRuntimeAction } from '
 
 const WRITE_ACTION_TYPES: ReadonlySet<string> = new Set(['write', 'delete', 'send', 'execute'])
 
+const VALID_TARGET_RUNTIMES: ReadonlySet<string> = new Set([
+  'agent_kernel',
+  'subagent_runtime',
+  'tool_plane',
+  'workflow_runtime',
+  'event_trigger_runtime',
+  'permission_engine',
+  'gateway',
+  'notification_center',
+  'connector_runtime',
+  'memory_system',
+  'summary_manager',
+  'replay_service',
+  'foreground_conversation_agent',
+  'planner_runtime',
+])
+
 export function isWriteActionClass(actionType: string): boolean {
   return WRITE_ACTION_TYPES.has(actionType)
 }
@@ -44,6 +61,9 @@ function validateRuntimeAction(action: RuntimeAction): { valid: boolean; error?:
   }
   if (!action.targetRuntime) {
     return { valid: false, error: 'Missing required field: targetRuntime' }
+  }
+  if (!VALID_TARGET_RUNTIMES.has(action.targetRuntime)) {
+    return { valid: false, error: `Invalid targetRuntime: ${action.targetRuntime}` }
   }
   if (!action.actionId) {
     return { valid: false, error: 'Missing required field: actionId' }
@@ -88,11 +108,11 @@ function createDispatchEvent(
   return {
     eventId: generateId(),
     eventType,
-    actionId: action.actionId,
+    actionId: action.actionId || 'unknown_action',
     requestId,
-    sourceModule: action.source.sourceModule as SourceModule,
-    targetRuntime: action.targetRuntime as TargetRuntime,
-    actionType: action.actionType as RuntimeActionType,
+    sourceModule: (action.source?.sourceModule ?? context.callerModule) as SourceModule,
+    targetRuntime: (action.targetRuntime || 'gateway') as TargetRuntime,
+    actionType: (action.actionType || 'execute_tool') as RuntimeActionType,
     userId: context.userId ?? action.userId,
     sessionId: context.sessionId ?? action.sessionId,
     runId: action.targetRef?.runId,
@@ -141,13 +161,11 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
       status: 'started',
       startTime: new Date(startTime).toISOString(),
       metadata: {
-        actionId: action.actionId,
+        actionId: action.actionId || 'unknown_action',
         targetRuntime: action.targetRuntime,
         actionType: action.actionType,
       },
     })
-
-    this.actionStore.save(action)
 
     this.emitEvent('dispatch_requested', request)
 
@@ -155,18 +173,19 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
     if (!validation.valid) {
       const result = mapErrorToDispatchResult(
         requestId,
-        action.actionId,
-        action.targetRuntime as TargetRuntime,
+        action.actionId || 'unknown_action',
+        (action.targetRuntime || 'gateway') as TargetRuntime,
         'invalid_action',
         validation.error ?? 'Invalid action',
         false,
       )
-      this.updateActionStatus(action.actionId, 'failed', validation.error)
-      this.recordDispatchAudit(action, result.status, validation.error)
-      this.endDispatchSpan(spanId, 'failed', validation.error)
-      this.emitEvent('dispatch_failed', request, result)
+      this.recordDispatchAudit(action, result.status, `validation failure: ${validation.error}`)
+      this.endDispatchSpan(spanId, 'failed', `validation failure: ${validation.error}`)
+      this.emitEvent('dispatch_validation_failed', request, result)
       return result
     }
+
+    this.actionStore.save(action)
 
     this.emitEvent('dispatch_accepted', request)
 
@@ -199,7 +218,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
       if (!permissionResult.allowed) {
         const result: DispatchResult = {
           requestId,
-          actionId: action.actionId,
+          actionId: action.actionId || 'unknown_action',
           status: 'denied',
           targetRuntime: action.targetRuntime as TargetRuntime,
           error: {
@@ -246,7 +265,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
       const result: DispatchResult = {
         requestId,
-        actionId: action.actionId,
+        actionId: action.actionId || 'unknown_action',
         status: 'completed',
         targetRuntime: action.targetRuntime as TargetRuntime,
         result: targetResult,
@@ -271,7 +290,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
       const result: DispatchResult = {
         requestId,
-        actionId: action.actionId,
+        actionId: action.actionId || 'unknown_action',
         status,
         targetRuntime: action.targetRuntime as TargetRuntime,
         error: {
@@ -339,7 +358,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
     const isInFlight = IN_FLIGHT_STATES.has(existing.status)
     const base: DispatchResult = {
       requestId,
-      actionId: action.actionId,
+      actionId: action.actionId || 'unknown_action',
       status: 'duplicate',
       targetRuntime: action.targetRuntime as TargetRuntime,
       result: existing.result,
@@ -369,7 +388,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
     return {
       requestId,
-      actionId: action.actionId,
+      actionId: action.actionId || 'unknown_action',
       status: 'duplicate',
       targetRuntime: action.targetRuntime as TargetRuntime,
       idempotency: {
@@ -399,7 +418,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
     return {
       requestId,
-      actionId: action.actionId,
+      actionId: action.actionId || 'unknown_action',
       status: 'failed',
       targetRuntime: action.targetRuntime as TargetRuntime,
       error: {
@@ -436,7 +455,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
 
   private recordDispatchAudit(action: RuntimeAction, status: DispatchStatus, error?: string): void {
     this.auditRecorder?.recordDispatch({
-      actionId: action.actionId,
+      actionId: action.actionId || 'unknown_action',
       userId: action.userId ?? 'system',
       sessionId: action.sessionId,
       targetRuntime: action.targetRuntime,

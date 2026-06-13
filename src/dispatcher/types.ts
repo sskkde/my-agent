@@ -217,6 +217,7 @@ export type DispatchEventType =
   | 'dispatch_started'
   | 'dispatch_completed'
   | 'dispatch_failed'
+  | 'dispatch_validation_failed'
   | 'dispatch_denied'
   | 'dispatch_waiting_approval'
   | 'dispatch_duplicate'
