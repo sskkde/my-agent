@@ -8,6 +8,9 @@ describe('API Server', () => {
 
   beforeAll(async () => {
     server = await createApiServer()
+    server.get('/api/v1/test/internal-error', async () => {
+      throw new Error('/internal/path secret=abc')
+    })
     await server.listen()
     const address = server.server.address()
     baseUrl = `http://localhost:${(address as any).port}`
@@ -38,6 +41,23 @@ describe('API Server', () => {
       expect(body.error).toBeDefined()
       expect(body.error.code).toBe('NOT_FOUND')
       expect(body.error.message).toBeDefined()
+    })
+  })
+
+  describe('500 handling', () => {
+    it('should not leak internal error details and should include a stable code and requestId', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/test/internal-error`)
+      expect(response.status).toBe(500)
+
+      const responseText = await response.text()
+      expect(responseText).not.toContain('/internal/path')
+      expect(responseText).not.toContain('secret=abc')
+
+      const body = JSON.parse(responseText) as { error: { code: string; message: string }; requestId: string }
+      expect(body.error.code).toBe('INTERNAL_ERROR')
+      expect(body.error.message).toBe('Internal server error')
+      expect(typeof body.requestId).toBe('string')
+      expect(body.requestId.length).toBeGreaterThan(0)
     })
   })
 

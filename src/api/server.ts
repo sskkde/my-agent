@@ -48,6 +48,26 @@ import { getCorsOrigin } from './middleware/cors-production.js'
 import { createApiContext, type ApiContext } from './context.js'
 import { createLegacyRedirect, ROUTE_MAP } from './v1-prefix.js'
 import { checkProductionConfig } from '../config/production-guard.js'
+import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js'
+
+const errorLogRedactor = createModelInputRedactor()
+
+function redactErrorForLog(
+  error: Error & { statusCode?: number; validation?: Array<{ message: string }> },
+): Record<string, unknown> {
+  return errorLogRedactor.redact({
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    statusCode: error.statusCode,
+    validation: error.validation,
+    cause: error.cause,
+  }) as Record<string, unknown>
+}
+
+function redactClientErrorMessage(message: string): string {
+  return errorLogRedactor.redact(message)
+}
 
 export async function createApiServer(context?: ApiContext): Promise<FastifyInstance> {
   const server = Fastify({
@@ -352,10 +372,12 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
       const errorStatusCode = error.statusCode
       const errorMsg = error.message || String(error)
       if (errorStatusCode === 429) {
-        return reply.code(429).send(envelopeError('RATE_LIMIT_EXCEEDED', errorMsg, request.requestId))
+        return reply
+          .code(429)
+          .send(envelopeError('RATE_LIMIT_EXCEEDED', redactClientErrorMessage(errorMsg), request.requestId))
       }
       if (error.validation && error.validation.length > 0) {
-        const messages = error.validation.map((e) => e.message).join('; ')
+        const messages = error.validation.map((e) => redactClientErrorMessage(e.message)).join('; ')
         return reply.code(400).send(envelopeError('VALIDATION_ERROR', messages, request.requestId))
       }
       if (
@@ -366,7 +388,17 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
       ) {
         return reply.code(400).send(envelopeError('BAD_REQUEST', 'Invalid JSON in request body', request.requestId))
       }
-      return reply.code(500).send(envelopeError('INTERNAL_ERROR', errorMsg || 'Unknown error', request.requestId))
+
+      request.log.error(
+        {
+          error: redactErrorForLog(error),
+          requestId: request.requestId,
+          method: request.method,
+          url: request.url,
+        },
+        'Unhandled API error',
+      )
+      return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Internal server error', request.requestId))
     },
   )
 
