@@ -46,7 +46,7 @@ import { registerSecurityHeaders } from './middleware/security-headers.js'
 import { registerTenantResolution } from '../tenancy/tenant-resolution.js'
 import { getCorsOrigin } from './middleware/cors-production.js'
 import { createApiContext, type ApiContext } from './context.js'
-import { createLegacyRedirect, ROUTE_MAP } from './v1-prefix.js'
+import { createLegacyRedirect, LEGACY_ROUTE_DEFINITIONS } from './v1-prefix.js'
 import { checkProductionConfig } from '../config/production-guard.js'
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js'
 
@@ -195,152 +195,12 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerAdminRoutes(server, context)
     registerSubagentRoutes(server, context)
 
-    // Register legacy 301 redirects for all old /api/ paths → /api/v1/
-    for (const [legacyPath, v1Path] of Object.entries(ROUTE_MAP)) {
-      server.route(createLegacyRedirect(legacyPath, v1Path, 'GET'))
-      // Also register POST/PATCH/PUT/DELETE redirects for routes that use those methods
-      if (
-        legacyPath.includes('/sessions') &&
-        !legacyPath.includes(':sessionId/messages') &&
-        !legacyPath.includes(':sessionId/resume') &&
-        !legacyPath.includes(':sessionId/model')
-      ) {
-        // Skip - POST/PATCH handled by the GET redirect matching
+    // Register legacy redirects for all old /api/ paths → /api/v1/ from the shared route inventory.
+    for (const route of LEGACY_ROUTE_DEFINITIONS) {
+      for (const method of route.methods) {
+        server.route(createLegacyRedirect(route.legacyPath, route.path, method))
       }
     }
-
-    // Additional legacy redirects for non-GET methods
-    // Sessions
-    server.route(createLegacyRedirect('/api/sessions', '/api/v1/sessions', 'POST'))
-    server.route(createLegacyRedirect('/api/sessions/:sessionId', '/api/v1/sessions/:sessionId', 'PATCH'))
-    server.route(
-      createLegacyRedirect('/api/sessions/:sessionId/messages', '/api/v1/sessions/:sessionId/messages', 'POST'),
-    )
-    server.route(createLegacyRedirect('/api/sessions/:sessionId/resume', '/api/v1/sessions/:sessionId/resume', 'POST'))
-    server.route(createLegacyRedirect('/api/sessions/:sessionId/model', '/api/v1/sessions/:sessionId/model', 'PATCH'))
-    // Approvals
-    server.route(createLegacyRedirect('/api/approvals/:approvalId', '/api/v1/approvals/:approvalId', 'PATCH'))
-    // Setup
-    server.route(createLegacyRedirect('/api/setup/user', '/api/v1/setup/user', 'POST'))
-    // Auth
-    server.route(createLegacyRedirect('/api/auth/login', '/api/v1/auth/login', 'POST'))
-    server.route(createLegacyRedirect('/api/auth/logout', '/api/v1/auth/logout', 'POST'))
-    // Providers
-    server.route(createLegacyRedirect('/api/providers', '/api/v1/providers', 'POST'))
-    server.route(createLegacyRedirect('/api/providers/:providerId', '/api/v1/providers/:providerId', 'PATCH'))
-    server.route(createLegacyRedirect('/api/providers/:providerId', '/api/v1/providers/:providerId', 'DELETE'))
-    server.route(createLegacyRedirect('/api/providers/:providerId/test', '/api/v1/providers/:providerId/test', 'POST'))
-    // Agents
-    server.route(
-      createLegacyRedirect('/api/agents/:agentId/config/global', '/api/v1/agents/:agentId/config/global', 'PATCH'),
-    )
-    server.route(
-      createLegacyRedirect('/api/agents/:agentId/config/override', '/api/v1/agents/:agentId/config/override', 'PATCH'),
-    )
-    server.route(
-      createLegacyRedirect('/api/agents/:agentId/config/override', '/api/v1/agents/:agentId/config/override', 'DELETE'),
-    )
-    // Memory
-    server.route(createLegacyRedirect('/api/memory', '/api/v1/memory', 'POST'))
-    server.route(createLegacyRedirect('/api/memory/:memoryId', '/api/v1/memory/:memoryId', 'DELETE'))
-    // Workflows
-    server.route(createLegacyRedirect('/api/workflows/drafts', '/api/v1/workflows/drafts', 'POST'))
-    server.route(createLegacyRedirect('/api/workflows/drafts/:draftId', '/api/v1/workflows/drafts/:draftId', 'PATCH'))
-    server.route(
-      createLegacyRedirect(
-        '/api/workflows/drafts/:draftId/validate',
-        '/api/v1/workflows/drafts/:draftId/validate',
-        'POST',
-      ),
-    )
-    server.route(
-      createLegacyRedirect(
-        '/api/workflows/drafts/:draftId/publish',
-        '/api/v1/workflows/drafts/:draftId/publish',
-        'POST',
-      ),
-    )
-    server.route(createLegacyRedirect('/api/workflows/drafts/:draftId', '/api/v1/workflows/drafts/:draftId', 'DELETE'))
-    server.route(createLegacyRedirect('/api/workflows/runs', '/api/v1/workflows/runs', 'POST'))
-    server.route(
-      createLegacyRedirect('/api/workflows/runs/:workflowRunId', '/api/v1/workflows/runs/:workflowRunId', 'PATCH'),
-    )
-    // Triggers
-    server.route(createLegacyRedirect('/api/triggers/schedules', '/api/v1/triggers/schedules', 'POST'))
-    server.route(
-      createLegacyRedirect('/api/triggers/schedules/:scheduleId', '/api/v1/triggers/schedules/:scheduleId', 'PATCH'),
-    )
-    server.route(
-      createLegacyRedirect('/api/triggers/schedules/:scheduleId', '/api/v1/triggers/schedules/:scheduleId', 'DELETE'),
-    )
-    server.route(createLegacyRedirect('/api/triggers/webhooks', '/api/v1/triggers/webhooks', 'POST'))
-    server.route(
-      createLegacyRedirect('/api/triggers/webhooks/:webhookId', '/api/v1/triggers/webhooks/:webhookId', 'PATCH'),
-    )
-    server.route(
-      createLegacyRedirect('/api/triggers/webhooks/:webhookId', '/api/v1/triggers/webhooks/:webhookId', 'DELETE'),
-    )
-    server.route(
-      createLegacyRedirect('/api/webhooks/:webhookId/deliver', '/api/v1/webhooks/:webhookId/deliver', 'POST'),
-    )
-    // Connectors
-    server.route(createLegacyRedirect('/api/connectors/:id/instances', '/api/v1/connectors/:id/instances', 'POST'))
-    server.route(
-      createLegacyRedirect(
-        '/api/connectors/:id/instances/:iid/config',
-        '/api/v1/connectors/:id/instances/:iid/config',
-        'PATCH',
-      ),
-    )
-    // Debug
-    server.route(createLegacyRedirect('/api/debug/replay/:sessionId', '/api/v1/debug/replay/:sessionId', 'POST'))
-    // Logs stream
-    server.route(createLegacyRedirect('/api/logs/stream', '/api/v1/logs/stream', 'GET'))
-    // Usage
-    server.route(createLegacyRedirect('/api/sessions/:sessionId/usage', '/api/v1/sessions/:sessionId/usage', 'GET'))
-    // Planner runs
-    server.route(
-      createLegacyRedirect(
-        '/api/planner-runs/:plannerRunId/events',
-        '/api/v1/planner-runs/:plannerRunId/events',
-        'GET',
-      ),
-    )
-    server.route(
-      createLegacyRedirect(
-        '/api/planner-runs/:plannerRunId/summary',
-        '/api/v1/planner-runs/:plannerRunId/summary',
-        'GET',
-      ),
-    )
-    // Observability
-    server.route(
-      createLegacyRedirect(
-        '/api/observability/runs/:runId/console',
-        '/api/v1/observability/runs/:runId/console',
-        'GET',
-      ),
-    )
-    server.route(
-      createLegacyRedirect(
-        '/api/observability/runs/:runId/replay-preview',
-        '/api/v1/observability/runs/:runId/replay-preview',
-        'POST',
-      ),
-    )
-    // Tags
-    server.route(createLegacyRedirect('/api/tags', '/api/v1/tags', 'GET'))
-    // Runs stream
-    server.route(createLegacyRedirect('/api/runs/stream', '/api/v1/runs/stream', 'GET'))
-    // API Keys (GET already registered via ROUTE_MAP)
-    server.route(createLegacyRedirect('/api/api-keys', '/api/v1/api-keys', 'POST'))
-    server.route(createLegacyRedirect('/api/api-keys/:id', '/api/v1/api-keys/:id', 'DELETE'))
-    server.route(
-      createLegacyRedirect('/api/subagents/:agentType/preference', '/api/v1/subagents/:agentType/preference', 'PUT'),
-    )
-    server.route(
-      createLegacyRedirect('/api/subagents/:agentType/preference', '/api/v1/subagents/:agentType/preference', 'DELETE'),
-    )
   } else {
     server.get('/api/v1/health', async (): Promise<HealthResponse> => {
       return {

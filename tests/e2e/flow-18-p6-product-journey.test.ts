@@ -19,7 +19,7 @@ import type { FastifyInstance } from 'fastify'
  * Tests the complete Phase 6 product journey covering all P6 features:
  * 1. RBAC: admin creates user → user login → user restricted access → admin assigns role
  * 2. API Key: admin creates API Key → service uses API Key → revoke → failure
- * 3. /api/v1/: all routes under new prefix → old prefix redirects
+ * 3. /api/v1/: product journey uses only versioned API routes
  * 4. Trigger creation: create schedule trigger → create webhook trigger → list
  * 5. DLQ: simulate failed event → DLQ list → retry → discard
  * 6. Connector: mock mode connector → list connectors
@@ -263,16 +263,6 @@ describe('P6 Product Journey', () => {
         url: '/api/v1/tools',
       })
       expect(response.statusCode).toBe(200)
-    })
-
-    it('legacy /api/health redirects to /api/v1/health', async () => {
-      const response = await server.inject({
-        method: 'GET',
-        url: '/api/health',
-      })
-      // Should be 307 redirect
-      expect(response.statusCode).toBe(307)
-      expect(response.headers.location).toBe('/api/v1/health')
     })
   })
 
