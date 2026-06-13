@@ -31,10 +31,18 @@ export interface BudgetStore {
   getByUserAndPeriod(userId: string, period: BudgetPeriod): BudgetUsageRecord | null
   /** Get all budget records for a user */
   getByUserId(userId: string): BudgetUsageRecord[]
+  /** Atomically increment token usage for a user+period */
+  incrementTokens(userId: string, period: BudgetPeriod, tokens: number, now: string): void
+  /** Atomically increment request usage for a user+period */
+  incrementRequests(userId: string, period: BudgetPeriod, amount: number, now: string): void
+  /** Atomically increment memory usage for a user+period */
+  incrementMemory(userId: string, period: BudgetPeriod, memoryMb: number, now: string): void
   /** Delete a budget record */
   delete(recordId: string): void
   /** Reset usage for a user+period (sets counters to 0, updates periodStartedAt) */
   resetUsage(userId: string, period: BudgetPeriod, newPeriodStart: string): void
+  /** Run multiple store operations in a single database transaction */
+  transaction<T>(fn: () => T): T
 }
 
 // ============================================================================
@@ -43,6 +51,7 @@ export interface BudgetStore {
 
 class BudgetStoreImpl implements BudgetStore {
   private connection: ConnectionManager
+  private transactionDepth = 0
 
   constructor(connection: ConnectionManager) {
     this.connection = connection
@@ -91,22 +100,83 @@ class BudgetStoreImpl implements BudgetStore {
     return rows.map((r) => this.rowToRecord(r))
   }
 
+  incrementTokens(userId: string, period: BudgetPeriod, tokens: number, now: string): void {
+    this.incrementUsage(userId, period, { tokens, requests: 0, memoryMb: 0 }, now)
+  }
+
+  incrementRequests(userId: string, period: BudgetPeriod, amount: number, now: string): void {
+    this.incrementUsage(userId, period, { tokens: 0, requests: amount, memoryMb: 0 }, now)
+  }
+
+  incrementMemory(userId: string, period: BudgetPeriod, memoryMb: number, now: string): void {
+    this.incrementUsage(userId, period, { tokens: 0, requests: 0, memoryMb }, now)
+  }
+
   delete(recordId: string): void {
     this.connection.exec('DELETE FROM budget_usage WHERE record_id = ?', [recordId])
   }
 
   resetUsage(userId: string, period: BudgetPeriod, newPeriodStart: string): void {
+    this.transaction(() => {
+      const sql = `
+        UPDATE budget_usage
+        SET tokens_used = 0,
+            requests_used = 0,
+            memory_used_mb = 0,
+            period_started_at = ?,
+            updated_at = ?
+        WHERE user_id = ? AND period = ?
+      `
+
+      this.connection.exec(sql, [newPeriodStart, new Date().toISOString(), userId, period])
+    })
+  }
+
+  transaction<T>(fn: () => T): T {
+    if (this.transactionDepth > 0) {
+      return fn()
+    }
+
+    const run = this.connection.transaction(() => {
+      this.transactionDepth++
+      try {
+        return fn()
+      } finally {
+        this.transactionDepth--
+      }
+    })
+
+    return run()
+  }
+
+  private incrementUsage(
+    userId: string,
+    period: BudgetPeriod,
+    amounts: { tokens: number; requests: number; memoryMb: number },
+    now: string,
+  ): void {
     const sql = `
-      UPDATE budget_usage
-      SET tokens_used = 0,
-          requests_used = 0,
-          memory_used_mb = 0,
-          period_started_at = ?,
-          updated_at = ?
-      WHERE user_id = ? AND period = ?
+      INSERT INTO budget_usage (
+        record_id, user_id, period, tokens_used, requests_used,
+        memory_used_mb, period_started_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, period) DO UPDATE SET
+        tokens_used = budget_usage.tokens_used + excluded.tokens_used,
+        requests_used = budget_usage.requests_used + excluded.requests_used,
+        memory_used_mb = budget_usage.memory_used_mb + excluded.memory_used_mb,
+        updated_at = excluded.updated_at
     `
 
-    this.connection.exec(sql, [newPeriodStart, new Date().toISOString(), userId, period])
+    this.connection.exec(sql, [
+      `budget-${userId}-${period}`,
+      userId,
+      period,
+      amounts.tokens,
+      amounts.requests,
+      amounts.memoryMb,
+      now,
+      now,
+    ])
   }
 
   private rowToRecord(row: BudgetUsageRow): BudgetUsageRecord {

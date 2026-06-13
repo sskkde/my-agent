@@ -56,24 +56,26 @@ export function createBudgetManager(budgetStore: BudgetStore): BudgetManager {
   }
 
   function trackTokenUsage(userId: string, tokens: number, config: BudgetConfig): BudgetUsage {
-    const record = getOrResetRecord(userId, config)
-    record.tokensUsed += tokens
-    record.updatedAt = new Date().toISOString()
-    budgetStore.upsert(record)
-    return recordToUsage(record, config)
+    return budgetStore.transaction(() => {
+      getOrResetRecord(userId, config)
+      budgetStore.incrementTokens(userId, config.period, tokens, new Date().toISOString())
+      return recordToUsage(readExistingRecord(userId, config.period), config)
+    })
   }
 
   function trackRequestUsage(userId: string, config: BudgetConfig): BudgetUsage {
-    const record = getOrResetRecord(userId, config)
-    record.requestsUsed += 1
-    record.updatedAt = new Date().toISOString()
-    budgetStore.upsert(record)
-    return recordToUsage(record, config)
+    return budgetStore.transaction(() => {
+      getOrResetRecord(userId, config)
+      budgetStore.incrementRequests(userId, config.period, 1, new Date().toISOString())
+      return recordToUsage(readExistingRecord(userId, config.period), config)
+    })
   }
 
   function checkBudget(userId: string, period: BudgetPeriod, config: BudgetConfig): void {
-    const record = getOrResetRecord(userId, { ...config, period })
-    const usage = recordToUsage(record, config)
+    const usage = budgetStore.transaction(() => {
+      const record = getOrResetRecord(userId, { ...config, period })
+      return recordToUsage(record, config)
+    })
 
     if (!checkResourceLimit('token_count', usage.tokensUsed, config.tokenLimit)) {
       throw new BudgetExceededErrorImpl('token_count', usage.tokensUsed, config.tokenLimit)
@@ -89,8 +91,10 @@ export function createBudgetManager(budgetStore: BudgetStore): BudgetManager {
   }
 
   function getBudgetUsage(userId: string, period: BudgetPeriod, config: BudgetConfig): BudgetUsage {
-    const record = getOrResetRecord(userId, { ...config, period })
-    return recordToUsage(record, config)
+    return budgetStore.transaction(() => {
+      const record = getOrResetRecord(userId, { ...config, period })
+      return recordToUsage(record, config)
+    })
   }
 
   function getOrResetRecord(userId: string, config: BudgetConfig): BudgetUsageRecord {
@@ -126,6 +130,14 @@ export function createBudgetManager(budgetStore: BudgetStore): BudgetManager {
     }
 
     return existing
+  }
+
+  function readExistingRecord(userId: string, period: BudgetPeriod): BudgetUsageRecord {
+    const record = budgetStore.getByUserAndPeriod(userId, period)
+    if (!record) {
+      throw new Error(`Budget usage record not found for ${userId}/${period}`)
+    }
+    return record
   }
 
   function recordToUsage(record: BudgetUsageRecord, config: BudgetConfig): BudgetUsage {

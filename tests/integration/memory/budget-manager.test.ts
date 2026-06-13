@@ -262,6 +262,34 @@ describe('Budget Manager Integration', () => {
   })
 
   // ============================================================================
+  // BudgetManager - concurrent increments
+  // ============================================================================
+  describe('BudgetManager concurrent increments', () => {
+    it('should preserve 50 concurrent request increments', async () => {
+      await Promise.all(
+        Array.from({ length: 50 }, async () => {
+          budgetManager.trackRequestUsage('user-concurrent-requests', DEFAULT_CONFIG)
+        }),
+      )
+
+      const usage = budgetManager.getBudgetUsage('user-concurrent-requests', 'daily', DEFAULT_CONFIG)
+      expect(usage.requestsUsed).toBe(50)
+    })
+
+    it('should preserve concurrent token increment totals', async () => {
+      const increments = Array.from({ length: 50 }, (_, index) => index + 1)
+      await Promise.all(
+        increments.map(async (tokens) => {
+          budgetManager.trackTokenUsage('user-concurrent-tokens', tokens, DEFAULT_CONFIG)
+        }),
+      )
+
+      const usage = budgetManager.getBudgetUsage('user-concurrent-tokens', 'daily', DEFAULT_CONFIG)
+      expect(usage.tokensUsed).toBe(increments.reduce((sum, tokens) => sum + tokens, 0))
+    })
+  })
+
+  // ============================================================================
   // BudgetManager - checkBudget
   // ============================================================================
   describe('BudgetManager.checkBudget', () => {
