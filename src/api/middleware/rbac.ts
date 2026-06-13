@@ -93,7 +93,7 @@ export async function registerRbacMiddleware(
   server.decorateRequest(
     'requirePermission',
     function (this: FastifyRequest, _resource: ResourceType, _action: Action, _context?: OwnershipContext): boolean {
-      return true
+      return false
     },
   )
 
