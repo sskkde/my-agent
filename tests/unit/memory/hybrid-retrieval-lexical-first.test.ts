@@ -267,6 +267,144 @@ describe('PM-18: Lexical-first + Vector Fallback + Entity/Time Index', () => {
     })
   })
 
+  describe('Entity-index and time-index sources are distinguishable', () => {
+    it('labels entity-index results with source "entity-index", not plain "lexical"', async () => {
+      process.env.HYBRID_RETRIEVAL_ENABLED = 'true'
+
+      const service = makeRecallService([], 0)
+      const lexical = new LexicalRetrievalStrategy(service)
+
+      const entityMem = makeMemory({
+        memoryId: 'mem-entity',
+        fingerprint: 'fp-entity',
+        importance: 'medium',
+      })
+
+      const store = makeMockStore({
+        getByEntityName: vi.fn().mockReturnValue([entityMem]),
+      })
+
+      const orchestrator = new HybridRetrievalOrchestrator([lexical], store)
+
+      const result = await orchestrator.recall({
+        userId: 'user-1',
+        entityNames: ['Alice'],
+      })
+
+      expect(result.items).toHaveLength(1)
+      expect(result.items[0]?.source).toBe('entity-index')
+    })
+
+    it('labels time-index results with source "time-index", not plain "lexical"', async () => {
+      process.env.HYBRID_RETRIEVAL_ENABLED = 'true'
+
+      const service = makeRecallService([], 0)
+      const lexical = new LexicalRetrievalStrategy(service)
+
+      const timeMem = makeMemory({
+        memoryId: 'mem-time',
+        fingerprint: 'fp-time',
+        importance: 'medium',
+        lifecycle: { status: 'active', createdAt: '2025-03-15T00:00:00Z', updatedAt: '2025-03-15T00:00:00Z' },
+      })
+
+      const store = makeMockStore({
+        getByDateRange: vi.fn().mockReturnValue([timeMem]),
+      })
+
+      const orchestrator = new HybridRetrievalOrchestrator([lexical], store)
+
+      const result = await orchestrator.recall({
+        userId: 'user-1',
+        startDate: '2025-03-01T00:00:00Z',
+        endDate: '2025-03-31T23:59:59Z',
+      })
+
+      expect(result.items).toHaveLength(1)
+      expect(result.items[0]?.source).toBe('time-index')
+    })
+
+    it('distinguishes entity-index from time-index when both present', async () => {
+      process.env.HYBRID_RETRIEVAL_ENABLED = 'true'
+
+      const service = makeRecallService([], 0)
+      const lexical = new LexicalRetrievalStrategy(service)
+
+      const entityMem = makeMemory({
+        memoryId: 'mem-entity',
+        fingerprint: 'fp-entity',
+        importance: 'medium',
+      })
+
+      const timeMem = makeMemory({
+        memoryId: 'mem-time',
+        fingerprint: 'fp-time',
+        importance: 'low',
+        lifecycle: { status: 'active', createdAt: '2025-03-15T00:00:00Z', updatedAt: '2025-03-15T00:00:00Z' },
+      })
+
+      const store = makeMockStore({
+        getByEntityName: vi.fn().mockReturnValue([entityMem]),
+        getByDateRange: vi.fn().mockReturnValue([timeMem]),
+      })
+
+      const orchestrator = new HybridRetrievalOrchestrator([lexical], store)
+
+      const result = await orchestrator.recall({
+        userId: 'user-1',
+        entityNames: ['Alice'],
+        startDate: '2025-03-01T00:00:00Z',
+        endDate: '2025-03-31T23:59:59Z',
+      })
+
+      expect(result.items).toHaveLength(2)
+      const entityItem = result.items.find((i) => i.fingerprint === 'fp-entity')
+      const timeItem = result.items.find((i) => i.fingerprint === 'fp-time')
+
+      expect(entityItem?.source).toBe('entity-index')
+      expect(timeItem?.source).toBe('time-index')
+      expect(entityItem?.source).not.toBe(timeItem?.source)
+    })
+
+    it('normalizes entity-index and time-index to lexical in sources summary for backward compatibility', async () => {
+      process.env.HYBRID_RETRIEVAL_ENABLED = 'true'
+
+      const service = makeRecallService([], 0)
+      const lexical = new LexicalRetrievalStrategy(service)
+
+      const entityMem = makeMemory({
+        memoryId: 'mem-entity',
+        fingerprint: 'fp-entity',
+        importance: 'medium',
+      })
+
+      const timeMem = makeMemory({
+        memoryId: 'mem-time',
+        fingerprint: 'fp-time',
+        importance: 'low',
+        lifecycle: { status: 'active', createdAt: '2025-03-15T00:00:00Z', updatedAt: '2025-03-15T00:00:00Z' },
+      })
+
+      const store = makeMockStore({
+        getByEntityName: vi.fn().mockReturnValue([entityMem]),
+        getByDateRange: vi.fn().mockReturnValue([timeMem]),
+      })
+
+      const orchestrator = new HybridRetrievalOrchestrator([lexical], store)
+
+      const result = await orchestrator.recall({
+        userId: 'user-1',
+        entityNames: ['Alice'],
+        startDate: '2025-03-01T00:00:00Z',
+        endDate: '2025-03-31T23:59:59Z',
+      })
+
+      expect(result.sources).toContain('lexical')
+      expect(result.sources).not.toContain('entity-index')
+      expect(result.sources).not.toContain('time-index')
+    })
+  })
+
   describe('Feature flag OFF behavior', () => {
     it('does not query entity/time indexes when HYBRID_RETRIEVAL_ENABLED is false', async () => {
       delete process.env.HYBRID_RETRIEVAL_ENABLED

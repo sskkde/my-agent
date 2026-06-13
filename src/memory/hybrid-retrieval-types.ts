@@ -6,8 +6,10 @@ import type { MetadataFilters } from './long-term-memory-recall.js'
  * - lexical: keyword-based search via existing recall service
  * - vector: embedding-based semantic search (NoOp placeholder for now)
  * - hybrid: combines multiple strategies with dedup and fallback
+ * - entity-index: retrieved via entity name index (normalized to lexical in sources)
+ * - time-index: retrieved via time range index (normalized to lexical in sources)
  */
-export type RetrievalStrategyType = 'lexical' | 'vector' | 'hybrid'
+export type RetrievalStrategyType = 'lexical' | 'vector' | 'hybrid' | 'entity-index' | 'time-index'
 
 /**
  * Unified recall query for hybrid retrieval.

@@ -150,7 +150,7 @@ export class HybridRetrievalOrchestrator {
         const baseScore = IMPORTANCE_SCORE[record.importance] ?? 0.3
         indexItems.push({
           memory: record,
-          source: source === 'entity' ? 'lexical' : 'lexical',
+          source: source === 'entity' ? 'entity-index' : 'time-index',
           relevanceScore: baseScore + ENTITY_MATCH_BOOST,
           fingerprint: fp,
         })
@@ -191,7 +191,11 @@ function mergeResults(primaryItems: HybridRecallItem[], secondaryItems: HybridRe
 
 function buildSources(items: HybridRecallItem[]): RetrievalStrategyType[] {
   const sources: RetrievalStrategyType[] = []
-  if (items.some((i) => i.source === 'lexical')) sources.push('lexical')
+  // Check for lexical OR index-derived sources (normalize to 'lexical' for backward compatibility)
+  const hasLexical = items.some(
+    (i) => i.source === 'lexical' || i.source === 'entity-index' || i.source === 'time-index',
+  )
+  if (hasLexical) sources.push('lexical')
   if (items.some((i) => i.source === 'vector')) sources.push('vector')
   return sources
 }
