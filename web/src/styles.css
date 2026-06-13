@@ -11130,3 +11130,338 @@ body {
     color: var(--muted);
   }
 }
+
+/* ==========================================================================
+   Hana-inspired Frontend Refresh
+   ========================================================================== */
+
+:root {
+  --hana-cream: #fff7ec;
+  --hana-rice: #f9efe0;
+  --hana-paper: #fffaf3;
+  --hana-ink: #28231f;
+  --hana-ink-soft: #5e5248;
+  --hana-muted: #8a7969;
+  --hana-line: rgba(122, 91, 63, 0.16);
+  --hana-coral: #e96f64;
+  --hana-coral-deep: #c94f49;
+  --hana-sakura: #ffd8d2;
+  --hana-mint: #79a99b;
+  --hana-mint-deep: #3f746a;
+  --hana-gold: #f3b85f;
+  --hana-lilac: #a896d8;
+  --hana-shadow-soft: 0 16px 48px rgba(83, 52, 34, 0.10);
+  --hana-shadow-card: 0 10px 30px rgba(83, 52, 34, 0.08);
+  --hana-focus: rgba(233, 111, 100, 0.28);
+
+  --accent: var(--hana-coral);
+  --accent-subtle: rgba(233, 111, 100, 0.12);
+  --bg: var(--hana-cream);
+  --bg-elevated: rgba(255, 250, 243, 0.88);
+  --text: var(--hana-ink-soft);
+  --text-strong: var(--hana-ink);
+  --muted: var(--hana-muted);
+  --border: var(--hana-line);
+  --radius-md: 16px;
+  --warm-paper-bg: var(--hana-cream);
+  --warm-paper-bg-elevated: rgba(255, 250, 243, 0.9);
+  --warm-paper-bg-deep: var(--hana-rice);
+  --warm-paper-bg-glass: rgba(255, 250, 243, 0.76);
+  --warm-paper-text: var(--hana-ink);
+  --warm-paper-text-secondary: var(--hana-ink-soft);
+  --warm-paper-text-muted: var(--hana-muted);
+  --warm-paper-border: var(--hana-line);
+  --warm-paper-border-width: 1px;
+  --warm-paper-accent: var(--hana-coral-deep);
+  --warm-paper-accent-hover: #ad413d;
+  --warm-paper-accent-subtle: rgba(233, 111, 100, 0.13);
+  --warm-paper-accent-rgb: 201, 79, 73;
+  --warm-paper-radius-sm: 12px;
+  --warm-paper-radius-md: 18px;
+  --warm-paper-radius-lg: 24px;
+  --warm-paper-shadow-sm: 0 6px 18px rgba(83, 52, 34, 0.06);
+  --warm-paper-shadow-md: var(--hana-shadow-card);
+  --warm-paper-shadow-lg: var(--hana-shadow-soft);
+  --warm-paper-hover-overlay: rgba(233, 111, 100, 0.08);
+  --warm-paper-active-overlay: rgba(233, 111, 100, 0.12);
+  --warm-paper-focus-ring: var(--hana-focus);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% -10%, rgba(255, 216, 210, 0.8) 0, rgba(255, 216, 210, 0) 34%),
+    radial-gradient(circle at 88% 6%, rgba(121, 169, 155, 0.28) 0, rgba(121, 169, 155, 0) 30%),
+    linear-gradient(135deg, var(--hana-cream), #f8eadb 48%, #f6eee2);
+  color: var(--hana-ink-soft);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(122, 91, 63, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(122, 91, 63, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 78%);
+}
+
+.agent-shell-container,
+.center-stage,
+.shell__content,
+.session-console-rich {
+  background: transparent;
+}
+
+.product-nav {
+  height: 58px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, rgba(255, 250, 243, 0.88), rgba(255, 247, 236, 0.72));
+  backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 10px 30px rgba(83, 52, 34, 0.05);
+}
+
+.product-nav::before {
+  content: 'My Agent';
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin-right: 12px;
+  padding: 0 14px 0 34px;
+  border: 1px solid rgba(233, 111, 100, 0.2);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 18px 50%, var(--hana-coral) 0 5px, transparent 6px),
+    linear-gradient(135deg, rgba(255, 216, 210, 0.72), rgba(255, 250, 243, 0.88));
+  color: var(--hana-ink);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 22px rgba(233, 111, 100, 0.13);
+}
+
+.product-nav__item,
+.secondary-nav__item,
+.tab-button,
+.sidebar-collapse-toggle,
+.context-desk-toggle,
+.context-desk__close,
+.primary-button,
+.secondary-button,
+.session-new-button,
+.composer-send-button {
+  border-radius: 999px;
+}
+
+.product-nav__item {
+  min-height: 36px;
+  padding: 8px 17px;
+  color: var(--hana-ink-soft);
+}
+
+.product-nav__item--active,
+.secondary-nav__item--active,
+.tab-button.active,
+.tab-button[aria-selected='true'] {
+  color: var(--hana-coral-deep);
+  background: linear-gradient(135deg, rgba(255, 216, 210, 0.72), rgba(255, 250, 243, 0.68));
+  box-shadow: inset 0 0 0 1px rgba(233, 111, 100, 0.16), 0 8px 20px rgba(233, 111, 100, 0.10);
+}
+
+.shell {
+  margin: 14px;
+  height: calc(100vh - 86px);
+  border: 1px solid rgba(122, 91, 63, 0.13);
+  border-radius: 28px;
+  background: rgba(255, 250, 243, 0.5);
+  box-shadow: var(--hana-shadow-soft);
+  overflow: hidden;
+}
+
+.shell__topbar,
+.sidebar-shell,
+.sessions-sidebar,
+.session-main,
+.context-desk,
+.content-card,
+.ui-card,
+.companion-card,
+.context-card,
+.composer-dock {
+  background: var(--warm-paper-bg-glass);
+  backdrop-filter: blur(18px) saturate(1.08);
+  border-color: var(--hana-line);
+}
+
+.shell__topbar {
+  border-bottom: 1px solid rgba(122, 91, 63, 0.12);
+}
+
+.topbar__breadcrumb {
+  color: var(--hana-muted);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.sidebar-shell__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--hana-ink);
+  font-weight: 800;
+}
+
+.sidebar-shell__brand-logo {
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 8px 12px rgba(233, 111, 100, 0.18));
+}
+
+.sidebar-shell__body,
+.sessions-list,
+.context-desk__body,
+.content-body {
+  scrollbar-color: rgba(201, 79, 73, 0.35) transparent;
+}
+
+.nav-section__label,
+.companion-section__title,
+.sessions-sidebar-header h3 {
+  color: var(--hana-coral-deep);
+  letter-spacing: 0.12em;
+}
+
+.tab-button {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.tab-button:hover,
+.sidebar-collapse-toggle:hover,
+.context-desk-toggle:hover,
+.context-desk__close:hover,
+.session-item:hover,
+.secondary-nav__item:hover,
+.product-nav__item:hover {
+  background: rgba(255, 216, 210, 0.34);
+  color: var(--hana-ink);
+}
+
+.content-header,
+.secondary-nav,
+.sessions-sidebar-header,
+.context-desk__header {
+  background: linear-gradient(135deg, rgba(255, 250, 243, 0.88), rgba(255, 247, 236, 0.68));
+  border-color: var(--hana-line);
+}
+
+.content-card,
+.ui-card,
+.context-card,
+.companion-card,
+.session-item,
+.input-field,
+.composer-input,
+.secondary-button {
+  border: 1px solid rgba(122, 91, 63, 0.14);
+  box-shadow: var(--warm-paper-shadow-sm);
+}
+
+.content-card,
+.ui-card,
+.context-card,
+.companion-card {
+  border-radius: 22px;
+}
+
+.session-item {
+  border-radius: 18px;
+}
+
+.primary-button,
+.session-new-button,
+.composer-send-button {
+  background: linear-gradient(135deg, var(--hana-coral), var(--hana-coral-deep));
+  box-shadow: 0 10px 22px rgba(201, 79, 73, 0.18);
+}
+
+.primary-button:hover,
+.session-new-button:hover:not(:disabled),
+.composer-send-button:hover:not(:disabled),
+.stream-retry-button:hover {
+  background: linear-gradient(135deg, #f07f73, #ad413d);
+}
+
+.status-chip.healthy,
+.stream-status-connected {
+  background: rgba(121, 169, 155, 0.18);
+  color: var(--hana-mint-deep);
+}
+
+.status-chip.degraded,
+.stream-status-connecting {
+  background: rgba(243, 184, 95, 0.22);
+  color: #8a5a10;
+}
+
+.status-chip.error,
+.stream-status-disconnected {
+  background: rgba(233, 111, 100, 0.16);
+  color: var(--hana-coral-deep);
+}
+
+.composer-dock {
+  padding: 18px 24px;
+  box-shadow: 0 -12px 30px rgba(83, 52, 34, 0.05);
+}
+
+.composer-input,
+.input-field {
+  background: rgba(255, 250, 243, 0.78);
+  border-radius: 18px;
+}
+
+.composer-input:focus,
+.input-field:focus,
+.product-nav__item:focus-visible,
+.secondary-nav__item:focus-visible,
+.tab-button:focus,
+.context-desk-toggle:focus,
+.context-desk__close:focus {
+  outline-color: var(--hana-focus);
+  border-color: rgba(201, 79, 73, 0.42);
+  box-shadow: 0 0 0 4px var(--hana-focus);
+}
+
+.version-badge {
+  border: 1px solid rgba(233, 111, 100, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 216, 210, 0.38);
+  color: var(--hana-coral-deep);
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .shell {
+    margin: 0;
+    height: calc(100vh - 58px);
+    border: none;
+    border-radius: 0;
+  }
+
+  .shell__nav-wrapper {
+    top: 58px;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-nav::before {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+}
