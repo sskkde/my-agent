@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import * as adminApi from '../../api/admin'
 import { createApiKey } from '../../api/admin'
+import { getReadiness } from '../../api/client'
 import type { CreateApiKeyResponse } from '../../api/types'
 import ErrorMessage from '../../components/ErrorMessage'
 import './Setup.css'
@@ -71,6 +72,7 @@ const ProductionSetupChecklist: React.FC<ProductionSetupChecklistProps> = ({ onC
     try {
       const items: ProductionReadinessItem[] = []
 
+      // Check connector health (separate API)
       try {
         const connectorHealth = await adminApi.getConnectorHealth()
         const hasUnhealthy = connectorHealth.connectors.some((c) => c.status === 'unhealthy')
@@ -123,29 +125,29 @@ const ProductionSetupChecklist: React.FC<ProductionSetupChecklistProps> = ({ onC
         })
       }
 
-      items.push({
-        id: 'app_secret_key',
-        label: 'APP_SECRET_KEY 配置',
-        description: '用于加密敏感数据的密钥',
-        status: 'ok',
-        details: '请确保在生产环境中设置了强随机密钥（至少 32 字符）',
-      })
-
-      items.push({
-        id: 'cors',
-        label: 'CORS 配置',
-        description: '跨域资源共享设置',
-        status: 'ok',
-        details: '请确保在生产环境中配置了 ALLOWED_ORIGINS 环境变量',
-      })
-
-      items.push({
-        id: 'https',
-        label: 'HTTPS 配置',
-        description: '安全传输层配置',
-        status: 'ok',
-        details: '生产环境应使用 HTTPS。建议配置反向代理（如 Nginx）处理 SSL 终止',
-      })
+      // Fetch backend readiness items
+      try {
+        const readinessResponse = await getReadiness()
+        for (const item of readinessResponse.items) {
+          items.push({
+            id: item.id,
+            label: item.label,
+            description: item.details,
+            status: item.status,
+            details: item.details,
+          })
+        }
+      } catch (err) {
+        // On API failure, show error items instead of marking OK
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+        items.push({
+          id: 'api_error',
+          label: '后端状态检查失败',
+          description: '无法从后端获取配置状态',
+          status: 'error',
+          details: `错误: ${errorMessage}`,
+        })
+      }
 
       items.push({
         id: 'database_backup',

@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import SessionWorkspace from './SessionWorkspace'
 
 vi.mock('../../api/client', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
 
-  // Create mock ApiClientError class for instanceof checks
   class MockApiClientError extends Error {
     code: string
     constructor(message: string, code: string) {
@@ -32,6 +32,10 @@ import * as api from '../../api/client'
 const mockGetSessions = api.getSessions as ReturnType<typeof vi.fn>
 const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>
 
+const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/']) => {
+  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
+}
+
 describe('SessionWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -54,7 +58,7 @@ describe('SessionWorkspace', () => {
         total: 0,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
     })
@@ -65,7 +69,7 @@ describe('SessionWorkspace', () => {
         total: 0,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       expect(screen.getByTestId('session-workspace')).toHaveClass('session-workspace')
     })
@@ -76,7 +80,7 @@ describe('SessionWorkspace', () => {
         total: 0,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       // SessionConsoleTab renders session-empty-state when no sessions
       await waitFor(() => {
@@ -101,7 +105,7 @@ describe('SessionWorkspace', () => {
         total: 1,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -132,7 +136,7 @@ describe('SessionWorkspace', () => {
         total: 1,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -159,7 +163,7 @@ describe('SessionWorkspace', () => {
       })
 
       const mockSetActiveTab = vi.fn()
-      render(<SessionWorkspace setActiveTab={mockSetActiveTab} />)
+      renderWithRouter(<SessionWorkspace setActiveTab={mockSetActiveTab} />)
 
       // Component should render without errors
       await waitFor(() => {
@@ -177,7 +181,7 @@ describe('SessionWorkspace', () => {
         userId: 'user-1',
         username: 'testuser',
       }
-      render(<SessionWorkspace auth={mockAuth} />)
+      renderWithRouter(<SessionWorkspace auth={mockAuth} />)
 
       // Component should render without errors
       await waitFor(() => {
@@ -197,7 +201,7 @@ describe('SessionWorkspace', () => {
         total: 0,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-empty-state')).toBeInTheDocument()
@@ -221,7 +225,7 @@ describe('SessionWorkspace', () => {
         total: 1,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       await waitFor(() => {
         expect(screen.getByTestId('sessions-list')).toBeInTheDocument()
@@ -265,7 +269,7 @@ describe('SessionWorkspace', () => {
         total: 0,
       })
 
-      render(<SessionWorkspace />)
+      renderWithRouter(<SessionWorkspace />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-new-button')).toBeInTheDocument()

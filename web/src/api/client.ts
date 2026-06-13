@@ -53,6 +53,7 @@ import type {
   SubagentDefinitionsResponse,
   SubagentPreferenceResponse,
   UpdateSubagentPreferenceRequest,
+  ReadinessResponse,
 } from './types'
 
 const API_BASE = '/api/v1'
@@ -314,6 +315,7 @@ export type SessionTimelineEventCallback = (event: ConsoleTimelineEvent) => void
 export type SessionTimelineErrorCallback = (error: Error) => void
 export type SessionTimelineStatusCallback = (status: ProcessingStatusPayload) => void
 export type SessionTimelineTokenCallback = (token: TokenStreamPayload) => void
+export type SessionTimelineOpenCallback = () => void
 
 type SseEnvelope =
   | { type: 'snapshot'; events: ConsoleTimelineEvent[]; timestamp: string }
@@ -328,8 +330,13 @@ export function subscribeSessionTimeline(
   onError?: SessionTimelineErrorCallback,
   onStatus?: SessionTimelineStatusCallback,
   onToken?: SessionTimelineTokenCallback,
+  onOpen?: SessionTimelineOpenCallback,
 ): () => void {
   const eventSource = new EventSource(`${API_BASE}/sessions/${sessionId}/timeline/stream`, { withCredentials: true })
+
+  eventSource.onopen = () => {
+    onOpen?.()
+  }
 
   eventSource.onmessage = (event) => {
     try {
@@ -371,6 +378,11 @@ export function subscribeSessionTimeline(
 export async function getSetupStatus(): Promise<SetupStatusResponse> {
   const response = await fetch(`${API_BASE}/setup/status`, { credentials: 'include' })
   return parseResponse<SetupStatusResponse>(response)
+}
+
+export async function getReadiness(): Promise<ReadinessResponse> {
+  const response = await fetch(`${API_BASE}/setup/readiness`, { credentials: 'include' })
+  return parseResponse<ReadinessResponse>(response)
 }
 
 export async function setupUser(username: string, password: string): Promise<AuthSuccessResponse> {

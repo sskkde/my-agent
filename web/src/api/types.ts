@@ -404,6 +404,22 @@ export interface SetupStatusResponse {
   needsSetup: boolean
 }
 
+// =============================================================================
+// Setup Readiness Types - Task 8
+// =============================================================================
+
+export interface ReadinessItem {
+  id: string
+  label: string
+  status: 'ok' | 'warning' | 'error'
+  details: string
+}
+
+export interface ReadinessResponse {
+  items: ReadinessItem[]
+  timestamp: string
+}
+
 export interface UserMetadata {
   userId: string
   username: string

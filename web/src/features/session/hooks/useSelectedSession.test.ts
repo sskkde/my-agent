@@ -162,4 +162,71 @@ describe('useSelectedSession', () => {
 
     expect(result.current.selectedSessionId).toBe('ses_valid-session_id')
   })
+
+  // =============================================================================
+  // URL Navigation Tests (Task 11) - RED Phase
+  // =============================================================================
+
+  describe('URL navigation on session selection (Task 11)', () => {
+    it('calls navigate when handleSelectSession is called with a navigate function', () => {
+      const mockNavigate = vi.fn()
+
+      const { result } = renderHook(() =>
+        useSelectedSession({
+          navigate: mockNavigate,
+        }),
+      )
+
+      act(() => {
+        result.current.handleSelectSession('ses_abc123')
+      })
+
+      expect(mockNavigate).toHaveBeenCalledWith('/chat/ses_abc123')
+    })
+
+    it('calls navigate with encoded sessionId when sessionId contains spaces', () => {
+      const mockNavigate = vi.fn()
+
+      const { result } = renderHook(() =>
+        useSelectedSession({
+          navigate: mockNavigate,
+        }),
+      )
+
+      act(() => {
+        result.current.handleSelectSession('abc 123')
+      })
+
+      expect(mockNavigate).toHaveBeenCalledWith('/chat/abc%20123')
+    })
+
+    it('does not call navigate when navigate function is not provided', () => {
+      const { result } = renderHook(() => useSelectedSession())
+
+      act(() => {
+        result.current.handleSelectSession('ses_abc123')
+      })
+
+      expect(result.current.selectedSessionId).toBe('ses_abc123')
+      expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBe('ses_abc123')
+    })
+
+    it('navigates to /chat/:sessionId and updates localStorage in one atomic operation', () => {
+      const mockNavigate = vi.fn()
+
+      const { result } = renderHook(() =>
+        useSelectedSession({
+          navigate: mockNavigate,
+        }),
+      )
+
+      act(() => {
+        result.current.handleSelectSession('session_xyz')
+      })
+
+      expect(mockNavigate).toHaveBeenCalledWith('/chat/session_xyz')
+      expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBe('session_xyz')
+      expect(result.current.selectedSessionId).toBe('session_xyz')
+    })
+  })
 })

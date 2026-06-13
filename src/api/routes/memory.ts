@@ -2,9 +2,55 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import { memoryIdParamsSchema } from '../schemas/shared.js'
-import type { MemoryType } from '../../storage/long-term-memory-store.js'
+import type { MemoryType, LongTermMemoryRecord, MemorySourceRefs } from '../../storage/long-term-memory-store.js'
 import { createLongTermMemoryRecallService } from '../../memory/long-term-memory-recall.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
+
+export type MemoryDto = {
+  memoryId: string
+  userId: string
+  type: string
+  content: string
+  sensitivity: string
+  lifecycle: {
+    status: string
+    createdAt: string
+  }
+  keywords?: string[]
+  sourceRefs?: Array<{ sourceType: string; sourceId: string }>
+  createdAt: string
+  updatedAt?: string
+}
+
+function toMemoryDto(record: LongTermMemoryRecord): MemoryDto {
+  const sourceRefs = extractSourceRefs(record.sourceRefs)
+  return {
+    memoryId: record.memoryId,
+    userId: record.userId,
+    type: record.memoryType,
+    content: record.content.text,
+    sensitivity: record.sensitivity,
+    lifecycle: {
+      status: record.lifecycle.status,
+      createdAt: record.lifecycle.createdAt,
+    },
+    keywords: record.retrieval?.keywords,
+    sourceRefs: sourceRefs.length > 0 ? sourceRefs : undefined,
+    createdAt: record.lifecycle.createdAt,
+    updatedAt: record.lifecycle.updatedAt,
+  }
+}
+
+function extractSourceRefs(sourceRefs: MemorySourceRefs): Array<{ sourceType: string; sourceId: string }> {
+  const refs: Array<{ sourceType: string; sourceId: string }> = []
+  if (sourceRefs.transcriptRefs) {
+    refs.push(...sourceRefs.transcriptRefs.map((id) => ({ sourceType: 'transcript', sourceId: id })))
+  }
+  if (sourceRefs.summaryRefs) {
+    refs.push(...sourceRefs.summaryRefs.map((id) => ({ sourceType: 'summary', sourceId: id })))
+  }
+  return refs
+}
 
 interface ListMemoriesQuery {
   query?: string
@@ -223,7 +269,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       return reply.code(200).send(
         success(
           {
-            memories: result.memories,
+            memories: result.memories.map(toMemoryDto),
             total: result.total,
           },
           request.requestId,
@@ -256,7 +302,7 @@ export async function registerMemoryRoutes(server: FastifyInstance, context: Api
       return reply.code(200).send(
         success(
           {
-            memory,
+            memory: toMemoryDto(memory),
           },
           request.requestId,
         ),

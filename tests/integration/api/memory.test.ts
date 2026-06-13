@@ -105,10 +105,53 @@ describe('Memory Management API', () => {
     }
   }
 
+  // DTO shape verification tests
+  interface MemoryDto {
+    memoryId: string
+    userId: string
+    type: string
+    content: string
+    sensitivity: string
+    lifecycle: {
+      status: string
+      createdAt: string
+    }
+    keywords?: string[]
+    sourceRefs?: Array<{ sourceType: string; sourceId: string }>
+    createdAt: string
+    updatedAt?: string
+  }
+
   describe('GET /api/memory', () => {
     it('should require authentication', async () => {
       const response = await fetch(`${baseUrl}/api/v1/memory`)
       expect(response.status).toBe(401)
+    })
+
+    it('should return DTO with string content field (not object)', async () => {
+      const memory = createTestMemory({
+        content: { text: 'I prefer dark mode for coding', structured: { theme: 'dark' } },
+      })
+      apiContext.stores.longTermMemoryStore.save(memory)
+
+      const response = await fetch(`${baseUrl}/api/v1/memory`, {
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as { data: { memories: MemoryDto[]; total: number } }
+      expect(body.data.memories.length).toBeGreaterThan(0)
+
+      const dto = body.data.memories.find((m) => m.memoryId === memory.memoryId)
+      expect(dto).toBeDefined()
+      // This should FAIL because content is currently an object, not a string
+      expect(typeof dto!.content).toBe('string')
+      expect(dto!.content).toBe('I prefer dark mode for coding')
+      expect(dto!.memoryId).toBe(memory.memoryId)
+      expect(dto!.userId).toBe(userId)
+      expect(dto!.type).toBe('user_preference')
+      expect(dto!.sensitivity).toBe('low')
+      expect(dto!.lifecycle.status).toBe('active')
+      expect(dto!.createdAt).toBeDefined()
     })
 
     it('should return empty list when no memories exist', async () => {
@@ -142,7 +185,7 @@ describe('Memory Management API', () => {
         headers: { Cookie: authCookie },
       })
       expect(response.status).toBe(200)
-      const body = (await response.json()) as { data: { memories: LongTermMemoryRecord[]; total: number } }
+      const body = (await response.json()) as { data: { memories: MemoryDto[]; total: number } }
       expect(body.data.memories.length).toBe(2)
       expect(body.data.memories.map((m) => m.memoryId)).toContain(activeMemory.memoryId)
       expect(body.data.memories.map((m) => m.memoryId)).toContain(lowPriorityMemory.memoryId)
@@ -159,7 +202,7 @@ describe('Memory Management API', () => {
         headers: { Cookie: authCookie },
       })
       expect(response.status).toBe(200)
-      const body = (await response.json()) as { data: { memories: LongTermMemoryRecord[]; total: number } }
+      const body = (await response.json()) as { data: { memories: MemoryDto[]; total: number } }
       expect(body.data.memories.length).toBe(1)
       expect(body.data.memories[0].memoryId).toBe(memory1.memoryId)
     })
@@ -181,10 +224,10 @@ describe('Memory Management API', () => {
         headers: { Cookie: authCookie },
       })
       expect(response.status).toBe(200)
-      const body = (await response.json()) as { data: { memories: LongTermMemoryRecord[]; total: number } }
+      const body = (await response.json()) as { data: { memories: MemoryDto[]; total: number } }
       const preferenceMemories = body.data.memories.filter((m) => m.memoryId === preferenceMemory.memoryId)
       expect(preferenceMemories.length).toBe(1)
-      expect(preferenceMemories[0].memoryType).toBe('user_preference')
+      expect(preferenceMemories[0].type).toBe('user_preference')
       expect(body.data.memories.find((m) => m.memoryId === profileMemory.memoryId)).toBeUndefined()
     })
 
@@ -203,7 +246,7 @@ describe('Memory Management API', () => {
         headers: { Cookie: authCookie },
       })
       expect(response.status).toBe(200)
-      const body = (await response.json()) as { data: { memories: LongTermMemoryRecord[]; total: number } }
+      const body = (await response.json()) as { data: { memories: MemoryDto[]; total: number } }
       expect(body.data.memories.length).toBe(2)
       const foundTestMemories = body.data.memories.filter((m) => testMemoryIds.includes(m.memoryId))
       expect(foundTestMemories.length).toBeLessThanOrEqual(2)
@@ -235,7 +278,7 @@ describe('Memory Management API', () => {
         headers: { Cookie: authCookie },
       })
       expect(response.status).toBe(200)
-      const body = (await response.json()) as { data: { memories: LongTermMemoryRecord[]; total: number } }
+      const body = (await response.json()) as { data: { memories: MemoryDto[]; total: number } }
       expect(body.data.memories.find((m) => m.memoryId === 'mem-other')).toBeUndefined()
     })
   })
@@ -246,6 +289,37 @@ describe('Memory Management API', () => {
       expect(response.status).toBe(401)
     })
 
+    it('should return DTO with string content field (not object)', async () => {
+      const memory = createTestMemory({
+        content: { text: 'Detailed memory content here', structured: { key: 'value' } },
+        retrieval: { keywords: ['test', 'keyword'], recallCount: 0 },
+        lifecycle: {
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      })
+      apiContext.stores.longTermMemoryStore.save(memory)
+
+      const response = await fetch(`${baseUrl}/api/v1/memory/${memory.memoryId}`, {
+        headers: { Cookie: authCookie },
+      })
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as { data: { memory: MemoryDto } }
+      const dto = body.data.memory
+
+      // This should FAIL because content is currently an object, not a string
+      expect(typeof dto.content).toBe('string')
+      expect(dto.content).toBe('Detailed memory content here')
+      expect(dto.memoryId).toBe(memory.memoryId)
+      expect(dto.userId).toBe(userId)
+      expect(dto.type).toBe('user_preference')
+      expect(dto.sensitivity).toBe('low')
+      expect(dto.keywords).toEqual(['test', 'keyword'])
+      expect(dto.createdAt).toBeDefined()
+      expect(dto.updatedAt).toBeDefined()
+    })
+
     it('should return memory detail for existing memory', async () => {
       const memory = createTestMemory()
       apiContext.stores.longTermMemoryStore.save(memory)
@@ -254,10 +328,10 @@ describe('Memory Management API', () => {
         headers: { Cookie: authCookie },
       })
       expect(response.status).toBe(200)
-      const body = (await response.json()) as { data: { memory: LongTermMemoryRecord } }
+      const body = (await response.json()) as { data: { memory: MemoryDto } }
       expect(body.data.memory.memoryId).toBe(memory.memoryId)
       expect(body.data.memory.userId).toBe(userId)
-      expect(body.data.memory.content.text).toBe('Test memory content')
+      expect(body.data.memory.content).toBe('Test memory content')
     })
 
     it('should return 404 for non-existent memory', async () => {

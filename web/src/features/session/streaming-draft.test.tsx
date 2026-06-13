@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import React from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import SessionConsoleTab from './SessionConsoleTab'
 import * as api from '../../api/client'
 import type { ConsoleTimelineEvent, TokenStreamPayload, ProcessingStatusPayload } from '../../api/types'
 
-// Mock the API client
 vi.mock('../../api/client', () => ({
   getSession: vi.fn(),
   getSessionTimeline: vi.fn(),
@@ -23,6 +23,10 @@ vi.mock('../../api/client', () => ({
     }
   },
 }))
+
+const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/']) => {
+  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
+}
 
 describe('Streaming Draft UX', () => {
   let unsubscribe: ReturnType<typeof api.subscribeSessionTimeline>
@@ -92,7 +96,7 @@ describe('Streaming Draft UX', () => {
   })
 
   it('accumulates token deltas into streaming draft', async () => {
-    render(<SessionConsoleTab initialSessionId="test-session" />)
+    renderWithRouter(<SessionConsoleTab initialSessionId="test-session" />)
 
     // Wait for session to load
     await waitFor(() => {
@@ -132,7 +136,7 @@ describe('Streaming Draft UX', () => {
   })
 
   it('final assistant_message event replaces streaming draft without duplication', async () => {
-    render(<SessionConsoleTab initialSessionId="test-session" />)
+    renderWithRouter(<SessionConsoleTab initialSessionId="test-session" />)
 
     await waitFor(() => {
       expect(api.getSession).toHaveBeenCalledWith('test-session')
@@ -192,7 +196,7 @@ describe('Streaming Draft UX', () => {
   })
 
   it('handles isFinal flag in token stream', async () => {
-    render(<SessionConsoleTab initialSessionId="test-session" />)
+    renderWithRouter(<SessionConsoleTab initialSessionId="test-session" />)
 
     await waitFor(() => {
       expect(api.getSession).toHaveBeenCalledWith('test-session')
@@ -248,7 +252,7 @@ describe('Streaming Draft UX', () => {
   })
 
   it('cleans up orphaned streaming draft on error event', async () => {
-    render(<SessionConsoleTab initialSessionId="test-session" />)
+    renderWithRouter(<SessionConsoleTab initialSessionId="test-session" />)
 
     await waitFor(() => {
       expect(api.getSession).toHaveBeenCalledWith('test-session')
@@ -297,7 +301,7 @@ describe('Streaming Draft UX', () => {
   })
 
   it('handles SSE reconnect during active streaming', async () => {
-    render(<SessionConsoleTab initialSessionId="test-session" />)
+    renderWithRouter(<SessionConsoleTab initialSessionId="test-session" />)
 
     await waitFor(() => {
       expect(api.getSession).toHaveBeenCalledWith('test-session')
@@ -347,7 +351,7 @@ describe('Streaming Draft UX', () => {
   })
 
   it('shows streaming draft with cursor indicator', async () => {
-    render(<SessionConsoleTab initialSessionId="test-session" />)
+    renderWithRouter(<SessionConsoleTab initialSessionId="test-session" />)
 
     await waitFor(() => {
       expect(api.getSession).toHaveBeenCalledWith('test-session')

@@ -254,4 +254,59 @@ describe('MemoryTab', () => {
 
     expect(screen.getByText('删除失败，请重试')).toBeInTheDocument()
   })
+
+  it('renders string content safely without substring error', async () => {
+    const longContentMemories: MemoryItem[] = [
+      {
+        memoryId: 'mem-long',
+        userId: 'user-1',
+        type: 'user_preference',
+        content: 'This is a very long content string that should be truncated in the list view but still render without any error when substring is called on it.',
+        sensitivity: 'low',
+        lifecycle: { status: 'active', createdAt: '2024-01-01T00:00:00Z' },
+        createdAt: '2024-01-01T00:00:00Z',
+      },
+    ]
+    ;(getMemories as ReturnType<typeof vi.fn>).mockResolvedValue({ memories: longContentMemories, total: 1 })
+
+    render(<MemoryTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('memory-count')).toBeInTheDocument()
+    })
+
+    const rows = screen.getAllByTestId('memory-row')
+    expect(rows).toHaveLength(1)
+    expect(screen.getByText(/This is a very long content/)).toBeInTheDocument()
+  })
+
+  it('handles missing optional fields gracefully', async () => {
+    const minimalMemory: MemoryItem[] = [
+      {
+        memoryId: 'mem-minimal',
+        userId: 'user-1',
+        type: 'user_preference',
+        content: 'Minimal memory without keywords or updatedAt',
+        sensitivity: 'low',
+        lifecycle: { status: 'active', createdAt: '2024-01-01T00:00:00Z' },
+        createdAt: '2024-01-01T00:00:00Z',
+      },
+    ]
+    ;(getMemories as ReturnType<typeof vi.fn>).mockResolvedValue({ memories: minimalMemory, total: 1 })
+
+    render(<MemoryTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('memory-count')).toBeInTheDocument()
+    })
+
+    const rows = screen.getAllByTestId('memory-row')
+    fireEvent.click(rows[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('记忆详情')).toBeInTheDocument()
+    })
+
+    expect(screen.getAllByText('Minimal memory without keywords or updatedAt').length).toBeGreaterThanOrEqual(1)
+  })
 })

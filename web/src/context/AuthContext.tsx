@@ -4,6 +4,7 @@ import type { UserMetadata } from '../api/types'
 
 interface AuthState {
   needsSetup: boolean
+  setupInProgress: boolean
   isAuthenticated: boolean
   user: UserMetadata | null
   loading: boolean
@@ -12,6 +13,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<void>
   setupUser: (username: string, password: string) => Promise<void>
+  completeSetup: () => void
   logout: () => Promise<void>
   checkAuthStatus: () => Promise<void>
 }
@@ -21,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     needsSetup: false,
+    setupInProgress: false,
     isAuthenticated: false,
     user: null,
     loading: true,
@@ -34,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (setupStatus.needsSetup) {
         setState({
           needsSetup: true,
+          setupInProgress: false,
           isAuthenticated: false,
           user: null,
           loading: false,
@@ -45,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userData = await getMe()
         setState({
           needsSetup: false,
+          setupInProgress: false,
           isAuthenticated: true,
           user: userData.user,
           loading: false,
@@ -55,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setState({
           needsSetup: false,
+          setupInProgress: false,
           isAuthenticated: false,
           user: null,
           loading: false,
@@ -63,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       setState({
         needsSetup: false,
+        setupInProgress: false,
         isAuthenticated: false,
         user: null,
         loading: false,
@@ -74,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await login(username, password)
     setState({
       needsSetup: false,
+      setupInProgress: false,
       isAuthenticated: true,
       user: result.user,
       loading: false,
@@ -83,17 +91,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleSetupUser = useCallback(async (username: string, password: string) => {
     const result = await setupUser(username, password)
     setState({
-      needsSetup: false,
+      needsSetup: true,
+      setupInProgress: true,
       isAuthenticated: true,
       user: result.user,
       loading: false,
     })
   }, [])
 
+  const completeSetup = useCallback(() => {
+    setState({
+      needsSetup: false,
+      setupInProgress: false,
+      isAuthenticated: true,
+      user: state.user,
+      loading: false,
+    })
+  }, [state.user])
+
   const handleLogout = useCallback(async () => {
     await logout()
     setState({
       needsSetup: false,
+      setupInProgress: false,
       isAuthenticated: false,
       user: null,
       loading: false,
@@ -108,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ...state,
     login: handleLogin,
     setupUser: handleSetupUser,
+    completeSetup,
     logout: handleLogout,
     checkAuthStatus,
   }

@@ -111,8 +111,12 @@ npm run dev:web
 ### Port Exposure Policy
 
 All servers (API, Vite dev, debug, e2e) bind to `localhost` by default. Binding to `localhost` restricts the service to the local network interface; it does not provide a complete browser-origin security boundary.
-Production public ingress requires an explicit `HOST=0.0.0.0` environment variable. Setting `NODE_ENV=production` alone does **not** expose the API publicly.
-The Vite dev server is always bound to `localhost` and cannot be exposed via environment variables.
+
+**API Server**: Production public ingress requires an explicit `HOST=0.0.0.0` environment variable. Setting `NODE_ENV=production` alone does **not** expose the API publicly.
+
+**Vite Dev Server**: Binds to `localhost` by default but can be overridden via `VITE_HOST` environment variable (e.g., `VITE_HOST=0.0.0.0` for network access). **Security warning**: Exposing Vite to external networks allows anyone with network access to execute arbitrary build commands and access your source code. Only use `VITE_HOST` in trusted development environments.
+
+The Vite configuration includes a hard-coded `allowedHosts: ['agent.nas-1.club']` setting. Future production deployments requiring custom allowed hosts should migrate this to an environment variable (e.g., `VITE_ALLOWED_HOSTS`) with appropriate security validation.
 
 ### Building
 

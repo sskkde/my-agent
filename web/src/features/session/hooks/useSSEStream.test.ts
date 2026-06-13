@@ -23,7 +23,10 @@ describe('useSSEStream', () => {
     selectedSessionIdRef = { current: 'session-1' }
     onEvent = vi.fn()
     onToken = vi.fn()
-    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
+      onOpen?.()
+      return () => {}
+    })
   })
 
   function renderSSEHook() {
@@ -38,14 +41,16 @@ describe('useSSEStream', () => {
     expect(result.current.processingStatus).toBeNull()
   })
 
-  it('sets status to connected after connectSse', () => {
+  it('sets status to connecting immediately after connectSse, before onopen', () => {
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+
     const { result } = renderSSEHook()
 
     act(() => {
       result.current.connectSse('session-1')
     })
 
-    expect(result.current.streamStatus).toBe('connected')
+    expect(result.current.streamStatus).toBe('connecting')
     expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
     expect(mockSubscribeSessionTimeline).toHaveBeenCalledWith(
       'session-1',
@@ -53,13 +58,37 @@ describe('useSSEStream', () => {
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     )
+  })
+
+  it('sets status to connected only after EventSource onopen fires', () => {
+    let onOpenCallback: (() => void) | null = null
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
+      onOpenCallback = onOpen
+      return () => {}
+    })
+
+    const { result } = renderSSEHook()
+
+    act(() => {
+      result.current.connectSse('session-1')
+    })
+
+    expect(result.current.streamStatus).toBe('connecting')
+
+    act(() => {
+      onOpenCallback?.()
+    })
+
+    expect(result.current.streamStatus).toBe('connected')
   })
 
   it('sets status to disconnected on error callback', () => {
     let errorCallback: ((error: Error) => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
       errorCallback = onError
+      onOpen?.()
       return () => {}
     })
 
@@ -80,8 +109,9 @@ describe('useSSEStream', () => {
 
   it('calls onEvent callback when timeline event arrives', () => {
     let eventCallback: ((event: ConsoleTimelineEvent) => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb, _onError, _onStatus, _onToken, onOpen) => {
       eventCallback = onEventCb
+      onOpen?.()
       return () => {}
     })
 
@@ -108,8 +138,9 @@ describe('useSSEStream', () => {
 
   it('calls onToken callback when token arrives', () => {
     let tokenCallback: ((token: TokenStreamPayload) => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, _onError, _onStatus, onTokenCb) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, _onError, _onStatus, onTokenCb, onOpen) => {
       tokenCallback = onTokenCb
+      onOpen?.()
       return () => {}
     })
 
@@ -136,8 +167,9 @@ describe('useSSEStream', () => {
 
   it('updates processingStatus when status callback fires', () => {
     let statusCallback: ((status: ProcessingStatusPayload) => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, _onError, onStatusCb) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, _onError, onStatusCb, _onToken, onOpen) => {
       statusCallback = onStatusCb
+      onOpen?.()
       return () => {}
     })
 
@@ -165,10 +197,11 @@ describe('useSSEStream', () => {
 
   it('reconnects automatically after error with exponential backoff', async () => {
     let callCount = 0
-    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
       callCount++
       const currentCall = callCount
       if (currentCall === 1) {
+        onOpen?.()
         setTimeout(() => {
           onError?.(new Error('disconnect'))
         }, 10)
@@ -199,8 +232,9 @@ describe('useSSEStream', () => {
 
   it('handleRetryStream resets attempts and reconnects', () => {
     let errorCallback: ((error: Error) => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
       errorCallback = onError
+      onOpen?.()
       return () => {}
     })
 
@@ -243,8 +277,9 @@ describe('useSSEStream', () => {
 
   it('ignores events when component is unmounted', () => {
     let eventCallback: ((event: ConsoleTimelineEvent) => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb, _onError, _onStatus, _onToken, onOpen) => {
       eventCallback = onEventCb
+      onOpen?.()
       return () => {}
     })
 
@@ -270,8 +305,9 @@ describe('useSSEStream', () => {
 
   it('ignores events for a different session', () => {
     let eventCallback: ((event: ConsoleTimelineEvent) => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb) => {
+    mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb, _onError, _onStatus, _onToken, onOpen) => {
       eventCallback = onEventCb
+      onOpen?.()
       return () => {}
     })
 
@@ -314,8 +350,9 @@ describe('useSSEStream', () => {
   describe('SSE Degradation Behavior', () => {
     it('shows disconnected status without crashing when SSE fails', () => {
       let errorCallback: ((error: Error) => void) | null = null
-      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError) => {
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
         errorCallback = onError
+        onOpen?.()
         return () => {}
       })
 
@@ -339,9 +376,10 @@ describe('useSSEStream', () => {
       let eventCallback: ((event: ConsoleTimelineEvent) => void) | null = null
       let errorCallback: ((error: Error) => void) | null = null
 
-      mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb, onErrorCb) => {
+      mockSubscribeSessionTimeline.mockImplementation((_sid, onEventCb, onErrorCb, _onStatus, _onToken, onOpen) => {
         eventCallback = onEventCb
         errorCallback = onErrorCb
+        onOpen
         return () => {}
       })
 
@@ -379,11 +417,12 @@ describe('useSSEStream', () => {
       const reconnectDelays: number[] = []
       let callCount = 0
 
-      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError) => {
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
         callCount++
         const currentCall = callCount
 
         if (currentCall <= 3) {
+          onOpen?.()
           setTimeout(() => {
             onError?.(new Error('disconnect'))
           }, 10)
@@ -417,8 +456,9 @@ describe('useSSEStream', () => {
 
     it('manual retry resets reconnect attempts and reconnects immediately', () => {
       let errorCallback: ((error: Error) => void) | null = null
-      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError) => {
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
         errorCallback = onError
+        onOpen?.()
         return () => {}
       })
 
@@ -446,8 +486,9 @@ describe('useSSEStream', () => {
       vi.useFakeTimers()
 
       let callCount = 0
-      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError) => {
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
         callCount++
+        onOpen?.()
         setTimeout(() => {
           onError?.(new Error('disconnect'))
         }, 10)
@@ -481,23 +522,24 @@ describe('useSSEStream', () => {
         result.current.connectSse('session-1')
       })
 
-      expect(result.current.streamStatus).toBe('connected')
+      expect(result.current.streamStatus).toBe('connecting')
 
       act(() => {
         result.current.disconnectSse()
       })
 
       expect(unsubscribe).toHaveBeenCalled()
-      expect(result.current.streamStatus).toBe('connected')
+      expect(result.current.streamStatus).toBe('connecting')
     })
 
     it('processing status persists during temporary disconnect', () => {
       let statusCallback: ((status: ProcessingStatusPayload) => void) | null = null
       let errorCallback: ((error: Error) => void) | null = null
 
-      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onErrorCb, onStatusCb) => {
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onErrorCb, onStatusCb, _onToken, onOpen) => {
         errorCallback = onErrorCb
         statusCallback = onStatusCb
+        onOpen?.()
         return () => {}
       })
 
@@ -528,6 +570,113 @@ describe('useSSEStream', () => {
 
       expect(result.current.streamStatus).toBe('disconnected')
       expect(result.current.processingStatus).toEqual(status)
+    })
+  })
+
+  describe('Reconnect Timer Cleanup', () => {
+    it('clears pending reconnect timer on unmount', async () => {
+      vi.useFakeTimers()
+
+      let errorCallback: ((error: Error) => void) | null = null
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
+        errorCallback = onError
+        onOpen?.()
+        return () => {}
+      })
+
+      const { result, unmount } = renderSSEHook()
+
+      act(() => {
+        result.current.connectSse('session-1')
+      })
+
+      act(() => {
+        errorCallback?.(new Error('disconnect'))
+      })
+
+      expect(result.current.streamStatus).toBe('disconnected')
+
+      unmount()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+
+      expect(mockSubscribeSessionTimeline.mock.calls.length).toBe(1)
+
+      vi.useRealTimers()
+    })
+
+    it('clears pending reconnect timer when session changes', async () => {
+      vi.useFakeTimers()
+
+      let errorCallback: ((error: Error) => void) | null = null
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
+        errorCallback = onError
+        onOpen?.()
+        return () => {}
+      })
+
+      const { result } = renderSSEHook()
+
+      act(() => {
+        result.current.connectSse('session-1')
+      })
+
+      act(() => {
+        errorCallback?.(new Error('disconnect'))
+      })
+
+      expect(result.current.streamStatus).toBe('disconnected')
+
+      selectedSessionIdRef.current = 'session-2'
+
+      act(() => {
+        result.current.connectSse('session-2')
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledWith('session-2', expect.any(Function), expect.any(Function), expect.any(Function), expect.any(Function), expect.any(Function))
+
+      vi.useRealTimers()
+    })
+
+    it('clears reconnect timeout when manually retrying', async () => {
+      vi.useFakeTimers()
+
+      let errorCallback: ((error: Error) => void) | null = null
+      mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
+        errorCallback = onError
+        onOpen?.()
+        return () => {}
+      })
+
+      const { result } = renderSSEHook()
+
+      act(() => {
+        result.current.connectSse('session-1')
+      })
+
+      act(() => {
+        errorCallback?.(new Error('disconnect'))
+      })
+
+      expect(result.current.streamStatus).toBe('disconnected')
+
+      act(() => {
+        result.current.handleRetryStream()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+
+      expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(2)
+
+      vi.useRealTimers()
     })
   })
 })

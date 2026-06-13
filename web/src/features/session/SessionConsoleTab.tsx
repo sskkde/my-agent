@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './SessionConsole.css'
 import * as api from '../../api/client'
 import type {
@@ -34,6 +35,8 @@ interface SessionConsoleTabProps {
 }
 
 const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, auth, initialSessionId }) => {
+  const navigate = useNavigate()
+
   const {
     selectedSessionId,
     setSelectedSessionId,
@@ -41,7 +44,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     setSelectedSession,
     selectedSessionIdRef,
     handleSelectSession: selectSession,
-  } = useSelectedSession({ initialSessionId })
+  } = useSelectedSession({ initialSessionId, navigate })
 
   const {
     sessions,

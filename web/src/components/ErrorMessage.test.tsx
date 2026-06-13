@@ -294,5 +294,19 @@ describe('ErrorMessage', () => {
 
       expect(screen.queryByTestId('error-message-retry')).not.toBeInTheDocument()
     })
+
+    it('renders with custom data-testid', () => {
+      const error = { code: '500', message: 'Error' } as Error & { code: string }
+      render(<ErrorMessage error={error} data-testid="custom-error" />)
+
+      expect(screen.getByTestId('custom-error')).toBeInTheDocument()
+    })
+
+    it('preserves default data-testid when custom value is not provided', () => {
+      const error = { code: '500', message: 'Error' } as Error & { code: string }
+      render(<ErrorMessage error={error} />)
+
+      expect(screen.getByTestId('error-message')).toBeInTheDocument()
+    })
   })
 })

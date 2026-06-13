@@ -96,7 +96,7 @@ export function getErrorDisplay(error: Error | null | undefined): {
   }
 }
 
-export interface ErrorMessageProps {
+export interface ErrorMessageProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Error object to display */
   error: Error | null | undefined
   /** Optional custom title (overrides auto-generated title) */
@@ -124,6 +124,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
   className = '',
   size = 'medium',
   variant = 'default',
+  ...restProps
 }) => {
   const errorDisplay = getErrorDisplay(error)
   const displayTitle = title ?? errorDisplay.title
@@ -133,8 +134,15 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
   const variantClass = `error-message--${variant}`
   const combinedClassName = `error-message ${sizeClass} ${variantClass} ${className}`.trim()
 
+  const dataTestId = 'data-testid' in restProps ? restProps['data-testid'] : 'error-message'
+
   return (
-    <div className={combinedClassName} role="alert" data-testid="error-message">
+    <div
+      className={combinedClassName}
+      role="alert"
+      data-testid={dataTestId}
+      {...restProps}
+    >
       <div className="error-message__icon" aria-hidden="true">
         ⚠
       </div>

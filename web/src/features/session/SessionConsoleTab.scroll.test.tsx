@@ -1,5 +1,6 @@
 import { render, screen, within, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import SessionConsoleTab from './SessionConsoleTab'
 import { mockViewport, resetMatchMedia } from '../../test/setup'
 
@@ -20,6 +21,10 @@ const mockGetSessions = api.getSessions as ReturnType<typeof vi.fn>
 const mockGetSession = api.getSession as ReturnType<typeof vi.fn>
 const mockGetSessionTimeline = api.getSessionTimeline as ReturnType<typeof vi.fn>
 const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>
+
+const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/']) => {
+  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
+}
 
 describe('Scroll Container Structure (Desktop)', () => {
   beforeEach(() => {
@@ -48,7 +53,7 @@ describe('Scroll Container Structure (Desktop)', () => {
       total: 20,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sidebar = await screen.findByTestId('sessions-sidebar')
     const sessionsList = within(sidebar).getByTestId('sessions-list')
@@ -89,7 +94,7 @@ describe('Scroll Container Structure (Desktop)', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sessionItem = await screen.findByTestId('session-item-session-1')
     await act(async () => {
@@ -141,7 +146,7 @@ describe('Scroll Container Structure (Desktop)', () => {
       total: 1,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sessionItem = await screen.findByTestId('session-item-session-1')
     await act(async () => {
@@ -161,7 +166,7 @@ describe('Scroll Container Structure (Desktop)', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const consoleRich = document.querySelector('.session-console-rich')
     expect(consoleRich).toBeTruthy()
@@ -213,7 +218,7 @@ describe('Scroll Container Structure (Mobile)', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sessionItem = await screen.findByTestId('session-item-session-1')
     await act(async () => {
@@ -265,7 +270,7 @@ describe('Scroll Container Structure (Mobile)', () => {
       total: 1,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sessionItem = await screen.findByTestId('session-item-session-1')
     await act(async () => {
@@ -315,7 +320,7 @@ describe('Scroll Container Structure (Mobile)', () => {
       total: 50,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sessionItem = await screen.findByTestId('session-item-session-1')
     await act(async () => {
@@ -375,7 +380,7 @@ describe('Scroll Container Height Constraints', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sessionItem = await screen.findByTestId('session-item-session-1')
     await act(async () => {
@@ -392,7 +397,7 @@ describe('Scroll Container Height Constraints', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     const sessionMain = document.querySelector('.session-main')
     expect(sessionMain).toBeTruthy()

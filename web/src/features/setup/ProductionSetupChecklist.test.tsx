@@ -9,7 +9,9 @@ vi.mock('../../api/admin')
 vi.mock('../../api/client')
 
 const mockSetupUser = vi.fn()
+const mockGetReadiness = vi.fn()
 vi.mocked(client.setupUser).mockImplementation(mockSetupUser)
+vi.mocked(client.getReadiness).mockImplementation(mockGetReadiness)
 
 const renderWithAuth = (component: React.ReactNode) => {
   return render(<AuthProvider>{component}</AuthProvider>)
@@ -37,6 +39,41 @@ describe('ProductionSetupChecklist', () => {
     vi.mocked(adminApi.getConnectorHealth).mockResolvedValue({
       connectors: [],
     })
+    mockGetReadiness.mockResolvedValue({
+      items: [
+        {
+          id: 'app_secret_key',
+          label: 'APP_SECRET_KEY Configuration',
+          status: 'ok',
+          details: 'APP_SECRET_KEY is configured.',
+        },
+        {
+          id: 'cors',
+          label: 'CORS Configuration',
+          status: 'ok',
+          details: 'CORS is configured.',
+        },
+        {
+          id: 'https',
+          label: 'HTTPS Configuration',
+          status: 'warning',
+          details: 'HTTPS check skipped in dev.',
+        },
+        {
+          id: 'database',
+          label: 'Database Health',
+          status: 'ok',
+          details: 'Database is healthy.',
+        },
+        {
+          id: 'stores',
+          label: 'Stores Health',
+          status: 'ok',
+          details: 'Stores are healthy.',
+        },
+      ],
+      timestamp: '2024-01-01T00:00:00Z',
+    })
   })
 
   it('renders step 1 - admin user creation', async () => {
@@ -56,7 +93,7 @@ describe('ProductionSetupChecklist', () => {
     const submitBtn = screen.getByTestId('admin-create-submit')
     fireEvent.click(submitBtn)
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent('用户名不能为空')
+      expect(screen.getByTestId('setup-admin-error')).toHaveTextContent('用户名不能为空')
     })
   })
 
@@ -76,7 +113,7 @@ describe('ProductionSetupChecklist', () => {
     })
     fireEvent.click(screen.getByTestId('admin-create-submit'))
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent('密码至少需要 8 个字符')
+      expect(screen.getByTestId('setup-admin-error')).toHaveTextContent('密码至少需要 8 个字符')
     })
   })
 
@@ -96,7 +133,7 @@ describe('ProductionSetupChecklist', () => {
     })
     fireEvent.click(screen.getByTestId('admin-create-submit'))
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent('两次输入的密码不一致')
+      expect(screen.getByTestId('setup-admin-error')).toHaveTextContent('两次输入的密码不一致')
     })
   })
 
@@ -227,5 +264,99 @@ describe('ProductionSetupChecklist', () => {
     })
     fireEvent.click(screen.getByTestId('complete-setup-btn'))
     expect(onComplete).toHaveBeenCalled()
+  })
+
+  it('setup flow continues after admin creation (setupInProgress prevents unmount)', async () => {
+    const onComplete = vi.fn()
+    renderWithAuth(<ProductionSetupChecklist onComplete={onComplete} />)
+    
+    // Create admin user
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-username-input')).toBeInTheDocument()
+    })
+    fireEvent.change(screen.getByTestId('admin-username-input'), {
+      target: { value: 'admin' },
+    })
+    fireEvent.change(screen.getByTestId('admin-password-input'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.change(screen.getByTestId('admin-confirm-password-input'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByTestId('admin-create-submit'))
+    
+    // After admin creation, should still be in setup flow (step 2 - API key)
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '创建 API 密钥' })).toBeInTheDocument()
+      expect(screen.getByTestId('skip-api-key-btn')).toBeInTheDocument()
+    })
+    
+    // Should NOT have called onComplete yet
+    expect(onComplete).not.toHaveBeenCalled()
+  })
+
+  it('fetches readiness items from backend API', async () => {
+    renderWithAuth(<ProductionSetupChecklist />)
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-username-input')).toBeInTheDocument()
+    })
+    fireEvent.change(screen.getByTestId('admin-username-input'), {
+      target: { value: 'admin' },
+    })
+    fireEvent.change(screen.getByTestId('admin-password-input'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.change(screen.getByTestId('admin-confirm-password-input'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByTestId('admin-create-submit'))
+    await waitFor(() => {
+      expect(screen.getByTestId('skip-api-key-btn')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('skip-api-key-btn'))
+    
+    // Should call getReadiness API
+    await waitFor(() => {
+      expect(mockGetReadiness).toHaveBeenCalled()
+    })
+    
+    // Should display items from API
+    await waitFor(() => {
+      expect(screen.getByTestId('readiness-app_secret_key')).toBeInTheDocument()
+      expect(screen.getByTestId('readiness-cors')).toBeInTheDocument()
+      expect(screen.getByTestId('readiness-database')).toBeInTheDocument()
+    })
+  })
+
+  it('handles readiness API failure gracefully', async () => {
+    mockGetReadiness.mockRejectedValue(new Error('Network error'))
+    
+    renderWithAuth(<ProductionSetupChecklist />)
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-username-input')).toBeInTheDocument()
+    })
+    fireEvent.change(screen.getByTestId('admin-username-input'), {
+      target: { value: 'admin' },
+    })
+    fireEvent.change(screen.getByTestId('admin-password-input'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.change(screen.getByTestId('admin-confirm-password-input'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByTestId('admin-create-submit'))
+    await waitFor(() => {
+      expect(screen.getByTestId('skip-api-key-btn')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('skip-api-key-btn'))
+    
+    // Should show error item when API fails
+    await waitFor(() => {
+      expect(screen.getByTestId('readiness-api_error')).toBeInTheDocument()
+    })
+    
+    // Should show error status
+    const errorItem = screen.getByTestId('readiness-api_error')
+    expect(errorItem).toHaveClass('error')
   })
 })

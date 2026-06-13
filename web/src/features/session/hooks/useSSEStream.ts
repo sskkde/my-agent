@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import * as api from '../../../api/client'
 import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../../api/types'
 import { SSE_RECONNECT_BASE_DELAY_MS, SSE_RECONNECT_MAX_DELAY_MS } from '../session-constants'
@@ -53,6 +53,8 @@ export function useSSEStream(options: {
         unsubscribeRef.current = null
       }
 
+      clearSseReconnectTimeout()
+
       setStreamStatus('connecting')
 
       unsubscribeRef.current = api.subscribeSessionTimeline(
@@ -94,11 +96,15 @@ export function useSSEStream(options: {
           if (selectedSessionIdRef.current !== sessionId) return
           onTokenRef.current(token)
         },
-      )
+        () => {
+          if (!mountedRef.current) return
+          if (selectedSessionIdRef.current !== sessionId) return
 
-      setStreamStatus('connected')
+          setStreamStatus('connected')
+        },
+      )
     },
-    [mountedRef, selectedSessionIdRef],
+    [mountedRef, selectedSessionIdRef, clearSseReconnectTimeout],
   )
 
   const handleRetryStream = useCallback(() => {
@@ -118,6 +124,15 @@ export function useSSEStream(options: {
     if (unsubscribeRef.current) {
       unsubscribeRef.current()
       unsubscribeRef.current = null
+    }
+  }, [clearSseReconnectTimeout])
+
+  useEffect(() => {
+    return () => {
+      clearSseReconnectTimeout()
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current()
+      }
     }
   }, [clearSseReconnectTimeout])
 

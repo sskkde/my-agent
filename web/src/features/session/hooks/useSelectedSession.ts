@@ -16,34 +16,21 @@ import type { ConsoleSessionInfo } from '../../../api/types'
 import { SELECTED_SESSION_KEY } from '../session-constants'
 import { safeReadLocalStorage } from '../session-migration'
 
+export interface UseSelectedSessionOptions {
+  initialSessionId?: string
+  navigate?: (path: string) => void
+}
+
 export interface UseSelectedSessionReturn {
-  /** Currently selected session ID, or null if none selected */
   selectedSessionId: string | null
-  /** Setter for selectedSessionId */
   setSelectedSessionId: React.Dispatch<React.SetStateAction<string | null>>
-  /** Full session info for the selected session */
   selectedSession: ConsoleSessionInfo | null
-  /** Setter for selectedSession */
   setSelectedSession: React.Dispatch<React.SetStateAction<ConsoleSessionInfo | null>>
-  /** Mutable ref synced with selectedSessionId for use in stable callbacks */
   selectedSessionIdRef: React.MutableRefObject<string | null>
-  /** Select a session by ID (convenience wrapper for setSelectedSessionId) */
   handleSelectSession: (sessionId: string) => void
 }
 
-/**
- * Hook to manage the selected session state with localStorage persistence.
- *
- * Initialization uses safeReadLocalStorage to safely read the persisted session ID,
- * handling malformed values and localStorage unavailability gracefully.
- *
- * @param options.initialSessionId - Optional session ID from URL routing.
- *   When provided, takes precedence over localStorage for session selection.
- *   Used by /chat/:sessionId route to drive session selection from URL.
- */
-export function useSelectedSession(options?: {
-  initialSessionId?: string
-}): UseSelectedSessionReturn {
+export function useSelectedSession(options?: UseSelectedSessionOptions): UseSelectedSessionReturn {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => {
     // URL sessionId takes precedence over localStorage (Task 4 precedence rules)
     if (options?.initialSessionId) {
@@ -83,9 +70,15 @@ export function useSelectedSession(options?: {
     }
   }, [selectedSessionId])
 
-  const handleSelectSession = useCallback((sessionId: string) => {
-    setSelectedSessionId(sessionId)
-  }, [])
+  const handleSelectSession = useCallback(
+    (sessionId: string) => {
+      setSelectedSessionId(sessionId)
+      if (options?.navigate) {
+        options.navigate(`/chat/${encodeURIComponent(sessionId)}`)
+      }
+    },
+    [options?.navigate],
+  )
 
   return {
     selectedSessionId,

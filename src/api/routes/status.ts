@@ -151,4 +151,185 @@ export function registerStatusRoutes(server: FastifyInstance, context: ApiContex
       )
     }
   })
+
+  server.get('/api/v1/setup/readiness', async (request: FastifyRequest, reply: FastifyReply) => {
+    // No auth required - setup endpoint must be accessible before authentication
+    const items: Array<{
+      id: string
+      label: string
+      status: 'ok' | 'warning' | 'error'
+      details: string
+    }> = []
+
+    const secretKey = process.env.APP_SECRET_KEY
+    const PLACEHOLDER_PATTERNS = [
+      'your_secret_key',
+      'your-secret-key',
+      'changeme',
+      'change_me',
+      'change-me',
+      'placeholder',
+      'fixme',
+    ]
+    const isPlaceholder = (value: string): boolean => {
+      const lower = value.toLowerCase().trim()
+      return PLACEHOLDER_PATTERNS.some((pattern) => lower.includes(pattern))
+    }
+
+    if (!secretKey) {
+      items.push({
+        id: 'app_secret_key',
+        label: 'APP_SECRET_KEY Configuration',
+        status: 'error',
+        details: 'APP_SECRET_KEY is not set. A strong random key (at least 32 characters) is required.',
+      })
+    } else if (secretKey.length < 32) {
+      items.push({
+        id: 'app_secret_key',
+        label: 'APP_SECRET_KEY Configuration',
+        status: 'warning',
+        details: `APP_SECRET_KEY is too short (${secretKey.length} characters). At least 32 characters required.`,
+      })
+    } else if (isPlaceholder(secretKey)) {
+      items.push({
+        id: 'app_secret_key',
+        label: 'APP_SECRET_KEY Configuration',
+        status: 'warning',
+        details: 'APP_SECRET_KEY appears to be a placeholder value. Set a strong, unique secret.',
+      })
+    } else {
+      items.push({
+        id: 'app_secret_key',
+        label: 'APP_SECRET_KEY Configuration',
+        status: 'ok',
+        details: 'APP_SECRET_KEY is configured and meets security requirements.',
+      })
+    }
+
+    const allowedOrigins = process.env.ALLOWED_ORIGINS
+    if (!allowedOrigins) {
+      items.push({
+        id: 'cors',
+        label: 'CORS Configuration',
+        status: 'warning',
+        details: 'ALLOWED_ORIGINS is not set. Configure explicit origins for production.',
+      })
+    } else if (allowedOrigins.trim() === '*') {
+      items.push({
+        id: 'cors',
+        label: 'CORS Configuration',
+        status: 'error',
+        details: 'ALLOWED_ORIGINS is set to "*" which is not allowed in production. Specify explicit URLs.',
+      })
+    } else {
+      items.push({
+        id: 'cors',
+        label: 'CORS Configuration',
+        status: 'ok',
+        details: 'ALLOWED_ORIGINS is configured with explicit origins.',
+      })
+    }
+
+    const nodeEnv = process.env.NODE_ENV
+    const publicBaseUrl = process.env.PUBLIC_BASE_URL
+    const isHttps = publicBaseUrl?.startsWith('https://')
+
+    if (nodeEnv === 'production') {
+      if (!publicBaseUrl) {
+        items.push({
+          id: 'https',
+          label: 'HTTPS Configuration',
+          status: 'warning',
+          details: 'PUBLIC_BASE_URL is not set. Configure HTTPS URL for production.',
+        })
+      } else if (!isHttps) {
+        items.push({
+          id: 'https',
+          label: 'HTTPS Configuration',
+          status: 'warning',
+          details: 'PUBLIC_BASE_URL is not using HTTPS. Production should use HTTPS.',
+        })
+      } else {
+        items.push({
+          id: 'https',
+          label: 'HTTPS Configuration',
+          status: 'ok',
+          details: 'HTTPS is configured for production.',
+        })
+      }
+    } else {
+      items.push({
+        id: 'https',
+        label: 'HTTPS Configuration',
+        status: 'warning',
+        details: 'HTTPS check skipped in non-production environment. Configure HTTPS before deployment.',
+      })
+    }
+
+    try {
+      const stores = context.stores
+      const dbHealthy = stores.sessionStore !== undefined
+
+      if (dbHealthy) {
+        items.push({
+          id: 'database',
+          label: 'Database Health',
+          status: 'ok',
+          details: 'Database is connected and healthy.',
+        })
+      } else {
+        items.push({
+          id: 'database',
+          label: 'Database Health',
+          status: 'error',
+          details: 'Database is not available. Check database configuration.',
+        })
+      }
+    } catch (err) {
+      items.push({
+        id: 'database',
+        label: 'Database Health',
+        status: 'error',
+        details: err instanceof Error ? err.message : 'Unknown database error.',
+      })
+    }
+
+    try {
+      const stores = context.stores
+      const storesHealthy = stores.sessionStore !== undefined
+
+      if (storesHealthy) {
+        items.push({
+          id: 'stores',
+          label: 'Stores Health',
+          status: 'ok',
+          details: 'All stores are initialized and accessible.',
+        })
+      } else {
+        items.push({
+          id: 'stores',
+          label: 'Stores Health',
+          status: 'error',
+          details: 'Stores are not available. Check application initialization.',
+        })
+      }
+    } catch (err) {
+      items.push({
+        id: 'stores',
+        label: 'Stores Health',
+        status: 'error',
+        details: err instanceof Error ? err.message : 'Unknown stores error.',
+      })
+    }
+
+    return reply.code(200).send(
+      success(
+        {
+          items,
+          timestamp: new Date().toISOString(),
+        },
+        request.requestId,
+      ),
+    )
+  })
 }

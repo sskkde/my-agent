@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import SessionConsoleTab from './SessionConsoleTab'
 import { mockViewport, resetMatchMedia } from '../../test/setup'
 import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../api/types'
@@ -28,6 +29,10 @@ const mockRespondApproval = api.respondApproval as ReturnType<typeof vi.fn>
 
 const SELECTED_SESSION_KEY = 'session-console-selected-session'
 
+const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/']) => {
+  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
+}
+
 describe('SessionConsoleTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -46,7 +51,7 @@ describe('SessionConsoleTab', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockGetSessions).toHaveBeenCalledTimes(1)
@@ -59,7 +64,7 @@ describe('SessionConsoleTab', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-empty-state')).toBeInTheDocument()
@@ -83,7 +88,7 @@ describe('SessionConsoleTab', () => {
       total: 1,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-list')).toBeInTheDocument()
@@ -121,7 +126,7 @@ describe('SessionConsoleTab', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-new-button')).toBeInTheDocument()
@@ -178,7 +183,7 @@ describe('SessionConsoleTab', () => {
       total: 1,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -227,7 +232,7 @@ describe('SessionConsoleTab', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -285,7 +290,7 @@ describe('SessionConsoleTab', () => {
       })
     mockSendMessage.mockResolvedValue({ accepted: true, turnId: 'turn-1' })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -346,7 +351,7 @@ describe('SessionConsoleTab', () => {
       }),
     )
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -413,7 +418,7 @@ describe('SessionConsoleTab', () => {
     })
     mockSendMessage.mockReturnValue(new Promise(() => {}))
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -472,7 +477,7 @@ describe('SessionConsoleTab', () => {
     )
     mockSendMessage.mockResolvedValueOnce({ accepted: true }).mockReturnValueOnce(new Promise(() => {}))
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -579,7 +584,7 @@ describe('SessionConsoleTab', () => {
       })
     mockSendMessage.mockResolvedValue({ accepted: true })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -662,7 +667,7 @@ describe('SessionConsoleTab', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -715,7 +720,7 @@ describe('SessionConsoleTab', () => {
     })
     mockSendMessage.mockRejectedValue(new Error('API Error'))
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -789,7 +794,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -884,7 +889,7 @@ describe('SessionConsoleTab', () => {
 
     mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -961,7 +966,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1046,7 +1051,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1143,7 +1148,7 @@ describe('SessionConsoleTab', () => {
 
     mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1214,7 +1219,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1306,7 +1311,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1398,7 +1403,7 @@ describe('SessionConsoleTab', () => {
     mockSendMessage.mockReturnValue(new Promise(() => {}))
     mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-one')).toBeInTheDocument()
@@ -1464,7 +1469,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1547,7 +1552,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1650,7 +1655,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1751,7 +1756,7 @@ describe('SessionConsoleTab', () => {
 
     mockSubscribeSessionTimeline.mockImplementation(() => () => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1842,7 +1847,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -1921,7 +1926,7 @@ describe('SessionConsoleTab', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -2007,7 +2012,7 @@ describe('SessionConsoleTab - Session Persistence', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-persist-1')).toBeInTheDocument()
@@ -2053,7 +2058,7 @@ describe('SessionConsoleTab - Session Persistence', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockGetSession).toHaveBeenCalledWith('session-restored-1')
@@ -2093,7 +2098,7 @@ describe('SessionConsoleTab - Session Persistence', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockGetSession).toHaveBeenCalledWith('session-to-deselect')
@@ -2126,7 +2131,7 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockGetSessions).toHaveBeenCalledTimes(1)
@@ -2176,7 +2181,7 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockGetSessionTimeline).toHaveBeenCalledTimes(1)
@@ -2222,7 +2227,7 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockGetSessions).toHaveBeenCalledTimes(1)
@@ -2291,7 +2296,7 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
@@ -2351,7 +2356,7 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
@@ -2412,7 +2417,7 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(mockSubscribeSessionTimeline).toHaveBeenCalledTimes(1)
@@ -2516,7 +2521,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
     mockSendMessage.mockResolvedValue({ accepted: true })
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
@@ -2579,7 +2584,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
     mockSendMessage.mockResolvedValue({ accepted: true })
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
@@ -2650,7 +2655,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
     mockSendMessage.mockResolvedValue({ accepted: true })
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
@@ -2734,7 +2739,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
     mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-poll-clear' })
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
@@ -2822,7 +2827,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
     mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-poll-error' })
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
@@ -2864,7 +2869,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
@@ -2889,7 +2894,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionConsoleTab />)
+    const { container } = renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
@@ -2920,7 +2925,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionConsoleTab />)
+    const { container } = renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
@@ -2967,7 +2972,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
       total: 0,
     })
 
-    const { container } = render(<SessionConsoleTab />)
+    const { container } = renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
@@ -2993,7 +2998,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-sidebar-toggle')).toBeInTheDocument()
@@ -3011,7 +3016,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-sidebar')).toBeInTheDocument()
@@ -3022,7 +3027,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
     mockViewport(390)
     mockGetSessions.mockImplementation(() => new Promise(() => {})) // Never resolves
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByText('加载会话列表...')).toBeInTheDocument()
@@ -3033,7 +3038,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
     mockViewport(390)
     mockGetSessions.mockRejectedValue(new Error('Network error'))
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByText('Network error')).toBeInTheDocument()
@@ -3087,7 +3092,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         total: 1,
       })
 
-      render(<SessionConsoleTab />)
+      renderWithRouter(<SessionConsoleTab />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3146,7 +3151,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         total: 1,
       })
 
-      render(<SessionConsoleTab />)
+      renderWithRouter(<SessionConsoleTab />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3211,7 +3216,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         status: 'approved',
       })
 
-      render(<SessionConsoleTab />)
+      renderWithRouter(<SessionConsoleTab />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3283,7 +3288,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         status: 'rejected',
       })
 
-      render(<SessionConsoleTab />)
+      renderWithRouter(<SessionConsoleTab />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3360,7 +3365,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
         status: 'approved',
       })
 
-      render(<SessionConsoleTab />)
+      renderWithRouter(<SessionConsoleTab />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3432,7 +3437,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
 
       mockRespondApproval.mockRejectedValue(new Error('Network error'))
 
-      render(<SessionConsoleTab />)
+      renderWithRouter(<SessionConsoleTab />)
 
       await waitFor(() => {
         expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3501,7 +3506,7 @@ describe('SessionConsoleTab - Command Parsing', () => {
     mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
     mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-123' })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3563,7 +3568,7 @@ describe('SessionConsoleTab - Command Parsing', () => {
     })
     mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3620,7 +3625,7 @@ describe('SessionConsoleTab - Command Parsing', () => {
     })
     mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3677,7 +3682,7 @@ describe('SessionConsoleTab - Command Parsing', () => {
     })
     mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3745,13 +3750,18 @@ describe('SessionConsoleTab - SSE Status Transitions', () => {
     })
     mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    let connectCallback: (() => void) | null = null
-    mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, onError) => {
-      connectCallback = onError
-      return () => {}
-    })
+    let onOpenCallback: (() => void) | null = null
+    mockSubscribeSessionTimeline.mockImplementation(
+      (_sessionId, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
+        onOpenCallback = onOpen ?? null
+        if (onOpen) {
+          setTimeout(() => onOpen(), 0)
+        }
+        return () => {}
+      },
+    )
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3805,7 +3815,7 @@ describe('SessionConsoleTab - SSE Status Transitions', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3868,7 +3878,7 @@ describe('SessionConsoleTab - SSE Status Transitions', () => {
       return () => {}
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
@@ -3945,7 +3955,7 @@ describe('SessionConsoleTab - Selector Coverage', () => {
       total: 0,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     // Verify sessions-sidebar selector
     await waitFor(() => {
@@ -4027,7 +4037,7 @@ describe('SessionConsoleTab - Selector Coverage', () => {
       total: 1,
     })
 
-    render(<SessionConsoleTab />)
+    renderWithRouter(<SessionConsoleTab />)
 
     await waitFor(() => {
       expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()

@@ -11,22 +11,11 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { routeToNavigation, navigationToRoute } from './router/route-mapping'
 import { resolveSessionId, safeReadLocalStorage } from './features/session/session-migration'
 import { SELECTED_SESSION_KEY } from './features/session/session-constants'
+import { readStoredTheme, applyDocumentTheme, type AppTheme } from './theme-storage'
 import type { TabId } from './components/TabNav'
 import './styles.css'
 
-type AppTheme = 'default' | 'warm-paper' | 'dark'
-
-const THEME_STORAGE_KEY = 'agent-platform-theme'
 const APP_THEMES = new Set<AppTheme>(['default', 'warm-paper', 'dark'])
-
-function readStoredTheme(): AppTheme {
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
-  return APP_THEMES.has(storedTheme as AppTheme) ? (storedTheme as AppTheme) : 'default'
-}
-
-function applyDocumentTheme(theme: AppTheme) {
-  document.documentElement.dataset.theme = theme
-}
 
 /**
  * ChatRouteContent - Renders the Chat section for /, /chat, /chat/:sessionId routes.
@@ -85,7 +74,7 @@ function AdminRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void 
  * handleTabChange is a compatibility adapter that navigates to the matching URL.
  */
 function AppRoutes() {
-  const { isAuthenticated, needsSetup, loading, logout, user } = useAuth()
+  const { isAuthenticated, needsSetup, setupInProgress, loading, logout, user, completeSetup } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -126,8 +115,8 @@ function AppRoutes() {
     )
   }
 
-  if (needsSetup) {
-    return <ProductionSetupChecklist />
+  if (needsSetup || setupInProgress) {
+    return <ProductionSetupChecklist onComplete={completeSetup} />
   }
 
   if (!isAuthenticated) {
