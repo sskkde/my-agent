@@ -157,6 +157,23 @@ describe('RBAC Negative Test Matrix', () => {
     })
   })
 
+  describe('Admin API authorization', () => {
+    it('should return 403 when user role tries to update admin settings', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/admin/settings`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: `agent-platform-session=${userAuthToken}`,
+        },
+        body: JSON.stringify({ rateLimitPerMinute: 10 }),
+      })
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      assertErrorEnvelope(body, 'FORBIDDEN')
+    })
+  })
+
   // ===========================================================================
   // SCENARIO 2: Service cannot access user admin routes
   // ===========================================================================
@@ -493,6 +510,21 @@ describe('RBAC Negative Test Matrix', () => {
       const body = await response.json()
       assertErrorEnvelope(body, 'FORBIDDEN')
     })
+
+    it('should return 403 when service role tries to update user agent override config', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/agents/foreground.default/config/override`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${serviceApiKey}`,
+        },
+        body: JSON.stringify({ displayName: 'Service Override Hack' }),
+      })
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      assertErrorEnvelope(body, 'FORBIDDEN')
+    })
   })
 
   // ===========================================================================
@@ -553,6 +585,18 @@ describe('RBAC Negative Test Matrix', () => {
 
     it('should return 401 when no auth provided to workflows endpoint', async () => {
       const response = await fetch(`${baseUrl}/api/v1/workflows/drafts`)
+
+      expect(response.status).toBe(401)
+      const body = await response.json()
+      assertErrorEnvelope(body, 'UNAUTHORIZED')
+    })
+
+    it('should return 401 when no auth provided to protected write endpoint', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
 
       expect(response.status).toBe(401)
       const body = await response.json()

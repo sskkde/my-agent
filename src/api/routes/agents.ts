@@ -357,6 +357,10 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       }
+      if (!request.requirePermission(ResourceType.settings, Action.read)) {
+        return reply
+      }
+
       const { agentId } = request.params
 
       if (!validateAgentId(agentId)) {
@@ -494,6 +498,10 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       }
 
+      if (!request.requirePermission(ResourceType.settings, Action.update)) {
+        return reply
+      }
+
       const { agentId } = request.params
 
       if (!validateAgentId(agentId)) {
@@ -567,6 +575,10 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
       const userId = request.user?.userId
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
+      }
+
+      if (!request.requirePermission(ResourceType.settings, Action.delete)) {
+        return reply
       }
 
       const { agentId } = request.params

@@ -5,7 +5,6 @@ import type { SetupStatusResponse, AuthSuccessResponse, CreateUserRequest } from
 import { hashPassword, generateSessionToken, hashToken } from '../../storage/auth-crypto.js'
 import { setSessionCookie } from '../middleware/auth.js'
 import { randomUUID } from 'crypto'
-import { ResourceType, Action } from '../../permissions/rbac-types.js'
 
 const SESSION_TTL_HOURS = 24
 const LOCAL_USER_ID = 'local-user'
@@ -55,9 +54,6 @@ export function registerSetupRoutes(server: FastifyInstance, context: ApiContext
   const authTokenStore = context.stores.authTokenStore
 
   server.get('/api/v1/setup/status', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!request.requirePermission(ResourceType.users, Action.read)) {
-      return reply
-    }
     const users = userStore.list()
     const needsSetup = users.length === 0
 
@@ -68,9 +64,6 @@ export function registerSetupRoutes(server: FastifyInstance, context: ApiContext
   server.post<{ Body: CreateUserRequest }>(
     '/api/v1/setup/user',
     async (request: FastifyRequest<{ Body: CreateUserRequest }>, reply: FastifyReply) => {
-      if (!request.requirePermission(ResourceType.users, Action.create)) {
-        return reply
-      }
       const users = userStore.list()
       if (users.length > 0) {
         return reply.code(409).send(envelopeError('CONFLICT', 'Setup has already been completed', request.requestId))

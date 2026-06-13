@@ -1,0 +1,150 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`write route permission map > keeps management route files bound to admin-only or explicit management permissions 1`] = `
+[
+  {
+    "file": "admin.ts",
+    "method": "PATCH",
+    "path": "/api/v1/admin/users/:userId/role",
+    "permission": "ResourceType.users, Action.manage",
+  },
+  {
+    "file": "admin.ts",
+    "method": "PATCH",
+    "path": "/api/v1/admin/users/:userId/status",
+    "permission": "ResourceType.users, Action.manage",
+  },
+  {
+    "file": "admin.ts",
+    "method": "PATCH",
+    "path": "/api/v1/admin/settings",
+    "permission": "ResourceType.settings, Action.manage",
+  },
+  {
+    "file": "api-keys.ts",
+    "method": "POST",
+    "path": "/api/v1/api-keys",
+    "permission": "ResourceType.apiKeys, Action.create",
+  },
+  {
+    "file": "api-keys.ts",
+    "method": "DELETE",
+    "path": "/api/v1/api-keys/:id",
+    "permission": "ResourceType.apiKeys, Action.delete",
+  },
+  {
+    "file": "connectors.ts",
+    "method": "PATCH",
+    "path": "/api/v1/connectors/:id/instances/:iid/config",
+    "permission": "ResourceType.connectors, Action.update",
+  },
+  {
+    "file": "providers.ts",
+    "method": "POST",
+    "path": "/api/v1/providers",
+    "permission": "'provider' as ResourceType, Action.create",
+  },
+  {
+    "file": "providers.ts",
+    "method": "PATCH",
+    "path": "/api/v1/providers/:providerId",
+    "permission": "'provider' as ResourceType, Action.update",
+  },
+  {
+    "file": "providers.ts",
+    "method": "DELETE",
+    "path": "/api/v1/providers/:providerId",
+    "permission": "'provider' as ResourceType, Action.delete",
+  },
+  {
+    "file": "providers.ts",
+    "method": "POST",
+    "path": "/api/v1/providers/:providerId/test",
+    "permission": "'provider' as ResourceType, Action.execute",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "PATCH",
+    "path": "/api/v1/triggers/:triggerId",
+    "permission": "ResourceType.triggers, Action.update",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "POST",
+    "path": "/api/v1/triggers/schedules",
+    "permission": "ResourceType.triggers, Action.create",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "PATCH",
+    "path": "/api/v1/triggers/schedules/:scheduleId",
+    "permission": "ResourceType.triggers, Action.update",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "DELETE",
+    "path": "/api/v1/triggers/schedules/:scheduleId",
+    "permission": "ResourceType.triggers, Action.delete",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "POST",
+    "path": "/api/v1/triggers/webhooks",
+    "permission": "ResourceType.triggers, Action.create",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "PATCH",
+    "path": "/api/v1/triggers/webhooks/:webhookId",
+    "permission": "ResourceType.triggers, Action.update",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "DELETE",
+    "path": "/api/v1/triggers/webhooks/:webhookId",
+    "permission": "ResourceType.triggers, Action.delete",
+  },
+  {
+    "file": "triggers.ts",
+    "method": "POST",
+    "path": "/api/v1/webhooks/:webhookId/deliver",
+    "permission": "ResourceType.triggers, Action.execute",
+  },
+  {
+    "file": "workflows.ts",
+    "method": "POST",
+    "path": "/api/v1/workflows/drafts",
+    "permission": "ResourceType.workflows, Action.create",
+  },
+  {
+    "file": "workflows.ts",
+    "method": "PATCH",
+    "path": "/api/v1/workflows/drafts/:draftId",
+    "permission": "ResourceType.workflows, Action.update",
+  },
+  {
+    "file": "workflows.ts",
+    "method": "POST",
+    "path": "/api/v1/workflows/drafts/:draftId/validate",
+    "permission": "ResourceType.workflows, Action.read",
+  },
+  {
+    "file": "workflows.ts",
+    "method": "POST",
+    "path": "/api/v1/workflows/drafts/:draftId/publish",
+    "permission": "ResourceType.workflows, Action.update",
+  },
+  {
+    "file": "workflows.ts",
+    "method": "DELETE",
+    "path": "/api/v1/workflows/drafts/:draftId",
+    "permission": "ResourceType.workflows, Action.delete",
+  },
+  {
+    "file": "workflows.ts",
+    "method": "POST",
+    "path": "/api/v1/workflows/runs",
+    "permission": "ResourceType.workflows, Action.execute",
+  },
+]
+`;
