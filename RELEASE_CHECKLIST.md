@@ -18,6 +18,8 @@
 
 - [ ] Phase 4 tests pass: `npm run test:phase4`
 - [ ] Architecture contract tests pass: `npx vitest run tests/architecture/`
+- [ ] Architecture capability matrix reviewed and updated: `docs/architecture/ARCHITECTURE_TEST_MATRIX.md`
+- [ ] Architecture gap closure tracking reviewed: every open row in `ARCHITECTURE_GAP_REPORT.md#51-gap-closure-tracking` has status plus closing PR/test reference
 - [ ] E2E tests pass: `npm run test:e2e` (including flow-16)
 - [ ] DLQ integration verified
 - [ ] Connectors API responds correctly
