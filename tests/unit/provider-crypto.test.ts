@@ -126,6 +126,21 @@ describe('provider-crypto', () => {
       expect(() => decryptSecret(wrongCipher, encrypted.iv, encrypted.authTag)).toThrow(DecryptionError)
     })
 
+    it('should preserve original error cause in DecryptionError', () => {
+      const plaintext = 'secret'
+      const encrypted = encryptSecret(plaintext)
+      const wrongAuthTag = 'a'.repeat(32)
+
+      try {
+        decryptSecret(encrypted.encrypted, encrypted.iv, wrongAuthTag)
+        expect.fail('Expected DecryptionError to be thrown')
+      } catch (error) {
+        expect(error).toBeInstanceOf(DecryptionError)
+        expect((error as DecryptionError).cause).toBeDefined()
+        expect((error as DecryptionError).cause).toBeInstanceOf(Error)
+      }
+    })
+
     it('should throw when APP_SECRET_KEY is missing', () => {
       const plaintext = 'secret'
       const encrypted = encryptSecret(plaintext)

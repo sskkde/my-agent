@@ -17,8 +17,8 @@ export class MissingEncryptionKeyError extends Error {
 }
 
 export class DecryptionError extends Error {
-  constructor(message: string) {
-    super(`Decryption failed: ${message}`)
+  constructor(message: string, options?: ErrorOptions) {
+    super(`Decryption failed: ${message}`, options)
     this.name = 'DecryptionError'
   }
 }
@@ -57,7 +57,10 @@ export function decryptSecret(encrypted: string, iv: string, authTag: string): s
 
     return decrypted.toString('utf8')
   } catch (error) {
-    throw new DecryptionError(error instanceof Error ? error.message : 'Unknown error')
+    throw new DecryptionError(
+      error instanceof Error ? error.message : 'Unknown error',
+      { cause: error },
+    )
   }
 }
 
