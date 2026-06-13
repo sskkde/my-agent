@@ -265,19 +265,19 @@ describe('web-search-providers contract tests', () => {
         minIntervalMs: 1000,
         maxJitterMs: 200,
         now: () => currentTime,
-        sleep: (ms: number) => {
+        sleep: async (ms: number) => {
           currentTime += ms
         },
         random: () => 0.5,
       })
 
       const start = currentTime
-      limiter.acquire()
+      await limiter.acquire()
       const firstAcquire = currentTime
 
       expect(firstAcquire - start).toBe(0)
 
-      limiter.acquire()
+      await limiter.acquire()
       const secondAcquire = currentTime
 
       expect(secondAcquire - firstAcquire).toBeGreaterThanOrEqual(1000)
@@ -292,24 +292,43 @@ describe('web-search-providers contract tests', () => {
         minIntervalMs: 500,
         maxJitterMs: 0,
         now: () => currentTime,
-        sleep: (ms: number) => {
+        sleep: async (ms: number) => {
           currentTime += ms
         },
         random: () => 0,
       })
 
       const searxngStart = currentTime
-      limiter.acquire('searxng')
-      limiter.acquire('searxng')
+      await limiter.acquire('searxng')
+      await limiter.acquire('searxng')
       const searxngElapsed = currentTime - searxngStart
 
       const tavilyStart = currentTime
-      limiter.acquire('tavily')
-      limiter.acquire('tavily')
+      await limiter.acquire('tavily')
+      await limiter.acquire('tavily')
       const tavilyElapsed = currentTime - tavilyStart
 
       expect(searxngElapsed).toBeGreaterThanOrEqual(500)
       expect(tavilyElapsed).toBeGreaterThanOrEqual(500)
+    })
+
+    it('uses async timer-based waiting instead of busy-wait loop', async () => {
+      vi.useFakeTimers()
+      const { SearchRateLimiter } = await import('../../../src/search/rate-limiter.js')
+
+      const limiter = new SearchRateLimiter({
+        minIntervalMs: 100,
+        maxJitterMs: 0,
+        random: () => 0,
+      })
+
+      await limiter.acquire()
+
+      const acquirePromise = limiter.acquire()
+      await vi.advanceTimersByTimeAsync(100)
+      await acquirePromise
+
+      vi.useRealTimers()
     })
   })
 

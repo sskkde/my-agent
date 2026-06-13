@@ -4,7 +4,7 @@ interface RateLimiterConfig {
   minIntervalMs: number
   maxJitterMs: number
   now?: () => number
-  sleep?: (ms: number) => void
+  sleep?: (ms: number) => Promise<void>
   random?: () => number
 }
 
@@ -17,7 +17,7 @@ export class SearchRateLimiter {
   private readonly minIntervalMs: number
   private readonly maxJitterMs: number
   private readonly now: () => number
-  private readonly sleep: (ms: number) => void
+  private readonly sleep: (ms: number) => Promise<void>
   private readonly random: () => number
   private readonly providerStates: Map<string, ProviderState> = new Map()
   private readonly globalState: ProviderState = { lastAcquireTime: 0, initialized: false }
@@ -28,16 +28,11 @@ export class SearchRateLimiter {
     this.now = config.now ?? (() => Date.now())
     this.sleep =
       config.sleep ??
-      ((ms: number) => {
-        const start = this.now()
-        while (this.now() - start < ms) {
-          // Busy wait
-        }
-      })
+      ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
     this.random = config.random ?? Math.random
   }
 
-  acquire(provider?: ProviderName): void {
+  async acquire(provider?: ProviderName): Promise<void> {
     const state = provider ? this.getOrCreateProviderState(provider) : this.globalState
     const currentTime = this.now()
 
@@ -48,7 +43,7 @@ export class SearchRateLimiter {
 
       if (elapsed < requiredWait) {
         const waitTime = Math.ceil(requiredWait - elapsed)
-        this.sleep(waitTime)
+        await this.sleep(waitTime)
       }
     }
 
