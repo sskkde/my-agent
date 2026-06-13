@@ -233,10 +233,12 @@ export class BaseHttpTransport implements IHttpTransport {
       return undefined
     }
 
+    const text = await response.text()
+
     if (contentType.includes('application/json')) {
+      if (!text) return undefined
+
       try {
-        const text = await response.text()
-        if (!text) return undefined
         return JSON.parse(text) as T
       } catch {
         throw new TransportError('parse', 'Failed to parse JSON response', { retryable: false })
@@ -244,15 +246,15 @@ export class BaseHttpTransport implements IHttpTransport {
     }
 
     if (contentType.startsWith('text/')) {
-      return (await response.text()) as T
+      return text as T
     }
 
+    if (!text) return undefined
+
     try {
-      const text = await response.text()
-      if (!text) return undefined
       return JSON.parse(text) as T
     } catch {
-      return (await response.text()) as T
+      return text as T
     }
   }
 

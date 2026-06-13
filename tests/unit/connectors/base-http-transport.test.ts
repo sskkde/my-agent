@@ -583,6 +583,80 @@ describe('BaseHttpTransport', () => {
     })
   })
 
+  it('should parse application/json responses successfully', async () => {
+    const transport = new BaseHttpTransport(defaultConfig)
+    const data = { ok: true, count: 2 }
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(data), {
+        status: 200,
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      }),
+    )
+
+    const result = await transport.get<typeof data>('/json')
+
+    expect(result.body).toEqual(data)
+  })
+
+  it('should throw a non-retryable parse error for invalid application/json responses', async () => {
+    const transport = new BaseHttpTransport(defaultConfig)
+    fetchMock.mockResolvedValueOnce(
+      new Response('not valid json {{{', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+
+    await expect(transport.get('/bad-json')).rejects.toMatchObject({
+      type: 'parse',
+      message: 'Failed to parse JSON response',
+      retryable: false,
+    })
+  })
+
+  it('should return text/plain response text directly', async () => {
+    const transport = new BaseHttpTransport(defaultConfig)
+    fetchMock.mockResolvedValueOnce(
+      new Response('plain text response', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      }),
+    )
+
+    const result = await transport.get<string>('/text')
+
+    expect(result.body).toBe('plain text response')
+  })
+
+  it('should return raw non-JSON text for application/octet-stream responses', async () => {
+    const transport = new BaseHttpTransport(defaultConfig)
+    fetchMock.mockResolvedValueOnce(
+      new Response('raw bytes as text', {
+        status: 200,
+        headers: { 'content-type': 'application/octet-stream' },
+      }),
+    )
+
+    const result = await transport.get<string>('/binary')
+
+    expect(result.body).toBe('raw bytes as text')
+  })
+
+  it('should read a non-JSON unknown content-type response body only once', async () => {
+    const transport = new BaseHttpTransport(defaultConfig)
+    const response = new Response('raw fallback text', {
+      status: 200,
+      headers: { 'content-type': 'application/octet-stream' },
+    })
+    const textSpy = vi.spyOn(response, 'text')
+    fetchMock.mockResolvedValueOnce(response)
+
+    const result = await transport.get<string>('/read-once')
+
+    expect(result.body).toBe('raw fallback text')
+    expect(textSpy).toHaveBeenCalledTimes(1)
+  })
+
   describe('rate limit header parsing', () => {
     it('should parse X-RateLimit-Remaining header', async () => {
       const transport = new BaseHttpTransport(defaultConfig)
