@@ -235,7 +235,7 @@ describe('BaseHttpTransport', () => {
     it('should inject Basic auth in Authorization header', async () => {
       const config: HttpTransportConfig = {
         baseURL: 'https://api.example.com',
-        auth: { type: 'basic', credentials: 'user:pass' },
+        auth: { type: 'basic', credentials: 'username:password' },
       }
       const transport = new BaseHttpTransport(config)
       fetchMock.mockResolvedValueOnce(createMockResponse(200, {}))
@@ -244,7 +244,7 @@ describe('BaseHttpTransport', () => {
 
       const fetchOptions = fetchMock.mock.calls[0][1] as RequestInit
       const headers = fetchOptions.headers as Record<string, string>
-      const expected = 'Basic ' + btoa('user:pass')
+      const expected = `Basic ${Buffer.from('username:password').toString('base64')}`
       expect(headers['Authorization']).toBe(expected)
     })
 

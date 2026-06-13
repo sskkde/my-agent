@@ -208,7 +208,7 @@ export class BaseHttpTransport implements IHttpTransport {
       case 'oauth2':
         return { Authorization: `Bearer ${this.auth.credentials}` }
       case 'basic': {
-        const encoded = btoa(this.auth.credentials)
+        const encoded = Buffer.from(this.auth.credentials, 'utf8').toString('base64')
         return { Authorization: `Basic ${encoded}` }
       }
       case 'api_key':
