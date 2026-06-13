@@ -405,6 +405,66 @@ describe('SQLite Infrastructure', () => {
       transactions.rollback()
       expect(transactions.getDepth()).toBe(0)
     })
+
+    it('should handle overlapping withTransaction calls without corrupting depth', async () => {
+      const p1 = transactions.withTransaction(async () => {
+        connection.exec("INSERT INTO test_data (value) VALUES ('tx1')")
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        return 'tx1'
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 5))
+
+      const p2 = transactions.withTransaction(async () => {
+        connection.exec("INSERT INTO test_data (value) VALUES ('tx2')")
+        return 'tx2'
+      })
+
+      const [r1, r2] = await Promise.all([p1, p2])
+
+      expect(r1).toBe('tx1')
+      expect(r2).toBe('tx2')
+
+      const rows = connection.query<{ value: string }>(
+        'SELECT value FROM test_data ORDER BY value',
+      )
+      expect(rows.length).toBe(2)
+      expect(rows[0]?.value).toBe('tx1')
+      expect(rows[1]?.value).toBe('tx2')
+
+      expect(transactions.getDepth()).toBe(0)
+    })
+
+    it('should isolate rollback in overlapping withTransaction without corrupting depth', async () => {
+      const p1 = transactions.withTransaction(async () => {
+        connection.exec("INSERT INTO test_data (value) VALUES ('outer')")
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        return 'outer'
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 5))
+
+      let innerError: Error | undefined
+      const p2 = transactions
+        .withTransaction(async () => {
+          connection.exec("INSERT INTO test_data (value) VALUES ('inner')")
+          throw new Error('inner fails')
+        })
+        .catch((e: unknown) => {
+          innerError = e as Error
+        })
+
+      const [r1] = await Promise.all([p1, p2])
+
+      expect(r1).toBe('outer')
+      expect(innerError?.message).toBe('inner fails')
+
+      const rows = connection.query<{ value: string }>('SELECT value FROM test_data')
+      expect(rows.length).toBe(1)
+      expect(rows[0]?.value).toBe('outer')
+
+      expect(transactions.getDepth()).toBe(0)
+    })
   })
 
   describe('Integration: Migrations use transactions', () => {

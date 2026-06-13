@@ -11,6 +11,7 @@ export interface TransactionHelper {
 class TransactionHelperImpl implements TransactionHelper {
   private connection: ConnectionManager
   private depth: number = 0
+  private wtDepth: number = 0
 
   constructor(connection: ConnectionManager) {
     this.connection = connection
@@ -57,15 +58,37 @@ class TransactionHelperImpl implements TransactionHelper {
   }
 
   async withTransaction<T>(fn: () => T | Promise<T>): Promise<T> {
-    this.begin()
+    // Capture depth synchronously before any await to prevent overlapping
+    // calls from corrupting each other's savepoint state.
+    const myDepth = this.wtDepth++
+    const savepointName = `sp_wt_${myDepth}`
 
     try {
+      if (myDepth === 0) {
+        this.connection.exec('BEGIN')
+      } else {
+        this.connection.exec(`SAVEPOINT ${savepointName}`)
+      }
+
       const result = await fn()
-      this.commit()
+
+      if (myDepth === 0) {
+        this.connection.exec('COMMIT')
+      } else {
+        this.connection.exec(`RELEASE SAVEPOINT ${savepointName}`)
+      }
+
       return result
     } catch (error) {
-      this.rollback()
+      if (myDepth === 0) {
+        this.connection.exec('ROLLBACK')
+      } else {
+        this.connection.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`)
+        this.connection.exec(`RELEASE SAVEPOINT ${savepointName}`)
+      }
       throw error
+    } finally {
+      this.wtDepth--
     }
   }
 
