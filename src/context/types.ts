@@ -363,6 +363,7 @@ export type RuntimeContextDelta = {
     | 'trigger_event'
     | 'approval_result'
     | 'runtime_note'
+    | 'plan_state'
   items: ContextItem[]
   replaceKeys?: string[]
 }

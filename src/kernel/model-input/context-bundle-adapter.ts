@@ -56,6 +56,13 @@ function formatPlanView(planView: NonNullable<ContextBundle['planView']>): strin
     parts.push(`Next Actions: ${planView.nextCandidateActions.join('; ')}`)
   }
 
+  if (planView.todoSummary && planView.todoSummary.length > 0) {
+    const todoLines = planView.todoSummary.map(
+      (entry) => `[${entry.ownerAgentType}] ${entry.todoListId}: ${entry.status}`,
+    )
+    parts.push(`Active Todos:\n${todoLines.join('\n')}`)
+  }
+
   return parts.join('\n')
 }
 

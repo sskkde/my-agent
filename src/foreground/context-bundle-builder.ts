@@ -8,6 +8,7 @@
 import type { ForegroundSessionState } from './types.js'
 import type { ForegroundTurnInput } from './foreground-runner-types.js'
 import type { ContextBundle, ContextItem } from '../context/types.js'
+import { projectActiveTodosToContext } from '../todo/context-projection.js'
 
 /**
  * Helper function to estimate token count from text.
@@ -33,14 +34,30 @@ function generateBundleId(): string {
  *
  * @param state - The foreground session state
  * @param input - The foreground turn input
+ * @param activeTodos - Optional active todos to project into context
  * @returns A ContextBundle ready for kernel processing
  */
 export function buildContextBundleFromForegroundState(
   state: ForegroundSessionState,
   input: ForegroundTurnInput,
+  activeTodos?: Array<{
+    todoId: string
+    sessionId: string
+    tenantId: string
+    parentTodoId?: string
+    position: number
+    status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+    priority: 'high' | 'medium' | 'low'
+    content: string
+    createdAt: string
+    updatedAt: string
+  }>,
 ): ContextBundle {
   const pinnedItems: ContextItem[] = buildPinnedItems(state)
-  const orderedItems: ContextItem[] = buildOrderedItems(input)
+  const todoContextItems: ContextItem[] = activeTodos
+    ? projectActiveTodosToContext({ sessionId: input.sessionId, todos: activeTodos }).contextItems
+    : []
+  const orderedItems: ContextItem[] = [...buildOrderedItems(input), ...todoContextItems]
   const totalTokens =
     pinnedItems.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0) +
     orderedItems.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0) +
