@@ -36,6 +36,7 @@ import { registerOAuthRoutes } from './routes/oauth.js'
 import { registerDlqRoutes } from './routes/dlq.js'
 import { registerAdminRoutes } from './routes/admin.js'
 import { registerSubagentRoutes } from './routes/subagents.js'
+import { registerTodoRoutes } from './routes/todos.js'
 import { registerApiKeyAuth } from './middleware/api-key-auth.js'
 import { registerAuthMiddleware } from './middleware/auth.js'
 import { registerAuthToken } from './middleware/auth-token.js'
@@ -194,6 +195,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerDlqRoutes(server, context)
     registerAdminRoutes(server, context)
     registerSubagentRoutes(server, context)
+    registerTodoRoutes(server, context)
 
     // Register legacy redirects for all old /api/ paths → /api/v1/ from the shared route inventory.
     for (const route of LEGACY_ROUTE_DEFINITIONS) {
@@ -213,6 +215,11 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
 
   server.addContentTypeParser('application/json', { parseAs: 'string' }, function (request, body, done) {
     try {
+      if (!body || (body as string).trim() === '') {
+        request.body = {}
+        done(null, {})
+        return
+      }
       const json = JSON.parse(body as string)
       request.body = json
       done(null, json)

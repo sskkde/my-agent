@@ -86,6 +86,7 @@ import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead
 import type { DatabaseAdapter } from '../storage/database-adapter.js'
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js'
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js'
+import { createTodoStore, type TodoStore } from '../todo/store.js'
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js'
 import { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js'
@@ -147,6 +148,7 @@ export interface ApiContext {
     deadLetterStore: DeadLetterStore
     apiKeyStore: ApiKeyStore
     organizationStore: OrganizationStore
+    todoStore: TodoStore
   }
   providerConfigStore: ProviderConfigStore
   agentConfigStore: AgentConfigStore
@@ -315,6 +317,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let deadLetterStore: DeadLetterStore
   let apiKeyStore: ApiKeyStore
   let organizationStore: OrganizationStore
+  let todoStore: TodoStore
   let subagentRunStore: SubagentRunStore
   let subagentTranscriptStore: SubagentTranscriptStore
   let subagentProviderPreferenceStore: SubagentProviderPreferenceStore
@@ -387,6 +390,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     organizationStore =
       ((existingStores as Record<string, unknown>)?.organizationStore as OrganizationStore) ??
       createOrganizationStore(connection)
+    todoStore =
+      ((existingStores as Record<string, unknown>)?.todoStore as TodoStore) ??
+      createTodoStore(connection)
     subagentRunStore = createSubagentRunStore(connection)
     subagentTranscriptStore = createSubagentTranscriptStore(connection)
     subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
@@ -844,6 +850,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       deadLetterStore,
       apiKeyStore,
       organizationStore,
+      todoStore,
     },
     providerConfigStore,
     agentConfigStore,
