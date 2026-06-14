@@ -8,6 +8,21 @@ import type { ToolResultStore } from '../../storage/tool-result-store.js'
 import type { LongTermMemoryStore } from '../../storage/long-term-memory-store.js'
 import type { SessionStore } from '../../storage/session-store.js'
 import type { ProcessSessionStore } from './process-session-store.js'
+import type { Todo, TodoWriteInput } from '../../todo/types.js'
+
+/**
+ * TodoStore interface for todo tool operations.
+ * This is a placeholder that will be implemented in Task 9.
+ */
+export interface TodoStore {
+  findById(id: string): Todo | null
+  findBySession(sessionId: string): Todo[]
+  create(input: Omit<Todo, 'createdAt' | 'updatedAt' | 'position'> & { position?: number }): Todo
+  update(id: string, input: Partial<Omit<Todo, 'todoId' | 'sessionId' | 'tenantId' | 'createdAt'>>): Todo | null
+  remove(id: string): boolean
+  replace(sessionId: string, todos: TodoWriteInput[]): Todo[]
+}
+
 import { createArtifactCreateTool } from './artifact-create.js'
 import { createArtifactUpdateTool } from './artifact-update.js'
 import { createAskUserTool } from './ask-user.js'
@@ -30,6 +45,8 @@ import { createMockConnectorTools } from './mock-connector-tools.js'
 import { createExecTool, createBashTool } from './exec-tool.js'
 import { createProcessTool } from './process-tool.js'
 import { createCodeExecutionTool } from './code-execution.js'
+import { createTodolistTool } from './todo-list-tool.js'
+import { createTodowriteTool } from './todo-write-tool.js'
 
 export interface BuiltInToolsConfig {
   artifactStore: ArtifactStore
@@ -40,6 +57,7 @@ export interface BuiltInToolsConfig {
   toolResultStore?: ToolResultStore
   sessionStore: SessionStore
   processSessionStore?: ProcessSessionStore
+  todoStore?: TodoStore
   enableRuntimeTools?: boolean // default: true
   webSearchBrowser?: Browser
   webSearchBrowserProvider?: () => Promise<Browser | undefined>
@@ -78,6 +96,12 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
   registry.register(createSessionHistoryTool(sessionStore, transcriptStore))
   registry.register(createWebFetchTool())
   registry.register(createWebSearchTool({ browser: webSearchBrowser, browserProvider: webSearchBrowserProvider }))
+
+  // Register todo tools
+  if (config.todoStore) {
+    registry.register(createTodolistTool(config.todoStore))
+    registry.register(createTodowriteTool(config.todoStore))
+  }
 
   // Register runtime tools if enabled
   if (enableRuntimeTools && processSessionStore) {
@@ -123,4 +147,6 @@ export {
   createBashTool,
   createProcessTool,
   createCodeExecutionTool,
+  createTodolistTool,
+  createTodowriteTool,
 }
