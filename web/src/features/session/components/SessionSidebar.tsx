@@ -2,6 +2,7 @@ import React from 'react'
 import LoadingSpinner from '../../../components/LoadingSpinner'
 import type { ConsoleSessionInfo } from '../../../api/types'
 import { formatDate } from '../session-utils'
+import { CHAT_TERMINOLOGY } from '../../../constants/chat-terminology'
 
 export interface SessionSidebarProps {
   sessions: ConsoleSessionInfo[]
@@ -24,8 +25,25 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
 }) => {
   return (
     <aside className="sessions-sidebar" data-testid="sessions-sidebar">
+      {/* Feature Entry Points */}
+      <div className="sessions-sidebar-features">
+        <button className="sessions-feature-button" data-testid="feature-social-platform">
+          <span className="sessions-feature-icon">🔗</span>
+          <span className="sessions-feature-text">接入社交平台</span>
+        </button>
+        <button className="sessions-feature-button" data-testid="feature-assistant-activity">
+          <span className="sessions-feature-icon">🤖</span>
+          <span className="sessions-feature-text">助手活动</span>
+        </button>
+        <button className="sessions-feature-button" data-testid="feature-task-plan">
+          <span className="sessions-feature-icon">📋</span>
+          <span className="sessions-feature-text">任务计划</span>
+        </button>
+      </div>
+
+      {/* Session List Header */}
       <div className="sessions-sidebar-header">
-        <h3>会话列表</h3>
+        <h3>{CHAT_TERMINOLOGY.sessionHistory}</h3>
         {/* Mobile close button */}
         <button
           className="session-sidebar-close"
@@ -35,16 +53,9 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
         >
           ✕
         </button>
-        <button
-          className="session-new-button"
-          data-testid="session-new-button"
-          onClick={onCreateSession}
-          disabled={loading}
-        >
-          新建会话
-        </button>
       </div>
 
+      {/* Session List - Scrollable */}
       {loading && <LoadingSpinner size="small" label="加载会话列表..." />}
 
       {error && <div className="sessions-error">{error}</div>}
@@ -54,7 +65,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
           {sessions.length === 0 ? (
             <div className="sessions-empty">
               <p>暂无会话</p>
-              <p>点击上方按钮创建新会话</p>
+              <p>点击下方按钮创建新会话</p>
             </div>
           ) : (
             sessions.map((session) => (
@@ -64,7 +75,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
                 data-testid={`session-item-${session.sessionId}`}
                 onClick={() => onSelectSession(session.sessionId)}
               >
-                <div className="session-item-title">{session.title || `会话 ${session.sessionId.slice(-8)}`}</div>
+                <div className="session-item-title">{session.title || `${CHAT_TERMINOLOGY.session} ${session.sessionId.slice(-8)}`}</div>
                 <div className="session-item-meta">
                   <span className="session-item-count">{session.messageCount} 消息</span>
                   <span className="session-item-time">{formatDate(session.lastActivityAt)}</span>
@@ -74,6 +85,22 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
           )}
         </div>
       )}
+
+      {/* Footer: New Session + Trash */}
+      <div className="sessions-sidebar-footer">
+        <button
+          className="session-new-button--coral"
+          data-testid="session-new-button"
+          onClick={onCreateSession}
+          disabled={loading}
+        >
+          + {CHAT_TERMINOLOGY.newSession}
+        </button>
+        <button className="sessions-trash-button" data-testid="sessions-trash-button">
+          <span className="sessions-trash-icon">🗑️</span>
+          <span className="sessions-trash-text">回收站</span>
+        </button>
+      </div>
     </aside>
   )
 }

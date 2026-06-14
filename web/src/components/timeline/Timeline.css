@@ -69,6 +69,129 @@
 }
 
 /* ==========================================================================
+   Timeline Welcome State (Empty Session)
+   ========================================================================== */
+
+.timeline-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  height: 100%;
+  min-height: 320px;
+}
+
+.timeline-welcome__avatar-container {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--chat-workspace-primary-subtle, rgba(224, 122, 95, 0.12)), rgba(224, 122, 95, 0.06));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(224, 122, 95, 0.15);
+}
+
+.timeline-welcome__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.timeline-welcome__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--chat-workspace-text, var(--text-strong));
+  margin: 0 0 8px 0;
+  letter-spacing: -0.01em;
+}
+
+.timeline-welcome__subtitle {
+  font-size: 14px;
+  color: var(--chat-workspace-text-muted, var(--muted));
+  margin: 0 0 24px 0;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.timeline-welcome__prompts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 480px;
+}
+
+.timeline-welcome__prompt {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.timeline-welcome__prompt:hover {
+  background: var(--chat-workspace-primary-subtle, rgba(224, 122, 95, 0.08));
+  border-color: var(--chat-workspace-primary, #e07a5f);
+  color: var(--chat-workspace-primary, #e07a5f);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(224, 122, 95, 0.15);
+}
+
+.timeline-welcome__prompt:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .timeline-welcome {
+    padding: 32px 16px;
+    min-height: 280px;
+  }
+
+  .timeline-welcome__avatar-container {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 20px;
+  }
+
+  .timeline-welcome__avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .timeline-welcome__title {
+    font-size: 18px;
+  }
+
+  .timeline-welcome__subtitle {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .timeline-welcome__prompts {
+    gap: 6px;
+  }
+
+  .timeline-welcome__prompt {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+
+/* ==========================================================================
    Timeline Event Card
    ========================================================================== */
 

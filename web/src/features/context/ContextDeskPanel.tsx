@@ -1,11 +1,10 @@
 /**
- * ContextDeskPanel - Container for context desk summary cards
+ * ContextDeskPanel - Right panel workspace for reference materials
  *
- * Displays read-only summary cards for:
- * - Approvals (pending approval requests)
- * - Memory (memory entries)
- * - Runs (background runs)
- * - Tool Activity (tool call/result events)
+ * Displays three main sections:
+ * - 工作计划 (Work Plan): Current plan status
+ * - 书桌 (Desk): Files/resources area
+ * - 活动概览 (Activity Overview): Summary of runs, approvals, tool activity, memory
  *
  * READ-ONLY POLICY:
  * All cards are strictly read-only. No approve/reject/edit/run-control actions.
@@ -105,15 +104,77 @@ const CardErrorFallback = (err: Error): ReactNode => (
 )
 
 // =============================================================================
+// Activity Summary Card Component
+// =============================================================================
+
+interface ActivitySummaryProps {
+  runsState: CardState<RunsCardData>
+  approvalState: CardState<ApprovalCardData>
+  toolActivityState: CardState<ToolActivityCardData>
+  memoryState: CardState<MemoryCardData>
+  sessionId: string | null
+  maxItems: number
+}
+
+/**
+ * ActivitySummaryCard - Compact summary of activity metrics
+ */
+const ActivitySummaryCard: React.FC<ActivitySummaryProps> = ({
+  runsState,
+  approvalState,
+  toolActivityState,
+  memoryState,
+}) => {
+  // Extract counts from each state
+  const runsCount = isReady(runsState) ? runsState.data.total : 0
+  const runningCount = isReady(runsState) 
+    ? runsState.data.runs.filter(r => r.status === 'running').length 
+    : 0
+  const pendingApprovals = isReady(approvalState) 
+    ? approvalState.data.approvals.filter(a => a.status === 'pending').length 
+    : 0
+  const toolEvents = isReady(toolActivityState) ? toolActivityState.data.total : 0
+  const memoryCount = isReady(memoryState) ? memoryState.data.total : 0
+
+  return (
+    <div className="workspace-card workspace-card--activity-summary" data-testid="activity-summary">
+      <div className="activity-summary__metrics">
+        <div className="activity-metric">
+          <span className="activity-metric__value">{runningCount}</span>
+          <span className="activity-metric__label">运行中</span>
+        </div>
+        <div className="activity-metric">
+          <span className="activity-metric__value">{pendingApprovals}</span>
+          <span className="activity-metric__label">待审批</span>
+        </div>
+        <div className="activity-metric">
+          <span className="activity-metric__value">{runsCount}</span>
+          <span className="activity-metric__label">总运行</span>
+        </div>
+        <div className="activity-metric">
+          <span className="activity-metric__value">{toolEvents}</span>
+          <span className="activity-metric__label">工具调用</span>
+        </div>
+        <div className="activity-metric">
+          <span className="activity-metric__value">{memoryCount}</span>
+          <span className="activity-metric__label">记忆条目</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
 // ContextDeskPanel Component
 // =============================================================================
 
 /**
- * ContextDeskPanel - Grid layout for context summary cards
+ * ContextDeskPanel - Workspace panel with three main sections
  *
- * Renders four read-only cards in a responsive grid:
- * - Top row: Approvals, Memory
- * - Bottom row: Runs, Tool Activity
+ * Renders:
+ * - 工作计划 (Work Plan): Current plan status placeholder
+ * - 书桌 (Desk): Files/resources area placeholder
+ * - 活动概览 (Activity Overview): Activity summary + detailed cards
  *
  * Each card is isolated in an error boundary to prevent cascading failures.
  */
@@ -129,85 +190,84 @@ const ContextDeskPanel: React.FC<ContextDeskPanelProps> = ({
   testId = 'context-desk-panel',
 }) => {
   const scopedSessionId = sessionId || null
-  const sessionLabel = scopedSessionId ?? '未选择会话'
-  const activeRun = isReady(runsState)
-    ? runsState.data.runs.find((run) => run.status === 'running') ?? runsState.data.runs[0]
-    : null
-  const pendingApprovalCount = isReady(approvalState)
-    ? approvalState.data.approvals.filter((approval) => approval.status === 'pending').length
-    : null
 
   return (
     <div
-      className={`context-desk-panel companion-panel ${className}`}
+      className={`workspace-panel companion-panel ${className}`}
       data-testid={testId}
       data-active-tab={activeTab}
       data-session-id={scopedSessionId ?? undefined}
     >
-      <section className="companion-section" aria-labelledby="context-current-session-title">
-        <div className="companion-section__header">
-          <h3 id="context-current-session-title" className="companion-section__title">当前 Session</h3>
+      {/* Section 1: 工作计划 (Work Plan) */}
+      <section className="workspace-section" aria-labelledby="workspace-plan-title">
+        <div className="workspace-section__header">
+          <h3 id="workspace-plan-title" className="workspace-section__title">工作计划</h3>
         </div>
-        <div className="companion-card companion-card--summary" data-testid="context-current-session">
-          <dl className="context-session-summary">
-            <div className="context-session-summary__row">
-              <dt>Session</dt>
-              <dd>{sessionLabel}</dd>
+        <div className="workspace-card workspace-card--plan" data-testid="workspace-plan">
+          <div className="workspace-plan__placeholder">
+            <div className="workspace-plan__icon">📋</div>
+            <div className="workspace-plan__text">
+              <span className="workspace-plan__title">当前无活动计划</span>
+              <span className="workspace-plan__hint">计划功能即将上线</span>
             </div>
-            <div className="context-session-summary__row">
-              <dt>Active tab</dt>
-              <dd>{activeTab ?? 'unknown'}</dd>
-            </div>
-            <div className="context-session-summary__row">
-              <dt>Active run</dt>
-              <dd>{activeRun ? (activeRun.objective || activeRun.runId) : '暂无活动 run'}</dd>
-            </div>
-            <div className="context-session-summary__row">
-              <dt>Pending approvals</dt>
-              <dd>{pendingApprovalCount ?? '—'}</dd>
-            </div>
-          </dl>
+          </div>
         </div>
       </section>
 
-      <section className="companion-section" aria-labelledby="context-active-run-title">
-        <div className="companion-section__header">
-          <h3 id="context-active-run-title" className="companion-section__title">活动 Run</h3>
+      {/* Section 2: 书桌 (Desk) */}
+      <section className="workspace-section" aria-labelledby="workspace-desk-title">
+        <div className="workspace-section__header">
+          <h3 id="workspace-desk-title" className="workspace-section__title">书桌</h3>
         </div>
-        <CardErrorBoundary fallback={CardErrorFallback}>
-          <RunsCard state={runsState} sessionId={scopedSessionId} maxItems={maxItems} />
-        </CardErrorBoundary>
+        <div className="workspace-card workspace-card--desk" data-testid="workspace-desk">
+          <div className="workspace-desk__placeholder">
+            <div className="workspace-desk__icon">📁</div>
+            <div className="workspace-desk__text">
+              <span className="workspace-desk__title">文件与资源</span>
+              <span className="workspace-desk__hint">上传或关联文件以在此处查看</span>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section className="companion-section" aria-labelledby="context-memory-title">
-        <div className="companion-section__header">
-          <h3 id="context-memory-title" className="companion-section__title">Memory</h3>
+      {/* Section 3: 活动概览 (Activity Overview) */}
+      <section className="workspace-section workspace-section--activity" aria-labelledby="workspace-activity-title">
+        <div className="workspace-section__header">
+          <h3 id="workspace-activity-title" className="workspace-section__title">活动概览</h3>
         </div>
-        <CardErrorBoundary fallback={CardErrorFallback}>
-          <MemoryCard state={memoryState} maxItems={maxItems} />
-        </CardErrorBoundary>
-      </section>
+        
+        {/* Activity Summary Card */}
+        <ActivitySummaryCard
+          runsState={runsState}
+          approvalState={approvalState}
+          toolActivityState={toolActivityState}
+          memoryState={memoryState}
+          sessionId={scopedSessionId}
+          maxItems={maxItems}
+        />
 
-      <section className="companion-section" aria-labelledby="context-tool-activity-title">
-        <div className="companion-section__header">
-          <h3 id="context-tool-activity-title" className="companion-section__title">Tool Activity</h3>
-        </div>
-        <CardErrorBoundary fallback={CardErrorFallback}>
-          <ToolActivityCard
-            state={toolActivityState}
-            sessionId={scopedSessionId || 'unknown'}
-            maxItems={maxItems}
-          />
-        </CardErrorBoundary>
-      </section>
+        {/* Detailed Activity Cards */}
+        <div className="workspace-activity__cards">
+          <CardErrorBoundary fallback={CardErrorFallback}>
+            <RunsCard state={runsState} sessionId={scopedSessionId} maxItems={maxItems} />
+          </CardErrorBoundary>
 
-      <section className="companion-section" aria-labelledby="context-pending-approvals-title">
-        <div className="companion-section__header">
-          <h3 id="context-pending-approvals-title" className="companion-section__title">Pending Approvals</h3>
+          <CardErrorBoundary fallback={CardErrorFallback}>
+            <ApprovalCard state={approvalState} sessionId={scopedSessionId} maxItems={maxItems} />
+          </CardErrorBoundary>
+
+          <CardErrorBoundary fallback={CardErrorFallback}>
+            <ToolActivityCard
+              state={toolActivityState}
+              sessionId={scopedSessionId || 'unknown'}
+              maxItems={maxItems}
+            />
+          </CardErrorBoundary>
+
+          <CardErrorBoundary fallback={CardErrorFallback}>
+            <MemoryCard state={memoryState} maxItems={maxItems} />
+          </CardErrorBoundary>
         </div>
-        <CardErrorBoundary fallback={CardErrorFallback}>
-          <ApprovalCard state={approvalState} sessionId={scopedSessionId} maxItems={maxItems} />
-        </CardErrorBoundary>
       </section>
     </div>
   )

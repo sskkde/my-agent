@@ -10479,6 +10479,203 @@ body {
 }
 
 /* ==========================================================================
+   Workspace Panel Styles (New Layout)
+   ========================================================================== */
+
+.workspace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.workspace-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+}
+
+.workspace-section__title {
+  color: var(--chat-workspace-text-secondary, var(--muted));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.workspace-card {
+  background: var(--chat-workspace-bg-elevated, var(--bg-elevated));
+  border: 1px solid var(--chat-workspace-border, var(--border));
+  border-radius: var(--warm-paper-radius-md, 3px);
+  box-shadow: var(--warm-paper-shadow-sm, 0 1px 2px rgba(42, 38, 34, 0.03));
+  overflow: hidden;
+}
+
+/* Workspace Plan Card */
+.workspace-card--plan {
+  padding: 16px;
+}
+
+.workspace-plan__placeholder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-plan__icon {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.workspace-plan__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workspace-plan__title {
+  color: var(--chat-workspace-text, var(--text));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.workspace-plan__hint {
+  color: var(--chat-workspace-text-muted, var(--muted));
+  font-size: 11px;
+}
+
+/* Workspace Desk Card */
+.workspace-card--desk {
+  padding: 16px;
+}
+
+.workspace-desk__placeholder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-desk__icon {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.workspace-desk__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workspace-desk__title {
+  color: var(--chat-workspace-text, var(--text));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.workspace-desk__hint {
+  color: var(--chat-workspace-text-muted, var(--muted));
+  font-size: 11px;
+}
+
+/* Activity Summary Card */
+.workspace-card--activity-summary {
+  padding: 12px;
+}
+
+.activity-summary__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.activity-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--chat-workspace-bg-deep, var(--bg));
+  border-radius: 4px;
+  min-width: 48px;
+  flex: 1;
+}
+
+.activity-metric__value {
+  color: var(--chat-workspace-primary, var(--accent));
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.activity-metric__label {
+  color: var(--chat-workspace-text-muted, var(--muted));
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Activity Cards Container */
+.workspace-activity__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workspace-activity__cards .context-card .ui-card__header {
+  padding: 10px 12px;
+}
+
+.workspace-activity__cards .context-card .ui-card__content {
+  max-height: 180px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.workspace-activity__cards .context-card__title {
+  font-size: 12px;
+}
+
+.workspace-activity__cards .context-card__list {
+  gap: 6px;
+}
+
+.workspace-activity__cards .context-card__item {
+  padding: 8px;
+}
+
+.workspace-activity__cards .context-card__empty,
+.workspace-activity__cards .context-card__loading {
+  min-height: 60px;
+}
+
+/* Context Desk Body Scroll (for overflow) */
+.context-desk__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.context-desk__body > * {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
    Context Card Base Styles
    ========================================================================== */
 

@@ -530,6 +530,13 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     closeSessionsSidebar()
   }, [selectSession, setDraft, setSendError, closeSessionsSidebar])
 
+  const handlePromptSelect = useCallback(
+    (prompt: string) => {
+      setDraft(prompt)
+    },
+    [setDraft],
+  )
+
   const handleReject = useCallback(
     async (reason?: string) => {
       if (!pendingApproval) return
@@ -742,6 +749,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
               onRetryStream={handleRetryStream}
               onToggleSidebar={openSessionsSidebar}
               isDrawerOpen={isSessionsDrawerOpen}
+              onPromptSelect={handlePromptSelect}
             />
 
             {/* Error Display */}

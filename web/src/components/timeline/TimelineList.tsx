@@ -2,14 +2,16 @@ import React, { useRef, useEffect } from 'react'
 import './Timeline.css'
 import type { ConsoleTimelineEvent } from '../../api/types'
 import { TimelineEventCard } from './TimelineEventCard'
+import { TimelineWelcomeState } from './TimelineWelcomeState'
 
 export interface TimelineListProps {
   events: ConsoleTimelineEvent[]
   loading: boolean
   error?: string
+  onPromptSelect?: (prompt: string) => void
 }
 
-export const TimelineList: React.FC<TimelineListProps> = ({ events, loading, error }) => {
+export const TimelineList: React.FC<TimelineListProps> = ({ events, loading, error, onPromptSelect }) => {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,10 +37,7 @@ export const TimelineList: React.FC<TimelineListProps> = ({ events, loading, err
   if (events.length === 0) {
     return (
       <div className="timeline-list timeline-list--empty" data-testid="timeline-empty-state">
-        <div className="timeline-empty-state">
-          <div className="timeline-empty-icon">📋</div>
-          <p>暂无事件</p>
-        </div>
+        <TimelineWelcomeState onPromptSelect={onPromptSelect} />
       </div>
     )
   }

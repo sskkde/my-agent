@@ -1,46 +1,133 @@
 /* ==========================================================================
-   ComposerDock Styles (warm-paper themed)
+   ComposerDock Styles (floating centered card for desktop)
    ========================================================================== */
 
 .composer-dock {
+  /* Desktop: Center the dock container */
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 16px 24px;
-  background: var(--warm-paper-bg-elevated, var(--bg-elevated));
-  border-top: var(--warm-paper-border-width, 0.5px) solid var(--warm-paper-border, var(--border));
+  justify-content: center;
+  padding: 16px 24px 24px;
+  background: linear-gradient(
+    to top,
+    var(--chat-workspace-bg-deep, var(--warm-paper-bg-deep, #faf5f0)) 0%,
+    transparent 100%
+  );
   flex: 0 0 auto;
   position: sticky;
   bottom: 0;
   z-index: 20;
 }
 
-.composer-input {
-  flex: 1;
-  min-height: 44px;
-  max-height: 200px;
-  padding: 12px 16px;
-  border: var(--warm-paper-border-width, 0.5px) solid var(--warm-paper-border, var(--border));
+/* Floating card container - desktop only */
+.composer-card {
+  width: 100%;
+  max-width: 800px;
+  background: var(--chat-workspace-bg-elevated, var(--warm-paper-bg-elevated, #fffcf7));
+  border: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+  border-radius: var(--warm-paper-radius-md, 3px);
+  box-shadow: 
+    0 4px 16px rgba(42, 38, 34, 0.08),
+    0 2px 4px rgba(42, 38, 34, 0.04);
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Toolbar
+   ========================================================================== */
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--chat-workspace-bg-deep, var(--warm-paper-bg-deep, #f5efe4));
+  border-bottom: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+}
+
+.composer-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: var(--warm-paper-border-width, 0.5px) solid transparent;
   border-radius: var(--warm-paper-radius-sm, 2px);
-  font-size: 14px;
+  font-size: 13px;
   font-family: inherit;
-  line-height: 1.5;
-  background: var(--warm-paper-bg, var(--bg-elevated));
-  color: var(--warm-paper-text, var(--text));
+  color: var(--chat-workspace-text-secondary, var(--warm-paper-text-secondary, #4a433c));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.composer-tool-btn:hover {
+  background: var(--chat-workspace-bg-elevated, var(--warm-paper-bg-elevated, #fffcf7));
+  border-color: var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+  color: var(--chat-workspace-text, var(--warm-paper-text, #2a2622));
+}
+
+.composer-tool-btn:active {
+  background: var(--warm-paper-active-overlay, rgba(42, 38, 34, 0.04));
+}
+
+.composer-tool-icon {
+  font-size: 14px;
+}
+
+.composer-tool-label {
+  font-weight: 500;
+}
+
+.composer-spacer {
+  flex: 1;
+}
+
+.composer-model-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--chat-workspace-primary-subtle, rgba(224, 122, 95, 0.12));
+  border-radius: var(--warm-paper-radius-sm, 2px);
+}
+
+.composer-model-label {
+  font-size: 11px;
+  color: var(--chat-workspace-text-muted, var(--warm-paper-text-muted, #6b6158));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.composer-model-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chat-workspace-primary, #e07a5f);
+}
+
+/* ==========================================================================
+   Input Area
+   ========================================================================== */
+
+.composer-input {
+  width: 100%;
+  min-height: 48px;
+  max-height: 200px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 0;
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.6;
+  background: transparent;
+  color: var(--chat-workspace-text, var(--warm-paper-text, #2a2622));
   resize: none;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
 }
 
 .composer-input::placeholder {
-  color: var(--warm-paper-text-muted, var(--muted));
+  color: var(--chat-workspace-text-muted, var(--warm-paper-text-muted, #6b6158));
 }
 
 .composer-input:focus {
   outline: none;
-  border-color: var(--warm-paper-accent, var(--accent));
-  box-shadow: 0 0 0 2px var(--warm-paper-focus-ring, rgba(91, 140, 133, 0.3));
 }
 
 .composer-input:disabled {
@@ -49,14 +136,43 @@
   opacity: 0.7;
 }
 
+/* ==========================================================================
+   Actions Row
+   ========================================================================== */
+
+.composer-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px 14px;
+  border-top: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+}
+
+.composer-hint {
+  font-size: 12px;
+  color: var(--chat-workspace-text-muted, var(--warm-paper-text-muted, #6b6158));
+}
+
+.composer-hint kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--chat-workspace-bg-deep, var(--warm-paper-bg-deep, #f5efe4));
+  border: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border-strong, #e0d0c4);
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--chat-workspace-text-secondary, var(--warm-paper-text-secondary, #4a433c));
+}
+
 .composer-send-button {
-  padding: 12px 24px;
-  background-color: var(--warm-paper-accent, var(--accent));
+  padding: 10px 24px;
+  background-color: var(--chat-workspace-primary, #e07a5f);
   color: white;
   border: none;
   border-radius: var(--warm-paper-radius-sm, 2px);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition:
@@ -67,7 +183,7 @@
 }
 
 .composer-send-button:hover:not(:disabled) {
-  background-color: var(--warm-paper-accent-hover, #4a7a73);
+  background-color: var(--chat-workspace-primary-hover, #c96a52);
 }
 
 .composer-send-button:active:not(:disabled) {
@@ -75,7 +191,115 @@
 }
 
 .composer-send-button:disabled {
-  background-color: var(--warm-paper-text-muted, #9ca3af);
+  background-color: var(--chat-workspace-text-muted, var(--warm-paper-text-muted, #6b6158));
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   Mobile Responsive (< 768px)
+   Full-width docked style for mobile
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .composer-dock {
+    padding: 12px 16px 20px;
+    background: var(--chat-workspace-bg-elevated, var(--warm-paper-bg-elevated, #fffcf7));
+    border-top: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+  }
+
+  .composer-card {
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+  }
+
+  .composer-toolbar {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .composer-tool-btn {
+    padding: 6px 8px;
+  }
+
+  .composer-tool-label {
+    display: none;
+  }
+
+  .composer-tool-icon {
+    font-size: 16px;
+  }
+
+  .composer-model-badge {
+    padding: 3px 8px;
+  }
+
+  .composer-input {
+    padding: 12px 14px;
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+
+  .composer-actions-row {
+    padding: 8px 12px 12px;
+  }
+
+  .composer-hint {
+    display: none;
+  }
+
+  .composer-send-button {
+    padding: 10px 20px;
+  }
+}
+
+/* ==========================================================================
+   Desktop Enhancement (> 768px)
+   ========================================================================== */
+
+@media (min-width: 769px) {
+  .composer-dock {
+    /* Add subtle gradient overlay for visual depth */
+    position: relative;
+  }
+
+  .composer-dock::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(
+      to top,
+      var(--chat-workspace-bg-deep, #faf5f0) 0%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .composer-card {
+    /* Floating card effect */
+    position: relative;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .composer-card:focus-within {
+    box-shadow: 
+      0 6px 24px rgba(42, 38, 34, 0.12),
+      0 3px 6px rgba(42, 38, 34, 0.06),
+      0 0 0 2px var(--chat-workspace-primary-subtle, rgba(224, 122, 95, 0.12));
+  }
+}
+
+/* ==========================================================================
+   Large Desktop (> 1200px)
+   ========================================================================== */
+
+@media (min-width: 1200px) {
+  .composer-card {
+    max-width: 900px;
+  }
 }

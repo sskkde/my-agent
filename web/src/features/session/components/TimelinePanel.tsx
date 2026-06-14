@@ -12,6 +12,7 @@ export interface TimelinePanelProps {
   onRetryStream: () => void
   onToggleSidebar: () => void
   isDrawerOpen: boolean
+  onPromptSelect?: (prompt: string) => void
 }
 
 export const TimelinePanel: React.FC<TimelinePanelProps> = ({
@@ -23,6 +24,7 @@ export const TimelinePanel: React.FC<TimelinePanelProps> = ({
   onRetryStream,
   onToggleSidebar,
   isDrawerOpen,
+  onPromptSelect,
 }) => {
   return (
     <>
@@ -49,7 +51,7 @@ export const TimelinePanel: React.FC<TimelinePanelProps> = ({
       <div className="session-timeline-container" data-testid="session-timeline">
         <div className="timeline-stage">
           <div className="timeline-column">
-            <TimelineList events={events} loading={loading} error={error} />
+            <TimelineList events={events} loading={loading} error={error} onPromptSelect={onPromptSelect} />
           </div>
         </div>
       </div>

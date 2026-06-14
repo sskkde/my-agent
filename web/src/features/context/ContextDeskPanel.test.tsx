@@ -41,7 +41,7 @@ describe('ContextDeskPanel', () => {
   })
 
   describe('rendering', () => {
-    it('renders all four cards', () => {
+    it('renders all three workspace sections', () => {
       render(
         <ContextDeskPanel
           approvalState={mockApprovalState}
@@ -52,6 +52,21 @@ describe('ContextDeskPanel', () => {
       )
       
       expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('workspace-plan')).toBeInTheDocument()
+      expect(screen.getByTestId('workspace-desk')).toBeInTheDocument()
+      expect(screen.getByTestId('activity-summary')).toBeInTheDocument()
+    })
+
+    it('renders all four activity cards in activity overview section', () => {
+      render(
+        <ContextDeskPanel
+          approvalState={mockApprovalState}
+          memoryState={mockMemoryState}
+          runsState={mockRunsState}
+          toolActivityState={mockToolActivityState}
+        />
+      )
+      
       expect(screen.getByTestId('context-card-approvals')).toBeInTheDocument()
       expect(screen.getByTestId('context-card-memory')).toBeInTheDocument()
       expect(screen.getByTestId('context-card-runs')).toBeInTheDocument()
@@ -69,7 +84,91 @@ describe('ContextDeskPanel', () => {
         />
       )
       
-      expect(container.querySelector('.context-desk-panel.custom-class')).toBeInTheDocument()
+      expect(container.querySelector('.workspace-panel.custom-class')).toBeInTheDocument()
+    })
+  })
+
+  describe('workspace sections', () => {
+    it('renders work plan section with placeholder', () => {
+      render(
+        <ContextDeskPanel
+          approvalState={mockApprovalState}
+          memoryState={mockMemoryState}
+          runsState={mockRunsState}
+          toolActivityState={mockToolActivityState}
+        />
+      )
+      
+      expect(screen.getByText('工作计划')).toBeInTheDocument()
+      expect(screen.getByText('当前无活动计划')).toBeInTheDocument()
+    })
+
+    it('renders desk section with placeholder', () => {
+      render(
+        <ContextDeskPanel
+          approvalState={mockApprovalState}
+          memoryState={mockMemoryState}
+          runsState={mockRunsState}
+          toolActivityState={mockToolActivityState}
+        />
+      )
+      
+      expect(screen.getByText('书桌')).toBeInTheDocument()
+      expect(screen.getByText('文件与资源')).toBeInTheDocument()
+    })
+
+    it('renders activity overview section with summary', () => {
+      render(
+        <ContextDeskPanel
+          approvalState={mockApprovalState}
+          memoryState={mockMemoryState}
+          runsState={mockRunsState}
+          toolActivityState={mockToolActivityState}
+        />
+      )
+      
+      expect(screen.getByText('活动概览')).toBeInTheDocument()
+      expect(screen.getByTestId('activity-summary')).toBeInTheDocument()
+    })
+  })
+
+  describe('activity summary', () => {
+    it('shows correct counts for running tasks and pending approvals', () => {
+      const runsWithActive = ready<RunsCardData>({
+        runs: [
+          { runId: 'run-1', status: 'running', objective: 'Test run', createdAt: '2024-01-01T00:00:00Z' },
+          { runId: 'run-2', status: 'completed', objective: 'Done', createdAt: '2024-01-01T00:00:00Z' },
+        ],
+        total: 2,
+        sessionId: 'session-1',
+        streaming: false,
+      })
+
+      const approvalsWithPending = ready<ApprovalCardData>({
+        approvals: [
+          { id: 'approval-1', userId: 'user-1', sessionId: 'session-1', status: 'pending', actionType: 'test', requestedBy: 'agent', requestedAt: '2024-01-01T00:00:00Z' },
+          { id: 'approval-2', userId: 'user-1', sessionId: 'session-1', status: 'approved', actionType: 'test2', requestedBy: 'agent', requestedAt: '2024-01-01T00:00:00Z' },
+        ],
+        total: 2,
+        sessionId: 'session-1',
+      })
+      
+      render(
+        <ContextDeskPanel
+          approvalState={approvalsWithPending}
+          memoryState={mockMemoryState}
+          runsState={runsWithActive}
+          toolActivityState={mockToolActivityState}
+        />
+      )
+      
+      const metrics = screen.getByTestId('activity-summary')
+      expect(metrics).toHaveTextContent('1')  // 1 running
+      expect(metrics).toHaveTextContent('运行中')
+      expect(metrics).toHaveTextContent('1')  // 1 pending approval
+      expect(metrics).toHaveTextContent('待审批')
+      expect(metrics).toHaveTextContent('2')  // 2 total runs
+      expect(metrics).toHaveTextContent('总运行')
     })
   })
 
@@ -77,7 +176,6 @@ describe('ContextDeskPanel', () => {
     it('isolates card errors and prevents cascading failures', () => {
       const errorState = error('Card failed', 'CARD_ERROR', true)
       
-      // Should not throw even if one card is in error state
       expect(() => {
         render(
           <ContextDeskPanel
@@ -89,20 +187,12 @@ describe('ContextDeskPanel', () => {
         )
       }).not.toThrow()
       
-      // Other cards should still render
       expect(screen.getByTestId('context-card-memory')).toBeInTheDocument()
       expect(screen.getByTestId('context-card-runs')).toBeInTheDocument()
       expect(screen.getByTestId('context-card-tools')).toBeInTheDocument()
     })
 
     it('renders error boundary fallback when card throws', () => {
-      // Create a component that throws during render
-      const ThrowingCard = (): never => {
-        throw new Error('Card render error')
-      }
-      
-      // We can't directly test error boundary with throwing component easily
-      // So we test that the panel handles error states gracefully
       const errorState = error('Card failed', 'CARD_ERROR', true)
       
       render(
@@ -114,7 +204,6 @@ describe('ContextDeskPanel', () => {
         />
       )
       
-      // All cards should show their error states
       expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
     })
   })
@@ -147,16 +236,9 @@ describe('ContextDeskPanel', () => {
         />
       )
       
-      // Approval card should show ready state
       expect(screen.getByText('test_action')).toBeInTheDocument()
-      
-      // Memory card should show loading
       expect(screen.getByText('加载中...')).toBeInTheDocument()
-      
-      // Runs card should show empty
       expect(screen.getByText('暂无运行记录')).toBeInTheDocument()
-      
-      // Tool activity card should show error
       expect(screen.getByText('Failed to load')).toBeInTheDocument()
     })
   })
@@ -175,7 +257,7 @@ describe('ContextDeskPanel', () => {
       expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
     })
 
-    it('each card has correct test ID', () => {
+    it('each activity card has correct test ID', () => {
       render(
         <ContextDeskPanel
           approvalState={mockApprovalState}
@@ -218,7 +300,6 @@ describe('ContextDeskPanel', () => {
         />
       )
       
-      // Should show "还有 X 项" message when items exceed maxItems
       expect(screen.getByText(/还有 \d+ 项/)).toBeInTheDocument()
     })
   })
