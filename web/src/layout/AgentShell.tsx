@@ -50,11 +50,16 @@ const AgentShell: React.FC<AgentShellProps> = ({
   sessionId,
   contextDeskCards,
 }) => {
+  // Determine active product section first for initial state calculation
+  const activeProductSection = useMemo(() => getProductSection(activeTab), [activeTab])
+  
   const [internalNavCollapsed, setInternalNavCollapsed] = useState(false)
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [isContextDeskOpen, setIsContextDeskOpen] = useState(false)
+  // 桌面 Chat 模式默认打开右侧面板，其他模式默认关闭
+  const [isContextDeskOpen, setIsContextDeskOpen] = useState(() => activeProductSection === 'chat')
   const [chatSidebarContent, setChatSidebarContent] = useState<React.ReactNode | null>(null)
+  const [hasUserToggledContextDesk, setHasUserToggledContextDesk] = useState(false)
 
   const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed
 
@@ -66,9 +71,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
   }
 
   const cards = contextDeskCards || defaultContextDeskCards
-
-  // Determine active product section
-  const activeProductSection = useMemo(() => getProductSection(activeTab), [activeTab])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {
@@ -91,6 +93,20 @@ const AgentShell: React.FC<AgentShellProps> = ({
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
+
+  // 根据产品区域和移动状态自动调整右侧面板
+  useEffect(() => {
+    // 用户手动操作优先，不再自动调整
+    if (hasUserToggledContextDesk) {
+      return
+    }
+
+    const shouldBeOpen = activeProductSection === 'chat' && !isMobile
+    
+    if (shouldBeOpen !== isContextDeskOpen) {
+      setIsContextDeskOpen(shouldBeOpen)
+    }
+  }, [activeProductSection, isMobile, hasUserToggledContextDesk, isContextDeskOpen])
 
   const handleToggleNavCollapsed = () => {
     if (onToggleNavCollapsed) {
@@ -143,6 +159,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
   }
 
   const handleToggleContextDesk = () => {
+    setHasUserToggledContextDesk(true)
     setIsContextDeskOpen((prev) => !prev)
   }
 
@@ -160,7 +177,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
   )
 
   const contextDeskMode = isMobile ? 'drawer' : 'companion'
-  const contextDeskLabel = isContextDeskOpen ? 'Collapse context desk' : 'Open context desk'
+  const contextDeskLabel = isContextDeskOpen ? '收起书桌' : '展开书桌'
 
   const breadcrumb = useMemo(() => {
     const navItem = getNavItemById(activeTab)
@@ -184,6 +201,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
   const shellClasses = [
     'shell',
     'agent-shell',
+    `shell--${activeProductSection}`,
     isNavCollapsed ? 'shell--nav-collapsed' : '',
     isNavDrawerOpen ? 'shell--nav-drawer-open' : '',
     isMobile ? 'shell--mobile' : '',
@@ -245,7 +263,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
           onClick={handleToggleContextDesk}
           aria-expanded={isContextDeskOpen}
           aria-label={contextDeskLabel}
-          title="Context Desk"
+          title="书桌"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -325,9 +343,9 @@ const AgentShell: React.FC<AgentShellProps> = ({
               className="context-desk-toggle"
               onClick={handleToggleContextDesk}
               aria-expanded={isContextDeskOpen}
-              aria-label={contextDeskLabel}
-              title="Context Desk"
-            >
+            aria-label={contextDeskLabel}
+            title="书桌"
+          >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <line x1="9" y1="9" x2="15" y2="9" />
@@ -435,15 +453,15 @@ const AgentShell: React.FC<AgentShellProps> = ({
           <aside
             data-testid="context-desk-panel"
             className={`context-desk context-desk--${contextDeskMode}`}
-            aria-label="Context desk"
+            aria-label="书桌"
           >
             <div className="context-desk__header">
-              <h2 className="context-desk__title">Context Desk</h2>
+              <h2 className="context-desk__title">书桌</h2>
               <button
                 data-testid="context-desk-close"
                 className="context-desk__close"
                 onClick={handleCloseContextDesk}
-                aria-label="Close context desk"
+                aria-label="关闭书桌"
                 type="button"
               >
                 ✕

@@ -489,7 +489,7 @@ describe('AgentShell', () => {
         </AgentShell>,
       )
 
-      fireEvent.click(screen.getByTestId('context-desk-toggle'))
+      // Chat mode (session-console) 默认打开右侧面板
       expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
     })
 

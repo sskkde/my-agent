@@ -207,6 +207,15 @@ body {
   grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr);
 }
 
+/* Chat mode uses chat-specific sidebar width */
+.shell--chat {
+  grid-template-columns: var(--chat-sidebar-width) minmax(0, 1fr);
+}
+
+.shell--chat.shell--nav-collapsed {
+  grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr);
+}
+
 .shell--context-desk-open:not(.shell--mobile) {
   grid-template-columns: var(--shell-nav-width) minmax(0, 1fr) var(--companion-panel-width);
   grid-template-areas:
@@ -214,8 +223,17 @@ body {
     'nav content companion';
 }
 
+/* Chat mode with context desk open uses chat-specific widths */
+.shell--chat.shell--context-desk-open:not(.shell--mobile) {
+  grid-template-columns: var(--chat-sidebar-width) minmax(0, 1fr) var(--chat-right-panel-width);
+}
+
 .shell--nav-collapsed.shell--context-desk-open:not(.shell--mobile) {
   grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr) var(--companion-panel-width);
+}
+
+.shell--chat.shell--nav-collapsed.shell--context-desk-open:not(.shell--mobile) {
+  grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr) var(--chat-right-panel-width);
 }
 
 /* ==========================================================================
