@@ -204,6 +204,7 @@
 @media (max-width: 768px) {
   .composer-dock {
     padding: 12px 16px 20px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
     background: var(--chat-workspace-bg-elevated, var(--warm-paper-bg-elevated, #fffcf7));
     border-top: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
   }

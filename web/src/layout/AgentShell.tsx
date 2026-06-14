@@ -449,6 +449,14 @@ const AgentShell: React.FC<AgentShellProps> = ({
         </main>
 
         {/* Context Desk Panel - desktop companion, mobile drawer */}
+        {isContextDeskOpen && contextDeskMode === 'drawer' && (
+          <div
+            data-testid="context-desk-backdrop"
+            className="context-desk-backdrop"
+            aria-hidden="true"
+            onClick={handleCloseContextDesk}
+          />
+        )}
         {isContextDeskOpen && (
           <aside
             data-testid="context-desk-panel"
