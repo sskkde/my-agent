@@ -2366,6 +2366,45 @@ export const extendProviderConfigsRuntimeMetadataMigration: Migration = {
   down: ``,
 }
 
+// ============================================================================
+// STORE 60: Todo Store (version 61)
+// ============================================================================
+export const todosTableMigration: Migration = {
+  version: 61,
+  name: 'create_todos_table',
+  up: `
+    CREATE TABLE todos (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+      priority TEXT NOT NULL CHECK(priority IN ('high', 'medium', 'low')),
+      parent_id TEXT,
+      depth INTEGER NOT NULL DEFAULT 0,
+      position INTEGER NOT NULL DEFAULT 0,
+      metadata TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
+      FOREIGN KEY (parent_id) REFERENCES todos(id) ON DELETE CASCADE
+    );
+    CREATE INDEX idx_todos_session ON todos(session_id);
+    CREATE INDEX idx_todos_parent ON todos(parent_id) WHERE parent_id IS NOT NULL;
+    CREATE INDEX idx_todos_status ON todos(status);
+    CREATE INDEX idx_todos_position ON todos(session_id, parent_id, position);
+    CREATE INDEX idx_todos_tenant ON todos(tenant_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_todos_tenant;
+    DROP INDEX IF EXISTS idx_todos_position;
+    DROP INDEX IF EXISTS idx_todos_status;
+    DROP INDEX IF EXISTS idx_todos_parent;
+    DROP INDEX IF EXISTS idx_todos_session;
+    DROP TABLE IF EXISTS todos
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -2490,6 +2529,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Extend provider configs runtime metadata
   extendProviderConfigsRuntimeMetadataMigration, // v60
+
+  // Todo store
+  todosTableMigration, // v61
 ]
 
 /**
