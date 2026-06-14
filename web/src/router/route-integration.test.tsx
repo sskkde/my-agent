@@ -223,7 +223,7 @@ describe('Route Integration', () => {
       })
 
       const chatButton = screen.getByTestId('product-nav-chat')
-      expect(chatButton).toHaveClass('product-nav__item--active')
+      expect(chatButton).toHaveClass(/product-nav__switch--active/)
     })
   })
 
