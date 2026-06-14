@@ -54,6 +54,11 @@ import type {
   SubagentPreferenceResponse,
   UpdateSubagentPreferenceRequest,
   ReadinessResponse,
+  CreateTodoRequest,
+  UpdateTodoRequest,
+  TodosResponse,
+  TodoResponse,
+  DeleteTodoResponse,
 } from './types'
 
 const API_BASE = '/api/v1'
@@ -664,4 +669,111 @@ export async function resetSubagentPreference(subagentType: string): Promise<voi
       },
     )
   }
+}
+
+export async function listTodos(sessionId: string): Promise<TodosResponse> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos`, {
+    credentials: 'include',
+  })
+  return parseResponse<TodosResponse>(response)
+}
+
+export async function createSessionTodo(
+  sessionId: string,
+  data: CreateTodoRequest,
+): Promise<TodoResponse> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return parseResponse<TodoResponse>(response)
+}
+
+export async function updateSessionTodo(
+  sessionId: string,
+  todoId: string,
+  data: UpdateTodoRequest,
+): Promise<TodoResponse> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos/${todoId}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return parseResponse<TodoResponse>(response)
+}
+
+export async function deleteSessionTodo(
+  sessionId: string,
+  todoId: string,
+): Promise<DeleteTodoResponse> {
+  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos/${todoId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  return parseResponse<DeleteTodoResponse>(response)
+}
+
+export interface TodoItemWithChildren {
+  todoId: string
+  sessionId: string
+  tenantId?: string
+  content: string
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  priority: 'high' | 'medium' | 'low'
+  parentTodoId?: string | null
+  position: number
+  createdAt: string
+  updatedAt: string
+  children?: TodoItemWithChildren[]
+}
+
+export async function getTodos(): Promise<{ todos: TodoItemWithChildren[]; total: number }> {
+  const response = await fetch(`${API_BASE}/todos`, {
+    credentials: 'include',
+  })
+  return parseResponse<{ todos: TodoItemWithChildren[]; total: number }>(response)
+}
+
+export async function createTodo(data: {
+  content: string
+  priority?: 'high' | 'medium' | 'low'
+  parentTodoId?: string
+}): Promise<TodoItemWithChildren> {
+  const response = await fetch(`${API_BASE}/todos`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  const result = await parseResponse<{ todo: TodoItemWithChildren }>(response)
+  return result.todo
+}
+
+export async function updateTodo(
+  todoId: string,
+  data: {
+    content?: string
+    status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+    priority?: 'high' | 'medium' | 'low'
+  },
+): Promise<TodoItemWithChildren> {
+  const response = await fetch(`${API_BASE}/todos/${todoId}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  const result = await parseResponse<{ todo: TodoItemWithChildren }>(response)
+  return result.todo
+}
+
+export async function deleteTodo(todoId: string): Promise<{ success: boolean; deletedCount: number }> {
+  const response = await fetch(`${API_BASE}/todos/${todoId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  return parseResponse<{ success: boolean; deletedCount: number }>(response)
 }

@@ -942,3 +942,48 @@ export interface UpdateSubagentPreferenceRequest {
   model?: string | null
   fallbackMode?: SubagentFallbackMode
 }
+
+// =============================================================================
+// Todo Types - Session-scoped Todo Management
+// =============================================================================
+
+export type TodoStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+export type TodoPriority = 'high' | 'medium' | 'low'
+
+export interface TodoItem {
+  todoId: string
+  sessionId: string
+  content: string
+  status: TodoStatus
+  priority: TodoPriority
+  parentTodoId?: string
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateTodoRequest {
+  content: string
+  priority?: TodoPriority
+  parentTodoId?: string
+  status?: TodoStatus
+}
+
+export interface UpdateTodoRequest {
+  content?: string
+  status?: TodoStatus
+  priority?: TodoPriority
+}
+
+export interface TodosResponse {
+  todos: TodoItem[]
+  total: number
+}
+
+export interface TodoResponse {
+  todo: TodoItem
+}
+
+export interface DeleteTodoResponse {
+  success: boolean
+}
