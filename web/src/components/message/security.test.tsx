@@ -581,7 +581,9 @@ describe('Security: MessageContent role dispatcher', () => {
   })
 
   it('assistant role: blocks javascript: links via MarkdownContent', () => {
-    render(<MessageContent text={MARKDOWN_XSS_VECTORS.javascriptMdLink} role="assistant" mode="static" />)
+    // Use contentType="markdown" to force MarkdownContent rendering since
+    // markdown link syntax [text](url) doesn't match the heuristic detection regex
+    render(<MessageContent text={MARKDOWN_XSS_VECTORS.javascriptMdLink} role="assistant" mode="static" contentType="markdown" />)
     const container = screen.getByTestId('message-content-assistant')
     expect(container.innerHTML).not.toContain('javascript:')
   })

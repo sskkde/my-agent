@@ -676,7 +676,7 @@ describe('AgentShell', () => {
         </BrowserRouter>,
       )
 
-      expect(screen.getAllByRole('tab')).toHaveLength(12)
+      expect(screen.getAllByRole('tab')).toHaveLength(13)
     })
 
     it('sidebar updates tabs when product section changes', async () => {
@@ -749,7 +749,7 @@ describe('AgentShell', () => {
 
       const sidebarTabs = sidebar.querySelectorAll('button[role="tab"]')
       expect(sidebarTabs.length).toBeGreaterThan(4)
-      expect(sidebarTabs.length).toBe(12)
+      expect(sidebarTabs.length).toBe(13)
     })
   })
   describe('Chat Session Sidebar Slot', () => {

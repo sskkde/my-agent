@@ -651,6 +651,23 @@ describe('GA: Setup Flow', () => {
       }),
     })
     vi.mocked(client.getSetupStatus).mockResolvedValue({ needsSetup: true })
+    vi.mocked(client.getReadiness).mockResolvedValue({
+      items: [
+        {
+          id: 'app_secret_key',
+          label: 'APP_SECRET_KEY Configuration',
+          status: 'ok',
+          details: 'APP_SECRET_KEY is configured.',
+        },
+        {
+          id: 'cors',
+          label: 'CORS Configuration',
+          status: 'ok',
+          details: 'CORS is configured.',
+        },
+      ],
+      timestamp: new Date().toISOString(),
+    })
     vi.mocked(adminApi.createApiKey).mockResolvedValue({
       id: 'key-1',
       name: 'Test Key',
@@ -690,7 +707,7 @@ describe('GA: Setup Flow', () => {
     fireEvent.click(screen.getByTestId('admin-create-submit'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent('用户名不能为空')
+      expect(screen.getByTestId('setup-admin-error')).toHaveTextContent('用户名不能为空')
     })
   })
 
@@ -707,7 +724,7 @@ describe('GA: Setup Flow', () => {
     fireEvent.click(screen.getByTestId('admin-create-submit'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent('密码至少需要 8 个字符')
+      expect(screen.getByTestId('setup-admin-error')).toHaveTextContent('密码至少需要 8 个字符')
     })
   })
 
@@ -724,7 +741,7 @@ describe('GA: Setup Flow', () => {
     fireEvent.click(screen.getByTestId('admin-create-submit'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toHaveTextContent('两次输入的密码不一致')
+      expect(screen.getByTestId('setup-admin-error')).toHaveTextContent('两次输入的密码不一致')
     })
   })
 

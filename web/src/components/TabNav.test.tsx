@@ -176,11 +176,11 @@ describe('TabNav', () => {
       expect(tabs).toHaveLength(1)
     })
 
-    it('tab count matches section tab count for workspace (12 tabs)', () => {
+    it('tab count matches section tab count for workspace (13 tabs)', () => {
       render(<TabNav activeTab="dashboard" onTabChange={mockOnChange} activeSection="workspace" />)
 
       const tabs = screen.getAllByRole('tab')
-      expect(tabs).toHaveLength(12)
+      expect(tabs).toHaveLength(13)
     })
 
     it('tab count matches section tab count for operations (5 tabs)', () => {

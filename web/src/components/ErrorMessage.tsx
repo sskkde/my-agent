@@ -97,22 +97,16 @@ export function getErrorDisplay(error: Error | null | undefined): {
 }
 
 export interface ErrorMessageProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Error object to display */
   error: Error | null | undefined
-  /** Optional custom title (overrides auto-generated title) */
   title?: string
-  /** Optional custom description (overrides auto-generated description) */
   description?: string
-  /** Optional retry action */
   retry?: {
     label?: string
     onClick: () => void
+    testId?: string
   }
-  /** Optional additional CSS class */
   className?: string
-  /** Size variant */
   size?: 'small' | 'medium' | 'large'
-  /** Variant style */
   variant?: 'default' | 'inline' | 'card'
 }
 
@@ -155,7 +149,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
           className="error-message__retry"
           onClick={retry.onClick}
           type="button"
-          data-testid="error-message-retry"
+          data-testid={retry.testId || 'error-message-retry'}
         >
           {retry.label || '重试'}
         </button>

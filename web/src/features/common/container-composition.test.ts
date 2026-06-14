@@ -32,6 +32,7 @@ describe('container-composition', () => {
     'workflows',
     'approvals',
     'triggers',
+    'todos',
     'memory',
     'observability',
     'connectors',
@@ -126,6 +127,7 @@ describe('container-composition', () => {
           'workflows',
           'approvals',
           'triggers',
+          'todos',
           'memory',
           'observability',
         ].sort(),
@@ -205,12 +207,13 @@ describe('container-composition', () => {
   describe('getContainerTabs', () => {
     it('returns tabs for workspace container', () => {
       const tabs = getContainerTabs('workspace')
-      expect(tabs.length).toBe(12)
+      expect(tabs.length).toBe(13)
       expect(tabs).toContain('dashboard')
       expect(tabs).toContain('workflows')
       expect(tabs).toContain('approvals')
       expect(tabs).toContain('memory')
       expect(tabs).toContain('observability')
+      expect(tabs).toContain('todos')
     })
 
     it('returns tabs for operations container', () => {
@@ -323,6 +326,7 @@ describe('container-composition', () => {
         'workflows',
         'approvals',
         'triggers',
+        'todos',
         'memory',
         'observability',
       ]
