@@ -15,6 +15,7 @@ export enum ResourceType {
   provider = 'provider',
   toolResult = 'tool-result',
   organizations = 'organizations',
+  todos = 'todos',
 }
 
 export enum Action {
@@ -50,7 +51,7 @@ function generateAllPermissions(): Permission[] {
 function generateUserPermissions(): Permission[] {
   const permissions: Permission[] = []
 
-  const ownResources = [ResourceType.sessions, ResourceType.workflows, ResourceType.triggers, ResourceType.memory]
+  const ownResources = [ResourceType.sessions, ResourceType.workflows, ResourceType.triggers, ResourceType.memory, ResourceType.todos]
 
   const crudActions = [Action.create, Action.read, Action.update, Action.delete]
 
