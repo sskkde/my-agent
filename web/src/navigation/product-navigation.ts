@@ -43,6 +43,7 @@ export const PRODUCT_NAV_MAPPING: ProductNavMapping = {
   workflows: 'workspace',
   approvals: 'workspace',
   triggers: 'workspace',
+  todos: 'workspace',
   memory: 'workspace',
   observability: 'workspace',
 

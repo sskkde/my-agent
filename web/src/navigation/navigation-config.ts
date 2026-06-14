@@ -19,6 +19,7 @@ export type TabId =
   | 'connectors'
   | 'dlq'
   | 'admin'
+  | 'todos'
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings'
 
@@ -126,6 +127,13 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'Trigger management',
         testId: 'tab-triggers',
         iconKey: 'zap',
+      },
+      {
+        id: 'todos',
+        label: '待办',
+        description: 'Todo management',
+        testId: 'tab-todos',
+        iconKey: 'checkSquare',
       },
       {
         id: 'memory',

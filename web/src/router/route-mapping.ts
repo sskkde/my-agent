@@ -27,6 +27,7 @@ export const VALID_TABS: Record<ProductSection, readonly TabId[]> = {
     'workflows',
     'approvals',
     'triggers',
+    'todos',
     'memory',
     'observability',
   ] as const,

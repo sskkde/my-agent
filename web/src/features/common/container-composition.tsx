@@ -27,6 +27,7 @@ import SettingsTab from '../settings/SettingsTab'
 import WorkflowsTab from '../workflows/WorkflowsTab'
 import ApprovalsTab from '../approvals/ApprovalsTab'
 import TriggersTab from '../triggers/TriggersTab'
+import TodosTab from '../todos/TodosTab'
 import MemoryTab from '../memory/MemoryTab'
 import ObservabilityTab from '../observability/ObservabilityTab'
 import ConnectorsTab from '../connectors/ConnectorsTab'
@@ -61,6 +62,7 @@ export type TabComponent =
   | typeof WorkflowsTab
   | typeof ApprovalsTab
   | typeof TriggersTab
+  | typeof TodosTab
   | typeof MemoryTab
   | typeof ObservabilityTab
   | typeof ConnectorsTab
@@ -91,6 +93,7 @@ export const TAB_COMPONENT_MAPPING: Record<TabId, TabComponent> = {
   workflows: WorkflowsTab,
   approvals: ApprovalsTab,
   triggers: TriggersTab,
+  todos: TodosTab,
   memory: MemoryTab,
   observability: ObservabilityTab,
 
@@ -150,6 +153,7 @@ export const CONTAINER_PAGE_CONFIGS: Record<string, ContainerPageConfig> = {
       'workflows',
       'approvals',
       'triggers',
+      'todos',
       'memory',
       'observability',
     ],

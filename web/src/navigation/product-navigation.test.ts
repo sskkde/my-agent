@@ -35,6 +35,7 @@ describe('product-navigation', () => {
     'connectors',
     'dlq',
     'admin',
+    'todos',
   ]
 
   describe('PRODUCT_NAV_MAPPING', () => {
@@ -101,6 +102,7 @@ describe('product-navigation', () => {
         'workflows',
         'approvals',
         'triggers',
+        'todos',
         'memory',
         'observability',
       ]
@@ -142,6 +144,7 @@ describe('product-navigation', () => {
           'workflows',
           'approvals',
           'triggers',
+          'todos',
           'memory',
           'observability',
         ].sort(),
@@ -187,7 +190,7 @@ describe('product-navigation', () => {
 
       // Verify counts
       expect(mapping.chat.length).toBe(1)
-      expect(mapping.workspace.length).toBe(12)
+      expect(mapping.workspace.length).toBe(13)
       expect(mapping.operations.length).toBe(5)
       expect(mapping.admin.length).toBe(2)
     })

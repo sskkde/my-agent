@@ -79,6 +79,7 @@ describe('route-mapping', () => {
         'workflows',
         'approvals',
         'triggers',
+        'todos',
         'memory',
         'observability',
       ]
