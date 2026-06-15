@@ -25,22 +25,6 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
 }) => {
   return (
     <aside className="sessions-sidebar" data-testid="sessions-sidebar">
-      {/* Feature Entry Points */}
-      <div className="sessions-sidebar-features">
-        <button className="sessions-feature-button" data-testid="feature-social-platform">
-          <span className="sessions-feature-icon">🔗</span>
-          <span className="sessions-feature-text">接入社交平台</span>
-        </button>
-        <button className="sessions-feature-button" data-testid="feature-assistant-activity">
-          <span className="sessions-feature-icon">🤖</span>
-          <span className="sessions-feature-text">助手活动</span>
-        </button>
-        <button className="sessions-feature-button" data-testid="feature-task-plan">
-          <span className="sessions-feature-icon">📋</span>
-          <span className="sessions-feature-text">任务计划</span>
-        </button>
-      </div>
-
       {/* Session List Header */}
       <div className="sessions-sidebar-header">
         <h3>{CHAT_TERMINOLOGY.sessionHistory}</h3>

@@ -21,49 +21,6 @@
   border-right: 1px solid var(--chat-workspace-border, var(--border));
 }
 
-/* Feature Entry Points - Top Section */
-.sessions-sidebar-features {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 12px 8px;
-  border-bottom: 1px solid var(--chat-workspace-border, var(--border));
-  flex-shrink: 0;
-}
-
-.sessions-feature-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--chat-workspace-bg-elevated, var(--bg-elevated));
-  border: 1px solid var(--chat-workspace-border, var(--border));
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--chat-workspace-text, var(--text));
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-
-.sessions-feature-button:hover {
-  background: var(--chat-workspace-bg-deep, var(--bg));
-  border-color: var(--chat-workspace-primary, var(--accent));
-}
-
-.sessions-feature-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.sessions-feature-text {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .sessions-sidebar-header {
   display: flex;
   align-items: center;
@@ -457,12 +414,6 @@
   /* Adjust sidebar header for mobile close button */
   .sessions-sidebar-header {
     padding: 12px;
-  }
-
-  /* Feature buttons touch target */
-  .sessions-feature-button {
-    padding: 12px;
-    min-height: 44px;
   }
 
   /* Footer buttons touch target */
