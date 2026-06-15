@@ -351,28 +351,32 @@ const AgentShell: React.FC<AgentShellProps> = ({
             id="sidebar"
             className={`sidebar-shell ${isNavCollapsed ? 'sidebar-shell--collapsed' : ''}`}
           >
-            <div className="sidebar-shell__header">
-              <h1 className="sidebar-shell__brand">
-                <img className="sidebar-shell__brand-logo" src={logoUrl} alt="" aria-hidden="true" />
-                <span className="sidebar-shell__brand-name">Agent Platform</span>
-              </h1>
-              <button
-                data-testid="sidebar-collapse-toggle"
-                className="sidebar-collapse-toggle"
-                onClick={handleToggleNavCollapsed}
-                aria-expanded={!isNavCollapsed}
-                aria-controls="sidebar"
-                aria-label={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                title={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                <CollapseIcon className={`collapse-icon ${isNavCollapsed ? 'collapse-icon--flipped' : ''}`} />
-              </button>
-            </div>
+            {activeProductSection !== 'chat' && (
+              <div className="sidebar-shell__header">
+                <h1 className="sidebar-shell__brand">
+                  <img className="sidebar-shell__brand-logo" src={logoUrl} alt="" aria-hidden="true" />
+                  <span className="sidebar-shell__brand-name">Agent Platform</span>
+                </h1>
+                <button
+                  data-testid="sidebar-collapse-toggle"
+                  className="sidebar-collapse-toggle"
+                  onClick={handleToggleNavCollapsed}
+                  aria-expanded={!isNavCollapsed}
+                  aria-controls="sidebar"
+                  aria-label={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  title={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                  <CollapseIcon className={`collapse-icon ${isNavCollapsed ? 'collapse-icon--flipped' : ''}`} />
+                </button>
+              </div>
+            )}
 
             <div className="sidebar-shell__body">
-              <div className="sidebar-shell__primary-nav">
-                <TabNav activeTab={activeTab} onTabChange={handleTabChange} activeSection={activeProductSection} />
-              </div>
+              {activeProductSection !== 'chat' && (
+                <div className="sidebar-shell__primary-nav">
+                  <TabNav activeTab={activeTab} onTabChange={handleTabChange} activeSection={activeProductSection} />
+                </div>
+              )}
               {activeProductSection === 'chat' && chatSidebarContent && (
                 <div className="sidebar-shell__session-panel" data-testid="sidebar-session-panel">
                   {chatSidebarContent}

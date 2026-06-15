@@ -17,7 +17,7 @@
   --text: #333333;
   --text-strong: #111827;
   --muted: #6b7280;
-  --border: #e5e5e5;
+  --border: #e8e4db;
   --radius-md: 10px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
@@ -62,7 +62,7 @@
 
   /* Border & Line */
   --warm-paper-border: #d8cfbe; /* Ink-line - main divider */
-  --warm-paper-border-width: 0.5px; /* Hairline border width */
+  --warm-paper-border-width: 1px; /* Hairline border width */
 
   /* Seal Accent (primary accent color) */
   --warm-paper-accent: #3d6b64; /* Seal blue-green - 一抹远山青 - Darker for WCAG AA contrast */
@@ -118,8 +118,8 @@
   --chat-workspace-bg-deep: #faf5f0;
 
   /* Borders & Lines */
-  --chat-workspace-border: #f0e4dc;
-  --chat-workspace-border-strong: #e0d0c4;
+  --chat-workspace-border: #ede6dc;
+  --chat-workspace-border-strong: #e5d8cc;
 
   /* Spacing & Layout */
   --chat-workspace-spacing: 16px;
