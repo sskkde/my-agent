@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import TabNav, { TabId } from '../components/TabNav'
-import { NAV_GROUPS, getNavItemById, NavGroup } from '../navigation/navigation-config'
+
 import { ICONS } from '../navigation/icons'
 import {
   PRODUCT_SECTIONS,
@@ -20,6 +20,7 @@ import type {
 import type { CardState } from '../features/context/card-state'
 import { loading } from '../features/context/card-state'
 import { AgentShellSidebarContext } from './AgentShellSidebarContext'
+import packageInfo from '../../package.json'
 import '../styles.css'
 
 interface AgentShellProps {
@@ -179,25 +180,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
   const contextDeskMode = isMobile ? 'drawer' : 'companion'
   const contextDeskLabel = isContextDeskOpen ? '收起书桌' : '展开书桌'
 
-  const breadcrumb = useMemo(() => {
-    const navItem = getNavItemById(activeTab)
-    if (!navItem) return 'Agent Platform'
-
-    let group: NavGroup | undefined
-    for (const g of NAV_GROUPS) {
-      if (g.items.some((item) => item.id === activeTab)) {
-        group = g
-        break
-      }
-    }
-
-    if (group) {
-      return `Agent Platform › ${group.label} › ${navItem.label}`
-    }
-
-    return `Agent Platform › ${navItem.label}`
-  }, [activeTab])
-
   const shellClasses = [
     'shell',
     'agent-shell',
@@ -211,6 +193,73 @@ const AgentShell: React.FC<AgentShellProps> = ({
     .join(' ')
 
   const CollapseIcon = ICONS.chevronLeft
+
+  const userControls = (
+    <>
+      {user && (
+        <div className="topbar__user" data-testid="topbar-user">
+          <span className="topbar__username" data-testid="username-display">
+            {user.username}
+          </span>
+          {onLogout && (
+            <button
+              className="topbar__logout-button"
+              onClick={handleLogout}
+              data-testid="logout-button"
+              title="退出登录"
+            >
+              退出
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  )
+
+  const contextDeskToggle = (
+    <button
+      data-testid="context-desk-toggle"
+      className="context-desk-toggle context-desk-toggle--chat"
+      onClick={handleToggleContextDesk}
+      aria-expanded={isContextDeskOpen}
+      aria-controls="context-desk-panel"
+      aria-label={contextDeskLabel}
+      title="书桌"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <line x1="9" y1="9" x2="15" y2="9" />
+        <line x1="9" y1="12" x2="15" y2="12" />
+        <line x1="9" y1="15" x2="15" y2="15" />
+      </svg>
+    </button>
+  )
+
+  const mobileNavToggle = (
+    <button
+      data-testid="mobile-nav-toggle"
+      className="mobile-nav-toggle"
+      onClick={handleToggleMobileDrawer}
+      aria-expanded={isNavDrawerOpen}
+      aria-controls="sidebar"
+      aria-label={isNavDrawerOpen ? 'Close navigation' : 'Open navigation'}
+    >
+      <span className="sr-only">Menu</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+    </button>
+  )
+
+  const renderControls = () => (
+    <div className="product-nav__controls">
+      {contextDeskToggle}
+      {userControls}
+      {mobileNavToggle}
+    </div>
+  )
 
   const renderChatHeader = () => (
     <nav className="product-nav product-nav--chat" data-testid="product-nav" role="navigation" aria-label="Product sections">
@@ -226,7 +275,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
           data-testid="product-nav-chat"
           aria-current={activeProductSection === 'chat' ? 'page' : undefined}
         >
-          聊天
+          {PRODUCT_SECTION_LABELS.chat}
         </button>
         <button
           className={`product-nav__switch ${activeProductSection === 'workspace' ? 'product-nav__switch--active' : ''}`}
@@ -234,7 +283,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
           data-testid="product-nav-workspace"
           aria-current={activeProductSection === 'workspace' ? 'page' : undefined}
         >
-          工作区
+          {PRODUCT_SECTION_LABELS.workspace}
         </button>
         <div className="product-nav__more">
           <button
@@ -243,7 +292,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
             data-testid="product-nav-operations"
             aria-current={activeProductSection === 'operations' ? 'page' : undefined}
           >
-            运维
+            {PRODUCT_SECTION_LABELS.operations}
           </button>
           <button
             className={`product-nav__switch ${activeProductSection === 'admin' ? 'product-nav__switch--active' : ''}`}
@@ -251,62 +300,12 @@ const AgentShell: React.FC<AgentShellProps> = ({
             data-testid="product-nav-admin"
             aria-current={activeProductSection === 'admin' ? 'page' : undefined}
           >
-            管理
+            {PRODUCT_SECTION_LABELS.admin}
           </button>
         </div>
       </div>
 
-      <div className="product-nav__controls">
-        <button
-          data-testid="context-desk-toggle"
-          className="context-desk-toggle context-desk-toggle--chat"
-          onClick={handleToggleContextDesk}
-          aria-expanded={isContextDeskOpen}
-          aria-label={contextDeskLabel}
-          title="书桌"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="9" y1="9" x2="15" y2="9" />
-            <line x1="9" y1="12" x2="15" y2="12" />
-            <line x1="9" y1="15" x2="15" y2="15" />
-          </svg>
-        </button>
-
-        {user && (
-          <div className="topbar__user topbar__user--chat" data-testid="topbar-user">
-            <span className="topbar__username" data-testid="username-display">
-              {user.username}
-            </span>
-            {onLogout && (
-              <button
-                className="topbar__logout-button"
-                onClick={handleLogout}
-                data-testid="logout-button"
-                title="退出登录"
-              >
-                退出
-              </button>
-            )}
-          </div>
-        )}
-
-        <button
-          data-testid="mobile-nav-toggle"
-          className="mobile-nav-toggle"
-          onClick={handleToggleMobileDrawer}
-          aria-expanded={isNavDrawerOpen}
-          aria-controls="sidebar"
-          aria-label={isNavDrawerOpen ? 'Close navigation' : 'Open navigation'}
-        >
-          <span className="sr-only">Menu</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
-      </div>
+      {renderControls()}
     </nav>
   )
 
@@ -318,78 +317,25 @@ const AgentShell: React.FC<AgentShellProps> = ({
         renderChatHeader()
       ) : (
         <nav className="product-nav" data-testid="product-nav" role="navigation" aria-label="Product sections">
-          {PRODUCT_SECTIONS.map((section) => (
-            <button
-              key={section}
-              className={`product-nav__item ${activeProductSection === section ? 'product-nav__item--active' : ''}`}
-              onClick={() => handleProductSectionClick(section)}
-              data-testid={`product-nav-${section}`}
-              aria-current={activeProductSection === section ? 'page' : undefined}
-            >
-              {PRODUCT_SECTION_LABELS[section]}
-            </button>
-          ))}
+          <div className="product-nav__switcher">
+            {PRODUCT_SECTIONS.map((section) => (
+              <button
+                key={section}
+                className={`product-nav__item ${activeProductSection === section ? 'product-nav__item--active' : ''}`}
+                onClick={() => handleProductSectionClick(section)}
+                data-testid={`product-nav-${section}`}
+                aria-current={activeProductSection === section ? 'page' : undefined}
+              >
+                {PRODUCT_SECTION_LABELS[section]}
+              </button>
+            ))}
+          </div>
+          {renderControls()}
         </nav>
       )}
 
       {/* Main Shell Content - preserves app-shell compatibility */}
       <div data-testid="app-shell" className={shellClasses}>
-        <header data-testid="topbar" className="shell__topbar">
-          <div className="topbar__breadcrumb">{breadcrumb}</div>
-
-          {activeProductSection !== 'chat' && (
-            <button
-              data-testid="context-desk-toggle"
-              className="context-desk-toggle"
-              onClick={handleToggleContextDesk}
-              aria-expanded={isContextDeskOpen}
-            aria-label={contextDeskLabel}
-            title="书桌"
-          >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="9" y1="9" x2="15" y2="9" />
-                <line x1="9" y1="12" x2="15" y2="12" />
-                <line x1="9" y1="15" x2="15" y2="15" />
-              </svg>
-            </button>
-          )}
-
-          {user && (
-            <div className="topbar__user" data-testid="topbar-user">
-              <span className="topbar__username" data-testid="username-display">
-                {user.username}
-              </span>
-              {onLogout && (
-                <button
-                  className="topbar__logout-button"
-                  onClick={handleLogout}
-                  data-testid="logout-button"
-                  title="退出登录"
-                >
-                  退出
-                </button>
-              )}
-            </div>
-          )}
-
-          <button
-            data-testid="mobile-nav-toggle"
-            className="mobile-nav-toggle"
-            onClick={handleToggleMobileDrawer}
-            aria-expanded={isNavDrawerOpen}
-            aria-controls="sidebar"
-            aria-label={isNavDrawerOpen ? 'Close navigation' : 'Open navigation'}
-          >
-            <span className="sr-only">Menu</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-        </header>
-
         {isMobile && isNavDrawerOpen && (
           <div
             data-testid="mobile-nav-backdrop"
@@ -435,7 +381,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
             </div>
 
             <div className="sidebar-shell__footer">
-              <span className="version-badge">v1.0.0</span>
+              <span className="version-badge">v{packageInfo.version}</span>
             </div>
           </aside>
         </div>
@@ -459,6 +405,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
         )}
         {isContextDeskOpen && (
           <aside
+            id="context-desk-panel"
             data-testid="context-desk-panel"
             className={`context-desk context-desk--${contextDeskMode}`}
             aria-label="书桌"

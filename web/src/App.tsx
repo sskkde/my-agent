@@ -1,9 +1,6 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, Suspense, lazy } from 'react'
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import AgentShell from './layout/AgentShell'
-import WorkspacePage from './features/workspace/WorkspacePage'
-import OperationsPage from './features/operations/OperationsPage'
-import AdminPage from './features/admin/AdminPage'
 import SessionWorkspace from './features/session/SessionWorkspace'
 import LoginPage from './features/auth/LoginPage'
 import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist'
@@ -14,6 +11,10 @@ import { SELECTED_SESSION_KEY } from './features/session/session-constants'
 import { readStoredTheme, applyDocumentTheme, type AppTheme } from './theme-storage'
 import type { TabId } from './components/TabNav'
 import './styles.css'
+
+const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'))
+const OperationsPage = lazy(() => import('./features/operations/OperationsPage'))
+const AdminPage = lazy(() => import('./features/admin/AdminPage'))
 
 const APP_THEMES = new Set<AppTheme>(['default', 'warm-paper', 'dark'])
 
@@ -131,26 +132,28 @@ function AppRoutes() {
       onLogout={logout}
       sessionId={selectedSessionId}
     >
-      <Routes>
-        {/* Root → renders Chat section (same as /chat) */}
-        <Route path="/" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+      <Suspense fallback={<div className="center-stage-loading" data-testid="route-loading" />}>
+        <Routes>
+          {/* Root → renders Chat section (same as /chat) */}
+          <Route path="/" element={<ChatRouteContent onTabChange={handleTabChange} />} />
 
-        {/* Chat section routes */}
-        <Route path="/chat" element={<ChatRouteContent onTabChange={handleTabChange} />} />
-        <Route path="/chat/:sessionId" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+          {/* Chat section routes */}
+          <Route path="/chat" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+          <Route path="/chat/:sessionId" element={<ChatRouteContent onTabChange={handleTabChange} />} />
 
-        {/* Workspace section route with tab parameter */}
-        <Route path="/workspace/:tabId" element={<WorkspaceRouteContent onTabChange={handleTabChange} />} />
+          {/* Workspace section route with tab parameter */}
+          <Route path="/workspace/:tabId" element={<WorkspaceRouteContent onTabChange={handleTabChange} />} />
 
-        {/* Operations section route with tab parameter */}
-        <Route path="/operations/:tabId" element={<OperationsRouteContent onTabChange={handleTabChange} />} />
+          {/* Operations section route with tab parameter */}
+          <Route path="/operations/:tabId" element={<OperationsRouteContent onTabChange={handleTabChange} />} />
 
-        {/* Admin section route with tab parameter */}
-        <Route path="/admin/:tabId" element={<AdminRouteContent onTabChange={handleTabChange} />} />
+          {/* Admin section route with tab parameter */}
+          <Route path="/admin/:tabId" element={<AdminRouteContent onTabChange={handleTabChange} />} />
 
-        {/* Catch-all: redirect to root (renders Chat) */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Catch-all: redirect to root (renders Chat) */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </AgentShell>
   )
 }

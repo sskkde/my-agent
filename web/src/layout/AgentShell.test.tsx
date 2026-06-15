@@ -230,16 +230,6 @@ describe('AgentShell', () => {
       expect(screen.getByTestId('sidebar')).toBeInTheDocument()
     })
 
-    it('has data-testid="topbar" showing breadcrumb', () => {
-      renderWithRouter(
-        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
-          <div>Content</div>
-        </AgentShell>,
-      )
-
-      expect(screen.getByTestId('topbar')).toBeInTheDocument()
-    })
-
     it('displays logout button when user is provided and onLogout is available', () => {
       renderWithRouter(
         <AgentShell
@@ -565,7 +555,7 @@ describe('AgentShell', () => {
       )
 
       const productNav = screen.getByTestId('product-nav')
-      const buttons = productNav.querySelectorAll('button')
+      const buttons = productNav.querySelectorAll('button.product-nav__item')
 
       expect(buttons).toHaveLength(4)
       expect(buttons[0]).toHaveAttribute('data-testid', 'product-nav-chat')

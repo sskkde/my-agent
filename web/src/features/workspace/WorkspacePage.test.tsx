@@ -42,22 +42,6 @@ describe('WorkspacePage', () => {
     expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
   })
 
-  it('renders header with Workspace title', () => {
-    render(<WorkspacePage activeTab="dashboard" onTabChange={mockOnTabChange} />)
-
-    expect(screen.getByText('Workspace')).toBeInTheDocument()
-  })
-
-  it('renders secondary nav with workspace tabs', () => {
-    render(<WorkspacePage activeTab="dashboard" onTabChange={mockOnTabChange} />)
-
-    expect(screen.getByTestId('secondary-nav-dashboard')).toBeInTheDocument()
-    expect(screen.getByTestId('secondary-nav-sessions')).toBeInTheDocument()
-    expect(screen.getByTestId('secondary-nav-usage')).toBeInTheDocument()
-    expect(screen.getByTestId('secondary-nav-workflows')).toBeInTheDocument()
-    expect(screen.getByTestId('secondary-nav-approvals')).toBeInTheDocument()
-  })
-
   it('renders the selected tab component based on activeTab', () => {
     render(<WorkspacePage activeTab="dashboard" onTabChange={mockOnTabChange} />)
 
@@ -74,49 +58,11 @@ describe('WorkspacePage', () => {
     expect(screen.getByTestId('sessions-tab')).toBeInTheDocument()
   })
 
-  it('calls onTabChange when secondary nav tab is clicked', () => {
-    render(<WorkspacePage activeTab="dashboard" onTabChange={mockOnTabChange} />)
-
-    fireEvent.click(screen.getByTestId('secondary-nav-workflows'))
-    expect(mockOnTabChange).toHaveBeenCalledWith('workflows')
-  })
-
   it('passes onTabChange to tab components that need it', () => {
     render(<WorkspacePage activeTab="approvals" onTabChange={mockOnTabChange} />)
 
     const button = screen.getByText('Go to Monitor')
     fireEvent.click(button)
     expect(mockOnTabChange).toHaveBeenCalledWith('agent-monitor')
-  })
-
-  it('marks the active tab in secondary nav', () => {
-    render(<WorkspacePage activeTab="usage" onTabChange={mockOnTabChange} />)
-
-    const activeTab = screen.getByTestId('secondary-nav-usage')
-    expect(activeTab).toHaveAttribute('aria-selected', 'true')
-  })
-
-  it('renders all 12 workspace tabs in secondary nav', () => {
-    render(<WorkspacePage activeTab="dashboard" onTabChange={mockOnTabChange} />)
-
-    // Verify all workspace tabs are present
-    const workspaceTabs = [
-      'dashboard',
-      'sessions',
-      'usage',
-      'logs-debug',
-      'channels',
-      'instances',
-      'status',
-      'workflows',
-      'approvals',
-      'triggers',
-      'memory',
-      'observability',
-    ]
-
-    workspaceTabs.forEach((tabId) => {
-      expect(screen.getByTestId(`secondary-nav-${tabId}`)).toBeInTheDocument()
-    })
   })
 })

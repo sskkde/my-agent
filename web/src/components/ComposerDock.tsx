@@ -14,6 +14,8 @@ interface ComposerDockProps {
   placeholder?: string
   /** Optional additional CSS class */
   className?: string
+  /** Display name of the active model */
+  model?: string
 }
 
 /**
@@ -39,10 +41,10 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
   sending = false,
   placeholder = '输入消息...',
   className = '',
+  model = 'claude-3.5',
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  // TODO: Make model configurable via props in future
-  const selectedModel = 'claude-3.5'
+  const selectedModel = model
 
   // Auto-resize textarea to fit content
   useEffect(() => {
