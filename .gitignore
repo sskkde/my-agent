@@ -69,3 +69,4 @@ secrets/
 
 # OpenCode metadata
 .omo/
+*.png
