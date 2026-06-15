@@ -77,14 +77,45 @@ export interface ApiEnvelopeError {
 
 export type ApiEnvelope<T> = ApiEnvelopeSuccess<T> | ApiEnvelopeError
 
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000
+
+const SSE_RECONNECT_BASE_DELAY_MS = 1000
+const SSE_RECONNECT_MAX_DELAY_MS = 30000
+
+async function fetchWithTimeout(
+  url: string,
+  init?: RequestInit & { timeout?: number },
+): Promise<Response> {
+  const { timeout = DEFAULT_REQUEST_TIMEOUT_MS, signal: externalSignal, ...rest } = init ?? {}
+  const controller = new AbortController()
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort()
+    } else {
+      externalSignal.addEventListener('abort', () => controller.abort(), { once: true })
+    }
+  }
+
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+  try {
+    return await fetch(url, { ...rest, signal: controller.signal })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 class ApiClientError extends Error {
   code: string
+  status?: number
   details?: unknown
 
-  constructor(error: ApiError['error']) {
+  constructor(error: ApiError['error'], status?: number) {
     super(error.message)
     this.name = 'ApiClientError'
     this.code = error.code
+    this.status = status
     this.details = error.details
   }
 }
@@ -97,6 +128,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
         code: 'UNKNOWN_ERROR',
         message: `HTTP ${response.status}: ${response.statusText}`,
       },
+      response.status,
     )
   }
   if (response.status === 204) return {} as T
@@ -105,18 +137,18 @@ async function parseResponse<T>(response: Response): Promise<T> {
     if (body.ok) {
       return body.data
     }
-    throw new ApiClientError(body.error)
+    throw new ApiClientError(body.error, response.status)
   }
   return (body as { data: T }).data
 }
 
 export async function getHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE}/health`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/health`, { credentials: 'include' })
   return parseResponse<HealthResponse>(response)
 }
 
 export async function createSession(): Promise<SessionResponse> {
-  const response = await fetch(`${API_BASE}/sessions`, {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -126,17 +158,17 @@ export async function createSession(): Promise<SessionResponse> {
 }
 
 export async function getSession(sessionId: string): Promise<SessionResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}`, { credentials: 'include' })
   return parseResponse<SessionResponse>(response)
 }
 
 export async function getTranscripts(sessionId: string): Promise<TranscriptsResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/transcripts`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/transcripts`, { credentials: 'include' })
   return parseResponse<TranscriptsResponse>(response)
 }
 
 export async function sendMessage(sessionId: string, text: string): Promise<SendMessageResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/messages`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -146,17 +178,17 @@ export async function sendMessage(sessionId: string, text: string): Promise<Send
 }
 
 export async function getRuns(): Promise<RunsResponse> {
-  const response = await fetch(`${API_BASE}/runs`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/runs`, { credentials: 'include' })
   return parseResponse<RunsResponse>(response)
 }
 
 export async function getApprovals(): Promise<ApprovalsResponse> {
-  const response = await fetch(`${API_BASE}/approvals`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/approvals`, { credentials: 'include' })
   return parseResponse<ApprovalsResponse>(response)
 }
 
 export async function getApprovalDetail(approvalId: string): Promise<ApprovalDetailResponse> {
-  const response = await fetch(`${API_BASE}/approvals/${approvalId}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/approvals/${approvalId}`, { credentials: 'include' })
   return parseResponse<ApprovalDetailResponse>(response)
 }
 
@@ -175,7 +207,7 @@ export async function respondApproval(
     requestBody = { responseType: response, reason }
   }
 
-  const httpResponse = await fetch(`${API_BASE}/approvals/${approvalId}`, {
+  const httpResponse = await fetchWithTimeout(`${API_BASE}/approvals/${approvalId}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -188,24 +220,49 @@ export type RunEventCallback = (event: SseRunEvent) => void
 export type RunErrorCallback = (error: Error) => void
 
 export function subscribeRuns(onEvent: RunEventCallback, onError?: RunErrorCallback): () => void {
-  const eventSource = new EventSource(`${API_BASE}/runs/stream`, { withCredentials: true })
+  let eventSource: EventSource | null = null
+  let reconnectAttempts = 0
+  let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let closed = false
 
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data) as SseRunEvent
-      onEvent(data)
-    } catch (err) {
-      onError?.(new Error('Failed to parse SSE event'))
+  const connect = () => {
+    if (closed) return
+
+    eventSource = new EventSource(`${API_BASE}/runs/stream`, { withCredentials: true })
+
+    eventSource.onmessage = (event) => {
+      reconnectAttempts = 0
+      try {
+        const data = JSON.parse(event.data) as SseRunEvent
+        onEvent(data)
+      } catch {
+        onError?.(new Error('Failed to parse SSE event'))
+      }
+    }
+
+    eventSource.onerror = () => {
+      if (closed) return
+      eventSource?.close()
+      eventSource = null
+      const delay = Math.min(
+        SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
+        SSE_RECONNECT_MAX_DELAY_MS,
+      )
+      reconnectAttempts += 1
+      reconnectTimeoutId = setTimeout(connect, delay)
     }
   }
 
-  eventSource.onerror = () => {
-    eventSource.close()
-    onError?.(new Error('SSE connection failed'))
-  }
+  connect()
 
   return () => {
-    eventSource.close()
+    closed = true
+    if (reconnectTimeoutId) {
+      clearTimeout(reconnectTimeoutId)
+      reconnectTimeoutId = null
+    }
+    eventSource?.close()
+    eventSource = null
   }
 }
 
@@ -215,7 +272,7 @@ export async function getSessions(status?: string, limit?: number, offset?: numb
   if (limit !== undefined) params.append('limit', String(limit))
   if (offset !== undefined) params.append('offset', String(offset))
   const query = params.toString() ? `?${params.toString()}` : ''
-  const response = await fetch(`${API_BASE}/sessions${query}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/sessions${query}`, { credentials: 'include' })
   const result = await parseResponse<{
     items: SessionsResponse['sessions']
     total: number
@@ -230,7 +287,7 @@ export async function updateSession(
   sessionId: string,
   updates: { title?: string; status?: 'active' | 'archived' | 'closed' },
 ): Promise<SessionResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -245,13 +302,13 @@ export async function getUsage(sessionId?: string, limit?: number, offset?: numb
   if (limit !== undefined) params.append('limit', String(limit))
   if (offset !== undefined) params.append('offset', String(offset))
   const query = params.toString() ? `?${params.toString()}` : ''
-  const response = await fetch(`${API_BASE}/usage${query}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/usage${query}`, { credentials: 'include' })
   const result = await parseResponse<{ items: UsageResponse['usages']; total: number }>(response)
   return { usages: result.items, total: result.total }
 }
 
 export async function getSessionUsage(sessionId: string): Promise<SessionUsageResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/usage`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/usage`, { credentials: 'include' })
   const usage = await parseResponse<SessionUsageResponse['usage']>(response)
   return { usage }
 }
@@ -272,13 +329,13 @@ export async function getLogs(
   if (limit !== undefined) params.append('limit', String(limit))
   if (offset !== undefined) params.append('offset', String(offset))
   const query = params.toString() ? `?${params.toString()}` : ''
-  const response = await fetch(`${API_BASE}/logs${query}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/logs${query}`, { credentials: 'include' })
   const result = await parseResponse<{ items: LogsResponse['logs']; total: number }>(response)
   return { logs: result.items, total: result.total }
 }
 
 export async function getDebugReplay(sessionId: string): Promise<DebugReplayResponse> {
-  const response = await fetch(`${API_BASE}/debug/replay/${sessionId}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/debug/replay/${sessionId}`, { credentials: 'include' })
   return parseResponse<DebugReplayResponse>(response)
 }
 
@@ -291,28 +348,28 @@ export async function getSessionTimeline(
   if (limit !== undefined) params.append('limit', String(limit))
   if (offset !== undefined) params.append('offset', String(offset))
   const query = params.toString() ? `?${params.toString()}` : ''
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/timeline${query}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/timeline${query}`, { credentials: 'include' })
   const result = await parseResponse<{ items: ConsoleTimelineEvent[]; total: number }>(response)
   return { events: result.items, total: result.total }
 }
 
 export async function getInstances(): Promise<InstancesResponse> {
-  const response = await fetch(`${API_BASE}/instances`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/instances`, { credentials: 'include' })
   return parseResponse<InstancesResponse>(response)
 }
 
 export async function getChannels(): Promise<ChannelsResponse> {
-  const response = await fetch(`${API_BASE}/channels`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/channels`, { credentials: 'include' })
   return parseResponse<ChannelsResponse>(response)
 }
 
 export async function getSkills(): Promise<SkillsResponse> {
-  const response = await fetch(`${API_BASE}/skills`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/skills`, { credentials: 'include' })
   return parseResponse<SkillsResponse>(response)
 }
 
 export async function getSettings(): Promise<SettingsResponse> {
-  const response = await fetch(`${API_BASE}/settings`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/settings`, { credentials: 'include' })
   return parseResponse<SettingsResponse>(response)
 }
 
@@ -337,61 +394,86 @@ export function subscribeSessionTimeline(
   onToken?: SessionTimelineTokenCallback,
   onOpen?: SessionTimelineOpenCallback,
 ): () => void {
-  const eventSource = new EventSource(`${API_BASE}/sessions/${sessionId}/timeline/stream`, { withCredentials: true })
+  let eventSource: EventSource | null = null
+  let reconnectAttempts = 0
+  let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let closed = false
 
-  eventSource.onopen = () => {
-    onOpen?.()
-  }
+  const connect = () => {
+    if (closed) return
 
-  eventSource.onmessage = (event) => {
-    try {
-      const envelope = JSON.parse(event.data) as SseEnvelope
+    eventSource = new EventSource(`${API_BASE}/sessions/${sessionId}/timeline/stream`, { withCredentials: true })
 
-      switch (envelope.type) {
-        case 'snapshot':
-          for (const e of envelope.events) {
-            onEvent(e)
-          }
-          break
-        case 'timeline_event':
-          onEvent(envelope.event)
-          break
-        case 'processing_status':
-          onStatus?.(envelope.status)
-          break
-        case 'token_stream':
-          onToken?.(envelope.token)
-          break
-        case 'heartbeat':
-          break
+    eventSource.onopen = () => {
+      reconnectAttempts = 0
+      onOpen?.()
+    }
+
+    eventSource.onmessage = (event) => {
+      try {
+        const envelope = JSON.parse(event.data) as SseEnvelope
+
+        switch (envelope.type) {
+          case 'snapshot':
+            for (const e of envelope.events) {
+              onEvent(e)
+            }
+            break
+          case 'timeline_event':
+            onEvent(envelope.event)
+            break
+          case 'processing_status':
+            onStatus?.(envelope.status)
+            break
+          case 'token_stream':
+            onToken?.(envelope.token)
+            break
+          case 'heartbeat':
+            break
+        }
+      } catch {
+        onError?.(new Error('Failed to parse SSE event'))
       }
-    } catch (err) {
-      onError?.(new Error('Failed to parse SSE event'))
+    }
+
+    eventSource.onerror = () => {
+      if (closed) return
+      eventSource?.close()
+      eventSource = null
+      const delay = Math.min(
+        SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
+        SSE_RECONNECT_MAX_DELAY_MS,
+      )
+      reconnectAttempts += 1
+      reconnectTimeoutId = setTimeout(connect, delay)
     }
   }
 
-  eventSource.onerror = () => {
-    eventSource.close()
-    onError?.(new Error('SSE connection failed'))
-  }
+  connect()
 
   return () => {
-    eventSource.close()
+    closed = true
+    if (reconnectTimeoutId) {
+      clearTimeout(reconnectTimeoutId)
+      reconnectTimeoutId = null
+    }
+    eventSource?.close()
+    eventSource = null
   }
 }
 
 export async function getSetupStatus(): Promise<SetupStatusResponse> {
-  const response = await fetch(`${API_BASE}/setup/status`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/setup/status`, { credentials: 'include' })
   return parseResponse<SetupStatusResponse>(response)
 }
 
 export async function getReadiness(): Promise<ReadinessResponse> {
-  const response = await fetch(`${API_BASE}/setup/readiness`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/setup/readiness`, { credentials: 'include' })
   return parseResponse<ReadinessResponse>(response)
 }
 
 export async function setupUser(username: string, password: string): Promise<AuthSuccessResponse> {
-  const response = await fetch(`${API_BASE}/setup/user`, {
+  const response = await fetchWithTimeout(`${API_BASE}/setup/user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -401,7 +483,7 @@ export async function setupUser(username: string, password: string): Promise<Aut
 }
 
 export async function login(username: string, password: string): Promise<AuthSuccessResponse> {
-  const response = await fetch(`${API_BASE}/auth/login`, {
+  const response = await fetchWithTimeout(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -411,25 +493,28 @@ export async function login(username: string, password: string): Promise<AuthSuc
 }
 
 export async function logout(): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/auth/logout`, {
+  const response = await fetchWithTimeout(`${API_BASE}/auth/logout`, {
     method: 'POST',
     credentials: 'include',
   })
   return parseResponse<{ success: boolean }>(response)
 }
 
-export async function getMe(): Promise<{ user: UserMetadata }> {
-  const response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+export async function getMe(): Promise<{ user: UserMetadata | null }> {
+  const response = await fetchWithTimeout(`${API_BASE}/auth/me`, { credentials: 'include' })
+  if (response.status === 401) {
+    return { user: null }
+  }
   return parseResponse<{ user: UserMetadata }>(response)
 }
 
 export async function getProviders(): Promise<ProviderSummary[]> {
-  const response = await fetch(`${API_BASE}/providers`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/providers`, { credentials: 'include' })
   return parseResponse<ProviderSummary[]>(response)
 }
 
 export async function createProvider(request: CreateProviderRequest): Promise<ProviderSummary> {
-  const response = await fetch(`${API_BASE}/providers`, {
+  const response = await fetchWithTimeout(`${API_BASE}/providers`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -439,7 +524,7 @@ export async function createProvider(request: CreateProviderRequest): Promise<Pr
 }
 
 export async function updateProvider(providerId: string, request: UpdateProviderRequest): Promise<ProviderSummary> {
-  const response = await fetch(`${API_BASE}/providers/${providerId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/providers/${providerId}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -449,7 +534,7 @@ export async function updateProvider(providerId: string, request: UpdateProvider
 }
 
 export async function deleteProvider(providerId: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/providers/${providerId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/providers/${providerId}`, {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -465,7 +550,7 @@ export async function deleteProvider(providerId: string): Promise<void> {
 }
 
 export async function testProvider(providerId: string): Promise<TestProviderResponse> {
-  const response = await fetch(`${API_BASE}/providers/${providerId}/test`, {
+  const response = await fetchWithTimeout(`${API_BASE}/providers/${providerId}/test`, {
     method: 'POST',
     credentials: 'include',
   })
@@ -473,7 +558,7 @@ export async function testProvider(providerId: string): Promise<TestProviderResp
 }
 
 export async function getTools(): Promise<ToolsResponse> {
-  const response = await fetch(`${API_BASE}/tools`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/tools`, { credentials: 'include' })
   return parseResponse<ToolsResponse>(response)
 }
 
@@ -482,7 +567,7 @@ export async function getTools(): Promise<ToolsResponse> {
 // =============================================================================
 
 export async function getAgentConfig(agentId: string): Promise<AgentConfig> {
-  const response = await fetch(`${API_BASE}/agents/${agentId}/config`, {
+  const response = await fetchWithTimeout(`${API_BASE}/agents/${agentId}/config`, {
     credentials: 'include',
   })
   return parseResponse<AgentConfig>(response)
@@ -493,7 +578,7 @@ export async function updateAgentConfig(
   scope: 'global' | 'override',
   request: UpdateAgentGlobalConfigRequest | UpdateAgentUserOverrideRequest,
 ): Promise<AgentGlobalConfig | AgentUserOverride> {
-  const response = await fetch(`${API_BASE}/agents/${agentId}/config/${scope}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/agents/${agentId}/config/${scope}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -503,7 +588,7 @@ export async function updateAgentConfig(
 }
 
 export async function resetAgentConfigOverride(agentId: string): Promise<ResetAgentConfigOverrideResponse> {
-  const response = await fetch(`${API_BASE}/agents/${agentId}/config/override`, {
+  const response = await fetchWithTimeout(`${API_BASE}/agents/${agentId}/config/override`, {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -520,12 +605,12 @@ export { ApiClientError }
 // =============================================================================
 
 export async function listWorkflowDrafts(): Promise<WorkflowDraftResponse[]> {
-  const response = await fetch(`${API_BASE}/workflows/drafts`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/drafts`, { credentials: 'include' })
   return parseResponse<WorkflowDraftResponse[]>(response)
 }
 
 export async function getWorkflowDraft(draftId: string): Promise<WorkflowDraftResponse> {
-  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/drafts/${draftId}`, { credentials: 'include' })
   return parseResponse<WorkflowDraftResponse>(response)
 }
 
@@ -534,7 +619,7 @@ export async function createWorkflowDraft(payload: {
   description?: string
   steps: WorkflowStep[]
 }): Promise<WorkflowDraftResponse> {
-  const response = await fetch(`${API_BASE}/workflows/drafts`, {
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/drafts`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -547,7 +632,7 @@ export async function updateWorkflowDraft(
   draftId: string,
   payload: { name?: string; description?: string; steps?: WorkflowStep[] },
 ): Promise<WorkflowDraftResponse> {
-  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/drafts/${draftId}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -557,7 +642,7 @@ export async function updateWorkflowDraft(
 }
 
 export async function validateWorkflowDraft(draftId: string): Promise<WorkflowValidationResult> {
-  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}/validate`, {
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/drafts/${draftId}/validate`, {
     method: 'POST',
     credentials: 'include',
   })
@@ -565,7 +650,7 @@ export async function validateWorkflowDraft(draftId: string): Promise<WorkflowVa
 }
 
 export async function publishWorkflowDraft(draftId: string): Promise<WorkflowDefinitionResponse> {
-  const response = await fetch(`${API_BASE}/workflows/drafts/${draftId}/publish`, {
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/drafts/${draftId}/publish`, {
     method: 'POST',
     credentials: 'include',
   })
@@ -576,7 +661,7 @@ export async function startWorkflowRun(
   definitionId: string,
   inputData?: Record<string, unknown>,
 ): Promise<WorkflowRunResponse> {
-  const response = await fetch(`${API_BASE}/workflows/runs`, {
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/runs`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -586,7 +671,7 @@ export async function startWorkflowRun(
 }
 
 export async function listWorkflowDefinitions(): Promise<WorkflowDefinitionResponse[]> {
-  const response = await fetch(`${API_BASE}/workflows/definitions`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/workflows/definitions`, { credentials: 'include' })
   return parseResponse<WorkflowDefinitionResponse[]>(response)
 }
 
@@ -601,18 +686,18 @@ export async function getMemories(params?: {
   if (params?.type) searchParams.set('type', params.type)
   if (params?.limit) searchParams.set('limit', String(params.limit))
   const qs = searchParams.toString()
-  const response = await fetch(`${API_BASE}/memory${qs ? `?${qs}` : ''}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/memory${qs ? `?${qs}` : ''}`, { credentials: 'include' })
   return parseResponse<MemoriesResponse>(response)
 }
 
 export async function getMemory(memoryId: string): Promise<MemoryItem> {
-  const response = await fetch(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, { credentials: 'include' })
   const detail = await parseResponse<MemoryDetailResponse>(response)
   return detail.memory
 }
 
 export async function deleteMemory(memoryId: string): Promise<DeleteMemoryResponse> {
-  const response = await fetch(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -620,23 +705,23 @@ export async function deleteMemory(memoryId: string): Promise<DeleteMemoryRespon
 }
 
 export async function getPlannerRunEvents(plannerRunId: string): Promise<PlannerRunEventsResponse> {
-  const response = await fetch(`${API_BASE}/planner-runs/${plannerRunId}/events`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/planner-runs/${plannerRunId}/events`, { credentials: 'include' })
   return parseResponse<PlannerRunEventsResponse>(response)
 }
 
 export async function getPlannerRunSummary(plannerRunId: string): Promise<PlannerRunSummaryResponse> {
-  const response = await fetch(`${API_BASE}/planner-runs/${plannerRunId}/summary`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/planner-runs/${plannerRunId}/summary`, { credentials: 'include' })
   return parseResponse<PlannerRunSummaryResponse>(response)
 }
 
 export async function getSubagentDefinitions(): Promise<SubagentDefinitionsResponse> {
-  const response = await fetch(`${API_BASE}/subagents`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/subagents`, { credentials: 'include' })
   const definitions = await parseResponse<SubagentDefinitionsResponse['definitions']>(response)
   return { definitions }
 }
 
 export async function getSubagentPreference(subagentType: string): Promise<SubagentPreferenceResponse> {
-  const response = await fetch(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
+  const response = await fetchWithTimeout(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
     credentials: 'include',
   })
   return parseResponse<SubagentPreferenceResponse>(response)
@@ -646,7 +731,7 @@ export async function updateSubagentPreference(
   subagentType: string,
   request: UpdateSubagentPreferenceRequest,
 ): Promise<SubagentPreferenceResponse> {
-  const response = await fetch(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
+  const response = await fetchWithTimeout(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
     method: 'PUT',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -656,7 +741,7 @@ export async function updateSubagentPreference(
 }
 
 export async function resetSubagentPreference(subagentType: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
+  const response = await fetchWithTimeout(`${API_BASE}/subagents/${encodeURIComponent(subagentType)}/preference`, {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -672,7 +757,7 @@ export async function resetSubagentPreference(subagentType: string): Promise<voi
 }
 
 export async function listTodos(sessionId: string): Promise<TodosResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos`, {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos`, {
     credentials: 'include',
   })
   return parseResponse<TodosResponse>(response)
@@ -682,7 +767,7 @@ export async function createSessionTodo(
   sessionId: string,
   data: CreateTodoRequest,
 ): Promise<TodoResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos`, {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -696,7 +781,7 @@ export async function updateSessionTodo(
   todoId: string,
   data: UpdateTodoRequest,
 ): Promise<TodoResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos/${todoId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos/${todoId}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -709,7 +794,7 @@ export async function deleteSessionTodo(
   sessionId: string,
   todoId: string,
 ): Promise<DeleteTodoResponse> {
-  const response = await fetch(`${API_BASE}/sessions/${sessionId}/todos/${todoId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos/${todoId}`, {
     method: 'DELETE',
     credentials: 'include',
   })
@@ -731,7 +816,7 @@ export interface TodoItemWithChildren {
 }
 
 export async function getTodos(): Promise<{ todos: TodoItemWithChildren[]; total: number }> {
-  const response = await fetch(`${API_BASE}/todos`, {
+  const response = await fetchWithTimeout(`${API_BASE}/todos`, {
     credentials: 'include',
   })
   return parseResponse<{ todos: TodoItemWithChildren[]; total: number }>(response)
@@ -742,7 +827,7 @@ export async function createTodo(data: {
   priority?: 'high' | 'medium' | 'low'
   parentTodoId?: string
 }): Promise<TodoItemWithChildren> {
-  const response = await fetch(`${API_BASE}/todos`, {
+  const response = await fetchWithTimeout(`${API_BASE}/todos`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -760,7 +845,7 @@ export async function updateTodo(
     priority?: 'high' | 'medium' | 'low'
   },
 ): Promise<TodoItemWithChildren> {
-  const response = await fetch(`${API_BASE}/todos/${todoId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/todos/${todoId}`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -771,7 +856,7 @@ export async function updateTodo(
 }
 
 export async function deleteTodo(todoId: string): Promise<{ success: boolean; deletedCount: number }> {
-  const response = await fetch(`${API_BASE}/todos/${todoId}`, {
+  const response = await fetchWithTimeout(`${API_BASE}/todos/${todoId}`, {
     method: 'DELETE',
     credentials: 'include',
   })

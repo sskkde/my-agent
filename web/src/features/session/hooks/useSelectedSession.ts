@@ -51,7 +51,7 @@ export function useSelectedSession(options?: UseSelectedSessionOptions): UseSele
     if (options?.initialSessionId && options.initialSessionId !== selectedSessionId) {
       setSelectedSessionId(options.initialSessionId)
     }
-  }, [options?.initialSessionId])
+  }, [options?.initialSessionId, selectedSessionId])
 
   // Persist selected session ID to localStorage
   useEffect(() => {
@@ -70,14 +70,15 @@ export function useSelectedSession(options?: UseSelectedSessionOptions): UseSele
     }
   }, [selectedSessionId])
 
+  const navigate = options?.navigate
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setSelectedSessionId(sessionId)
-      if (options?.navigate) {
-        options.navigate(`/chat/${encodeURIComponent(sessionId)}`)
+      if (navigate) {
+        navigate(`/chat/${encodeURIComponent(sessionId)}`)
       }
     },
-    [options?.navigate],
+    [navigate],
   )
 
   return {
