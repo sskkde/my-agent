@@ -551,3 +551,169 @@
     padding: 16px;
   }
 }
+
+/* ==========================================================================
+   Session Empty State Styles
+   ========================================================================== */
+
+.session-empty-state--branded {
+  max-width: 600px;
+}
+
+.session-empty-state__media {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 32px;
+}
+
+.session-empty-state__illustration {
+  width: 100%;
+  height: auto;
+}
+
+.session-empty-state__avatar {
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid var(--warm-paper-bg-elevated, var(--bg-elevated));
+  box-shadow: var(--warm-paper-shadow-md, 0 2px 4px rgba(0, 0, 0, 0.04));
+}
+
+.session-empty-state__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--warm-paper-text-muted, var(--muted));
+  margin-bottom: 8px;
+}
+
+.session-empty-state__title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--warm-paper-text, var(--text-strong));
+  margin-bottom: 12px;
+}
+
+.session-empty-state__description {
+  font-size: 14px;
+  color: var(--warm-paper-text-secondary, var(--text));
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+/* Quick Prompts Container */
+.session-empty-state__quick-prompts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
+
+/* Quick Prompt Button (Pill Style) */
+.session-empty-state__prompt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: var(--warm-paper-accent-subtle, var(--accent-subtle));
+  color: var(--warm-paper-accent, var(--accent));
+  border: 1px solid var(--warm-paper-accent, var(--accent));
+  border-radius: var(--warm-paper-radius-sm, 4px);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  min-height: 40px;
+}
+
+.session-empty-state__prompt:hover {
+  background: var(--warm-paper-accent, var(--accent));
+  color: white;
+  border-color: var(--warm-paper-accent, var(--accent));
+}
+
+.session-empty-state__prompt:focus {
+  outline: 2px solid var(--warm-paper-focus-ring, rgba(37, 99, 235, 0.3));
+  outline-offset: 2px;
+}
+
+.session-empty-state__prompt:active {
+  background: var(--warm-paper-accent-hover, #1d4ed8);
+}
+
+/* Recent Sessions Button */
+.session-empty-state__recent-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: var(--warm-paper-accent, var(--accent));
+  color: white;
+  border: none;
+  border-radius: var(--warm-paper-radius-sm, 4px);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+  min-height: 40px;
+}
+
+.session-empty-state__recent-button:hover {
+  background: var(--warm-paper-accent-hover, #1d4ed8);
+}
+
+.session-empty-state__recent-button:focus {
+  outline: 2px solid var(--warm-paper-focus-ring, rgba(37, 99, 235, 0.3));
+  outline-offset: 2px;
+}
+
+.session-empty-state__recent-button:active {
+  background: var(--warm-paper-accent-hover, #1d4ed8);
+}
+
+/* Timeline Header for Empty State */
+.timeline-header--empty {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--chat-workspace-border, var(--border));
+  background: var(--chat-workspace-bg-elevated, var(--bg-elevated));
+}
+
+.timeline-header--empty h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+/* Mobile Adjustments for Empty State */
+@media (max-width: 480px) {
+  .session-empty-state__quick-prompts {
+    gap: 6px;
+  }
+
+  .session-empty-state__prompt {
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 44px; /* Touch target */
+  }
+
+  .session-empty-state__recent-button {
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 44px; /* Touch target */
+  }
+
+  .session-empty-state__title {
+    font-size: 20px;
+  }
+}

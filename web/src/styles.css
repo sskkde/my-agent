@@ -10,7 +10,6 @@
   --shell-nav-rail-width: 78px;
   --shell-topbar-height: 52px;
   --companion-panel-width: 360px;
-  --chat-column-max-width: 980px;
   --accent: #2563eb;
   --accent-subtle: #eff6ff;
   --bg: #f5f5f5;
@@ -169,7 +168,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -203,9 +202,8 @@ body {
 .shell {
   display: grid;
   grid-template-columns: var(--shell-nav-width) minmax(0, 1fr);
-  grid-template-rows: var(--shell-topbar-height) 1fr;
+  grid-template-rows: 1fr;
   grid-template-areas:
-    'nav topbar'
     'nav content';
   height: 100vh;
   overflow: hidden;
@@ -227,7 +225,6 @@ body {
 .shell--context-desk-open:not(.shell--mobile) {
   grid-template-columns: var(--shell-nav-width) minmax(0, 1fr) var(--companion-panel-width);
   grid-template-areas:
-    'nav topbar topbar'
     'nav content companion';
 }
 
@@ -242,6 +239,18 @@ body {
 
 .shell--chat.shell--nav-collapsed.shell--context-desk-open:not(.shell--mobile) {
   grid-template-columns: var(--shell-nav-rail-width) minmax(0, 1fr) var(--chat-right-panel-width);
+}
+
+.agent-shell {
+  grid-template-rows: 1fr;
+  grid-template-areas:
+    'nav content';
+}
+
+.agent-shell.shell--context-desk-open:not(.shell--mobile),
+.agent-shell.shell--nav-collapsed.shell--context-desk-open:not(.shell--mobile) {
+  grid-template-areas:
+    'nav content companion';
 }
 
 /* ==========================================================================
@@ -301,6 +310,14 @@ body {
 }
 
 .sidebar-shell--collapsed {
+  width: var(--shell-nav-rail-width);
+}
+
+.shell--chat .sidebar-shell {
+  width: var(--chat-sidebar-width);
+}
+
+.shell--chat.shell--nav-collapsed .sidebar-shell {
   width: var(--shell-nav-rail-width);
 }
 
@@ -487,15 +504,9 @@ body {
    ========================================================================== */
 
 @media (max-width: 1100px) {
-  .shell__topbar {
-    position: relative;
-    z-index: 80;
-  }
-
   .shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'topbar'
       'content';
   }
 
@@ -503,7 +514,16 @@ body {
     /* Same as base shell on mobile - single column */
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'topbar'
+      'content';
+  }
+
+  .agent-shell {
+    grid-template-areas:
+      'content';
+  }
+
+  .agent-shell.shell--mobile {
+    grid-template-areas:
       'content';
   }
 
@@ -9043,7 +9063,7 @@ body {
   border-radius: 6px;
   font-size: 13px;
   color: var(--text);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .secret-field {
@@ -10294,6 +10314,7 @@ body {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .context-desk-toggle--chat {
@@ -11073,12 +11094,6 @@ body {
   padding: 0;
 }
 
-.shell--context-desk-open:not(.shell--mobile) .shell__content > .session-workspace,
-.shell--context-desk-open:not(.shell--mobile) .shell__content > [data-testid='session-workspace'] {
-  max-width: var(--chat-column-max-width);
-  width: 100%;
-}
-
 /* ==========================================================================
    Context Desk Responsive (1100px breakpoint)
    ========================================================================== */
@@ -11654,6 +11669,10 @@ body::before {
   font-weight: 800;
   letter-spacing: 0.02em;
   box-shadow: 0 8px 22px rgba(233, 111, 100, 0.13);
+}
+
+.product-nav--chat::before {
+  display: none;
 }
 
 .product-nav__item,
