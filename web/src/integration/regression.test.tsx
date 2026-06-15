@@ -21,7 +21,6 @@ import MemoryTab from '../features/memory/MemoryTab'
 import ErrorMessage, { getErrorDisplay } from '../components/ErrorMessage'
 
 import * as client from '../api/client'
-import * as adminApi from '../api/admin'
 import type { MemoryItem } from '../api/types'
 
 vi.mock('../api/client')

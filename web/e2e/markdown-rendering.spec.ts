@@ -225,7 +225,6 @@ test.describe('Markdown Rendering Visual QA', () => {
       
       // Check if it has horizontal scroll capability
       const scrollInfo = await firstCodeBlock.evaluate((el) => {
-        const style = window.getComputedStyle(el)
         const pre = el.querySelector('pre') || el
         const preStyle = window.getComputedStyle(pre)
         return {

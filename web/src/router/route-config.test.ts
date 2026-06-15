@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import type { TabId } from '../navigation/navigation-config'
 import type { ProductSection } from '../navigation/product-navigation'
 import { ROUTES } from './route-constants'
-import { VALID_TABS, DEFAULT_TABS } from './route-mapping'
+import { VALID_TABS } from './route-mapping'
 import {
   ROUTE_CONFIGS,
   getRouteConfig,
@@ -11,8 +10,6 @@ import {
   getValidatedRouteParam,
   getRouteConfigSummary,
   verifyRouteConfigCoverage,
-  type RouteConfig,
-  type RouteMetadata,
 } from './route-config'
 
 describe('route-config', () => {

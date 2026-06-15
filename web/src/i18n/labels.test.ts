@@ -69,7 +69,7 @@ describe('localized labels', () => {
   })
 
   it('centralizes date, number, and money formatting', () => {
-    const date = new Date('2026-06-11T08:09:00Z')
+    const date = new Date('2026-06-11T08:09:00')
     expect(formatDateTimeZhCN(date)).toContain('2026')
     expect(formatDateTimeZhCN(date)).toContain('08:09')
     expect(formatSessionTitleDate(date)).toContain('2026')

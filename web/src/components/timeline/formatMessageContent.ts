@@ -132,7 +132,7 @@ function processMarkdownBlock(text: string): string {
   
   try {
     return marked.parse(text) as string
-  } catch (error) {
+  } catch {
     // If parsing fails, return escaped text
     return escapeHtml(text)
   }

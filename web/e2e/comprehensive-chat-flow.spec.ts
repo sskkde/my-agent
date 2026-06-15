@@ -617,7 +617,7 @@ test.describe('Comprehensive Chat Flow - Mobile', () => {
 })
 
 test.describe('Evidence Capture Summary', () => {
-  test('generate comprehensive test summary', async ({ page }) => {
+  test('generate comprehensive test summary', async ({ page: _page }) => {
     const summaryLog: string[] = [
       '\n========================================',
       'COMPREHENSIVE CHAT FLOW E2E TEST SUMMARY',

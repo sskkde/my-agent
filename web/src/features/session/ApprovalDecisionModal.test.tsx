@@ -39,9 +39,9 @@ describe('ApprovalDecisionModal', () => {
       approval: null,
       loading: false,
       error: null,
-      onReject: (reason?: string) => {},
-      onApproveOnce: (reason?: string) => {},
-      onApproveAlways: (reason?: string) => {},
+      onReject: (_reason?: string) => {},
+      onApproveOnce: (_reason?: string) => {},
+      onApproveAlways: (_reason?: string) => {},
       onClose: () => {},
     }
 

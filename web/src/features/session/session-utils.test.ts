@@ -4,7 +4,7 @@
  * Unit tests for pure utility functions used in session console operations.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type { ConsoleTimelineEvent } from '../../api/types'
 import {
   createLocalUserMessageEvent,
@@ -331,8 +331,6 @@ describe('isLocalMessageConfirmed', () => {
 // ============================================================================
 
 describe('hasAssistantOrErrorReplyAfter', () => {
-  const baseTime = new Date('2024-01-01T10:00:00Z').getTime()
-
   const createEvent = (
     type: string,
     timestamp: string,

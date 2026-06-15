@@ -113,7 +113,7 @@ export const handleSession: CommandHandler = async (
         messageCount: session.messageCount,
       },
     }
-  } catch (error) {
+  } catch {
     return {
       success: false,
       output: {

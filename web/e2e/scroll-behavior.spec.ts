@@ -14,41 +14,6 @@ import { test, expect } from '@playwright/test';
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 };
 const MOBILE_VIEWPORT = { width: 375, height: 667 }; // iPhone SE
 
-/**
- * Helper to generate enough content to require scrolling
- */
-async function seedManySessions(page: any, count: number): Promise<void> {
-  await page.evaluate((numSessions) => {
-    // Mock the sessions API to return many sessions
-    (window as any).__mockedSessions = Array.from({ length: numSessions }, (_, i) => ({
-      sessionId: `session-${i}`,
-      userId: 'user-1',
-      title: `Test Session ${i + 1}`,
-      status: 'active',
-      messageCount: Math.floor(Math.random() * 50) + 1,
-      lastActivityAt: new Date(Date.now() - i * 60000).toISOString(),
-      createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - i * 60000).toISOString(),
-    }));
-  }, count);
-}
-
-/**
- * Helper to generate many timeline events
- */
-async function seedManyTimelineEvents(page: any, count: number): Promise<void> {
-  await page.evaluate((numEvents) => {
-    // Mock the timeline API to return many events
-    (window as any).__mockedEvents = Array.from({ length: numEvents }, (_, i) => ({
-      eventId: `event-${i}`,
-      eventType: i % 2 === 0 ? 'user_message' : 'assistant_message',
-      sessionId: 'session-selected',
-      timestamp: new Date(Date.now() - (numEvents - i) * 1000).toISOString(),
-      content: `Message ${i + 1}: This is a test message with enough content to make the timeline scrollable. `.repeat(3),
-      actor: i % 2 === 0 ? 'user' : 'assistant',
-    }));
-  }, count);
-}
 
 test.describe('Desktop Scroll Independence', () => {
   test.beforeEach(async ({ page }) => {
@@ -454,7 +419,7 @@ test.describe('Mobile Scroll Isolation', () => {
     const timelineContainer = timeline.locator('.session-timeline-container');
 
     // Get initial positions
-    const initialPositions = await page.evaluate(() => ({
+    await page.evaluate(() => ({
       bodyScrollTop: document.body.scrollTop,
       docScrollTop: document.documentElement.scrollTop,
       windowScrollY: window.scrollY,

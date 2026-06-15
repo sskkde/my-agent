@@ -42,7 +42,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
       setActionTaken('approved')
       addToast('success', '审批已通过')
       onApprove(approvalId)
-    } catch (_err) {
+    } catch {
       // Error state is surfaced by useApprovalActions.
     }
   }
@@ -53,7 +53,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
       setActionTaken('rejected')
       addToast('success', '审批已拒绝')
       onReject(approvalId)
-    } catch (_err) {
+    } catch {
       // Error state is surfaced by useApprovalActions.
     }
   }

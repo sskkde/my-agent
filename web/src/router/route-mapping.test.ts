@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import type { TabId } from '../navigation/navigation-config'
-import type { ProductSection } from '../navigation/product-navigation'
 import {
   ROUTES,
   ROUTE_PARAMS,

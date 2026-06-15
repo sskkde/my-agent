@@ -107,7 +107,7 @@ test.describe('Todo Lifecycle E2E', () => {
     const child2 = await response2.json();
     const child2Id = child2.todo?.todoId || child2.data?.todo?.todoId;
 
-    const response3 = await page.request.post('/api/v1/todos', {
+    await page.request.post('/api/v1/todos', {
       data: {
         content: 'E2E Child L3 (MAX DEPTH)',
         parentTodoId: child2Id,

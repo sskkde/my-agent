@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import SessionConsoleTab from './SessionConsoleTab'
-import { mockViewport, resetMatchMedia } from '../../test/setup'
+import { mockViewport } from '../../test/setup'
 import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../api/types'
 
 vi.mock('../../api/client', () => ({
@@ -3750,10 +3750,8 @@ describe('SessionConsoleTab - SSE Status Transitions', () => {
     })
     mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    let onOpenCallback: (() => void) | null = null
     mockSubscribeSessionTimeline.mockImplementation(
       (_sessionId, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
-        onOpenCallback = onOpen ?? null
         if (onOpen) {
           setTimeout(() => onOpen(), 0)
         }

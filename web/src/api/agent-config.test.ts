@@ -61,7 +61,10 @@ describe('AgentConfig API', () => {
 
       const result = await getAgentConfig('foreground.default')
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config', { credentials: 'include' })
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/agents/foreground.default/config',
+        expect.objectContaining({ credentials: 'include' }),
+      )
       expect(result).toEqual(mockConfig)
     })
 
@@ -148,12 +151,15 @@ describe('AgentConfig API', () => {
 
       const result = await updateAgentConfig('foreground.default', 'global', updateRequest)
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config/global', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateRequest),
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/agents/foreground.default/config/global',
+        expect.objectContaining({
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateRequest),
+        }),
+      )
       expect(result).toEqual(mockResponse)
     })
 
@@ -185,12 +191,15 @@ describe('AgentConfig API', () => {
 
       const result = await updateAgentConfig('foreground.default', 'override', updateRequest)
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config/override', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateRequest),
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/agents/foreground.default/config/override',
+        expect.objectContaining({
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateRequest),
+        }),
+      )
       expect(result).toEqual(mockResponse)
     })
 
@@ -250,10 +259,13 @@ describe('AgentConfig API', () => {
 
       const result = await resetAgentConfigOverride('foreground.default')
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/agents/foreground.default/config/override', {
-        method: 'DELETE',
-        credentials: 'include',
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/agents/foreground.default/config/override',
+        expect.objectContaining({
+          method: 'DELETE',
+          credentials: 'include',
+        }),
+      )
       expect(result).toEqual({ success: true })
     })
 

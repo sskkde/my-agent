@@ -4,7 +4,7 @@ import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import SessionConsoleTab from './SessionConsoleTab'
 import * as api from '../../api/client'
-import type { ConsoleTimelineEvent, TokenStreamPayload, ProcessingStatusPayload } from '../../api/types'
+import type { ConsoleTimelineEvent, TokenStreamPayload } from '../../api/types'
 
 vi.mock('../../api/client', () => ({
   getSession: vi.fn(),
@@ -32,7 +32,6 @@ describe('Streaming Draft UX', () => {
   let unsubscribe: ReturnType<typeof api.subscribeSessionTimeline>
   let onEventCallback: (event: ConsoleTimelineEvent) => void
   let onTokenCallback: (token: TokenStreamPayload) => void
-  let onStatusCallback: (status: ProcessingStatusPayload) => void
   let onErrorCallback: (error: Error) => void
 
   beforeEach(() => {
@@ -40,10 +39,9 @@ describe('Streaming Draft UX', () => {
     unsubscribe = vi.fn()
     
     // Capture SSE callbacks
-    vi.mocked(api.subscribeSessionTimeline).mockImplementation((sessionId, onEvent, onError, onStatus, onToken) => {
+    vi.mocked(api.subscribeSessionTimeline).mockImplementation((sessionId, onEvent, onError, _onStatus, onToken) => {
       onEventCallback = onEvent
       onTokenCallback = onToken!
-      onStatusCallback = onStatus!
       onErrorCallback = onError!
       return unsubscribe
     })

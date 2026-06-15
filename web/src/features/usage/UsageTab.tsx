@@ -117,7 +117,7 @@ const UsageTab: React.FC = () => {
     </button>
   )
 
-  const usages = state.data?.usages ?? []
+  const usages = useMemo(() => state.data?.usages ?? [], [state.data?.usages])
   const sortedUsages = useMemo(() => {
     return [...usages].sort((a, b) => {
       const aValue = a[sortState.sortKey]

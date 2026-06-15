@@ -12,7 +12,7 @@ import type {
   ToolActivityCardData,
 } from './card-contracts'
 import { loading, ready, empty, error } from './card-state'
-import type { ApprovalInfo, MemoryItem, RunInfo, ConsoleTimelineEvent } from '../../api/types'
+
 
 describe('ContextDeskPanel', () => {
   const mockApprovalState = ready<ApprovalCardData>({

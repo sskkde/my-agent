@@ -414,19 +414,11 @@ describe('useSSEStream', () => {
     it('reconnect behavior matches baseline with exponential backoff', async () => {
       vi.useFakeTimers()
 
-      const reconnectDelays: number[] = []
-      let callCount = 0
-
       mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
-        callCount++
-        const currentCall = callCount
-
-        if (currentCall <= 3) {
-          onOpen?.()
-          setTimeout(() => {
-            onError?.(new Error('disconnect'))
-          }, 10)
-        }
+        onOpen?.()
+        setTimeout(() => {
+          onError?.(new Error('disconnect'))
+        }, 10)
 
         return () => {}
       })
@@ -485,9 +477,7 @@ describe('useSSEStream', () => {
     it('stops reconnecting after 5 failed attempts', async () => {
       vi.useFakeTimers()
 
-      let callCount = 0
       mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
-        callCount++
         onOpen?.()
         setTimeout(() => {
           onError?.(new Error('disconnect'))
