@@ -71,6 +71,35 @@ export function safeReadLocalStorage(key: string): string | null {
 }
 
 /**
+ * Safely writes a value to localStorage.
+ * Silently fails if localStorage is unavailable.
+ *
+ * @param key - The localStorage key to write
+ * @param value - The value to store
+ */
+export function safeWriteLocalStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch (error) {
+    console.warn(`Failed to write localStorage key "${key}":`, error)
+  }
+}
+
+/**
+ * Safely removes a key from localStorage.
+ * Silently fails if localStorage is unavailable.
+ *
+ * @param key - The localStorage key to remove
+ */
+export function safeRemoveLocalStorage(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch (error) {
+    console.warn(`Failed to remove localStorage key "${key}":`, error)
+  }
+}
+
+/**
  * Resolves the session ID based on URL/localStorage precedence rules.
  *
  * Precedence:

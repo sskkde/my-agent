@@ -27,6 +27,8 @@ import { SessionEmptyState } from './components/SessionEmptyState'
 import { MobileSessionDrawer } from './components/MobileSessionDrawer'
 import ComposerDock from '../../components/ComposerDock'
 import { useAgentShellSidebar } from '../../layout/AgentShellSidebarContext'
+import { safeRemoveLocalStorage } from './session-migration'
+import { SELECTED_SESSION_KEY } from './session-constants'
 
 interface SessionConsoleTabProps {
   setActiveTab?: (tabId: TabId) => void
@@ -152,7 +154,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         return next.size === prev.size ? prev : next
       })
     },
-    [updatePendingAssistantPlaceholders],
+    [updatePendingAssistantPlaceholders, selectedSessionIdRef],
   )
 
   const clearAssistantActivityForSession = useCallback(
@@ -196,7 +198,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       }
       return null
     }
-  }, [])
+  }, [selectedSessionIdRef])
 
   const refreshProviders = useCallback(async () => {
     try {
@@ -247,7 +249,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         },
       },
     }
-  }, [selectedSessionId, setActiveTab, auth, refreshSessions, refreshProviders])
+  }, [selectedSessionId, setSelectedSessionId, setActiveTab, auth, refreshSessions, refreshProviders])
 
   const handleSSEEvent = useCallback(
     (event: ConsoleTimelineEvent) => {
@@ -477,8 +479,10 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         connectSse(selectedSessionId)
       } catch (err) {
         if (mountedRef.current && selectedSessionIdRef.current === selectedSessionId) {
-          if (err instanceof api.ApiClientError && ['FORBIDDEN', 'NOT_FOUND'].includes(err.code)) {
+          const isMissingSession = err instanceof api.ApiClientError && ['FORBIDDEN', 'NOT_FOUND'].includes(err.code)
+          if (isMissingSession) {
             setSelectedSessionId(null)
+            safeRemoveLocalStorage(SELECTED_SESSION_KEY)
           }
           setTimelineError(err instanceof Error ? err.message : 'Failed to load timeline')
           resetStreamStatus()
@@ -500,6 +504,9 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     }
   }, [
     selectedSessionId,
+    selectedSessionIdRef,
+    setSelectedSession,
+    setSelectedSessionId,
     connectSse,
     clearSseReconnectTimeout,
     clearPostSendPollTimeout,

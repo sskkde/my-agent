@@ -47,15 +47,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         const userData = await getMe()
-        setState({
-          needsSetup: false,
-          setupInProgress: false,
-          isAuthenticated: true,
-          user: userData.user,
-          loading: false,
-        })
+        if (userData.user) {
+          setState({
+            needsSetup: false,
+            setupInProgress: false,
+            isAuthenticated: true,
+            user: userData.user,
+            loading: false,
+          })
+        } else {
+          setState({
+            needsSetup: false,
+            setupInProgress: false,
+            isAuthenticated: false,
+            user: null,
+            loading: false,
+          })
+        }
       } catch (err) {
-        if (err instanceof Error && err.message.includes('401')) {
+        const status = err instanceof Error && 'status' in err ? (err as { status?: number }).status : undefined
+        if (status === 401) {
           console.debug('Auth: User not authenticated (401)')
         }
         setState({
