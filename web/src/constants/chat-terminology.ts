@@ -18,7 +18,7 @@ export const CHAT_TERMINOLOGY = {
   // Session-related
   session: '会话',
   newSession: '新会话',
-  sessionHistory: '会话历史',
+  sessionHistory: '会话列表',
 
   // Actions
   sendMessage: '发送消息',

@@ -9,7 +9,7 @@
   --shell-nav-width: 258px;
   --shell-nav-rail-width: 78px;
   --shell-topbar-height: 52px;
-  --companion-panel-width: 360px;
+  --companion-panel-width: 300px;
   --accent: #2563eb;
   --accent-subtle: #eff6ff;
   --bg: #f5f5f5;
@@ -127,8 +127,8 @@
   --chat-workspace-spacing-lg: 24px;
 
   /* Panel Widths */
-  --chat-sidebar-width: 280px;
-  --chat-right-panel-width: 320px;
+  --chat-sidebar-width: 258px;
+  --chat-right-panel-width: 260px;
 
   /* Text Hierarchy */
   --chat-workspace-text: #3d3530;
@@ -3174,7 +3174,7 @@ body {
 .sessions-sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 16px;
   border-bottom: 1px solid var(--border);
 }
@@ -10210,7 +10210,7 @@ body {
   height: 48px;
   padding: 0 16px;
   background: var(--warm-paper-bg-elevated, var(--bg-elevated));
-  border-bottom: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, var(--border));
+  border-bottom: 1px solid rgba(42, 38, 34, 0.04);
   gap: 4px;
   flex-shrink: 0;
 }
@@ -10537,8 +10537,8 @@ body {
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  height: 100%;
   padding: 12px;
-  overflow-y: auto;
   max-height: 100%;
 }
 
@@ -10547,6 +10547,8 @@ body {
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+  flex: 1 1 50%;
+  min-height: 0;
 }
 
 .workspace-section__header {
@@ -10577,12 +10579,16 @@ body {
 /* Workspace Plan Card */
 .workspace-card--plan {
   padding: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .workspace-plan__placeholder {
   display: flex;
   align-items: center;
   gap: 12px;
+  height: 100%;
 }
 
 .workspace-plan__icon {
@@ -10610,12 +10616,16 @@ body {
 /* Workspace Desk Card */
 .workspace-card--desk {
   padding: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .workspace-desk__placeholder {
   display: flex;
   align-items: center;
   gap: 12px;
+  height: 100%;
 }
 
 .workspace-desk__icon {
@@ -11514,7 +11524,6 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   margin: 8px -8px -8px;
-  border-top: 1px solid var(--border);
 }
 
 .sidebar-shell__session-panel .sessions-sidebar {
@@ -11526,13 +11535,14 @@ body {
 
 .sidebar-shell__session-panel .sessions-sidebar-header {
   padding: 12px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .sidebar-shell__session-panel .sessions-sidebar-header h3 {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  text-align: center;
 }
 
 .sidebar-shell__session-panel .session-new-button {
@@ -11646,6 +11656,7 @@ body::before {
 
 .product-nav {
   height: 58px;
+  margin: 0 8px;
   padding: 8px 18px;
   background: linear-gradient(135deg, rgba(255, 250, 243, 0.88), rgba(255, 247, 236, 0.72));
   backdrop-filter: blur(18px) saturate(1.15);
@@ -11704,8 +11715,8 @@ body::before {
 }
 
 .shell {
-  margin: 14px;
-  height: calc(100vh - 86px);
+  margin: 8px;
+  height: calc(100vh - 58px - 16px);
   border: 1px solid rgba(122, 91, 63, 0.13);
   border-radius: 28px;
   background: rgba(255, 250, 243, 0.5);
