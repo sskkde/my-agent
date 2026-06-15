@@ -11,14 +11,6 @@ import {
 import type { UserMetadata } from '../api/types'
 import ContextDeskPanel from '../features/context/ContextDeskPanel'
 import logoUrl from '../assets/logo.svg?url'
-import type {
-  ApprovalCardData,
-  MemoryCardData,
-  RunsCardData,
-  ToolActivityCardData,
-} from '../features/context/card-contracts'
-import type { CardState } from '../features/context/card-state'
-import { loading } from '../features/context/card-state'
 import { AgentShellSidebarContext } from './AgentShellSidebarContext'
 import packageInfo from '../../package.json'
 import '../styles.css'
@@ -32,12 +24,6 @@ interface AgentShellProps {
   user?: UserMetadata | null
   onLogout?: () => void
   sessionId?: string | null
-  contextDeskCards?: {
-    approvalState: CardState<ApprovalCardData>
-    memoryState: CardState<MemoryCardData>
-    runsState: CardState<RunsCardData>
-    toolActivityState: CardState<ToolActivityCardData>
-  }
 }
 
 const AgentShell: React.FC<AgentShellProps> = ({
@@ -49,7 +35,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
   user,
   onLogout,
   sessionId,
-  contextDeskCards,
 }) => {
   // Determine active product section first for initial state calculation
   const activeProductSection = useMemo(() => getProductSection(activeTab), [activeTab])
@@ -63,15 +48,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
   const [hasUserToggledContextDesk, setHasUserToggledContextDesk] = useState(false)
 
   const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed
-
-  const defaultContextDeskCards = {
-    approvalState: loading(),
-    memoryState: loading(),
-    runsState: loading(),
-    toolActivityState: loading(),
-  }
-
-  const cards = contextDeskCards || defaultContextDeskCards
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {
@@ -414,27 +390,10 @@ const AgentShell: React.FC<AgentShellProps> = ({
             className={`context-desk context-desk--${contextDeskMode}`}
             aria-label="书桌"
           >
-            <div className="context-desk__header">
-              <h2 className="context-desk__title">书桌</h2>
-              <button
-                data-testid="context-desk-close"
-                className="context-desk__close"
-                onClick={handleCloseContextDesk}
-                aria-label="关闭书桌"
-                type="button"
-              >
-                ✕
-              </button>
-            </div>
             <div className="context-desk__body">
               <ContextDeskPanel
-                approvalState={cards.approvalState}
-                memoryState={cards.memoryState}
-                runsState={cards.runsState}
-                toolActivityState={cards.toolActivityState}
                 sessionId={sessionId}
                 activeTab={activeTab}
-                maxItems={5}
                 testId="context-desk-panel-content"
               />
             </div>
