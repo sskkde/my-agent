@@ -42,11 +42,19 @@ function ChatRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }
 
 /**
  * WorkspaceRouteContent - Renders WorkspacePage with tab derived from URL.
+ *
+ * Integrates URL/localStorage precedence for sessionId:
+ * - URL sessionId takes priority when valid
+ * - localStorage is fallback when URL has no sessionId
+ * - Uses resolveSessionId for safe precedence handling
  */
 function WorkspaceRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
   const location = useLocation()
   const navState = routeToNavigation(location.pathname)
-  return <WorkspacePage activeTab={navState.tabId} onTabChange={onTabChange} />
+  const localStorageSessionId = safeReadLocalStorage(SELECTED_SESSION_KEY)
+  const resolvedSessionId = resolveSessionId(navState.sessionId ?? null, localStorageSessionId)
+
+  return <WorkspacePage activeTab={navState.tabId} onTabChange={onTabChange} sessionId={resolvedSessionId} />
 }
 
 /**

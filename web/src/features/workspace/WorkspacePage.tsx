@@ -1,10 +1,11 @@
 import React from 'react'
-import { getTabComponent } from '../common/container-composition'
+import { renderTabComponent } from '../common/container-composition'
 import type { TabId } from '../../navigation/navigation-config'
 
 interface WorkspacePageProps {
   activeTab: TabId
   onTabChange: (tab: TabId) => void
+  sessionId?: string | null
 }
 
 /**
@@ -14,13 +15,10 @@ interface WorkspacePageProps {
  * Workspace section includes: dashboard, sessions, usage, logs-debug, channels,
  * instances, status, workflows, approvals, triggers, memory, observability
  */
-const WorkspacePage: React.FC<WorkspacePageProps> = ({ activeTab, onTabChange }) => {
-  // Get the component for the active tab
-  const TabComponent = getTabComponent(activeTab)
-
+const WorkspacePage: React.FC<WorkspacePageProps> = ({ activeTab, onTabChange, sessionId }) => {
   return (
     <div data-testid="container-page-workspace" className="workspace-page">
-      <TabComponent onTabChange={onTabChange} />
+      {renderTabComponent(activeTab, { onTabChange, sessionId })}
     </div>
   )
 }
