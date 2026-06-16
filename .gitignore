@@ -70,3 +70,6 @@ secrets/
 # OpenCode metadata
 .omo/
 *.png
+
+# Playwright MCP
+.playwright-mcp/
