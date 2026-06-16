@@ -40,6 +40,7 @@ import AdminTab from '../admin/AdminTab'
  */
 export interface TabComponentProps {
   onTabChange?: (tab: TabId) => void
+  sessionId?: string | null
 }
 
 /**
@@ -221,6 +222,7 @@ export function renderTabComponent(tabId: TabId, props?: TabComponentProps): Rea
   const Component = getTabComponent(tabId)
   // Type assertion needed because different tabs have different prop requirements
   // Some tabs require onTabChange, others make it optional, others don't use it
+  // sessionId is optional and passed through for tabs that need session context
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return <Component {...(props as any)} />
 }

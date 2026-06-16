@@ -87,9 +87,13 @@ test.describe('Todo Lifecycle E2E', () => {
     // Format: todo-row-{todoId}
     const parentTodoId = parentRowTestId?.replace('todo-row-', '') || '';
 
-    // Create children via API to speed up
-    // We'll use the request context
-    const response1 = await page.request.post('/api/v1/todos', {
+    // Get the current sessionId from localStorage
+    const sessionId = await page.evaluate(() => {
+      return localStorage.getItem('session-console-selected-session') || '';
+    });
+
+    // Create children via API to speed up using session-scoped endpoints
+    const response1 = await page.request.post(`/api/v1/sessions/${sessionId}/todos`, {
       data: {
         content: 'E2E Child L1',
         parentTodoId,
@@ -98,7 +102,7 @@ test.describe('Todo Lifecycle E2E', () => {
     const child1 = await response1.json();
     const child1Id = child1.todo?.todoId || child1.data?.todo?.todoId;
 
-    const response2 = await page.request.post('/api/v1/todos', {
+    const response2 = await page.request.post(`/api/v1/sessions/${sessionId}/todos`, {
       data: {
         content: 'E2E Child L2',
         parentTodoId: child1Id,
@@ -107,7 +111,7 @@ test.describe('Todo Lifecycle E2E', () => {
     const child2 = await response2.json();
     const child2Id = child2.todo?.todoId || child2.data?.todo?.todoId;
 
-    await page.request.post('/api/v1/todos', {
+    await page.request.post(`/api/v1/sessions/${sessionId}/todos`, {
       data: {
         content: 'E2E Child L3 (MAX DEPTH)',
         parentTodoId: child2Id,

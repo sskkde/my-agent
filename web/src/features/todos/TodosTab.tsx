@@ -1,16 +1,18 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import * as client from '../../api/client'
 import type { TodoItemWithChildren } from '../../api/client'
 import type { TabId } from '../../components/TabNav'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
 import TodoTree from './TodoTree'
+import { buildTodoTree } from './todo-tree'
 
 interface TodosTabProps {
   onTabChange: (tab: TabId) => void
+  sessionId?: string | null
 }
 
-const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
+const TodosTab: React.FC<TodosTabProps> = ({ onTabChange, sessionId }) => {
   const [todos, setTodos] = useState<TodoItemWithChildren[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -19,18 +21,41 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
   const [newPriority, setNewPriority] = useState<'high' | 'medium' | 'low'>('medium')
   const [parentTodoId, setParentTodoId] = useState<string | undefined>(undefined)
 
+  // Track current sessionId for stale response guard
+  const sessionIdRef = useRef(sessionId)
+  useEffect(() => {
+    sessionIdRef.current = sessionId
+  }, [sessionId])
+
+  // Reset create form state when session changes
+  useEffect(() => {
+    setShowCreateForm(false)
+    setNewContent('')
+    setNewPriority('medium')
+    setParentTodoId(undefined)
+  }, [sessionId])
+
   const fetchTodos = useCallback(async () => {
+    if (!sessionId) return
+    const currentSessionId = sessionId
     setLoading(true)
     setError(null)
     try {
-      const response = await client.getTodos()
-      setTodos(response.todos)
+      const response = await client.listTodos(currentSessionId)
+      // Guard: only update if sessionId hasn't changed during the fetch
+      if (currentSessionId === sessionIdRef.current) {
+        setTodos(buildTodoTree(response.todos))
+      }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load todos'))
+      if (currentSessionId === sessionIdRef.current) {
+        setError(err instanceof Error ? err : new Error('Failed to load todos'))
+      }
     } finally {
-      setLoading(false)
+      if (currentSessionId === sessionIdRef.current) {
+        setLoading(false)
+      }
     }
-  }, [])
+  }, [sessionId])
 
   useEffect(() => {
     fetchTodos()
@@ -39,7 +64,7 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
   const handleCreateTodo = async () => {
     if (!newContent.trim()) return
     try {
-      await client.createTodo({
+      await client.createSessionTodo(sessionId!, {
         content: newContent,
         priority: newPriority,
         parentTodoId,
@@ -59,7 +84,7 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
     if (!todo) return
     const nextStatus = todo.status === 'pending' ? 'in_progress' : todo.status === 'in_progress' ? 'completed' : 'pending'
     try {
-      await client.updateTodo(todoId, { status: nextStatus })
+      await client.updateSessionTodo(sessionId!, todoId, { status: nextStatus })
       await fetchTodos()
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to update todo'))
@@ -68,7 +93,7 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
 
   const handleComplete = async (todoId: string) => {
     try {
-      await client.updateTodo(todoId, { status: 'completed' })
+      await client.updateSessionTodo(sessionId!, todoId, { status: 'completed' })
       await fetchTodos()
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to complete todo'))
@@ -77,7 +102,7 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
 
   const handleEdit = async (todoId: string, content: string) => {
     try {
-      await client.updateTodo(todoId, { content })
+      await client.updateSessionTodo(sessionId!, todoId, { content })
       await fetchTodos()
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to update todo'))
@@ -86,7 +111,7 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
 
   const handleDelete = async (todoId: string) => {
     try {
-      await client.deleteTodo(todoId)
+      await client.deleteSessionTodo(sessionId!, todoId)
       await fetchTodos()
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to delete todo'))
@@ -100,11 +125,15 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange }) => {
 
   const handlePriorityChange = async (todoId: string, priority: 'high' | 'medium' | 'low') => {
     try {
-      await client.updateTodo(todoId, { priority })
+      await client.updateSessionTodo(sessionId!, todoId, { priority })
       await fetchTodos()
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to update todo'))
     }
+  }
+
+  if (!sessionId) {
+    return <div data-testid="todos-no-session">请先选择一个会话</div>
   }
 
   if (loading) {
