@@ -113,3 +113,57 @@
   background-color: #9ca3af;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   Mobile Responsive Styles
+   ==========================================================================
+   Breakpoint Conventions:
+   - Phone: <480px
+   - Tablet: 480px-768px
+   ========================================================================== */
+
+/* Phone: <480px */
+@media (max-width: 480px) {
+  .auth-page {
+    padding: var(--mobile-content-padding, 12px);
+  }
+
+  .auth-card {
+    padding: 24px 20px;
+  }
+
+  .auth-title {
+    font-size: 20px;
+  }
+
+  .auth-input {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 12px 14px;
+  }
+
+  .auth-submit-button {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 14px 20px;
+  }
+}
+
+/* Tablet: 480px-768px */
+@media (min-width: 481px) and (max-width: 768px) {
+  .auth-page {
+    padding: var(--mobile-tablet-padding, 16px);
+  }
+
+  .auth-card {
+    padding: 28px 24px;
+  }
+
+  .auth-input {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 12px 14px;
+  }
+
+  .auth-submit-button {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 14px 20px;
+  }
+}
