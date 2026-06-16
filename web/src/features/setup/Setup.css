@@ -419,3 +419,128 @@
   line-height: 1.5;
   margin: 0;
 }
+
+/* ==========================================================================
+   Mobile Responsive Styles
+   ==========================================================================
+   Breakpoint Conventions:
+   - Phone: <480px
+   - Tablet: 480px-768px
+   ========================================================================== */
+
+/* Phone: <480px */
+@media (max-width: 480px) {
+  .setup-page {
+    padding: var(--mobile-content-padding, 12px);
+  }
+
+  .setup-container {
+    max-width: 100%;
+  }
+
+  .setup-header {
+    margin-bottom: 20px;
+  }
+
+  .setup-title {
+    font-size: 22px;
+  }
+
+  .setup-subtitle {
+    font-size: 14px;
+  }
+
+  .setup-steps-indicator {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .setup-step-item {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .setup-step-number {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .setup-step-title {
+    font-size: 13px;
+  }
+
+  .setup-step-desc {
+    font-size: 11px;
+  }
+
+  .setup-content {
+    padding: 20px 16px;
+  }
+
+  .setup-form-container {
+    max-width: 100%;
+  }
+
+  .setup-form-title {
+    font-size: 18px;
+  }
+
+  .setup-form-subtitle {
+    font-size: 13px;
+  }
+
+  .setup-input {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 12px 14px;
+  }
+
+  .setup-submit-button,
+  .setup-skip-button {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 14px 20px;
+  }
+
+  .readiness-item {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .readiness-label {
+    font-size: 13px;
+  }
+
+  .readiness-description {
+    font-size: 12px;
+  }
+
+  .readiness-details {
+    font-size: 11px;
+  }
+}
+
+/* Tablet: 480px-768px */
+@media (min-width: 481px) and (max-width: 768px) {
+  .setup-page {
+    padding: var(--mobile-tablet-padding, 16px);
+  }
+
+  .setup-container {
+    max-width: 100%;
+  }
+
+  .setup-content {
+    padding: 28px 24px;
+  }
+
+  .setup-input {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 12px 14px;
+  }
+
+  .setup-submit-button,
+  .setup-skip-button {
+    min-height: var(--mobile-touch-target, 44px);
+    padding: 14px 20px;
+  }
+}
