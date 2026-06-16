@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import TodosTab from './TodosTab'
 import * as client from '../../api/client'
@@ -6,93 +6,89 @@ import * as client from '../../api/client'
 vi.mock('../../api/client')
 
 // =============================================================================
-// Sample test data for depth-3 nested todos
+// Test session ID for session-scoped API calls
 // =============================================================================
 
-const createNestedTodoTree = () => {
-  const grandchild1 = {
-    todoId: 'todo-gc1',
-    sessionId: 'session-1',
-    tenantId: 'tenant-1',
-    parentTodoId: 'todo-c1',
-    position: 0,
-    status: 'pending' as const,
-    priority: 'medium' as const,
-    content: 'Grandchild task 1',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  }
+const TEST_SESSION_ID = 'ses_todos_test'
 
-  const grandchild2 = {
-    todoId: 'todo-gc2',
-    sessionId: 'session-1',
-    tenantId: 'tenant-1',
-    parentTodoId: 'todo-c1',
-    position: 1,
-    status: 'completed' as const,
-    priority: 'low' as const,
-    content: 'Grandchild task 2',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  }
+// =============================================================================
+// Sample test data for depth-3 nested todos (FLAT representation)
+// The API returns flat todos with parentTodoId; the component builds the tree
+// =============================================================================
 
-  const child1 = {
-    todoId: 'todo-c1',
-    sessionId: 'session-1',
-    tenantId: 'tenant-1',
-    parentTodoId: 'todo-p1',
-    position: 0,
-    status: 'in_progress' as const,
-    priority: 'high' as const,
-    content: 'Child task 1',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-    children: [grandchild1, grandchild2],
-  }
-
-  const child2 = {
-    todoId: 'todo-c2',
-    sessionId: 'session-1',
-    tenantId: 'tenant-1',
-    parentTodoId: 'todo-p1',
-    position: 1,
-    status: 'pending' as const,
-    priority: 'medium' as const,
-    content: 'Child task 2',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-    children: [],
-  }
-
-  const parent1 = {
-    todoId: 'todo-p1',
-    sessionId: 'session-1',
-    tenantId: 'tenant-1',
-    parentTodoId: null,
-    position: 0,
-    status: 'pending' as const,
-    priority: 'high' as const,
-    content: 'Parent task 1',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-    children: [child1, child2],
-  }
-
-  const parent2 = {
-    todoId: 'todo-p2',
-    sessionId: 'session-1',
-    tenantId: 'tenant-1',
-    parentTodoId: null,
-    position: 1,
-    status: 'completed' as const,
-    priority: 'low' as const,
-    content: 'Parent task 2',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-    children: [],
-  }
-
-  return [parent1, parent2]
+const createFlatTodoList = () => {
+  // Return flat list of todos with parentTodoId - no children arrays
+  return [
+    // Grandchildren (depth 3)
+    {
+      todoId: 'todo-gc1',
+      sessionId: TEST_SESSION_ID,
+      parentTodoId: 'todo-c1',
+      position: 0,
+      status: 'pending' as const,
+      priority: 'medium' as const,
+      content: 'Grandchild task 1',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+    {
+      todoId: 'todo-gc2',
+      sessionId: TEST_SESSION_ID,
+      parentTodoId: 'todo-c1',
+      position: 1,
+      status: 'completed' as const,
+      priority: 'low' as const,
+      content: 'Grandchild task 2',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+    // Children (depth 2)
+    {
+      todoId: 'todo-c1',
+      sessionId: TEST_SESSION_ID,
+      parentTodoId: 'todo-p1',
+      position: 0,
+      status: 'in_progress' as const,
+      priority: 'high' as const,
+      content: 'Child task 1',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+    {
+      todoId: 'todo-c2',
+      sessionId: TEST_SESSION_ID,
+      parentTodoId: 'todo-p1',
+      position: 1,
+      status: 'pending' as const,
+      priority: 'medium' as const,
+      content: 'Child task 2',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+    // Parents (depth 1)
+    {
+      todoId: 'todo-p1',
+      sessionId: TEST_SESSION_ID,
+      parentTodoId: null,
+      position: 0,
+      status: 'pending' as const,
+      priority: 'high' as const,
+      content: 'Parent task 1',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+    {
+      todoId: 'todo-p2',
+      sessionId: TEST_SESSION_ID,
+      parentTodoId: null,
+      position: 1,
+      status: 'completed' as const,
+      priority: 'low' as const,
+      content: 'Parent task 2',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+  ]
 }
 
 describe('TodosTab', () => {
@@ -107,12 +103,12 @@ describe('TodosTab', () => {
   // ===========================================================================
 
   it('renders todos panel with header', async () => {
-    vi.mocked(client.getTodos).mockResolvedValue({
+    vi.mocked(client.listTodos).mockResolvedValue({
       todos: [],
       total: 0,
     })
 
-    render(<TodosTab onTabChange={mockOnTabChange} />)
+    render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
     await waitFor(() => {
       expect(screen.getByTestId('todos-panel')).toBeInTheDocument()
@@ -120,17 +116,17 @@ describe('TodosTab', () => {
   })
 
   it('shows loading state while fetching todos', async () => {
-    vi.mocked(client.getTodos).mockImplementation(() => new Promise(() => {}))
+    vi.mocked(client.listTodos).mockImplementation(() => new Promise(() => {}))
 
-    render(<TodosTab onTabChange={mockOnTabChange} />)
+    render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
   })
 
   it('shows error state when API fails', async () => {
-    vi.mocked(client.getTodos).mockRejectedValue(new Error('Failed to load todos'))
+    vi.mocked(client.listTodos).mockRejectedValue(new Error('Failed to load todos'))
 
-    render(<TodosTab onTabChange={mockOnTabChange} />)
+    render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
     await waitFor(() => {
       expect(screen.getByTestId('error-message')).toBeInTheDocument()
@@ -138,12 +134,12 @@ describe('TodosTab', () => {
   })
 
   it('shows empty state when no todos exist', async () => {
-    vi.mocked(client.getTodos).mockResolvedValue({
+    vi.mocked(client.listTodos).mockResolvedValue({
       todos: [],
       total: 0,
     })
 
-    render(<TodosTab onTabChange={mockOnTabChange} />)
+    render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
     await waitFor(() => {
       expect(screen.getByText(/暂无待办事项/)).toBeInTheDocument()
@@ -158,8 +154,7 @@ describe('TodosTab', () => {
     const todos = [
       {
         todoId: 'todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -167,12 +162,10 @@ describe('TodosTab', () => {
         content: 'Test todo 1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       },
       {
         todoId: 'todo-2',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 1,
         status: 'in_progress' as const,
@@ -180,16 +173,15 @@ describe('TodosTab', () => {
         content: 'Test todo 2',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       },
     ]
 
-    vi.mocked(client.getTodos).mockResolvedValue({
+    vi.mocked(client.listTodos).mockResolvedValue({
       todos,
       total: 2,
     })
 
-    render(<TodosTab onTabChange={mockOnTabChange} />)
+    render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
     await waitFor(() => {
       expect(screen.getByTestId('todo-row-todo-1')).toBeInTheDocument()
@@ -198,14 +190,14 @@ describe('TodosTab', () => {
   })
 
   it('renders nested todos up to depth 3 (parent, child, grandchild)', async () => {
-    const todos = createNestedTodoTree()
+    const todos = createFlatTodoList()
 
-    vi.mocked(client.getTodos).mockResolvedValue({
+    vi.mocked(client.listTodos).mockResolvedValue({
       todos,
-      total: 6, // 2 parents + 2 children + 2 grandchildren
+      total: 6,
     })
 
-    render(<TodosTab onTabChange={mockOnTabChange} />)
+    render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
     // Wait for parent level
     await waitFor(() => {
@@ -227,68 +219,59 @@ describe('TodosTab', () => {
   })
 
   it('does not render todos deeper than depth 3', async () => {
-    // Create a todo tree with depth 4 (which should be clipped at depth 3)
-    const greatGrandchild = {
-      todoId: 'todo-ggc1',
-      sessionId: 'session-1',
-      tenantId: 'tenant-1',
-      parentTodoId: 'todo-gc1',
-      position: 0,
-      status: 'pending' as const,
-      priority: 'low' as const,
-      content: 'Great grandchild (should not render)',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    }
+    const todos = [
+      {
+        todoId: 'todo-p1',
+        sessionId: TEST_SESSION_ID,
+        parentTodoId: null,
+        position: 0,
+        status: 'pending' as const,
+        priority: 'high' as const,
+        content: 'Parent task',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+      {
+        todoId: 'todo-c1',
+        sessionId: TEST_SESSION_ID,
+        parentTodoId: 'todo-p1',
+        position: 0,
+        status: 'in_progress' as const,
+        priority: 'high' as const,
+        content: 'Child task',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+      {
+        todoId: 'todo-gc1',
+        sessionId: TEST_SESSION_ID,
+        parentTodoId: 'todo-c1',
+        position: 0,
+        status: 'pending' as const,
+        priority: 'medium' as const,
+        content: 'Grandchild task',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+      {
+        todoId: 'todo-ggc1',
+        sessionId: TEST_SESSION_ID,
+        parentTodoId: 'todo-gc1',
+        position: 0,
+        status: 'pending' as const,
+        priority: 'low' as const,
+        content: 'Great grandchild (should not render)',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    ]
 
-    const grandchild = {
-      todoId: 'todo-gc1',
-      sessionId: 'session-1',
-      tenantId: 'tenant-1',
-      parentTodoId: 'todo-c1',
-      position: 0,
-      status: 'pending' as const,
-      priority: 'medium' as const,
-      content: 'Grandchild task',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-      children: [greatGrandchild],
-    }
-
-    const child = {
-      todoId: 'todo-c1',
-      sessionId: 'session-1',
-      tenantId: 'tenant-1',
-      parentTodoId: 'todo-p1',
-      position: 0,
-      status: 'in_progress' as const,
-      priority: 'high' as const,
-      content: 'Child task',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-      children: [grandchild],
-    }
-
-    const parent = {
-      todoId: 'todo-p1',
-      sessionId: 'session-1',
-      tenantId: 'tenant-1',
-      parentTodoId: null,
-      position: 0,
-      status: 'pending' as const,
-      priority: 'high' as const,
-      content: 'Parent task',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-      children: [child],
-    }
-
-    vi.mocked(client.getTodos).mockResolvedValue({
-      todos: [parent],
+    vi.mocked(client.listTodos).mockResolvedValue({
+      todos,
       total: 4,
     })
 
-    render(<TodosTab onTabChange={mockOnTabChange} />)
+    render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
     // Parent, child, grandchild should render
     await waitFor(() => {
@@ -310,22 +293,20 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-1',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'pending' as const,
           priority: 'high' as const,
           content: 'Pending todo',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 1 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         const statusBadge = screen.getByTestId('todo-status-todo-1')
@@ -338,22 +319,20 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-1',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'in_progress' as const,
           priority: 'high' as const,
           content: 'In progress todo',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 1 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         const statusBadge = screen.getByTestId('todo-status-todo-1')
@@ -366,22 +345,20 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-1',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'completed' as const,
           priority: 'high' as const,
           content: 'Completed todo',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 1 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         const statusBadge = screen.getByTestId('todo-status-todo-1')
@@ -394,22 +371,20 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-1',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'cancelled' as const,
           priority: 'high' as const,
           content: 'Cancelled todo',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 1 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         const statusBadge = screen.getByTestId('todo-status-todo-1')
@@ -422,61 +397,53 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-pending',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'pending' as const,
           priority: 'high' as const,
           content: 'Pending',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
         {
           todoId: 'todo-in-progress',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 1,
           status: 'in_progress' as const,
           priority: 'medium' as const,
           content: 'In Progress',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
         {
           todoId: 'todo-completed',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 2,
           status: 'completed' as const,
           priority: 'low' as const,
           content: 'Completed',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
         {
           todoId: 'todo-cancelled',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 3,
           status: 'cancelled' as const,
           priority: 'low' as const,
           content: 'Cancelled',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 4 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 4 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-status-todo-pending')).toHaveClass('status-pending')
@@ -496,22 +463,20 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-1',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'pending' as const,
           priority: 'high' as const,
           content: 'High priority todo',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 1 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-priority-todo-1')).toBeInTheDocument()
@@ -523,22 +488,20 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-1',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'pending' as const,
           priority: 'medium' as const,
           content: 'Medium priority todo',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 1 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-priority-todo-1')).toBeInTheDocument()
@@ -550,22 +513,20 @@ describe('TodosTab', () => {
       const todos = [
         {
           todoId: 'todo-1',
-          sessionId: 'session-1',
-          tenantId: 'tenant-1',
-          parentTodoId: null,
+          sessionId: TEST_SESSION_ID,
+          
           position: 0,
           status: 'pending' as const,
           priority: 'low' as const,
           content: 'Low priority todo',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
-          children: [],
         },
       ]
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos, total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos, total: 1 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-priority-todo-1')).toBeInTheDocument()
@@ -580,9 +541,9 @@ describe('TodosTab', () => {
 
   describe('Create todo', () => {
     it('shows create todo button', async () => {
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [], total: 0 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-create-btn')).toBeInTheDocument()
@@ -590,9 +551,9 @@ describe('TodosTab', () => {
     })
 
     it('opens create todo form when button clicked', async () => {
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [], total: 0 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-create-btn')).toBeInTheDocument()
@@ -606,21 +567,22 @@ describe('TodosTab', () => {
     })
 
     it('creates a new todo via API', async () => {
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [], total: 0 })
-      vi.mocked(client.createTodo).mockResolvedValue({
-        todoId: 'new-todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
-        parentTodoId: null,
-        position: 0,
-        status: 'pending',
-        priority: 'medium',
-        content: 'New todo item',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+      vi.mocked(client.createSessionTodo).mockResolvedValue({
+        todo: {
+          todoId: 'new-todo-1',
+          sessionId: TEST_SESSION_ID,
+          parentTodoId: null,
+          position: 0,
+          status: 'pending',
+          priority: 'medium',
+          content: 'New todo item',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
       })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-create-btn')).toBeInTheDocument()
@@ -640,7 +602,7 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByTestId('todo-submit-btn'))
 
       await waitFor(() => {
-        expect(client.createTodo).toHaveBeenCalledWith({
+        expect(client.createSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, {
           content: 'New todo item',
           priority: 'medium',
           parentTodoId: undefined,
@@ -651,8 +613,7 @@ describe('TodosTab', () => {
     it('creates a child todo with parent reference', async () => {
       const parentTodo = {
         todoId: 'parent-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -660,24 +621,24 @@ describe('TodosTab', () => {
         content: 'Parent todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [parentTodo], total: 1 })
-      vi.mocked(client.createTodo).mockResolvedValue({
-        todoId: 'child-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
-        parentTodoId: 'parent-1',
-        position: 0,
-        status: 'pending',
-        priority: 'medium',
-        content: 'Child todo item',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [parentTodo], total: 1 })
+      vi.mocked(client.createSessionTodo).mockResolvedValue({
+        todo: {
+          todoId: 'child-1',
+          sessionId: TEST_SESSION_ID,
+          parentTodoId: 'parent-1',
+          position: 0,
+          status: 'pending',
+          priority: 'medium',
+          content: 'Child todo item',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
       })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-parent-1')).toBeInTheDocument()
@@ -698,7 +659,7 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByTestId('todo-submit-btn'))
 
       await waitFor(() => {
-        expect(client.createTodo).toHaveBeenCalledWith({
+        expect(client.createSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, {
           content: 'Child todo item',
           priority: 'medium',
           parentTodoId: 'parent-1',
@@ -715,8 +676,7 @@ describe('TodosTab', () => {
     it('updates todo status to in_progress', async () => {
       const todo = {
         todoId: 'todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -724,17 +684,18 @@ describe('TodosTab', () => {
         content: 'Test todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [todo], total: 1 })
-      vi.mocked(client.updateTodo).mockResolvedValue({
-        ...todo,
-        status: 'in_progress',
-        updatedAt: '2024-01-02T00:00:00Z',
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [todo], total: 1 })
+      vi.mocked(client.updateSessionTodo).mockResolvedValue({
+        todo: {
+          ...todo,
+          status: 'in_progress',
+          updatedAt: '2024-01-02T00:00:00Z',
+        },
       })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-todo-1')).toBeInTheDocument()
@@ -744,15 +705,14 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByTestId('todo-status-toggle-todo-1'))
 
       await waitFor(() => {
-        expect(client.updateTodo).toHaveBeenCalledWith('todo-1', { status: 'in_progress' })
+        expect(client.updateSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, 'todo-1', { status: 'in_progress' })
       })
     })
 
     it('updates todo status to completed', async () => {
       const todo = {
         todoId: 'todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'in_progress' as const,
@@ -760,17 +720,18 @@ describe('TodosTab', () => {
         content: 'Test todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [todo], total: 1 })
-      vi.mocked(client.updateTodo).mockResolvedValue({
-        ...todo,
-        status: 'completed',
-        updatedAt: '2024-01-02T00:00:00Z',
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [todo], total: 1 })
+      vi.mocked(client.updateSessionTodo).mockResolvedValue({
+        todo: {
+          ...todo,
+          status: 'completed',
+          updatedAt: '2024-01-02T00:00:00Z',
+        },
       })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-todo-1')).toBeInTheDocument()
@@ -780,15 +741,14 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByTestId('todo-complete-btn-todo-1'))
 
       await waitFor(() => {
-        expect(client.updateTodo).toHaveBeenCalledWith('todo-1', { status: 'completed' })
+        expect(client.updateSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, 'todo-1', { status: 'completed' })
       })
     })
 
     it('updates todo content via edit', async () => {
       const todo = {
         todoId: 'todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -796,17 +756,18 @@ describe('TodosTab', () => {
         content: 'Original content',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [todo], total: 1 })
-      vi.mocked(client.updateTodo).mockResolvedValue({
-        ...todo,
-        content: 'Updated content',
-        updatedAt: '2024-01-02T00:00:00Z',
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [todo], total: 1 })
+      vi.mocked(client.updateSessionTodo).mockResolvedValue({
+        todo: {
+          ...todo,
+          content: 'Updated content',
+          updatedAt: '2024-01-02T00:00:00Z',
+        },
       })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-todo-1')).toBeInTheDocument()
@@ -827,15 +788,14 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByTestId('todo-save-btn-todo-1'))
 
       await waitFor(() => {
-        expect(client.updateTodo).toHaveBeenCalledWith('todo-1', { content: 'Updated content' })
+        expect(client.updateSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, 'todo-1', { content: 'Updated content' })
       })
     })
 
     it('updates todo priority', async () => {
       const todo = {
         todoId: 'todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -843,17 +803,18 @@ describe('TodosTab', () => {
         content: 'Test todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [todo], total: 1 })
-      vi.mocked(client.updateTodo).mockResolvedValue({
-        ...todo,
-        priority: 'high',
-        updatedAt: '2024-01-02T00:00:00Z',
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [todo], total: 1 })
+      vi.mocked(client.updateSessionTodo).mockResolvedValue({
+        todo: {
+          ...todo,
+          priority: 'high',
+          updatedAt: '2024-01-02T00:00:00Z',
+        },
       })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-todo-1')).toBeInTheDocument()
@@ -866,7 +827,7 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByText('高'))
 
       await waitFor(() => {
-        expect(client.updateTodo).toHaveBeenCalledWith('todo-1', { priority: 'high' })
+        expect(client.updateSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, 'todo-1', { priority: 'high' })
       })
     })
   })
@@ -879,8 +840,7 @@ describe('TodosTab', () => {
     it('deletes a todo', async () => {
       const todo = {
         todoId: 'todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -888,14 +848,13 @@ describe('TodosTab', () => {
         content: 'Test todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValueOnce({ todos: [todo], total: 1 })
-      vi.mocked(client.getTodos).mockResolvedValueOnce({ todos: [], total: 0 })
-      vi.mocked(client.deleteTodo).mockResolvedValue({ success: true, deletedCount: 1 })
+      vi.mocked(client.listTodos).mockResolvedValueOnce({ todos: [todo], total: 1 })
+      vi.mocked(client.listTodos).mockResolvedValueOnce({ todos: [], total: 0 })
+      vi.mocked(client.deleteSessionTodo).mockResolvedValue({ success: true })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-todo-1')).toBeInTheDocument()
@@ -911,15 +870,14 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByTestId('confirm-delete-btn'))
 
       await waitFor(() => {
-        expect(client.deleteTodo).toHaveBeenCalledWith('todo-1')
+        expect(client.deleteSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, 'todo-1')
       })
     })
 
     it('cascades delete to children when parent deleted', async () => {
       const child = {
         todoId: 'child-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: 'parent-1',
         position: 0,
         status: 'pending' as const,
@@ -927,13 +885,11 @@ describe('TodosTab', () => {
         content: 'Child todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
       const parent = {
         todoId: 'parent-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -941,14 +897,13 @@ describe('TodosTab', () => {
         content: 'Parent todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [child],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValueOnce({ todos: [parent], total: 2 })
-      vi.mocked(client.getTodos).mockResolvedValueOnce({ todos: [], total: 0 })
-      vi.mocked(client.deleteTodo).mockResolvedValue({ success: true, deletedCount: 2 })
+      vi.mocked(client.listTodos).mockResolvedValueOnce({ todos: [parent, child], total: 2 })
+      vi.mocked(client.listTodos).mockResolvedValueOnce({ todos: [], total: 0 })
+      vi.mocked(client.deleteSessionTodo).mockResolvedValue({ success: true })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-parent-1')).toBeInTheDocument()
@@ -964,7 +919,7 @@ describe('TodosTab', () => {
       fireEvent.click(screen.getByTestId('confirm-delete-btn'))
 
       await waitFor(() => {
-        expect(client.deleteTodo).toHaveBeenCalledWith('parent-1')
+        expect(client.deleteSessionTodo).toHaveBeenCalledWith(TEST_SESSION_ID, 'parent-1')
       })
     })
   })
@@ -975,9 +930,9 @@ describe('TodosTab', () => {
 
   describe('Tab navigation', () => {
     it('renders within tab panel structure', async () => {
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [], total: 0 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todos-panel')).toBeInTheDocument()
@@ -985,9 +940,9 @@ describe('TodosTab', () => {
     })
 
     it('provides navigation to session console', async () => {
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [], total: 0 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todos-panel')).toBeInTheDocument()
@@ -1008,10 +963,10 @@ describe('TodosTab', () => {
 
   describe('Error handling', () => {
     it('shows error toast when create fails', async () => {
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [], total: 0 })
-      vi.mocked(client.createTodo).mockRejectedValue(new Error('Create failed'))
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+      vi.mocked(client.createSessionTodo).mockRejectedValue(new Error('Create failed'))
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-create-btn')).toBeInTheDocument()
@@ -1036,8 +991,7 @@ describe('TodosTab', () => {
     it('shows error toast when update fails', async () => {
       const todo = {
         todoId: 'todo-1',
-        sessionId: 'session-1',
-        tenantId: 'tenant-1',
+        sessionId: TEST_SESSION_ID,
         parentTodoId: null,
         position: 0,
         status: 'pending' as const,
@@ -1045,13 +999,12 @@ describe('TodosTab', () => {
         content: 'Test todo',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        children: [],
       }
 
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [todo], total: 1 })
-      vi.mocked(client.updateTodo).mockRejectedValue(new Error('Update failed'))
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [todo], total: 1 })
+      vi.mocked(client.updateSessionTodo).mockRejectedValue(new Error('Update failed'))
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('todo-row-todo-1')).toBeInTheDocument()
@@ -1065,9 +1018,9 @@ describe('TodosTab', () => {
     })
 
     it('shows retry button on API error', async () => {
-      vi.mocked(client.getTodos).mockRejectedValue(new Error('API error'))
+      vi.mocked(client.listTodos).mockRejectedValue(new Error('API error'))
 
-      render(<TodosTab onTabChange={mockOnTabChange} />)
+      render(<TodosTab onTabChange={mockOnTabChange} sessionId={TEST_SESSION_ID} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('error-message')).toBeInTheDocument()
@@ -1078,12 +1031,164 @@ describe('TodosTab', () => {
       expect(retryBtn).toBeInTheDocument()
 
       // Click retry
-      vi.mocked(client.getTodos).mockResolvedValue({ todos: [], total: 0 })
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
       fireEvent.click(retryBtn)
 
       await waitFor(() => {
         expect(screen.getByTestId('todos-panel')).toBeInTheDocument()
       })
+    })
+  })
+
+  // ===========================================================================
+  // Session switching tests
+  // ===========================================================================
+
+  describe('Session switching', () => {
+    it('calls listTodos with new session when sessionId changes', async () => {
+      const oldSessionId = 'ses_old'
+      const newSessionId = 'ses_new'
+
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+
+      const { rerender } = render(
+        <TodosTab onTabChange={mockOnTabChange} sessionId={oldSessionId} />
+      )
+
+      await waitFor(() => {
+        expect(client.listTodos).toHaveBeenCalledWith(oldSessionId)
+      })
+
+      vi.clearAllMocks()
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+
+      rerender(<TodosTab onTabChange={mockOnTabChange} sessionId={newSessionId} />)
+
+      await waitFor(() => {
+        expect(client.listTodos).toHaveBeenCalledWith(newSessionId)
+      })
+    })
+
+    it('prevents stale response from overwriting active session UI', async () => {
+      const oldSessionId = 'ses_old'
+      const newSessionId = 'ses_new'
+
+      const oldTodo = {
+        todoId: 'todo-old',
+        sessionId: oldSessionId,
+        parentTodoId: null,
+        position: 0,
+        status: 'pending' as const,
+        priority: 'high' as const,
+        content: 'Old session todo',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      }
+
+      const newTodo = {
+        todoId: 'todo-new',
+        sessionId: newSessionId,
+        parentTodoId: null,
+        position: 0,
+        status: 'pending' as const,
+        priority: 'high' as const,
+        content: 'New session todo',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      }
+
+      // Create promises we can control
+      let resolveOldPromise: (value: any) => void
+      let resolveNewPromise: (value: any) => void
+
+      const oldPromise = new Promise((resolve) => {
+        resolveOldPromise = resolve
+      })
+
+      const newPromise = new Promise((resolve) => {
+        resolveNewPromise = resolve
+      })
+
+      // First render with old session
+      vi.mocked(client.listTodos).mockReturnValueOnce(oldPromise as any)
+
+      const { rerender } = render(
+        <TodosTab onTabChange={mockOnTabChange} sessionId={oldSessionId} />
+      )
+
+      // Switch to new session
+      vi.mocked(client.listTodos).mockReturnValueOnce(newPromise as any)
+      rerender(<TodosTab onTabChange={mockOnTabChange} sessionId={newSessionId} />)
+
+      // Resolve new session first (it should update UI)
+      await act(async () => {
+        resolveNewPromise!({ todos: [newTodo], total: 1 })
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('todo-row-todo-new')).toBeInTheDocument()
+      })
+
+      // Now resolve old session (it should NOT update UI due to stale guard)
+      await act(async () => {
+        resolveOldPromise!({ todos: [oldTodo], total: 1 })
+        // Wait a bit for any potential state update
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      })
+
+      // UI should still show new session todo, not old session todo
+      expect(screen.queryByTestId('todo-row-todo-old')).not.toBeInTheDocument()
+      expect(screen.getByTestId('todo-row-todo-new')).toBeInTheDocument()
+    })
+
+    it('resets create form state when session changes', async () => {
+      const oldSessionId = 'ses_old'
+      const newSessionId = 'ses_new'
+
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+
+      const { rerender } = render(
+        <TodosTab onTabChange={mockOnTabChange} sessionId={oldSessionId} />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('todo-create-btn')).toBeInTheDocument()
+      })
+
+      // Open create form
+      fireEvent.click(screen.getByTestId('todo-create-btn'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('todo-create-form')).toBeInTheDocument()
+      })
+
+      // Type content
+      const contentInput = screen.getByTestId('todo-content-input')
+      fireEvent.change(contentInput, { target: { value: 'Test content' } })
+      expect(contentInput).toHaveValue('Test content')
+
+      // Switch session
+      vi.clearAllMocks()
+      vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+
+      rerender(<TodosTab onTabChange={mockOnTabChange} sessionId={newSessionId} />)
+
+      await waitFor(() => {
+        expect(client.listTodos).toHaveBeenCalledWith(newSessionId)
+      })
+
+      // Form should be reset (closed)
+      expect(screen.queryByTestId('todo-create-form')).not.toBeInTheDocument()
+
+      // Open form again and verify content is reset
+      fireEvent.click(screen.getByTestId('todo-create-btn'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('todo-create-form')).toBeInTheDocument()
+      })
+
+      const newContentInput = screen.getByTestId('todo-content-input')
+      expect(newContentInput).toHaveValue('')
     })
   })
 })
