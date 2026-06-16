@@ -36,6 +36,15 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
+    {
+      name: 'login-mobile',
+      testMatch: '**/login-mobile.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        // No storageState - tests run in unauthenticated state
+      },
+      // No setup dependency - tests handle their own auth state
+    },
   ],
   webServer: [
     {

@@ -12,11 +12,29 @@ setup('authenticate', async ({ page, request }) => {
   await page.goto('/');
 
   if (setupStatus.data.needsSetup) {
+    // Step 1: Create admin user
     await expect(page.getByTestId('admin-username-input')).toBeVisible();
     await page.getByTestId('admin-username-input').fill(TEST_USERNAME);
     await page.getByTestId('admin-password-input').fill(TEST_PASSWORD);
     await page.getByTestId('admin-confirm-password-input').fill(TEST_PASSWORD);
     await page.getByTestId('admin-create-submit').click();
+
+    // Wait for step 2 (API Key) to appear
+    await page.waitForTimeout(500);
+
+    // Step 2: Skip API Key creation (optional step)
+    const skipApiKeyButton = page.getByTestId('skip-api-key-btn');
+    if (await skipApiKeyButton.isVisible().catch(() => false)) {
+      await skipApiKeyButton.click();
+      await page.waitForTimeout(500);
+    }
+
+    // Step 3: Complete setup
+    const completeSetupButton = page.getByTestId('complete-setup-btn');
+    if (await completeSetupButton.isVisible().catch(() => false)) {
+      await completeSetupButton.click();
+      await page.waitForTimeout(500);
+    }
   } else {
     await expect(page.getByTestId('login-username')).toBeVisible();
     await page.getByTestId('login-username').fill(TEST_USERNAME);
