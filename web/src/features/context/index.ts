@@ -65,6 +65,8 @@ export { default as ApprovalCard } from './ApprovalCard'
 export { default as MemoryCard } from './MemoryCard'
 export { default as RunsCard } from './RunsCard'
 export { default as ToolActivityCard } from './ToolActivityCard'
+export { default as TodoWorkPlanCard } from './TodoWorkPlanCard'
+export type { TodoWorkPlanCardProps } from './TodoWorkPlanCard'
 
 // Panel component
 export { default as ContextDeskPanel } from './ContextDeskPanel'

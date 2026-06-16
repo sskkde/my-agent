@@ -10613,6 +10613,222 @@ body {
   font-size: 11px;
 }
 
+/* Todo Work Plan Card */
+.todo-work-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow: auto;
+}
+
+.todo-plan-loading,
+.todo-plan-error,
+.todo-plan-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+}
+
+.todo-plan-loading__spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.todo-plan-error__icon {
+  font-size: 20px;
+}
+
+.todo-plan-error__retry {
+  margin-left: auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: var(--chat-workspace-bg-elevated, var(--bg-elevated));
+  border: 1px solid var(--chat-workspace-border, var(--border));
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.todo-plan-empty {
+  flex-direction: row;
+}
+
+.todo-plan-empty__icon {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.todo-plan-empty__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-plan-empty__title {
+  color: var(--chat-workspace-text, var(--text));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.todo-plan-empty__hint {
+  color: var(--chat-workspace-text-muted, var(--muted));
+  font-size: 11px;
+}
+
+.todo-plan-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.todo-plan-stats__item {
+  font-size: 11px;
+  color: var(--chat-workspace-text-muted, var(--muted));
+}
+
+.todo-plan-stats__item--total {
+  font-weight: 600;
+  color: var(--chat-workspace-text, var(--text));
+}
+
+.todo-plan-stats__item--progress {
+  color: var(--color-primary, #3b82f6);
+}
+
+.todo-plan-stats__item--completed {
+  color: var(--color-success, #22c55e);
+}
+
+.todo-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  overflow: auto;
+}
+
+.todo-plan-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-plan-item__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: var(--chat-workspace-bg, var(--bg));
+}
+
+.todo-plan-item__row:hover {
+  background: var(--chat-workspace-bg-hover, var(--bg-hover));
+}
+
+.todo-plan-item__status {
+  font-size: 10px;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.todo-plan-item__status--pending {
+  color: var(--color-muted, #9ca3af);
+}
+
+.todo-plan-item__status--in_progress {
+  color: var(--color-primary, #3b82f6);
+}
+
+.todo-plan-item__status--completed {
+  color: var(--color-success, #22c55e);
+}
+
+.todo-plan-item__status--cancelled {
+  color: var(--color-danger, #ef4444);
+}
+
+.todo-plan-item__priority {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.todo-plan-item__priority--high {
+  background: var(--color-danger-bg, #fef2f2);
+  color: var(--color-danger, #ef4444);
+}
+
+.todo-plan-item__priority--medium {
+  background: var(--color-warning-bg, #fffbeb);
+  color: var(--color-warning, #f59e0b);
+}
+
+.todo-plan-item__priority--low {
+  background: var(--color-muted-bg, #f3f4f6);
+  color: var(--color-muted, #6b7280);
+}
+
+.todo-plan-item__content {
+  font-size: 12px;
+  color: var(--chat-workspace-text, var(--text));
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-plan-item__content--completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.todo-plan-item__content--cancelled {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.todo-plan-item__children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-plan-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todo-plan-progress__bar {
+  flex: 1;
+  height: 4px;
+  background: var(--chat-workspace-bg, var(--bg));
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.todo-plan-progress__fill {
+  height: 100%;
+  background: var(--color-success, #22c55e);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.todo-plan-progress__label {
+  font-size: 11px;
+  color: var(--chat-workspace-text-muted, var(--muted));
+  flex-shrink: 0;
+}
+
 /* Workspace Desk Card */
 .workspace-card--desk {
   padding: 16px;

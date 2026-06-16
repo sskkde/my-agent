@@ -2,12 +2,13 @@
  * ContextDeskPanel - Right panel workspace for reference materials
  *
  * Displays two main sections:
- * - 工作计划 (Work Plan): Current plan status
+ * - 工作计划 (Work Plan): Current plan status with todo list
  * - 书桌 (Desk): Files/resources area
  */
 
 import React from 'react'
 import type { TabId } from '../../components/TabNav'
+import TodoWorkPlanCard from './TodoWorkPlanCard'
 
 // =============================================================================
 // ContextDeskPanel Props
@@ -27,13 +28,7 @@ export interface ContextDeskPanelProps {
 // ContextDeskPanel Component
 // =============================================================================
 
-/**
- * ContextDeskPanel - Workspace panel with two main sections
- *
- * Renders:
- * - 工作计划 (Work Plan): Current plan status placeholder
- * - 书桌 (Desk): Files/resources area placeholder
- */
+
 const ContextDeskPanel: React.FC<ContextDeskPanelProps> = ({
   sessionId,
   activeTab,
@@ -55,13 +50,7 @@ const ContextDeskPanel: React.FC<ContextDeskPanelProps> = ({
           <h3 id="workspace-plan-title" className="workspace-section__title">工作计划</h3>
         </div>
         <div className="workspace-card workspace-card--plan" data-testid="workspace-plan">
-          <div className="workspace-plan__placeholder">
-            <div className="workspace-plan__icon">📋</div>
-            <div className="workspace-plan__text">
-              <span className="workspace-plan__title">当前无活动计划</span>
-              <span className="workspace-plan__hint">计划功能即将上线</span>
-            </div>
-          </div>
+          <TodoWorkPlanCard sessionId={scopedSessionId} />
         </div>
       </section>
 
