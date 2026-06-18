@@ -11,6 +11,7 @@ const OWNERSHIP_REQUIRED_RESOURCES = new Set<ResourceType>([
   ResourceType.triggers,
   ResourceType.memory,
   ResourceType.apiKeys,
+  ResourceType.files,
 ])
 
 export function checkPermission(
