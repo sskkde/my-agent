@@ -338,6 +338,11 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           required: ['text'],
           properties: {
             text: { type: 'string', minLength: 1 },
+            attachmentIds: {
+              type: 'array',
+              items: { type: 'string', minLength: 1 },
+              maxItems: 50,
+            },
           },
         },
       },
@@ -347,7 +352,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply
       }
       const { sessionId } = request.params
-      const { text } = request.body
+      const { text, attachmentIds } = request.body
 
       const persistedSession = sessionStore?.getById(sessionId)
       if (!persistedSession) {
@@ -375,7 +380,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user'
 
-      const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, 'webui')
+      const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, 'webui', attachmentIds)
       const processorInput = convertInboundEnvelopeToProcessorInput(envelope)
 
       sessionStore?.updateActivity(sessionId, new Date().toISOString())

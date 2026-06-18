@@ -13,12 +13,13 @@ import type { ApprovalResponse } from '../permissions/types.js'
 import type { EventRecord, SourceModule } from '../storage/event-store.js'
 
 export interface Gateway {
-  receiveUserMessage(userId: string, sessionId: string, text: string, channel?: string): InboundEnvelope
+  receiveUserMessage(userId: string, sessionId: string, text: string, channel?: string, attachmentIds?: string[]): InboundEnvelope
   normalizeInbound(rawPayload: {
     eventType: EventType
     sourceChannel: string
     payload: {
       text?: string
+      attachmentIds?: string[]
       approvalResponse?: ApprovalResponse
       externalEvent?: Record<string, unknown>
     }
@@ -90,12 +91,12 @@ export function createGateway(options: GatewayOptions): Gateway {
   }
 
   return {
-    receiveUserMessage(userId: string, sessionId: string, text: string, channel = 'default'): InboundEnvelope {
+    receiveUserMessage(userId: string, sessionId: string, text: string, channel = 'default', attachmentIds?: string[]): InboundEnvelope {
       const envelope: InboundEnvelope = {
         envelopeId: generateId(),
         eventType: 'human_message',
         sourceChannel: channel,
-        payload: { text },
+        payload: { text, attachmentIds },
         userId,
         sessionId,
         timestamp: new Date().toISOString(),

@@ -104,5 +104,6 @@ export function convertInboundEnvelopeToProcessorInput(envelope: InboundEnvelope
       ...filteredMetadata,
       envelopeEventType: envelope.eventType,
     },
+    attachmentIds: envelope.payload.attachmentIds,
   }
 }

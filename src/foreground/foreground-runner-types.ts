@@ -82,6 +82,8 @@ export interface ForegroundTurnInput {
    * If not set, the configured routing timeout applies.
    */
   timeoutMs?: number
+  /** References to pre-uploaded attachments (IDs only, no raw bytes) */
+  attachmentIds?: string[]
 }
 
 /**

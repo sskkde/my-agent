@@ -37,6 +37,8 @@ export interface MessageProcessorInput {
   timestamp: string
   /** Optional metadata for correlation/linkage (channel-specific keys are filtered out) */
   metadata?: Record<string, unknown>
+  /** Optional references to pre-uploaded attachments (IDs only, no raw bytes) */
+  attachmentIds?: string[]
 }
 
 /**
