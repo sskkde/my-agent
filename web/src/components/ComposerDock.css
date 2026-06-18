@@ -104,8 +104,160 @@
 }
 
 /* ==========================================================================
-   Input Area
+   Attachment Chips
    ========================================================================== */
+
+.composer-attachment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px 0;
+}
+
+.composer-attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--chat-workspace-bg-deep, var(--warm-paper-bg-deep, #f5efe4));
+  border: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  font-size: 13px;
+  color: var(--chat-workspace-text, var(--warm-paper-text, #2a2622));
+  max-width: 200px;
+  overflow: hidden;
+}
+
+.composer-attachment-chip-icon {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.composer-attachment-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.composer-attachment-chip-size {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--chat-workspace-text-muted, var(--warm-paper-text-muted, #6b6158));
+}
+
+.composer-attachment-chip-remove {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--chat-workspace-text-muted, var(--warm-paper-text-muted, #6b6158));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.composer-attachment-chip-remove:hover {
+  background: var(--warm-paper-active-overlay, rgba(42, 38, 34, 0.08));
+  color: var(--chat-workspace-text, var(--warm-paper-text, #2a2622));
+}
+
+/* ==========================================================================
+   Upload Errors
+   ========================================================================== */
+
+.composer-upload-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 16px 0;
+}
+
+.composer-upload-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(220, 53, 69, 0.08);
+  border: var(--warm-paper-border-width, 0.5px) solid rgba(220, 53, 69, 0.2);
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  font-size: 12px;
+  color: #dc3545;
+}
+
+.composer-upload-error-icon {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.composer-upload-error-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Input Area with Attach Button
+   ========================================================================== */
+
+.composer-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.composer-input-row {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+}
+
+.composer-attach-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 6px 0 0 8px;
+  padding: 0;
+  background: transparent;
+  border: var(--warm-paper-border-width, 0.5px) solid transparent;
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  font-size: 18px;
+  font-weight: 300;
+  font-family: inherit;
+  color: var(--chat-workspace-text-secondary, var(--warm-paper-text-secondary, #4a433c));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.composer-attach-button:hover {
+  background: var(--chat-workspace-bg-elevated, var(--warm-paper-bg-elevated, #fffcf7));
+  border-color: var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+  color: var(--chat-workspace-text, var(--warm-paper-text, #2a2622));
+}
+
+.composer-attach-button:active {
+  background: var(--warm-paper-active-overlay, rgba(42, 38, 34, 0.04));
+}
+
+.composer-attach-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .composer-input {
   width: 100%;
@@ -134,6 +286,34 @@
   background-color: var(--warm-paper-bg-deep, #f5efe4);
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+/* ==========================================================================
+   Uploading Indicator
+   ========================================================================== */
+
+.composer-uploading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: var(--warm-paper-border-width, 0.5px) solid var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
+}
+
+.composer-uploading-spinner {
+  display: inline-block;
+  font-size: 14px;
+  animation: composer-spin 1s linear infinite;
+}
+
+@keyframes composer-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.composer-uploading-text {
+  font-size: 13px;
+  color: var(--chat-workspace-text-secondary, var(--warm-paper-text-secondary, #4a433c));
 }
 
 /* ==========================================================================
@@ -235,6 +415,28 @@
 
   .composer-model-badge {
     padding: 3px 8px;
+  }
+
+  .composer-attachment-chips {
+    padding: 8px 12px 0;
+    gap: 6px;
+  }
+
+  .composer-attachment-chip {
+    max-width: 160px;
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .composer-upload-errors {
+    padding: 6px 12px 0;
+  }
+
+  .composer-attach-button {
+    width: 32px;
+    height: 32px;
+    margin: 8px 0 0 4px;
+    font-size: 16px;
   }
 
   .composer-input {
