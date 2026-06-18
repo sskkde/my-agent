@@ -2,6 +2,7 @@ import '../config/load-env.js'
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify'
 import cors from '@fastify/cors'
 import compress from '@fastify/compress'
+import multipart from '@fastify/multipart'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import { envelopeError } from './response-envelope.js'
@@ -28,6 +29,7 @@ import { registerWorkflowRoutes } from './routes/workflows.js'
 import { registerToolResultsRoutes } from './routes/tool-results.js'
 import { registerTriggerRoutes } from './routes/triggers.js'
 import { registerConnectorRoutes } from './routes/connectors.js'
+import { registerFileRoutes } from './routes/files.js'
 import { registerPlannerRunRoutes } from './routes/planner-runs.js'
 import { registerObservabilityRoutes } from './routes/observability.js'
 import { registerApiKeyRoutes } from './routes/api-keys.js'
@@ -49,6 +51,7 @@ import { getCorsOrigin } from './middleware/cors-production.js'
 import { createApiContext, type ApiContext } from './context.js'
 import { createLegacyRedirect, LEGACY_ROUTE_DEFINITIONS } from './v1-prefix.js'
 import { checkProductionConfig } from '../config/production-guard.js'
+import { getUploadConfig } from '../config/upload-config.js'
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js'
 
 const errorLogRedactor = createModelInputRedactor()
@@ -78,6 +81,14 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
   await server.register(cors, getCorsOrigin())
 
   await server.register(compress, { global: true, threshold: 0 })
+
+  const uploadConfig = getUploadConfig()
+  await server.register(multipart, {
+    limits: {
+      fileSize: uploadConfig.maxFileSizeBytes,
+      files: uploadConfig.maxAttachmentsPerMessage,
+    },
+  })
 
   if (context?.webSearchBrowserProvider) {
     server.addHook('onClose', async () => {
@@ -187,6 +198,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerToolResultsRoutes(server, context)
     registerTriggerRoutes(server, context)
     registerConnectorRoutes(server, context)
+    registerFileRoutes(server, context)
     registerPlannerRunRoutes(server, context)
     registerObservabilityRoutes(server, context)
     registerApiKeyRoutes(server, context)

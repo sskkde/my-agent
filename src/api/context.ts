@@ -87,6 +87,7 @@ import type { DatabaseAdapter } from '../storage/database-adapter.js'
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js'
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js'
 import { createTodoStore, type TodoStore } from '../todo/store.js'
+import { createFileUploadStore, type FileUploadStore } from '../storage/file-upload-store.js'
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js'
 import { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js'
@@ -149,6 +150,7 @@ export interface ApiContext {
     apiKeyStore: ApiKeyStore
     organizationStore: OrganizationStore
     todoStore: TodoStore
+    fileUploadStore: FileUploadStore
   }
   providerConfigStore: ProviderConfigStore
   agentConfigStore: AgentConfigStore
@@ -318,6 +320,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let apiKeyStore: ApiKeyStore
   let organizationStore: OrganizationStore
   let todoStore: TodoStore
+  let fileUploadStore: FileUploadStore
   let subagentRunStore: SubagentRunStore
   let subagentTranscriptStore: SubagentTranscriptStore
   let subagentProviderPreferenceStore: SubagentProviderPreferenceStore
@@ -393,6 +396,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     todoStore =
       ((existingStores as Record<string, unknown>)?.todoStore as TodoStore) ??
       createTodoStore(connection)
+    fileUploadStore = createFileUploadStore(connection)
     subagentRunStore = createSubagentRunStore(connection)
     subagentTranscriptStore = createSubagentTranscriptStore(connection)
     subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
@@ -851,6 +855,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       apiKeyStore,
       organizationStore,
       todoStore,
+      fileUploadStore,
     },
     providerConfigStore,
     agentConfigStore,
