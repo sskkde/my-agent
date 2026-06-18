@@ -84,6 +84,8 @@ tags:
     description: Run execution visibility, console views, and replay previews
   - name: Connectors
     description: Connector definition, instance management, and OAuth integration
+  - name: Files
+    description: Session file uploads and attachments
   - name: System
     description: Health, status, usage, logs, and system configuration
 
@@ -767,6 +769,155 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UsageSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
+  # Files (Session Attachments)
+  # ==========================================================================
+  /api/v1/sessions/{sessionId}/files:
+    post:
+      tags: [Files]
+      summary: Upload file
+      description: |
+        Uploads a file attachment to a session using multipart/form-data.
+        The file is validated against allowed MIME types and extensions, then
+        stored on the local filesystem with metadata persisted in the database.
+        
+        **Constraints:**
+        - Maximum file size: configurable via `UPLOAD_MAX_FILE_SIZE_BYTES` (default 10 MiB)
+        - Allowed MIME types: configurable via `UPLOAD_ALLOWED_MIME_TYPES`
+        - Allowed extensions: configurable via `UPLOAD_ALLOWED_EXTENSIONS`
+        - Maximum attachments per message: configurable via `UPLOAD_MAX_ATTACHMENTS_PER_MESSAGE` (default 5)
+      operationId: uploadFile
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload
+      responses:
+        "201":
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported media type (MIME or extension not allowed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags: [Files]
+      summary: List session files
+      description: Returns all file attachments for a session (excludes soft-deleted files)
+      operationId: listSessionFiles
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+      responses:
+        "200":
+          description: List of files
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/files/{fileId}:
+    get:
+      tags: [Files]
+      summary: Get file metadata
+      description: Returns metadata for a specific file attachment
+      operationId: getFileMetadata
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/fileId"
+      responses:
+        "200":
+          description: File metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Files]
+      summary: Delete file
+      description: Soft-deletes a file attachment (sets status to 'deleted')
+      operationId: deleteFile
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/fileId"
+      responses:
+        "200":
+          description: File deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileDeleteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/files/{fileId}/download:
+    get:
+      tags: [Files]
+      summary: Download file
+      description: Downloads the raw bytes of a file attachment
+      operationId: downloadFile
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/fileId"
+      responses:
+        "200":
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -2585,6 +2736,13 @@ components:
       schema:
         type: string
       description: Planner run ID
+    fileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: File upload ID
 
   schemas:
     # ---- Envelope ----
@@ -3221,6 +3379,11 @@ components:
       properties:
         text:
           type: string
+        attachmentIds:
+          type: array
+          items:
+            type: string
+          description: Optional list of file IDs to attach to this message
 
     SendMessageResponse:
       allOf:
@@ -3321,6 +3484,80 @@ components:
           type: string
         model:
           type: string
+
+    # ---- Files ----
+    FileMetadata:
+      type: object
+      required: [fileId, userId, sessionId, originalFilename, mimeType, extension, sizeBytes, status, createdAt, updatedAt]
+      properties:
+        fileId:
+          type: string
+        userId:
+          type: string
+        sessionId:
+          type: string
+        originalFilename:
+          type: string
+        mimeType:
+          type: string
+        extension:
+          type: string
+        sizeBytes:
+          type: integer
+        status:
+          type: string
+          enum: [uploading, ready, deleted]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FileUploadResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  $ref: "#/components/schemas/FileMetadata"
+
+    FileListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [files, total]
+              properties:
+                files:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FileMetadata"
+                total:
+                  type: integer
+
+    FileDeleteResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [deleted, fileId]
+              properties:
+                deleted:
+                  type: boolean
+                fileId:
+                  type: string
 
     # ---- Agents & Providers ----
     AgentConfig:
