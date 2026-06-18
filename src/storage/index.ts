@@ -66,3 +66,15 @@ export * from './workflow-definition-store.js'
 export * from './subagent-run-store.js'
 export * from './subagent-transcript-store.js'
 export * from './subagent-provider-preference-store.js'
+export {
+  type FilePreviewStatus,
+  type FileSensitivity,
+  type FileUploadStatus,
+  type FileUploadRecord,
+  type FileUploadCreateInput,
+  type FileUploadUpdateInput,
+  type FileUploadAccessor,
+  type FileUploadListOptions,
+  type FileUploadStore,
+  createFileUploadStore,
+} from './file-upload-store.js'
