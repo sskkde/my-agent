@@ -132,11 +132,6 @@ describe('template-loader', () => {
       expect(path).toContain('foreground.md')
     })
 
-    it('resolves output:foreground.schema to correct path', () => {
-      const path = loader.resolveTemplatePath('output:foreground.schema')
-      expect(path).toContain('output')
-      expect(path).toContain('foreground.schema.md')
-    })
   })
 
   describe('createTemplateLoader', () => {

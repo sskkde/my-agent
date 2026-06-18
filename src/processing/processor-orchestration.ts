@@ -20,7 +20,7 @@
  */
 
 import type { MessageProcessorInput, MessageProcessorOutput, MessageProcessorResult } from './types.js'
-import type { ForegroundDecision, ForegroundSessionState } from '../foreground/types.js'
+import type { ForegroundSessionState } from '../foreground/types.js'
 import type { ForegroundAgent } from '../foreground/foreground-agent.js'
 import type { HydratedSessionState, Stores } from '../gateway/types.js'
 import type { Gateway } from '../gateway/gateway.js'
@@ -37,7 +37,7 @@ import type { LongTermMemoryScheduler } from '../memory/long-term-memory-schedul
 import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js'
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js'
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js'
-import type { ForegroundTurnInput, ForegroundTurnResult } from '../foreground/foreground-runner-types.js'
+import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js'
 
 const CONVERSATION_HISTORY_TURN_LIMIT = 20
 
@@ -122,111 +122,6 @@ function buildStatusPayload(
     timestamp: new Date().toISOString(),
     error,
   }
-}
-
-function createFailedForegroundTurnResult(code: string, message: string): ForegroundTurnResult {
-  return {
-    status: 'failed',
-    finalResponse: '',
-    decisionTrace: {
-      route: 'answer_directly',
-      requiresPlanner: false,
-      reason: message,
-    },
-    error: { code, message },
-  }
-}
-
-function createCompletedForegroundTurnResult(
-  decision: ForegroundDecision,
-  finalResponse = decision.userVisibleResponse ?? '',
-): ForegroundTurnResult {
-  return {
-    status: 'completed',
-    finalResponse,
-    decisionTrace: decision,
-  }
-}
-
-function legacyDispatchId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-}
-
-async function runLegacyForegroundDecision(
-  deps: ProcessorOrchestrationDeps,
-  input: MessageProcessorInput,
-  foregroundState: ForegroundSessionState,
-): Promise<ForegroundTurnResult> {
-  const foregroundAgent = deps.foregroundAgent
-  if (!foregroundAgent) {
-    return createFailedForegroundTurnResult('FOREGROUND_AGENT_UNAVAILABLE', 'ForegroundAgent is not configured')
-  }
-
-  const decision = await foregroundAgent.processMessage(
-    {
-      message: input.text,
-      userId: input.userId,
-      sessionId: input.sessionId,
-      turnId: input.correlationId,
-      timestamp: input.timestamp,
-    },
-    foregroundState,
-  )
-
-  if (decision.route === 'spawn_planner') {
-    const plannerRun = deps.plannerRuntime.createPlannerRun({
-      objective: input.text,
-      userId: input.userId,
-      sessionId: input.sessionId,
-      contextBundle: {
-        estimatedSteps: decision.estimatedSteps,
-        complexity: decision.complexity,
-        reason: decision.reason,
-      },
-    })
-
-    return createCompletedForegroundTurnResult(
-      decision,
-      decision.userVisibleResponse ?? `Created planner run ${plannerRun.plannerRunId}`,
-    )
-  }
-
-  const toolName = decision.route === 'dispatch_tool' ? decision.suggestedTools?.[0] : undefined
-  if (toolName) {
-    const now = new Date().toISOString()
-    await deps.runtimeDispatcher.dispatch({
-      requestId: legacyDispatchId('legacy-dispatch'),
-      action: {
-        actionId: legacyDispatchId('legacy-action'),
-        actionType: 'execute_tool',
-        targetRuntime: 'tool_plane',
-        targetAction: 'execute',
-        payload: {
-          toolName,
-          params: toolName === 'docs_search' ? { query: input.text } : {},
-          toolCallId: legacyDispatchId('legacy-tool'),
-          userId: input.userId,
-          sessionId: input.sessionId,
-        },
-        source: {
-          sourceModule: 'foreground_conversation_agent',
-          sourceAction: 'legacy_process_message_dispatch_tool',
-        },
-        userId: input.userId,
-        sessionId: input.sessionId,
-        createdAt: now,
-        updatedAt: now,
-        status: 'created',
-      },
-      context: {
-        callerModule: 'foreground_conversation_agent',
-        userId: input.userId,
-        sessionId: input.sessionId,
-      },
-    })
-  }
-
-  return createCompletedForegroundTurnResult(decision)
 }
 
 /**
@@ -342,27 +237,34 @@ export function createOrchestrationProcessor(
             agentConfig: agentConfig ?? undefined,
           }
 
-          const turnResult = deps.foregroundAgent?.runTurn
-            ? await deps.foregroundAgent.runTurn(turnInput)
-            : await runLegacyForegroundDecision(deps, input, foregroundState)
-
-          if (turnResult.status === 'failed' || turnResult.error) {
+          if (!deps.foregroundAgent?.runTurn) {
             output = createErrorOutput(
               input.correlationId,
               'PROCESSING_ERROR',
-              turnResult.error?.message ?? 'Foreground turn failed',
-              turnResult.error?.code ? { foregroundErrorCode: turnResult.error.code } : undefined,
+              'ForegroundAgent.runTurn is not configured',
+              { foregroundErrorCode: 'FOREGROUND_AGENT_UNAVAILABLE' },
             )
           } else {
-            output = createSuccessOutput(input.correlationId, {
-              text: turnResult.finalResponse || '',
-              route: turnResult.decisionTrace?.route || 'answer_directly',
-              data: {
-                reason: turnResult.decisionTrace?.reason,
-                runtimeSummary: turnResult.runtimeSummary,
-                kernelResult: turnResult.kernelResult,
-              },
-            })
+            const turnResult = await deps.foregroundAgent.runTurn(turnInput)
+
+            if (turnResult.status === 'failed' || turnResult.error) {
+              output = createErrorOutput(
+                input.correlationId,
+                'PROCESSING_ERROR',
+                turnResult.error?.message ?? 'Foreground turn failed',
+                turnResult.error?.code ? { foregroundErrorCode: turnResult.error.code } : undefined,
+              )
+            } else {
+              output = createSuccessOutput(input.correlationId, {
+                text: turnResult.finalResponse || '',
+                route: turnResult.decisionTrace?.route || 'answer_directly',
+                data: {
+                  reason: turnResult.decisionTrace?.reason,
+                  runtimeSummary: turnResult.runtimeSummary,
+                  kernelResult: turnResult.kernelResult,
+                },
+              })
+            }
           }
         }
       } catch (error) {

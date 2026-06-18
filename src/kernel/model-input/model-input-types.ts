@@ -19,8 +19,7 @@ import type { AssistantPersonaProfile } from '../../foreground/types.js'
  * The mode determines how the LLM should be invoked.
  *
  * - `routing_json`: ForegroundAgent - structured JSON routing, no tools in request
- * - `routing_tool_call`: ForegroundAgent with decide — tool summaries like routing_json
- *   PLUS full tool schemas for native function calling (foreground_decide)
+ * - `routing_tool_call`: Routing mode with tool summaries plus full schemas for native function calling
  * - `structured_json`: MemoryExtractor - structured JSON extraction, no tools
  * - `function_calling`: AgentKernel/SearchSubagent - full function calling with tools
  */

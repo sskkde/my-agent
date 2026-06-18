@@ -59,19 +59,6 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         description: 'Test foreground agent',
       },
     ],
-    [
-      'output:foreground.schema',
-      {
-        id: 'output:foreground.schema',
-        version: '2026-05-23',
-        path: 'output/foreground.schema.md',
-        agentKind: 'foreground',
-        providerFamily: '*',
-        layer: 4,
-        content: '',
-        description: 'Test foreground schema',
-      },
-    ],
   ])
 }
 

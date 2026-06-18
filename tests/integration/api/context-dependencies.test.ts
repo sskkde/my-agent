@@ -80,7 +80,7 @@ describe('ApiContext Dependencies - Task 4', () => {
       if (isApiContextError(result)) return
 
       expect(result.foregroundAgent).toBeDefined()
-      expect(typeof result.foregroundAgent.processMessage).toBe('function')
+      expect(typeof result.foregroundAgent.runTurn).toBe('function')
 
       result.connection.close()
     })
@@ -156,11 +156,14 @@ describe('ApiContext Dependencies - Task 4', () => {
 
     it('should accept injected ForegroundAgent via options', () => {
       const mockAgent: ForegroundAgent = {
-        processMessage: async (_input, _state) => ({
-          route: 'answer_directly',
-          requiresPlanner: false,
-          reason: 'mock decision',
-          userVisibleResponse: 'mock response',
+        runTurn: async () => ({
+          status: 'completed',
+          finalResponse: 'mock response',
+          decisionTrace: {
+            route: 'answer_directly',
+            requiresPlanner: false,
+            reason: 'mock decision',
+          },
         }),
       }
 
@@ -444,11 +447,14 @@ describe('ApiContext Dependencies - Task 4', () => {
 
     it('should use configured database provider before processing a message', async () => {
       const foregroundAgent: ForegroundAgent = {
-        processMessage: async () => ({
-          route: 'answer_directly',
-          requiresPlanner: false,
-          reason: 'Provider configured regression test',
-          userVisibleResponse: 'Provider is available.',
+        runTurn: async () => ({
+          status: 'completed',
+          finalResponse: 'Provider is available.',
+          decisionTrace: {
+            route: 'answer_directly',
+            requiresPlanner: false,
+            reason: 'Provider configured regression test',
+          },
         }),
       }
 
@@ -508,11 +514,14 @@ describe('ApiContext Dependencies - Task 4', () => {
 
     it('should not leak one user provider into another user during processing', async () => {
       const foregroundAgent: ForegroundAgent = {
-        processMessage: async () => ({
-          route: 'answer_directly',
-          requiresPlanner: false,
-          reason: 'Provider isolation regression test',
-          userVisibleResponse: 'Provider is isolated.',
+        runTurn: async () => ({
+          status: 'completed',
+          finalResponse: 'Provider is isolated.',
+          decisionTrace: {
+            route: 'answer_directly',
+            requiresPlanner: false,
+            reason: 'Provider isolation regression test',
+          },
         }),
       }
 
@@ -639,68 +648,6 @@ describe('ApiContext Dependencies - Task 4', () => {
       expect(DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS).toBe(
         DEFAULT_ROUTING_TIMEOUT_MS * (1 + DEFAULT_REPAIR_ATTEMPTS) + 10000,
       )
-    })
-  })
-
-  describe('ForegroundAgent Functionality', () => {
-    it('should make decisions with default agent', async () => {
-      const result = createApiContext({ dbPath: ':memory:' })
-      expect(isApiContextError(result)).toBe(false)
-      if (isApiContextError(result)) return
-
-      const agent = result.foregroundAgent
-
-      const decision = await agent.processMessage(
-        {
-          message: 'Hello, what can you do?',
-          userId: 'user-001',
-          sessionId: 'session-001',
-          turnId: 'turn-001',
-          timestamp: new Date().toISOString(),
-        },
-        {
-          hydratedSession: {
-            userContext: {
-              userId: 'user-001',
-              sessionId: 'session-001',
-            },
-            sessionContext: {
-              messageCount: 0,
-              lastActivityAt: new Date().toISOString(),
-              activePlannerRunIds: [],
-              activeBackgroundRunIds: [],
-            },
-            activeWorkRefs: {
-              activeRuns: [],
-              pendingApprovals: [],
-            },
-          },
-          activeWorkRefs: {
-            activeRuns: [],
-            pendingApprovals: [],
-          },
-          currentPersona: {
-            personaId: 'default',
-            name: 'Assistant',
-            directDelegationPolicy: {
-              estimatedStepsGte: 3,
-              maxComplexity: 'medium',
-              allowedToolCategories: ['read'],
-            },
-          },
-          effectivePolicy: {
-            estimatedStepsGte: 3,
-            maxComplexity: 'medium',
-            allowedToolCategories: ['read'],
-          },
-        },
-      )
-
-      expect(decision).toBeDefined()
-      expect(decision.route).toBeDefined()
-      expect(decision.reason).toBeDefined()
-
-      result.connection.close()
     })
   })
 

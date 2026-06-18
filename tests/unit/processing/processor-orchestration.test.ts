@@ -77,7 +77,6 @@ describe('ProcessorOrchestration', () => {
     }
 
     mockForegroundAgent = {
-      processMessage: vi.fn(),
       runTurn: vi.fn().mockResolvedValue({
         status: 'completed',
         finalResponse: 'Default mock response',
@@ -1454,6 +1453,89 @@ describe('ProcessorOrchestration', () => {
       expect(loggedEvent.payload).toHaveProperty('originalProviderId')
       expect(loggedEvent.payload).toHaveProperty('actualProviderId')
       expect(loggedEvent.payload).toHaveProperty('fallbackReason')
+    })
+  })
+
+  describe('legacy fallback removed', () => {
+    it('should fail fast when foregroundAgent.runTurn is missing', async () => {
+      const depsWithoutRunTurn = {
+        ...deps,
+        foregroundAgent: {} as unknown as ForegroundAgent,
+      }
+
+      const processor = createOrchestrationProcessor({ deps: depsWithoutRunTurn })
+      const input: MessageProcessorInput = {
+        correlationId: 'no-runt-turn',
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Hello',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      }
+
+      const result = await processor(input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PROCESSING_ERROR')
+      expect(result.error?.message).toBe('ForegroundAgent.runTurn is not configured')
+    })
+
+    it('should fail fast when foregroundAgent is undefined', async () => {
+      const depsWithoutAgent = {
+        ...deps,
+        foregroundAgent: undefined,
+      }
+
+      const processor = createOrchestrationProcessor({ deps: depsWithoutAgent })
+      const input: MessageProcessorInput = {
+        correlationId: 'no-agent',
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Hello',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      }
+
+      const result = await processor(input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PROCESSING_ERROR')
+      expect(result.error?.message).toBe('ForegroundAgent.runTurn is not configured')
+    })
+
+    it('should NOT call processMessage as fallback', async () => {
+      const processMessageSpy = vi.fn()
+      const depsWithSpy = {
+        ...deps,
+        foregroundAgent: {
+          runTurn: mockForegroundAgent.runTurn,
+          processMessage: processMessageSpy,
+        } as unknown as ForegroundAgent,
+      }
+
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
+        status: 'completed',
+        finalResponse: 'Response via runTurn',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'Test',
+        },
+      } as ForegroundTurnResult)
+
+      const processor = createOrchestrationProcessor({ deps: depsWithSpy })
+      const input: MessageProcessorInput = {
+        correlationId: 'spy-check',
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Hello',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      }
+
+      await processor(input)
+
+      expect(processMessageSpy).not.toHaveBeenCalled()
     })
   })
 })

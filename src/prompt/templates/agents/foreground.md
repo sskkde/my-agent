@@ -55,7 +55,6 @@ Respond to the user in natural language. Your final output is a conversational r
 **Response Format:**
 - Plain text or markdown
 - No routing JSON
-- No `foreground_decide` output
 - No structured decision objects
 
 ## Clarification

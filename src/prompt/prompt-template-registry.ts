@@ -111,16 +111,6 @@ const AGENTS_MEMORY_TEMPLATE: PromptTemplateRecord = {
   description: 'Memory extraction prompt for long-term memory candidate extraction',
 }
 
-const OUTPUT_FOREGROUND_SCHEMA_TEMPLATE: PromptTemplateRecord = {
-  id: 'output:foreground.schema',
-  version: '2026-05-23',
-  path: 'output/foreground.schema.md',
-  agentKind: 'foreground',
-  providerFamily: '*',
-  layer: 4,
-  description: 'Foreground output schema for routing JSON contract',
-}
-
 const OUTPUT_PLANNER_SCHEMA_TEMPLATE: PromptTemplateRecord = {
   id: 'output:planner.schema',
   version: '2026-05-23',
@@ -229,7 +219,6 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['agents:foreground', AGENTS_FOREGROUND_TEMPLATE],
   ['agents:kernel', AGENTS_KERNEL_TEMPLATE],
   ['agents:memory', AGENTS_MEMORY_TEMPLATE],
-  ['output:foreground.schema', OUTPUT_FOREGROUND_SCHEMA_TEMPLATE],
   ['output:planner.schema', OUTPUT_PLANNER_SCHEMA_TEMPLATE],
   ['output:memory-candidate.schema', OUTPUT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE],
   ['persona:default', PERSONA_DEFAULT_TEMPLATE],

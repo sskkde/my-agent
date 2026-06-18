@@ -121,12 +121,6 @@ function checkImportBoundaries(rootDir: string): ImportViolation[] {
 }
 
 const RUNTIME_ACTION_USAGE_ALLOWLIST = new Set([
-  // Schema/parser/config modules mention routing fields but do not perform cross-runtime actions.
-  'src/foreground/foreground-decide-extractor.ts',
-  'src/foreground/foreground-decision-schema.ts',
-  'src/foreground/foreground-decision-validator.ts',
-  'src/foreground/foreground-kernel-runner.ts',
-  'src/foreground/foreground-routing-json-parser.ts',
   'src/foreground/kernel-config-builder.ts',
   'src/foreground/tools/status-query-tool.ts',
 ])

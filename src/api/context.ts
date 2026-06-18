@@ -582,11 +582,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const foregroundAgent =
     injectedForegroundAgent ??
     createForegroundAgent({
-      llmAdapter,
       agentConfig: agentConfigStore.getByUser('default') ?? undefined,
-      modelInputBuilder,
-      modelInputSnapshotStore,
-      promptProjectionResolver,
       toolRegistry,
     })
 
@@ -686,6 +682,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       defaultModel,
       providerFamily,
       modelInputSnapshotStore,
+      promptProjectionResolver,
     })
 
   foregroundAgent.setAgentKernel?.(agentKernel)

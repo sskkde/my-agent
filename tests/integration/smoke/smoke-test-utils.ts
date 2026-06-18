@@ -35,7 +35,11 @@ function createSafeEventStore(eventStore: ApiContext['stores']['eventStore']): A
 
 export function createStubbedForegroundAgent(decision: ForegroundDecision): ApiContext['foregroundAgent'] {
   return {
-    processMessage: vi.fn().mockResolvedValue(decision),
+    runTurn: vi.fn().mockResolvedValue({
+      status: 'completed',
+      finalResponse: decision.userVisibleResponse ?? '',
+      decisionTrace: decision,
+    }),
   } as unknown as ApiContext['foregroundAgent']
 }
 

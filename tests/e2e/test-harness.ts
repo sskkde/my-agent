@@ -13,8 +13,6 @@ import { createToolExecutor } from '../../src/tools/tool-executor.js'
 import { createPermissionEngine } from '../../src/permissions/permission-engine.js'
 import { createGateway } from '../../src/gateway/gateway.js'
 import { createForegroundAgent } from '../../src/foreground/foreground-agent.js'
-import type { LLMAdapter } from '../../src/llm/adapter.js'
-import type { LLMRequest, LLMResult, LLMResponse } from '../../src/llm/types.js'
 import { createRuntimeDispatcher } from '../../src/dispatcher/runtime-dispatcher.js'
 import type { AdapterRegistry, RuntimeAdapter, TargetRuntime, RuntimeAction } from '../../src/dispatcher/types.js'
 import type { PermissionContext, PermissionMode } from '../../src/permissions/types.js'
@@ -24,12 +22,10 @@ import type { Gateway } from '../../src/gateway/gateway.js'
 import type { ForegroundAgent } from '../../src/foreground/foreground-agent.js'
 import type { PermissionEngine } from '../../src/permissions/permission-engine.js'
 import type { InboundEnvelope, OutboundEnvelope } from '../../src/gateway/types.js'
-import type { ForegroundMessageInput, ForegroundSessionState } from '../../src/foreground/types.js'
 import { TestClock } from '../helpers/clock.js'
 import { IdGenerator } from '../helpers/ids.js'
 import type { EventRecord } from '../../src/storage/event-store.js'
 import type { ToolExecutionState } from '../../src/shared/states.js'
-import { createMockModelInputBuilder } from '../helpers/model-input.js'
 
 export interface E2EHarness {
   connection: ConnectionManager
@@ -70,6 +66,7 @@ export interface E2EMessageResult {
     requiresPlanner: boolean
     reason: string
     userVisibleResponse?: string
+    suggestedTools?: string[]
   }
   outboundEnvelopes: OutboundEnvelope[]
   toolExecutions: Array<{
@@ -83,6 +80,8 @@ export interface E2EMessageResult {
     output: { visibleMessages: Array<{ role: string; content: string }> }
   }>
 }
+
+type TestForegroundDecision = E2EMessageResult['foregroundDecision']
 
 export interface E2EApprovalResult {
   success: boolean
@@ -240,64 +239,7 @@ export function createE2EHarness(): E2EHarness {
     },
   })
 
-  const mockLLMAdapter: LLMAdapter = {
-    config: {
-      providers: [],
-      defaultTimeoutMs: 10000,
-      enableCircuitBreaker: false,
-    },
-    providers: [],
-    complete: async (request: LLMRequest): Promise<LLMResult> => {
-      const prompt = request.messages?.[request.messages.length - 1]?.content || ''
-      let route = 'answer_directly'
-      let reason = 'Default test response'
-      let userVisibleResponse = 'I understand your message.'
-
-      // Extract user message from prompt
-      const userMessageMatch = prompt.match(/USER MESSAGE: "([^"]+)"/)
-      const userMessage = userMessageMatch ? userMessageMatch[1].toLowerCase() : ''
-
-      if (userMessage.includes('cancel') || userMessage.includes('stop')) {
-        route = 'cancel_or_modify_task'
-        reason = 'Cancel request detected'
-        userVisibleResponse = 'Processing your cancel request...'
-      } else if (
-        userMessage.includes('status') ||
-        userMessage.includes('query') ||
-        userMessage.includes('progress') ||
-        userMessage.includes('how is')
-      ) {
-        route = 'status_query'
-        reason = 'Status query detected'
-        userVisibleResponse = 'Checking active work status...'
-      }
-
-      const response: LLMResponse = {
-        id: 'test-response-id',
-        model: 'gpt-4o-mini',
-        content: JSON.stringify({ route, reason, userVisibleResponse }),
-        role: 'assistant',
-        finishReason: 'stop',
-        createdAt: new Date().toISOString(),
-      }
-      return {
-        success: true,
-        response,
-        providerId: 'mock-provider',
-      }
-    },
-    stream: async function* () {},
-    addProvider: () => {},
-    removeProvider: () => {},
-    getProvider: () => undefined,
-    getHealthyProviders: () => [],
-    updateProviderPriority: () => {},
-  }
-
-  const foregroundAgent = createForegroundAgent({
-    llmAdapter: mockLLMAdapter,
-    modelInputBuilder: createMockModelInputBuilder(),
-  })
+  const foregroundAgent = createForegroundAgent({})
 
   const outboundEnvelopes: OutboundEnvelope[] = []
 
@@ -342,53 +284,31 @@ export function createE2EHarness(): E2EHarness {
     async sendMessage(userId: string, sessionId: string, message: string): Promise<E2EMessageResult> {
       const envelope = gateway.receiveUserMessage(userId, sessionId, message)
 
-      const hydratedSession = gateway.assembleHydratedState(userId, sessionId, {
-        eventStore: {
-          append: (event: unknown) => {
-            eventStore.append(event as EventRecord | EventRecord[])
-          },
-          query: (filters: { sessionId?: string; eventType?: string }) => {
-            return eventStore.query(filters)
-          },
-        },
-        summaryStore,
-        transcriptStore,
-        runtimeActionStore: runtimeActionStore as unknown as {
-          findBySessionId?: (
-            sessionId: string,
-          ) => Array<{ actionId: string; status: string; targetRef?: Record<string, unknown> }>
-        },
-      })
-
       const permissionContext = this.createPermissionContext(userId, sessionId, 'ask_on_write')
-      const input: ForegroundMessageInput = {
-        message,
-        userId,
-        sessionId,
-        turnId: idGenerator.custom('turn'),
-        timestamp: clock.nowISO(),
-      }
-
-      const state: ForegroundSessionState = {
-        hydratedSession,
-        activeWorkRefs: hydratedSession.activeWorkRefs,
-        currentPersona: {
-          personaId: 'default',
-          name: 'Assistant',
-          directDelegationPolicy: {
-            estimatedStepsGte: 3,
-            maxComplexity: 'medium',
-            allowedToolCategories: ['read', 'search', 'internal'],
-          },
-        },
-        effectivePolicy: {
-          estimatedStepsGte: 3,
-          maxComplexity: 'medium',
-          allowedToolCategories: ['read', 'search', 'internal'],
-        },
-      }
-
-      const decision = await foregroundAgent.processMessage(input, state)
+      const normalizedMessage = message.toLowerCase()
+      const decision: TestForegroundDecision = normalizedMessage.includes('cancel') || normalizedMessage.includes('stop')
+        ? {
+            route: 'cancel_or_modify_task',
+            requiresPlanner: false,
+            reason: 'Cancel request detected',
+            userVisibleResponse: 'Processing your cancel request...',
+          }
+        : normalizedMessage.includes('status') ||
+            normalizedMessage.includes('query') ||
+            normalizedMessage.includes('progress') ||
+            normalizedMessage.includes('how is')
+          ? {
+              route: 'status_query',
+              requiresPlanner: false,
+              reason: 'Status query detected',
+              userVisibleResponse: 'Checking active work status...',
+            }
+          : {
+              route: 'answer_directly',
+              requiresPlanner: false,
+              reason: 'Default test response',
+              userVisibleResponse: 'I understand your message.',
+            }
 
       const toolExecutions: Array<{ toolCallId: string; toolName: string; status: string }> = []
 
