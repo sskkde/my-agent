@@ -16,6 +16,7 @@ export enum ResourceType {
   toolResult = 'tool-result',
   organizations = 'organizations',
   todos = 'todos',
+  files = 'files',
 }
 
 export enum Action {
@@ -57,6 +58,13 @@ function generateUserPermissions(): Permission[] {
 
   for (const resource of ownResources) {
     for (const action of crudActions) {
+      permissions.push({ resource, action })
+    }
+  }
+
+  const fileResources = [ResourceType.files]
+  for (const resource of fileResources) {
+    for (const action of [Action.create, Action.read, Action.delete]) {
       permissions.push({ resource, action })
     }
   }

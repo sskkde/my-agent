@@ -16,9 +16,10 @@
 5. [Web 搜索配置](#web-搜索配置)
 6. [连接器配置](#连接器配置)
 7. [资源限制配置](#资源限制配置)
-8. [运行时配置](#运行时配置)
-9. [OAuth 配置](#oauth-配置)
-10. [生产环境必需变量](#生产环境必需变量)
+8. [文件上传配置](#文件上传配置)
+9. [运行时配置](#运行时配置)
+10. [OAuth 配置](#oauth-配置)
+11. [生产环境必需变量](#生产环境必需变量)
 
 ---
 
@@ -524,6 +525,113 @@ OPENROUTER_API_KEY=sk-or-xxx
 
 ---
 
+## 文件上传配置
+
+### UPLOAD_DIR
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 文件上传存储目录 |
+| **默认值** | `./data/uploads` |
+| **生产要求** | 建议设置为持久化存储路径 |
+
+**示例**：
+```bash
+UPLOAD_DIR=/data/uploads
+```
+
+---
+
+### UPLOAD_MAX_FILE_SIZE_BYTES
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 单个文件最大大小（字节） |
+| **默认值** | `10485760` (10 MiB) |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+UPLOAD_MAX_FILE_SIZE_BYTES=10485760
+```
+
+---
+
+### UPLOAD_MAX_ATTACHMENTS_PER_MESSAGE
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 每条消息最大附件数 |
+| **默认值** | `5` |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+UPLOAD_MAX_ATTACHMENTS_PER_MESSAGE=5
+```
+
+---
+
+### UPLOAD_ALLOWED_MIME_TYPES
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 允许上传的 MIME 类型（逗号分隔） |
+| **默认值** | `text/plain,text/markdown,text/csv,application/json,image/png,image/jpeg,image/gif,image/webp,application/pdf` |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+UPLOAD_ALLOWED_MIME_TYPES=text/plain,text/markdown,application/json,image/png,image/jpeg,application/pdf
+```
+
+---
+
+### UPLOAD_ALLOWED_EXTENSIONS
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 允许上传的文件扩展名（逗号分隔，含前导点） |
+| **默认值** | `.txt,.md,.json,.csv,.png,.jpg,.jpeg,.gif,.webp,.pdf` |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+UPLOAD_ALLOWED_EXTENSIONS=.txt,.md,.json,.png,.jpg,.pdf
+```
+
+---
+
+### UPLOAD_PER_SESSION_QUOTA_BYTES
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 单个会话的存储配额（字节） |
+| **默认值** | `104857600` (100 MiB) |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+UPLOAD_PER_SESSION_QUOTA_BYTES=104857600
+```
+
+---
+
+### UPLOAD_PREVIEW_MAX_BYTES
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 文本预览提取的最大字节数 |
+| **默认值** | `4096` |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+UPLOAD_PREVIEW_MAX_BYTES=4096
+```
+
+---
+
 ## 运行时配置
 
 ### HOSTNAME
@@ -631,6 +739,18 @@ OPENROUTER_API_KEY=sk-or-xxx
 | `OPENROUTER_API_KEY` | - | 至少一个 |
 | `OPENAI_API_KEY` | - | - |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | - |
+
+### 文件上传变量
+
+| 变量 | 默认值 | 生产必需 |
+|------|--------|----------|
+| `UPLOAD_DIR` | `./data/uploads` | 建议持久化路径 |
+| `UPLOAD_MAX_FILE_SIZE_BYTES` | `10485760` (10 MiB) | - |
+| `UPLOAD_MAX_ATTACHMENTS_PER_MESSAGE` | `5` | - |
+| `UPLOAD_ALLOWED_MIME_TYPES` | text,image,json,pdf | - |
+| `UPLOAD_ALLOWED_EXTENSIONS` | .txt,.md,.json,.csv,.png,.jpg,.jpeg,.gif,.webp,.pdf | - |
+| `UPLOAD_PER_SESSION_QUOTA_BYTES` | `104857600` (100 MiB) | - |
+| `UPLOAD_PREVIEW_MAX_BYTES` | `4096` | - |
 
 ---
 

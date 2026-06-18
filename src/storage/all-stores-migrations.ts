@@ -2369,6 +2369,47 @@ export const extendProviderConfigsRuntimeMetadataMigration: Migration = {
 // ============================================================================
 // STORE 60: Todo Store (version 61)
 // ============================================================================
+// STORE 61: File Upload Store (version 62)
+// ============================================================================
+export const fileUploadsTableMigration: Migration = {
+  version: 62,
+  name: 'create_file_uploads_table',
+  up: `
+    CREATE TABLE file_uploads (
+      file_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      original_filename TEXT NOT NULL,
+      sanitized_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      extension TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      checksum TEXT NOT NULL,
+      storage_ref TEXT NOT NULL,
+      preview_text TEXT,
+      preview_status TEXT NOT NULL CHECK(preview_status IN ('pending', 'generated', 'skipped', 'failed')),
+      sensitivity TEXT NOT NULL CHECK(sensitivity IN ('low', 'medium', 'high', 'restricted')),
+      status TEXT NOT NULL CHECK(status IN ('uploading', 'ready', 'deleted')),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT
+    );
+    CREATE INDEX idx_file_uploads_session ON file_uploads(session_id);
+    CREATE INDEX idx_file_uploads_user ON file_uploads(user_id);
+    CREATE INDEX idx_file_uploads_status ON file_uploads(status);
+    CREATE INDEX idx_file_uploads_tenant ON file_uploads(tenant_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_file_uploads_tenant;
+    DROP INDEX IF EXISTS idx_file_uploads_status;
+    DROP INDEX IF EXISTS idx_file_uploads_user;
+    DROP INDEX IF EXISTS idx_file_uploads_session;
+    DROP TABLE IF EXISTS file_uploads
+  `,
+}
+
+
 export const todosTableMigration: Migration = {
   version: 61,
   name: 'create_todos_table',
@@ -2532,6 +2573,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Todo store
   todosTableMigration, // v61
+
+  // File Upload store
+  fileUploadsTableMigration, // v62
 ]
 
 /**

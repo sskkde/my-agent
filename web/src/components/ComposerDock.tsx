@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useCallback } from 'react'
 import './ComposerDock.css'
 
 interface ComposerDockProps {
@@ -16,6 +16,25 @@ interface ComposerDockProps {
   className?: string
   /** Display name of the active model */
   model?: string
+  /** Callback when files are selected via attach button or drop */
+  onFilesSelected?: (files: File[]) => void
+  /** Currently selected files for display */
+  selectedFiles?: File[]
+  /** Callback to remove a file by index */
+  onRemoveFile?: (index: number) => void
+  /** Error messages for invalid uploads */
+  uploadErrors?: string[]
+  /** Whether an upload is in progress */
+  isUploading?: boolean
+}
+
+/**
+ * Format file size to human-readable string
+ */
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 /**
@@ -29,6 +48,7 @@ interface ComposerDockProps {
  * - Blocks empty/whitespace-only messages
  * - Tool buttons: 操作电脑, 看看书桌说
  * - Model selector display
+ * - File attachment controls: attach button, preview chips, remove, errors
  *
  * Preserves test IDs:
  * - data-testid="session-message-input" on the textarea
@@ -42,8 +62,14 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
   placeholder = '输入消息...',
   className = '',
   model = 'claude-3.5',
+  onFilesSelected,
+  selectedFiles = [],
+  onRemoveFile,
+  uploadErrors = [],
+  isUploading = false,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const selectedModel = model
 
   // Auto-resize textarea to fit content
@@ -60,19 +86,44 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
     // Enter sends, Shift+Enter creates newline
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      if (value.trim() && !sending) {
+      if ((value.trim() || selectedFiles.length > 0) && !sending) {
         onSend()
       }
     }
   }
 
   const handleSendClick = () => {
-    if (value.trim() && !sending) {
+    if ((value.trim() || selectedFiles.length > 0) && !sending) {
       onSend()
     }
   }
 
-  const isSendDisabled = !value.trim() || sending
+  const handleAttachClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files
+      if (files && files.length > 0) {
+        onFilesSelected?.(Array.from(files))
+      }
+      // Reset input so same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    },
+    [onFilesSelected],
+  )
+
+  const handleRemoveFile = useCallback(
+    (index: number) => {
+      onRemoveFile?.(index)
+    },
+    [onRemoveFile],
+  )
+
+  const isSendDisabled = !value.trim() && selectedFiles.length === 0 || sending
 
   return (
     <div className={`composer-dock ${className}`}>
@@ -104,18 +155,90 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
           </div>
         </div>
 
-        {/* Input area */}
-        <textarea
-          ref={textareaRef}
-          className="composer-input"
-          data-testid="session-message-input"
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={sending}
-          rows={1}
-        />
+        {/* Selected files preview chips */}
+        {selectedFiles.length > 0 && (
+          <div className="composer-attachment-chips" data-testid="attachment-chips">
+            {selectedFiles.map((file, index) => (
+              <div key={`${file.name}-${index}`} className="composer-attachment-chip" data-testid="attachment-chip">
+                <span className="composer-attachment-chip-icon">📎</span>
+                <span className="composer-attachment-chip-name" title={file.name}>
+                  {file.name}
+                </span>
+                <span className="composer-attachment-chip-size">
+                  {formatFileSize(file.size)}
+                </span>
+                <button
+                  className="composer-attachment-chip-remove"
+                  type="button"
+                  title="移除"
+                  aria-label={`移除 ${file.name}`}
+                  onClick={() => handleRemoveFile(index)}
+                  data-testid="attachment-remove-button"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upload errors */}
+        {uploadErrors.length > 0 && (
+          <div className="composer-upload-errors" data-testid="upload-errors">
+            {uploadErrors.map((error, index) => (
+              <div key={index} className="composer-upload-error" data-testid="upload-error">
+                <span className="composer-upload-error-icon">⚠️</span>
+                <span className="composer-upload-error-text">{error}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Input area with attach button */}
+        <div className="composer-input-row">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="composer-file-input"
+            data-testid="composer-file-input"
+            multiple
+            onChange={handleFileChange}
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+          {onFilesSelected && (
+            <button
+              className="composer-attach-button"
+              type="button"
+              title="添加附件"
+              aria-label="添加附件"
+              onClick={handleAttachClick}
+              disabled={sending}
+              data-testid="composer-attach-button"
+            >
+              +
+            </button>
+          )}
+          <textarea
+            ref={textareaRef}
+            className="composer-input"
+            data-testid="session-message-input"
+            placeholder={placeholder}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={sending}
+            rows={1}
+          />
+        </div>
+
+        {/* Uploading indicator */}
+        {isUploading && (
+          <div className="composer-uploading-indicator" data-testid="uploading-indicator">
+            <span className="composer-uploading-spinner">⟳</span>
+            <span className="composer-uploading-text">上传中...</span>
+          </div>
+        )}
 
         {/* Actions row */}
         <div className="composer-actions-row">

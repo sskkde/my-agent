@@ -59,6 +59,9 @@ import type {
   TodosResponse,
   TodoResponse,
   DeleteTodoResponse,
+  FileUploadMetadata,
+  FileUploadResponse,
+  FileListResponse,
 } from './types'
 
 const API_BASE = '/api/v1'
@@ -167,12 +170,20 @@ export async function getTranscripts(sessionId: string): Promise<TranscriptsResp
   return parseResponse<TranscriptsResponse>(response)
 }
 
-export async function sendMessage(sessionId: string, text: string): Promise<SendMessageResponse> {
+export async function sendMessage(
+  sessionId: string,
+  text: string,
+  attachmentIds?: string[],
+): Promise<SendMessageResponse> {
+  const payload: SendMessageRequest & { attachmentIds?: string[] } = { text }
+  if (attachmentIds && attachmentIds.length > 0) {
+    payload.attachmentIds = attachmentIds
+  }
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/messages`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text } as SendMessageRequest),
+    body: JSON.stringify(payload),
   })
   return parseResponse<SendMessageResponse>(response)
 }
@@ -861,4 +872,52 @@ export async function deleteTodo(todoId: string): Promise<{ success: boolean; de
     credentials: 'include',
   })
   return parseResponse<{ success: boolean; deletedCount: number }>(response)
+}
+
+// =============================================================================
+// File Upload API - Session Attachments
+// =============================================================================
+
+export async function uploadSessionFile(sessionId: string, file: File): Promise<FileUploadMetadata> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/files`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  })
+  const body = await parseResponse<FileUploadResponse>(response)
+  return body.file
+}
+
+export async function listSessionFiles(sessionId: string): Promise<FileUploadMetadata[]> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/files`, {
+    credentials: 'include',
+  })
+  const body = await parseResponse<FileListResponse>(response)
+  return body.files
+}
+
+export async function getFileMetadata(fileId: string): Promise<FileUploadMetadata> {
+  const response = await fetchWithTimeout(`${API_BASE}/files/${encodeURIComponent(fileId)}`, {
+    credentials: 'include',
+  })
+  const body = await parseResponse<FileUploadResponse>(response)
+  return body.file
+}
+
+export async function deleteFile(fileId: string): Promise<void> {
+  const response = await fetchWithTimeout(`${API_BASE}/files/${encodeURIComponent(fileId)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}))
+    throw new ApiClientError(
+      errorBody.error || {
+        code: 'UNKNOWN_ERROR',
+        message: `HTTP ${response.status}: ${response.statusText}`,
+      },
+    )
+  }
 }

@@ -235,6 +235,7 @@ export function createOrchestrationProcessor(
             hydratedState: hydratedSession,
             foregroundState,
             agentConfig: agentConfig ?? undefined,
+            attachmentIds: input.attachmentIds,
           }
 
           if (!deps.foregroundAgent?.runTurn) {
@@ -537,6 +538,10 @@ function persistTurnTranscript(
       ? (output.result.data.runtimeSummary as TurnTranscript['runtimeSummary'])
       : undefined
 
+  const contentRefs = input.attachmentIds?.length
+    ? input.attachmentIds.map((id) => `attachment:${id}`)
+    : undefined
+
   const transcript: TurnTranscript = {
     turnId: input.correlationId,
     sessionId: input.sessionId,
@@ -544,6 +549,7 @@ function persistTurnTranscript(
     input: {
       inboundEventId,
       userMessageSummary: input.text,
+      contentRefs,
       inboundTimestamp: input.timestamp,
     },
     output: {

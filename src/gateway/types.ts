@@ -16,6 +16,7 @@ export interface InboundEnvelope {
   sourceChannel: string
   payload: {
     text?: string
+    attachmentIds?: string[]
     approvalResponse?: ApprovalResponse
     externalEvent?: Record<string, unknown>
   }

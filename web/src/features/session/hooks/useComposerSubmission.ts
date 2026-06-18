@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import * as api from '../../../api/client'
-import type { ConsoleTimelineEvent } from '../../../api/types'
+import type { ConsoleTimelineEvent, FileUploadMetadata } from '../../../api/types'
 import type { CommandContext } from '../../../commands/types'
 import { isCommand, parseInput } from '../../../commands/parser'
 import { executeCommand } from '../../../commands/executor'
@@ -13,6 +13,14 @@ import {
   hasAssistantOrErrorReplyAfter,
 } from '../session-utils'
 import type { AssistantPlaceholder } from '../session-utils'
+
+/** Attachment metadata stored on a local optimistic message event. */
+export interface LocalAttachmentMeta {
+  fileId: string
+  originalFilename: string
+  sizeBytes: number
+  mimeType: string
+}
 
 export interface UseComposerSubmissionCallbacks {
   createAssistantPlaceholder: (sessionId: string) => { attemptId: string; placeholder: AssistantPlaceholder }
@@ -42,6 +50,10 @@ export interface UseComposerSubmissionReturn {
   localCommandEvents: Map<string, ConsoleTimelineEvent[]>
   localMessageEvents: Map<string, ConsoleTimelineEvent[]>
   clearPostSendPollTimeout: () => void
+  selectedFiles: File[]
+  setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>
+  uploadErrors: string[]
+  isUploading: boolean
 }
 
 /**
@@ -65,12 +77,18 @@ export function useComposerSubmission(options: {
   const [sendError, setSendError] = useState<string | null>(null)
   const [localCommandEvents, setLocalCommandEvents] = useState<Map<string, ConsoleTimelineEvent[]>>(new Map())
   const [localMessageEvents, setLocalMessageEvents] = useState<Map<string, ConsoleTimelineEvent[]>>(new Map())
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploadErrors, setUploadErrors] = useState<string[]>([])
+  const [isUploading, setIsUploading] = useState(false)
 
   const postSendPollAttemptsRef = useRef(0)
   const postSendPollTimeoutRef = useRef<number | null>(null)
 
   const eventsRef = useRef(options.events)
   eventsRef.current = options.events
+
+  const selectedFilesRef = useRef<File[]>([])
+  selectedFilesRef.current = selectedFiles
 
   const callbacksRef = useRef(callbacks)
   callbacksRef.current = callbacks
@@ -91,17 +109,23 @@ export function useComposerSubmission(options: {
     })
   }, [])
 
-  const addLocalMessageEvent = useCallback((sessionId: string, content: string): ConsoleTimelineEvent => {
-    const baselineServerMessageCount = countServerUserMessagesByContent(eventsRef.current, content)
-    const event = createLocalUserMessageEvent(sessionId, content, baselineServerMessageCount)
-    setLocalMessageEvents((prev) => {
-      const newMap = new Map(prev)
-      const existingEvents = newMap.get(sessionId) || []
-      newMap.set(sessionId, [...existingEvents, event])
-      return newMap
-    })
-    return event
-  }, [])
+  const addLocalMessageEvent = useCallback(
+    (sessionId: string, content: string, attachments?: LocalAttachmentMeta[]): ConsoleTimelineEvent => {
+      const baselineServerMessageCount = countServerUserMessagesByContent(eventsRef.current, content)
+      const event = createLocalUserMessageEvent(sessionId, content, baselineServerMessageCount)
+      if (attachments && attachments.length > 0) {
+        event.metadata = { ...event.metadata, attachments }
+      }
+      setLocalMessageEvents((prev) => {
+        const newMap = new Map(prev)
+        const existingEvents = newMap.get(sessionId) || []
+        newMap.set(sessionId, [...existingEvents, event])
+        return newMap
+      })
+      return event
+    },
+    [],
+  )
 
   const removeLocalMessageEvent = useCallback((sessionId: string, eventId: string) => {
     setLocalMessageEvents((prev) => {
@@ -118,6 +142,25 @@ export function useComposerSubmission(options: {
       return newMap
     })
   }, [])
+
+  const uploadFiles = useCallback(
+    async (sessionId: string, files: File[]): Promise<{ attachmentIds: string[]; metas: LocalAttachmentMeta[] }> => {
+      const attachmentIds: string[] = []
+      const metas: LocalAttachmentMeta[] = []
+      for (const file of files) {
+        const uploaded: FileUploadMetadata = await api.uploadSessionFile(sessionId, file)
+        attachmentIds.push(uploaded.fileId)
+        metas.push({
+          fileId: uploaded.fileId,
+          originalFilename: uploaded.originalFilename,
+          sizeBytes: uploaded.sizeBytes,
+          mimeType: uploaded.mimeType,
+        })
+      }
+      return { attachmentIds, metas }
+    },
+    [],
+  )
 
   const startPostSendPoll = useCallback(
     (sessionId: string, localEvent: ConsoleTimelineEvent) => {
@@ -169,7 +212,29 @@ export function useComposerSubmission(options: {
       const escapedText = trimmedDraft.slice(2)
       setSending(true)
       setSendError(null)
-      const localEvent = addLocalMessageEvent(sessionId, escapedText)
+      setUploadErrors([])
+
+      let attachmentIds: string[] | undefined
+      let attachmentMetas: LocalAttachmentMeta[] | undefined
+      const currentFiles = selectedFilesRef.current
+
+      if (currentFiles.length > 0) {
+        setIsUploading(true)
+        try {
+          const result = await uploadFiles(sessionId, currentFiles)
+          attachmentIds = result.attachmentIds
+          attachmentMetas = result.metas
+        } catch (err) {
+          setUploadErrors([err instanceof Error ? err.message : 'Failed to upload file'])
+          setSending(false)
+          setIsUploading(false)
+          return
+        } finally {
+          setIsUploading(false)
+        }
+      }
+
+      const localEvent = addLocalMessageEvent(sessionId, escapedText, attachmentMetas)
       const { attemptId: placeholderAttemptId, placeholder } = cbs.createAssistantPlaceholder(sessionId)
       cbs.updatePendingAssistantPlaceholders((prev) => {
         const next = new Map(prev)
@@ -178,8 +243,10 @@ export function useComposerSubmission(options: {
       })
 
       try {
-        const response = await api.sendMessage(sessionId, escapedText)
+        const response = await api.sendMessage(sessionId, escapedText, attachmentIds)
         setDraft('')
+        setSelectedFiles([])
+        setUploadErrors([])
         cbs.resolveAssistantPlaceholder(placeholderAttemptId, response.correlationId)
         startPostSendPoll(sessionId, localEvent)
       } catch (err) {
@@ -218,7 +285,29 @@ export function useComposerSubmission(options: {
 
     setSending(true)
     setSendError(null)
-    const localEvent = addLocalMessageEvent(sessionId, trimmedDraft)
+    setUploadErrors([])
+
+    let attachmentIds: string[] | undefined
+    let attachmentMetas: LocalAttachmentMeta[] | undefined
+    const currentFiles = selectedFilesRef.current
+
+    if (currentFiles.length > 0) {
+      setIsUploading(true)
+      try {
+        const result = await uploadFiles(sessionId, currentFiles)
+        attachmentIds = result.attachmentIds
+        attachmentMetas = result.metas
+      } catch (err) {
+        setUploadErrors([err instanceof Error ? err.message : 'Failed to upload file'])
+        setSending(false)
+        setIsUploading(false)
+        return
+      } finally {
+        setIsUploading(false)
+      }
+    }
+
+    const localEvent = addLocalMessageEvent(sessionId, trimmedDraft, attachmentMetas)
 
     const { attemptId: placeholderAttemptId, placeholder } = cbs.createAssistantPlaceholder(sessionId)
     cbs.updatePendingAssistantPlaceholders((prev) => {
@@ -228,8 +317,10 @@ export function useComposerSubmission(options: {
     })
 
     try {
-      const response = await api.sendMessage(sessionId, trimmedDraft)
+      const response = await api.sendMessage(sessionId, trimmedDraft, attachmentIds)
       setDraft('')
+      setSelectedFiles([])
+      setUploadErrors([])
 
       cbs.resolveAssistantPlaceholder(placeholderAttemptId, response.correlationId)
 
@@ -263,5 +354,9 @@ export function useComposerSubmission(options: {
     localCommandEvents,
     localMessageEvents,
     clearPostSendPollTimeout,
+    selectedFiles,
+    setSelectedFiles,
+    uploadErrors,
+    isUploading,
   }
 }

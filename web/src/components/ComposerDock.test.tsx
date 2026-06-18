@@ -213,4 +213,273 @@ describe('ComposerDock', () => {
       expect(screen.getByTestId('session-message-input')).toHaveAttribute('rows', '1')
     })
   })
+
+  // =============================================================================
+  // Attachment Tests
+  // =============================================================================
+
+  describe('Attachment Controls', () => {
+    const mockOnFilesSelected = vi.fn()
+    const mockOnRemoveFile = vi.fn()
+
+    const createFile = (name: string, size: number, type = 'text/plain'): File => {
+      const file = new File(['x'.repeat(size)], name, { type })
+      Object.defineProperty(file, 'size', { value: size })
+      return file
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    it('does not show attach button when onFilesSelected is not provided', () => {
+      render(<ComposerDock value="" onChange={mockOnChange} onSend={mockOnSend} />)
+
+      expect(screen.queryByTestId('composer-attach-button')).not.toBeInTheDocument()
+    })
+
+    it('shows attach button when onFilesSelected is provided', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      expect(screen.getByTestId('composer-attach-button')).toBeInTheDocument()
+    })
+
+    it('attach button opens file input', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      const fileInput = screen.getByTestId('composer-file-input') as HTMLInputElement
+      const attachButton = screen.getByTestId('composer-attach-button')
+
+      fireEvent.click(attachButton)
+      expect(fileInput).toBeInTheDocument()
+    })
+
+    it('calls onFilesSelected when files are selected', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      const fileInput = screen.getByTestId('composer-file-input') as HTMLInputElement
+      const file = createFile('test.txt', 100)
+
+      fireEvent.change(fileInput, { target: { files: [file] } })
+      expect(mockOnFilesSelected).toHaveBeenCalledWith([file])
+    })
+
+    it('renders preview chips for selected files', () => {
+      const files = [createFile('document.pdf', 1024), createFile('image.png', 2048)]
+
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          selectedFiles={files}
+        />,
+      )
+
+      expect(screen.getByTestId('attachment-chips')).toBeInTheDocument()
+      const chips = screen.getAllByTestId('attachment-chip')
+      expect(chips).toHaveLength(2)
+      expect(screen.getByText('document.pdf')).toBeInTheDocument()
+      expect(screen.getByText('image.png')).toBeInTheDocument()
+    })
+
+    it('shows file size in chips', () => {
+      const files = [createFile('large.txt', 1048576)]
+
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          selectedFiles={files}
+        />,
+      )
+
+      expect(screen.getByText('1.0 MB')).toBeInTheDocument()
+    })
+
+    it('remove button calls onRemoveFile with correct index', () => {
+      const files = [createFile('a.txt', 100), createFile('b.txt', 200)]
+
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          selectedFiles={files}
+          onRemoveFile={mockOnRemoveFile}
+        />,
+      )
+
+      const removeButtons = screen.getAllByTestId('attachment-remove-button')
+      fireEvent.click(removeButtons[1])
+      expect(mockOnRemoveFile).toHaveBeenCalledWith(1)
+    })
+
+    it('shows upload errors', () => {
+      const errors = ['文件过大 (最大 10MB)', '不支持的文件类型']
+
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          uploadErrors={errors}
+        />,
+      )
+
+      expect(screen.getByTestId('upload-errors')).toBeInTheDocument()
+      const errorElements = screen.getAllByTestId('upload-error')
+      expect(errorElements).toHaveLength(2)
+      expect(screen.getByText('文件过大 (最大 10MB)')).toBeInTheDocument()
+      expect(screen.getByText('不支持的文件类型')).toBeInTheDocument()
+    })
+
+    it('shows uploading indicator when isUploading is true', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          isUploading={true}
+        />,
+      )
+
+      expect(screen.getByTestId('uploading-indicator')).toBeInTheDocument()
+      expect(screen.getByText('上传中...')).toBeInTheDocument()
+    })
+
+    it('does not show uploading indicator when isUploading is false', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          isUploading={false}
+        />,
+      )
+
+      expect(screen.queryByTestId('uploading-indicator')).not.toBeInTheDocument()
+    })
+
+    it('sends message with attachments even when text is empty', () => {
+      const files = [createFile('doc.pdf', 100)]
+
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          selectedFiles={files}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('session-send-button'))
+      expect(mockOnSend).toHaveBeenCalledTimes(1)
+    })
+
+    it('sends message with attachments and text', () => {
+      const files = [createFile('doc.pdf', 100)]
+
+      render(
+        <ComposerDock
+          value="Here is the document"
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          selectedFiles={files}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('session-send-button'))
+      expect(mockOnSend).toHaveBeenCalledTimes(1)
+    })
+
+    it('Enter key sends when files are selected even with empty text', () => {
+      const files = [createFile('doc.pdf', 100)]
+
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          selectedFiles={files}
+        />,
+      )
+
+      fireEvent.keyDown(screen.getByTestId('session-message-input'), {
+        key: 'Enter',
+        shiftKey: false,
+      })
+      expect(mockOnSend).toHaveBeenCalledTimes(1)
+    })
+
+    it('disables attach button when sending', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          sending={true}
+        />,
+      )
+
+      expect(screen.getByTestId('composer-attach-button')).toBeDisabled()
+    })
+
+    it('hides hint on mobile', () => {
+      const { container } = render(
+        <ComposerDock value="" onChange={mockOnChange} onSend={mockOnSend} />,
+      )
+
+      expect(container.querySelector('.composer-hint')).toBeInTheDocument()
+    })
+
+    it('preserves existing selectors after attachment additions', () => {
+      render(
+        <ComposerDock
+          value="test"
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+          selectedFiles={[createFile('file.txt', 100)]}
+          uploadErrors={['Error']}
+          isUploading={true}
+        />,
+      )
+
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+      expect(screen.getByTestId('session-send-button')).toBeInTheDocument()
+    })
+  })
 })

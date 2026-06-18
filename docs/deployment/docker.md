@@ -218,6 +218,48 @@ docker volume inspect agent_data
 docker run --rm -v agent_data:/data -v $(pwd):/backup alpine tar czf /backup/backup.tar.gz /data
 ```
 
+### File Uploads Storage
+
+The file upload feature stores uploaded files on the local filesystem. In Docker, this means the uploads directory must be persisted via a volume mount.
+
+**Default upload directory:** `./data/uploads` (relative to the API service working directory)
+
+The `agent_data` volume at `/data` already covers the default upload path. If you customize `UPLOAD_DIR`, ensure it is also mounted:
+
+```yaml
+services:
+  api:
+    volumes:
+      - agent_data:/data
+    environment:
+      - UPLOAD_DIR=/data/uploads
+```
+
+**Custom upload directory example:**
+
+```yaml
+services:
+  api:
+    volumes:
+      - agent_data:/data
+      - upload_data:/uploads
+    environment:
+      - UPLOAD_DIR=/uploads
+
+volumes:
+  agent_data:
+  upload_data:
+```
+
+**Backup considerations:**
+
+File uploads should be included in backup procedures alongside the database:
+
+```bash
+# Backup uploads and database
+docker run --rm -v agent_data:/data -v $(pwd):/backup alpine tar czf /backup/full-backup.tar.gz /data
+```
+
 ### Using Host Directory
 
 For easier backup and access:

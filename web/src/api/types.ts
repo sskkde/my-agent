@@ -397,6 +397,33 @@ export interface SettingsResponse {
 }
 
 // =============================================================================
+// File Upload Types - Session Attachments
+// =============================================================================
+
+export interface FileUploadMetadata {
+  fileId: string
+  userId: string
+  sessionId: string
+  originalFilename: string
+  sanitizedName: string
+  mimeType: string
+  extension: string
+  sizeBytes: number
+  previewStatus: 'pending' | 'generated' | 'skipped' | 'failed'
+  status: 'uploading' | 'ready' | 'deleted'
+  createdAt: string
+}
+
+export interface FileUploadResponse {
+  file: FileUploadMetadata
+}
+
+export interface FileListResponse {
+  files: FileUploadMetadata[]
+  total: number
+}
+
+// =============================================================================
 // Auth Types - Task 15
 // =============================================================================
 
