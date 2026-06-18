@@ -342,6 +342,10 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     localCommandEvents,
     localMessageEvents,
     clearPostSendPollTimeout,
+    selectedFiles,
+    setSelectedFiles,
+    uploadErrors,
+    isUploading,
   } = useComposerSubmission({
     selectedSessionId,
     mountedRef,
@@ -534,14 +538,29 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     selectSession(sessionId)
     setDraft('')
     setSendError(null)
+    setSelectedFiles([])
     closeSessionsSidebar()
-  }, [selectSession, setDraft, setSendError, closeSessionsSidebar])
+  }, [selectSession, setDraft, setSendError, setSelectedFiles, closeSessionsSidebar])
 
   const handlePromptSelect = useCallback(
     (prompt: string) => {
       setDraft(prompt)
     },
     [setDraft],
+  )
+
+  const handleFilesSelected = useCallback(
+    (files: File[]) => {
+      setSelectedFiles((prev) => [...prev, ...files])
+    },
+    [setSelectedFiles],
+  )
+
+  const handleRemoveFile = useCallback(
+    (index: number) => {
+      setSelectedFiles((files) => files.filter((_, i) => i !== index))
+    },
+    [setSelectedFiles],
   )
 
   const handleReject = useCallback(
@@ -780,6 +799,11 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
               onSend={handleSend}
               sending={sending}
               placeholder="输入消息或 /help 查看命令..."
+              selectedFiles={selectedFiles}
+              onFilesSelected={handleFilesSelected}
+              onRemoveFile={handleRemoveFile}
+              uploadErrors={uploadErrors}
+              isUploading={isUploading}
             />
           </>
         )}

@@ -744,6 +744,124 @@ const a = 1
     })
   })
 
+  describe('Attachment metadata rendering', () => {
+    it('renders attachment chips for user message with attachments', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'Here is the file',
+        metadata: {
+          attachments: [
+            { fileId: 'f1', originalFilename: 'doc.pdf', sizeBytes: 1024, mimeType: 'application/pdf' },
+          ],
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const attachments = screen.getByTestId('timeline-attachments')
+      expect(attachments).toBeInTheDocument()
+
+      const chip = screen.getByTestId('timeline-attachment-chip')
+      expect(chip).toBeInTheDocument()
+      expect(chip.textContent).toContain('doc.pdf')
+      expect(chip.textContent).toContain('1.0 KB')
+    })
+
+    it('renders multiple attachment chips', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'Multiple files',
+        metadata: {
+          attachments: [
+            { fileId: 'f1', originalFilename: 'a.txt', sizeBytes: 100, mimeType: 'text/plain' },
+            { fileId: 'f2', originalFilename: 'b.png', sizeBytes: 2048, mimeType: 'image/png' },
+          ],
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const chips = screen.getAllByTestId('timeline-attachment-chip')
+      expect(chips).toHaveLength(2)
+      expect(chips[0].textContent).toContain('a.txt')
+      expect(chips[1].textContent).toContain('b.png')
+    })
+
+    it('does not render attachment chips when no attachments in metadata', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'No attachments',
+        metadata: {},
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      expect(screen.queryByTestId('timeline-attachments')).not.toBeInTheDocument()
+    })
+
+    it('renders attachment chips for assistant message with attachments', () => {
+      const event = createEvent({
+        eventType: 'assistant_message',
+        content: 'Analysis complete',
+        metadata: {
+          attachments: [
+            { fileId: 'f3', originalFilename: 'result.csv', sizeBytes: 4096, mimeType: 'text/csv' },
+          ],
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const chip = screen.getByTestId('timeline-attachment-chip')
+      expect(chip.textContent).toContain('result.csv')
+      expect(chip.textContent).toContain('4.0 KB')
+    })
+
+    it('formats file sizes correctly', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'test',
+        metadata: {
+          attachments: [
+            { fileId: 'f1', originalFilename: 'tiny.txt', sizeBytes: 500, mimeType: 'text/plain' },
+            { fileId: 'f2', originalFilename: 'mid.txt', sizeBytes: 1536, mimeType: 'text/plain' },
+            { fileId: 'f3', originalFilename: 'big.txt', sizeBytes: 2097152, mimeType: 'text/plain' },
+          ],
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const chips = screen.getAllByTestId('timeline-attachment-chip')
+      expect(chips[0].textContent).toContain('500 B')
+      expect(chips[1].textContent).toContain('1.5 KB')
+      expect(chips[2].textContent).toContain('2.0 MB')
+    })
+
+    it('does not render raw file content from attachments', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'See attached',
+        metadata: {
+          attachments: [
+            { fileId: 'f1', originalFilename: 'secret.txt', sizeBytes: 100, mimeType: 'text/plain' },
+          ],
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const card = screen.getByTestId('timeline-event-test-event-1')
+      expect(card.textContent).toContain('secret.txt')
+      expect(card.textContent).not.toContain('file-contents-here')
+    })
+  })
+
   describe('REGRESSION: Role-based rendering safety', () => {
     it('REGRESSION: User message MUST NOT render full markdown - XSS safety', () => {
       const event = createEvent({

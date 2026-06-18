@@ -72,6 +72,32 @@ const getInitials = (name: string): string => {
   return words.map((word) => word[0]?.toUpperCase() ?? '').join('') || 'A'
 }
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+interface AttachmentMeta {
+  fileId: string
+  originalFilename: string
+  sizeBytes: number
+  mimeType: string
+}
+
+const extractAttachments = (metadata: Record<string, unknown> | undefined): AttachmentMeta[] => {
+  const raw = metadata?.attachments
+  if (!Array.isArray(raw)) return []
+  return raw.filter(
+    (item): item is AttachmentMeta =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as Record<string, unknown>).fileId === 'string' &&
+      typeof (item as Record<string, unknown>).originalFilename === 'string' &&
+      typeof (item as Record<string, unknown>).sizeBytes === 'number',
+  )
+}
+
 const isMessageEvent = (
   event: ConsoleTimelineEvent,
   isAssistantPlaceholder: boolean,
@@ -272,15 +298,41 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         ) : null
 
       default:
-        if (!event.content) {
+        if (!event.content && extractAttachments(event.metadata).length === 0) {
           return null
         }
 
+        const attachments = extractAttachments(event.metadata)
+
         return isChatMessage ? (
-          <MessageContent text={event.content} role={messageRole} mode={messageMode} />
+          <>
+            {event.content && <MessageContent text={event.content} role={messageRole} mode={messageMode} />}
+            {attachments.length > 0 && (
+              <div className="timeline-attachment-chips" data-testid="timeline-attachments">
+                {attachments.map((att) => (
+                  <span key={att.fileId} className="timeline-attachment-chip" data-testid="timeline-attachment-chip">
+                    <span className="timeline-attachment-chip-icon">📎</span>
+                    <span className="timeline-attachment-chip-name">{att.originalFilename}</span>
+                    <span className="timeline-attachment-chip-size">{formatFileSize(att.sizeBytes)}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
         ) : (
           <div className="timeline-event-content">
-            <MessageContent text={event.content} role={messageRole} mode={messageMode} />
+            {event.content && <MessageContent text={event.content} role={messageRole} mode={messageMode} />}
+            {attachments.length > 0 && (
+              <div className="timeline-attachment-chips" data-testid="timeline-attachments">
+                {attachments.map((att) => (
+                  <span key={att.fileId} className="timeline-attachment-chip" data-testid="timeline-attachment-chip">
+                    <span className="timeline-attachment-chip-icon">📎</span>
+                    <span className="timeline-attachment-chip-name">{att.originalFilename}</span>
+                    <span className="timeline-attachment-chip-size">{formatFileSize(att.sizeBytes)}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )
     }

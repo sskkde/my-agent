@@ -6,6 +6,7 @@ import type { AssistantPlaceholder } from '../session-utils'
 
 vi.mock('../../../api/client', () => ({
   sendMessage: vi.fn(),
+  uploadSessionFile: vi.fn(),
 }))
 
 vi.mock('../../../commands/parser', () => ({
@@ -27,6 +28,7 @@ import { executeCommand } from '../../../commands/executor'
 import { createCommandEvent } from '../../../commands/formatters'
 
 const mockSendMessage = api.sendMessage as ReturnType<typeof vi.fn>
+const mockUploadSessionFile = api.uploadSessionFile as ReturnType<typeof vi.fn>
 const mockIsCommand = isCommand as ReturnType<typeof vi.fn>
 const mockParseInput = parseInput as ReturnType<typeof vi.fn>
 const mockExecuteCommand = executeCommand as ReturnType<typeof vi.fn>
@@ -110,7 +112,7 @@ describe('useComposerSubmission', () => {
       await result.current.handleSend()
     })
 
-    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'Hello world')
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'Hello world', undefined)
     expect(result.current.draft).toBe('')
     expect(result.current.sending).toBe(false)
   })
@@ -156,7 +158,7 @@ describe('useComposerSubmission', () => {
       await result.current.handleSend()
     })
 
-    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'help')
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'help', undefined)
     expect(result.current.draft).toBe('')
   })
 
@@ -301,7 +303,7 @@ describe('useComposerSubmission', () => {
     })
 
     expect(preventDefault).toHaveBeenCalled()
-    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'Hello')
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'Hello', undefined)
   })
 
   it('handleKeyDown does not send on Enter with Shift', async () => {
@@ -338,5 +340,180 @@ describe('useComposerSubmission', () => {
     const { result } = renderComposerHook()
     expect(typeof result.current.clearPostSendPollTimeout).toBe('function')
     expect(() => result.current.clearPostSendPollTimeout()).not.toThrow()
+  })
+
+  it('starts with empty selectedFiles and no upload errors', () => {
+    const { result } = renderComposerHook()
+    expect(result.current.selectedFiles).toEqual([])
+    expect(result.current.uploadErrors).toEqual([])
+    expect(result.current.isUploading).toBe(false)
+  })
+
+  it('uploads files before sending and includes attachmentIds', async () => {
+    mockUploadSessionFile.mockResolvedValue({
+      fileId: 'file-1',
+      originalFilename: 'doc.pdf',
+      sizeBytes: 1024,
+      mimeType: 'application/pdf',
+    })
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-1' })
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['content'], 'doc.pdf', { type: 'application/pdf' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    act(() => {
+      result.current.setDraft('Here is the doc')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(mockUploadSessionFile).toHaveBeenCalledWith('session-1', file)
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'Here is the doc', ['file-1'])
+    expect(result.current.selectedFiles).toEqual([])
+    expect(result.current.draft).toBe('')
+  })
+
+  it('preserves draft text when upload fails', async () => {
+    mockUploadSessionFile.mockRejectedValue(new Error('Upload failed'))
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['content'], 'doc.pdf', { type: 'application/pdf' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    act(() => {
+      result.current.setDraft('Important message')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(mockSendMessage).not.toHaveBeenCalled()
+    expect(result.current.draft).toBe('Important message')
+    expect(result.current.selectedFiles).toHaveLength(1)
+    expect(result.current.uploadErrors).toEqual(['Upload failed'])
+    expect(result.current.sending).toBe(false)
+  })
+
+  it('clears attachments only after successful send', async () => {
+    mockUploadSessionFile.mockResolvedValue({
+      fileId: 'file-2',
+      originalFilename: 'image.png',
+      sizeBytes: 2048,
+      mimeType: 'image/png',
+    })
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-2' })
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['img'], 'image.png', { type: 'image/png' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    act(() => {
+      result.current.setDraft('Check this image')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(result.current.selectedFiles).toEqual([])
+    expect(result.current.uploadErrors).toEqual([])
+    expect(result.current.draft).toBe('')
+  })
+
+  it('does not duplicate uploads on retry after send failure', async () => {
+    mockUploadSessionFile.mockResolvedValue({
+      fileId: 'file-3',
+      originalFilename: 'data.csv',
+      sizeBytes: 512,
+      mimeType: 'text/csv',
+    })
+    mockSendMessage.mockRejectedValueOnce(new Error('Network error'))
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['csv'], 'data.csv', { type: 'text/csv' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    act(() => {
+      result.current.setDraft('Analyze this')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(result.current.sendError).toBe('Network error')
+    expect(result.current.draft).toBe('Analyze this')
+    expect(result.current.selectedFiles).toHaveLength(1)
+    expect(mockUploadSessionFile).toHaveBeenCalledTimes(1)
+  })
+
+  it('creates local message event with attachment metadata', async () => {
+    mockUploadSessionFile.mockResolvedValue({
+      fileId: 'file-4',
+      originalFilename: 'notes.txt',
+      sizeBytes: 256,
+      mimeType: 'text/plain',
+    })
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-3' })
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['notes'], 'notes.txt', { type: 'text/plain' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    act(() => {
+      result.current.setDraft('My notes')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    const localEvents = result.current.localMessageEvents.get('session-1')
+    expect(localEvents).toBeDefined()
+    expect(localEvents).toHaveLength(1)
+    expect(localEvents![0].metadata?.attachments).toEqual([
+      {
+        fileId: 'file-4',
+        originalFilename: 'notes.txt',
+        sizeBytes: 256,
+        mimeType: 'text/plain',
+      },
+    ])
+  })
+
+  it('sends message without attachments when no files selected', async () => {
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-4' })
+
+    const { result } = renderComposerHook()
+
+    act(() => {
+      result.current.setDraft('Plain message')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(mockUploadSessionFile).not.toHaveBeenCalled()
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'Plain message', undefined)
   })
 })

@@ -309,7 +309,7 @@ describe('SessionConsoleTab', () => {
     fireEvent.click(sendButton)
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello world')
+      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello world', undefined)
     })
   })
 
@@ -813,7 +813,7 @@ describe('SessionConsoleTab', () => {
     fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello AI')
+      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'Hello AI', undefined)
     })
 
     // Verify user message appears optimistically
@@ -2533,7 +2533,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
     fireEvent.click(screen.getByTestId('session-send-button'))
 
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalledWith('session-poll-1', 'Poll test message')
+      expect(mockSendMessage).toHaveBeenCalledWith('session-poll-1', 'Poll test message', undefined)
     })
 
     await new Promise((resolve) => setTimeout(resolve, 600))
@@ -3536,7 +3536,7 @@ describe('SessionConsoleTab - Command Parsing', () => {
 
     // Should send as regular message, not execute as command
     await waitFor(() => {
-      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'help')
+      expect(mockSendMessage).toHaveBeenCalledWith('session-123', 'help', undefined)
     })
   })
 
