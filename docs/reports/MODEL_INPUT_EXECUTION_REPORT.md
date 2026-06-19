@@ -3,6 +3,7 @@
 > Created: 2026-05-23
 > Author: Sisyphus
 > Version: v0.9.0-model-input
+> Note (2026-06-19): This report documents the P9 baseline. The prompt migration added `routing_tool_call` as a fourth mode, B1/B2/B3 sub-sections, T5/T6/T7 taxonomy template consumption, top-level `summaryLayers`, and Segment D provenance. See `docs/architecture/MODEL_INPUT_ARCHITECTURE.md` for the current state.
 
 ---
 

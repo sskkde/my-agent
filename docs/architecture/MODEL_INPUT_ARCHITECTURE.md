@@ -1,8 +1,9 @@
 # Model Input Builder Architecture
 
-> Version: 1.1.0
+> Version: 1.2.0
 > Created: 2026-05-23
-> Status: Implemented
+> Updated: 2026-06-19
+> Status: Implemented (prompt migration aligned)
 
 ---
 
@@ -12,10 +13,12 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 ### Key Design Principles
 
-1. **Seven Layers, Four Segments**: Content organized into layers for clarity, grouped into segments for caching
-2. **Segment A Stability**: The static prefix (Layers 1-4) never changes for the same agent+provider combination
+1. **Seven Layers (T1-T7), Four Segments**: Content organized into taxonomy layers for clarity, grouped into segments for caching
+2. **Segment A Stability**: The static prefix (T1-T4) never changes for the same agentType+agentProfile+providerFamily combination
 3. **Cache-Aware Design**: Segments A+B+C form the cache key; Segment D is always dynamic
-4. **Three Modes**: Different LLM invocation patterns supported via mode selection
+4. **Four Modes**: Different LLM invocation patterns supported via mode selection (`routing_json`, `routing_tool_call`, `function_calling`, `structured_json`)
+5. **agentType + agentProfile Taxonomy**: Runtime agent class and capability profile replace legacy `agentKind` strings
+6. **Strategy/Data Separation**: Policy projections (`personaProjection`, `toolSelectionPolicy`, `memoryPolicyProjection`, `summaryLayers`) are top-level `ModelInputBuildInput` fields, never embedded in data containers
 
 ---
 
@@ -90,9 +93,9 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 ---
 
-## Layer Details
+## Layer Details (Taxonomy T1-T7)
 
-### Layer 1: Platform
+### Layer 1 (T1): Platform
 
 **Purpose**: Define platform identity and core rules that apply to all agents and providers.
 
@@ -107,7 +110,7 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 - Contains security boundaries (RBAC, Tenant, Approval, Audit)
 - Never contains dynamic content
 
-### Layer 2: Provider
+### Layer 2 (T2): Provider
 
 **Purpose**: Provider-specific instructions for JSON output and tool calling.
 
@@ -121,9 +124,9 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 - Determined by `providerFamily` parameter
 - DeepSeek templates include KV cache optimization hints
 
-### Layer 3: Agent
+### Layer 3 (T3): Agent Type
 
-**Purpose**: Agent-specific behavior instructions.
+**Purpose**: Runtime agent class behavior instructions.
 
 **Content Source**:
 
@@ -132,11 +135,10 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 **Selection Logic**:
 
-- Determined by `agentKind` parameter
-- ForegroundAgent: routing and delegation
-- Kernel: execution engine behavior
+- Determined by `agentType` parameter (e.g., `'main'`, `'subagent'`, `'background'`)
+- Legacy `agentKind` strings are normalized via `agent-label-normalizer.ts`
 
-### Layer 4: Output
+### Layer 4 (T4): Output Contract
 
 **Purpose**: JSON schema contracts for structured output.
 
@@ -150,57 +152,87 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 - Defines expected JSON structure
 - Used for JSON mode and response parsing
 
-### Layer 5: Instruction
+### Layer 5 (T5): Agent Profile / Instruction
 
-**Purpose**: Custom instructions from AgentConfig.
+**Purpose**: Agent profile behavior and custom instructions from AgentConfig, rendered as Segment B with explicit B1/B2/B3 sub-sections.
 
 **Content Source**:
 
-- `AgentConfig.systemPrompt` (priority 10)
-- `AgentConfig.routingPrompt` (priority 20)
-- Future: project-level instructions
+- `AgentConfig.systemPrompt` (B1: platform-owned agent profile, highest priority)
+- `AgentConfig.routingPrompt` (B2: tenant/admin instructions)
+- T5 `agentProfile:*` templates from `PromptTemplateRegistry.resolveSevenLayer()` (B2, gated by `PROMPT_T5_TEMPLATE_CONSUMPTION`)
+- `PersonaProjection` rendered via `renderPersonaProjection()` (B3: user persona/preferences, lowest priority)
+
+**Segment B Sub-Sections**:
+
+| Sub-Section | Name | Content | Priority |
+|---|---|---|---|
+| B1 | Platform-owned agent profile | `systemPrompt` from AgentConfig | Highest |
+| B2 | Tenant/admin instructions | `routingPrompt` + T5 `agentProfile:*` template content | Middle |
+| B3 | User persona/preferences | `PersonaProjection` (safety-prefixed) | Lowest |
 
 **Key Features**:
 
 - Tenant isolation: different tenants have different hashes
-- Priority ordering for conflict resolution
+- Priority ordering for conflict resolution: B1 > B2 > B3
 - Computed via `InstructionResolver`
+- T5 template consumption gated by `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED`
 
-### Layer 6: Tool Plane
+### Layer 6 (T6): Tool Projection
 
-**Purpose**: Expose available tools to the LLM.
+**Purpose**: Expose available tools to the LLM, with optional T6 template consumption.
 
 **Content Source**:
 
 - `ToolRegistry` -> `ToolPlaneProjection`
+- T6 `toolProjection:*` templates from `resolveSevenLayer()` (gated by `PROMPT_T6_TEMPLATE_CONSUMPTION`)
+- `ToolSelectionPolicyProjection` (top-level strategy projection)
 - Filtered by exposure level, permissions, and denial rules
 
 **Mode-Dependent Rendering**:
 
-- `routing_json`: Tool IDs + capability summaries only
-- `function_calling`: Full schemas in `LLMRequest.tools`
-- `structured_json`: Tool IDs only
+- `routing_json`: Tool IDs + capability summaries only (text in Segment C)
+- `routing_tool_call`: Tool summaries in Segment C prompt + full schemas in `LLMRequest.tools` for native function calling
+- `function_calling`: Full schemas in `LLMRequest.tools` + policy text in Segment C
+- `structured_json`: Tool IDs only (text in Segment C)
 
-### Layer 7: Context Bundle
+### Layer 7 (T7): Runtime Context / Context Bundle
 
-**Purpose**: Dynamic context specific to the current request.
+**Purpose**: Dynamic context specific to the current request, with optional T7 template consumption and Segment D provenance header.
 
 **Content Source**:
 
 - `ContextBundleData` input parameter
+- T7 `runtimeContext:*` templates from `resolveSevenLayer()` (gated by `PROMPT_T7_TEMPLATE_CONSUMPTION`)
+- `MemoryPolicyProjection` (top-level strategy projection)
+- `SummaryLayerProjection` (top-level strategy projection, with backward-compat fallback to `contextBundle.summaryLayers`)
 - Dynamic fields (currentDate, sessionId, etc.)
+
+**Segment D Rendering Order** (gated by flags):
+
+1. Provenance header (gated by `PROMPT_SEGMENT_D_PROVENANCE_ENABLED`)
+2. T7 taxonomy template content (gated by `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED`)
+3. MemoryPolicyProjection
+4. SummaryLayerProjection (top-level takes precedence over nested)
+5. Dynamic fields
+6. Runtime environment facts
+7. Context bundle items (pinned, ordered, summary blocks)
+8. Views (plan, workflow step, background run, trigger)
+9. Transcript
+10. User message
 
 **Key Features**:
 
 - All optional fields have deterministic ordering
 - Pair integrity protection for tool_use/tool_result
 - SemanticType to role mapping
+- Provenance header tracks sourceType, sourceRef, freshnessTs, invocationSource
 
 ---
 
 ## P10 Strategy Projections
 
-Phase 10 introduces three strategy projections that separate policy configuration from data containers. These projections are top-level `ModelInputBuildInput` fields, never embedded in data containers like `ToolPlaneProjection` or `ContextBundleData`.
+Phase 10 introduces four strategy projections that separate policy configuration from data containers. These projections are top-level `ModelInputBuildInput` fields, never embedded in data containers like `ToolPlaneProjection` or `ContextBundleData`.
 
 ### PersonaProjection (Layer 5, Segment B)
 
@@ -248,6 +280,8 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 
 **Purpose**: Provide layered summary context for the current request.
 
+**Important**: This is a top-level `ModelInputBuildInput` field (`summaryLayers`), not nested inside `ContextBundleData`. The top-level field takes precedence over the deprecated `contextBundle.summaryLayers` fallback.
+
 **Layers**:
 
 - `session`: Current session summary
@@ -262,7 +296,7 @@ Phase 10 introduces three strategy projections that separate policy configuratio
 
 ---
 
-## Three Modes
+## Four Modes
 
 ### routing_json
 
@@ -281,6 +315,25 @@ Phase 10 introduces three strategy projections that separate policy configuratio
   messages: [Segment A, B, C, D messages],
   responseFormat: { type: 'json_object' }
   // No tools field
+}
+```
+
+### routing_tool_call
+
+**Use Case**: ForegroundAgent with decide (tool summaries + full schemas for native function calling)
+
+**Characteristics**:
+
+- Tool summaries in Segment C prompt
+- Full tool schemas in `LLMRequest.tools`
+- Combines routing hints with native function calling
+
+**Request Structure**:
+
+```typescript
+{
+  messages: [Segment A, B, C, D messages],
+  tools: [full schemas from ToolPlaneProjection]
 }
 ```
 
@@ -379,11 +432,10 @@ interface TokenUsage {
 
 **Path**: `src/foreground/foreground-agent.ts`
 
-**Integration**: Shadow mode (dual-path)
+**Integration**: Direct ModelInputBuilder usage
 
-- Old path and new ModelInputBuilder run in parallel
-- Comparison logging for verification
-- Mode: `routing_json`
+- Mode: `routing_tool_call` (with fallback to `routing_json`)
+- Uses taxonomy dimensions: `agentType` + `agentProfile`
 
 ### AgentKernel
 
@@ -455,6 +507,25 @@ interface TokenUsage {
 - Per-agent cache hit rates
 - Token consumption
 - Segment hash correlation
+
+---
+
+## Prompt Migration Feature Flags
+
+All migration changes are gated behind feature flags that default to OFF.
+
+| Flag | Controls | Default |
+|---|---|---|
+| `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` | T5 `agentProfile:*` template rendering in Segment B | OFF |
+| `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` | T6 `toolProjection:*` template rendering in Segment C | OFF |
+| `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` | T7 `runtimeContext:*` template rendering in Segment D | OFF |
+| `PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED` | B1/B2/B3 explicit sub-section rendering | OFF |
+| `PROMPT_SEGMENT_D_PROVENANCE_ENABLED` | Provenance header in Segment D | OFF |
+| `PROMPT_SUMMARY_LAYERS_TOP_LEVEL_ENABLED` | `summaryLayers` as top-level field | OFF |
+| `PROMPT_RICH_PERSONA_ENABLED` | Rich persona field rendering in B3 | OFF |
+| `PROMPT_MEMORY_P0_ENABLED` | Base flag for P10 projections | OFF |
+
+When a flag is OFF, the builder skips the gated code path and segment hashes remain unchanged.
 
 ---
 
@@ -533,22 +604,32 @@ interface TokenUsage {
 ```typescript
 interface ModelInputBuildInput {
   mode: ModelInputMode
-  agentKind: string
+  agentType?: AgentType           // Runtime agent class
+  agentProfile?: string           // Capability/persona profile
   providerFamily: string
+  outputContract?: string
+  launchSource?: LaunchSource
+  runtimeEnvironment?: Record<string, unknown>
 
-  // Layer 5
-  systemPrompt?: string
-  routingPrompt?: string
-  personaProjection?: PersonaProjection // P10
+  // Legacy (deprecated)
+  agentKind?: string              // Use agentType + agentProfile instead
 
-  // Layer 6
+  // Layer 5 (Segment B) - B1/B2/B3
+  systemPrompt?: string           // B1
+  routingPrompt?: string          // B2
+  personaProjection?: PersonaProjection  // B3
+  segmentB?: SegmentBInputs       // Grouped B1/B2/B3
+
+  // Layer 6 (Segment C)
   toolProjection?: ToolPlaneProjection
-  toolSelectionPolicy?: ToolSelectionPolicyProjection // P10, top-level
+  toolSelectionPolicy?: ToolSelectionPolicyProjection  // Top-level strategy
 
-  // Layer 7
+  // Layer 7 (Segment D)
   contextBundle?: ContextBundleData
-  memoryPolicyProjection?: MemoryPolicyProjection // P10
-  summaryLayers?: SummaryLayerProjection // P10
+  memoryPolicyProjection?: MemoryPolicyProjection      // Top-level strategy
+  summaryLayers?: SummaryLayerProjection               // Top-level strategy
+
+  // Dynamic fields (Segment D)
   currentUserMessage?: string
   currentDate?: string
   sessionId?: string
@@ -578,9 +659,13 @@ interface BuiltModelInput {
   }
   metadata: {
     mode: ModelInputMode
-    agentKind: string
+    agentKind: string           // Legacy, derived from agentProfile
+    agentType: AgentType
+    agentProfile: string
     providerFamily: string
     messageCount: number
+    outputContract?: string
+    launchSource?: LaunchSource
   }
 }
 ```
@@ -603,8 +688,9 @@ const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoad
 
 // Build for routing
 const built = await builder.build({
-  mode: 'routing_json',
-  agentKind: 'foreground',
+  mode: 'routing_tool_call',
+  agentType: 'main',
+  agentProfile: 'foreground',
   providerFamily: 'deepseek',
   systemPrompt: 'You are a helpful assistant.',
   toolProjection: {

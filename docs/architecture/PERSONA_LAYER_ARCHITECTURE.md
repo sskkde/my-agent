@@ -1,14 +1,17 @@
 # Persona Layer Architecture
 
-> Version: 1.0.0
+> Version: 1.1.0
 > Created: 2026-05-24
-> Status: Implemented
+> Updated: 2026-06-19
+> Status: Implemented (prompt migration aligned)
 
 ---
 
 ## Overview
 
-The Persona Layer (Layer 5) provides structured persona configuration that affects the assistant's expression style and preferences. The persona is carefully constrained to enhance user experience without compromising system integrity, security, or operational boundaries.
+The Persona Layer (Layer 5, Segment B3) provides structured persona configuration that affects the assistant's expression style and preferences. The persona is carefully constrained to enhance user experience without compromising system integrity, security, or operational boundaries.
+
+Segment B is divided into three ordered sub-sections: B1 (platform-owned agent profile, highest priority), B2 (tenant/admin instructions + T5 template content), and B3 (user persona/preferences, lowest priority). The persona projection renders exclusively in B3, constrained by the safety prefix and by B1+B2 content above it.
 
 ---
 
@@ -37,6 +40,78 @@ export interface PersonaProjection {
 | `styleGuidelines` | string                  | Yes      | Natural language style preferences               |
 | `constraints`     | string[]                | Yes      | Hard boundaries the persona cannot cross         |
 | `sourceProfile`   | AssistantPersonaProfile | No       | Additional persona metadata                      |
+
+---
+
+## Rich Persona Profile (AssistantPersonaProfile)
+
+The `PersonaProjection.sourceProfile` field carries the full `AssistantPersonaProfile`. The migration unifies two previously incompatible shapes into a single rich type.
+
+### Target Shape
+
+```typescript
+interface AssistantPersonaProfile {
+  // Identity
+  personaId: string
+  name: string
+  displayIdentity?: string
+
+  // Background
+  description?: string
+  background?: string
+
+  // Expression
+  tone?: string
+  personality?: string
+
+  // Behavior preferences
+  behaviorPreferences?: {
+    verbosity?: 'concise' | 'balanced' | 'verbose'
+    codeCommentStyle?: 'minimal' | 'explanatory' | 'documented'
+    explanationDepth?: 'brief' | 'moderate' | 'detailed'
+    formality?: 'casual' | 'professional' | 'formal'
+  }
+
+  // User address preferences
+  userAddressPreferences?: {
+    preferredName?: string
+    pronouns?: string
+    language?: string
+  }
+
+  // Boundaries (persona cannot cross these)
+  boundaries?: string[]
+
+  // Non-overridable constraints (platform-enforced)
+  nonOverridableConstraints?: string[]
+
+  // Legacy fields (foreground compatibility, deprecated)
+  directDelegationPolicy?: DirectDelegationPolicy
+  constraints?: {
+    maxDirectResponseTokens?: number
+    requirePlannerForMultiStep?: boolean
+    requireApprovalsFor?: string[]
+  }
+}
+```
+
+### Field → Segment Mapping
+
+| Field | Segment | Overrideable by user? | Description |
+|---|---|---|---|
+| `personaId` | B3 | No | Unique identifier for lookup and caching |
+| `name` | B3 | Yes | Human-readable persona name |
+| `displayIdentity` | B3 | Yes | How the assistant refers to itself |
+| `description` | B3 | Yes | Short description of the persona |
+| `background` | B3 | Yes | Persona backstory or context |
+| `tone` | B3 | Yes | Desired tone |
+| `personality` | B3 | Yes | Personality traits |
+| `behaviorPreferences` | B3 | Yes | Structured behavior knobs |
+| `userAddressPreferences` | B3 | Yes | How to address the user |
+| `boundaries` | B3 | Yes | Soft boundaries the persona should respect |
+| `nonOverridableConstraints` | B3 + safety prefix | No | Hard constraints rendered with safety prefix |
+
+Rich persona field rendering is gated by `PROMPT_RICH_PERSONA_ENABLED` (default OFF).
 
 ---
 
@@ -214,38 +289,43 @@ SegmentB = SHA-256(systemPrompt + routingPrompt + personaProjection)
 
 ## Integration with ModelInputBuilder
 
-### Segment B Construction
+### Segment B Construction (B1/B2/B3)
 
 ```typescript
-private buildSegmentB(input: ModelInputBuildInput) {
-  const parts: string[] = [];
+private buildSegmentB(resolved, input: ModelInputBuildInput) {
+  const b1Parts: string[] = []
+  const b2Parts: string[] = []
+  const b3Parts: string[] = []
 
-  // 1. System prompt (highest priority)
+  // B1: systemPrompt — platform-owned agent profile, highest priority
   if (input.systemPrompt) {
-    parts.push(input.systemPrompt);
+    b1Parts.push(input.systemPrompt)
   }
 
-  // 2. Routing prompt
+  // B2: routingPrompt + T5 template content — tenant/admin instructions
   if (input.routingPrompt) {
-    parts.push(input.routingPrompt);
+    b2Parts.push(input.routingPrompt)
+  }
+  if (isPromptT5TemplateConsumptionEnabled()) {
+    const t5Content = await this.loadTaxonomyLayer5(resolved, input)
+    if (t5Content) b2Parts.push(t5Content)
   }
 
-  // 3. Persona projection (P10)
+  // B3: personaProjection — user preferences, constrained, preference-only
   if (input.personaProjection) {
-    parts.push(renderPersonaProjection(input.personaProjection));
+    b3Parts.push(renderPersonaProjection(input.personaProjection))
   }
 
-  const content = parts.join('\n\n');
-  const hash = computeTemplateHash(content);
-  return { content, hash };
+  // Assemble with explicit sub-section headers (gated by flag)
+  // ...
 }
 ```
 
-### Ordering Rationale
+### Ordering Rationale (B1 > B2 > B3)
 
-1. **systemPrompt first**: Highest priority, defines core behavior
-2. **routingPrompt second**: Task routing instructions
-3. **personaProjection last**: Style overlay, constrained by earlier content
+1. **B1 (systemPrompt)**: Highest priority, defines core agent behavior. Cannot be overridden by persona.
+2. **B2 (routingPrompt + T5)**: Task routing instructions and agent profile templates. Middle priority.
+3. **B3 (personaProjection)**: Style overlay, constrained by safety prefix and by B1+B2 content above it.
 
 ---
 
@@ -274,8 +354,9 @@ const personaProjection: PersonaProjection = {
 
 ```typescript
 const built = await builder.build({
-  mode: 'routing_json',
-  agentKind: 'foreground',
+  mode: 'routing_tool_call',
+  agentType: 'main',
+  agentProfile: 'foreground',
   providerFamily: 'deepseek',
   systemPrompt: 'You are a helpful assistant.',
   personaProjection: personaProjection,
@@ -362,6 +443,29 @@ When ON:
 - `personaProjection` is rendered
 - Segment B hash includes persona content
 - Persona affects assistant style
+
+### PROMPT_RICH_PERSONA_ENABLED
+
+When OFF:
+
+- Minimal `PersonaProjection` rendering (personaId, styleGuidelines, constraints)
+- `sourceProfile` rich fields are not rendered
+
+When ON:
+
+- Rich persona fields from `sourceProfile` feed into `styleGuidelines` and `constraints`
+- `behaviorPreferences`, `userAddressPreferences`, `boundaries`, `nonOverridableConstraints` are rendered
+
+### PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED
+
+When OFF:
+
+- Segment B is flat concatenation of systemPrompt + routingPrompt + personaProjection
+
+When ON:
+
+- Segment B uses explicit B1/B2/B3 sub-section headers
+- T5 template content enters B2 (requires `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED`)
 
 ---
 
