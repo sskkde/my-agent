@@ -36,6 +36,11 @@ import { StaticPrefixBuilder } from './static-prefix-builder.js'
 import type { PromptTemplateRegistry, PromptTemplateRecord, SevenLayerInput } from '../../prompt/prompt-template-registry.js'
 import type { TemplateLoader } from '../../prompt/template-loader.js'
 import { normalizeAgentLabel, isKnownAgentLabel } from '../../taxonomy/agent-label-normalizer.js'
+import {
+  isPromptT5TemplateConsumptionEnabled,
+  isPromptT6TemplateConsumptionEnabled,
+  isPromptT7TemplateConsumptionEnabled,
+} from '../../prompt/feature-flags.js'
 
 export interface ModelInputBuilderDeps {
   templateRegistry: PromptTemplateRegistry
@@ -45,9 +50,11 @@ export interface ModelInputBuilderDeps {
 export class ModelInputBuilder {
   private readonly staticPrefixBuilder: StaticPrefixBuilder
   private readonly templateRegistry: PromptTemplateRegistry
+  private readonly templateLoader: TemplateLoader
 
   constructor(deps: ModelInputBuilderDeps) {
     this.templateRegistry = deps.templateRegistry
+    this.templateLoader = deps.templateLoader
     this.staticPrefixBuilder = new StaticPrefixBuilder(deps.templateRegistry, deps.templateLoader)
   }
 
@@ -66,9 +73,9 @@ export class ModelInputBuilder {
     const resolved = this.resolveTaxonomy(input)
 
     const segmentA = await this.buildSegmentA(resolved, input)
-    const segmentB = this.buildSegmentB(input)
-    const segmentC = this.buildSegmentC(input)
-    const segmentD = this.buildSegmentD(input)
+    const segmentB = await this.buildSegmentB(resolved, input)
+    const segmentC = await this.buildSegmentC(resolved, input)
+    const segmentD = await this.buildSegmentD(resolved, input)
 
     const messages = this.assembleMessages(segmentA, segmentB, segmentC, segmentD, input)
 
@@ -159,19 +166,53 @@ export class ModelInputBuilder {
     return this.staticPrefixBuilder.buildStaticPrefix(sevenLayerInput)
   }
 
-  private buildSegmentB(input: ModelInputBuildInput) {
+  private async buildSegmentB(resolved: {
+    agentType: import('../../context/types.js').AgentType
+    agentProfile: string
+    agentKind: string
+  }, input: ModelInputBuildInput) {
+    // Segment B = B1 + B2 + B3 (stable ordering for hash determinism)
+    const b1Parts: string[] = []
+    const b2Parts: string[] = []
+    const b3Parts: string[] = []
+
+    // B1: systemPrompt — platform-owned agent profile, highest priority
+    if (input.systemPrompt) {
+      b1Parts.push(input.systemPrompt)
+    }
+
+    // B2: routingPrompt + T5 template content — tenant/admin instructions
+    if (input.routingPrompt) {
+      b2Parts.push(input.routingPrompt)
+    }
+
+    if (isPromptT5TemplateConsumptionEnabled()) {
+      const t5Content = await this.loadTaxonomyLayer5(resolved, input)
+      if (t5Content) {
+        b2Parts.push(t5Content)
+      }
+    }
+
+    // B3: personaProjection — user preferences, constrained, preference-only
+    if (input.personaProjection) {
+      b3Parts.push(renderPersonaProjection(input.personaProjection))
+    }
+
     const parts: string[] = []
 
-    if (input.systemPrompt) {
-      parts.push(input.systemPrompt)
+    if (b1Parts.length > 0) {
+      parts.push('--- Segment B1: System Prompt (Platform-owned, highest priority) ---')
+      parts.push(b1Parts.join('\n\n'))
     }
 
-    if (input.routingPrompt) {
-      parts.push(input.routingPrompt)
+    if (b2Parts.length > 0) {
+      parts.push('--- Segment B2: Routing & Template (Tenant/Admin) ---')
+      parts.push(b2Parts.join('\n\n'))
     }
 
-    if (input.personaProjection) {
-      parts.push(renderPersonaProjection(input.personaProjection))
+    if (b3Parts.length > 0) {
+      parts.push('--- Segment B3: Persona Projection (User Preferences, preference-only) ---')
+      parts.push(b3Parts.join('\n\n'))
     }
 
     const content = parts.join('\n\n')
@@ -180,12 +221,23 @@ export class ModelInputBuilder {
     return { content, hash }
   }
 
-  private buildSegmentC(input: ModelInputBuildInput) {
+  private async buildSegmentC(resolved: {
+    agentType: import('../../context/types.js').AgentType
+    agentProfile: string
+    agentKind: string
+  }, input: ModelInputBuildInput) {
     const projection = input.toolProjection
     const mode = input.mode
     const policy = input.toolSelectionPolicy
 
     const parts: string[] = []
+
+    if (isPromptT6TemplateConsumptionEnabled()) {
+      const t6Content = await this.loadTaxonomyLayer6(resolved, input)
+      if (t6Content) {
+        parts.push(t6Content)
+      }
+    }
 
     if (projection) {
       if (mode === 'routing_json') {
@@ -209,45 +261,61 @@ export class ModelInputBuilder {
     return { content, hash }
   }
 
-  private buildSegmentD(input: ModelInputBuildInput) {
+  private async buildSegmentD(resolved: {
+    agentType: import('../../context/types.js').AgentType
+    agentProfile: string
+    agentKind: string
+  }, input: ModelInputBuildInput) {
     const parts: string[] = []
 
+    // Provenance header
+    parts.push('--- Segment D: Context Bundle (Provenance) ---')
+
+    // 1. Taxonomy template (Layer 7)
+    if (isPromptT7TemplateConsumptionEnabled()) {
+      const t7Content = await this.loadTaxonomyLayer7(resolved, input)
+      if (t7Content) {
+        parts.push('--- Taxonomy Template (Layer 7) ---')
+        parts.push(t7Content)
+      }
+    }
+
+    // 2. Memory policy projection
     if (input.memoryPolicyProjection) {
+      parts.push('--- Memory Policy ---')
       parts.push(renderMemoryPolicyProjection(input.memoryPolicyProjection))
     }
 
-    const bundle = input.contextBundle
-    if (bundle?.summaryLayers) {
-      const rendered = renderSummaryLayers(bundle.summaryLayers)
+    // 3. Summary layer projection: prefer top-level strategy projection,
+    // fall back to nested contextBundle.summaryLayers for backward compatibility.
+    const summaryLayersSource = input.summaryLayers ?? input.contextBundle?.summaryLayers
+    if (summaryLayersSource) {
+      const rendered = renderSummaryLayers(summaryLayersSource)
       if (rendered) {
+        parts.push('--- Summary Layers ---')
         parts.push(rendered)
       }
     }
 
-    if (input.currentDate) {
-      parts.push(`Current Date: ${input.currentDate}`)
+    // 4. Dynamic fields (stable ordering for hash determinism)
+    const dynamicFields: string[] = []
+    if (input.currentDate) dynamicFields.push(`Current Date: ${input.currentDate}`)
+    if (input.sessionId) dynamicFields.push(`Session ID: ${input.sessionId}`)
+    if (input.runId) dynamicFields.push(`Run ID: ${input.runId}`)
+    if (input.messageId) dynamicFields.push(`Message ID: ${input.messageId}`)
+    if (input.requestId) dynamicFields.push(`Request ID: ${input.requestId}`)
+    if (dynamicFields.length > 0) {
+      parts.push('--- Dynamic Fields ---')
+      parts.push(dynamicFields.join('\n'))
     }
 
-    if (input.sessionId) {
-      parts.push(`Session ID: ${input.sessionId}`)
-    }
-
-    if (input.runId) {
-      parts.push(`Run ID: ${input.runId}`)
-    }
-
-    if (input.messageId) {
-      parts.push(`Message ID: ${input.messageId}`)
-    }
-
-    if (input.requestId) {
-      parts.push(`Request ID: ${input.requestId}`)
-    }
-
+    // 5. Runtime environment
     if (input.runtimeEnvironment && Object.keys(input.runtimeEnvironment).length > 0) {
       parts.push(this.renderRuntimeEnvironment(input.runtimeEnvironment))
     }
 
+    // 6. Context bundle items
+    const bundle = input.contextBundle
     if (bundle) {
       if (bundle.pinnedItems && bundle.pinnedItems.length > 0) {
         parts.push(this.renderContextItems('Pinned Context', bundle.pinnedItems))
@@ -261,31 +329,25 @@ export class ModelInputBuilder {
         parts.push(this.renderContextItems('Summary', bundle.summaryBlocks))
       }
 
-      if (bundle.planView) {
-        parts.push(bundle.planView)
-      }
+      // 7. Views
+      if (bundle.planView) parts.push(bundle.planView)
+      if (bundle.workflowStepView) parts.push(bundle.workflowStepView)
+      if (bundle.backgroundRunView) parts.push(bundle.backgroundRunView)
+      if (bundle.triggerView) parts.push(bundle.triggerView)
 
-      if (bundle.workflowStepView) {
-        parts.push(bundle.workflowStepView)
-      }
-
-      if (bundle.backgroundRunView) {
-        parts.push(bundle.backgroundRunView)
-      }
-
-      if (bundle.triggerView) {
-        parts.push(bundle.triggerView)
-      }
-
+      // 8. Transcript
       if (bundle.transcript && bundle.transcript.length > 0) {
         parts.push(this.renderTranscript(bundle.transcript))
       }
     }
 
+    // 9. User message
     if (input.currentUserMessage) {
+      parts.push('--- User Message ---')
       parts.push(`User Message: ${input.currentUserMessage}`)
     }
 
+    // 10. Input transcript (for function_calling/routing_tool_call modes)
     if (input.transcript && input.transcript.length > 0) {
       parts.push(this.renderTranscript(input.transcript))
     }
@@ -332,6 +394,74 @@ export class ModelInputBuilder {
     }
 
     return messages
+  }
+
+  private async loadTaxonomyLayer5(
+    resolved: { agentProfile: string; agentType: string },
+    input: ModelInputBuildInput,
+  ): Promise<string | undefined> {
+    const templateId = `agentProfile:${resolved.agentProfile}`
+    const record = this.templateRegistry.getTemplate(templateId)
+    if (!record) return undefined
+
+    const variables = this.buildTemplateVars(resolved, input)
+    try {
+      if (record.content !== undefined) {
+        return this.templateLoader.loadFromString(record.content, variables)
+      }
+      return await this.templateLoader.load(record.id, variables)
+    } catch {
+      return undefined
+    }
+  }
+
+  private async loadTaxonomyLayer6(
+    resolved: { agentProfile: string; agentType: string },
+    input: ModelInputBuildInput,
+  ): Promise<string | undefined> {
+    const record = this.templateRegistry.getTemplate('toolProjection:default')
+    if (!record) return undefined
+
+    const variables = this.buildTemplateVars(resolved, input)
+    try {
+      if (record.content !== undefined) {
+        return this.templateLoader.loadFromString(record.content, variables)
+      }
+      return await this.templateLoader.load(record.id, variables)
+    } catch {
+      return undefined
+    }
+  }
+
+  private async loadTaxonomyLayer7(
+    resolved: { agentProfile: string; agentType: string },
+    input: ModelInputBuildInput,
+  ): Promise<string | undefined> {
+    const record = this.templateRegistry.getTemplate('runtimeContext:default')
+    if (!record) return undefined
+
+    const variables = this.buildTemplateVars(resolved, input)
+    try {
+      if (record.content !== undefined) {
+        return this.templateLoader.loadFromString(record.content, variables)
+      }
+      return await this.templateLoader.load(record.id, variables)
+    } catch {
+      return undefined
+    }
+  }
+
+  private buildTemplateVars(
+    resolved: { agentProfile: string; agentType: string },
+    input: ModelInputBuildInput,
+  ): Record<string, string> {
+    return {
+      agentKind: resolved.agentProfile ?? resolved.agentType,
+      providerFamily: input.providerFamily,
+      agentType: resolved.agentType,
+      agentProfile: resolved.agentProfile,
+      outputContract: input.outputContract ?? '',
+    }
   }
 
   private renderRoutingToolPlane(projection: ToolPlaneProjection): string {

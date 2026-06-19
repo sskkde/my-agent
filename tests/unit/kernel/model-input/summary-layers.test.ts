@@ -235,17 +235,15 @@ describe('SummaryLayerProjection', () => {
   })
 
   describe('ModelInputBuilder with summaryLayers', () => {
-    it('includes summaryLayers in Segment D when provided', async () => {
+    it('includes top-level summaryLayers in Segment D when provided', async () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            session: 'Current session summary',
-          },
+        summaryLayers: {
+          session: 'Current session summary',
         },
       }
 
@@ -262,10 +260,8 @@ describe('SummaryLayerProjection', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            session: 'Session summary',
-          },
+        summaryLayers: {
+          session: 'Session summary',
         },
       }
 
@@ -282,10 +278,8 @@ describe('SummaryLayerProjection', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            session: 'Session summary',
-          },
+        summaryLayers: {
+          session: 'Session summary',
         },
       }
 
@@ -302,10 +296,8 @@ describe('SummaryLayerProjection', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            session: 'Session summary',
-          },
+        summaryLayers: {
+          session: 'Session summary',
         },
       }
 
@@ -347,11 +339,9 @@ describe('SummaryLayerProjection', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            session: 'Stable session content',
-            daily: 'Stable daily content',
-          },
+        summaryLayers: {
+          session: 'Stable session content',
+          daily: 'Stable daily content',
         },
       }
 
@@ -371,10 +361,8 @@ describe('SummaryLayerProjection', () => {
         memoryPolicyProjection: {
           useRules: 'Memory rules here.',
         },
-        contextBundle: {
-          summaryLayers: {
-            session: 'Session summary here.',
-          },
+        summaryLayers: {
+          session: 'Session summary here.',
         },
       }
 
@@ -394,10 +382,10 @@ describe('SummaryLayerProjection', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
+        summaryLayers: {
+          session: 'Session summary here.',
+        },
         contextBundle: {
-          summaryLayers: {
-            session: 'Session summary here.',
-          },
           orderedItems: [{ itemId: 'item1', content: 'Context item content' }],
         },
       }
@@ -411,18 +399,18 @@ describe('SummaryLayerProjection', () => {
       expect(summaryIndex).toBeGreaterThanOrEqual(0)
     })
 
-    it('combines summaryLayers with other contextBundle data in Segment D', async () => {
+    it('combines summaryLayers with contextBundle data in Segment D', async () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
+        summaryLayers: {
+          session: 'Session summary',
+          daily: 'Daily summary',
+        },
         contextBundle: {
-          summaryLayers: {
-            session: 'Session summary',
-            daily: 'Daily summary',
-          },
           pinnedItems: [{ itemId: 'pin1', content: 'Pinned item' }],
           orderedItems: [{ itemId: 'item1', content: 'Context item' }],
         },
@@ -440,6 +428,49 @@ describe('SummaryLayerProjection', () => {
       expect(result.segments.contextBundle).toContain('--- Context ---')
       expect(result.segments.contextBundle).toContain('Context item')
       expect(result.segments.contextBundle).toContain('User Message: What do you know?')
+    })
+
+    it('falls back to contextBundle.summaryLayers when top-level is absent', async () => {
+      const builder = makeBuilder()
+
+      const input: ModelInputBuildInput = {
+        mode: 'routing_json',
+        agentKind: 'foreground',
+        providerFamily: 'openai',
+        contextBundle: {
+          summaryLayers: {
+            session: 'Nested session summary',
+          },
+        },
+      }
+
+      const result = await builder.build(input)
+
+      expect(result.segments.contextBundle).toContain('## Session Summary')
+      expect(result.segments.contextBundle).toContain('Nested session summary')
+    })
+
+    it('top-level summaryLayers takes precedence over nested', async () => {
+      const builder = makeBuilder()
+
+      const input: ModelInputBuildInput = {
+        mode: 'routing_json',
+        agentKind: 'foreground',
+        providerFamily: 'openai',
+        summaryLayers: {
+          session: 'TOP-LEVEL session summary',
+        },
+        contextBundle: {
+          summaryLayers: {
+            session: 'NESTED session summary',
+          },
+        },
+      }
+
+      const result = await builder.build(input)
+
+      expect(result.segments.contextBundle).toContain('TOP-LEVEL session summary')
+      expect(result.segments.contextBundle).not.toContain('NESTED session summary')
     })
   })
 
