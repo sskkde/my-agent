@@ -133,6 +133,11 @@ export interface ToolExecutionRequest {
   kernelRunId?: string
   permissionContext: PermissionContext
   signal?: AbortSignal
+  agentType?: string
+  agentProfile?: string
+  launchSource?: string
+  outputContract?: string
+  permissionPolicyRef?: string
 }
 
 // Tool execution status
@@ -193,6 +198,8 @@ export interface ToolExecutorConfig {
   }
   traceStore?: TraceStore
   auditRecorder?: AuditRecorder
+  /** Optional envelope registry for runtime AgentType boundary enforcement. */
+  envelopeRegistry?: import('../permissions/agent-type-tool-envelope.js').AgentTypeToolEnvelopeRegistry
 }
 
 // Tool pool for kernel context

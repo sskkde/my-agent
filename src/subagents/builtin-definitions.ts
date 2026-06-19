@@ -116,6 +116,7 @@ const codeProcessor: SubagentDefinition = {
 
 const researchProcessor: SubagentDefinition = {
   agentType: 'research_processor',
+  agentProfile: 'research_processor',
   displayName: '研究检索',
   description: '执行深度研究检索，包括多源信息聚合、分析和综合报告生成。',
   modality: 'text',

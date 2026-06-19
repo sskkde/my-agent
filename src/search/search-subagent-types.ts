@@ -72,17 +72,11 @@ export interface SearchWarning {
  * Metadata for the search subagent tool result.
  */
 export interface SearchSubagentMetadata {
-  /** Duration of the search in milliseconds */
   durationMs: number
-
-  /** Number of results returned */
   resultCount: number
-
-  /** Number of unique sources (domains) in results */
   uniqueSourceCount: number
-
-  /** Optional ranking strategy version used to order search results */
   rankingVersion?: string
+  agentProfile?: string
 }
 
 /**

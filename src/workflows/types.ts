@@ -46,7 +46,10 @@ export interface WorkflowStepConfig {
   toolParams?: Record<string, unknown>
   agentId?: string
   agentParams?: Record<string, unknown>
+  /** @deprecated Use agentProfile instead. Kept for backward compatibility. */
   subagentType?: string
+  /** Capability profile identifier for subagent_run steps. Falls back to subagentType when not provided. */
+  agentProfile?: string
   subagentParams?: Record<string, unknown>
   // Subagent execution mode (for subagent_run steps)
   subagentExecutionMode?: 'sync' | 'background'

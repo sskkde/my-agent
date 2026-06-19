@@ -10,6 +10,7 @@ import type {
   TriggerSource,
   TriggerTargetType,
   RuntimeTriggerEvent,
+  AgentType,
 } from './types.js'
 
 export type {
@@ -114,7 +115,7 @@ export function createBackgroundRunContextView(
   backgroundRunId: string,
   subagentRunId: string,
   subagentCode: string,
-  agentType: string,
+  agentType: AgentType,
   objective: string,
   status: string,
   options: {

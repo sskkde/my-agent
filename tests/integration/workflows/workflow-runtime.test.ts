@@ -11,7 +11,7 @@ import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/
 import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
 import { WORKFLOW_RUN_STATES } from '../../../src/shared/states.js'
 import { createWorkflowRuntime, type WorkflowRuntime } from '../../../src/workflows/workflow-runtime.js'
-import type { WorkflowStep } from '../../../src/workflows/types.js'
+import type { WorkflowStep, WorkflowStepConfig } from '../../../src/workflows/types.js'
 
 // Migrations for workflow runtime tables
 const workflowRuntimeMigrations: Migration[] = [
@@ -913,6 +913,163 @@ describe('Workflow Runtime Integration', () => {
 
       const events = eventStore.query({ eventType: 'workflow_run_started' })
       expect(events.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('subagent_run agentProfile backward compatibility', () => {
+    function createSubagentStep(stepId: string, config: WorkflowStepConfig): WorkflowStep {
+      return {
+        stepId,
+        stepType: 'subagent_run',
+        name: 'Subagent Step',
+        config,
+      }
+    }
+
+    it('should validate subagent_run with legacy subagentType only', () => {
+      const steps = [createSubagentStep('step_001', { subagentType: 'research_agent' })]
+      const draft = workflowRuntime.createDraft({
+        name: 'Legacy Subagent Workflow',
+        steps,
+        ownerUserId: 'user_compat_001',
+      })
+
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      const subagentIssues = issues.filter((i) => i.code === 'MISSING_SUBAGENT_TYPE')
+      expect(subagentIssues).toHaveLength(0)
+    })
+
+    it('should validate subagent_run with new agentProfile only', () => {
+      const steps = [createSubagentStep('step_001', { agentProfile: 'document_processor' })]
+      const draft = workflowRuntime.createDraft({
+        name: 'New AgentProfile Workflow',
+        steps,
+        ownerUserId: 'user_compat_002',
+      })
+
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      const subagentIssues = issues.filter((i) => i.code === 'MISSING_SUBAGENT_TYPE')
+      expect(subagentIssues).toHaveLength(0)
+    })
+
+    it('should fail validation when neither subagentType nor agentProfile is set', () => {
+      const steps = [createSubagentStep('step_001', { subagentParams: {} })]
+      const draft = workflowRuntime.createDraft({
+        name: 'Missing Profile Workflow',
+        steps,
+        ownerUserId: 'user_compat_003',
+      })
+
+      const issues = workflowRuntime.validateDraft(draft.draftId)
+      const subagentIssues = issues.filter((i) => i.code === 'MISSING_SUBAGENT_TYPE')
+      expect(subagentIssues).toHaveLength(1)
+    })
+
+    it('should produce same agentProfile from legacy subagentType and new agentProfile', () => {
+      const legacySteps = [createSubagentStep('step_legacy', { subagentType: 'research_agent' })]
+      const newSteps = [createSubagentStep('step_new', { agentProfile: 'research_agent' })]
+
+      const legacyDraft = workflowRuntime.createDraft({
+        name: 'Legacy Profile Workflow',
+        steps: legacySteps,
+        ownerUserId: 'user_compat_004',
+      })
+      workflowRuntime.validateDraft(legacyDraft.draftId)
+      const legacyDef = workflowRuntime.publishDraft(legacyDraft.draftId)
+
+      const newDraft = workflowRuntime.createDraft({
+        name: 'New Profile Workflow',
+        steps: newSteps,
+        ownerUserId: 'user_compat_004',
+      })
+      workflowRuntime.validateDraft(newDraft.draftId)
+      const newDef = workflowRuntime.publishDraft(newDraft.draftId)
+
+      const legacyRun = workflowRuntime.startWorkflowRun({
+        definitionId: legacyDef.workflowId,
+        userId: 'user_compat_004',
+      })
+
+      const newRun = workflowRuntime.startWorkflowRun({
+        definitionId: newDef.workflowId,
+        userId: 'user_compat_004',
+      })
+
+      const legacyAction = runtimeActionStore
+        .query({ workflowRunId: legacyRun.workflowRunId })
+        .find((a) => a.targetAction === 'launch_subagent')
+      const newAction = runtimeActionStore
+        .query({ workflowRunId: newRun.workflowRunId })
+        .find((a) => a.targetAction === 'launch_subagent')
+
+      expect(legacyAction).toBeDefined()
+      expect(newAction).toBeDefined()
+
+      const legacyPayload = legacyAction!.payload as Record<string, unknown>
+      const newPayload = newAction!.payload as Record<string, unknown>
+
+      const legacyInputData = legacyPayload.inputData as Record<string, unknown>
+      const newInputData = newPayload.inputData as Record<string, unknown>
+
+      expect(legacyInputData.agentProfile).toBe('research_agent')
+      expect(newInputData.agentProfile).toBe('research_agent')
+    })
+
+    it('should fallback agentProfile to subagentType when agentProfile not set', () => {
+      const steps = [createSubagentStep('step_001', { subagentType: 'document_agent' })]
+      const draft = workflowRuntime.createDraft({
+        name: 'Fallback Workflow',
+        steps,
+        ownerUserId: 'user_compat_005',
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
+
+      const result = workflowRuntime.startWorkflowRun({
+        definitionId: definition.workflowId,
+        userId: 'user_compat_005',
+      })
+
+      const action = runtimeActionStore
+        .query({ workflowRunId: result.workflowRunId })
+        .find((a) => a.targetAction === 'launch_subagent')
+
+      expect(action).toBeDefined()
+      const payload = action!.payload as Record<string, unknown>
+      const inputData = payload.inputData as Record<string, unknown>
+      expect(inputData.agentProfile).toBe('document_agent')
+      expect(inputData.subagentType).toBe('document_agent')
+    })
+
+    it('should use agentProfile over subagentType when both are set', () => {
+      const steps = [
+        createSubagentStep('step_001', {
+          subagentType: 'old_type',
+          agentProfile: 'new_profile',
+        }),
+      ]
+      const draft = workflowRuntime.createDraft({
+        name: 'Override Workflow',
+        steps,
+        ownerUserId: 'user_compat_006',
+      })
+      workflowRuntime.validateDraft(draft.draftId)
+      const definition = workflowRuntime.publishDraft(draft.draftId)
+
+      const result = workflowRuntime.startWorkflowRun({
+        definitionId: definition.workflowId,
+        userId: 'user_compat_006',
+      })
+
+      const action = runtimeActionStore
+        .query({ workflowRunId: result.workflowRunId })
+        .find((a) => a.targetAction === 'launch_subagent')
+
+      expect(action).toBeDefined()
+      const payload = action!.payload as Record<string, unknown>
+      const inputData = payload.inputData as Record<string, unknown>
+      expect(inputData.agentProfile).toBe('new_profile')
+      expect(inputData.subagentType).toBe('old_type')
     })
   })
 })

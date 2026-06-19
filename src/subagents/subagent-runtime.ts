@@ -279,7 +279,7 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
       bundleId: `bundle-${record.subagentRunId}`,
       runId: record.subagentRunId,
       agentId: `subagent.${record.agentType}`,
-      agentType: record.agentType,
+      agentType: 'subagent',
       userId: record.userId,
       invocationSource: 'subagent_runtime',
       pinnedItems: [],

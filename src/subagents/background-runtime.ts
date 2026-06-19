@@ -6,12 +6,15 @@ export interface BackgroundRunInput {
   userId: string
   sessionId?: string
   agentType: string
+  agentProfile?: string
   taskSpec: SubagentTaskSpec
   launchSource: string
   priority?: number
   scheduledAt?: string
   expiresAt?: string
   artifactRefs?: string[]
+  outputContract?: string
+  permissionPolicyRef?: string
 }
 
 export interface Checkpoint {
@@ -74,6 +77,7 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       userId: input.userId,
       sessionId: input.sessionId,
       agentType: input.agentType,
+      agentProfile: input.agentProfile ?? input.agentType,
       status: 'queued',
       launchSource: input.launchSource,
       priority: input.priority ?? 0,
@@ -98,7 +102,10 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       payload: {
         backgroundRunId,
         agentType: input.agentType,
+        agentProfile: input.agentProfile ?? input.agentType,
         launchSource: input.launchSource,
+        outputContract: input.outputContract,
+        permissionPolicyRef: input.permissionPolicyRef,
         priority: input.priority ?? 0,
       },
       sensitivity: 'low' as SensitivityLevel,
@@ -146,6 +153,8 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       payload: {
         backgroundRunId: bgRunId,
         agentType: run.agentType,
+        agentProfile: run.agentProfile,
+        launchSource: run.launchSource,
         startedAt: now,
       },
       sensitivity: 'low' as SensitivityLevel,
@@ -320,6 +329,8 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       payload: {
         backgroundRunId: bgRunId,
         agentType: run.agentType,
+        agentProfile: run.agentProfile,
+        launchSource: run.launchSource,
         resultStatus: result.status,
         iterationsUsed: result.iterationsUsed,
         completedAt: now,
@@ -374,6 +385,8 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       payload: {
         backgroundRunId: bgRunId,
         agentType: run.agentType,
+        agentProfile: run.agentProfile,
+        launchSource: run.launchSource,
         errorCode: error.code,
         errorMessage: error.message,
         failedAt: now,

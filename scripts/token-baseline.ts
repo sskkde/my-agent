@@ -168,6 +168,8 @@ function makeStructuredJsonToolProjection(): ToolPlaneProjection {
 function makeRoutingJsonInput(): ModelInputBuildInput {
   return {
     mode: 'routing_json',
+    agentType: 'main',
+    agentProfile: 'foreground',
     agentKind: 'foreground',
     providerFamily: 'openai',
     systemPrompt: 'You are a helpful AI assistant specialized in software development tasks. You have access to various tools for reading files, searching the web, and managing artifacts.',
@@ -196,6 +198,8 @@ function makeRoutingJsonInput(): ModelInputBuildInput {
 function makeStructuredJsonInput(): ModelInputBuildInput {
   return {
     mode: 'structured_json',
+    agentType: 'background',
+    agentProfile: 'memory',
     agentKind: 'memory',
     providerFamily: 'openai',
     toolProjection: makeStructuredJsonToolProjection(),
@@ -209,6 +213,8 @@ function makeStructuredJsonInput(): ModelInputBuildInput {
 function makeFunctionCallingInput(): ModelInputBuildInput {
   return {
     mode: 'function_calling',
+    agentType: 'main',
+    agentProfile: 'default_main',
     agentKind: 'kernel',
     providerFamily: 'openai',
     systemPrompt: 'You are a kernel agent executing tasks with tool access. Complete the requested operation efficiently.',

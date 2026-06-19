@@ -1,7 +1,40 @@
 import type { ApprovalRequest as StorageApprovalRequest } from '../storage/approval-store.js'
 import type { PermissionGrant as StoragePermissionGrant } from '../storage/permission-grant-store.js'
 
-export type PermissionMode = 'read_only' | 'ask_on_write' | 'background_limited' | 'hard_deny'
+/**
+ * Unified permission mode — single source of truth for all permission profiles.
+ *
+ * Old registry profiles map as follows:
+ *   read_only       → read_only        (reads/queries only)
+ *   ask_on_write    → ask_on_write     (reads auto-allowed, writes require approval)
+ *   write_allowed   → write_allowed    (all operations auto-allowed, no approval needed)
+ *   restricted      → restricted       (deny high-risk tools: critical/high risk denied)
+ *   background_limited → background_limited (only read/query/internal_read)
+ *   hard_deny       → hard_deny        (deny everything unconditionally)
+ */
+export type PermissionMode = 'read_only' | 'ask_on_write' | 'write_allowed' | 'restricted' | 'background_limited' | 'hard_deny'
+
+/** All valid PermissionMode values, useful for runtime validation. */
+export const ALL_PERMISSION_MODES: readonly PermissionMode[] = [
+  'read_only',
+  'ask_on_write',
+  'write_allowed',
+  'restricted',
+  'background_limited',
+  'hard_deny',
+] as const
+
+/**
+ * Map a legacy permissionProfile string to the canonical PermissionMode.
+ * Returns the mode unchanged if it is already a valid PermissionMode.
+ * Throws for unrecognized profiles to surface migration gaps early.
+ */
+export function resolvePermissionMode(profile: string): PermissionMode {
+  if ((ALL_PERMISSION_MODES as readonly string[]).includes(profile)) {
+    return profile as PermissionMode
+  }
+  throw new Error(`Unknown permission profile: "${profile}". Valid modes: ${ALL_PERMISSION_MODES.join(', ')}`)
+}
 
 export type PermissionScopeType = 'one_shot' | 'session' | 'plan' | 'workflow_run' | 'background_run' | 'connector'
 
@@ -14,6 +47,10 @@ export function modeAllowsOperation(mode: PermissionMode, operationType: string)
     case 'read_only':
       return operationType === 'read' || operationType === 'query'
     case 'ask_on_write':
+      return true
+    case 'write_allowed':
+      return true
+    case 'restricted':
       return true
     case 'background_limited':
       return ['read', 'query', 'internal_read'].includes(operationType)

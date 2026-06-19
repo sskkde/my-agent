@@ -7,12 +7,18 @@ import { randomUUID } from 'crypto'
 import type { BuiltModelInput } from './model-input-types.js'
 import type { TokenUsage } from '../../llm/types.js'
 import type { ModelInputRedactor } from './model-input-redactor.js'
+import type { AgentType } from '../../context/types.js'
+import type { LaunchSource } from '../../taxonomy/launch-source-policy.js'
 
 export interface ModelInputSnapshot {
   snapshotId: string
   timestamp: string
   agentKind: string
+  agentType: AgentType
+  agentProfile: string
   mode: string
+  outputContract?: string
+  launchSource?: LaunchSource
   segmentHashes: {
     segmentA: string
     segmentB: string
@@ -36,12 +42,16 @@ export interface ModelInputSnapshot {
 export interface ModelInputSnapshotStore {
   record(params: {
     agentKind: string
+    agentType: AgentType
+    agentProfile: string
     mode: string
     builtInput: BuiltModelInput
     response?: Record<string, unknown>
     tokenUsage?: TokenUsage
     provider?: string
     model?: string
+    outputContract?: string
+    launchSource?: LaunchSource
   }): ModelInputSnapshot
 
   get(snapshotId: string): ModelInputSnapshot | undefined
@@ -61,12 +71,16 @@ class ModelInputSnapshotStoreImpl implements ModelInputSnapshotStore {
 
   record(params: {
     agentKind: string
+    agentType: AgentType
+    agentProfile: string
     mode: string
     builtInput: BuiltModelInput
     response?: Record<string, unknown>
     tokenUsage?: TokenUsage
     provider?: string
     model?: string
+    outputContract?: string
+    launchSource?: LaunchSource
   }): ModelInputSnapshot {
     const snapshotId = randomUUID()
     const timestamp = new Date().toISOString()
@@ -75,7 +89,11 @@ class ModelInputSnapshotStoreImpl implements ModelInputSnapshotStore {
       snapshotId,
       timestamp,
       agentKind: params.agentKind,
+      agentType: params.agentType,
+      agentProfile: params.agentProfile,
       mode: params.mode,
+      outputContract: params.outputContract,
+      launchSource: params.launchSource,
       segmentHashes: params.builtInput.segmentHashes,
       input: this.redactor.redact({
         messages: params.builtInput.messages,

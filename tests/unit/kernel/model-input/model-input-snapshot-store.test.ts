@@ -22,6 +22,8 @@ function makeBuiltInput(overrides: Partial<BuiltModelInput> = {}): BuiltModelInp
     metadata: {
       mode: 'routing_json',
       agentKind: 'foreground',
+      agentType: 'main',
+      agentProfile: 'foreground',
       providerFamily: 'deepseek',
       messageCount: 1,
     },
@@ -42,6 +44,8 @@ describe('ModelInputSnapshotStore', () => {
     it('records a snapshot with generated snapshotId', () => {
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
@@ -54,6 +58,8 @@ describe('ModelInputSnapshotStore', () => {
       const before = new Date().toISOString()
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
@@ -76,6 +82,8 @@ describe('ModelInputSnapshotStore', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput,
       })
@@ -93,6 +101,8 @@ describe('ModelInputSnapshotStore', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput,
       })
@@ -104,6 +114,8 @@ describe('ModelInputSnapshotStore', () => {
     it('redacts sensitive data in response', () => {
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         response: {
@@ -129,6 +141,8 @@ describe('ModelInputSnapshotStore', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         tokenUsage,
@@ -145,6 +159,8 @@ describe('ModelInputSnapshotStore', () => {
     it('records provider and model info', () => {
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         provider: 'openrouter',
@@ -160,6 +176,8 @@ describe('ModelInputSnapshotStore', () => {
     it('retrieves snapshot by ID', () => {
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
@@ -179,16 +197,22 @@ describe('ModelInputSnapshotStore', () => {
     it('filters snapshots by agent kind', () => {
       store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
       store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
       store.record({
         agentKind: 'search',
+        agentType: 'subagent',
+        agentProfile: 'search',
         mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
@@ -206,6 +230,8 @@ describe('ModelInputSnapshotStore', () => {
     it('filters snapshots by time range', async () => {
       const snapshot1 = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
@@ -214,6 +240,8 @@ describe('ModelInputSnapshotStore', () => {
 
       const snapshot2 = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
@@ -228,6 +256,8 @@ describe('ModelInputSnapshotStore', () => {
     it('returns empty array for non-overlapping range', () => {
       store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
@@ -243,6 +273,8 @@ describe('ModelInputSnapshotStore', () => {
 
       store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
@@ -250,6 +282,8 @@ describe('ModelInputSnapshotStore', () => {
 
       store.record({
         agentKind: 'search',
+        agentType: 'subagent',
+        agentProfile: 'search',
         mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
@@ -261,11 +295,15 @@ describe('ModelInputSnapshotStore', () => {
     it('clears all snapshots', () => {
       store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
       })
       store.record({
         agentKind: 'search',
+        agentType: 'subagent',
+        agentProfile: 'search',
         mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
@@ -282,6 +320,8 @@ describe('ModelInputSnapshotStore', () => {
     it('every LLM call can be associated with a snapshotId', () => {
       const snapshot = store.record({
         agentKind: 'kernel',
+        agentType: 'main',
+        agentProfile: 'default_main',
         mode: 'function_calling',
         builtInput: makeBuiltInput(),
         provider: 'deepseek',

@@ -7,15 +7,16 @@ export interface SubagentProviderPreference {
 }
 
 export interface SubagentProviderPreferenceStore {
-  get(userId: string, agentType: string): SubagentProviderPreference | null
-  set(userId: string, agentType: string, preference: SubagentProviderPreference): void
-  delete(userId: string, agentType: string): void
-  getByUser(userId: string): Array<{ agentType: string } & SubagentProviderPreference>
+  get(userId: string, agentProfile: string): SubagentProviderPreference | null
+  set(userId: string, agentProfile: string, preference: SubagentProviderPreference): void
+  delete(userId: string, agentProfile: string): void
+  getByUser(userId: string): Array<{ agentProfile: string } & SubagentProviderPreference>
 }
 
 interface SubagentProviderPreferenceRow {
   user_id: string
   agent_type: string
+  agent_profile: string | null
   provider_id: string | null
   model: string | null
   fallback_mode: string
@@ -44,6 +45,7 @@ class SubagentProviderPreferenceStoreImpl implements SubagentProviderPreferenceS
       CREATE TABLE IF NOT EXISTS subagent_provider_preferences (
         user_id TEXT NOT NULL,
         agent_type TEXT NOT NULL,
+        agent_profile TEXT,
         provider_id TEXT,
         model TEXT,
         fallback_mode TEXT NOT NULL DEFAULT 'any_compatible',
@@ -52,12 +54,17 @@ class SubagentProviderPreferenceStoreImpl implements SubagentProviderPreferenceS
         PRIMARY KEY (user_id, agent_type)
       )
     `)
+
+    this.connection.exec(`
+      CREATE INDEX IF NOT EXISTS idx_subagent_provider_prefs_agent_profile
+        ON subagent_provider_preferences(agent_profile)
+    `)
   }
 
-  get(userId: string, agentType: string): SubagentProviderPreference | null {
+  get(userId: string, agentProfile: string): SubagentProviderPreference | null {
     const results = this.connection.query<SubagentProviderPreferenceRow>(
-      `SELECT * FROM subagent_provider_preferences WHERE user_id = ? AND agent_type = ?`,
-      [userId, agentType],
+      `SELECT * FROM subagent_provider_preferences WHERE user_id = ? AND agent_profile = ?`,
+      [userId, agentProfile],
     )
 
     if (results.length === 0) {
@@ -67,15 +74,16 @@ class SubagentProviderPreferenceStoreImpl implements SubagentProviderPreferenceS
     return rowToPreference(results[0])
   }
 
-  set(userId: string, agentType: string, preference: SubagentProviderPreference): void {
+  set(userId: string, agentProfile: string, preference: SubagentProviderPreference): void {
     const now = new Date().toISOString()
     this.connection.exec(
       `INSERT OR REPLACE INTO subagent_provider_preferences (
-        user_id, agent_type, provider_id, model, fallback_mode, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        user_id, agent_type, agent_profile, provider_id, model, fallback_mode, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
-        agentType,
+        'subagent',
+        agentProfile,
         preference.providerId ?? null,
         preference.model ?? null,
         preference.fallbackMode ?? 'any_compatible',
@@ -85,21 +93,21 @@ class SubagentProviderPreferenceStoreImpl implements SubagentProviderPreferenceS
     )
   }
 
-  delete(userId: string, agentType: string): void {
-    this.connection.exec(`DELETE FROM subagent_provider_preferences WHERE user_id = ? AND agent_type = ?`, [
+  delete(userId: string, agentProfile: string): void {
+    this.connection.exec(`DELETE FROM subagent_provider_preferences WHERE user_id = ? AND agent_profile = ?`, [
       userId,
-      agentType,
+      agentProfile,
     ])
   }
 
-  getByUser(userId: string): Array<{ agentType: string } & SubagentProviderPreference> {
+  getByUser(userId: string): Array<{ agentProfile: string } & SubagentProviderPreference> {
     const rows = this.connection.query<SubagentProviderPreferenceRow>(
-      `SELECT * FROM subagent_provider_preferences WHERE user_id = ? ORDER BY agent_type`,
+      `SELECT * FROM subagent_provider_preferences WHERE user_id = ? ORDER BY agent_profile`,
       [userId],
     )
 
     return rows.map((row) => ({
-      agentType: row.agent_type,
+      agentProfile: row.agent_profile ?? row.agent_type,
       ...rowToPreference(row),
     }))
   }

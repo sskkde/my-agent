@@ -48,6 +48,16 @@ export interface EventRecord {
   sensitivity: SensitivityLevel
   retentionClass: RetentionClass
   createdAt: string
+  /** Runtime agent class (e.g. 'main', 'subagent', 'background'). Populated from payload when present. */
+  agentType?: string
+  /** Capability profile identifier (e.g. 'foreground', 'search'). Populated from payload when present. */
+  agentProfile?: string
+  /** Audit-only launch source (e.g. 'gateway_intent', 'planner_execution'). */
+  launchSource?: string
+  /** Platform-owned output schema identifier. */
+  outputContract?: string
+  /** Reference to the permission policy applied for this event. */
+  permissionPolicyRef?: string
 }
 
 export interface EventQuery {
@@ -113,6 +123,8 @@ function rowToEventRecord(row: EventRow): EventRecord {
   if (row.artifact_id) relatedRefs.artifactId = row.artifact_id
   if (row.memory_id) relatedRefs.memoryId = row.memory_id
 
+  const payload = JSON.parse(row.payload) as Record<string, unknown>
+
   return {
     eventId: row.event_id,
     eventType: row.event_type,
@@ -123,10 +135,15 @@ function rowToEventRecord(row: EventRow): EventRecord {
     causationId: row.causation_id ?? undefined,
     idempotencyKey: row.idempotency_key ?? undefined,
     relatedRefs: Object.keys(relatedRefs).length > 0 ? relatedRefs : undefined,
-    payload: JSON.parse(row.payload),
+    payload,
     sensitivity: row.sensitivity,
     retentionClass: row.retention_class,
     createdAt: row.created_at,
+    agentType: typeof payload.agentType === 'string' ? payload.agentType : undefined,
+    agentProfile: typeof payload.agentProfile === 'string' ? payload.agentProfile : undefined,
+    launchSource: typeof payload.launchSource === 'string' ? payload.launchSource : undefined,
+    outputContract: typeof payload.outputContract === 'string' ? payload.outputContract : undefined,
+    permissionPolicyRef: typeof payload.permissionPolicyRef === 'string' ? payload.permissionPolicyRef : undefined,
   }
 }
 

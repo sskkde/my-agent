@@ -1,6 +1,8 @@
 import type { ContextBundle, ContextItem } from '../context/types.js'
 import type { SubagentTaskSpec } from './types.js'
 import type { SubagentDefinition } from './registry.js'
+import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
+import type { BuiltModelInput, ModelInputBuildInput } from '../kernel/model-input/model-input-types.js'
 
 export interface SubagentContextManager {
   createIsolatedContext(options: {
@@ -68,6 +70,7 @@ export function createDefaultSubagentContextManager(deps: {
         runId: subagentRunId,
         agentId,
         agentType: definition.agentType,
+        agentProfile: definition.agentProfile ?? definition.agentType,
         userId: parentContext.userId,
         invocationSource: 'subagent_runtime',
         pinnedItems: relevantItems,
@@ -109,4 +112,49 @@ function buildSystemPrompt(promptId: string, objective: string, definition: Suba
   lines.push(`Timeout: ${definition.defaultTimeoutMs}ms`)
 
   return lines.join('\n')
+}
+
+export async function buildSevenLayerModelInput(options: {
+  definition: SubagentDefinition
+  taskSpec: SubagentTaskSpec
+  providerFamily: string
+  modelInputBuilder: ModelInputBuilder
+}): Promise<BuiltModelInput> {
+  const { definition, taskSpec, providerFamily, modelInputBuilder } = options
+
+  const agentProfile = definition.agentProfile ?? definition.agentType
+
+  modelInputBuilder.registerAgentTemplate(`agents:${agentProfile}`, {
+    id: `agents:${agentProfile}`,
+    version: '2026-05-24',
+    path: `agents/${agentProfile}.md`,
+    agentKind: agentProfile,
+    providerFamily: '*',
+    layer: 3,
+    content: definition.description,
+    description: `${definition.displayName} agent template`,
+  })
+
+  const input: ModelInputBuildInput = {
+    mode: 'function_calling',
+    agentType: 'subagent',
+    agentProfile,
+    providerFamily,
+    systemPrompt: `You are a "${definition.agentType}" subagent (${definition.displayName}).`,
+    toolProjection: {
+      toolIds: definition.allowedToolIds,
+    },
+    contextBundle: {
+      pinnedItems: [
+        {
+          itemId: 'objective',
+          content: taskSpec.objective,
+          semanticType: 'instruction',
+          isPinned: true,
+        },
+      ],
+    },
+  }
+
+  return modelInputBuilder.build(input)
 }

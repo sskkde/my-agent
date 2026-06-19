@@ -7,6 +7,8 @@ import type { RuntimeDispatcher, DispatchResult } from '../../dispatcher/types.j
 import type { ForegroundToolResult } from './foreground-tool-result.js'
 import { createSuccessResult, createErrorResult } from './foreground-tool-result.js'
 import { buildLaunchSubagentAction, inferSubagentType } from '../../subagents/action-mapper.js'
+import { normalizeAgentLabel, isKnownAgentLabel } from '../../taxonomy/agent-label-normalizer.js'
+import type { AgentProfileRegistry } from '../../taxonomy/agent-profile-registry.js'
 
 export const LAUNCH_SUBAGENT_TOOL_ID = 'foreground_launch_subagent'
 
@@ -15,17 +17,24 @@ export interface LaunchSubagentDeps {
   userId: string
   sessionId: string
   turnId: string
+  profileRegistry: AgentProfileRegistry
 }
 
 export interface LaunchSubagentInput {
   objective: string
-  agentType: string
+  /** Profile label (e.g. 'document_processor'), NOT a runtime boundary. See AgentType for lifecycle types. */
+  agentType?: string
+  /** Capability profile identifier. Validated against AgentProfileRegistry. */
+  agentProfile?: string
   suggestedTools?: string[]
 }
 
 export interface LaunchSubagentData {
   runtimeActionId: string
+  /** Profile label (e.g. 'document_processor'), NOT a runtime boundary. See AgentType for lifecycle types. */
   agentType: string
+  /** Capability profile identifier. */
+  agentProfile: string
   dispatchResult: DispatchResult
 }
 
@@ -38,18 +47,34 @@ export async function handleLaunchSubagent(
   input: LaunchSubagentInput,
 ): Promise<ForegroundToolResult<LaunchSubagentData>> {
   try {
-    const agentType =
-      input.agentType ||
-      inferSubagentType({
+    const rawLabel = input.agentProfile ?? input.agentType
+
+    let agentProfile: string
+    let agentType: string
+
+    if (rawLabel && isKnownAgentLabel(rawLabel)) {
+      const normalized = normalizeAgentLabel(rawLabel)
+      agentProfile = normalized.agentProfile
+      agentType = normalized.agentType
+    } else if (rawLabel) {
+      deps.profileRegistry.assertAllowed(rawLabel)
+      agentProfile = rawLabel
+      agentType = 'subagent'
+    } else {
+      const inferred = inferSubagentType({
         message: input.objective,
         suggestedTools: input.suggestedTools,
       })
+      agentProfile = inferred.agentProfile
+      agentType = inferred.agentType
+    }
 
     const runtimeAction = buildLaunchSubagentAction({
       agentType,
+      agentProfile,
       taskSpec: {
         objective: input.objective,
-        agentType,
+        agentType: agentProfile,
         tools: input.suggestedTools,
       },
       userId: deps.userId,
@@ -74,6 +99,7 @@ export async function handleLaunchSubagent(
       {
         runtimeActionId: runtimeAction.actionId,
         agentType,
+        agentProfile,
         dispatchResult,
       },
       'Subagent launched successfully.',

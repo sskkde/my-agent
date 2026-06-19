@@ -195,12 +195,14 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
     // ─── Phase 1: Tool Call (function_calling mode) ──────────────────────────────
     const phase1BuildInput = {
       mode: 'function_calling' as const,
-      agentKind: 'search',
+      agentType: 'subagent' as const,
+      agentProfile: 'search',
       providerFamily,
       toolProjection: WEB_SEARCH_TOOL_PROJECTION,
       currentUserMessage: input.query,
       currentDate: new Date().toISOString(),
       sessionId: input.sessionId,
+      outputContract: 'output:search-evidence.schema',
     }
 
     let phase1Built
@@ -292,11 +294,13 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
 
     const phase2BuildInput = {
       mode: 'structured_json' as const,
-      agentKind: 'search',
+      agentType: 'subagent' as const,
+      agentProfile: 'search',
       providerFamily,
       currentUserMessage: input.query,
       currentDate: new Date().toISOString(),
       sessionId: input.sessionId,
+      outputContract: 'output:search-evidence.schema',
       contextBundle: {
         orderedItems: toolResultContext,
       },

@@ -12,16 +12,26 @@ import type {
   ToolSelectionPolicyProjection,
   MemoryPolicyProjection,
 } from '../kernel/model-input/model-input-types.js'
+import type { AgentType } from '../context/types.js'
+import type { LaunchSource } from '../taxonomy/launch-source-policy.js'
 
 /**
  * Input parameters for PromptProjectionResolver.resolve().
  *
- * Currently empty for future expansion. May include fields like:
- * - agentKind?: string - Agent kind for context-aware resolution
- * - providerFamily?: string - Provider family for template selection
+ * Provides taxonomy context so the resolver can select projections
+ * appropriate for the agent type, profile, and output contract.
  */
 export interface PromptProjectionResolveInput {
-  // Reserved for future expansion
+  /** Runtime agent class */
+  agentType?: AgentType
+  /** Capability/persona profile identifier */
+  agentProfile?: string
+  /** Platform-owned output schema identifier */
+  outputContract?: string
+  /** Audit-only launch source */
+  launchSource?: LaunchSource
+  /** Provider family for provider-specific projection adjustments */
+  providerFamily?: string
 }
 
 /**

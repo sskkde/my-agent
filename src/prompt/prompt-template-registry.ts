@@ -2,7 +2,8 @@
  * Prompt Template Registry - Immutable template records with resolution.
  *
  * Provides a Map-based registry for template metadata and
- * resolution by agent kind and provider family.
+ * resolution by agent kind, provider family, and the new seven-layer
+ * taxonomy (agentType, agentProfile, outputContract).
  *
  * @module prompt/prompt-template-registry
  */
@@ -15,6 +16,47 @@ const __dirname = dirname(__filename)
 
 const DEFAULT_TEMPLATES_PATH = join(__dirname, 'templates')
 
+// ─── Seven-Layer Taxonomy ────────────────────────────────────────────────────
+
+/**
+ * The seven layers of the prompt stack.
+ *
+ * Each layer fills a specific slot in the assembled prompt:
+ * 1. platform — Platform base identity and safety rules
+ * 2. provider — LLM provider-specific instructions
+ * 3. agentType — Runtime agent class behavior
+ * 4. outputContract — Output schema contract
+ * 5. agentProfile — Capability/persona profile
+ * 6. toolProjection — Tool selection policy and projected surface
+ * 7. runtimeContext — Dynamic context bundle and summaries
+ */
+export type TaxonomyLayer =
+  | 'platform'
+  | 'provider'
+  | 'agentType'
+  | 'outputContract'
+  | 'agentProfile'
+  | 'toolProjection'
+  | 'runtimeContext'
+
+/**
+ * Input for seven-layer template resolution.
+ */
+export interface SevenLayerInput {
+  /** Runtime agent class: 'main' | 'subagent' | 'background' */
+  agentType: string
+  /** Capability/persona profile identifier (e.g., 'default_main', 'foreground') */
+  agentProfile: string
+  /** Provider family: 'openai' | 'deepseek' | 'ollama' */
+  providerFamily: string
+  /** Optional platform-owned output schema identifier */
+  outputContract?: string
+  /** Legacy agent kind for backward-compatible template resolution (optional) */
+  agentKind?: string
+}
+
+// ─── Template Record ─────────────────────────────────────────────────────────
+
 export interface PromptTemplateRecord {
   /** Template ID in format "category:name" */
   id: string
@@ -22,7 +64,7 @@ export interface PromptTemplateRecord {
   version: string
   /** File path relative to templates directory */
   path: string
-  /** Agent kind this template applies to ('*' for all) */
+  /** Agent kind this template applies to ('*' for all). Legacy field for resolveTemplate(). */
   agentKind: string
   /** Provider family this template applies to ('*' for all) */
   providerFamily: string
@@ -32,6 +74,15 @@ export interface PromptTemplateRecord {
   content?: string
   /** Human-readable description */
   description: string
+  // ── New taxonomy fields (optional for backward compat) ──────────────────
+  /** Which seven-layer slot this record fills. Undefined for legacy-only records. */
+  taxonomyLayer?: TaxonomyLayer
+  /** For agentType layer: which agentType this template applies to ('*' for all) */
+  agentType?: string
+  /** For agentProfile layer: which profile this template applies to ('*' for all) */
+  agentProfile?: string
+  /** For outputContract layer: which output contract this template applies to */
+  outputContract?: string
 }
 
 export interface ResolvedTemplate {
@@ -211,7 +262,200 @@ const SUMMARY_ATOMIC_FACTS_TEMPLATE: PromptTemplateRecord = {
   description: 'Atomic facts extraction prompt for independently-verifiable facts',
 }
 
+// ── Seven-Layer Taxonomy Records ─────────────────────────────────────────────
+
+const AGENT_TYPE_MAIN_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentType:main',
+  version: '2026-06-18',
+  path: 'agentType/main.md',
+  agentKind: 'main',
+  providerFamily: '*',
+  layer: 3,
+  description: 'Main agent type template for primary user-facing or kernel execution',
+  taxonomyLayer: 'agentType',
+  agentType: 'main',
+}
+
+const AGENT_TYPE_SUBAGENT_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentType:subagent',
+  version: '2026-06-18',
+  path: 'agentType/subagent.md',
+  agentKind: 'subagent',
+  providerFamily: '*',
+  layer: 3,
+  description: 'Subagent type template for isolated task execution',
+  taxonomyLayer: 'agentType',
+  agentType: 'subagent',
+}
+
+const AGENT_TYPE_BACKGROUND_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentType:background',
+  version: '2026-06-18',
+  path: 'agentType/background.md',
+  agentKind: 'background',
+  providerFamily: '*',
+  layer: 3,
+  description: 'Background agent type template for async deferred tasks',
+  taxonomyLayer: 'agentType',
+  agentType: 'background',
+}
+
+const OUTPUT_CONTRACT_PLANNER_SCHEMA_TEMPLATE: PromptTemplateRecord = {
+  id: 'outputContract:planner.schema',
+  version: '2026-06-18',
+  path: 'outputContract/planner.schema.md',
+  agentKind: 'outputContract:planner.schema',
+  providerFamily: '*',
+  layer: 4,
+  description: 'Planner output contract for execution plan JSON schema',
+  taxonomyLayer: 'outputContract',
+  outputContract: 'output:planner.schema',
+}
+
+const OUTPUT_CONTRACT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE: PromptTemplateRecord = {
+  id: 'outputContract:memory-candidate.schema',
+  version: '2026-06-18',
+  path: 'outputContract/memory-candidate.schema.md',
+  agentKind: 'outputContract:memory-candidate.schema',
+  providerFamily: '*',
+  layer: 4,
+  description: 'Memory candidate output contract for extraction JSON schema',
+  taxonomyLayer: 'outputContract',
+  outputContract: 'output:memory-candidate.schema',
+}
+
+const OUTPUT_CONTRACT_SEARCH_EVIDENCE_SCHEMA_TEMPLATE: PromptTemplateRecord = {
+  id: 'outputContract:search-evidence.schema',
+  version: '2026-06-18',
+  path: 'outputContract/search-evidence.schema.md',
+  agentKind: 'outputContract:search-evidence.schema',
+  providerFamily: '*',
+  layer: 4,
+  description: 'Search evidence output contract for search subagent answer generation',
+  taxonomyLayer: 'outputContract',
+  outputContract: 'output:search-evidence.schema',
+}
+
+const OUTPUT_CONTRACT_DEFAULT_CHAT_SCHEMA_TEMPLATE: PromptTemplateRecord = {
+  id: 'outputContract:default-chat.schema',
+  version: '2026-06-18',
+  path: 'outputContract/default-chat.schema.md',
+  agentKind: 'outputContract:default-chat.schema',
+  providerFamily: '*',
+  layer: 4,
+  description: 'Default chat output contract for foreground conversational responses',
+  taxonomyLayer: 'outputContract',
+  outputContract: 'output:default-chat.schema',
+}
+
+const AGENT_PROFILE_DEFAULT_MAIN_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:default_main',
+  version: '2026-06-18',
+  path: 'agentProfile/default_main.md',
+  agentKind: 'agentProfile:default_main',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Default main agent profile for kernel execution',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'default_main',
+}
+
+const AGENT_PROFILE_FOREGROUND_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:foreground',
+  version: '2026-06-18',
+  path: 'agentProfile/foreground.md',
+  agentKind: 'agentProfile:foreground',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Foreground agent profile for user-facing conversation',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'foreground',
+}
+
+const AGENT_PROFILE_PLANNER_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:planner',
+  version: '2026-06-18',
+  path: 'agentProfile/planner.md',
+  agentKind: 'agentProfile:planner',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Planner agent profile for task planning and orchestration',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'planner',
+}
+
+const AGENT_PROFILE_MEMORY_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:memory',
+  version: '2026-06-18',
+  path: 'agentProfile/memory.md',
+  agentKind: 'agentProfile:memory',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Memory agent profile for background extraction',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'memory',
+}
+
+const AGENT_PROFILE_SEARCH_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:search',
+  version: '2026-06-18',
+  path: 'agentProfile/search.md',
+  agentKind: 'agentProfile:search',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Search agent profile for web search and retrieval',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'search',
+}
+
+const AGENT_PROFILE_RESEARCH_PROCESSOR_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:research_processor',
+  version: '2026-06-18',
+  path: 'agentProfile/research_processor.md',
+  agentKind: 'agentProfile:research_processor',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Research processor profile for deep multi-source aggregation',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'research_processor',
+}
+
+const AGENT_PROFILE_SEARCH_PROCESSOR_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:search_processor',
+  version: '2026-06-18',
+  path: 'agentProfile/search_processor.md',
+  agentKind: 'agentProfile:search_processor',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Search processor profile for quick web search and summarization',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'search_processor',
+}
+
+const TOOL_PROJECTION_DEFAULT_TEMPLATE: PromptTemplateRecord = {
+  id: 'toolProjection:default',
+  version: '2026-06-18',
+  path: 'toolProjection/default.md',
+  agentKind: '_toolProjection',
+  providerFamily: '*',
+  layer: 6,
+  description: 'Default tool projection template for tool selection policy',
+  taxonomyLayer: 'toolProjection',
+}
+
+const RUNTIME_CONTEXT_DEFAULT_TEMPLATE: PromptTemplateRecord = {
+  id: 'runtimeContext:default',
+  version: '2026-06-18',
+  path: 'runtimeContext/default.md',
+  agentKind: '_runtimeContext',
+  providerFamily: '*',
+  layer: 7,
+  description: 'Default runtime context template for dynamic context bundle',
+  taxonomyLayer: 'runtimeContext',
+}
+
 export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new Map([
+  // ── Legacy templates (backward compat) ──────────────────────────────────
   ['platform:base', PLATFORM_BASE_TEMPLATE],
   ['platform:safety', PLATFORM_SAFETY_TEMPLATE],
   ['provider:openai', PROVIDER_OPENAI_TEMPLATE],
@@ -229,6 +473,23 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['summary:weekly', SUMMARY_WEEKLY_TEMPLATE],
   ['summary:long-term', SUMMARY_LONG_TERM_TEMPLATE],
   ['summary:atomic-facts', SUMMARY_ATOMIC_FACTS_TEMPLATE],
+  // ── Seven-layer taxonomy records ────────────────────────────────────────
+  ['agentType:main', AGENT_TYPE_MAIN_TEMPLATE],
+  ['agentType:subagent', AGENT_TYPE_SUBAGENT_TEMPLATE],
+  ['agentType:background', AGENT_TYPE_BACKGROUND_TEMPLATE],
+  ['outputContract:planner.schema', OUTPUT_CONTRACT_PLANNER_SCHEMA_TEMPLATE],
+  ['outputContract:memory-candidate.schema', OUTPUT_CONTRACT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE],
+  ['outputContract:search-evidence.schema', OUTPUT_CONTRACT_SEARCH_EVIDENCE_SCHEMA_TEMPLATE],
+  ['outputContract:default-chat.schema', OUTPUT_CONTRACT_DEFAULT_CHAT_SCHEMA_TEMPLATE],
+  ['agentProfile:default_main', AGENT_PROFILE_DEFAULT_MAIN_TEMPLATE],
+  ['agentProfile:foreground', AGENT_PROFILE_FOREGROUND_TEMPLATE],
+  ['agentProfile:planner', AGENT_PROFILE_PLANNER_TEMPLATE],
+  ['agentProfile:memory', AGENT_PROFILE_MEMORY_TEMPLATE],
+  ['agentProfile:search', AGENT_PROFILE_SEARCH_TEMPLATE],
+  ['agentProfile:research_processor', AGENT_PROFILE_RESEARCH_PROCESSOR_TEMPLATE],
+  ['agentProfile:search_processor', AGENT_PROFILE_SEARCH_PROCESSOR_TEMPLATE],
+  ['toolProjection:default', TOOL_PROJECTION_DEFAULT_TEMPLATE],
+  ['runtimeContext:default', RUNTIME_CONTEXT_DEFAULT_TEMPLATE],
 ])
 
 export class PromptTemplateRegistry {
@@ -328,6 +589,103 @@ export class PromptTemplateRegistry {
     }
 
     return matching
+  }
+
+  /**
+   * Resolves templates using the seven-layer taxonomy.
+   *
+   * Returns templates for all seven layers sorted by layer number.
+   * Uses taxonomyLayer + agentType/agentProfile/outputContract fields for matching.
+   * Also includes legacy wildcard templates (persona:default, heuristics:*, context:*, summary:*)
+   * that don't have taxonomyLayer set but match by layer number and wildcard agentKind.
+   *
+   * @param input - Seven-layer resolution input
+   * @returns Array of resolved templates sorted by layer
+   */
+  resolveSevenLayer(input: SevenLayerInput): PromptTemplateRecord[] {
+    const matching: PromptTemplateRecord[] = []
+
+    for (const record of this.templates.values()) {
+      if (this.matchesSevenLayer(record, input)) {
+        matching.push(record)
+      }
+    }
+
+    return matching.sort((a, b) => a.layer - b.layer)
+  }
+
+  /**
+   * Gets templates grouped by taxonomy layer.
+   *
+   * @param input - Seven-layer resolution input
+   * @returns Map from layer number to templates in that layer
+   */
+  resolveSevenLayerGrouped(input: SevenLayerInput): Map<number, PromptTemplateRecord[]> {
+    const sorted = this.resolveSevenLayer(input)
+    const grouped = new Map<number, PromptTemplateRecord[]>()
+
+    for (const record of sorted) {
+      const existing = grouped.get(record.layer)
+      if (existing) {
+        existing.push(record)
+      } else {
+        grouped.set(record.layer, [record])
+      }
+    }
+
+    return grouped
+  }
+
+  private matchesSevenLayer(record: PromptTemplateRecord, input: SevenLayerInput): boolean {
+    const providerMatches =
+      record.providerFamily === '*' || record.providerFamily === input.providerFamily
+
+    if (!providerMatches) {
+      return false
+    }
+
+    if (record.taxonomyLayer) {
+      return this.matchesTaxonomyRecord(record, input)
+    }
+
+    return this.matchesLegacyWildcard(record, input)
+  }
+
+  private matchesTaxonomyRecord(record: PromptTemplateRecord, input: SevenLayerInput): boolean {
+    switch (record.taxonomyLayer) {
+      case 'platform':
+        return true
+      case 'provider':
+        return true
+      case 'agentType':
+        return record.agentType === '*' || record.agentType === input.agentType
+      case 'outputContract':
+        if (!input.outputContract) return false
+        return record.outputContract === input.outputContract
+      case 'agentProfile':
+        return record.agentProfile === '*' || record.agentProfile === input.agentProfile
+      case 'toolProjection':
+        return true
+      case 'runtimeContext':
+        return true
+      default:
+        return false
+    }
+  }
+
+  private matchesLegacyWildcard(record: PromptTemplateRecord, _input: SevenLayerInput): boolean {
+    if (record.agentKind !== '*') return false
+
+    switch (record.layer) {
+      case 1:
+      case 2:
+      case 5:
+      case 6:
+      case 7:
+        return true
+      default:
+        return false
+    }
   }
 }
 

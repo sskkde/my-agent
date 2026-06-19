@@ -3,6 +3,8 @@
  * This is the foundation for the agent platform's observability infrastructure.
  */
 
+import type { AgentType } from '../context/types.js'
+
 // ============================================================================
 // Source Module Type (aligned with event-store.ts)
 // ============================================================================
@@ -266,7 +268,17 @@ export interface TracingHooks {
   onKernelRun: (traceId: string, agentId: string, parentSpanId?: string) => RuntimeSpan
   onToolExecution: (traceId: string, toolName: string, parentSpanId?: string) => RuntimeSpan
   onWorkflowRun: (traceId: string, workflowId: string, parentSpanId?: string) => RuntimeSpan
-  onSubagentRun: (traceId: string, agentType: string, parentSpanId?: string) => RuntimeSpan
+  onSubagentRun: (
+    traceId: string,
+    agentType: AgentType,
+    parentSpanId?: string,
+    taxonomy?: {
+      agentProfile?: string
+      launchSource?: string
+      outputContract?: string
+      permissionPolicyRef?: string
+    },
+  ) => RuntimeSpan
   onTrigger: (traceId: string, triggerType: string, parentSpanId?: string) => RuntimeSpan
   onConnectorCall: (traceId: string, connectorId: string, operation: string, parentSpanId?: string) => RuntimeSpan
   onPermissionCheck: (traceId: string, action: string, resource: string, parentSpanId?: string) => RuntimeSpan

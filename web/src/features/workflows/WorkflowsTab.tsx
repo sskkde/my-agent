@@ -533,14 +533,14 @@ const WorkflowsTab: React.FC = () => {
 
                   {step.stepType === 'subagent_run' && (
                     <div className="form-group">
-                      <label>子代理类型</label>
+                      <label>代理配置</label>
                       <input
                         type="text"
                         className="input-field"
-                        data-testid={`workflow-step-subagentType-${index}`}
-                        value={step.config.subagentType ?? ''}
-                        onChange={(e) => handleStepConfigChange(index, 'subagentType', e.target.value)}
-                        placeholder="子代理类型"
+                        data-testid={`workflow-step-agentProfile-${index}`}
+                        value={step.config.agentProfile ?? step.config.subagentType ?? ''}
+                        onChange={(e) => handleStepConfigChange(index, 'agentProfile', e.target.value)}
+                        placeholder="代理配置标识"
                       />
                     </div>
                   )}

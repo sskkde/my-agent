@@ -6,7 +6,10 @@ export interface BackgroundRun {
   subagentRunId?: string
   userId: string
   sessionId?: string
+  /** Profile label (e.g. 'document_processor'), NOT a runtime boundary. See AgentType for lifecycle types. */
   agentType: string
+  /** Capability profile identifier. Defaults to agentType when not provided. */
+  agentProfile?: string
   status: BackgroundSubagentState
   launchSource: string
   checkpointData?: unknown
@@ -51,16 +54,17 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
     this.connection.exec(
       `INSERT INTO background_runs (
         background_run_id, subagent_run_id, user_id, session_id, agent_type,
-        status, launch_source, checkpoint_data, recovery_point, result_data,
+        agent_profile, status, launch_source, checkpoint_data, recovery_point, result_data,
         error_message, priority, scheduled_at, started_at, completed_at,
         expires_at, retry_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         run.backgroundRunId,
         run.subagentRunId ?? null,
         run.userId,
         run.sessionId ?? null,
         run.agentType,
+        run.agentProfile ?? null,
         run.status,
         run.launchSource,
         run.checkpointData ? JSON.stringify(run.checkpointData) : null,
@@ -86,6 +90,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       user_id: string
       session_id: string | null
       agent_type: string
+      agent_profile: string | null
       status: string
       launch_source: string
       checkpoint_data: string | null
@@ -164,6 +169,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       user_id: string
       session_id: string | null
       agent_type: string
+      agent_profile: string | null
       status: string
       launch_source: string
       checkpoint_data: string | null
@@ -190,6 +196,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       user_id: string
       session_id: string | null
       agent_type: string
+      agent_profile: string | null
       status: string
       launch_source: string
       checkpoint_data: string | null
@@ -219,6 +226,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       user_id: string
       session_id: string | null
       agent_type: string
+      agent_profile: string | null
       status: string
       launch_source: string
       checkpoint_data: string | null
@@ -245,6 +253,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       user_id: string
       session_id: string | null
       agent_type: string
+      agent_profile: string | null
       status: string
       launch_source: string
       checkpoint_data: string | null
@@ -271,6 +280,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       user_id: string
       session_id: string | null
       agent_type: string
+      agent_profile: string | null
       status: string
       launch_source: string
       checkpoint_data: string | null
@@ -298,6 +308,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       user_id: string
       session_id: string | null
       agent_type: string
+      agent_profile: string | null
       status: string
       launch_source: string
       checkpoint_data: string | null
@@ -328,6 +339,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
     user_id: string
     session_id: string | null
     agent_type: string
+    agent_profile: string | null
     status: string
     launch_source: string
     checkpoint_data: string | null
@@ -349,6 +361,7 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
       userId: row.user_id,
       sessionId: row.session_id ?? undefined,
       agentType: row.agent_type,
+      agentProfile: row.agent_profile ?? undefined,
       status: row.status as BackgroundSubagentState,
       launchSource: row.launch_source,
       checkpointData: row.checkpoint_data ? JSON.parse(row.checkpoint_data) : undefined,

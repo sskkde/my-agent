@@ -1184,10 +1184,10 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
         }
         break
       case 'subagent_run':
-        if (!config.subagentType) {
+        if (!config.subagentType && !config.agentProfile) {
           context.issues.push({
             code: 'MISSING_SUBAGENT_TYPE',
-            message: `Step ${step.stepId} is missing subagentType in config`,
+            message: `Step ${step.stepId} is missing agentProfile (or legacy subagentType) in config`,
             stepId: step.stepId,
             severity: 'error',
           })
@@ -1358,6 +1358,7 @@ class WorkflowRuntimeImpl implements WorkflowRuntime {
         break
       case 'subagent_run':
         input.subagentType = step.config.subagentType
+        input.agentProfile = step.config.agentProfile ?? step.config.subagentType
         input.params = step.config.subagentParams
         break
       case 'approval':

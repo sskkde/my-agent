@@ -2,13 +2,14 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import type { SubagentProviderPreference } from '../../storage/subagent-provider-preference-store.js'
-import type { SubagentDefinition } from '../../subagents/registry.js'
+import type { SubagentDefinition, ResolvedSubagent } from '../../subagents/registry.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
 
 const VALID_FALLBACK_MODES: SubagentProviderPreference['fallbackMode'][] = ['none', 'same_provider', 'any_compatible']
 
 interface SubagentSummary {
   agentType: string
+  agentProfile: string
   displayName: string
   description: string
   modality: string
@@ -22,15 +23,22 @@ interface SubagentSummary {
   }
 }
 
+interface DeprecationMeta {
+  deprecatedParam: boolean
+  migrationHint?: string
+}
+
 interface SetPreferenceRequest {
   providerId?: string | null
   model?: string | null
   fallbackMode?: 'none' | 'same_provider' | 'any_compatible'
 }
 
-function toSubagentSummary(def: SubagentDefinition): SubagentSummary {
+function toSubagentSummary(resolved: ResolvedSubagent): SubagentSummary {
+  const { definition: def, runtimeType, profileId } = resolved
   return {
-    agentType: def.agentType,
+    agentType: runtimeType,
+    agentProfile: profileId,
     displayName: def.displayName,
     description: def.description,
     modality: def.modality,
@@ -42,6 +50,14 @@ function toSubagentSummary(def: SubagentDefinition): SubagentSummary {
       requiredCapabilities: def.providerPolicy.requiredCapabilities,
       fallbackMode: def.providerPolicy.fallbackMode,
     },
+  }
+}
+
+function deprecationFor(resolved: ResolvedSubagent): DeprecationMeta | undefined {
+  if (!resolved.isLegacyParam) return undefined
+  return {
+    deprecatedParam: true,
+    migrationHint: `Route parameter ":agentType" is deprecated as a profile identifier. Use ":agentProfile" in a future API version. Current value "${resolved.profileId}" will continue to work.`,
   }
 }
 
@@ -137,7 +153,10 @@ export function registerSubagentRoutes(server: FastifyInstance, context: ApiCont
     }
 
     const definitions = subagentRegistry.list()
-    const summaries = definitions.map(toSubagentSummary)
+    const summaries = definitions.map((def) => {
+      const resolved = subagentRegistry.resolveByProfileId(def.agentProfile ?? def.agentType)
+      return toSubagentSummary(resolved!)
+    })
 
     return reply.code(200).send(success(summaries, request.requestId))
   })
@@ -155,15 +174,19 @@ export function registerSubagentRoutes(server: FastifyInstance, context: ApiCont
       }
 
       const { agentType } = request.params
-      const definition = subagentRegistry.get(agentType)
+      const resolved = subagentRegistry.resolveByProfileId(agentType)
 
-      if (!definition) {
+      if (!resolved) {
         return reply
           .code(404)
           .send(envelopeError('NOT_FOUND', `Subagent type "${agentType}" not found`, request.requestId))
       }
 
-      return reply.code(200).send(success(toSubagentSummary(definition), request.requestId))
+      const summary = toSubagentSummary(resolved)
+      const dep = deprecationFor(resolved)
+      const payload = dep ? { ...summary, _deprecation: dep } : summary
+
+      return reply.code(200).send(success(payload, request.requestId))
     },
   )
 
@@ -180,25 +203,27 @@ export function registerSubagentRoutes(server: FastifyInstance, context: ApiCont
       }
 
       const { agentType } = request.params
-      const definition = subagentRegistry.get(agentType)
-      if (!definition) {
+      const resolved = subagentRegistry.resolveByProfileId(agentType)
+      if (!resolved) {
         return reply
           .code(404)
           .send(envelopeError('NOT_FOUND', `Subagent type "${agentType}" not found`, request.requestId))
       }
 
-      const preference = subagentProviderPreferenceStore.get(userId, agentType)
+      const preference = subagentProviderPreferenceStore.get(userId, resolved.profileId)
 
-      return reply.code(200).send(
-        success(
-          {
-            agentType,
-            preference: preference ?? null,
-            providerPolicy: definition.providerPolicy,
-          },
-          request.requestId,
-        ),
-      )
+      const dep = deprecationFor(resolved)
+      const payload: Record<string, unknown> = {
+        agentType: resolved.runtimeType,
+        agentProfile: resolved.profileId,
+        preference: preference ?? null,
+        providerPolicy: resolved.definition.providerPolicy,
+      }
+      if (dep) {
+        payload._deprecation = dep
+      }
+
+      return reply.code(200).send(success(payload, request.requestId))
     },
   )
 
@@ -218,20 +243,20 @@ export function registerSubagentRoutes(server: FastifyInstance, context: ApiCont
       }
 
       const { agentType } = request.params
-      const definition = subagentRegistry.get(agentType)
-      if (!definition) {
+      const resolved = subagentRegistry.resolveByProfileId(agentType)
+      if (!resolved) {
         return reply
           .code(404)
           .send(envelopeError('NOT_FOUND', `Subagent type "${agentType}" not found`, request.requestId))
       }
 
       const body = request.body ?? {}
-      const validation = validatePreferenceInput(body, providerConfigStore, userId, definition)
+      const validation = validatePreferenceInput(body, providerConfigStore, userId, resolved.definition)
       if (!validation.valid) {
         return reply.code(400).send(envelopeError(validation.error!.code, validation.error!.message, request.requestId))
       }
 
-      const fallbackMode = body.fallbackMode ?? definition.providerPolicy.fallbackMode
+      const fallbackMode = body.fallbackMode ?? resolved.definition.providerPolicy.fallbackMode
 
       const preference: SubagentProviderPreference = {
         providerId: body.providerId ?? undefined,
@@ -240,19 +265,21 @@ export function registerSubagentRoutes(server: FastifyInstance, context: ApiCont
       }
 
       try {
-        subagentProviderPreferenceStore.set(userId, agentType, preference)
-        const saved = subagentProviderPreferenceStore.get(userId, agentType)
+        subagentProviderPreferenceStore.set(userId, resolved.profileId, preference)
+        const saved = subagentProviderPreferenceStore.get(userId, resolved.profileId)
 
-        return reply.code(200).send(
-          success(
-            {
-              agentType,
-              preference: saved,
-              providerPolicy: definition.providerPolicy,
-            },
-            request.requestId,
-          ),
-        )
+        const dep = deprecationFor(resolved)
+        const payload: Record<string, unknown> = {
+          agentType: resolved.runtimeType,
+          agentProfile: resolved.profileId,
+          preference: saved,
+          providerPolicy: resolved.definition.providerPolicy,
+        }
+        if (dep) {
+          payload._deprecation = dep
+        }
+
+        return reply.code(200).send(success(payload, request.requestId))
       } catch (error) {
         // SECURITY: Log error internally but never expose details to client
         console.error('Failed to set subagent preference:', error)
@@ -274,15 +301,15 @@ export function registerSubagentRoutes(server: FastifyInstance, context: ApiCont
       }
 
       const { agentType } = request.params
-      const definition = subagentRegistry.get(agentType)
-      if (!definition) {
+      const resolved = subagentRegistry.resolveByProfileId(agentType)
+      if (!resolved) {
         return reply
           .code(404)
           .send(envelopeError('NOT_FOUND', `Subagent type "${agentType}" not found`, request.requestId))
       }
 
       try {
-        subagentProviderPreferenceStore.delete(userId, agentType)
+        subagentProviderPreferenceStore.delete(userId, resolved.profileId)
         return reply.code(204).send()
       } catch (error) {
         // SECURITY: Log error internally but never expose details to client

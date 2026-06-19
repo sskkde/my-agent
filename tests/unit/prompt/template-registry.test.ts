@@ -260,7 +260,7 @@ describe('prompt-template-registry', () => {
       expect(ids).toContain('summary:long-term')
       expect(ids).toContain('summary:atomic-facts')
 
-      expect(ids.length).toBe(17)
+      expect(ids.length).toBe(31)
     })
   })
 
@@ -289,38 +289,38 @@ describe('prompt-template-registry', () => {
 
     it('returns Layer 3 templates', () => {
       const templates = registry.getTemplatesByLayer(3)
-      expect(templates.length).toBe(3)
+      expect(templates.length).toBe(6)
       expect(templates.every((t) => t.layer === 3)).toBe(true)
     })
 
     it('returns Layer 4 templates', () => {
       const templates = registry.getTemplatesByLayer(4)
-      expect(templates.length).toBe(2)
+      expect(templates.length).toBe(4)
       expect(templates.every((t) => t.layer === 4)).toBe(true)
     })
 
     it('returns Layer 5 templates', () => {
       const templates = registry.getTemplatesByLayer(5)
-      expect(templates.length).toBe(1)
+      expect(templates.length).toBe(8)
       expect(templates.every((t) => t.layer === 5)).toBe(true)
     })
 
     it('returns Layer 6 templates', () => {
       const templates = registry.getTemplatesByLayer(6)
-      expect(templates.length).toBe(1)
+      expect(templates.length).toBe(2)
       expect(templates.every((t) => t.layer === 6)).toBe(true)
     })
 
     it('returns Layer 7 templates', () => {
       const templates = registry.getTemplatesByLayer(7)
-      expect(templates.length).toBe(6)
+      expect(templates.length).toBe(7)
       expect(templates.every((t) => t.layer === 7)).toBe(true)
     })
   })
 
   describe('PROMPT_TEMPLATE_REGISTRY constant', () => {
-    it('contains 17 templates', () => {
-      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(17)
+    it('contains 31 templates', () => {
+      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(31)
     })
 
     it('has all required templates', () => {
@@ -346,7 +346,7 @@ describe('prompt-template-registry', () => {
   describe('createPromptTemplateRegistry', () => {
     it('creates registry with default templates', () => {
       const reg = createPromptTemplateRegistry()
-      expect(reg.getAllTemplateIds().length).toBe(17)
+      expect(reg.getAllTemplateIds().length).toBe(31)
     })
 
     it('creates registry with custom templates', () => {

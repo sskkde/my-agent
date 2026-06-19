@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest'
 import type { LLMResponse, ToolCall } from '../../../src/llm/types.js'
-import type { ContextItem } from '../../../src/context/types.js'
+import type { ContextItem, ContextBundle } from '../../../src/context/types.js'
 import type { DispatchRequest } from '../../../src/dispatcher/types.js'
 import type {
   KernelRunInput,
@@ -146,14 +146,14 @@ class FakeContextManager {
     return this.contextItems
   }
 
-  assembleBundle() {
+  assembleBundle(): ContextBundle {
     return {
       bundleId: 'test-bundle',
       runId: 'test-run',
       agentId: 'test-agent',
       agentType: 'main',
       userId: 'test-user',
-      invocationSource: 'gateway_intent' as const,
+      invocationSource: 'gateway_intent',
       pinnedItems: [],
       orderedItems: this.contextItems,
       tokenEstimate: 100,

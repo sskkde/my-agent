@@ -108,6 +108,7 @@ const runtimeMigrations: Migration[] = [
         user_id TEXT NOT NULL,
         session_id TEXT,
         agent_type TEXT NOT NULL,
+        agent_profile TEXT,
         status TEXT NOT NULL,
         launch_source TEXT NOT NULL,
         checkpoint_data TEXT,

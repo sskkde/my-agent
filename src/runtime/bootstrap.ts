@@ -57,6 +57,7 @@ export interface ActiveWait {
 export interface PendingBackgroundRun {
   runId: string
   agentType: string
+  agentProfile?: string
   status: BackgroundSubagentState
   createdAt: string
   scheduledAt?: string
@@ -224,6 +225,7 @@ class RecoveryRegistryImpl implements RecoveryRegistry {
     const allPendingRuns: PendingBackgroundRun[] = [...runningRuns, ...pendingRuns].map((run) => ({
       runId: run.backgroundRunId,
       agentType: run.agentType,
+      agentProfile: run.agentProfile,
       status: run.status,
       createdAt: run.createdAt ?? '',
       scheduledAt: run.scheduledAt,

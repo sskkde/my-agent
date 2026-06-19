@@ -11,6 +11,7 @@ import { readFileSync, promises as fsPromises } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
+import type { PromptTemplateRecord, ResolvedTemplate } from './prompt-template-registry.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -96,6 +97,54 @@ export class TemplateLoader {
     return content.replace(PLACEHOLDER_REGEX, (match, key: string) => {
       return Object.prototype.hasOwnProperty.call(variables, key) ? variables[key] : match
     })
+  }
+
+  /**
+   * Loads content for an array of resolved template records.
+   *
+   * Uses inline content if available (for testing), otherwise loads from filesystem.
+   *
+   * @param records - Array of template records to load
+   * @param variables - Optional key-value pairs for placeholder replacement
+   * @returns Array of resolved templates with content
+   */
+  async loadResolvedTemplates(
+    records: PromptTemplateRecord[],
+    variables?: Record<string, string>,
+  ): Promise<ResolvedTemplate[]> {
+    const results: ResolvedTemplate[] = []
+
+    for (const record of records) {
+      const rawContent = record.content ?? (await this.load(record.id))
+      const content = this.replacePlaceholders(rawContent, variables)
+      results.push({ record, content })
+    }
+
+    return results
+  }
+
+  /**
+   * Loads content for an array of resolved template records synchronously.
+   *
+   * Uses inline content if available (for testing), otherwise loads from filesystem.
+   *
+   * @param records - Array of template records to load
+   * @param variables - Optional key-value pairs for placeholder replacement
+   * @returns Array of resolved templates with content
+   */
+  loadResolvedTemplatesSync(
+    records: PromptTemplateRecord[],
+    variables?: Record<string, string>,
+  ): ResolvedTemplate[] {
+    const results: ResolvedTemplate[] = []
+
+    for (const record of records) {
+      const rawContent = record.content ?? this.loadSync(record.id)
+      const content = this.replacePlaceholders(rawContent, variables)
+      results.push({ record, content })
+    }
+
+    return results
   }
 }
 

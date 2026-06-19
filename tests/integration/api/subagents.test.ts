@@ -62,7 +62,7 @@ describe('Subagent API Integration', () => {
   beforeEach(() => {
     const prefs = context.subagentProviderPreferenceStore.getByUser(userId)
     for (const pref of prefs) {
-      context.subagentProviderPreferenceStore.delete(userId, pref.agentType)
+      context.subagentProviderPreferenceStore.delete(userId, pref.agentProfile)
     }
   })
 
@@ -91,7 +91,7 @@ describe('Subagent API Integration', () => {
       expect(Array.isArray(body.data)).toBe(true)
       expect(body.data.length).toBeGreaterThanOrEqual(7)
 
-      const agentTypes = body.data.map((s: { agentType: string }) => s.agentType)
+      const agentTypes = body.data.map((s: { agentProfile: string }) => s.agentProfile)
       expect(agentTypes).toContain('document_processor')
       expect(agentTypes).toContain('image_processor')
       expect(agentTypes).toContain('data_processor')
@@ -99,6 +99,10 @@ describe('Subagent API Integration', () => {
       expect(agentTypes).toContain('code_processor')
       expect(agentTypes).toContain('research_processor')
       expect(agentTypes).toContain('search_processor')
+
+      for (const s of body.data as Array<{ agentType: string }>) {
+        expect(s.agentType).toBe('subagent')
+      }
     })
 
     it('should include provider policy in each summary', async () => {
@@ -109,8 +113,9 @@ describe('Subagent API Integration', () => {
       })
 
       const body = JSON.parse(response.body)
-      const docProcessor = body.data.find((s: { agentType: string }) => s.agentType === 'document_processor')
+      const docProcessor = body.data.find((s: { agentProfile: string }) => s.agentProfile === 'document_processor')
       expect(docProcessor).toBeDefined()
+      expect(docProcessor.agentType).toBe('subagent')
       expect(docProcessor.providerPolicy).toBeDefined()
       expect(docProcessor.providerPolicy.fallbackMode).toBe('any_compatible')
       expect(docProcessor.providerPolicy.requiredCapabilities).toContain('text')
@@ -150,7 +155,8 @@ describe('Subagent API Integration', () => {
       expect(response.statusCode).toBe(200)
       const body = JSON.parse(response.body)
       expect(body.ok).toBe(true)
-      expect(body.data.agentType).toBe('code_processor')
+      expect(body.data.agentType).toBe('subagent')
+      expect(body.data.agentProfile).toBe('code_processor')
       expect(body.data.displayName).toBe('代码处理')
       expect(body.data.modality).toBe('code')
       expect(body.data.providerPolicy.fallbackMode).toBe('any_compatible')
@@ -187,7 +193,8 @@ describe('Subagent API Integration', () => {
       expect(response.statusCode).toBe(200)
       const body = JSON.parse(response.body)
       expect(body.ok).toBe(true)
-      expect(body.data.agentType).toBe('document_processor')
+      expect(body.data.agentType).toBe('subagent')
+      expect(body.data.agentProfile).toBe('document_processor')
       expect(body.data.preference).toBeNull()
       expect(body.data.providerPolicy).toBeDefined()
     })
@@ -252,7 +259,8 @@ describe('Subagent API Integration', () => {
       expect(response.statusCode).toBe(200)
       const body = JSON.parse(response.body)
       expect(body.ok).toBe(true)
-      expect(body.data.agentType).toBe('document_processor')
+      expect(body.data.agentType).toBe('subagent')
+      expect(body.data.agentProfile).toBe('document_processor')
       expect(body.data.preference.providerId).toBe(providerId)
       expect(body.data.preference.model).toBe('anthropic/claude-3-opus')
       expect(body.data.preference.fallbackMode).toBe('same_provider')
@@ -509,6 +517,119 @@ describe('Subagent API Integration', () => {
       const body = JSON.parse(response.body)
       expect(body.ok).toBe(false)
       expect(body.error.code).toBe('MODEL_NOT_ALLOWED')
+    })
+  })
+
+  describe('Backward compatibility: profile ID resolution', () => {
+    it('should resolve document_processor as a profile ID and return agentType + agentProfile', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/subagents/document_processor',
+        headers: authHeader(),
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.agentType).toBe('subagent')
+      expect(body.data.agentProfile).toBe('document_processor')
+    })
+
+    it('should resolve research_processor which has explicit agentProfile', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/subagents/research_processor',
+        headers: authHeader(),
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.agentType).toBe('subagent')
+      expect(body.data.agentProfile).toBe('research_processor')
+    })
+
+    it('should not return 404 for existing profile labels used as route param', async () => {
+      const profileLabels = [
+        'document_processor',
+        'image_processor',
+        'data_processor',
+        'audio_processor',
+        'code_processor',
+        'research_processor',
+        'search_processor',
+      ]
+
+      for (const label of profileLabels) {
+        const response = await server.inject({
+          method: 'GET',
+          url: `/api/v1/subagents/${label}`,
+          headers: authHeader(),
+        })
+        expect(response.statusCode).toBe(200)
+        const body = JSON.parse(response.body)
+        expect(body.data.agentProfile).toBe(label)
+        expect(body.data.agentType).toBe('subagent')
+      }
+    })
+
+    it('should support GET/PUT/DELETE preference cycle for research_processor', async () => {
+      const getUrl = '/api/v1/subagents/research_processor/preference'
+      const headers = authHeader()
+
+      const getEmpty = await server.inject({ method: 'GET', url: getUrl, headers })
+      expect(getEmpty.statusCode).toBe(200)
+      const emptyBody = JSON.parse(getEmpty.body)
+      expect(emptyBody.data.agentType).toBe('subagent')
+      expect(emptyBody.data.agentProfile).toBe('research_processor')
+      expect(emptyBody.data.preference).toBeNull()
+
+      const putResp = await server.inject({
+        method: 'PUT',
+        url: getUrl,
+        headers,
+        payload: { providerId, model: 'openai/gpt-4o', fallbackMode: 'same_provider' },
+      })
+      expect(putResp.statusCode).toBe(200)
+      const putBody = JSON.parse(putResp.body)
+      expect(putBody.data.agentType).toBe('subagent')
+      expect(putBody.data.agentProfile).toBe('research_processor')
+      expect(putBody.data.preference.model).toBe('openai/gpt-4o')
+
+      const getAfter = await server.inject({ method: 'GET', url: getUrl, headers })
+      const afterBody = JSON.parse(getAfter.body)
+      expect(afterBody.data.preference.model).toBe('openai/gpt-4o')
+
+      const delResp = await server.inject({ method: 'DELETE', url: getUrl, headers })
+      expect(delResp.statusCode).toBe(204)
+
+      const getAfterDel = await server.inject({ method: 'GET', url: getUrl, headers })
+      const afterDelBody = JSON.parse(getAfterDel.body)
+      expect(afterDelBody.data.preference).toBeNull()
+    })
+
+    it('should include deprecation metadata when agentType param matches a definition without explicit agentProfile', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/subagents/document_processor',
+        headers: authHeader(),
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data._deprecation).toBeDefined()
+      expect(body.data._deprecation.deprecatedParam).toBe(true)
+      expect(body.data._deprecation.migrationHint).toContain('document_processor')
+    })
+
+    it('should not include deprecation metadata when agentProfile is explicitly set', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/subagents/research_processor',
+        headers: authHeader(),
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data._deprecation).toBeUndefined()
     })
   })
 })

@@ -180,10 +180,12 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
         const extractionPrompt = buildMemoryExtractionDynamicWindow(window)
         const builtInput = await deps.modelInputBuilder.build({
           mode: 'structured_json',
-          agentKind: 'memory',
+          agentType: 'background',
+          agentProfile: 'memory',
           providerFamily: deps.providerFamily ?? 'openai',
           currentUserMessage: extractionPrompt,
           sessionId: deps.sessionId,
+          outputContract: 'output:memory-candidate.schema',
         })
 
         const request: LLMRequest = {

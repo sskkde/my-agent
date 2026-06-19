@@ -4,6 +4,9 @@
  * Routing mode: Only tool IDs + capability summary (no full schemas)
  * Execution mode: Full schemas in LLMRequest.tools
  *
+ * With envelope enforcement, the projection is:
+ *   effective = AgentTypeEnvelope ∩ allowedToolIds ∩ exposurePlan
+ *
  * @module tools/tool-plane-prompt-projection
  */
 
@@ -11,6 +14,8 @@ import type { ToolDefinition as ToolDef } from './types.js'
 import type { ToolDefinition as LLMToolDefinition } from '../llm/types.js'
 import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js'
 import type { ToolExposurePlan } from './tool-exposure-plan.js'
+import type { AgentType } from '../context/types.js'
+import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 import { createToolExposurePlans, isExposureVisible } from './tool-exposure-plan.js'
 import { stableToolSort } from './tool-schema-canonicalizer.js'
 
@@ -137,6 +142,32 @@ export function generateExecutionToolProjection(
   return generateToolPlaneProjection({
     tools,
     mode: 'function_calling',
+    ...options,
+  })
+}
+
+export function generateEnvelopeFilteredProjection(
+  tools: ToolDef[],
+  agentType: AgentType,
+  envelopeRegistry: AgentTypeToolEnvelopeRegistry,
+  mode: ProjectionMode,
+  options?: {
+    allowedToolIds?: string[]
+    deniedToolIds?: string[]
+    exposurePlans?: Map<string, ToolExposurePlan>
+  },
+): ToolPlaneProjection {
+  const envelopeAllowedIds = envelopeRegistry.getAllowedToolIds(
+    agentType,
+    tools.map((t) => ({ id: t.name, category: t.category })),
+  )
+
+  const envelopeAllowedSet = new Set(envelopeAllowedIds)
+  const envelopeFilteredTools = tools.filter((t) => envelopeAllowedSet.has(t.name))
+
+  return generateToolPlaneProjection({
+    tools: envelopeFilteredTools,
+    mode,
     ...options,
   })
 }

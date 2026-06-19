@@ -10,6 +10,7 @@ import type {
   TraceStatus,
   SpanStatus,
 } from './types.js'
+import type { AgentType } from '../context/types.js'
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
@@ -253,9 +254,23 @@ export function createTracingHooks(collector: TracingCollector): TracingHooks {
       })
     },
 
-    onSubagentRun: (traceId: string, agentType: string, parentSpanId?: string): RuntimeSpan => {
+    onSubagentRun: (
+      traceId: string,
+      agentType: AgentType,
+      parentSpanId?: string,
+      taxonomy?: {
+        agentProfile?: string
+        launchSource?: string
+        outputContract?: string
+        permissionPolicyRef?: string
+      },
+    ): RuntimeSpan => {
       return collector.startSpan(traceId, 'subagent_run', 'subagent', `subagent_${agentType}`, parentSpanId, {
         agentType,
+        ...(taxonomy?.agentProfile ? { agentProfile: taxonomy.agentProfile } : {}),
+        ...(taxonomy?.launchSource ? { launchSource: taxonomy.launchSource } : {}),
+        ...(taxonomy?.outputContract ? { outputContract: taxonomy.outputContract } : {}),
+        ...(taxonomy?.permissionPolicyRef ? { permissionPolicyRef: taxonomy.permissionPolicyRef } : {}),
       })
     },
 

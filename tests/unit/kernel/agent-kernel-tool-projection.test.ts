@@ -670,3 +670,74 @@ describe('AgentKernel internal tool handling', () => {
     expect(result.error?.message).toContain('LLM request timeout')
   })
 })
+
+describe('AgentKernel envelope enforcement', () => {
+  it('remote agentType rejects all tool calls even when projected', async () => {
+    const fakeLLM = new ToolCallLLMAdapter()
+    const dispatcher = new CountingDispatcher()
+    const kernel = new AgentKernel(
+      makeBaseConfig({
+        llmAdapter: fakeLLM,
+        dispatcher,
+      }),
+    )
+
+    const result = await kernel.run({
+      ...makeRunInput(),
+      agentType: 'remote',
+      toolProjection: {
+        toolIds: ['status_query'],
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'status_query',
+              description: 'Query status',
+              parameters: { type: 'object', properties: {} },
+            },
+          },
+        ],
+      },
+    })
+
+    expect(dispatcher.calls).toBe(0)
+    const toolResult = result.transcript.find((entry) => entry.type === 'tool_result')
+    expect(toolResult?.content).toMatchObject({
+      error: {
+        code: 'UNPROJECTED_TOOL_CALL',
+      },
+    })
+  })
+
+  it('main agentType allows projected read/search/internal tools', async () => {
+    const fakeLLM = new FakeLLMAdapter()
+    const dispatcher = new CountingDispatcher()
+    const kernel = new AgentKernel(
+      makeBaseConfig({
+        llmAdapter: fakeLLM,
+        dispatcher,
+        toolProjection: {
+          toolIds: ['status_query'],
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'status_query',
+                description: 'Query status',
+                parameters: { type: 'object', properties: {} },
+              },
+            },
+          ],
+        },
+      }),
+    )
+
+    const result = await kernel.run({
+      ...makeRunInput(),
+      agentType: 'main',
+    })
+
+    expect(result.finalStatus).toBe('completed')
+    expect(result.error).toBeUndefined()
+  })
+})

@@ -9,6 +9,7 @@ import type {
 } from './model-input/model-input-types.js'
 import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js'
 import type { TokenStreamPayload } from '../api/types.js'
+import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 
 export interface ToolUseRequest {
   toolCallId: string
@@ -218,6 +219,8 @@ export interface KernelConfig {
   promptProjectionResolver?: PromptProjectionResolver
   /** Optional broadcaster for real-time token streaming to connected clients. */
   timelineBroadcaster?: TokenStreamBroadcaster
+  /** Optional envelope registry for AgentType-level tool security boundary enforcement. */
+  envelopeRegistry?: AgentTypeToolEnvelopeRegistry
 }
 
 export interface CompactTriggerResult {

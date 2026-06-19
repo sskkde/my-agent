@@ -3,6 +3,8 @@
  * This module provides the foundation for the agent platform's audit infrastructure.
  */
 
+import type { AgentType } from '../context/types.js'
+
 // ============================================================================
 // Source Module Type (aligned with observability types)
 // ============================================================================
@@ -213,6 +215,11 @@ export interface ToolCallAuditRequest {
   status: 'success' | 'failure'
   correlationId?: string
   causationId?: string
+  agentType?: string
+  agentProfile?: string
+  launchSource?: string
+  outputContract?: string
+  permissionPolicyRef?: string
 }
 
 // ============================================================================
@@ -302,7 +309,7 @@ export interface SubagentRunAuditRequest {
   subagentRunId: string
   userId: string
   sessionId?: string
-  agentType: string
+  agentType: AgentType
   objective: string
   status: 'started' | 'completed' | 'failed'
   correlationId?: string

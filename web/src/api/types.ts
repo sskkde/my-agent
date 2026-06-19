@@ -614,7 +614,10 @@ export type WorkflowStepType = 'tool_call' | 'agent_run' | 'subagent_run' | 'app
 export interface WorkflowStepConfig {
   toolName?: string
   agentId?: string
+  /** @deprecated Use agentProfile instead. Kept for backward compatibility. */
   subagentType?: string
+  /** Capability profile identifier for subagent_run steps. Falls back to subagentType when not provided. */
+  agentProfile?: string
   approvalScope?: string
   waitCondition?: Record<string, unknown>
 }
@@ -942,6 +945,7 @@ export interface SubagentProviderPolicy {
 
 export interface SubagentDefinition {
   agentType: string
+  agentProfile: string
   displayName: string
   description: string
   modality: string
@@ -956,6 +960,7 @@ export interface SubagentPreference {
 
 export interface SubagentPreferenceResponse {
   agentType: string
+  agentProfile: string
   preference: SubagentPreference | null
   providerPolicy: SubagentProviderPolicy
 }

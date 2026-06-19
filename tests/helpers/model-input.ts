@@ -113,9 +113,13 @@ export function createMockModelInputBuilder(modeOverride?: 'routing_json' | 'rou
       },
       metadata: {
         mode,
-        agentKind: input.agentKind,
+        agentKind: input.agentKind ?? input.agentProfile ?? 'foreground',
+        agentType: input.agentType ?? 'main',
+        agentProfile: input.agentProfile ?? input.agentKind ?? 'foreground',
         providerFamily: input.providerFamily,
         messageCount: messages.length,
+        outputContract: input.outputContract,
+        launchSource: input.launchSource,
       },
     }
   })

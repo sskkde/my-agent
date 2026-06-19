@@ -475,6 +475,186 @@ describe('Permission & Approval Engine', () => {
     })
   })
 
+  describe('Restricted mode', () => {
+    it('should deny high-risk operations in restricted mode', () => {
+      const context = createPermissionContext('restricted_user', 'sess_456', 'restricted')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_delete',
+        operationType: 'delete',
+        resource: '/data/file.txt',
+        riskLevel: 'high',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
+      expect(decision.reason).toContain('Restricted')
+    })
+
+    it('should deny critical-risk operations in restricted mode', () => {
+      const context = createPermissionContext('restricted_user', 'sess_456', 'restricted')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'admin_action',
+        operationType: 'admin',
+        resource: 'system_config',
+        riskLevel: 'critical',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
+      expect(decision.reason).toContain('critical')
+    })
+
+    it('should allow low-risk operations in restricted mode', () => {
+      const context = createPermissionContext('restricted_user', 'sess_456', 'restricted')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_read',
+        operationType: 'read',
+        resource: '/data/file.txt',
+        riskLevel: 'low',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+    })
+
+    it('should allow medium-risk operations in restricted mode', () => {
+      const context = createPermissionContext('restricted_user', 'sess_456', 'restricted')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_write',
+        operationType: 'write',
+        resource: '/data/file.txt',
+        riskLevel: 'medium',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+    })
+
+    it('should allow operations without riskLevel in restricted mode', () => {
+      const context = createPermissionContext('restricted_user', 'sess_456', 'restricted')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_read',
+        operationType: 'read',
+        resource: '/data/file.txt',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+    })
+  })
+
+  describe('Write-allowed mode', () => {
+    it('should allow read operations in write_allowed mode', () => {
+      const context = createPermissionContext('write_user', 'sess_456', 'write_allowed')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_read',
+        operationType: 'read',
+        resource: '/data/file.txt',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+    })
+
+    it('should require approval for write operations in write_allowed mode (intersection model)', () => {
+      const context = createPermissionContext('write_user', 'sess_456', 'write_allowed')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_write',
+        operationType: 'write',
+        resource: '/data/file.txt',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('requires_approval')
+      expect(decision.requestId).toBeDefined()
+      expect(decision.approvalRequest).toBeDefined()
+    })
+
+    it('should require approval for delete operations in write_allowed mode (intersection model)', () => {
+      const context = createPermissionContext('write_user', 'sess_456', 'write_allowed')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_delete',
+        operationType: 'delete',
+        resource: '/data/file.txt',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('requires_approval')
+    })
+
+    it('should require approval for execute operations in write_allowed mode (intersection model)', () => {
+      const context = createPermissionContext('write_user', 'sess_456', 'write_allowed')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'code_execution',
+        operationType: 'execute',
+        resource: 'script.js',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('requires_approval')
+    })
+
+    it('should allow write after approval grant exists in write_allowed mode', () => {
+      const userId = 'write_user_granted'
+      const scope = 'test_scope'
+
+      grantStore.create({
+        id: `grant_${Date.now()}`,
+        userId,
+        scope,
+        action: 'file_write',
+        resourcePattern: '/data/.*',
+      })
+
+      const context = createPermissionContext(
+        userId,
+        'sess_456',
+        'write_allowed',
+        grantStore.findActiveByUserAndScope(userId, scope),
+      )
+
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'file_write',
+        operationType: 'write',
+        resource: '/data/file.txt',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+      expect(decision.grant).toBeDefined()
+    })
+  })
+
   describe('PermissionGrant storage and expiry', () => {
     it('should store created grants', () => {
       const grant = grantStore.create({

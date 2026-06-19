@@ -33,8 +33,9 @@ import {
 } from './model-input-types.js'
 import { computeTemplateHash } from '../../prompt/template-hash.js'
 import { StaticPrefixBuilder } from './static-prefix-builder.js'
-import type { PromptTemplateRegistry } from '../../prompt/prompt-template-registry.js'
+import type { PromptTemplateRegistry, PromptTemplateRecord, SevenLayerInput } from '../../prompt/prompt-template-registry.js'
 import type { TemplateLoader } from '../../prompt/template-loader.js'
+import { normalizeAgentLabel, isKnownAgentLabel } from '../../taxonomy/agent-label-normalizer.js'
 
 export interface ModelInputBuilderDeps {
   templateRegistry: PromptTemplateRegistry
@@ -43,13 +44,28 @@ export interface ModelInputBuilderDeps {
 
 export class ModelInputBuilder {
   private readonly staticPrefixBuilder: StaticPrefixBuilder
+  private readonly templateRegistry: PromptTemplateRegistry
 
   constructor(deps: ModelInputBuilderDeps) {
+    this.templateRegistry = deps.templateRegistry
     this.staticPrefixBuilder = new StaticPrefixBuilder(deps.templateRegistry, deps.templateLoader)
   }
 
+  /**
+   * Register an agent template dynamically (e.g., for subagent profiles).
+   *
+   * Allows callers to inject layer-3 templates at runtime without modifying
+   * the global registry. Useful for proof-path testing and subagent prompt
+   * construction via the seven-layer stack.
+   */
+  registerAgentTemplate(id: string, record: PromptTemplateRecord): void {
+    this.templateRegistry.register(id, record)
+  }
+
   async build(input: ModelInputBuildInput): Promise<BuiltModelInput> {
-    const segmentA = await this.buildSegmentA(input.agentKind, input.providerFamily)
+    const resolved = this.resolveTaxonomy(input)
+
+    const segmentA = await this.buildSegmentA(resolved, input)
     const segmentB = this.buildSegmentB(input)
     const segmentC = this.buildSegmentC(input)
     const segmentD = this.buildSegmentD(input)
@@ -72,15 +88,75 @@ export class ModelInputBuilder {
       },
       metadata: {
         mode: input.mode,
-        agentKind: input.agentKind,
+        agentKind: resolved.agentKind,
+        agentType: resolved.agentType,
+        agentProfile: resolved.agentProfile,
         providerFamily: input.providerFamily,
         messageCount: messages.length,
+        outputContract: input.outputContract,
+        launchSource: input.launchSource,
       },
     }
   }
 
-  private async buildSegmentA(agentKind: string, providerFamily: string) {
-    return this.staticPrefixBuilder.buildStaticPrefix(agentKind, providerFamily)
+  /**
+   * Resolve taxonomy fields from input, normalizing legacy agentKind if needed.
+   * Returns the resolved taxonomy plus the template resolution key for Segment A.
+   */
+  private resolveTaxonomy(input: ModelInputBuildInput): {
+    agentType: import('../../context/types.js').AgentType
+    agentProfile: string
+    agentKind: string
+    templateKey: string
+  } {
+    if (input.agentType && input.agentProfile) {
+      return {
+        agentType: input.agentType,
+        agentProfile: input.agentProfile,
+        agentKind: input.agentKind ?? input.agentProfile,
+        templateKey: input.agentKind ?? input.agentProfile,
+      }
+    }
+
+    const legacyKind = input.agentKind ?? input.agentProfile ?? 'kernel'
+    if (isKnownAgentLabel(legacyKind)) {
+      const normalized = normalizeAgentLabel(legacyKind)
+      if (legacyKind === 'kernel' && process.env.NODE_ENV !== 'production') {
+        console.warn(
+          '[ModelInputBuilder] DEPRECATED agentKind "kernel" resolved via normalizer to agentType=%s, agentProfile=%s. Use explicit agentType+agentProfile instead.',
+          normalized.agentType,
+          normalized.agentProfile,
+        )
+      }
+      return {
+        agentType: input.agentType ?? normalized.agentType,
+        agentProfile: input.agentProfile ?? normalized.agentProfile,
+        agentKind: legacyKind,
+        templateKey: legacyKind,
+      }
+    }
+
+    return {
+      agentType: input.agentType ?? 'main',
+      agentProfile: input.agentProfile ?? legacyKind,
+      agentKind: legacyKind,
+      templateKey: legacyKind,
+    }
+  }
+
+  private async buildSegmentA(resolved: {
+    agentType: import('../../context/types.js').AgentType
+    agentProfile: string
+    agentKind: string
+  }, input: ModelInputBuildInput) {
+    const sevenLayerInput: SevenLayerInput = {
+      agentType: resolved.agentType,
+      agentProfile: resolved.agentProfile,
+      providerFamily: input.providerFamily,
+      outputContract: input.outputContract,
+      agentKind: resolved.agentKind,
+    }
+    return this.staticPrefixBuilder.buildStaticPrefix(sevenLayerInput)
   }
 
   private buildSegmentB(input: ModelInputBuildInput) {
@@ -166,6 +242,10 @@ export class ModelInputBuilder {
 
     if (input.requestId) {
       parts.push(`Request ID: ${input.requestId}`)
+    }
+
+    if (input.runtimeEnvironment && Object.keys(input.runtimeEnvironment).length > 0) {
+      parts.push(this.renderRuntimeEnvironment(input.runtimeEnvironment))
     }
 
     if (bundle) {
@@ -327,6 +407,18 @@ export class ModelInputBuilder {
 
     for (const msg of transcript) {
       parts.push(`${msg.role}: ${msg.content}`)
+    }
+
+    return parts.join('\n')
+  }
+
+  private renderRuntimeEnvironment(env: Record<string, unknown>): string {
+    const parts: string[] = ['--- Runtime Environment ---']
+
+    for (const [key, value] of Object.entries(env)) {
+      if (value !== undefined && value !== null) {
+        parts.push(`${key}: ${String(value)}`)
+      }
     }
 
     return parts.join('\n')

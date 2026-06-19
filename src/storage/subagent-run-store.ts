@@ -8,6 +8,7 @@ export interface SubagentRunRecord {
   rootRunId?: string
   backgroundRunId?: string
   agentType: string
+  agentProfile?: string
   status: string
   taskSpecJson: string
   contextBundleJson?: string
@@ -27,6 +28,7 @@ export interface SubagentRunQuery {
   sessionId?: string
   status?: string
   agentType?: string
+  agentProfile?: string
   backgroundRunId?: string
   limit?: number
   offset?: number
@@ -48,6 +50,7 @@ interface SubagentRunRow {
   root_run_id: string | null
   background_run_id: string | null
   agent_type: string
+  agent_profile: string | null
   status: string
   task_spec_json: string
   context_bundle_json: string | null
@@ -71,6 +74,7 @@ function rowToRecord(row: SubagentRunRow): SubagentRunRecord {
     rootRunId: row.root_run_id ?? undefined,
     backgroundRunId: row.background_run_id ?? undefined,
     agentType: row.agent_type,
+    agentProfile: row.agent_profile ?? undefined,
     status: row.status,
     taskSpecJson: row.task_spec_json,
     contextBundleJson: row.context_bundle_json ?? undefined,
@@ -104,6 +108,7 @@ class SubagentRunStoreImpl implements SubagentRunStore {
         root_run_id TEXT,
         background_run_id TEXT,
         agent_type TEXT NOT NULL,
+        agent_profile TEXT,
         status TEXT NOT NULL,
         task_spec_json TEXT NOT NULL,
         context_bundle_json TEXT,
@@ -133,6 +138,11 @@ class SubagentRunStoreImpl implements SubagentRunStore {
       CREATE INDEX IF NOT EXISTS idx_subagent_runs_background
         ON subagent_runs(background_run_id)
     `)
+
+    this.connection.exec(`
+      CREATE INDEX IF NOT EXISTS idx_subagent_runs_agent_profile
+        ON subagent_runs(agent_profile)
+    `)
   }
 
   create(run: SubagentRunRecord): void {
@@ -140,10 +150,10 @@ class SubagentRunStoreImpl implements SubagentRunStore {
     this.connection.exec(
       `INSERT INTO subagent_runs (
         subagent_run_id, user_id, session_id, parent_run_id, root_run_id,
-        background_run_id, agent_type, status, task_spec_json,
+        background_run_id, agent_type, agent_profile, status, task_spec_json,
         context_bundle_json, provider_id, model, result_json,
         error_code, error_message, created_at, started_at, completed_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         run.subagentRunId,
         run.userId,
@@ -152,6 +162,7 @@ class SubagentRunStoreImpl implements SubagentRunStore {
         run.rootRunId ?? null,
         run.backgroundRunId ?? null,
         run.agentType,
+        run.agentProfile ?? null,
         run.status,
         run.taskSpecJson,
         run.contextBundleJson ?? null,
@@ -219,6 +230,11 @@ class SubagentRunStoreImpl implements SubagentRunStore {
     if (filters.agentType !== undefined) {
       conditions.push('agent_type = ?')
       params.push(filters.agentType)
+    }
+
+    if (filters.agentProfile !== undefined) {
+      conditions.push('agent_profile = ?')
+      params.push(filters.agentProfile)
     }
 
     if (filters.backgroundRunId !== undefined) {

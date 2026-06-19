@@ -473,6 +473,7 @@ describe('SummaryManager Source-bound Write Controls', () => {
         {
           summary: 'Background subagent summary',
           subagentType: 'explore',
+          agentProfile: 'search',
           taskDescription: 'Search for files',
         },
         { sourceRefs: validSourceRefs },
@@ -483,6 +484,7 @@ describe('SummaryManager Source-bound Write Controls', () => {
         expect(result.data.summaryType).toBe('background_subagent_summary')
         expect(result.data.relatedRefs?.backgroundRunId).toBe('bg-run-001')
         expect(result.data.structuredState?.subagentType).toBe('explore')
+        expect(result.data.structuredState?.agentProfile).toBe('search')
       }
     })
 

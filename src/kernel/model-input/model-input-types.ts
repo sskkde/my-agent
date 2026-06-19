@@ -12,6 +12,8 @@
 
 import type { LLMMessage, ToolDefinition } from '../../llm/types.js'
 import type { AssistantPersonaProfile } from '../../foreground/types.js'
+import type { AgentType } from '../../context/types.js'
+import type { LaunchSource } from '../../taxonomy/launch-source-policy.js'
 
 // ─── Mode ────────────────────────────────────────────────────────────────────
 
@@ -269,7 +271,7 @@ export function renderSummaryLayers(projection: SummaryLayerProjection): string 
  * Complete input to ModelInputBuilder.build().
  *
  * Fields are organized by which segment/layer they belong to:
- * - mode/agentKind/providerFamily: determine template resolution
+ * - mode/agentType/agentProfile/providerFamily: determine template resolution
  * - systemPrompt/routingPrompt: Layer 5 (Segment B)
  * - toolProjection: Layer 6 (Segment C)
  * - contextBundle + dynamic fields: Layer 7 (Segment D)
@@ -277,10 +279,33 @@ export function renderSummaryLayers(projection: SummaryLayerProjection): string 
 export interface ModelInputBuildInput {
   /** How the LLM should be invoked */
   mode: ModelInputMode
-  /** Agent kind: 'foreground' | 'kernel' | 'search' | 'memory' */
-  agentKind: string
+
+  // ── Taxonomy dimensions ────────────────────────────────────────────────
+  /** Runtime agent class: 'main' | 'subagent' | 'background' | 'workflow_step' | 'remote'. Derived from agentKind via normalizer if omitted. */
+  agentType?: AgentType
+  /** Capability/persona profile identifier (e.g., 'default_main', 'foreground', 'planner'). Derived from agentKind via normalizer if omitted. */
+  agentProfile?: string
   /** Provider family: 'openai' | 'deepseek' | 'ollama' */
   providerFamily: string
+  /** Platform-owned output schema identifier (e.g., 'output:planner.schema') */
+  outputContract?: string
+  /** Audit-only entry path — records how agent was launched, does not expand permissions */
+  launchSource?: LaunchSource
+  /**
+   * Volatile runtime environment facts (hostname, OS, runtime version, etc.).
+   *
+   * EXCLUDED from cache-stable prefix. Only rendered in Segment D (context bundle).
+   * Never part of Segment A/B/C hash computation.
+   */
+  runtimeEnvironment?: Record<string, unknown>
+
+  // ── Legacy (deprecated) ───────────────────────────────────────────────
+  /**
+   * @deprecated Use `agentType` + `agentProfile` instead.
+   * Legacy agent kind string used for template resolution.
+   * When provided without agentType/agentProfile, the normalizer derives them.
+   */
+  agentKind?: string
 
   // Layer 5 (Instruction) - Segment B
   /** Custom system prompt overlay */
@@ -355,12 +380,20 @@ export interface ModelInputSegmentHashes {
 export interface ModelInputMetadata {
   /** The mode used to build */
   mode: ModelInputMode
-  /** Agent kind */
+  /** Agent kind (legacy, derived from agentProfile for backward compat) */
   agentKind: string
+  /** Runtime agent class */
+  agentType: AgentType
+  /** Capability/persona profile identifier */
+  agentProfile: string
   /** Provider family */
   providerFamily: string
   /** Total number of messages in the output */
   messageCount: number
+  /** Platform-owned output schema identifier, if any */
+  outputContract?: string
+  /** Audit-only launch source, if any */
+  launchSource?: LaunchSource
 }
 
 /**

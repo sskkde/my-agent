@@ -2,6 +2,7 @@ import type { RuntimeAction, RuntimeActionType, TargetRuntime } from '../dispatc
 import type { RuntimeActionState, Source, TargetRef } from '../storage/runtime-action-store.js'
 import type { SubagentTaskSpec } from './types.js'
 import { generateId, ACTION_ID_PREFIX } from '../shared/ids.js'
+import { normalizeAgentLabel, type NormalizedAgentLabel } from '../taxonomy/agent-label-normalizer.js'
 
 export interface SourceRef {
   sourceType: 'foreground_turn' | 'workflow_step' | 'planner_run' | 'event_trigger'
@@ -13,7 +14,10 @@ export interface SourceRef {
 }
 
 export interface LaunchSubagentPayload {
+  /** Profile label (e.g. 'document_processor'), NOT a runtime boundary. See AgentType for lifecycle types. */
   agentType: string
+  /** Capability profile identifier (e.g. 'document_processor'). Maps to AgentProfile.id in the taxonomy registry. */
+  agentProfile: string
   taskSpec: SubagentTaskSpec
   parentContext?: unknown
   parentRunId?: string
@@ -22,7 +26,10 @@ export interface LaunchSubagentPayload {
 }
 
 export interface LaunchBackgroundSubagentPayload {
+  /** Profile label (e.g. 'document_processor'), NOT a runtime boundary. See AgentType for lifecycle types. */
   agentType: string
+  /** Capability profile identifier (e.g. 'document_processor'). Maps to AgentProfile.id in the taxonomy registry. */
+  agentProfile: string
   taskSpec: SubagentTaskSpec
   launchSource: string
   priority?: number
@@ -102,6 +109,7 @@ function nowISO(): string {
  */
 export function buildLaunchSubagentAction(input: {
   agentType: string
+  agentProfile: string
   taskSpec: SubagentTaskSpec
   userId: string
   sessionId?: string
@@ -112,6 +120,7 @@ export function buildLaunchSubagentAction(input: {
 
   const payload: LaunchSubagentPayload = {
     agentType: input.agentType,
+    agentProfile: input.agentProfile,
     taskSpec: input.taskSpec,
     sourceRef: input.sourceRef,
   }
@@ -144,6 +153,7 @@ export function buildLaunchSubagentAction(input: {
  */
 export function buildLaunchBackgroundSubagentAction(input: {
   agentType: string
+  agentProfile: string
   taskSpec: SubagentTaskSpec
   userId: string
   sessionId?: string
@@ -156,6 +166,7 @@ export function buildLaunchBackgroundSubagentAction(input: {
 
   const payload: LaunchBackgroundSubagentPayload = {
     agentType: input.agentType,
+    agentProfile: input.agentProfile,
     taskSpec: input.taskSpec,
     launchSource: input.launchSource,
     priority: input.priority,
@@ -220,24 +231,24 @@ const FALLBACK_AGENT_TYPE = 'research_processor'
  *
  * Matching is purely server-side keyword matching — no LLM involvement.
  * Rules are evaluated in declaration order; the first match wins.
- * Returns `'research_processor'` when no keyword matches.
+ * Returns `'research_processor'` normalized label when no keyword matches.
  */
 export function inferSubagentType(input: {
   message: string
   suggestedTools?: string[]
   metadata?: Record<string, unknown>
-}): string {
+}): NormalizedAgentLabel {
   const normalized = input.message.toLowerCase()
 
   for (const rule of INFERENCE_RULES) {
     for (const keyword of rule.keywords) {
       if (normalized.includes(keyword.toLowerCase())) {
-        return rule.agentType
+        return normalizeAgentLabel(rule.agentType)
       }
     }
   }
 
-  return FALLBACK_AGENT_TYPE
+  return normalizeAgentLabel(FALLBACK_AGENT_TYPE)
 }
 
 /**
@@ -261,14 +272,17 @@ export function mapWorkflowStepPayloadToLaunchSubagentPayload(payload: {
 
   const description = typeof stepConfig.description === 'string' ? stepConfig.description : ''
   const inputStr = inputData ? JSON.stringify(inputData) : ''
-  const agentType = explicitAgentType ?? inferSubagentType({ message: `${description} ${inputStr}` })
+  const inferred = inferSubagentType({ message: `${description} ${inputStr}` })
+
+  const agentProfile = explicitAgentType ?? inferred.agentProfile
+  const agentType = explicitAgentType ?? inferred.agentType
 
   const taskSpec: SubagentTaskSpec = {
     objective: description || String(stepConfig.description ?? ''),
     tools: Array.isArray(stepConfig.tools) ? (stepConfig.tools as string[]) : undefined,
     maxIterations: typeof stepConfig.maxIterations === 'number' ? stepConfig.maxIterations : undefined,
     timeoutMs: typeof stepConfig.timeoutMs === 'number' ? stepConfig.timeoutMs : undefined,
-    agentType,
+    agentType: agentProfile,
   }
 
   const sourceRef: SourceRef = {
@@ -279,6 +293,7 @@ export function mapWorkflowStepPayloadToLaunchSubagentPayload(payload: {
 
   return {
     agentType,
+    agentProfile,
     taskSpec,
     sourceRef,
   }

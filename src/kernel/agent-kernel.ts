@@ -124,12 +124,16 @@ export class AgentKernel {
 
         this.config.modelInputSnapshotStore?.record({
           agentKind: this.lastBuiltModelInput!.metadata.agentKind,
+          agentType: this.lastBuiltModelInput!.metadata.agentType,
+          agentProfile: this.lastBuiltModelInput!.metadata.agentProfile,
           mode: this.lastBuiltModelInput!.metadata.mode,
           builtInput: this.lastBuiltModelInput!,
           response: { content: llmResult.response.content, toolCalls: llmResult.response.toolCalls },
           tokenUsage: llmResult.response.usage,
           provider: this.lastBuiltModelInput!.metadata.providerFamily,
           model: llmRequest.model,
+          outputContract: this.lastBuiltModelInput!.metadata.outputContract,
+          launchSource: this.lastBuiltModelInput!.metadata.launchSource,
         })
 
         const llmResponse = llmResult.response
@@ -249,7 +253,10 @@ export class AgentKernel {
 
     let toolSelectionPolicy = input.toolSelectionPolicy
     if (toolSelectionPolicy === undefined && isPromptMemoryP0Enabled() && this.config.promptProjectionResolver) {
-      const projectionResult = await this.config.promptProjectionResolver.resolve({})
+      const projectionResult = await this.config.promptProjectionResolver.resolve({
+        agentType: input.agentType,
+        providerFamily: this.config.providerFamily ?? 'openai',
+      })
       toolSelectionPolicy = projectionResult.toolSelectionPolicy
     }
 
@@ -264,6 +271,12 @@ export class AgentKernel {
         }
       : {
           mode: 'function_calling',
+          agentType: input.agentType,
+          agentProfile: 'default_main',
+          // DEPRECATED (Task 9): 'kernel' is a legacy agentKind alias.
+          // The normalizer maps 'kernel' → { agentType: 'main', agentProfile: 'default_main' }.
+          // agentKind is kept here solely for template resolution (agents:kernel → agents/kernel.md).
+          // agents/kernel.md will be retired once new-stack parity tests pass.
           agentKind: 'kernel',
           providerFamily: this.config.providerFamily ?? 'openai',
           contextBundle: contextBundleData,
@@ -272,6 +285,7 @@ export class AgentKernel {
           sessionId: input.sessionId,
           runId: input.runId ?? input.contextBundle.runId,
           toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
+          outputContract: 'output:default-chat.schema',
           ...(isPromptMemoryP0Enabled()
             ? {
                 toolSelectionPolicy,
@@ -624,7 +638,15 @@ export class AgentKernel {
   private isCallableProjectedTool(toolName: string, input: KernelRunInput): boolean {
     const projection = input.toolProjection ?? this.config.toolProjection
     if (!projection?.tools) return false
-    return projection.tools.some((tool) => tool.function.name === toolName)
+    const isInProjection = projection.tools.some((tool) => tool.function.name === toolName)
+    if (!isInProjection) return false
+
+    // Defense-in-depth: remote agent type is hard-deny
+    if (input.agentType === 'remote') {
+      return false
+    }
+
+    return true
   }
 
   private toMappedToolResult(

@@ -46,6 +46,8 @@ describe('Secret Redaction Security Tests', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput({
           segments: {
@@ -93,6 +95,8 @@ describe('Secret Redaction Security Tests', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         response: { accessToken: SENTINEL_OAUTH_TOKEN, userId: 'u1' },
@@ -126,6 +130,8 @@ describe('Secret Redaction Security Tests', () => {
 
       const snapshot = store.record({
         agentKind: 'kernel',
+        agentType: 'main',
+        agentProfile: 'default_main',
         mode: 'function_calling',
         builtInput: makeBuiltInput(),
         response: { password: SENTINEL_DB_PASSWORD, host: 'localhost' },
@@ -151,6 +157,8 @@ describe('Secret Redaction Security Tests', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         response: { certBlock: SENTINEL_PEM_KEY, name: 'test' },
@@ -181,6 +189,8 @@ describe('Secret Redaction Security Tests', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         response: { authorization: SENTINEL_AUTH_HEADER, endpoint: '/api' },
@@ -206,6 +216,8 @@ describe('Secret Redaction Security Tests', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         response: { webhookSecret: SENTINEL_WEBHOOK_SECRET, url: '/hook' },
@@ -265,6 +277,8 @@ describe('Secret Redaction Security Tests', () => {
 
       const snapshot = store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput(),
         response: {
@@ -296,6 +310,8 @@ describe('Secret Redaction Security Tests', () => {
 
       store.record({
         agentKind: 'foreground',
+        agentType: 'main',
+        agentProfile: 'foreground',
         mode: 'routing_json',
         builtInput: makeBuiltInput({
           segments: {

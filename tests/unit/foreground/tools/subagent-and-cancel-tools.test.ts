@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   handleLaunchSubagent,
   LAUNCH_SUBAGENT_TOOL_ID,
@@ -14,8 +14,17 @@ import {
 import type { RuntimeDispatcher, DispatchResult } from '../../../../src/dispatcher/types.js'
 import type { PlannerRunStore } from '../../../../src/storage/planner-run-store.js'
 import type { SubagentRunStore } from '../../../../src/storage/subagent-run-store.js'
+import { createAgentProfileRegistry, registerSystemProfiles } from '../../../../src/taxonomy/agent-profile-registry.js'
+import type { AgentProfileRegistry } from '../../../../src/taxonomy/agent-profile-registry.js'
 
 describe('Subagent Launch Tool', () => {
+  let profileRegistry: AgentProfileRegistry
+
+  beforeEach(() => {
+    profileRegistry = createAgentProfileRegistry()
+    registerSystemProfiles(profileRegistry)
+  })
+
   describe('LAUNCH_SUBAGENT_TOOL_ID', () => {
     it('should have correct tool ID', () => {
       expect(LAUNCH_SUBAGENT_TOOL_ID).toBe('foreground_launch_subagent')
@@ -41,6 +50,7 @@ describe('Subagent Launch Tool', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         turnId: 'turn-1',
+        profileRegistry,
       }
 
       const input: LaunchSubagentInput = {
@@ -52,7 +62,8 @@ describe('Subagent Launch Tool', () => {
       const result = await handleLaunchSubagent(deps, input)
 
       expect(result.success).toBe(true)
-      expect(result.data?.agentType).toBe('document_processor')
+      expect(result.data?.agentType).toBe('subagent')
+      expect(result.data?.agentProfile).toBe('document_processor')
       expect(result.data?.runtimeActionId).toBeDefined()
       expect(result.data?.dispatchResult).toEqual(mockDispatchResult)
       expect(result.runtimeSummary?.runtimeActionIds).toHaveLength(1)
@@ -69,6 +80,7 @@ describe('Subagent Launch Tool', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         turnId: 'turn-1',
+        profileRegistry,
       }
 
       const input: LaunchSubagentInput = {
@@ -102,6 +114,7 @@ describe('Subagent Launch Tool', () => {
         userId: 'user-1',
         sessionId: 'session-1',
         turnId: 'turn-1',
+        profileRegistry,
       }
 
       const input: LaunchSubagentInput = {
@@ -112,7 +125,8 @@ describe('Subagent Launch Tool', () => {
       const result = await handleLaunchSubagent(deps, input)
 
       expect(result.success).toBe(true)
-      expect(result.data?.agentType).toBe('document_processor')
+      expect(result.data?.agentType).toBe('subagent')
+      expect(result.data?.agentProfile).toBe('document_processor')
     })
   })
 })

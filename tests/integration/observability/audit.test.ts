@@ -463,7 +463,7 @@ describe('Observability Audit Integration', () => {
         subagentRunId: 'sub_001',
         userId: 'user_001',
         sessionId: 'session_001',
-        agentType: 'code_reviewer',
+        agentType: 'subagent',
         objective: 'Review pull request #123',
         status: 'started',
       }
@@ -482,7 +482,7 @@ describe('Observability Audit Integration', () => {
       const run: SubagentRunAuditRequest = {
         subagentRunId: 'sub_002',
         userId: 'user_001',
-        agentType: 'test_runner',
+        agentType: 'subagent',
         objective: 'Run unit tests',
         status: 'completed',
       }
@@ -497,7 +497,7 @@ describe('Observability Audit Integration', () => {
       const run: SubagentRunAuditRequest = {
         subagentRunId: 'sub_003',
         userId: 'user_001',
-        agentType: 'deploy_agent',
+        agentType: 'background',
         objective: 'Deploy to production',
         status: 'failed',
       }

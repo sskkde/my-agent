@@ -8,10 +8,15 @@
  * - lazy_discoverable: Discoverable but not in initial context
  * - hidden: Never exposed to LLM
  *
+ * With envelope enforcement, exposure plans are intersected with the
+ * AgentType envelope before tools are projected.
+ *
  * @module tools/tool-exposure-plan
  */
 
 import type { ToolDefinition, ToolCategory, ToolSensitivity } from './types.js'
+import type { AgentType } from '../context/types.js'
+import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 
 /**
  * Exposure levels for tool visibility to LLM.
@@ -165,4 +170,28 @@ export function filterToolsByExposure(
     if (!plan) return false
     return allowedLevels.includes(plan.exposureLevel)
   })
+}
+
+/**
+ * Filter exposure plans by AgentType envelope.
+ *
+ * Returns only plans for tools that pass the envelope boundary.
+ * Tools outside the envelope are effectively "hidden" regardless of exposure level.
+ */
+export function filterExposurePlansByEnvelope(
+  plans: Map<string, ToolExposurePlan>,
+  tools: ToolDefinition[],
+  agentType: AgentType,
+  envelopeRegistry: AgentTypeToolEnvelopeRegistry,
+): Map<string, ToolExposurePlan> {
+  const filtered = new Map<string, ToolExposurePlan>()
+  for (const tool of tools) {
+    if (envelopeRegistry.isToolAllowedByEnvelope(agentType, tool.name, tool.category)) {
+      const plan = plans.get(tool.name)
+      if (plan) {
+        filtered.set(tool.name, plan)
+      }
+    }
+  }
+  return filtered
 }

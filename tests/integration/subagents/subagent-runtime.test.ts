@@ -86,7 +86,7 @@ class FakeContextManager implements SubagentContextManager {
       bundleId: `bundle-${options.subagentRunId}`,
       runId: options.subagentRunId,
       agentId: `agent-${options.subagentRunId}`,
-      agentType: options.taskSpec.agentType || 'subagent',
+      agentType: (options.taskSpec.agentType ?? 'subagent') as 'subagent',
       userId: 'test-user',
       invocationSource: 'subagent_runtime',
       pinnedItems: [isolatedItem],

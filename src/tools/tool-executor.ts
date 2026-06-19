@@ -7,6 +7,7 @@ import type {
   ToolCategory,
 } from './types.js'
 import type { RuntimeContextDelta } from '../context/types.js'
+import type { AgentType } from '../context/types.js'
 import { TOOL_EXECUTION_STATES } from '../shared/states.js'
 import { sanitizeErrorMessage, formatPersistedError } from './error-sanitizer.js'
 
@@ -18,7 +19,7 @@ class ToolExecutorImpl implements ToolExecutor {
   }
 
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
-    const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext, signal } = request
+    const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext, signal, agentType, agentProfile, launchSource, outputContract, permissionPolicyRef } = request
     const traceId = kernelRunId || toolCallId
     const spanId = `span_${toolCallId}`
     const startedAt = Date.now()
@@ -31,7 +32,15 @@ class ToolExecutorImpl implements ToolExecutor {
       operation: toolName,
       status: 'started',
       startTime: new Date(startedAt).toISOString(),
-      metadata: { toolCallId, toolName },
+      metadata: {
+        toolCallId,
+        toolName,
+        ...(agentType ? { agentType } : {}),
+        ...(agentProfile ? { agentProfile } : {}),
+        ...(launchSource ? { launchSource } : {}),
+        ...(outputContract ? { outputContract } : {}),
+        ...(permissionPolicyRef ? { permissionPolicyRef } : {}),
+      },
     })
 
     try {
@@ -51,6 +60,42 @@ class ToolExecutorImpl implements ToolExecutor {
         })
         this.endToolSpan(spanId, startedAt, 'failed', errorMessage)
         return this.createErrorResult('TOOL_NOT_FOUND', `Tool not found: ${toolName}`, false)
+      }
+
+      // Envelope enforcement: reject tools outside AgentType boundary
+      if (agentType && this.config.envelopeRegistry) {
+        const envelope = this.config.envelopeRegistry.getEnvelope(agentType as AgentType)
+        if (!envelope) {
+          const errorMessage = `[ENVELOPE_DENIED] No envelope for agentType: ${agentType}`
+          this.config.toolExecutionStore.create({
+            toolCallId,
+            toolName,
+            userId,
+            sessionId,
+            kernelRunId,
+            status: TOOL_EXECUTION_STATES.DENIED,
+            sensitivity: tool.sensitivity,
+            errorMessage,
+          })
+          this.endToolSpan(spanId, startedAt, 'failed', errorMessage)
+          return this.createErrorResult('ENVELOPE_DENIED', errorMessage, false)
+        }
+
+        if (!this.config.envelopeRegistry.isToolAllowedByEnvelope(agentType as AgentType, toolName, tool.category)) {
+          const errorMessage = `[ENVELOPE_DENIED] Tool "${toolName}" (category: ${tool.category}) is outside the ${agentType} envelope boundary`
+          this.config.toolExecutionStore.create({
+            toolCallId,
+            toolName,
+            userId,
+            sessionId,
+            kernelRunId,
+            status: TOOL_EXECUTION_STATES.DENIED,
+            sensitivity: tool.sensitivity,
+            errorMessage,
+          })
+          this.endToolSpan(spanId, startedAt, 'failed', errorMessage)
+          return this.createErrorResult('ENVELOPE_DENIED', errorMessage, false)
+        }
       }
 
       this.config.toolExecutionStore.create({
@@ -223,6 +268,11 @@ class ToolExecutorImpl implements ToolExecutor {
         status: finalResult.success ? 'success' : 'failure',
         correlationId: toolCallId,
         causationId: kernelRunId,
+        agentType,
+        agentProfile,
+        launchSource,
+        outputContract,
+        permissionPolicyRef,
       })
       const spanError = finalResult.success
         ? undefined

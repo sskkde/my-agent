@@ -4,23 +4,38 @@ import { resolveSubagentProvider } from './provider-policy.js'
 import type { SubagentProviderPreferenceStore } from './provider-policy.js'
 import type { AgentKernel } from '../kernel/agent-kernel.js'
 import type { KernelRunInput, KernelRunResult } from '../kernel/types.js'
-import type { ContextBundle } from '../context/types.js'
+import type { ContextBundle, AgentType } from '../context/types.js'
 import type { ProviderConfigStore } from '../storage/provider-config-store.js'
 import type { AgentConfigStore } from '../storage/agent-config-store.js'
 import type { SessionStore } from '../storage/session-store.js'
 import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js'
 import type { ToolRegistry } from '../tools/types.js'
+import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 import { toLLMToolDefinition } from '../tools/tool-plane-prompt-projection.js'
+import { isKnownAgentLabel, normalizeAgentLabel } from '../taxonomy/agent-label-normalizer.js'
 
 export function buildToolProjection(
   definition: SubagentDefinition,
   taskSpec: SubagentTaskSpec,
   toolRegistry: ToolRegistry,
+  envelopeRegistry?: AgentTypeToolEnvelopeRegistry,
 ): ToolPlaneProjection {
   const allowedIds = definition.allowedToolIds ?? []
   const requestedIds = taskSpec.tools ?? []
 
-  const effectiveIds = requestedIds.length > 0 ? allowedIds.filter((id) => requestedIds.includes(id)) : allowedIds
+  let effectiveIds = requestedIds.length > 0 ? allowedIds.filter((id) => requestedIds.includes(id)) : allowedIds
+
+  if (envelopeRegistry) {
+    const profileLabel = definition.agentProfile ?? definition.agentType
+    const agentType: AgentType = isKnownAgentLabel(profileLabel)
+      ? normalizeAgentLabel(profileLabel).agentType
+      : 'subagent'
+    const catalog = effectiveIds.map((id) => {
+      const tool = toolRegistry.getTool(id)
+      return { id, category: tool?.category ?? 'internal' }
+    })
+    effectiveIds = envelopeRegistry.getAllowedToolIds(agentType, catalog)
+  }
 
   const tools: ToolPlaneProjection['tools'] = []
   for (const toolId of effectiveIds) {
@@ -67,6 +82,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       fn: () => Promise<T>,
       preferredProviderId?: string,
     ) => Promise<T>,
+    private readonly envelopeRegistry?: AgentTypeToolEnvelopeRegistry,
   ) {}
 
   async execute(options: {
@@ -146,7 +162,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       preferenceStore: this.preferenceStore,
     })
 
-    const toolProjection = buildToolProjection(definition, taskSpec, this.toolRegistry)
+    const toolProjection = buildToolProjection(definition, taskSpec, this.toolRegistry, this.envelopeRegistry)
 
     const kernelInput: KernelRunInput = {
       contextBundle,
@@ -180,6 +196,7 @@ export function createSubagentKernelAdapter(deps: {
   toolRegistry: ToolRegistry
   preferenceStore?: SubagentProviderPreferenceStore
   runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>
+  envelopeRegistry?: AgentTypeToolEnvelopeRegistry
 }): KernelAdapter {
   return new AgentKernelSubagentAdapter(
     deps.agentKernel,
@@ -190,5 +207,6 @@ export function createSubagentKernelAdapter(deps: {
     deps.toolRegistry,
     deps.preferenceStore,
     deps.runWithProvidersForUser,
+    deps.envelopeRegistry,
   )
 }

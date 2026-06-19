@@ -75,3 +75,9 @@ export function getToolRiskPolicy(toolName: string): ToolRiskPolicy | undefined 
 export function requiresApprovalByRisk(riskLevel: RiskLevel): boolean {
   return riskLevel === 'high' || riskLevel === 'critical'
 }
+
+const RESTRICTED_DENY_RISKS: ReadonlySet<RiskLevel> = new Set(['high', 'critical'])
+
+export function isDeniedByRestricted(riskLevel: RiskLevel): boolean {
+  return RESTRICTED_DENY_RISKS.has(riskLevel)
+}

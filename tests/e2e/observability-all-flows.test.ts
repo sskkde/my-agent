@@ -318,7 +318,7 @@ describe('Task 46: Observability Integration Across All Runtime Flows', () => {
         priority: 1,
       })
 
-      tracingHooks.onSubagentRun(traceContext.traceId, 'document_processor', traceContext.rootSpanId)
+      tracingHooks.onSubagentRun(traceContext.traceId, 'subagent', traceContext.rootSpanId)
 
       await backgroundRuntime.startBackgroundRun(bgRunId)
 
@@ -653,7 +653,7 @@ describe('Task 46: Observability Integration Across All Runtime Flows', () => {
       const approvalSpans = traceStore.findSpansByTrace(approvalTrace.traceId)
 
       const bgTrace = tracingCollector.startTrace({ userId, sessionId, correlationId: 'bg_test' })
-      tracingHooks.onSubagentRun(bgTrace.traceId, 'test_agent', bgTrace.rootSpanId)
+      tracingHooks.onSubagentRun(bgTrace.traceId, 'background', bgTrace.rootSpanId)
       tracingCollector.endTrace(bgTrace.traceId, 'completed')
 
       const bgSpans = traceStore.findSpansByTrace(bgTrace.traceId)
@@ -693,7 +693,7 @@ describe('Task 46: Observability Integration Across All Runtime Flows', () => {
         subagentRunId: 'test_bg_run',
         userId,
         sessionId,
-        agentType: 'test_agent',
+        agentType: 'background',
         objective: 'Test objective',
         status: 'completed',
         correlationId,

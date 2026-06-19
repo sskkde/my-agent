@@ -297,6 +297,7 @@ export function registerDefaultRuntimeAdapters(deps: {
           const userId = action.userId ?? (payload.userId as string | undefined)
           const sessionId = action.sessionId ?? (payload.sessionId as string | undefined)
           const agentType = payload.agentType as string | undefined
+          const agentProfile = payload.agentProfile as string | undefined
           const taskSpec = payload.taskSpec as SubagentTaskSpec | undefined
           const launchSource = payload.launchSource as string | undefined
           const priority = payload.priority as number | undefined
@@ -314,6 +315,7 @@ export function registerDefaultRuntimeAdapters(deps: {
             userId,
             sessionId,
             agentType,
+            agentProfile,
             taskSpec,
             launchSource,
             priority,

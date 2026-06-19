@@ -10,6 +10,7 @@ export interface SubagentTaskSpec {
   tools?: string[]
   maxIterations?: number
   timeoutMs?: number
+  /** Profile label (e.g. 'document_processor'), NOT a runtime boundary. See AgentType for lifecycle types. */
   agentType?: string
 }
 

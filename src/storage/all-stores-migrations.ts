@@ -2410,6 +2410,32 @@ export const fileUploadsTableMigration: Migration = {
 }
 
 
+export const agentTypeProfileSplitMigration: Migration = {
+  version: 63,
+  name: 'agent_type_profile_split',
+  up: `
+    ALTER TABLE subagent_runs ADD COLUMN agent_profile TEXT;
+    UPDATE subagent_runs SET agent_profile = agent_type;
+    UPDATE subagent_runs SET agent_type = 'subagent';
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_agent_profile ON subagent_runs(agent_profile);
+
+    ALTER TABLE background_runs ADD COLUMN agent_profile TEXT;
+    UPDATE background_runs SET agent_profile = agent_type;
+    UPDATE background_runs SET agent_type = 'background';
+    CREATE INDEX IF NOT EXISTS idx_background_runs_agent_profile ON background_runs(agent_profile);
+
+    ALTER TABLE subagent_provider_preferences ADD COLUMN agent_profile TEXT;
+    UPDATE subagent_provider_preferences SET agent_profile = agent_type;
+    UPDATE subagent_provider_preferences SET agent_type = 'subagent';
+    CREATE INDEX IF NOT EXISTS idx_subagent_provider_prefs_agent_profile ON subagent_provider_preferences(agent_profile)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_subagent_provider_prefs_agent_profile;
+    DROP INDEX IF EXISTS idx_background_runs_agent_profile;
+    DROP INDEX IF EXISTS idx_subagent_runs_agent_profile
+  `,
+}
+
 export const todosTableMigration: Migration = {
   version: 61,
   name: 'create_todos_table',
@@ -2576,6 +2602,9 @@ export const allStoreMigrations: Migration[] = [
 
   // File Upload store
   fileUploadsTableMigration, // v62
+
+  // Agent type/profile split: closed AgentType in agent_type, profile label in agent_profile
+  agentTypeProfileSplitMigration, // v63
 ]
 
 /**

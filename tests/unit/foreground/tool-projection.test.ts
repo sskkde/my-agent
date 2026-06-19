@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { buildForegroundToolProjection, toToolPlaneProjection } from '../../../src/foreground/tool-projection-mapper.js'
+import {
+  buildForegroundToolProjection,
+  toToolPlaneProjection,
+  applyEnvelopeToProjection,
+} from '../../../src/foreground/tool-projection-mapper.js'
 import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js'
 import type { ToolCategory, ToolSensitivity } from '../../../src/tools/types.js'
 import { createToolRegistry } from '../../../src/tools/tool-registry.js'
@@ -9,6 +13,7 @@ import { createStatusQueryTool } from '../../../src/tools/builtins/status-query.
 import { createSessionStore } from '../../../src/storage/session-store.js'
 import { createTranscriptStore } from '../../../src/storage/transcript-store.js'
 import { createConnectionManager } from '../../../src/storage/connection.js'
+import { createAgentTypeToolEnvelopeRegistry } from '../../../src/permissions/agent-type-tool-envelope.js'
 
 describe('buildForegroundToolProjection', () => {
   const createMockInput = (): ForegroundTurnInput => ({
@@ -325,6 +330,98 @@ describe('buildForegroundToolProjection', () => {
       expect(result.allowedToolIds).toContain('status_query')
       expect(result.allowedToolIds).toContain('ask_user')
       expect(result.allowedToolIds).toContain('docs_search')
+    })
+  })
+
+  describe('envelope enforcement', () => {
+    const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
+
+    it('main envelope: filters out write/execute/admin tools from projection', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('web_search', 'search', 'low'),
+        createTool('status_query', 'internal', 'low'),
+        createTool('file_write', 'write', 'medium'),
+        createTool('exec', 'execute', 'high'),
+        createTool('admin_config', 'admin', 'restricted'),
+      ]
+
+      const projection = buildForegroundToolProjection(createMockInput(), allTools)
+      const result = applyEnvelopeToProjection(projection, 'main', envelopeRegistry, allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('web_search')
+      expect(result.allowedToolIds).toContain('status_query')
+      expect(result.allowedToolIds).not.toContain('file_write')
+      expect(result.allowedToolIds).not.toContain('exec')
+      expect(result.allowedToolIds).not.toContain('admin_config')
+    })
+
+    it('remote envelope: filters out ALL tools', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('web_search', 'search', 'low'),
+        createTool('status_query', 'internal', 'low'),
+      ]
+
+      const projection = buildForegroundToolProjection(createMockInput(), allTools)
+      const result = applyEnvelopeToProjection(projection, 'remote', envelopeRegistry, allTools)
+
+      expect(result.allowedToolIds).toEqual([])
+      expect(result.toolDefinitions).toEqual([])
+    })
+
+    it('subagent envelope: filters tools that pass foreground projection', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('web_search', 'search', 'low'),
+        createTool('artifact_create', 'write', 'medium'),
+        createTool('exec', 'execute', 'high'),
+        createTool('admin_config', 'admin', 'restricted'),
+      ]
+
+      const projection = buildForegroundToolProjection(createMockInput(), allTools)
+      const result = applyEnvelopeToProjection(projection, 'subagent', envelopeRegistry, allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('web_search')
+      expect(result.allowedToolIds).not.toContain('artifact_create')
+      expect(result.allowedToolIds).not.toContain('exec')
+      expect(result.allowedToolIds).not.toContain('admin_config')
+    })
+
+    it('background envelope: filters tools that pass foreground projection', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('web_search', 'search', 'low'),
+        createTool('artifact_create', 'write', 'medium'),
+      ]
+
+      const projection = buildForegroundToolProjection(createMockInput(), allTools)
+      const result = applyEnvelopeToProjection(projection, 'background', envelopeRegistry, allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('web_search')
+      expect(result.allowedToolIds).not.toContain('artifact_create')
+    })
+
+    it('workflow_step envelope: filters tools that pass foreground projection', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('web_search', 'search', 'low'),
+        createTool('artifact_create', 'write', 'medium'),
+        createTool('exec', 'execute', 'high'),
+        createTool('admin_config', 'admin', 'restricted'),
+      ]
+
+      const projection = buildForegroundToolProjection(createMockInput(), allTools)
+      const result = applyEnvelopeToProjection(projection, 'workflow_step', envelopeRegistry, allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('web_search')
+      expect(result.allowedToolIds).not.toContain('artifact_create')
+      expect(result.allowedToolIds).not.toContain('exec')
+      expect(result.allowedToolIds).not.toContain('admin_config')
     })
   })
 })

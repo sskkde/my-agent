@@ -36,7 +36,9 @@ function createMockModelInputBuilder(): ModelInputBuilder {
         },
         metadata: {
           mode: input.mode,
-          agentKind: input.agentKind,
+          agentKind: input.agentKind ?? 'kernel',
+          agentType: input.agentType ?? 'main',
+          agentProfile: input.agentProfile ?? input.agentKind ?? 'default',
           providerFamily: input.providerFamily,
           messageCount: messages.length,
         },

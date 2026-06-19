@@ -4,6 +4,9 @@
  * Provides a pure function for filtering suggested tools against a tool catalog
  * and creating a ToolPlaneProjection for the model input builder.
  *
+ * With envelope enforcement, the projection is:
+ *   effective = AgentTypeEnvelope ∩ safeTools ∩ policy
+ *
  * @module foreground/tool-projection-mapper
  */
 
@@ -11,6 +14,8 @@ import type { ToolPlaneProjection } from '../kernel/model-input/model-input-type
 import type { ToolDefinition } from '../llm/types.js'
 import type { ForegroundTurnInput } from './foreground-runner-types.js'
 import type { ToolCategory, ToolSensitivity, ToolRegistry } from '../tools/types.js'
+import type { AgentType } from '../context/types.js'
+import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 import { toLLMToolDefinition } from '../tools/tool-plane-prompt-projection.js'
 
 /**
@@ -158,5 +163,63 @@ export function toToolPlaneProjection(result: ForegroundToolProjectionResult): T
   return {
     toolIds: result.allowedToolIds,
     tools: result.toolDefinitions,
+  }
+}
+
+/**
+ * Apply AgentType envelope filter to a foreground tool projection.
+ *
+ * This function takes the result of `buildForegroundToolProjection` and
+ * intersects it with the AgentType envelope, ensuring no tool outside
+ * the envelope boundary is projected.
+ *
+ * The envelope is the outermost security boundary:
+ *   final = envelope ∩ buildForegroundToolProjection result
+ *
+ * @param projectionResult - Result from buildForegroundToolProjection
+ * @param agentType - The AgentType whose envelope is the boundary
+ * @param envelopeRegistry - Registry containing AgentType envelopes
+ * @param allTools - Full tool definitions with category metadata
+ * @returns Filtered ForegroundToolProjectionResult
+ */
+export function applyEnvelopeToProjection(
+  projectionResult: ForegroundToolProjectionResult,
+  agentType: AgentType,
+  envelopeRegistry: AgentTypeToolEnvelopeRegistry,
+  allTools: Array<{
+    name: string
+    category: ToolCategory
+    sensitivity: ToolSensitivity
+    description: string
+    schema?: {
+      type: 'object'
+      properties: Record<string, unknown>
+      required?: string[]
+      additionalProperties?: boolean
+      description?: string
+    }
+  }>,
+): ForegroundToolProjectionResult {
+  const envelope = envelopeRegistry.getEnvelope(agentType)
+  if (!envelope) {
+    return { allowedToolIds: [], toolDefinitions: [], projectionMode: 'function_calling' }
+  }
+
+  const filteredIds: string[] = []
+  for (const toolId of projectionResult.allowedToolIds) {
+    const toolDef = allTools.find((t) => t.name === toolId)
+    if (toolDef && envelopeRegistry.isToolAllowedByEnvelope(agentType, toolId, toolDef.category)) {
+      filteredIds.push(toolId)
+    }
+  }
+
+  const filteredDefinitions = projectionResult.toolDefinitions.filter((def) =>
+    filteredIds.includes(def.function.name),
+  )
+
+  return {
+    allowedToolIds: filteredIds,
+    toolDefinitions: filteredDefinitions,
+    projectionMode: 'function_calling',
   }
 }

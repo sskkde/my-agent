@@ -19,6 +19,7 @@ import {
   modeAllowsOperation,
   fromStorageApprovalRequest,
 } from './types.js'
+import { isDeniedByRestricted } from './tool-risk-policy.js'
 import { APPROVAL_STATES } from '../storage/approval-store.js'
 
 export interface PermissionEngine {
@@ -354,6 +355,23 @@ export function createPermissionEngine(
         )
       }
 
+      if (context.mode === 'restricted' && request.riskLevel && isDeniedByRestricted(request.riskLevel)) {
+        emitAuditEvent({
+          eventType: 'permission_denied',
+          userId: context.userId,
+          sessionId: context.sessionId,
+          actionType,
+          resource,
+          decision: 'denied',
+          reason: `Restricted mode denies ${request.riskLevel}-risk operations`,
+          correlationId,
+          timestamp,
+        })
+        return finishDecision(
+          createDeniedDecision(`Restricted mode denies ${request.riskLevel}-risk operation '${actionType}'`),
+        )
+      }
+
       if (fullConfig.respectExistingGrants) {
         const grantCheck = checkExistingGrants(request)
         if (grantCheck.allowed) {
@@ -410,7 +428,7 @@ export function createPermissionEngine(
       }
 
       if (
-        context.mode === 'ask_on_write' &&
+        (context.mode === 'ask_on_write' || context.mode === 'write_allowed') &&
         (operationType === 'write' || operationType === 'delete' || operationType === 'execute')
       ) {
         const pendingApprovals = deps.approvalStore.findPendingBySession(context.sessionId)
@@ -438,7 +456,7 @@ export function createPermissionEngine(
           actionType,
           resource,
           decision: 'requires_approval',
-          reason: 'Write operation requires approval in ask_on_write mode',
+          reason: `Write operation requires approval in ${context.mode} mode (intersection: envelope + profile + policy)`,
           requestId: approvalRequest.id,
           correlationId,
           timestamp,
@@ -634,6 +652,23 @@ export function createPermissionEngine(
         )
       }
 
+      if (context.mode === 'restricted' && request.riskLevel && isDeniedByRestricted(request.riskLevel)) {
+        emitAuditEvent({
+          eventType: 'permission_denied',
+          userId: context.userId,
+          sessionId: context.sessionId,
+          actionType,
+          resource,
+          decision: 'denied',
+          reason: `Restricted mode denies ${request.riskLevel}-risk operations`,
+          correlationId,
+          timestamp,
+        })
+        return finishDecision(
+          createDeniedDecision(`Restricted mode denies ${request.riskLevel}-risk operation '${actionType}'`),
+        )
+      }
+
       if (fullConfig.respectExistingGrants) {
         const grantCheck = checkExistingGrants(request)
         if (grantCheck.allowed) {
@@ -690,7 +725,7 @@ export function createPermissionEngine(
       }
 
       if (
-        context.mode === 'ask_on_write' &&
+        (context.mode === 'ask_on_write' || context.mode === 'write_allowed') &&
         (operationType === 'write' || operationType === 'delete' || operationType === 'execute')
       ) {
         const pendingApprovals = deps.approvalStore.findPendingBySession(context.sessionId)
@@ -718,7 +753,7 @@ export function createPermissionEngine(
           actionType,
           resource,
           decision: 'requires_approval',
-          reason: 'Write operation requires approval in ask_on_write mode',
+          reason: `Write operation requires approval in ${context.mode} mode (intersection: envelope + profile + policy)`,
           requestId: approvalRequest.id,
           correlationId,
           timestamp,

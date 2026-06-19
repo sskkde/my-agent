@@ -49,24 +49,24 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
 
       const preferenceEntries = await Promise.all(
         defsRes.definitions.map(
-          async (def) => [def.agentType, (await getSubagentPreference(def.agentType)).preference] as const,
+          async (def) => [def.agentProfile, (await getSubagentPreference(def.agentProfile)).preference] as const,
         ),
       )
-      const preferencesByType: Record<string, SubagentPreference> = {}
-      for (const [agentType, preference] of preferenceEntries) {
+      const preferencesByProfile: Record<string, SubagentPreference> = {}
+      for (const [profile, preference] of preferenceEntries) {
         if (preference) {
-          preferencesByType[agentType] = preference
+          preferencesByProfile[profile] = preference
         }
       }
 
       setDefinitions(defsRes.definitions)
-      setPreferences(preferencesByType)
+      setPreferences(preferencesByProfile)
       setProviders(providersData)
 
       const initialFormData: Record<string, SubagentFormData> = {}
       defsRes.definitions.forEach((def) => {
-        const pref = preferencesByType[def.agentType]
-        initialFormData[def.agentType] = {
+        const pref = preferencesByProfile[def.agentProfile]
+        initialFormData[def.agentProfile] = {
           providerId: pref?.providerId ?? '',
           model: pref?.model ?? '',
           fallbackMode: pref?.fallbackMode ?? def.providerPolicy.fallbackMode,
@@ -84,26 +84,26 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
     fetchData()
   }, [fetchData])
 
-  const handleToggleExpand = (subagentType: string) => {
-    setExpandedType((prev) => (prev === subagentType ? null : subagentType))
-    setSaveErrors((prev) => ({ ...prev, [subagentType]: '' }))
+  const handleToggleExpand = (profile: string) => {
+    setExpandedType((prev) => (prev === profile ? null : profile))
+    setSaveErrors((prev) => ({ ...prev, [profile]: '' }))
   }
 
-  const handleInputChange = (subagentType: string, field: keyof SubagentFormData, value: string) => {
+  const handleInputChange = (profile: string, field: keyof SubagentFormData, value: string) => {
     setFormData((prev) => ({
       ...prev,
-      [subagentType]: {
-        ...prev[subagentType],
+      [profile]: {
+        ...prev[profile],
         [field]: value,
       },
     }))
-    setSaveErrors((prev) => ({ ...prev, [subagentType]: '' }))
+    setSaveErrors((prev) => ({ ...prev, [profile]: '' }))
   }
 
-  const handleSave = async (subagentType: string) => {
-    const data = formData[subagentType]
-    setSavingType(subagentType)
-    setSaveErrors((prev) => ({ ...prev, [subagentType]: '' }))
+  const handleSave = async (profile: string) => {
+    const data = formData[profile]
+    setSavingType(profile)
+    setSaveErrors((prev) => ({ ...prev, [profile]: '' }))
 
     try {
       const request: { providerId?: string | null; model?: string | null; fallbackMode?: SubagentFallbackMode } = {}
@@ -116,30 +116,30 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
       }
       request.fallbackMode = data.fallbackMode
 
-      await updateSubagentPreference(subagentType, request)
+      await updateSubagentPreference(profile, request)
       await fetchData()
     } catch (err) {
       const message = err instanceof ApiClientError ? err.message : '保存配置失败'
-      setSaveErrors((prev) => ({ ...prev, [subagentType]: message }))
+      setSaveErrors((prev) => ({ ...prev, [profile]: message }))
     } finally {
       setSavingType(null)
     }
   }
 
-  const handleReset = async (subagentType: string) => {
+  const handleReset = async (profile: string) => {
     if (!confirm('确定要重置此子代理的配置吗？这将恢复到默认设置。')) {
       return
     }
 
-    setResettingType(subagentType)
-    setSaveErrors((prev) => ({ ...prev, [subagentType]: '' }))
+    setResettingType(profile)
+    setSaveErrors((prev) => ({ ...prev, [profile]: '' }))
 
     try {
-      await resetSubagentPreference(subagentType)
+      await resetSubagentPreference(profile)
       await fetchData()
     } catch (err) {
       const message = err instanceof ApiClientError ? err.message : '重置配置失败'
-      setSaveErrors((prev) => ({ ...prev, [subagentType]: message }))
+      setSaveErrors((prev) => ({ ...prev, [profile]: message }))
     } finally {
       setResettingType(null)
     }
@@ -151,9 +151,9 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
     return provider?.displayName || providerId
   }
 
-  const getEffectiveConfig = (subagentType: string) => {
-    const def = definitions.find((d) => d.agentType === subagentType)
-    const pref = preferences[subagentType]
+  const getEffectiveConfig = (profile: string) => {
+    const def = definitions.find((d) => d.agentProfile === profile)
+    const pref = preferences[profile]
 
     return {
       providerId: pref?.providerId ?? def?.providerPolicy.defaultProviderId ?? null,
@@ -209,25 +209,28 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
 
       <div className="subagent-list">
         {definitions.map((def) => {
-          const isExpanded = expandedType === def.agentType
-          const effective = getEffectiveConfig(def.agentType)
-          const currentFormData = formData[def.agentType] || {
+          const isExpanded = expandedType === def.agentProfile
+          const effective = getEffectiveConfig(def.agentProfile)
+          const currentFormData = formData[def.agentProfile] || {
             providerId: '',
             model: '',
             fallbackMode: def.providerPolicy.fallbackMode,
           }
-          const saveError = saveErrors[def.agentType]
+          const saveError = saveErrors[def.agentProfile]
 
           return (
-            <div key={def.agentType} className="subagent-card">
+            <div key={def.agentProfile} className="subagent-card">
               <div
                 className="subagent-card-header"
-                onClick={() => handleToggleExpand(def.agentType)}
-                data-testid={`subagent-card-${def.agentType}`}
+                onClick={() => handleToggleExpand(def.agentProfile)}
+                data-testid={`subagent-card-${def.agentProfile}`}
               >
                 <div className="subagent-info">
                   <span className="subagent-name">{def.displayName}</span>
-                  <span className="subagent-type-badge">{def.agentType}</span>
+                  <span className="subagent-type-badge">{def.agentProfile}</span>
+                  {def.agentType !== def.agentProfile && (
+                    <span className="subagent-runtime-badge">{def.agentType}</span>
+                  )}
                   {effective.hasOverride && <span className="subagent-override-badge">已配置</span>}
                 </div>
                 <div className="subagent-effective-info">
@@ -237,7 +240,7 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
                 <button
                   className="subagent-expand-btn"
                   aria-expanded={isExpanded}
-                  data-testid={`subagent-expand-${def.agentType}`}
+                  data-testid={`subagent-expand-${def.agentProfile}`}
                 >
                   {isExpanded ? '收起' : '展开'}
                 </button>
@@ -261,13 +264,13 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
 
                   <div className="subagent-form">
                     <div className="form-group">
-                      <label htmlFor={`provider-${def.agentType}`}>服务提供商</label>
+                      <label htmlFor={`provider-${def.agentProfile}`}>服务提供商</label>
                       <select
-                        id={`provider-${def.agentType}`}
+                        id={`provider-${def.agentProfile}`}
                         value={currentFormData.providerId}
-                        onChange={(e) => handleInputChange(def.agentType, 'providerId', e.target.value)}
+                        onChange={(e) => handleInputChange(def.agentProfile, 'providerId', e.target.value)}
                         className="input-field"
-                        data-testid={`subagent-provider-${def.agentType}`}
+                        data-testid={`subagent-provider-${def.agentProfile}`}
                       >
                         <option value="">使用默认</option>
                         {providers.map((provider) => (
@@ -280,29 +283,29 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor={`model-${def.agentType}`}>模型</label>
+                      <label htmlFor={`model-${def.agentProfile}`}>模型</label>
                       <input
-                        id={`model-${def.agentType}`}
+                        id={`model-${def.agentProfile}`}
                         type="text"
                         value={currentFormData.model}
-                        onChange={(e) => handleInputChange(def.agentType, 'model', e.target.value)}
+                        onChange={(e) => handleInputChange(def.agentProfile, 'model', e.target.value)}
                         placeholder="例如: gpt-4, claude-3-opus"
                         className="input-field"
-                        data-testid={`subagent-model-${def.agentType}`}
+                        data-testid={`subagent-model-${def.agentProfile}`}
                       />
                       <span className="form-hint">留空则使用提供商默认模型</span>
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor={`fallback-${def.agentType}`}>失败模式</label>
+                      <label htmlFor={`fallback-${def.agentProfile}`}>失败模式</label>
                       <select
-                        id={`fallback-${def.agentType}`}
+                        id={`fallback-${def.agentProfile}`}
                         value={currentFormData.fallbackMode}
                         onChange={(e) =>
-                          handleInputChange(def.agentType, 'fallbackMode', e.target.value as SubagentFallbackMode)
+                          handleInputChange(def.agentProfile, 'fallbackMode', e.target.value as SubagentFallbackMode)
                         }
                         className="input-field"
-                        data-testid={`subagent-fallback-${def.agentType}`}
+                        data-testid={`subagent-fallback-${def.agentProfile}`}
                       >
                         {FALLBACK_MODE_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -316,7 +319,7 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
                     </div>
 
                     {saveError && (
-                      <div className="subagent-save-error" data-testid={`subagent-error-${def.agentType}`}>
+                      <div className="subagent-save-error" data-testid={`subagent-error-${def.agentProfile}`}>
                         {saveError}
                       </div>
                     )}
@@ -324,19 +327,19 @@ const SubagentConfig: React.FC<SubagentConfigProps> = ({ isAuthenticated }) => {
                     <div className="subagent-actions">
                       <button
                         className="secondary-button"
-                        onClick={() => handleReset(def.agentType)}
-                        disabled={savingType === def.agentType || resettingType === def.agentType}
-                        data-testid={`subagent-reset-${def.agentType}`}
+                        onClick={() => handleReset(def.agentProfile)}
+                        disabled={savingType === def.agentProfile || resettingType === def.agentProfile}
+                        data-testid={`subagent-reset-${def.agentProfile}`}
                       >
-                        {resettingType === def.agentType ? '重置中...' : '重置'}
+                        {resettingType === def.agentProfile ? '重置中...' : '重置'}
                       </button>
                       <button
                         className="primary-button"
-                        onClick={() => handleSave(def.agentType)}
-                        disabled={savingType === def.agentType || resettingType === def.agentType}
-                        data-testid={`subagent-save-${def.agentType}`}
+                        onClick={() => handleSave(def.agentProfile)}
+                        disabled={savingType === def.agentProfile || resettingType === def.agentProfile}
+                        data-testid={`subagent-save-${def.agentProfile}`}
                       >
-                        {savingType === def.agentType ? '保存中...' : '保存配置'}
+                        {savingType === def.agentProfile ? '保存中...' : '保存配置'}
                       </button>
                     </div>
                   </div>

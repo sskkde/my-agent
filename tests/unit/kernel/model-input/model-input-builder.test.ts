@@ -526,13 +526,17 @@ describe('ModelInputBuilder', () => {
 })
 
 describe('StaticPrefixBuilder', () => {
-  it('assembles Layer 1-4 templates in order', async () => {
+  it('assembles Layer 1-4 templates in seven-layer order', async () => {
     const templates = makeTestTemplates()
     const registry = new PromptTemplateRegistry(templates, '/nonexistent')
     const loader = new TemplateLoader('/nonexistent')
     const builder = new StaticPrefixBuilder(registry, loader)
 
-    const result = await builder.buildStaticPrefix('foreground', 'openai')
+    const result = await builder.buildStaticPrefix({
+      agentType: 'main',
+      agentProfile: 'foreground',
+      providerFamily: 'openai',
+    })
 
     expect(result.content).toContain('Platform Base for foreground')
     expect(result.content).toContain('Safety rules for foreground')
@@ -547,8 +551,16 @@ describe('StaticPrefixBuilder', () => {
     const loader = new TemplateLoader('/nonexistent')
     const builder = new StaticPrefixBuilder(registry, loader)
 
-    const result1 = await builder.buildStaticPrefix('foreground', 'openai')
-    const result2 = await builder.buildStaticPrefix('foreground', 'openai')
+    const result1 = await builder.buildStaticPrefix({
+      agentType: 'main',
+      agentProfile: 'foreground',
+      providerFamily: 'openai',
+    })
+    const result2 = await builder.buildStaticPrefix({
+      agentType: 'main',
+      agentProfile: 'foreground',
+      providerFamily: 'openai',
+    })
 
     expect(result1.hash).toBe(result2.hash)
     expect(result1.hash.length).toBe(64)
@@ -559,7 +571,11 @@ describe('StaticPrefixBuilder', () => {
     const loader = new TemplateLoader('/nonexistent')
     const builder = new StaticPrefixBuilder(emptyRegistry, loader)
 
-    const result = await builder.buildStaticPrefix('nonexistent', 'nonexistent')
+    const result = await builder.buildStaticPrefix({
+      agentType: 'main',
+      agentProfile: 'nonexistent',
+      providerFamily: 'nonexistent',
+    })
 
     expect(result.content).toBe('')
     expect(result.hash).toBeDefined()

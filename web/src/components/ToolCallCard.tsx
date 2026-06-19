@@ -8,6 +8,8 @@ export interface ToolCallCardProps {
   result?: string
   status: 'running' | 'completed' | 'failed'
   durationMs?: number
+  agentProfile?: string
+  agentType?: string
   onExpand?: () => void
 }
 
@@ -40,6 +42,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   result,
   status,
   durationMs,
+  agentProfile,
+  agentType,
   onExpand,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -85,6 +89,12 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
         </span>
         <span className="tool-call-card__tool-name">{getToolDisplayName(toolName)}</span>
         <span className="tool-call-card__tool-name-original">{toolName}</span>
+        {agentProfile && (
+          <span className="tool-call-card__agent-profile">{agentProfile}</span>
+        )}
+        {agentType && agentType !== agentProfile && (
+          <span className="tool-call-card__agent-type">{agentType}</span>
+        )}
         <span className={`status-badge status-badge--${status}`}>
           {status === 'running' && <LoadingSpinner size="small" inline label="" />}
           {statusLabels[status]}

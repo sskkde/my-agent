@@ -308,8 +308,12 @@ export type WorkflowRunSummaryContent = SummaryContent & {
  * Background subagent summary content
  */
 export type BackgroundSubagentSummaryContent = SummaryContent & {
-  /** Subagent type */
-  subagentType: string
+  /** @deprecated Use agentProfile instead. Kept for backward compatibility. */
+  subagentType?: string
+  /** Agent profile identifier (e.g., 'memory', 'search', 'document_processor') */
+  agentProfile: string
+  /** Output contract schema identifier (e.g., 'output:memory-candidate.schema') */
+  outputContract?: string
   /** Task description */
   taskDescription?: string
 }

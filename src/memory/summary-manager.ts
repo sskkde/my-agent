@@ -509,6 +509,8 @@ export function createSummaryManager(
       structuredState: {
         ...content.structuredState,
         subagentType: content.subagentType,
+        agentProfile: content.agentProfile,
+        outputContract: content.outputContract,
         taskDescription: content.taskDescription,
       },
       status: 'active',

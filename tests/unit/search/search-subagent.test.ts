@@ -72,7 +72,9 @@ function createMockModelInputBuilder(): ModelInputBuilder {
         },
         metadata: {
           mode: input.mode as 'routing_json' | 'structured_json' | 'function_calling',
-          agentKind: input.agentKind,
+          agentKind: input.agentKind ?? 'kernel',
+          agentType: input.agentType ?? 'main',
+          agentProfile: input.agentProfile ?? input.agentKind ?? 'default',
           providerFamily: input.providerFamily,
           messageCount: messages.length,
         },
@@ -778,7 +780,8 @@ describe('SearchSubagent contract tests', () => {
       expect(mockModelInputBuilder.build).toHaveBeenCalledWith(
         expect.objectContaining({
           mode: 'function_calling',
-          agentKind: 'search',
+          agentProfile: 'search',
+          agentType: 'subagent',
           providerFamily: 'openai',
         }),
       )
@@ -852,7 +855,8 @@ describe('SearchSubagent contract tests', () => {
 
       expect(phase2Call[0]).toMatchObject({
         mode: 'structured_json',
-        agentKind: 'search',
+        agentProfile: 'search',
+        agentType: 'subagent',
         providerFamily: 'openai',
       })
       expect(phase2Call[0].contextBundle).toBeDefined()

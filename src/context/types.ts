@@ -172,7 +172,7 @@ export type BackgroundRunContextView = {
   backgroundRunId: string
   subagentRunId: string
   subagentCode: string
-  agentType: string
+  agentType: AgentType
   objective: string
   status: string
   progressSummary?: string
@@ -337,7 +337,8 @@ export type ContextBundle = {
   bundleId: string
   runId: string
   agentId: string
-  agentType: string
+  agentType: AgentType
+  agentProfile?: string
   userId: string
   invocationSource: InvocationSource
   pinnedItems: ContextItem[]
