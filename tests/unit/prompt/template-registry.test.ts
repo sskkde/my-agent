@@ -62,12 +62,12 @@ describe('prompt-template-registry', () => {
       expect(template?.agentKind).toBe('kernel')
     })
 
-    it('returns output:planner.schema template', () => {
-      const template = registry.getTemplate('output:planner.schema')
+    it('returns outputContract:planner.schema template', () => {
+      const template = registry.getTemplate('outputContract:planner.schema')
       expect(template).toBeDefined()
-      expect(template?.id).toBe('output:planner.schema')
+      expect(template?.id).toBe('outputContract:planner.schema')
       expect(template?.layer).toBe(4)
-      expect(template?.agentKind).toBe('planner')
+      expect(template?.agentKind).toBe('outputContract:planner.schema')
     })
 
     it('returns undefined for missing template', () => {
@@ -250,7 +250,7 @@ describe('prompt-template-registry', () => {
       expect(ids).toContain('agents:foreground')
       expect(ids).toContain('agents:kernel')
       expect(ids).not.toContain('output:foreground.schema')
-      expect(ids).toContain('output:planner.schema')
+      expect(ids).toContain('outputContract:planner.schema')
       expect(ids).toContain('persona:default')
       expect(ids).toContain('heuristics:tool-usage.common')
       expect(ids).toContain('context:memory-use-rules')
@@ -331,7 +331,7 @@ describe('prompt-template-registry', () => {
       expect(PROMPT_TEMPLATE_REGISTRY.has('agents:foreground')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('agents:kernel')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('output:foreground.schema')).toBe(false)
-      expect(PROMPT_TEMPLATE_REGISTRY.has('output:planner.schema')).toBe(true)
+      expect(PROMPT_TEMPLATE_REGISTRY.has('outputContract:planner.schema')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('persona:default')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('heuristics:tool-usage.common')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('context:memory-use-rules')).toBe(true)
