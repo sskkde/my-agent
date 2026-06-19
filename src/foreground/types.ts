@@ -53,19 +53,80 @@ export const DEFAULT_DIRECT_DELEGATION_POLICY: DirectDelegationPolicy = {
 }
 
 /**
- * Assistant Persona Profile
- * Defines the persona for the foreground conversation agent
+ * Behavior preferences for the assistant persona.
+ * Structured knobs controlling expression style.
+ */
+export interface BehaviorPreferences {
+  /** Response verbosity level */
+  verbosity?: 'concise' | 'balanced' | 'verbose'
+  /** Code comment style preference */
+  codeCommentStyle?: 'minimal' | 'explanatory' | 'documented'
+  /** Depth of explanations */
+  explanationDepth?: 'brief' | 'moderate' | 'detailed'
+  /** Formality level */
+  formality?: 'casual' | 'professional' | 'formal'
+}
+
+/**
+ * User address preferences for the assistant persona.
+ */
+export interface UserAddressPreferences {
+  /** Preferred name for the user */
+  preferredName?: string
+  /** User's pronouns */
+  pronouns?: string
+  /** Preferred language */
+  language?: string
+}
+
+/**
+ * Assistant Persona Profile — Canonical Rich Type
+ *
+ * Defines the persona for the foreground conversation agent.
+ * This is the SINGLE source of truth for AssistantPersonaProfile.
+ * The context/types.ts version re-exports this type.
+ *
+ * Persona-owned fields (style, tone, boundaries) affect expression
+ * but cannot override system rules, safety constraints, tool authorization,
+ * output schemas, or tenant boundaries.
  */
 export interface AssistantPersonaProfile {
+  // ── Identity ────────────────────────────────────────────────────────────
   /** Unique identifier for this persona */
   personaId: string
   /** Display name of the assistant */
   name: string
+  /** Optional display identity (e.g., "Your friendly AI helper") */
+  displayIdentity?: string
+
+  // ── Background ──────────────────────────────────────────────────────────
   /** Optional description of the persona */
   description?: string
-  /** Direct delegation policy for this persona */
-  directDelegationPolicy: DirectDelegationPolicy
-  /** Constraints that cannot be overridden */
+  /** Background information or expertise area */
+  background?: string
+
+  // ── Expression ──────────────────────────────────────────────────────────
+  /** Tone of the assistant (e.g., "warm and professional") */
+  tone?: string
+  /** Personality traits (e.g., "patient, detail-oriented, encouraging") */
+  personality?: string
+
+  // ── Behavior Preferences ────────────────────────────────────────────────
+  /** Structured behavior preference knobs */
+  behaviorPreferences?: BehaviorPreferences
+  /** User address preferences */
+  userAddressPreferences?: UserAddressPreferences
+
+  // ── Boundaries & Constraints ────────────────────────────────────────────
+  /** Soft boundaries the persona should respect (advisory) */
+  boundaries?: string[]
+  /** Hard non-overridable constraints (platform-enforced) */
+  nonOverridableConstraints?: string[]
+
+  // ── Legacy Fields (backward compat) ─────────────────────────────────────
+  /** @legacy Direct delegation policy for this persona */
+  directDelegationPolicy?: DirectDelegationPolicy
+  /** @legacy Constraints that cannot be overridden */
   constraints?: {
     /** Maximum tokens for direct responses */
     maxDirectResponseTokens?: number
