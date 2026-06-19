@@ -338,10 +338,8 @@ describe('Weekly Summary Roundtrip Integration', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            weekly: result.data.summary,
-          },
+        summaryLayers: {
+          weekly: result.data.summary,
         },
       }
 
@@ -358,10 +356,8 @@ describe('Weekly Summary Roundtrip Integration', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            weekly: 'Weekly content here',
-          },
+        summaryLayers: {
+          weekly: 'Weekly content here',
         },
       }
 
@@ -379,12 +375,10 @@ describe('Weekly Summary Roundtrip Integration', () => {
         mode: 'routing_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        contextBundle: {
-          summaryLayers: {
-            session: 'Current session summary',
-            daily: 'Today I fixed 3 bugs',
-            weekly: 'This week I completed 15 tasks',
-          },
+        summaryLayers: {
+          session: 'Current session summary',
+          daily: 'Today I fixed 3 bugs',
+          weekly: 'This week I completed 15 tasks',
         },
       }
 
