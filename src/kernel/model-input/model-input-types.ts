@@ -12,7 +12,7 @@
 
 import type { LLMMessage, ToolDefinition } from '../../llm/types.js'
 import type { AssistantPersonaProfile } from '../../foreground/types.js'
-import type { AgentType } from '../../context/types.js'
+import type { AgentType, SourceType, InvocationSource } from '../../context/types.js'
 import type { LaunchSource } from '../../taxonomy/launch-source-policy.js'
 
 // ─── Mode ────────────────────────────────────────────────────────────────────
@@ -60,6 +60,13 @@ export interface ContextItemData {
   requiresPairIntegrity?: boolean
   /** Pair identifier for items that must stay together */
   pairId?: string
+  // ── Provenance (rendering-only, never used for permission/control-flow) ──
+  /** Source category (e.g., 'session_history', 'memory', 'tool_result') */
+  sourceType?: SourceType
+  /** Reference identifier for the source */
+  sourceRef?: string
+  /** ISO timestamp of when the source data was last refreshed */
+  freshnessTs?: string
 }
 
 /**
@@ -84,7 +91,15 @@ export interface ContextBundleData {
   triggerView?: string
   /** Prior conversation transcript */
   transcript?: LLMMessage[]
-  /** Summary layer projections for context enrichment */
+  // ── Provenance (rendering-only) ──
+  /** How the context was invoked (e.g., 'gateway_intent', 'planner_execution') */
+  invocationSource?: InvocationSource
+  /**
+   * Summary layer projections for context enrichment.
+   * @deprecated Use top-level `ModelInputBuildInput.summaryLayers` instead.
+   * This nested copy is kept for backward compatibility during migration
+   * and will be removed in a future version.
+   */
   summaryLayers?: SummaryLayerProjection
 }
 
@@ -104,6 +119,38 @@ export interface PersonaProjection {
   constraints: string[]
   /** Optional source profile with additional persona details */
   sourceProfile?: AssistantPersonaProfile
+}
+
+/**
+ * Typed inputs for Segment B (Layer 5) sub-sections.
+ *
+ * - B1: Custom system prompt overlay
+ * - B2: Routing prompt overlay
+ * - B3: Persona projection for expression style
+ */
+export interface SegmentBInputs {
+  /** B1: Custom system prompt overlay */
+  systemPrompt?: string
+  /** B2: Routing prompt overlay */
+  routingPrompt?: string
+  /** B3: Persona projection for expression style and preferences */
+  personaProjection?: PersonaProjection
+}
+
+/**
+ * Provenance metadata envelope for context bundle items.
+ *
+ * Tracks where context data originated and how it was invoked.
+ */
+export interface ContextBundleProvenance {
+  /** Source category (e.g., 'session_history', 'memory', 'tool_result') */
+  sourceType: SourceType
+  /** Reference identifier for the source */
+  sourceRef?: string
+  /** ISO timestamp of when the source data was last refreshed */
+  freshnessTs?: string
+  /** How the context was invoked */
+  invocationSource: InvocationSource
 }
 
 /**
@@ -314,6 +361,8 @@ export interface ModelInputBuildInput {
   routingPrompt?: string
   /** Persona projection for expression style and preferences */
   personaProjection?: PersonaProjection
+  /** Grouped Segment B inputs (B1/B2/B3). Individual fields above take precedence when both are provided. */
+  segmentB?: SegmentBInputs
 
   // Layer 6 (Tool Plane) - Segment C
   /** Tool plane projection data */
@@ -325,6 +374,8 @@ export interface ModelInputBuildInput {
   contextBundle?: ContextBundleData
   /** Memory policy projection for memory usage rules */
   memoryPolicyProjection?: MemoryPolicyProjection
+  /** Top-level summary layer projection (strategy projection, not nested in contextBundle). Takes precedence over contextBundle.summaryLayers. */
+  summaryLayers?: SummaryLayerProjection
 
   // Dynamic fields (only in Segment D)
   /** The current user message */
