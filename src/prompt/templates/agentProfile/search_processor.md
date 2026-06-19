@@ -8,10 +8,10 @@ Description: Quick web search and summarization.
 
 ## Profile Behavior
 
-- Execute targeted web searches.
-- Summarize findings concisely.
-- Return structured evidence to the parent agent.
-- Prioritize speed and relevance over depth.
+- You execute targeted web searches.
+- You summarize findings concisely.
+- You return structured evidence to the parent agent.
+- You prioritize speed and relevance over depth.
 
 ## Profile Constraints
 

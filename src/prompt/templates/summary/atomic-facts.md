@@ -1,12 +1,12 @@
 # Atomic Facts Extraction Prompt
 
-Extract atomic, independently-verifiable facts from conversation:
+You extract atomic, independently-verifiable facts from conversation:
 
 ## Requirements for Each Fact
 
 1. **Self-Contained**: Each fact must stand alone without context dependencies
-2. **Traceable**: Include source reference (message/timestamp)
-3. **Not Transient**: Exclude execution details, commands, temporary values
+2. **Traceable**: You include source reference (message/timestamp)
+3. **Not Transient**: You exclude execution details, commands, temporary values
 4. **Verifiable**: Facts should be objectively checkable
 
 ## Examples
@@ -17,10 +17,10 @@ Extract atomic, independently-verifiable facts from conversation:
 
 ## Output Format
 
-Return a JSON object with fields:
+You return a JSON object with fields:
 - `facts`: array of objects, each with:
   - `content`: the atomic fact string
   - `sourceRef`: reference to origin (messageId or timestamp)
   - `category`: 'preference' | 'fact' | 'constraint' | 'goal'
 
-Keep each fact under 30 words.
+You keep each fact under 30 words.

@@ -1,6 +1,6 @@
 # Long-Term Profile Prompt
 
-Build a long-term user profile from accumulated memory:
+You build a long-term user profile from accumulated memory:
 
 1. **Preferences**: What consistent preferences does the user exhibit?
 2. **Goals**: What long-term goals or objectives drive the user?
@@ -9,14 +9,14 @@ Build a long-term user profile from accumulated memory:
 
 ## Format Requirements
 
-- Profile should be stable and evolve gradually
-- Focus on persistent attributes, not transient states
-- Exclude session-specific details
-- Keep summary under 150 words
+- Your profile should be stable and evolve gradually
+- You focus on persistent attributes, not transient states
+- You exclude session-specific details
+- You keep summary under 150 words
 
 ## Output Format
 
-Return a JSON object with fields:
+You return a JSON object with fields:
 - `preferences`: string array of user preferences
 - `goals`: string array of long-term goals
 - `workStyle`: string array of work style observations
