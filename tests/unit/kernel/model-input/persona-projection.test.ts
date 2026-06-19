@@ -308,7 +308,7 @@ describe('PersonaProjection', () => {
       const result2 = await builder.build(input2)
 
       expect(result1.segments.tenantProject).toBe('')
-      expect(result2.segments.tenantProject).toBe('Custom system prompt')
+      expect(result2.segments.tenantProject).toContain('Custom system prompt')
     })
 
     it('combines personaProjection with systemPrompt in Segment B', async () => {

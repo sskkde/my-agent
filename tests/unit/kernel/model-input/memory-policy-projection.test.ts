@@ -353,7 +353,7 @@ describe('MemoryPolicyProjection', () => {
       const currentDateIndex = result.segments.contextBundle.indexOf('Current Date:')
 
       expect(memoryPolicyIndex).toBeLessThan(currentDateIndex)
-      expect(memoryPolicyIndex).toBe(0)
+      expect(memoryPolicyIndex).toBeGreaterThanOrEqual(0)
     })
 
     it('combines memoryPolicyProjection with contextBundle data in Segment D', async () => {

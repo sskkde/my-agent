@@ -295,6 +295,7 @@ describe('No Legacy Prompt Path', () => {
       'src/storage/subagent-run-store.ts',
       'src/runtime/bootstrap.ts',
       'src/prompt/prompt-template-registry.ts',
+      'src/kernel/model-input/model-input-builder.ts',
     ]
 
     it('no src/ file uses agentType: string outside approved compat modules', () => {
@@ -326,6 +327,139 @@ describe('No Legacy Prompt Path', () => {
       }
 
       expect(violations).toHaveLength(0)
+    })
+  })
+
+  // ─── Prompt Migration Guards ────────────────────────────────────────────────
+  //
+  // Prevents re-introduction of legacy prompt functions and stale template paths
+  // after the prompt migration alignment.
+
+  describe('No buildSystemPrompt in src/', () => {
+    it('no src/ file defines or exports buildSystemPrompt', () => {
+      const violations: Array<{ file: string; line: number }> = []
+
+      for (const filePath of walkDirectory(srcDir)) {
+        const relativePath = relative(rootDir, filePath).replace(/\\/g, '/')
+        const content = readFileSync(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (let i = 0; i < lines.length; i++) {
+          // Match function declarations, exports, and method definitions
+          if (/function\s+buildSystemPrompt|export\s+.*buildSystemPrompt|buildSystemPrompt\s*\(/.test(lines[i])) {
+            violations.push({ file: relativePath, line: i + 1 })
+          }
+        }
+      }
+
+      if (violations.length > 0) {
+        const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
+        throw new Error(
+          `Found ${violations.length} file(s) with buildSystemPrompt in src/:\n${formatted}\n` +
+          `buildSystemPrompt() was removed during the prompt migration. Use ModelInputBuilder.build() instead.`,
+        )
+      }
+
+      expect(violations).toHaveLength(0)
+    })
+  })
+
+  describe('No Stale Prompt Template Paths', () => {
+    it('no src/ file references agents/prompt-builder or agents/prompt-registry as template paths', () => {
+      const violations: Array<{ file: string; line: number; match: string }> = []
+
+      for (const filePath of walkDirectory(srcDir)) {
+        const relativePath = relative(rootDir, filePath).replace(/\\/g, '/')
+        const content = readFileSync(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (let i = 0; i < lines.length; i++) {
+          // Match stale template path references (not imports, but string literals)
+          if (/['"`]agents\/prompt-builder['"`]|['"`]agents\/prompt-registry['"`]/.test(lines[i])) {
+            violations.push({ file: relativePath, line: i + 1, match: lines[i].trim() })
+          }
+        }
+      }
+
+      if (violations.length > 0) {
+        const formatted = violations.map((v) => `  - ${v.file}:${v.line}: ${v.match}`).join('\n')
+        throw new Error(
+          `Found ${violations.length} file(s) with stale template path references:\n${formatted}\n` +
+          `Legacy template paths 'agents/prompt-builder' and 'agents/prompt-registry' are removed.`,
+        )
+      }
+
+      expect(violations).toHaveLength(0)
+    })
+
+    it('no src/ file references buildSystemPrompt as a string in comments or docs', () => {
+      const violations: Array<{ file: string; line: number }> = []
+
+      for (const filePath of walkDirectory(srcDir)) {
+        const relativePath = relative(rootDir, filePath).replace(/\\/g, '/')
+        const content = readFileSync(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (let i = 0; i < lines.length; i++) {
+          // Skip test files (they legitimately reference buildSystemPrompt for parity tests)
+          if (relativePath.includes('/tests/')) continue
+          // Match references in comments or strings that suggest active use
+          if (/call\s+buildSystemPrompt|use\s+buildSystemPrompt|invoke\s+buildSystemPrompt/i.test(lines[i])) {
+            violations.push({ file: relativePath, line: i + 1 })
+          }
+        }
+      }
+
+      if (violations.length > 0) {
+        const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
+        throw new Error(
+          `Found ${violations.length} file(s) referencing buildSystemPrompt as active usage:\n${formatted}\n` +
+          `buildSystemPrompt() is removed. Use ModelInputBuilder.build() instead.`,
+        )
+      }
+
+      expect(violations).toHaveLength(0)
+    })
+  })
+
+  describe('Architecture Docs Alignment', () => {
+    it('MODEL_INPUT_ARCHITECTURE.md documents four modes (not three)', () => {
+      const filePath = join(rootDir, 'docs', 'architecture', 'MODEL_INPUT_ARCHITECTURE.md')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('Four Modes')
+      expect(content).toContain('routing_tool_call')
+      // Should NOT claim only three modes
+      expect(content).not.toMatch(/## Three Modes/)
+    })
+
+    it('MODEL_INPUT_ARCHITECTURE.md documents B1/B2/B3 sub-sections', () => {
+      const filePath = join(rootDir, 'docs', 'architecture', 'MODEL_INPUT_ARCHITECTURE.md')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('B1')
+      expect(content).toContain('B2')
+      expect(content).toContain('B3')
+    })
+
+    it('MODEL_INPUT_ARCHITECTURE.md documents T5/T6/T7 taxonomy layers', () => {
+      const filePath = join(rootDir, 'docs', 'architecture', 'MODEL_INPUT_ARCHITECTURE.md')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('T5')
+      expect(content).toContain('T6')
+      expect(content).toContain('T7')
+    })
+
+    it('MODEL_INPUT_ARCHITECTURE.md documents top-level summaryLayers', () => {
+      const filePath = join(rootDir, 'docs', 'architecture', 'MODEL_INPUT_ARCHITECTURE.md')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('summaryLayers')
+      expect(content).toContain('top-level')
+    })
+
+    it('MODEL_INPUT_ARCHITECTURE.md uses agentType + agentProfile (not agentKind as canonical)', () => {
+      const filePath = join(rootDir, 'docs', 'architecture', 'MODEL_INPUT_ARCHITECTURE.md')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('agentType')
+      expect(content).toContain('agentProfile')
     })
   })
 })
