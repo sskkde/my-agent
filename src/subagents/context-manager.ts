@@ -25,7 +25,7 @@ export function createDefaultSubagentContextManager(deps: {
       const agentId = `subagent.${definition.agentType}`
       const bundleId = `bundle-${subagentRunId}`
 
-      const systemPrompt = buildSystemPrompt(definition.promptId, taskSpec.objective, definition)
+      const systemPrompt = composeSevenLayerPrompt(definition, taskSpec)
 
       const systemPromptItem: ContextItem = {
         itemId: `${bundleId}-system-prompt`,
@@ -88,30 +88,35 @@ export function createDefaultSubagentContextManager(deps: {
   }
 }
 
-function buildSystemPrompt(promptId: string, objective: string, definition: SubagentDefinition): string {
-  const lines: string[] = []
+/**
+ * Compose a system prompt using seven-layer segment structure.
+ *
+ * This is the synchronous equivalent of buildSevenLayerModelInput(),
+ * distributing content across the same segment boundaries:
+ *   Segment A (Layer 1–4): agent template / description
+ *   Segment B (Layer 5):   role identification (system prompt)
+ *   Segment C (Layer 6):   tool plane (allowed tool IDs)
+ *   Segment D (Layer 7):   context bundle (objective)
+ */
+function composeSevenLayerPrompt(definition: SubagentDefinition, taskSpec: SubagentTaskSpec): string {
+  const segments: string[] = []
 
-  lines.push(`You are a "${definition.agentType}" subagent (${definition.displayName}).`)
-  lines.push(definition.description)
-  lines.push('')
-  lines.push('## Objective')
-  lines.push(objective)
-  lines.push('')
-  lines.push(`Prompt ID: ${promptId}`)
+  // Segment A – Layer 1-4: agent template content
+  segments.push(definition.description)
 
+  // Segment B – Layer 5: role identification (system prompt)
+  segments.push(`You are a "${definition.agentType}" subagent (${definition.displayName}).`)
+
+  // Segment C – Layer 6: tool plane
   if (definition.allowedToolIds.length > 0) {
-    lines.push('')
-    lines.push('## Allowed Tools')
-    lines.push(definition.allowedToolIds.join(', '))
+    segments.push(`Available Tool IDs: ${definition.allowedToolIds.join(', ')}`)
   }
 
-  lines.push('')
-  lines.push('## Configuration')
-  lines.push(`Execution modes: ${definition.supportedExecutionModes.join(', ')}`)
-  lines.push(`Max iterations: ${definition.defaultMaxIterations}`)
-  lines.push(`Timeout: ${definition.defaultTimeoutMs}ms`)
+  // Segment D – Layer 7: context bundle with objective
+  segments.push('--- Context Bundle ---')
+  segments.push(`[PINNED] ${taskSpec.objective}`)
 
-  return lines.join('\n')
+  return segments.join('\n\n')
 }
 
 export async function buildSevenLayerModelInput(options: {
