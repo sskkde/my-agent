@@ -252,12 +252,19 @@ export class AgentKernel {
     const transcriptMessages = this.buildTranscriptMessages(state)
 
     let toolSelectionPolicy = input.toolSelectionPolicy
-    if (toolSelectionPolicy === undefined && isPromptMemoryP0Enabled() && this.config.promptProjectionResolver) {
+    let personaProjection: import('./model-input/model-input-types.js').PersonaProjection | undefined
+    let memoryPolicyProjection: import('./model-input/model-input-types.js').MemoryPolicyProjection | undefined
+
+    if (isPromptMemoryP0Enabled() && this.config.promptProjectionResolver) {
       const projectionResult = await this.config.promptProjectionResolver.resolve({
         agentType: input.agentType,
         providerFamily: this.config.providerFamily ?? 'openai',
       })
-      toolSelectionPolicy = projectionResult.toolSelectionPolicy
+      if (toolSelectionPolicy === undefined) {
+        toolSelectionPolicy = projectionResult.toolSelectionPolicy
+      }
+      personaProjection = projectionResult.personaProjection
+      memoryPolicyProjection = projectionResult.memoryPolicyProjection
     }
 
     const buildInput: ModelInputBuildInput = input.modelInputOverride
@@ -268,6 +275,8 @@ export class AgentKernel {
             : {}),
           ...(input.toolProjection ? { toolProjection: input.toolProjection } : {}),
           ...(isPromptMemoryP0Enabled() && toolSelectionPolicy ? { toolSelectionPolicy } : {}),
+          ...(isPromptMemoryP0Enabled() && personaProjection ? { personaProjection } : {}),
+          ...(isPromptMemoryP0Enabled() && memoryPolicyProjection ? { memoryPolicyProjection } : {}),
         }
       : {
           mode: 'function_calling',
@@ -289,6 +298,8 @@ export class AgentKernel {
           ...(isPromptMemoryP0Enabled()
             ? {
                 toolSelectionPolicy,
+                personaProjection,
+                memoryPolicyProjection,
               }
             : {}),
         }

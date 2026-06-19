@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPromptProjectionResolver } from '../../../src/prompt/prompt-projection-resolver.js'
-import type { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js'
-import type { TemplateLoader } from '../../../src/prompt/template-loader.js'
+import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../src/prompt/prompt-template-registry.js'
+import { TemplateLoader } from '../../../src/prompt/template-loader.js'
+import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
 import {
   DEFAULT_PERSONA_PROJECTION,
   DEFAULT_TOOL_SELECTION_POLICY,
@@ -354,6 +355,135 @@ describe('PromptProjectionResolver', () => {
       // Should not throw
       const result = await resolver.resolve({})
       expect(result).toBeDefined()
+    })
+  })
+
+  describe('segment placement via ModelInputBuilder', () => {
+    function makeBuilderForSegmentTest(): ModelInputBuilder {
+      const templates: Map<string, PromptTemplateRecord> = new Map([
+        ['platform:base', { id: 'platform:base', version: '2026-05-23', path: 'platform/base.md', agentKind: '*', providerFamily: '*', layer: 1, content: 'Platform base.', description: 'Test' }],
+        ['platform:safety', { id: 'platform:safety', version: '2026-05-23', path: 'platform/safety.md', agentKind: '*', providerFamily: '*', layer: 1, content: 'Safety rules.', description: 'Test' }],
+        ['provider:openai', { id: 'provider:openai', version: '2026-05-23', path: 'provider/openai.md', agentKind: '*', providerFamily: 'openai', layer: 2, content: 'OpenAI config.', description: 'Test' }],
+        ['agents:kernel', { id: 'agents:kernel', version: '2026-05-23', path: 'agents/kernel.md', agentKind: 'kernel', providerFamily: '*', layer: 3, content: 'Kernel instructions.', description: 'Test' }],
+      ])
+      const registry = new PromptTemplateRegistry(templates, '/nonexistent')
+      const loader = new TemplateLoader('/nonexistent')
+      return new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
+    }
+
+    it('personaProjection lands in Segment B (tenantProject) when P0 enabled', async () => {
+      process.env.PROMPT_MEMORY_P0_ENABLED = 'true'
+      process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED = 'false'
+
+      const registry = createMockRegistry(true)
+      const loader = createMockLoader({})
+      const resolver = createPromptProjectionResolver(registry, loader)
+      const result = await resolver.resolve({})
+
+      const builder = makeBuilderForSegmentTest()
+      const built = await builder.build({
+        mode: 'function_calling',
+        agentKind: 'kernel',
+        providerFamily: 'openai',
+        personaProjection: result.personaProjection,
+      })
+
+      expect(built.segments.tenantProject).toContain('风格指南')
+      expect(built.segments.tenantProject).toContain(DEFAULT_PERSONA_PROJECTION.styleGuidelines)
+      expect(built.segments.staticPrefix).not.toContain(DEFAULT_PERSONA_PROJECTION.styleGuidelines)
+    })
+
+    it('toolSelectionPolicy lands in Segment C (toolPlane) when P0 enabled', async () => {
+      process.env.PROMPT_MEMORY_P0_ENABLED = 'true'
+      process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED = 'false'
+
+      const registry = createMockRegistry(true)
+      const loader = createMockLoader({})
+      const resolver = createPromptProjectionResolver(registry, loader)
+      const result = await resolver.resolve({})
+
+      const builder = makeBuilderForSegmentTest()
+      const built = await builder.build({
+        mode: 'function_calling',
+        agentKind: 'kernel',
+        providerFamily: 'openai',
+        toolSelectionPolicy: result.toolSelectionPolicy,
+      })
+
+      expect(built.segments.toolPlane).toContain('Tool Selection Policy:')
+      expect(built.segments.toolPlane).toContain(DEFAULT_TOOL_SELECTION_POLICY.heuristics)
+      expect(built.segments.tenantProject).not.toContain('Tool Selection Policy:')
+    })
+
+    it('memoryPolicyProjection lands in Segment D (contextBundle) when P0 enabled', async () => {
+      process.env.PROMPT_MEMORY_P0_ENABLED = 'true'
+      process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED = 'false'
+
+      const registry = createMockRegistry(true)
+      const loader = createMockLoader({})
+      const resolver = createPromptProjectionResolver(registry, loader)
+      const result = await resolver.resolve({})
+
+      const builder = makeBuilderForSegmentTest()
+      const built = await builder.build({
+        mode: 'function_calling',
+        agentKind: 'kernel',
+        providerFamily: 'openai',
+        memoryPolicyProjection: result.memoryPolicyProjection,
+        currentUserMessage: 'Hello',
+      })
+
+      expect(built.segments.contextBundle).toContain('Memory Policy')
+      expect(built.segments.contextBundle).toContain(DEFAULT_MEMORY_POLICY_PROJECTION.useRules)
+      expect(built.segments.tenantProject).not.toContain('Memory Policy')
+    })
+
+    it('all three projections land in correct segments simultaneously', async () => {
+      process.env.PROMPT_MEMORY_P0_ENABLED = 'true'
+      process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED = 'false'
+
+      const registry = createMockRegistry(true)
+      const loader = createMockLoader({})
+      const resolver = createPromptProjectionResolver(registry, loader)
+      const result = await resolver.resolve({})
+
+      const builder = makeBuilderForSegmentTest()
+      const built = await builder.build({
+        mode: 'function_calling',
+        agentKind: 'kernel',
+        providerFamily: 'openai',
+        personaProjection: result.personaProjection,
+        toolSelectionPolicy: result.toolSelectionPolicy,
+        memoryPolicyProjection: result.memoryPolicyProjection,
+        currentUserMessage: 'Hello',
+      })
+
+      expect(built.segments.tenantProject).toContain(DEFAULT_PERSONA_PROJECTION.styleGuidelines)
+      expect(built.segments.toolPlane).toContain(DEFAULT_TOOL_SELECTION_POLICY.heuristics)
+      expect(built.segments.contextBundle).toContain(DEFAULT_MEMORY_POLICY_PROJECTION.useRules)
+    })
+
+    it('P0 flag OFF produces no projection content in any segment', async () => {
+      process.env.PROMPT_MEMORY_P0_ENABLED = 'false'
+
+      const registry = createMockRegistry(true)
+      const loader = createMockLoader({})
+      const resolver = createPromptProjectionResolver(registry, loader)
+      const result = await resolver.resolve({})
+
+      expect(result).toEqual({})
+
+      const builder = makeBuilderForSegmentTest()
+      const built = await builder.build({
+        mode: 'function_calling',
+        agentKind: 'kernel',
+        providerFamily: 'openai',
+        currentUserMessage: 'Hello',
+      })
+
+      expect(built.segments.tenantProject).not.toContain('风格指南')
+      expect(built.segments.toolPlane).not.toContain('Tool Selection Policy:')
+      expect(built.segments.contextBundle).not.toContain('Memory Policy')
     })
   })
 })
