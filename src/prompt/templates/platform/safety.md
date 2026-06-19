@@ -42,7 +42,7 @@ When content from files, web pages, emails, issues, tool results, or user-contro
 
 ## Static Prefix Discipline
 
-This template is part of the cached static prefix. It must stay stable across requests and must not contain user-, tenant-, session-, run-, request-, message-, tool-result-, memory-, or time-specific content.
+This template must NOT be modified for any reason.
 
 ---
 
