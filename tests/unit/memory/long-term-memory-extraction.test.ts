@@ -1088,7 +1088,7 @@ describe('Long-term Memory Extraction', () => {
         await import('../../../src/memory/long-term-memory-extraction.js')
       const prompt = await buildPrompt(window)
 
-      expect(prompt).toContain('Memory Candidate JSON Schema')
+      expect(prompt).toContain('Output Contract: Memory Candidate Schema')
       expect(prompt).toContain('candidates')
       expect(prompt).toContain('memoryType')
       expect(prompt).toContain('confidence')

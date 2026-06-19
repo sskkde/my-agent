@@ -88,9 +88,11 @@ describe('prompt-template-registry (taxonomy)', () => {
       expect(registry.hasTemplate('agents:memory')).toBe(true)
     })
 
-    it('keeps all legacy output:* templates', () => {
-      expect(registry.hasTemplate('output:planner.schema')).toBe(true)
-      expect(registry.hasTemplate('output:memory-candidate.schema')).toBe(true)
+    it('retires legacy output:* templates (replaced by outputContract:*)', () => {
+      expect(registry.hasTemplate('output:planner.schema')).toBe(false)
+      expect(registry.hasTemplate('output:memory-candidate.schema')).toBe(false)
+      expect(registry.hasTemplate('outputContract:planner.schema')).toBe(true)
+      expect(registry.hasTemplate('outputContract:memory-candidate.schema')).toBe(true)
     })
 
     it('keeps persona:default', () => {

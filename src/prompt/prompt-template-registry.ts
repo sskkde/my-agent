@@ -162,26 +162,6 @@ const AGENTS_MEMORY_TEMPLATE: PromptTemplateRecord = {
   description: 'Memory extraction prompt for long-term memory candidate extraction',
 }
 
-const OUTPUT_PLANNER_SCHEMA_TEMPLATE: PromptTemplateRecord = {
-  id: 'output:planner.schema',
-  version: '2026-05-23',
-  path: 'output/planner.schema.md',
-  agentKind: 'planner',
-  providerFamily: '*',
-  layer: 4,
-  description: 'Planner output schema for execution plan JSON contract',
-}
-
-const OUTPUT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE: PromptTemplateRecord = {
-  id: 'output:memory-candidate.schema',
-  version: '2026-05-24',
-  path: 'output/memory-candidate.schema.md',
-  agentKind: 'memory',
-  providerFamily: '*',
-  layer: 4,
-  description: 'Memory candidate JSON schema for extracted memory structure',
-}
-
 const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
   id: 'persona:default',
   version: '2026-05-24',
@@ -463,8 +443,6 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['agents:foreground', AGENTS_FOREGROUND_TEMPLATE],
   ['agents:kernel', AGENTS_KERNEL_TEMPLATE],
   ['agents:memory', AGENTS_MEMORY_TEMPLATE],
-  ['output:planner.schema', OUTPUT_PLANNER_SCHEMA_TEMPLATE],
-  ['output:memory-candidate.schema', OUTPUT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE],
   ['persona:default', PERSONA_DEFAULT_TEMPLATE],
   ['heuristics:tool-usage.common', HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE],
   ['context:memory-use-rules', CONTEXT_MEMORY_USE_RULES_TEMPLATE],

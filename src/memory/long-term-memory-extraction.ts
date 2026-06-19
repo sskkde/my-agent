@@ -312,10 +312,10 @@ export async function buildLongTermMemoryExtractionPrompt(window: MemoryExtracti
       stableRules = HARDCODED_EXTRACTION_PROMPT_BODY
     }
     try {
-      schemaSection = await templateLoader.load('output:memory-candidate.schema')
+      schemaSection = await templateLoader.load('outputContract:memory-candidate.schema')
     } catch (e) {
       console.warn(
-        '[memory-extraction] Failed to load output:memory-candidate.schema template, using hardcoded fallback',
+        '[memory-extraction] Failed to load outputContract:memory-candidate.schema template, using hardcoded fallback',
         e,
       )
       schemaSection = HARDCODED_SCHEMA_BODY
