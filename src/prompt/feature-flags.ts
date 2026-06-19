@@ -33,8 +33,8 @@ export function isToolLoopV2Enabled(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Prompt Migration Feature Flags (T5–T7 templates, Segment D provenance)
-// All flags default to OFF for safety during incremental rollout.
+// Prompt Migration Feature Flags (T5–T7 templates)
+// T5–T7 template consumption remains gated for rollout safety.
 // ---------------------------------------------------------------------------
 
 /**
@@ -59,32 +59,4 @@ export function isPromptT6TemplateConsumptionEnabled(): boolean {
  */
 export function isPromptT7TemplateConsumptionEnabled(): boolean {
   return process.env.PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED === 'true'
-}
-
-/**
- * Check if Segment B explicit sub-sections (B1/B2/B3) rendering is enabled.
- */
-export function isPromptSegmentBSubsectionsEnabled(): boolean {
-  return process.env.PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED === 'true'
-}
-
-/**
- * Check if Segment D provenance header rendering is enabled.
- */
-export function isPromptSegmentDProvenanceEnabled(): boolean {
-  return process.env.PROMPT_SEGMENT_D_PROVENANCE_ENABLED === 'true'
-}
-
-/**
- * Check if summaryLayers as a top-level field is enabled.
- */
-export function isPromptSummaryLayersTopLevelEnabled(): boolean {
-  return process.env.PROMPT_SUMMARY_LAYERS_TOP_LEVEL_ENABLED === 'true'
-}
-
-/**
- * Check if rich persona field rendering in B3 is enabled.
- */
-export function isPromptRichPersonaEnabled(): boolean {
-  return process.env.PROMPT_RICH_PERSONA_ENABLED === 'true'
 }
