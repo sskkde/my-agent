@@ -260,10 +260,8 @@ private buildSegmentD(input: ModelInputBuildInput) {
 | `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T5 agentProfile template rendering |
 | `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T6 toolProjection template rendering |
 | `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T7 runtimeContext template rendering |
-| `PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED` | OFF | B1/B2/B3 sub-section rendering |
-| `PROMPT_SEGMENT_D_PROVENANCE_ENABLED` | OFF | Provenance header in Segment D |
-| `PROMPT_SUMMARY_LAYERS_TOP_LEVEL_ENABLED` | OFF | summaryLayers as top-level field |
-| `PROMPT_RICH_PERSONA_ENABLED`    | OFF     | Rich persona field rendering    |
+
+Completed defaults with no migration flag: B1/B2/B3 sub-section rendering, Segment D provenance rendering, top-level `summaryLayers`, and rich B3 persona field rendering.
 
 ### Flag Behavior
 
