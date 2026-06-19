@@ -1,6 +1,6 @@
 # Session Summary Prompt
 
-Generate a concise session-level summary capturing:
+You generate a concise session-level summary capturing:
 
 1. **Key Decisions**: What important decisions were made or confirmed?
 2. **Action Items**: What tasks or actions need follow-up?
@@ -9,14 +9,14 @@ Generate a concise session-level summary capturing:
 
 ## Format Requirements
 
-- Keep summary under 150 words
-- Focus on actionable information
-- Exclude transient details (commands, temporary file paths)
-- Preserve user intent and reasoning
+- You keep summary under 150 words
+- You focus on actionable information
+- You exclude transient details (commands, temporary file paths)
+- You preserve user intent and reasoning
 
 ## Output Format
 
-Return a JSON object with fields:
+You return a JSON object with fields:
 - `keyDecisions`: string array of decision summaries
 - `actionItems`: string array of pending actions
 - `unresolvedQuestions`: string array of open questions
