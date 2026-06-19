@@ -1,6 +1,11 @@
 // Context Manager Types
 // Based on context_manager_responsibilities_io_and_summaries_v2_runtime_aligned.md
 
+import type { AssistantPersonaProfile as _AssistantPersonaProfile } from '../foreground/types.js'
+
+/** Re-export canonical AssistantPersonaProfile from foreground/types.ts */
+export type AssistantPersonaProfile = _AssistantPersonaProfile
+
 export type SourceType =
   | 'session_history'
   | 'conversation_state'
@@ -226,12 +231,6 @@ export type ForegroundConversationContextView = {
     summary: string
   }>
   directDelegationPolicy?: DirectDelegationPolicy
-}
-
-export type AssistantPersonaProfile = {
-  personaId: string
-  name: string
-  description?: string
 }
 
 export type SessionMemoryForPlanner = {
