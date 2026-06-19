@@ -27,6 +27,7 @@ export function projectBundleToData(bundle: ContextBundle): ContextBundleData {
     workflowStepView: bundle.workflowStepView ? formatWorkflowStepView(bundle.workflowStepView) : undefined,
     backgroundRunView: bundle.backgroundRunView ? formatBackgroundRunView(bundle.backgroundRunView) : undefined,
     triggerView: bundle.triggerView ? formatTriggerView(bundle.triggerView) : undefined,
+    invocationSource: bundle.invocationSource,
   }
 }
 
@@ -38,6 +39,9 @@ function itemToData(item: ContextItem): ContextItemData {
     isPinned: item.isPinned,
     requiresPairIntegrity: item.requiresPairIntegrity,
     pairId: item.pairId,
+    sourceType: item.sourceType,
+    sourceRef: item.sourceRef,
+    freshnessTs: item.freshnessTs,
   }
 }
 
