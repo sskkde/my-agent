@@ -5,6 +5,8 @@
  * recording the origin and freshness of context data. The provenance header
  * appears at the start of Segment D, before any other content.
  *
+ * Provenance is ALWAYS-ON default behavior — not gated by any feature flag.
+ *
  * Format:
  * ```
  * ## Provenance
@@ -14,13 +16,10 @@
  * invocationSource: {invocationSource}
  * ```
  *
- * EXPECTED FAILURE: Currently, provenance fields are not rendered in Segment D.
- * These tests assert the TARGET behavior after migration.
- *
  * @module tests/unit/kernel/model-input/segment-d-provenance
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../src/prompt/prompt-template-registry.js'
 import { TemplateLoader } from '../../../../src/prompt/template-loader.js'
 import { ModelInputBuilder } from '../../../../src/kernel/model-input/model-input-builder.js'
@@ -63,28 +62,11 @@ function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelI
   }
 }
 
-function setFlag(flag: string, value: boolean): void {
-  process.env[flag] = value ? 'true' : 'false'
-}
-
-function clearFlags(): void {
-  delete process.env.PROMPT_SEGMENT_D_PROVENANCE_ENABLED
-}
-
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe('Segment D Provenance Header', () => {
-  beforeEach(() => {
-    clearFlags()
-  })
-
-  afterEach(() => {
-    clearFlags()
-  })
-
-  describe('Provenance header rendering (flag ON)', () => {
+describe('Segment D Provenance Header (always-on)', () => {
+  describe('Provenance header rendering', () => {
     it('renders provenance header with sourceType', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -92,7 +74,6 @@ describe('Segment D Provenance Header', () => {
           sessionId: 'session-123',
           runId: 'run-456',
           currentUserMessage: 'Hello',
-          // Provenance data would come from context bundle metadata
           contextBundle: {
             pinnedItems: [
               {
@@ -105,12 +86,11 @@ describe('Segment D Provenance Header', () => {
         }),
       )
 
-      // Provenance header should be present
+      // Provenance header should always be present (no flag gating)
       expect(result.segments.contextBundle).toContain('## Provenance')
     })
 
     it('provenance header includes sourceType field', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -124,7 +104,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('provenance header includes sourceRef field', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -139,7 +118,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('provenance header includes freshnessTs field', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -153,7 +131,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('provenance header includes invocationSource field', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -166,8 +143,31 @@ describe('Segment D Provenance Header', () => {
       expect(result.segments.contextBundle).toContain('invocationSource:')
     })
 
+    it('renders exact default provenance values from request identifiers', async () => {
+      const builder = makeBuilder()
+
+      const result = await builder.build(
+        makeMinimalInput({
+          sessionId: 'session-abc',
+          runId: 'run-xyz',
+          messageId: 'message-123',
+          currentDate: '2026-06-19T12:00:00Z',
+          currentUserMessage: 'Test',
+        }),
+      )
+
+      expect(result.segments.contextBundle).toContain(
+        [
+          '## Provenance',
+          'sourceType: session_history',
+          'sourceRef: message-123',
+          'freshnessTs: 2026-06-19T12:00:00Z',
+          'invocationSource: gateway_intent',
+        ].join('\n'),
+      )
+    })
+
     it('provenance header appears at the START of Segment D', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -194,7 +194,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('provenance header appears before memoryPolicyProjection', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -213,40 +212,8 @@ describe('Segment D Provenance Header', () => {
     })
   })
 
-  describe('Provenance header NOT rendered (flag OFF)', () => {
-    it('provenance header is absent when flag is OFF', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', false)
-      const builder = makeBuilder()
-
-      const result = await builder.build(
-        makeMinimalInput({
-          sessionId: 'session-abc',
-          currentUserMessage: 'Hello',
-        }),
-      )
-
-      expect(result.segments.contextBundle).not.toContain('## Provenance')
-      expect(result.segments.contextBundle).not.toContain('sourceType:')
-      expect(result.segments.contextBundle).not.toContain('freshnessTs:')
-    })
-
-    it('provenance header is absent when flag env is undefined (default OFF)', async () => {
-      const builder = makeBuilder()
-
-      const result = await builder.build(
-        makeMinimalInput({
-          sessionId: 'session-abc',
-          currentUserMessage: 'Hello',
-        }),
-      )
-
-      expect(result.segments.contextBundle).not.toContain('## Provenance')
-    })
-  })
-
   describe('Provenance header with all Segment D content', () => {
     it('provenance header + memory policy + summary layers + context items + user message', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -277,7 +244,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('correct ordering: provenance < memory policy < summary < dynamic < context < user message', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -309,9 +275,77 @@ describe('Segment D Provenance Header', () => {
     })
   })
 
+  describe('Inline context item provenance', () => {
+    it('renders exact pinned item provenance without changing pin marker', async () => {
+      const builder = makeBuilder()
+
+      const result = await builder.build(
+        makeMinimalInput({
+          contextBundle: {
+            pinnedItems: [
+              {
+                itemId: 'pin1',
+                content: 'Pinned memory data.',
+                isPinned: true,
+                sourceType: 'memory',
+                sourceRef: 'memory:pin1',
+                freshnessTs: '2026-06-19T10:00:00Z',
+              },
+            ],
+          },
+          currentUserMessage: 'Test',
+        }),
+      )
+
+      expect(result.segments.contextBundle).toContain(
+        '[PINNED] [sourceType: memory; sourceRef: memory:pin1; freshnessTs: 2026-06-19T10:00:00Z] Pinned memory data.',
+      )
+    })
+
+    it('renders exact ordered item provenance without leading whitespace', async () => {
+      const builder = makeBuilder()
+
+      const result = await builder.build(
+        makeMinimalInput({
+          contextBundle: {
+            orderedItems: [
+              {
+                itemId: 'ctx1',
+                content: 'Ordered context data.',
+                sourceType: 'tool_result',
+                sourceRef: 'tool:search:1',
+                freshnessTs: '2026-06-19T11:00:00Z',
+              },
+            ],
+          },
+          currentUserMessage: 'Test',
+        }),
+      )
+
+      expect(result.segments.contextBundle).toContain(
+        '\n[sourceType: tool_result; sourceRef: tool:search:1; freshnessTs: 2026-06-19T11:00:00Z] Ordered context data.',
+      )
+      expect(result.segments.contextBundle).not.toContain('\n [sourceType: tool_result')
+    })
+
+    it('renders partial item provenance without placeholder fields', async () => {
+      const builder = makeBuilder()
+
+      const result = await builder.build(
+        makeMinimalInput({
+          contextBundle: {
+            summaryBlocks: [{ itemId: 'summary1', content: 'Summary data.', sourceType: 'memory' }],
+          },
+          currentUserMessage: 'Test',
+        }),
+      )
+
+      expect(result.segments.contextBundle).toContain('[sourceType: memory] Summary data.')
+    })
+  })
+
   describe('Provenance header with subagent invocation', () => {
     it('renders invocationSource as subagent_delegation for subagent context', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -330,7 +364,6 @@ describe('Segment D Provenance Header', () => {
 
   describe('Provenance header Segment isolation', () => {
     it('provenance header does NOT appear in Segment A', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(makeMinimalInput())
@@ -340,7 +373,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('provenance header does NOT appear in Segment B', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(makeMinimalInput({ systemPrompt: 'System.' }))
@@ -350,7 +382,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('provenance header does NOT appear in Segment C', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(makeMinimalInput({ toolProjection: { toolIds: ['file_read'] } }))
@@ -362,7 +393,6 @@ describe('Segment D Provenance Header', () => {
 
   describe('Provenance header hash stability', () => {
     it('Segment D hash is deterministic with provenance', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const input = makeMinimalInput({
@@ -377,34 +407,27 @@ describe('Segment D Provenance Header', () => {
       expect(result1.segmentHashes.segmentD).toBe(result2.segmentHashes.segmentD)
     })
 
-    it('Segment A hash is unchanged by provenance flag state', async () => {
+    it('Segment A hash is unaffected by provenance', async () => {
       const builder = makeBuilder()
 
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', false)
-      const resultOff = await builder.build(makeMinimalInput())
+      const result1 = await builder.build(makeMinimalInput())
+      const result2 = await builder.build(makeMinimalInput())
 
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
-      const resultOn = await builder.build(makeMinimalInput())
-
-      expect(resultOff.segmentHashes.segmentA).toBe(resultOn.segmentHashes.segmentA)
+      expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA)
     })
 
-    it('Segment B hash is unchanged by provenance flag state', async () => {
+    it('Segment B hash is unaffected by provenance', async () => {
       const builder = makeBuilder()
 
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', false)
-      const resultOff = await builder.build(makeMinimalInput({ systemPrompt: 'Test' }))
+      const result1 = await builder.build(makeMinimalInput({ systemPrompt: 'Test' }))
+      const result2 = await builder.build(makeMinimalInput({ systemPrompt: 'Test' }))
 
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
-      const resultOn = await builder.build(makeMinimalInput({ systemPrompt: 'Test' }))
-
-      expect(resultOff.segmentHashes.segmentB).toBe(resultOn.segmentHashes.segmentB)
+      expect(result1.segmentHashes.segmentB).toBe(result2.segmentHashes.segmentB)
     })
   })
 
   describe('Provenance header edge cases', () => {
     it('provenance renders even when no contextBundle is provided', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -418,7 +441,6 @@ describe('Segment D Provenance Header', () => {
     })
 
     it('provenance renders with empty contextBundle', async () => {
-      setFlag('PROMPT_SEGMENT_D_PROVENANCE_ENABLED', true)
       const builder = makeBuilder()
 
       const result = await builder.build(

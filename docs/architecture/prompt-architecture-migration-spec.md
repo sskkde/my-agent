@@ -276,44 +276,38 @@ Segment D order:
 
 ### Current State
 
-Provenance fields are not currently rendered in Segment D. The migration adds provenance rendering behind a feature flag.
+Provenance fields are rendered in Segment D as completed default behavior. The Segment D header now includes `sourceType`, `sourceRef`, `freshnessTs`, and `invocationSource`, and context items render item-level provenance when present.
 
 ---
 
 ## 7. Feature Flags and Rollback Behavior
 
-All migration changes are gated behind feature flags. Each flag has a clear rollback path.
+T5-T7 taxonomy template consumption remains gated behind feature flags. Segment B sub-sections, Segment D provenance, top-level `summaryLayers`, and rich B3 persona rendering have completed migration and are now default behavior.
 
 ### Flag Definitions
 
 | Flag | Default | Controls | Rollback |
 |---|---|---|---|
-| `PROMPT_T5_TEMPLATE_CONSUMPTION` | OFF | T5 `agentProfile:*` template rendering in Segment B | Set OFF. Segment B reverts to systemPrompt + routingPrompt + personaProjection only. |
-| `PROMPT_T6_TEMPLATE_CONSUMPTION` | OFF | T6 `toolProjection:*` template rendering in Segment C | Set OFF. Segment C reverts to tool plane data + toolSelectionPolicy only. |
-| `PROMPT_T7_TEMPLATE_CONSUMPTION` | OFF | T7 `runtimeContext:*` template rendering in Segment D | Set OFF. Segment D reverts to context bundle data only. |
-| `PROMPT_SEGMENT_B_SUBSECTIONS` | OFF | B1/B2/B3 explicit sub-section rendering and T5 in B2 | Set OFF. Segment B reverts to flat concatenation. |
-| `PROMPT_SEGMENT_D_PROVENANCE` | OFF | Provenance header rendering in Segment D | Set OFF. Segment D omits provenance header. |
-| `PROMPT_SUMMARY_LAYERS_TOP_LEVEL` | OFF | `summaryLayers` as top-level `ModelInputBuildInput` field | Set OFF. Reverts to reading from `contextBundle.summaryLayers`. |
-| `PROMPT_RICH_PERSONA` | OFF | Rich persona field rendering in B3 | Set OFF. Reverts to minimal PersonaProjection rendering. |
+| `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T5 `agentProfile:*` template rendering in Segment B2 | Set OFF. Segment B keeps B1/B2/B3 sections but omits T5 template content. |
+| `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T6 `toolProjection:*` template rendering in Segment C | Set OFF. Segment C reverts to tool plane data + toolSelectionPolicy only. |
+| `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T7 `runtimeContext:*` template rendering in Segment D | Set OFF. Segment D keeps provenance and context data but omits T7 template content. |
 
 ### Flag Interaction Rules
 
-1. `PROMPT_SEGMENT_B_SUBSECTIONS` depends on `PROMPT_T5_TEMPLATE_CONSUMPTION`. T5 content enters B2 only when both flags are ON.
-2. `PROMPT_RICH_PERSONA` is independent. It affects B3 rendering only.
-3. `PROMPT_SEGMENT_D_PROVENANCE` is independent. It adds the provenance header before other Segment D content.
-4. `PROMPT_SUMMARY_LAYERS_TOP_LEVEL` is a type/builder change, not a rendering change. It controls where the builder reads `summaryLayers` from.
-5. All flags default to OFF. The production path is unchanged until flags are explicitly enabled.
+1. T5 content enters B2 only when `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` is ON.
+2. T6 content enters Segment C only when `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` is ON.
+3. T7 content enters Segment D after provenance only when `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` is ON.
+4. Segment B sub-sections, rich B3 persona rendering, Segment D provenance, and top-level `summaryLayers` are no longer flag-gated.
 
 ### Rollback Procedure
 
-1. Set the relevant flag to OFF.
-2. No code revert needed. The builder skips the gated code path.
-3. Segment hashes revert to pre-migration values, restoring cache hit rates.
-4. If a flag causes a type error at build time, the flag gate wraps both the type usage and the builder logic.
+1. Set the relevant T5/T6/T7 consumption flag to OFF.
+2. No code revert is needed for T5/T6/T7 template content. The builder skips the gated taxonomy template path.
+3. For completed defaults, use a code revert rather than an environment flag; those migration flags have been removed.
 
 ### Existing Flag: `PROMPT_MEMORY_P0_ENABLED`
 
-This flag already gates `personaProjection` and `toolSelectionPolicy` rendering. The new flags extend this pattern to T5/T6/T7 template consumption and Segment D provenance.
+This flag already gates projection resolver output. The remaining rollout flags extend this pattern only to T5/T6/T7 taxonomy template consumption.
 
 ---
 

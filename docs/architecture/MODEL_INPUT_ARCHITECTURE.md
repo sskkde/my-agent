@@ -130,8 +130,9 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 **Content Source**:
 
-- `src/prompt/templates/agents/foreground.md`
-- `src/prompt/templates/agents/kernel.md`
+- `src/prompt/templates/agentType/main.md`
+- `src/prompt/templates/agentType/subagent.md`
+- `src/prompt/templates/agentType/background.md`
 
 **Selection Logic**:
 
@@ -144,8 +145,10 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 **Content Source**:
 
-- `src/prompt/templates/output/foreground.schema.md`
-- `src/prompt/templates/output/planner.schema.md`
+- `src/prompt/templates/outputContract/default-chat.schema.md`
+- `src/prompt/templates/outputContract/planner.schema.md`
+- `src/prompt/templates/outputContract/memory-candidate.schema.md`
+- `src/prompt/templates/outputContract/search-evidence.schema.md`
 
 **Characteristics**:
 
@@ -160,8 +163,8 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 - `AgentConfig.systemPrompt` (B1: platform-owned agent profile, highest priority)
 - `AgentConfig.routingPrompt` (B2: tenant/admin instructions)
-- T5 `agentProfile:*` templates from `PromptTemplateRegistry.resolveSevenLayer()` (B2, gated by `PROMPT_T5_TEMPLATE_CONSUMPTION`)
-- `PersonaProjection` rendered via `renderPersonaProjection()` (B3: user persona/preferences, lowest priority)
+- T5 `agentProfile:*` templates from `PromptTemplateRegistry.resolveSevenLayer()` (B2, gated by `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED`)
+- `PersonaProjection` rendered via `renderPersonaProjection()` (B3: rich user persona/preferences, lowest priority)
 
 **Segment B Sub-Sections**:
 
@@ -185,7 +188,7 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Content Source**:
 
 - `ToolRegistry` -> `ToolPlaneProjection`
-- T6 `toolProjection:*` templates from `resolveSevenLayer()` (gated by `PROMPT_T6_TEMPLATE_CONSUMPTION`)
+- T6 `toolProjection:*` templates from `resolveSevenLayer()` (gated by `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED`)
 - `ToolSelectionPolicyProjection` (top-level strategy projection)
 - Filtered by exposure level, permissions, and denial rules
 
@@ -203,14 +206,14 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 **Content Source**:
 
 - `ContextBundleData` input parameter
-- T7 `runtimeContext:*` templates from `resolveSevenLayer()` (gated by `PROMPT_T7_TEMPLATE_CONSUMPTION`)
+- T7 `runtimeContext:*` templates from `resolveSevenLayer()` (gated by `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED`)
 - `MemoryPolicyProjection` (top-level strategy projection)
 - `SummaryLayerProjection` (top-level strategy projection, with backward-compat fallback to `contextBundle.summaryLayers`)
 - Dynamic fields (currentDate, sessionId, etc.)
 
-**Segment D Rendering Order** (gated by flags):
+**Segment D Rendering Order**:
 
-1. Provenance header (gated by `PROMPT_SEGMENT_D_PROVENANCE_ENABLED`)
+1. Provenance header (always on; tracks `sourceType`, `sourceRef`, `freshnessTs`, `invocationSource`)
 2. T7 taxonomy template content (gated by `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED`)
 3. MemoryPolicyProjection
 4. SummaryLayerProjection (top-level takes precedence over nested)
@@ -510,22 +513,18 @@ interface TokenUsage {
 
 ---
 
-## Prompt Migration Feature Flags
+## Prompt Feature Flags
 
-All migration changes are gated behind feature flags that default to OFF.
+T5-T7 taxonomy template consumption remains gated for rollout safety. Segment B sub-sections, Segment D provenance, top-level `summaryLayers`, and rich B3 persona rendering are completed default behavior and no longer have migration flags.
 
 | Flag | Controls | Default |
 |---|---|---|
 | `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` | T5 `agentProfile:*` template rendering in Segment B | OFF |
 | `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` | T6 `toolProjection:*` template rendering in Segment C | OFF |
 | `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` | T7 `runtimeContext:*` template rendering in Segment D | OFF |
-| `PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED` | B1/B2/B3 explicit sub-section rendering | OFF |
-| `PROMPT_SEGMENT_D_PROVENANCE_ENABLED` | Provenance header in Segment D | OFF |
-| `PROMPT_SUMMARY_LAYERS_TOP_LEVEL_ENABLED` | `summaryLayers` as top-level field | OFF |
-| `PROMPT_RICH_PERSONA_ENABLED` | Rich persona field rendering in B3 | OFF |
 | `PROMPT_MEMORY_P0_ENABLED` | Base flag for P10 projections | OFF |
 
-When a flag is OFF, the builder skips the gated code path and segment hashes remain unchanged.
+When a T5-T7 consumption flag is OFF, the builder skips that taxonomy template path and segment hashes remain unchanged for that path.
 
 ---
 
@@ -590,10 +589,11 @@ When a flag is OFF, the builder skips the gated code path and segment hashes rem
 | `src/prompt/templates/platform/safety.md`          | 1     | Security boundaries     |
 | `src/prompt/templates/provider/openai.md`          | 2     | OpenAI rules            |
 | `src/prompt/templates/provider/deepseek.md`        | 2     | DeepSeek KV cache       |
-| `src/prompt/templates/agents/foreground.md`        | 3     | ForegroundAgent routing |
-| `src/prompt/templates/agents/kernel.md`            | 3     | Kernel execution        |
-| `src/prompt/templates/output/foreground.schema.md` | 4     | Routing JSON            |
-| `src/prompt/templates/output/planner.schema.md`    | 4     | Planner output          |
+| `src/prompt/templates/agentType/main.md`           | 3     | Main agent type         |
+| `src/prompt/templates/agentType/subagent.md`       | 3     | Subagent type           |
+| `src/prompt/templates/agentType/background.md`     | 3     | Background agent type   |
+| `src/prompt/templates/outputContract/default-chat.schema.md` | 4 | Default chat output |
+| `src/prompt/templates/outputContract/planner.schema.md` | 4 | Planner output      |
 
 ---
 

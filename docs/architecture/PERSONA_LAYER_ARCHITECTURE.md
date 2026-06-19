@@ -111,7 +111,7 @@ interface AssistantPersonaProfile {
 | `boundaries` | B3 | Yes | Soft boundaries the persona should respect |
 | `nonOverridableConstraints` | B3 + safety prefix | No | Hard constraints rendered with safety prefix |
 
-Rich persona field rendering is gated by `PROMPT_RICH_PERSONA_ENABLED` (default OFF).
+Rich persona field rendering is completed default behavior in Segment B3.
 
 ---
 
@@ -316,7 +316,7 @@ private buildSegmentB(resolved, input: ModelInputBuildInput) {
     b3Parts.push(renderPersonaProjection(input.personaProjection))
   }
 
-  // Assemble with explicit sub-section headers (gated by flag)
+  // Assemble with explicit sub-section headers
   // ...
 }
 ```
@@ -444,28 +444,12 @@ When ON:
 - Segment B hash includes persona content
 - Persona affects assistant style
 
-### PROMPT_RICH_PERSONA_ENABLED
+### Completed Segment B defaults
 
-When OFF:
-
-- Minimal `PersonaProjection` rendering (personaId, styleGuidelines, constraints)
-- `sourceProfile` rich fields are not rendered
-
-When ON:
-
-- Rich persona fields from `sourceProfile` feed into `styleGuidelines` and `constraints`
-- `behaviorPreferences`, `userAddressPreferences`, `boundaries`, `nonOverridableConstraints` are rendered
-
-### PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED
-
-When OFF:
-
-- Segment B is flat concatenation of systemPrompt + routingPrompt + personaProjection
-
-When ON:
-
-- Segment B uses explicit B1/B2/B3 sub-section headers
-- T5 template content enters B2 (requires `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED`)
+- Segment B uses explicit B1/B2/B3 sub-section headers by default.
+- Rich persona fields from `sourceProfile` render in B3 with safety framing.
+- `behaviorPreferences`, `userAddressPreferences`, `boundaries`, and `nonOverridableConstraints` are rendered when present.
+- T5 `agentProfile:*` template content remains in B2 and still requires `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED`.
 
 ---
 

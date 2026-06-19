@@ -10,16 +10,12 @@
  * - `buildSystemPrompt()` is NOT used in the subagent seven-layer path
  * - The duplicate `AssistantPersonaProfile` in context/types.ts is consolidated
  *
- * EXPECTED FAILURE: Currently, `AssistantPersonaProfile` exists in two
- * incompatible shapes (foreground/types.ts and context/types.ts), and the
- * context/types.ts version lacks the rich fields. The rich persona rendering
- * is not wired into the builder.
- *
  * @module tests/unit/kernel/model-input/rich-persona-rendering
  */
 
 import { describe, it, expect } from 'vitest'
 import type { PersonaProjection } from '../../../../src/kernel/model-input/model-input-types.js'
+import { renderPersonaProjection } from '../../../../src/kernel/model-input/model-input-types.js'
 
 // ─── Rich Persona Profile Type (Target Contract) ────────────────────────────
 
@@ -183,7 +179,9 @@ describe('Unified Rich Persona Profile', () => {
   describe('PersonaProjection carries sourceProfile', () => {
     it('PersonaProjection.sourceProfile field exists (type contract)', () => {
       // This tests that PersonaProjection has a sourceProfile field
-      // that can carry the full rich persona profile
+      // that can carry the full rich persona profile.
+      // directDelegationPolicy is NOT part of sourceProfile — it is
+      // platform-owned (B1/B2 area), not user persona (B3).
       const projection: PersonaProjection = {
         personaId: 'test-persona',
         styleGuidelines: 'Be concise and professional.',
@@ -192,24 +190,22 @@ describe('Unified Rich Persona Profile', () => {
           personaId: 'test-persona',
           name: 'Test Assistant',
           description: 'A helpful assistant',
-          directDelegationPolicy: {
-            estimatedStepsGte: 3,
-            maxComplexity: 'medium',
-            allowedToolCategories: ['read', 'search'],
-          },
         },
       }
 
       expect(projection.sourceProfile).toBeDefined()
       expect(projection.sourceProfile?.personaId).toBe('test-persona')
       expect(projection.sourceProfile?.name).toBe('Test Assistant')
+      // directDelegationPolicy must NOT be on sourceProfile
+      expect(projection.sourceProfile).not.toHaveProperty('directDelegationPolicy')
     })
   })
 
   describe('Rich persona renders in Segment B (B3)', () => {
     it('PersonaProjection with rich fields produces valid Segment B content', () => {
-      // This test verifies that when a PersonaProjection with rich sourceProfile
-      // is provided, it can be rendered into Segment B content
+      // When a PersonaProjection with rich sourceProfile is provided,
+      // sourceProfile fields render in B3 with safety framing.
+      // directDelegationPolicy is omitted — it is platform-owned (B1/B2).
       const projection: PersonaProjection = {
         personaId: 'rich-persona',
         styleGuidelines: 'Be warm and helpful. Use clear explanations.',
@@ -218,32 +214,58 @@ describe('Unified Rich Persona Profile', () => {
           personaId: 'rich-persona',
           name: 'Code Helper',
           description: 'A coding-focused assistant',
-          directDelegationPolicy: {
-            estimatedStepsGte: 3,
-            maxComplexity: 'medium',
-            allowedToolCategories: ['read', 'search'],
-          },
+          background: 'Specialized in TypeScript and Python.',
+          tone: 'Warm and professional',
+          personality: 'Patient, detail-oriented',
         },
       }
 
-      // The projection itself should carry all necessary data
       expect(projection.personaId).toBe('rich-persona')
       expect(projection.styleGuidelines).toContain('warm and helpful')
       expect(projection.constraints).toContain('Stay on topic')
       expect(projection.sourceProfile?.name).toBe('Code Helper')
+      expect(projection.sourceProfile?.background).toContain('TypeScript')
+      expect(projection.sourceProfile?.tone).toBe('Warm and professional')
+      expect(projection.sourceProfile).not.toHaveProperty('directDelegationPolicy')
+    })
+
+    it('renderPersonaProjection includes sourceProfile fields with safety framing', () => {
+      const projection: PersonaProjection = {
+        personaId: 'rich-persona',
+        styleGuidelines: 'Be warm and helpful.',
+        constraints: ['Stay on topic'],
+        sourceProfile: {
+          personaId: 'rich-persona',
+          name: 'Code Helper',
+          description: 'A coding-focused assistant',
+          background: 'Specialized in TypeScript and Python.',
+          tone: 'Warm and professional',
+          personality: 'Patient, detail-oriented',
+          behaviorPreferences: { verbosity: 'balanced', formality: 'professional' },
+          boundaries: ['Keep responses focused'],
+          nonOverridableConstraints: ['Maintain safety boundaries'],
+        },
+      }
+
+      const rendered = renderPersonaProjection(projection)
+
+      // Safety framing must be present
+      expect(rendered).toContain('以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界')
+
+      // sourceProfile rich fields should be rendered in B3
+      expect(rendered).toContain('Code Helper')
+      expect(rendered).toContain('Warm and professional')
+      expect(rendered).toContain('Patient, detail-oriented')
+
+      // directDelegationPolicy must NOT appear in B3 rendering
+      expect(rendered).not.toContain('directDelegationPolicy')
+      expect(rendered).not.toContain('estimatedStepsGte')
+      expect(rendered).not.toContain('maxComplexity')
     })
   })
 
   describe('Duplicate persona type consolidation', () => {
     it('context/types.ts AssistantPersonaProfile should NOT be a separate minimal type', () => {
-      // After migration, there should be ONE AssistantPersonaProfile definition.
-      // The test verifies the TARGET state where context/types.ts imports
-      // from the canonical source rather than defining its own minimal version.
-      //
-      // EXPECTED FAILURE: Currently, context/types.ts defines its own
-      // AssistantPersonaProfile with only personaId, name, description.
-      // This test documents the contract that it should be consolidated.
-
       // We verify the expected shape has all rich fields
       const expectedFields = [
         'personaId',
@@ -375,15 +397,6 @@ describe('Unified Rich Persona Profile', () => {
 describe('Subagent Prompt: buildSystemPrompt NOT in seven-layer path', () => {
   describe('seven-layer subagent path uses ModelInputBuilder', () => {
     it('buildSevenLayerModelInput uses ModelInputBuilder.build(), not buildSystemPrompt()', async () => {
-      // This test documents the contract that the seven-layer subagent path
-      // should use ModelInputBuilder.build() and NOT the legacy buildSystemPrompt()
-      //
-      // EXPECTED FAILURE: Currently, context-manager.ts still has buildSystemPrompt()
-      // and createDefaultSubagentContextManager() uses it.
-      //
-      // After migration, buildSevenLayerModelInput() should be the only path
-      // for subagent prompt construction.
-
       // We verify the contract by checking that buildSevenLayerModelInput
       // returns a BuiltModelInput (the output of ModelInputBuilder.build())
       const { buildSevenLayerModelInput } = await import('../../../../src/subagents/context-manager.js')
@@ -391,17 +404,9 @@ describe('Subagent Prompt: buildSystemPrompt NOT in seven-layer path', () => {
       expect(typeof buildSevenLayerModelInput).toBe('function')
     })
 
-    it('context-manager.ts still exports buildSystemPrompt (legacy, to be removed)', async () => {
-      // This test documents that buildSystemPrompt is currently present
-      // and SHOULD be removed in a later todo. The test will PASS when
-      // buildSystemPrompt is removed (contradiction resolved by migration).
-      //
-      // For now, this test PROVES the current state: buildSystemPrompt exists.
+    it('context-manager.ts exposes the seven-layer subagent construction path', async () => {
       const contextManagerModule = await import('../../../../src/subagents/context-manager.js')
 
-      // The function buildSystemPrompt is NOT exported (it's module-private),
-      // but createDefaultSubagentContextManager uses it internally.
-      // We verify the public API exists
       expect(contextManagerModule.createDefaultSubagentContextManager).toBeDefined()
       expect(contextManagerModule.buildSevenLayerModelInput).toBeDefined()
     })
