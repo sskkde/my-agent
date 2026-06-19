@@ -6,10 +6,6 @@
  * behind feature flags. When flags are OFF, these templates must NOT appear
  * in the built segments. When flags are ON, they MUST appear.
  *
- * EXPECTED FAILURE: Currently, T5/T6/T7 templates are registered but the
- * builder does not consume them (StaticPrefixBuilder filters to layer <= 4).
- * These tests assert the TARGET behavior after migration.
- *
  * @module tests/unit/kernel/model-input/t5-t7-template-consumption
  */
 
@@ -145,10 +141,6 @@ function clearFlags(): void {
   delete process.env.PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED
   delete process.env.PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED
   delete process.env.PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED
-  delete process.env.PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED
-  delete process.env.PROMPT_SEGMENT_D_PROVENANCE_ENABLED
-  delete process.env.PROMPT_SUMMARY_LAYERS_TOP_LEVEL_ENABLED
-  delete process.env.PROMPT_RICH_PERSONA_ENABLED
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

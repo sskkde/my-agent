@@ -5,9 +5,6 @@
  * sub-sections: B1 (platform-owned agent profile), B2 (tenant/admin instructions),
  * B3 (user persona/preferences). B1 must appear before B2, and B2 before B3.
  *
- * EXPECTED FAILURE: Currently, Segment B is flat concatenation without explicit
- * sub-section labels or T5 content in B2. These tests assert the TARGET behavior.
- *
  * @module tests/unit/kernel/model-input/segment-b-subsections
  */
 
@@ -74,9 +71,7 @@ function setFlag(flag: string, value: boolean): void {
 }
 
 function clearFlags(): void {
-  delete process.env.PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED
   delete process.env.PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED
-  delete process.env.PROMPT_RICH_PERSONA_ENABLED
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -203,7 +198,6 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
   describe('B2 includes T5 template content when flags enabled', () => {
     it('T5 agentProfile content appears in B2 position (after B1, before B3)', async () => {
       setFlag('PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED', true)
-      setFlag('PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED', true)
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -231,6 +225,23 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
       // B1 < T5(B2) < routingPrompt(B2) < personaProjection(B3)
       expect(b1Idx).toBeLessThan(t5Idx)
       expect(t5Idx).toBeLessThan(b3Idx)
+    })
+
+    it('T5 agentProfile content remains in B2, NOT merged into B1 systemPrompt', async () => {
+      setFlag('PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED', true)
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          systemPrompt: 'B1 core system instructions.',
+        }),
+      )
+
+      const b1End = result.segments.tenantProject.indexOf('B1 core system instructions.') + 'B1 core system instructions.'.length
+      const t5Idx = result.segments.tenantProject.indexOf('Foreground agent profile')
+
+      // T5 must appear AFTER B1, not within it
+      expect(t5Idx).toBeGreaterThanOrEqual(0)
+      expect(t5Idx).toBeGreaterThan(b1End)
     })
   })
 
@@ -274,8 +285,9 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
       )
 
       expect(result.segments.tenantProject).toContain('Only B1 content.')
-      // Should be clean - just B1
-      expect(result.segments.tenantProject.trim()).toBe('Only B1 content.')
+      expect(result.segments.tenantProject).toContain('--- Segment B1: System Prompt')
+      expect(result.segments.tenantProject).not.toContain('--- Segment B2:')
+      expect(result.segments.tenantProject).not.toContain('--- Segment B3:')
     })
 
     it('Segment B contains only B3 when B1/B2 absent', async () => {
