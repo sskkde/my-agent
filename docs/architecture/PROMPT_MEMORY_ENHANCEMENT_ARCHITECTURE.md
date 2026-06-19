@@ -1,8 +1,9 @@
 # Prompt × Memory Enhancement Architecture
 
-> Version: 1.0.0
+> Version: 1.1.0
 > Created: 2026-05-24
-> Status: Implemented (P0/P1 Complete, P2 Decision-gated)
+> Updated: 2026-06-19
+> Status: Implemented (P0/P1 Complete, P2 Decision-gated, prompt migration aligned)
 
 ---
 
@@ -20,9 +21,10 @@ Strategy projections (rules, heuristics, policies) are **top-level fields** in `
 
 ```
 ModelInputBuildInput
-├── personaProjection          ← Strategy (Layer 5)
-├── toolSelectionPolicy        ← Strategy (Layer 6)
-├── memoryPolicyProjection     ← Strategy (Layer 7)
+├── personaProjection          ← Strategy (Layer 5, Segment B3)
+├── toolSelectionPolicy        ← Strategy (Layer 6, Segment C)
+├── memoryPolicyProjection     ← Strategy (Layer 7, Segment D)
+├── summaryLayers              ← Strategy (Layer 7, Segment D, top-level)
 ├── toolProjection             ← Data (Layer 6)
 │   └── toolIds, tools[]
 └── contextBundle              ← Data (Layer 7)
@@ -38,12 +40,14 @@ ModelInputBuildInput
 | Cache Impact | Affects segment hash        | Part of dynamic content   |
 | Rendering    | Template-based              | Direct inclusion          |
 | Layer        | B (5), C (6), D (7)         | C (6), D (7)              |
+| Placement    | Top-level on input          | Inside data containers    |
 
 ### Anti-Patterns Avoided
 
 1. **NOT**: `toolProjection.heuristics` — Heuristics belong in `toolSelectionPolicy`
 2. **NOT**: `contextBundle.memoryRules` — Rules belong in `memoryPolicyProjection`
 3. **NOT**: `personaProjection` as raw string — Must be structured interface
+4. **NOT**: `contextBundle.summaryLayers` — Summary layers are a top-level strategy projection on `ModelInputBuildInput` (deprecated nested copy kept for backward compat only)
 
 ---
 
@@ -114,13 +118,18 @@ export interface MemoryPolicyProjection {
 export interface ModelInputBuildInput {
   // Mode determination
   mode: ModelInputMode
-  agentKind: string
+  agentType?: AgentType
+  agentProfile?: string
   providerFamily: string
+  outputContract?: string
 
-  // Layer 5 (Instruction) - Segment B
-  systemPrompt?: string
-  routingPrompt?: string
-  personaProjection?: PersonaProjection // ← P10 Strategy
+  // Legacy (deprecated)
+  agentKind?: string
+
+  // Layer 5 (Instruction) - Segment B (B1/B2/B3)
+  systemPrompt?: string           // B1
+  routingPrompt?: string          // B2
+  personaProjection?: PersonaProjection // B3, P10 Strategy
 
   // Layer 6 (Tool Plane) - Segment C
   toolProjection?: ToolPlaneProjection // ← Data
@@ -129,6 +138,7 @@ export interface ModelInputBuildInput {
   // Layer 7 (Context Bundle) - Segment D
   contextBundle?: ContextBundleData // ← Data
   memoryPolicyProjection?: MemoryPolicyProjection // ← P10 Strategy
+  summaryLayers?: SummaryLayerProjection // ← P10 Strategy (top-level)
 
   // Dynamic fields (Segment D only)
   currentUserMessage?: string
@@ -148,6 +158,7 @@ export interface ModelInputBuildInput {
 | `personaProjection`      | Top-level | Strategy, affects Segment B hash |
 | `toolSelectionPolicy`    | Top-level | Strategy, affects Segment C hash |
 | `memoryPolicyProjection` | Top-level | Strategy, affects Segment D hash |
+| `summaryLayers`          | Top-level | Strategy, affects Segment D hash |
 | `toolProjection`         | Top-level | Data container for tool plane    |
 | `contextBundle`          | Top-level | Data container for context       |
 
@@ -210,24 +221,26 @@ private buildSegmentC(input: ModelInputBuildInput) {
 
 ```typescript
 private buildSegmentD(input: ModelInputBuildInput) {
-  const parts: string[] = [];
+  const parts: string[] = []
 
   if (input.memoryPolicyProjection) {
-    parts.push(renderMemoryPolicyProjection(input.memoryPolicyProjection));
+    parts.push(renderMemoryPolicyProjection(input.memoryPolicyProjection))
   }
 
-  // Summary layers from context bundle
-  if (input.contextBundle?.summaryLayers) {
-    const rendered = renderSummaryLayers(input.contextBundle.summaryLayers);
-    if (rendered) parts.push(rendered);
+  // Summary layers: prefer top-level strategy projection,
+  // fall back to nested contextBundle.summaryLayers for backward compatibility.
+  const summaryLayersSource = input.summaryLayers ?? input.contextBundle?.summaryLayers
+  if (summaryLayersSource) {
+    const rendered = renderSummaryLayers(summaryLayersSource)
+    if (rendered) parts.push(rendered)
   }
 
   // Dynamic fields and context items
   // ...
 
-  const content = parts.join('\n\n');
-  const hash = computeTemplateHash(content);
-  return { content, hash };
+  const content = parts.join('\n\n')
+  const hash = computeTemplateHash(content)
+  return { content, hash }
 }
 ```
 
@@ -244,6 +257,13 @@ private buildSegmentD(input: ModelInputBuildInput) {
 | `HYBRID_RETRIEVAL_ENABLED`       | OFF     | Enable hybrid retrieval         |
 | `LIFECYCLE_SCORING_SHADOW`       | OFF     | Enable lifecycle scoring shadow |
 | `LIFECYCLE_POLICY_ENABLED`       | OFF     | Enable lifecycle policy         |
+| `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T5 agentProfile template rendering |
+| `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T6 toolProjection template rendering |
+| `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` | OFF | T7 runtimeContext template rendering |
+| `PROMPT_SEGMENT_B_SUBSECTIONS_ENABLED` | OFF | B1/B2/B3 sub-section rendering |
+| `PROMPT_SEGMENT_D_PROVENANCE_ENABLED` | OFF | Provenance header in Segment D |
+| `PROMPT_SUMMARY_LAYERS_TOP_LEVEL_ENABLED` | OFF | summaryLayers as top-level field |
+| `PROMPT_RICH_PERSONA_ENABLED`    | OFF     | Rich persona field rendering    |
 
 ### Flag Behavior
 
