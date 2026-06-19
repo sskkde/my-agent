@@ -173,6 +173,49 @@ export function renderPersonaProjection(projection: PersonaProjection): string {
 
   parts.push(`\n## 人格标识\n人格ID: ${projection.personaId}`)
 
+  if (projection.sourceProfile) {
+    const profile = projection.sourceProfile
+    const profileParts: string[] = []
+
+    profileParts.push(`Name: ${profile.name}`)
+    if (profile.displayIdentity) profileParts.push(`Display Identity: ${profile.displayIdentity}`)
+    if (profile.description) profileParts.push(`Description: ${profile.description}`)
+    if (profile.background) profileParts.push(`Background: ${profile.background}`)
+    if (profile.tone) profileParts.push(`Tone: ${profile.tone}`)
+    if (profile.personality) profileParts.push(`Personality: ${profile.personality}`)
+
+    if (profile.behaviorPreferences) {
+      const preferences = profile.behaviorPreferences
+      const preferenceParts: string[] = []
+      if (preferences.verbosity) preferenceParts.push(`verbosity=${preferences.verbosity}`)
+      if (preferences.codeCommentStyle) preferenceParts.push(`codeCommentStyle=${preferences.codeCommentStyle}`)
+      if (preferences.explanationDepth) preferenceParts.push(`explanationDepth=${preferences.explanationDepth}`)
+      if (preferences.formality) preferenceParts.push(`formality=${preferences.formality}`)
+      if (preferenceParts.length > 0) profileParts.push(`Behavior Preferences: ${preferenceParts.join(', ')}`)
+    }
+
+    if (profile.userAddressPreferences) {
+      const address = profile.userAddressPreferences
+      const addressParts: string[] = []
+      if (address.preferredName) addressParts.push(`preferredName=${address.preferredName}`)
+      if (address.pronouns) addressParts.push(`pronouns=${address.pronouns}`)
+      if (address.language) addressParts.push(`language=${address.language}`)
+      if (addressParts.length > 0) profileParts.push(`User Address Preferences: ${addressParts.join(', ')}`)
+    }
+
+    if (profile.boundaries && profile.boundaries.length > 0) {
+      profileParts.push(`Persona Boundaries:\n${profile.boundaries.map((boundary) => `- ${boundary}`).join('\n')}`)
+    }
+
+    if (profile.nonOverridableConstraints && profile.nonOverridableConstraints.length > 0) {
+      profileParts.push(
+        `Non-overridable Platform Constraints:\n${profile.nonOverridableConstraints.map((constraint) => `- ${constraint}`).join('\n')}`,
+      )
+    }
+
+    parts.push(`\n## Source Profile\n${profileParts.join('\n')}`)
+  }
+
   return parts.join('\n')
 }
 

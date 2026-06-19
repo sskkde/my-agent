@@ -268,8 +268,7 @@ export class ModelInputBuilder {
   }, input: ModelInputBuildInput) {
     const parts: string[] = []
 
-    // Provenance header
-    parts.push('--- Segment D: Context Bundle (Provenance) ---')
+    parts.push(this.renderSegmentDProvenance(input))
 
     // 1. Taxonomy template (Layer 7)
     if (isPromptT7TemplateConsumptionEnabled()) {
@@ -522,14 +521,48 @@ export class ModelInputBuilder {
     const parts: string[] = [`--- ${label} ---`]
 
     for (const item of items) {
+      const provenance = this.renderItemProvenance(item)
       if (item.isPinned) {
-        parts.push(`[PINNED] ${item.content}`)
+        parts.push(provenance ? `[PINNED] ${provenance} ${item.content}` : `[PINNED] ${item.content}`)
       } else {
-        parts.push(item.content)
+        parts.push(provenance ? `${provenance} ${item.content}` : item.content)
       }
     }
 
     return parts.join('\n')
+  }
+
+  private renderSegmentDProvenance(input: ModelInputBuildInput): string {
+    const bundle = input.contextBundle
+    const firstItem = bundle?.pinnedItems?.[0] ?? bundle?.orderedItems?.[0] ?? bundle?.summaryBlocks?.[0]
+    const sourceType = firstItem?.sourceType ?? (bundle?.summaryBlocks && bundle.summaryBlocks.length > 0 ? 'memory' : 'session_history')
+    const sourceRef = firstItem?.sourceRef ?? input.messageId ?? input.runId ?? input.sessionId ?? 'current_request'
+    const freshnessTs = firstItem?.freshnessTs ?? input.currentDate ?? 'unspecified'
+    const invocationSource = bundle?.invocationSource ?? this.defaultInvocationSource(input)
+
+    return [
+      '## Provenance',
+      `sourceType: ${sourceType}`,
+      `sourceRef: ${sourceRef}`,
+      `freshnessTs: ${freshnessTs}`,
+      `invocationSource: ${invocationSource}`,
+      '--- Segment D: Context Bundle (Provenance) ---',
+    ].join('\n')
+  }
+
+  private defaultInvocationSource(input: ModelInputBuildInput): string {
+    if (input.agentType === 'subagent') return 'subagent_runtime'
+    if (input.agentType === 'background') return 'background_subagent'
+    if (input.agentType === 'workflow_step') return 'workflow_step'
+    return 'gateway_intent'
+  }
+
+  private renderItemProvenance(item: ContextItemData): string {
+    const fields: string[] = []
+    if (item.sourceType) fields.push(`sourceType: ${item.sourceType}`)
+    if (item.sourceRef) fields.push(`sourceRef: ${item.sourceRef}`)
+    if (item.freshnessTs) fields.push(`freshnessTs: ${item.freshnessTs}`)
+    return fields.length > 0 ? `[${fields.join('; ')}]` : ''
   }
 
   private renderTranscript(transcript: LLMMessage[]): string {
