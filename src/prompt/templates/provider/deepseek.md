@@ -27,15 +27,6 @@ When the current mode requires JSON:
 - Do not use comments or trailing commas.
 - Conform to the current output schema rather than examples in older context.
 
-## Tool Calling
-
-When the current mode enables tool calling:
-
-- Use only projected tools.
-- Keep tool arguments valid JSON.
-- Do not invent unavailable tools.
-- Treat tool errors as evidence to handle, not as permission to fabricate results.
-
 ---
 
 **END OF DEEPSEEK PROVIDER TEMPLATE**
