@@ -17,6 +17,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 1,
         content: 'Platform Base for {agentKind} agent with {providerFamily} provider.',
         description: 'Test platform base',
+        taxonomyLayer: 'platform',
       },
     ],
     [
@@ -30,6 +31,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 1,
         content: 'Safety rules for {agentKind}.',
         description: 'Test safety',
+        taxonomyLayer: 'platform',
       },
     ],
     [
@@ -43,6 +45,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 2,
         content: 'OpenAI provider config for {agentKind}.',
         description: 'Test openai provider',
+        taxonomyLayer: 'provider',
       },
     ],
     [
@@ -56,58 +59,67 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 2,
         content: 'DeepSeek provider config for {agentKind}.',
         description: 'Test deepseek provider',
+        taxonomyLayer: 'provider',
       },
     ],
     [
-      'agents:foreground',
+      'agentType:main',
       {
-        id: 'agents:foreground',
-        version: '2026-05-23',
-        path: 'agents/foreground.md',
-        agentKind: 'foreground',
+        id: 'agentType:main',
+        version: '2026-06-18',
+        path: 'agentType/main.md',
+        agentKind: 'main',
         providerFamily: '*',
         layer: 3,
-        content: 'Foreground agent instructions for {agentKind}.',
-        description: 'Test foreground agent',
+        content: 'Main agent instructions for {agentKind}.',
+        description: 'Test main agent type',
+        taxonomyLayer: 'agentType',
+        agentType: 'main',
       },
     ],
     [
-      'agents:kernel',
+      'agentType:subagent',
       {
-        id: 'agents:kernel',
-        version: '2026-05-23',
-        path: 'agents/kernel.md',
-        agentKind: 'kernel',
+        id: 'agentType:subagent',
+        version: '2026-06-18',
+        path: 'agentType/subagent.md',
+        agentKind: 'subagent',
         providerFamily: '*',
         layer: 3,
-        content: 'Kernel agent instructions for {agentKind}.',
-        description: 'Test kernel agent',
+        content: 'Subagent instructions for {agentKind}.',
+        description: 'Test subagent type',
+        taxonomyLayer: 'agentType',
+        agentType: 'subagent',
       },
     ],
     [
-      'output:foreground.schema',
+      'outputContract:default-chat.schema',
       {
-        id: 'output:foreground.schema',
-        version: '2026-05-23',
-        path: 'output/foreground.schema.md',
-        agentKind: 'foreground',
+        id: 'outputContract:default-chat.schema',
+        version: '2026-06-18',
+        path: 'outputContract/default-chat.schema.md',
+        agentKind: 'outputContract:default-chat.schema',
         providerFamily: '*',
         layer: 4,
         content: 'Output schema for {agentKind} with {providerFamily}.',
-        description: 'Test foreground schema',
+        description: 'Test default chat schema',
+        taxonomyLayer: 'outputContract',
+        outputContract: 'output:default-chat.schema',
       },
     ],
     [
-      'output:planner.schema',
+      'outputContract:planner.schema',
       {
-        id: 'output:planner.schema',
-        version: '2026-05-23',
-        path: 'output/planner.schema.md',
-        agentKind: 'planner',
+        id: 'outputContract:planner.schema',
+        version: '2026-06-18',
+        path: 'outputContract/planner.schema.md',
+        agentKind: 'outputContract:planner.schema',
         providerFamily: '*',
         layer: 4,
         content: 'Planner output schema for {agentKind}.',
         description: 'Test planner schema',
+        taxonomyLayer: 'outputContract',
+        outputContract: 'output:planner.schema',
       },
     ],
   ])
@@ -123,7 +135,8 @@ function makeBuilder(): ModelInputBuilder {
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
     mode: 'routing_json',
-    agentKind: 'foreground',
+    agentType: 'main',
+    agentProfile: 'default_main',
     providerFamily: 'openai',
     ...overrides,
   }
@@ -252,11 +265,11 @@ describe('DeepSeek Cache Prefix Stability', () => {
   })
 
   describe('Segment A hash changes with structural inputs', () => {
-    it('DIFFERENT agentKind → DIFFERENT segmentAHash', async () => {
+    it('DIFFERENT agentType → DIFFERENT segmentAHash', async () => {
       const builder = makeBuilder()
 
-      const result1 = await builder.build(makeMinimalInput({ agentKind: 'foreground' }))
-      const result2 = await builder.build(makeMinimalInput({ agentKind: 'kernel' }))
+      const result1 = await builder.build(makeMinimalInput({ agentType: 'main', agentProfile: 'default_main' }))
+      const result2 = await builder.build(makeMinimalInput({ agentType: 'subagent', agentProfile: 'search' }))
 
       expect(result1.segmentHashes.segmentA).not.toBe(result2.segmentHashes.segmentA)
     })

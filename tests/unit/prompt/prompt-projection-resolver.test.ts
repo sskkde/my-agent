@@ -14,10 +14,11 @@ function createMockRegistry(hasTemplates: boolean): PromptTemplateRegistry {
     hasTemplate: vi.fn().mockReturnValue(hasTemplates),
     getTemplate: vi.fn(),
     register: vi.fn(),
-    resolveTemplate: vi.fn().mockReturnValue([]),
     getAllTemplateIds: vi.fn().mockReturnValue([]),
     getBasePath: vi.fn().mockReturnValue('/templates'),
     getTemplatesByLayer: vi.fn().mockReturnValue([]),
+    resolveSevenLayer: vi.fn().mockReturnValue([]),
+    resolveSevenLayerGrouped: vi.fn().mockReturnValue(new Map()),
   } as unknown as PromptTemplateRegistry
 }
 
@@ -364,7 +365,7 @@ describe('PromptProjectionResolver', () => {
         ['platform:base', { id: 'platform:base', version: '2026-05-23', path: 'platform/base.md', agentKind: '*', providerFamily: '*', layer: 1, content: 'Platform base.', description: 'Test' }],
         ['platform:safety', { id: 'platform:safety', version: '2026-05-23', path: 'platform/safety.md', agentKind: '*', providerFamily: '*', layer: 1, content: 'Safety rules.', description: 'Test' }],
         ['provider:openai', { id: 'provider:openai', version: '2026-05-23', path: 'provider/openai.md', agentKind: '*', providerFamily: 'openai', layer: 2, content: 'OpenAI config.', description: 'Test' }],
-        ['agents:kernel', { id: 'agents:kernel', version: '2026-05-23', path: 'agents/kernel.md', agentKind: 'kernel', providerFamily: '*', layer: 3, content: 'Kernel instructions.', description: 'Test' }],
+        ['agentProfile:default_main', { id: 'agentProfile:default_main', version: '2026-05-23', path: 'agents/kernel.md', agentKind: 'kernel', providerFamily: '*', layer: 3, taxonomyLayer: 'agentProfile', agentProfile: 'default_main', content: 'Kernel instructions.', description: 'Test' }],
       ])
       const registry = new PromptTemplateRegistry(templates, '/nonexistent')
       const loader = new TemplateLoader('/nonexistent')

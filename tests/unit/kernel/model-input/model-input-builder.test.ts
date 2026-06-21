@@ -21,6 +21,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 1,
         content: 'Platform Base for {agentKind} agent with {providerFamily} provider.',
         description: 'Test platform base',
+        taxonomyLayer: 'platform',
       },
     ],
     [
@@ -34,6 +35,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 1,
         content: 'Safety rules for {agentKind}.',
         description: 'Test safety',
+        taxonomyLayer: 'platform',
       },
     ],
     [
@@ -47,6 +49,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 2,
         content: 'OpenAI provider config for {agentKind}.',
         description: 'Test openai provider',
+        taxonomyLayer: 'provider',
       },
     ],
     [
@@ -60,58 +63,67 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 2,
         content: 'DeepSeek provider config for {agentKind}.',
         description: 'Test deepseek provider',
+        taxonomyLayer: 'provider',
       },
     ],
     [
-      'agents:foreground',
+      'agentType:main',
       {
-        id: 'agents:foreground',
-        version: '2026-05-23',
-        path: 'agents/foreground.md',
-        agentKind: 'foreground',
+        id: 'agentType:main',
+        version: '2026-06-18',
+        path: 'agentType/main.md',
+        agentKind: 'main',
         providerFamily: '*',
         layer: 3,
-        content: 'Foreground agent instructions for {agentKind}.',
-        description: 'Test foreground agent',
+        content: 'Main agent instructions for {agentKind}.',
+        description: 'Test main agent type',
+        taxonomyLayer: 'agentType',
+        agentType: 'main',
       },
     ],
     [
-      'agents:kernel',
+      'agentType:subagent',
       {
-        id: 'agents:kernel',
-        version: '2026-05-23',
-        path: 'agents/kernel.md',
-        agentKind: 'kernel',
+        id: 'agentType:subagent',
+        version: '2026-06-18',
+        path: 'agentType/subagent.md',
+        agentKind: 'subagent',
         providerFamily: '*',
         layer: 3,
-        content: 'Kernel agent instructions for {agentKind}.',
-        description: 'Test kernel agent',
+        content: 'Subagent instructions for {agentKind}.',
+        description: 'Test subagent type',
+        taxonomyLayer: 'agentType',
+        agentType: 'subagent',
       },
     ],
     [
-      'output:foreground.schema',
+      'outputContract:default-chat.schema',
       {
-        id: 'output:foreground.schema',
-        version: '2026-05-23',
-        path: 'output/foreground.schema.md',
-        agentKind: 'foreground',
+        id: 'outputContract:default-chat.schema',
+        version: '2026-06-18',
+        path: 'outputContract/default-chat.schema.md',
+        agentKind: 'outputContract:default-chat.schema',
         providerFamily: '*',
         layer: 4,
         content: 'Output schema for {agentKind} with {providerFamily}.',
-        description: 'Test foreground schema',
+        description: 'Test default chat schema',
+        taxonomyLayer: 'outputContract',
+        outputContract: 'output:default-chat.schema',
       },
     ],
     [
-      'output:planner.schema',
+      'outputContract:planner.schema',
       {
-        id: 'output:planner.schema',
-        version: '2026-05-23',
-        path: 'output/planner.schema.md',
-        agentKind: 'planner',
+        id: 'outputContract:planner.schema',
+        version: '2026-06-18',
+        path: 'outputContract/planner.schema.md',
+        agentKind: 'outputContract:planner.schema',
         providerFamily: '*',
         layer: 4,
         content: 'Planner output schema for {agentKind}.',
         description: 'Test planner schema',
+        taxonomyLayer: 'outputContract',
+        outputContract: 'output:planner.schema',
       },
     ],
   ])
@@ -127,7 +139,8 @@ function makeBuilder(): ModelInputBuilder {
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
     mode: 'routing_json',
-    agentKind: 'foreground',
+    agentType: 'main',
+    agentProfile: 'default_main',
     providerFamily: 'openai',
     ...overrides,
   }
@@ -187,11 +200,11 @@ describe('ModelInputBuilder', () => {
       expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA)
     })
 
-    it('changes when agentKind changes', async () => {
+    it('changes when agentType changes', async () => {
       const builder = makeBuilder()
 
-      const result1 = await builder.build(makeMinimalInput({ agentKind: 'foreground' }))
-      const result2 = await builder.build(makeMinimalInput({ agentKind: 'kernel' }))
+      const result1 = await builder.build(makeMinimalInput({ agentType: 'main', agentProfile: 'default_main' }))
+      const result2 = await builder.build(makeMinimalInput({ agentType: 'subagent', agentProfile: 'search' }))
 
       expect(result1.segmentHashes.segmentA).not.toBe(result2.segmentHashes.segmentA)
     })
@@ -338,7 +351,7 @@ describe('ModelInputBuilder', () => {
       expect(result.segmentHashes).toBeDefined()
       expect(result.metadata).toBeDefined()
       expect(result.metadata.mode).toBe('routing_json')
-      expect(result.metadata.agentKind).toBe('foreground')
+      expect(result.metadata.agentKind).toBe('default_main')
       expect(result.metadata.providerFamily).toBe('openai')
     })
 
@@ -534,15 +547,14 @@ describe('StaticPrefixBuilder', () => {
 
     const result = await builder.buildStaticPrefix({
       agentType: 'main',
-      agentProfile: 'foreground',
+      agentProfile: 'default_main',
       providerFamily: 'openai',
     })
 
-    expect(result.content).toContain('Platform Base for foreground')
-    expect(result.content).toContain('Safety rules for foreground')
-    expect(result.content).toContain('OpenAI provider config for foreground')
-    expect(result.content).toContain('Foreground agent instructions for foreground')
-    expect(result.content).toContain('Output schema for foreground with openai')
+    expect(result.content).toContain('Platform Base for default_main')
+    expect(result.content).toContain('Safety rules for default_main')
+    expect(result.content).toContain('OpenAI provider config for default_main')
+    expect(result.content).toContain('Main agent instructions for default_main')
   })
 
   it('computes stable hash', async () => {
@@ -553,12 +565,12 @@ describe('StaticPrefixBuilder', () => {
 
     const result1 = await builder.buildStaticPrefix({
       agentType: 'main',
-      agentProfile: 'foreground',
+      agentProfile: 'default_main',
       providerFamily: 'openai',
     })
     const result2 = await builder.buildStaticPrefix({
       agentType: 'main',
-      agentProfile: 'foreground',
+      agentProfile: 'default_main',
       providerFamily: 'openai',
     })
 

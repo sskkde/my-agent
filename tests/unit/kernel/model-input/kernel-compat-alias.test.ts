@@ -1,11 +1,11 @@
 /**
  * kernel-compat-alias.test.ts
  *
- * Verifies that the deprecated `agentKind: 'kernel'` alias routes through the
- * normalizer to `agentType: 'main', agentProfile: 'default_main'` and produces
- * compatible output with the explicit taxonomy path.
+ * Verifies that the taxonomy-only path (agentType + agentProfile) resolves
+ * correctly through the seven-layer taxonomy and produces valid output.
  *
- * Task 9: Route AgentKernel.buildLLMRequest() default through normalizer.
+ * The legacy `agentKind: 'kernel'` alias has been removed; all resolution
+ * now goes through the taxonomy path.
  */
 import { describe, it, expect } from 'vitest'
 import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../src/prompt/prompt-template-registry.js'
@@ -26,6 +26,7 @@ function makeKernelTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 1,
         content: 'Platform Base rules for {agentKind}.',
         description: 'Platform base',
+        taxonomyLayer: 'platform',
       },
     ],
     [
@@ -39,6 +40,7 @@ function makeKernelTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 1,
         content: 'Safety rules.',
         description: 'Safety',
+        taxonomyLayer: 'platform',
       },
     ],
     [
@@ -52,19 +54,22 @@ function makeKernelTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 2,
         content: 'OpenAI provider for {agentKind}.',
         description: 'OpenAI provider',
+        taxonomyLayer: 'provider',
       },
     ],
     [
-      'agents:kernel',
+      'agentType:main',
       {
-        id: 'agents:kernel',
-        version: '2026-05-23',
-        path: 'agents/kernel.md',
-        agentKind: 'kernel',
+        id: 'agentType:main',
+        version: '2026-06-18',
+        path: 'agentType/main.md',
+        agentKind: 'main',
         providerFamily: '*',
         layer: 3,
-        content: 'Kernel agent template for {agentKind}.',
-        description: 'Kernel agent template',
+        content: 'Main agent template for {agentKind}.',
+        description: 'Main agent type',
+        taxonomyLayer: 'agentType',
+        agentType: 'main',
       },
     ],
   ])
@@ -77,13 +82,14 @@ function makeBuilder(): ModelInputBuilder {
   return new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
 }
 
-describe('kernel compat alias (Task 9)', () => {
-  describe('deprecated agentKind: kernel resolves to main/default_main', () => {
-    it('legacy agentKind: kernel normalizes metadata to agentType=main, agentProfile=default_main', async () => {
+describe('taxonomy-only resolution (legacy kernel alias removed)', () => {
+  describe('explicit agentType+agentProfile resolves correctly', () => {
+    it('agentType=main, agentProfile=default_main produces correct metadata', async () => {
       const builder = makeBuilder()
       const input: ModelInputBuildInput = {
         mode: 'function_calling',
-        agentKind: 'kernel',
+        agentType: 'main',
+        agentProfile: 'default_main',
         providerFamily: 'openai',
       }
 
@@ -93,12 +99,11 @@ describe('kernel compat alias (Task 9)', () => {
       expect(result.metadata.agentProfile).toBe('default_main')
     })
 
-    it('explicit agentType+agentProfile produces same metadata taxonomy', async () => {
+    it('legacy agentKind: kernel normalizes metadata to agentType=main, agentProfile=default_main', async () => {
       const builder = makeBuilder()
       const input: ModelInputBuildInput = {
         mode: 'function_calling',
-        agentType: 'main',
-        agentProfile: 'default_main',
+        agentKind: 'kernel',
         providerFamily: 'openai',
       }
 
@@ -129,8 +134,20 @@ describe('kernel compat alias (Task 9)', () => {
     })
   })
 
-  describe('legacy kernel alias resolves kernel template for Segment A', () => {
-    it('agentKind: kernel includes kernel template content in staticPrefix', async () => {
+  describe('taxonomy resolution includes agentType:main template for Segment A', () => {
+    it('agentType=main includes main agent template content in staticPrefix', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build({
+        mode: 'function_calling',
+        agentType: 'main',
+        agentProfile: 'default_main',
+        providerFamily: 'openai',
+      })
+
+      expect(result.segments.staticPrefix).toContain('Main agent template')
+    })
+
+    it('legacy agentKind: kernel resolves to main agent template content', async () => {
       const builder = makeBuilder()
       const result = await builder.build({
         mode: 'function_calling',
@@ -138,37 +155,17 @@ describe('kernel compat alias (Task 9)', () => {
         providerFamily: 'openai',
       })
 
-      expect(result.segments.staticPrefix).toContain('Kernel agent template')
-    })
-
-    it('explicit agentType+agentProfile with agentKind: kernel produces same staticPrefix', async () => {
-      const builder = makeBuilder()
-
-      const legacyResult = await builder.build({
-        mode: 'function_calling',
-        agentKind: 'kernel',
-        providerFamily: 'openai',
-      })
-
-      const explicitResult = await builder.build({
-        mode: 'function_calling',
-        agentType: 'main',
-        agentProfile: 'default_main',
-        agentKind: 'kernel',
-        providerFamily: 'openai',
-      })
-
-      expect(explicitResult.segments.staticPrefix).toBe(legacyResult.segments.staticPrefix)
-      expect(explicitResult.segmentHashes.segmentA).toBe(legacyResult.segmentHashes.segmentA)
+      expect(result.segments.staticPrefix).toContain('Main agent template')
     })
   })
 
   describe('Segment A hash stability across both paths', () => {
-    it('agentKind: kernel produces stable hash across invocations', async () => {
+    it('agentType=main produces stable hash across invocations', async () => {
       const builder = makeBuilder()
       const input: ModelInputBuildInput = {
         mode: 'function_calling',
-        agentKind: 'kernel',
+        agentType: 'main',
+        agentProfile: 'default_main',
         providerFamily: 'openai',
       }
 
@@ -178,7 +175,7 @@ describe('kernel compat alias (Task 9)', () => {
       expect(result1.segmentHashes.segmentA).toBe(result2.segmentHashes.segmentA)
     })
 
-    it('kernel alias and explicit taxonomy with agentKind produce identical segmentA hash', async () => {
+    it('legacy kernel alias and explicit taxonomy produce identical segmentA hash', async () => {
       const builder = makeBuilder()
 
       const legacyResult = await builder.build({
@@ -191,7 +188,6 @@ describe('kernel compat alias (Task 9)', () => {
         mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'default_main',
-        agentKind: 'kernel',
         providerFamily: 'openai',
       })
 
@@ -221,7 +217,6 @@ describe('kernel compat alias (Task 9)', () => {
         mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'default_main',
-        agentKind: 'kernel',
         providerFamily: 'openai',
       })
 
@@ -250,7 +245,6 @@ describe('kernel compat alias (Task 9)', () => {
       const explicitResult = await builder.build({
         agentType: 'main' as const,
         agentProfile: 'default_main',
-        agentKind: 'kernel',
         ...sharedOverrides,
       })
 

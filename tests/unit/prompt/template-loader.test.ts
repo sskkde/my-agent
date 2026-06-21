@@ -69,9 +69,9 @@ describe('template-loader', () => {
       expect(content).toContain('# OpenAI Provider Template')
     })
 
-    it('loads agents:foreground template', () => {
-      const content = loader.loadSync('agents:foreground')
-      expect(content).toContain('# Foreground Agent Template')
+    it('loads agentProfile:foreground template', () => {
+      const content = loader.loadSync('agentProfile:foreground')
+      expect(content).toContain('Agent Profile: Foreground')
     })
 
     it('throws error for invalid template ID format', () => {
@@ -82,14 +82,15 @@ describe('template-loader', () => {
       expect(() => loader.loadSync('category:nonexistent')).toThrow()
     })
 
-    it('replaces placeholders in loaded template', () => {
+    it('leaves loaded template unchanged when no placeholders exist', () => {
+      const unchangedContent = loader.loadSync('platform:base')
       const content = loader.loadSync('platform:base', {
         platformName: 'TestPlatform',
         platformVersion: '1.0.0',
         templateVersion: '2026-01-01',
         schemaVersion: 'v1',
       })
-      expect(content).toContain('TestPlatform')
+      expect(content).toBe(unchangedContent)
     })
   })
 
@@ -126,9 +127,9 @@ describe('template-loader', () => {
       expect(path).toContain('openai.md')
     })
 
-    it('resolves agents:foreground to correct path', () => {
-      const path = loader.resolveTemplatePath('agents:foreground')
-      expect(path).toContain('agents')
+    it('resolves agentProfile:foreground to correct path', () => {
+      const path = loader.resolveTemplatePath('agentProfile:foreground')
+      expect(path).toContain('agentProfile')
       expect(path).toContain('foreground.md')
     })
 

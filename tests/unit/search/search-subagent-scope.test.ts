@@ -99,6 +99,10 @@ describe('SearchSubagent scope guardrails', () => {
       expect(isSearchCategoryTool('docs_search')).toBe(true)
     })
 
+    it('returns false for web_fetch', () => {
+      expect(isSearchCategoryTool('web_fetch')).toBe(false)
+    })
+
     it('returns false for foreground_spawn_planner', () => {
       expect(isSearchCategoryTool('foreground_spawn_planner')).toBe(false)
     })

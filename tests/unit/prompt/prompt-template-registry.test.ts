@@ -81,11 +81,17 @@ describe('prompt-template-registry (taxonomy)', () => {
     })
   })
 
-  describe('legacy templates still present', () => {
-    it('keeps all legacy agents:* templates', () => {
-      expect(registry.hasTemplate('agents:foreground')).toBe(true)
-      expect(registry.hasTemplate('agents:kernel')).toBe(true)
-      expect(registry.hasTemplate('agents:memory')).toBe(true)
+  describe('legacy agents:* templates removed', () => {
+    it('no longer has agents:foreground', () => {
+      expect(registry.hasTemplate('agents:foreground')).toBe(false)
+    })
+
+    it('no longer has agents:kernel', () => {
+      expect(registry.hasTemplate('agents:kernel')).toBe(false)
+    })
+
+    it('no longer has agents:memory', () => {
+      expect(registry.hasTemplate('agents:memory')).toBe(false)
     })
 
     it('retires legacy output:* templates (replaced by outputContract:*)', () => {
@@ -95,36 +101,16 @@ describe('prompt-template-registry (taxonomy)', () => {
       expect(registry.hasTemplate('outputContract:memory-candidate.schema')).toBe(true)
     })
 
-    it('keeps persona:default', () => {
-      expect(registry.hasTemplate('persona:default')).toBe(true)
-    })
-
-    it('old resolveTemplate still works for foreground + openai', () => {
-      const templates = registry.resolveTemplate('foreground', 'openai')
-      const ids = templates.map((t) => t.id)
-      expect(ids).toContain('platform:base')
-      expect(ids).toContain('platform:safety')
-      expect(ids).toContain('provider:openai')
-      expect(ids).toContain('agents:foreground')
-      expect(ids).toContain('persona:default')
-      expect(ids).toContain('heuristics:tool-usage.common')
-      expect(ids).toContain('context:memory-use-rules')
-    })
-
-    it('old resolveTemplate does NOT include taxonomy records', () => {
-      const templates = registry.resolveTemplate('foreground', 'openai')
-      const ids = templates.map((t) => t.id)
-      expect(ids).not.toContain('agentType:main')
-      expect(ids).not.toContain('agentType:subagent')
-      expect(ids).not.toContain('agentProfile:foreground')
-      expect(ids).not.toContain('toolProjection:default')
-      expect(ids).not.toContain('runtimeContext:default')
+    it('keeps persona:default with taxonomyLayer', () => {
+      const record = registry.getTemplate('persona:default')
+      expect(record).toBeDefined()
+      expect(record?.taxonomyLayer).toBe('agentProfile')
     })
   })
 
-  describe('PROMPT_TEMPLATE_REGISTRY has 31 templates', () => {
-    it('contains 17 legacy + 14 taxonomy records', () => {
-      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(31)
+  describe('PROMPT_TEMPLATE_REGISTRY has 38 templates', () => {
+    it('contains 14 cross-cutting + 24 taxonomy records', () => {
+      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(38)
     })
 
     it('has all taxonomy IDs', () => {

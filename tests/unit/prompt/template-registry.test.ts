@@ -46,20 +46,14 @@ describe('prompt-template-registry', () => {
       expect(template?.providerFamily).toBe('deepseek')
     })
 
-    it('returns agents:foreground template', () => {
+    it('no longer has agents:foreground template', () => {
       const template = registry.getTemplate('agents:foreground')
-      expect(template).toBeDefined()
-      expect(template?.id).toBe('agents:foreground')
-      expect(template?.layer).toBe(3)
-      expect(template?.agentKind).toBe('foreground')
+      expect(template).toBeUndefined()
     })
 
-    it('returns agents:kernel template', () => {
+    it('no longer has agents:kernel template', () => {
       const template = registry.getTemplate('agents:kernel')
-      expect(template).toBeDefined()
-      expect(template?.id).toBe('agents:kernel')
-      expect(template?.layer).toBe(3)
-      expect(template?.agentKind).toBe('kernel')
+      expect(template).toBeUndefined()
     })
 
     it('returns outputContract:planner.schema template', () => {
@@ -76,126 +70,47 @@ describe('prompt-template-registry', () => {
     })
   })
 
-  describe('resolveTemplate', () => {
-    it('returns Layer 1-7 templates for foreground + openai', () => {
-      const templates = registry.resolveTemplate('foreground', 'openai')
+  describe('resolveSevenLayer', () => {
+    it('returns Layer 1-7 templates for main + default_main + openai', () => {
+      const templates = registry.resolveSevenLayer({
+        agentType: 'main',
+        agentProfile: 'default_main',
+        providerFamily: 'openai',
+      })
 
-      expect(templates.length).toBe(12)
-
-      expect(templates[0].layer).toBe(1)
-      expect(templates[0].id).toBe('platform:base')
-
-      expect(templates[1].layer).toBe(1)
-      expect(templates[1].id).toBe('platform:safety')
-
-      expect(templates[2].layer).toBe(2)
-      expect(templates[2].id).toBe('provider:openai')
-
-      expect(templates[3].layer).toBe(3)
-      expect(templates[3].id).toBe('agents:foreground')
-
-      expect(templates[4].layer).toBe(5)
-      expect(templates[4].id).toBe('persona:default')
-
-      expect(templates[5].layer).toBe(6)
-      expect(templates[5].id).toBe('heuristics:tool-usage.common')
-
-      // Layer 7 templates (all agentKind: '*')
-      expect(templates[6].layer).toBe(7)
-      expect(templates[7].layer).toBe(7)
-      expect(templates[8].layer).toBe(7)
-      expect(templates[9].layer).toBe(7)
-      expect(templates[10].layer).toBe(7)
-      expect(templates[11].layer).toBe(7)
-    })
-
-    it('returns Layer 1-7 templates for foreground + deepseek', () => {
-      const templates = registry.resolveTemplate('foreground', 'deepseek')
-
-      expect(templates.length).toBe(12)
-
-      expect(templates[0].layer).toBe(1)
-      expect(templates[0].id).toBe('platform:base')
-
-      expect(templates[1].layer).toBe(1)
-      expect(templates[1].id).toBe('platform:safety')
-
-      expect(templates[2].layer).toBe(2)
-      expect(templates[2].id).toBe('provider:deepseek')
-
-      expect(templates[3].layer).toBe(3)
-      expect(templates[3].id).toBe('agents:foreground')
-
-      expect(templates[4].layer).toBe(5)
-      expect(templates[4].id).toBe('persona:default')
-
-      expect(templates[5].layer).toBe(6)
-      expect(templates[5].id).toBe('heuristics:tool-usage.common')
-
-      // Layer 7 templates (all agentKind: '*')
-      expect(templates[6].layer).toBe(7)
-      expect(templates[7].layer).toBe(7)
-      expect(templates[8].layer).toBe(7)
-      expect(templates[9].layer).toBe(7)
-      expect(templates[10].layer).toBe(7)
-      expect(templates[11].layer).toBe(7)
-    })
-
-    it('returns Layer 1-7 templates for kernel + openai', () => {
-      const templates = registry.resolveTemplate('kernel', 'openai')
-
-      expect(templates.length).toBe(12)
-
-      expect(templates[0].layer).toBe(1)
-      expect(templates[0].id).toBe('platform:base')
-
-      expect(templates[1].layer).toBe(1)
-      expect(templates[1].id).toBe('platform:safety')
-
-      expect(templates[2].layer).toBe(2)
-      expect(templates[2].id).toBe('provider:openai')
-
-      expect(templates[3].layer).toBe(3)
-      expect(templates[3].id).toBe('agents:kernel')
-
-      expect(templates[4].layer).toBe(5)
-      expect(templates[4].id).toBe('persona:default')
-
-      expect(templates[5].layer).toBe(6)
-      expect(templates[5].id).toBe('heuristics:tool-usage.common')
-
-      // Layer 7 templates (all agentKind: '*')
-      expect(templates[6].layer).toBe(7)
-      expect(templates[7].layer).toBe(7)
-      expect(templates[8].layer).toBe(7)
-      expect(templates[9].layer).toBe(7)
-      expect(templates[10].layer).toBe(7)
-      expect(templates[11].layer).toBe(7)
+      const ids = templates.map((t) => t.id)
+      expect(ids).toContain('platform:base')
+      expect(ids).toContain('platform:safety')
+      expect(ids).toContain('provider:openai')
+      expect(ids).toContain('agentType:main')
+      expect(ids).toContain('agentProfile:default_main')
+      expect(ids).toContain('toolProjection:default')
+      expect(ids).toContain('runtimeContext:default')
     })
 
     it('returns templates sorted by layer', () => {
-      const templates = registry.resolveTemplate('foreground', 'openai')
+      const templates = registry.resolveSevenLayer({
+        agentType: 'main',
+        agentProfile: 'default_main',
+        providerFamily: 'openai',
+      })
 
       for (let i = 1; i < templates.length; i++) {
         expect(templates[i].layer).toBeGreaterThanOrEqual(templates[i - 1].layer)
       }
     })
 
-    it('returns Layer 1-7 templates for unknown agent kind', () => {
-      const templates = registry.resolveTemplate('unknown', 'openai')
-      expect(templates.length).toBe(11)
-      expect(templates[0].layer).toBe(1)
-      expect(templates[1].layer).toBe(1)
-      expect(templates[2].layer).toBe(2)
-      expect(templates[3].layer).toBe(5)
-      expect(templates[4].layer).toBe(6)
-      // Layer 7 templates
-      expect(templates[5].layer).toBe(7)
-      expect(templates[6].layer).toBe(7)
-      expect(templates[7].layer).toBe(7)
-      expect(templates[8].layer).toBe(7)
-      expect(templates[9].layer).toBe(7)
-      expect(templates[10].layer).toBe(7)
+    it('does not include removed agents:* templates', () => {
+      const templates = registry.resolveSevenLayer({
+        agentType: 'main',
+        agentProfile: 'default_main',
+        providerFamily: 'openai',
+      })
+
+      const ids = templates.map((t) => t.id)
+      expect(ids).not.toContain('agents:foreground')
+      expect(ids).not.toContain('agents:kernel')
+      expect(ids).not.toContain('agents:memory')
     })
   })
 
@@ -247,8 +162,8 @@ describe('prompt-template-registry', () => {
       expect(ids).toContain('platform:safety')
       expect(ids).toContain('provider:openai')
       expect(ids).toContain('provider:deepseek')
-      expect(ids).toContain('agents:foreground')
-      expect(ids).toContain('agents:kernel')
+      expect(ids).not.toContain('agents:foreground')
+      expect(ids).not.toContain('agents:kernel')
       expect(ids).not.toContain('output:foreground.schema')
       expect(ids).toContain('outputContract:planner.schema')
       expect(ids).toContain('persona:default')
@@ -260,7 +175,7 @@ describe('prompt-template-registry', () => {
       expect(ids).toContain('summary:long-term')
       expect(ids).toContain('summary:atomic-facts')
 
-      expect(ids.length).toBe(31)
+      expect(ids.length).toBe(38)
     })
   })
 
@@ -271,6 +186,12 @@ describe('prompt-template-registry', () => {
 
     it('returns false for missing template', () => {
       expect(registry.hasTemplate('nonexistent')).toBe(false)
+    })
+
+    it('returns false for removed agents:* templates', () => {
+      expect(registry.hasTemplate('agents:foreground')).toBe(false)
+      expect(registry.hasTemplate('agents:kernel')).toBe(false)
+      expect(registry.hasTemplate('agents:memory')).toBe(false)
     })
   })
 
@@ -283,14 +204,18 @@ describe('prompt-template-registry', () => {
 
     it('returns Layer 2 templates', () => {
       const templates = registry.getTemplatesByLayer(2)
-      expect(templates.length).toBe(2)
+      expect(templates.length).toBe(5)
       expect(templates.every((t) => t.layer === 2)).toBe(true)
     })
 
-    it('returns Layer 3 templates', () => {
+    it('returns Layer 3 templates (agentType only, no agents:*)', () => {
       const templates = registry.getTemplatesByLayer(3)
-      expect(templates.length).toBe(6)
+      expect(templates.length).toBe(5)
       expect(templates.every((t) => t.layer === 3)).toBe(true)
+      const ids = templates.map((t) => t.id)
+      expect(ids).not.toContain('agents:foreground')
+      expect(ids).not.toContain('agents:kernel')
+      expect(ids).not.toContain('agents:memory')
     })
 
     it('returns Layer 4 templates', () => {
@@ -301,7 +226,7 @@ describe('prompt-template-registry', () => {
 
     it('returns Layer 5 templates', () => {
       const templates = registry.getTemplatesByLayer(5)
-      expect(templates.length).toBe(8)
+      expect(templates.length).toBe(13)
       expect(templates.every((t) => t.layer === 5)).toBe(true)
     })
 
@@ -319,8 +244,8 @@ describe('prompt-template-registry', () => {
   })
 
   describe('PROMPT_TEMPLATE_REGISTRY constant', () => {
-    it('contains 31 templates', () => {
-      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(31)
+    it('contains 38 templates', () => {
+      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(38)
     })
 
     it('has all required templates', () => {
@@ -328,8 +253,8 @@ describe('prompt-template-registry', () => {
       expect(PROMPT_TEMPLATE_REGISTRY.has('platform:safety')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('provider:openai')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('provider:deepseek')).toBe(true)
-      expect(PROMPT_TEMPLATE_REGISTRY.has('agents:foreground')).toBe(true)
-      expect(PROMPT_TEMPLATE_REGISTRY.has('agents:kernel')).toBe(true)
+      expect(PROMPT_TEMPLATE_REGISTRY.has('agents:foreground')).toBe(false)
+      expect(PROMPT_TEMPLATE_REGISTRY.has('agents:kernel')).toBe(false)
       expect(PROMPT_TEMPLATE_REGISTRY.has('output:foreground.schema')).toBe(false)
       expect(PROMPT_TEMPLATE_REGISTRY.has('outputContract:planner.schema')).toBe(true)
       expect(PROMPT_TEMPLATE_REGISTRY.has('persona:default')).toBe(true)
@@ -346,7 +271,7 @@ describe('prompt-template-registry', () => {
   describe('createPromptTemplateRegistry', () => {
     it('creates registry with default templates', () => {
       const reg = createPromptTemplateRegistry()
-      expect(reg.getAllTemplateIds().length).toBe(31)
+      expect(reg.getAllTemplateIds().length).toBe(38)
     })
 
     it('creates registry with custom templates', () => {
