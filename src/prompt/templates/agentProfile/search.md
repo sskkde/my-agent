@@ -18,7 +18,7 @@ Description: Search capabilities profile for subagent or background use.
 - Risk Level: medium
 - Owner Scope: system
 - Allowed Agent Types: subagent, background
-- Default Tools: web_search, web_fetch, docs_search
+- Default Tools: web_search, docs_search
 
 ---
 

@@ -18,7 +18,7 @@ Description: Quick web search and summarization.
 - Risk Level: low
 - Owner Scope: system
 - Allowed Agent Types: subagent, background
-- Default Tools: web_search, web_fetch
+- Default Tools: web_search
 
 ---
 
