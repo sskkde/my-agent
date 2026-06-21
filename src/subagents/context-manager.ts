@@ -129,17 +129,6 @@ export async function buildSevenLayerModelInput(options: {
 
   const agentProfile = definition.agentProfile ?? definition.agentType
 
-  modelInputBuilder.registerAgentTemplate(`agents:${agentProfile}`, {
-    id: `agents:${agentProfile}`,
-    version: '2026-05-24',
-    path: `agents/${agentProfile}.md`,
-    agentKind: agentProfile,
-    providerFamily: '*',
-    layer: 3,
-    content: definition.description,
-    description: `${definition.displayName} agent template`,
-  })
-
   const input: ModelInputBuildInput = {
     mode: 'function_calling',
     agentType: 'subagent',

@@ -34,26 +34,10 @@ export class StaticPrefixBuilder {
    *
    * Uses seven-layer taxonomy resolution for deterministic ordering:
    * platform:base → provider:{provider} → agentType:{type} → outputContract:{contract}
-   *
-   * Falls back to legacy resolveTemplate when no taxonomy records match
-   * (backward compat for tests and agents without taxonomy registration).
    */
   async buildStaticPrefix(sevenLayerInput: SevenLayerInput): Promise<StaticPrefixResult> {
-    let templates = this.registry.resolveSevenLayer(sevenLayerInput)
-    let layer1to4 = templates.filter((t) => t.layer >= 1 && t.layer <= 4)
-
-    // Fallback: legacy resolveTemplate when no taxonomy records found for layers 3-4
-    if (!layer1to4.some((t) => t.layer === 3) && !layer1to4.some((t) => t.layer === 4)) {
-      const legacyAgentKind = sevenLayerInput.agentKind ?? sevenLayerInput.agentProfile
-      const legacyTemplates = this.registry.resolveTemplate(
-        legacyAgentKind,
-        sevenLayerInput.providerFamily,
-      )
-      const legacyLayer1to4 = legacyTemplates.filter((t) => t.layer >= 1 && t.layer <= 4)
-      const taxonomyLayers12 = layer1to4.filter((t) => t.layer <= 2)
-      const legacyLayers34 = legacyLayer1to4.filter((t) => t.layer >= 3)
-      layer1to4 = [...taxonomyLayers12, ...legacyLayers34]
-    }
+    const templates = this.registry.resolveSevenLayer(sevenLayerInput)
+    const layer1to4 = templates.filter((t) => t.layer >= 1 && t.layer <= 4)
 
     const templateVars = this.buildTemplateVars(sevenLayerInput)
     const parts: string[] = []

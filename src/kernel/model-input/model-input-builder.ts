@@ -106,10 +106,6 @@ export class ModelInputBuilder {
     }
   }
 
-  /**
-   * Resolve taxonomy fields from input, normalizing legacy agentKind if needed.
-   * Returns the resolved taxonomy plus the template resolution key for Segment A.
-   */
   private resolveTaxonomy(input: ModelInputBuildInput): {
     agentType: import('../../context/types.js').AgentType
     agentProfile: string
@@ -154,14 +150,12 @@ export class ModelInputBuilder {
   private async buildSegmentA(resolved: {
     agentType: import('../../context/types.js').AgentType
     agentProfile: string
-    agentKind: string
   }, input: ModelInputBuildInput) {
     const sevenLayerInput: SevenLayerInput = {
       agentType: resolved.agentType,
       agentProfile: resolved.agentProfile,
       providerFamily: input.providerFamily,
       outputContract: input.outputContract,
-      agentKind: resolved.agentKind,
     }
     return this.staticPrefixBuilder.buildStaticPrefix(sevenLayerInput)
   }

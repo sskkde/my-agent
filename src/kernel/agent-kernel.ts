@@ -282,11 +282,6 @@ export class AgentKernel {
           mode: 'function_calling',
           agentType: input.agentType,
           agentProfile: 'default_main',
-          // DEPRECATED (Task 9): 'kernel' is a legacy agentKind alias.
-          // The normalizer maps 'kernel' → { agentType: 'main', agentProfile: 'default_main' }.
-          // agentKind is kept here solely for template resolution (agents:kernel → agents/kernel.md).
-          // agents/kernel.md will be retired once new-stack parity tests pass.
-          agentKind: 'kernel',
           providerFamily: this.config.providerFamily ?? 'openai',
           contextBundle: contextBundleData,
           transcript: transcriptMessages,

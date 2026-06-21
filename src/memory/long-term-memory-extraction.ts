@@ -229,7 +229,7 @@ export function validateExtractedCandidate(
   }
 }
 
-/** Hardcoded fallback for buildLongTermMemoryExtractionPrompt when template loading fails */
+/** Hardcoded extraction prompt for PROMPT_MEMORY_P0_ENABLED=false. */
 const HARDCODED_EXTRACTION_PROMPT_BODY = `You are a memory extraction system. Analyze the following conversation and extract long-term memories.
 
 INSTRUCTIONS:
@@ -305,21 +305,8 @@ export async function buildLongTermMemoryExtractionPrompt(window: MemoryExtracti
 
   if (isPromptMemoryP0Enabled()) {
     const templateLoader = createTemplateLoader()
-    try {
-      stableRules = await templateLoader.load('agents:memory')
-    } catch (e) {
-      console.warn('[memory-extraction] Failed to load agents:memory template, using hardcoded fallback', e)
-      stableRules = HARDCODED_EXTRACTION_PROMPT_BODY
-    }
-    try {
-      schemaSection = await templateLoader.load('outputContract:memory-candidate.schema')
-    } catch (e) {
-      console.warn(
-        '[memory-extraction] Failed to load outputContract:memory-candidate.schema template, using hardcoded fallback',
-        e,
-      )
-      schemaSection = HARDCODED_SCHEMA_BODY
-    }
+    stableRules = await templateLoader.load('agentProfile:memory')
+    schemaSection = await templateLoader.load('outputContract:memory-candidate.schema')
     try {
       atomicFactsRules = await templateLoader.load('summary:atomic-facts')
     } catch (e) {
