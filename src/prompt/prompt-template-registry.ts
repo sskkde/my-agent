@@ -51,8 +51,6 @@ export interface SevenLayerInput {
   providerFamily: string
   /** Optional platform-owned output schema identifier */
   outputContract?: string
-  /** Legacy agent kind for backward-compatible template resolution (optional) */
-  agentKind?: string
 }
 
 // ─── Template Record ─────────────────────────────────────────────────────────
@@ -64,7 +62,7 @@ export interface PromptTemplateRecord {
   version: string
   /** File path relative to templates directory */
   path: string
-  /** Agent kind this template applies to ('*' for all). Legacy field for resolveTemplate(). */
+  /** Agent kind this template applies to ('*' for all). */
   agentKind: string
   /** Provider family this template applies to ('*' for all) */
   providerFamily: string
@@ -100,6 +98,7 @@ const PLATFORM_BASE_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 1,
   description: 'Platform base template with core identity and rules',
+  taxonomyLayer: 'platform',
 }
 
 const PLATFORM_SAFETY_TEMPLATE: PromptTemplateRecord = {
@@ -110,6 +109,7 @@ const PLATFORM_SAFETY_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 1,
   description: 'Platform safety template with security boundaries',
+  taxonomyLayer: 'platform',
 }
 
 const PROVIDER_OPENAI_TEMPLATE: PromptTemplateRecord = {
@@ -120,6 +120,7 @@ const PROVIDER_OPENAI_TEMPLATE: PromptTemplateRecord = {
   providerFamily: 'openai',
   layer: 2,
   description: 'OpenAI provider template with JSON mode and function calling',
+  taxonomyLayer: 'provider',
 }
 
 const PROVIDER_DEEPSEEK_TEMPLATE: PromptTemplateRecord = {
@@ -130,37 +131,43 @@ const PROVIDER_DEEPSEEK_TEMPLATE: PromptTemplateRecord = {
   providerFamily: 'deepseek',
   layer: 2,
   description: 'DeepSeek provider template with KV cache optimization',
+  taxonomyLayer: 'provider',
 }
 
-const AGENTS_FOREGROUND_TEMPLATE: PromptTemplateRecord = {
-  id: 'agents:foreground',
-  version: '2026-05-23',
-  path: 'agents/foreground.md',
-  agentKind: 'foreground',
-  providerFamily: '*',
-  layer: 3,
-  description: 'Foreground agent template for message routing',
+const PROVIDER_OLLAMA_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:ollama',
+  version: '2026-06-21',
+  path: 'provider/ollama.md',
+  agentKind: '*',
+  providerFamily: 'ollama',
+  layer: 2,
+  description: 'Ollama provider template for local model inference',
+  taxonomyLayer: 'provider',
 }
 
-const AGENTS_KERNEL_TEMPLATE: PromptTemplateRecord = {
-  id: 'agents:kernel',
-  version: '2026-05-23',
-  path: 'agents/kernel.md',
-  agentKind: 'kernel',
-  providerFamily: '*',
-  layer: 3,
-  description: 'Kernel agent template for execution engine',
+const PROVIDER_ANTHROPIC_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:anthropic',
+  version: '2026-06-21',
+  path: 'provider/anthropic.md',
+  agentKind: '*',
+  providerFamily: 'anthropic',
+  layer: 2,
+  description: 'Anthropic provider template for Claude model interaction',
+  taxonomyLayer: 'provider',
 }
 
-const AGENTS_MEMORY_TEMPLATE: PromptTemplateRecord = {
-  id: 'agents:memory',
-  version: '2026-05-24',
-  path: 'agents/memory.md',
-  agentKind: 'memory',
-  providerFamily: '*',
-  layer: 3,
-  description: 'Memory extraction prompt for long-term memory candidate extraction',
+const PROVIDER_GEMINI_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:gemini',
+  version: '2026-06-21',
+  path: 'provider/gemini.md',
+  agentKind: '*',
+  providerFamily: 'gemini',
+  layer: 2,
+  description: 'Gemini provider template for Google Gemini model interaction',
+  taxonomyLayer: 'provider',
 }
+
+
 
 const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
   id: 'persona:default',
@@ -170,6 +177,8 @@ const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 5,
   description: 'Default assistant persona with style guidelines and constraints',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: '*',
 }
 
 const HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE: PromptTemplateRecord = {
@@ -180,6 +189,7 @@ const HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 6,
   description: 'Common tool usage heuristics for tool selection policy',
+  taxonomyLayer: 'toolProjection',
 }
 
 const CONTEXT_MEMORY_USE_RULES_TEMPLATE: PromptTemplateRecord = {
@@ -190,6 +200,7 @@ const CONTEXT_MEMORY_USE_RULES_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Memory usage rules for context bundle policy',
+  taxonomyLayer: 'runtimeContext',
 }
 
 const SUMMARY_SESSION_TEMPLATE: PromptTemplateRecord = {
@@ -200,6 +211,7 @@ const SUMMARY_SESSION_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Session-level summary prompt for capturing decisions, actions, and state',
+  taxonomyLayer: 'runtimeContext',
 }
 
 const SUMMARY_DAILY_TEMPLATE: PromptTemplateRecord = {
@@ -210,6 +222,7 @@ const SUMMARY_DAILY_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Daily summary prompt for multi-session synthesis and patterns',
+  taxonomyLayer: 'runtimeContext',
 }
 
 const SUMMARY_WEEKLY_TEMPLATE: PromptTemplateRecord = {
@@ -220,6 +233,7 @@ const SUMMARY_WEEKLY_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Weekly summary prompt for high-level progress and strategic insights',
+  taxonomyLayer: 'runtimeContext',
 }
 
 const SUMMARY_LONG_TERM_TEMPLATE: PromptTemplateRecord = {
@@ -230,6 +244,7 @@ const SUMMARY_LONG_TERM_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Long-term profile prompt for user preferences, goals, and expertise',
+  taxonomyLayer: 'runtimeContext',
 }
 
 const SUMMARY_ATOMIC_FACTS_TEMPLATE: PromptTemplateRecord = {
@@ -240,9 +255,70 @@ const SUMMARY_ATOMIC_FACTS_TEMPLATE: PromptTemplateRecord = {
   providerFamily: '*',
   layer: 7,
   description: 'Atomic facts extraction prompt for independently-verifiable facts',
+  taxonomyLayer: 'runtimeContext',
 }
 
 // ── Seven-Layer Taxonomy Records ─────────────────────────────────────────────
+
+const AGENT_PROFILE_DOCUMENT_PROCESSOR_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:document_processor',
+  version: '2026-06-21',
+  path: 'agentProfile/document_processor.md',
+  agentKind: 'agentProfile:document_processor',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Document processor profile for text extraction, summarization, and analysis',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'document_processor',
+}
+
+const AGENT_PROFILE_IMAGE_PROCESSOR_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:image_processor',
+  version: '2026-06-21',
+  path: 'agentProfile/image_processor.md',
+  agentKind: 'agentProfile:image_processor',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Image processor profile for visual understanding, description, and analysis',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'image_processor',
+}
+
+const AGENT_PROFILE_DATA_PROCESSOR_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:data_processor',
+  version: '2026-06-21',
+  path: 'agentProfile/data_processor.md',
+  agentKind: 'agentProfile:data_processor',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Data processor profile for structured data conversion, analysis, and formatting',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'data_processor',
+}
+
+const AGENT_PROFILE_AUDIO_PROCESSOR_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:audio_processor',
+  version: '2026-06-21',
+  path: 'agentProfile/audio_processor.md',
+  agentKind: 'agentProfile:audio_processor',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Audio processor profile for transcription, analysis, and content extraction',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'audio_processor',
+}
+
+const AGENT_PROFILE_CODE_PROCESSOR_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:code_processor',
+  version: '2026-06-21',
+  path: 'agentProfile/code_processor.md',
+  agentKind: 'agentProfile:code_processor',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Code processor profile for analysis, refactoring suggestions, and generation',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'code_processor',
+}
 
 const AGENT_TYPE_MAIN_TEMPLATE: PromptTemplateRecord = {
   id: 'agentType:main',
@@ -278,6 +354,30 @@ const AGENT_TYPE_BACKGROUND_TEMPLATE: PromptTemplateRecord = {
   description: 'Background agent type template for async deferred tasks',
   taxonomyLayer: 'agentType',
   agentType: 'background',
+}
+
+const AGENT_TYPE_WORKFLOW_STEP_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentType:workflow_step',
+  version: '2026-06-21',
+  path: 'agentType/workflow_step.md',
+  agentKind: 'workflow_step',
+  providerFamily: '*',
+  layer: 3,
+  description: 'Workflow step agent type template for orchestrated pipeline execution',
+  taxonomyLayer: 'agentType',
+  agentType: 'workflow_step',
+}
+
+const AGENT_TYPE_REMOTE_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentType:remote',
+  version: '2026-06-21',
+  path: 'agentType/remote.md',
+  agentKind: 'remote',
+  providerFamily: '*',
+  layer: 3,
+  description: 'Remote agent type template for externally-delegated execution',
+  taxonomyLayer: 'agentType',
+  agentType: 'remote',
 }
 
 const OUTPUT_CONTRACT_PLANNER_SCHEMA_TEMPLATE: PromptTemplateRecord = {
@@ -435,14 +535,15 @@ const RUNTIME_CONTEXT_DEFAULT_TEMPLATE: PromptTemplateRecord = {
 }
 
 export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new Map([
-  // ── Legacy templates (backward compat) ──────────────────────────────────
+  // ── Platform & Provider templates ────────────────────────────────────────
   ['platform:base', PLATFORM_BASE_TEMPLATE],
   ['platform:safety', PLATFORM_SAFETY_TEMPLATE],
   ['provider:openai', PROVIDER_OPENAI_TEMPLATE],
   ['provider:deepseek', PROVIDER_DEEPSEEK_TEMPLATE],
-  ['agents:foreground', AGENTS_FOREGROUND_TEMPLATE],
-  ['agents:kernel', AGENTS_KERNEL_TEMPLATE],
-  ['agents:memory', AGENTS_MEMORY_TEMPLATE],
+  ['provider:ollama', PROVIDER_OLLAMA_TEMPLATE],
+  ['provider:anthropic', PROVIDER_ANTHROPIC_TEMPLATE],
+  ['provider:gemini', PROVIDER_GEMINI_TEMPLATE],
+  // ── Cross-cutting templates (taxonomy-tagged) ────────────────────────────
   ['persona:default', PERSONA_DEFAULT_TEMPLATE],
   ['heuristics:tool-usage.common', HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE],
   ['context:memory-use-rules', CONTEXT_MEMORY_USE_RULES_TEMPLATE],
@@ -455,6 +556,8 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['agentType:main', AGENT_TYPE_MAIN_TEMPLATE],
   ['agentType:subagent', AGENT_TYPE_SUBAGENT_TEMPLATE],
   ['agentType:background', AGENT_TYPE_BACKGROUND_TEMPLATE],
+  ['agentType:workflow_step', AGENT_TYPE_WORKFLOW_STEP_TEMPLATE],
+  ['agentType:remote', AGENT_TYPE_REMOTE_TEMPLATE],
   ['outputContract:planner.schema', OUTPUT_CONTRACT_PLANNER_SCHEMA_TEMPLATE],
   ['outputContract:memory-candidate.schema', OUTPUT_CONTRACT_MEMORY_CANDIDATE_SCHEMA_TEMPLATE],
   ['outputContract:search-evidence.schema', OUTPUT_CONTRACT_SEARCH_EVIDENCE_SCHEMA_TEMPLATE],
@@ -464,6 +567,11 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['agentProfile:planner', AGENT_PROFILE_PLANNER_TEMPLATE],
   ['agentProfile:memory', AGENT_PROFILE_MEMORY_TEMPLATE],
   ['agentProfile:search', AGENT_PROFILE_SEARCH_TEMPLATE],
+  ['agentProfile:document_processor', AGENT_PROFILE_DOCUMENT_PROCESSOR_TEMPLATE],
+  ['agentProfile:image_processor', AGENT_PROFILE_IMAGE_PROCESSOR_TEMPLATE],
+  ['agentProfile:data_processor', AGENT_PROFILE_DATA_PROCESSOR_TEMPLATE],
+  ['agentProfile:audio_processor', AGENT_PROFILE_AUDIO_PROCESSOR_TEMPLATE],
+  ['agentProfile:code_processor', AGENT_PROFILE_CODE_PROCESSOR_TEMPLATE],
   ['agentProfile:research_processor', AGENT_PROFILE_RESEARCH_PROCESSOR_TEMPLATE],
   ['agentProfile:search_processor', AGENT_PROFILE_SEARCH_PROCESSOR_TEMPLATE],
   ['toolProjection:default', TOOL_PROJECTION_DEFAULT_TEMPLATE],
@@ -497,30 +605,6 @@ export class PromptTemplateRegistry {
    */
   getTemplate(id: string): PromptTemplateRecord | undefined {
     return this.templates.get(id)
-  }
-
-  /**
-   * Resolves templates for a specific agent kind and provider family.
-   *
-   * Returns all matching templates sorted by layer number.
-   *
-   * @param agentKind - Agent kind (e.g., 'foreground', 'kernel')
-   * @param providerFamily - Provider family (e.g., 'openai', 'deepseek')
-   * @returns Array of resolved templates sorted by layer
-   */
-  resolveTemplate(agentKind: string, providerFamily: string): PromptTemplateRecord[] {
-    const matching: PromptTemplateRecord[] = []
-
-    for (const record of this.templates.values()) {
-      const agentKindMatches = record.agentKind === '*' || record.agentKind === agentKind
-      const providerFamilyMatches = record.providerFamily === '*' || record.providerFamily === providerFamily
-
-      if (agentKindMatches && providerFamilyMatches) {
-        matching.push(record)
-      }
-    }
-
-    return matching.sort((a, b) => a.layer - b.layer)
   }
 
   /**
@@ -574,8 +658,6 @@ export class PromptTemplateRegistry {
    *
    * Returns templates for all seven layers sorted by layer number.
    * Uses taxonomyLayer + agentType/agentProfile/outputContract fields for matching.
-   * Also includes legacy wildcard templates (persona:default, heuristics:*, context:*, summary:*)
-   * that don't have taxonomyLayer set but match by layer number and wildcard agentKind.
    *
    * @param input - Seven-layer resolution input
    * @returns Array of resolved templates sorted by layer
@@ -626,7 +708,7 @@ export class PromptTemplateRegistry {
       return this.matchesTaxonomyRecord(record, input)
     }
 
-    return this.matchesLegacyWildcard(record, input)
+    return false
   }
 
   private matchesTaxonomyRecord(record: PromptTemplateRecord, input: SevenLayerInput): boolean {
@@ -651,21 +733,7 @@ export class PromptTemplateRegistry {
     }
   }
 
-  private matchesLegacyWildcard(record: PromptTemplateRecord, _input: SevenLayerInput): boolean {
-    if (record.agentKind !== '*') return false
-
-    switch (record.layer) {
-      case 1:
-      case 2:
-      case 5:
-      case 6:
-      case 7:
-        return true
-      default:
-        return false
-    }
   }
-}
 
 export function createPromptTemplateRegistry(
   templates?: Map<string, PromptTemplateRecord>,
