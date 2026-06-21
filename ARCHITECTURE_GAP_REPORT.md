@@ -341,3 +341,81 @@ This report references implementation evidence from the following directories:
 **P0 Work Updated**: 2026-05-06  
 **P1 Work Updated**: 2026-05-06 (Task 10: consolidated smoke verification, evidence collection)  
 **Consolidated Smoke**: `.sisyphus/evidence/p0-5-p1/task-10-consolidated-smoke.txt`
+
+---
+
+## 10. Prompt Taxonomy Migration Gaps
+
+> **Added**: 2026-06-21
+> **Fixed**: 2026-06-21
+> **Scope**: Prompt template registry alignment with the seven-layer taxonomy (T1-T7). Tracks unresolved template IDs, legacy alias references, missing templates, and the no-legacy-fallback policy.
+> **Reference**: `docs/architecture/prompt-architecture-migration-spec.md`, `docs/architecture/AGENT_TAXONOMY_IMPLEMENTATION.md`
+
+### 10.1 Policy: No Legacy Fallback
+
+**All prompt IDs must migrate to the new taxonomy path. No compatibility shims, no legacy fallback branches, no dual-resolution.**
+
+Rationale: The legacy `agents:*` prefix and `agentKind`-based resolution are vestigial. Keeping them creates two resolution paths that drift silently. The `LEGACY_PROMPT_PATH_CLEANUP.md` (2026-06-01) already removed `prompt-builder.ts`, `prompt-registry.ts`, and four feature flags (`MODEL_INPUT_BUILDER_ENABLED`, `MODEL_INPUT_SHADOW_MODE`, `MODEL_INPUT_LEGACY_FALLBACK`, `FOREGROUND_DECIDE_LEGACY_FALLBACK`). The remaining legacy template IDs must follow the same trajectory: migrate to taxonomy IDs, then delete the legacy entries.
+
+Concrete rules:
+
+1. Every template ID must use `{taxonomyLayer}:{identifier}` format (e.g., `agentProfile:foreground`, not `agents:foreground`).
+2. `resolveSevenLayer()` is the sole resolution path. No `resolveByAgentKind()` fallback.
+3. Legacy IDs in `PROMPT_TEMPLATE_REGISTRY` are removed once all callers reference taxonomy IDs.
+4. Legacy `agents:*` template entries are deleted. Future taxonomy changes must add explicit `taxonomyLayer` records instead of fallback aliases.
+
+### 10.2 Prioritized Gap List
+
+#### P0 — Blocking taxonomy correctness
+
+| Gap ID | Issue | Evidence | Fix Required |
+|---|---|---|---|
+| TAX-P0-1 | **CLOSED — `subagent.*` unresolved template IDs migrated.** Processor profiles now use `agentProfile:*` IDs and matching registry/template entries exist. | `src/taxonomy/agent-profile-registry.ts`; `src/subagents/builtin-definitions.ts`; `src/prompt/templates/agentProfile/*.md`. | Closed by taxonomy migration tests: all `AgentProfile.promptTemplateIds` resolve. |
+| TAX-P0-2 | **CLOSED — legacy `agents:*` registry entries removed.** `PROMPT_TEMPLATE_REGISTRY` no longer registers `agents:foreground`, `agents:kernel`, or `agents:memory`. | `src/prompt/prompt-template-registry.ts`; deleted `src/prompt/templates/agents/*.md`. | Closed by registry tests asserting those IDs are absent and source grep showing no `agents:` prompt IDs. |
+| TAX-P0-3 | **CLOSED — `agents:kernel` decomposed.** Main behavior now resolves through `agentType:main` + `agentProfile:default_main`. | `src/prompt/templates/agentType/main.md`; `src/prompt/templates/agentProfile/default_main.md`; `src/kernel/model-input/static-prefix-builder.ts`. | Closed by model-input and taxonomy tests. |
+
+#### P1 — Missing taxonomy templates
+
+| Gap ID | Issue | Evidence | Fix Required |
+|---|---|---|---|
+| TAX-P1-1 | **CLOSED — `agentType:workflow_step` template added.** | `src/prompt/templates/agentType/workflow_step.md`; `src/prompt/prompt-template-registry.ts`. | Closed by taxonomy coverage tests. |
+| TAX-P1-2 | **CLOSED — `agentType:remote` template added.** | `src/prompt/templates/agentType/remote.md`; `src/prompt/prompt-template-registry.ts`. | Closed by taxonomy coverage tests. |
+| TAX-P1-3 | **CLOSED — processor `agentProfile` templates added.** | `src/prompt/templates/agentProfile/document_processor.md`, `image_processor.md`, `data_processor.md`, `audio_processor.md`, `code_processor.md`. | Closed by taxonomy coverage tests. |
+| TAX-P1-4 | **CLOSED — provider templates added for ollama, anthropic, and gemini.** | `src/prompt/templates/provider/ollama.md`; `anthropic.md`; `gemini.md`. | Closed by provider-family coverage tests. |
+
+#### P2 — Consistency and cleanup
+
+| Gap ID | Issue | Evidence | Fix Required |
+|---|---|---|---|
+| TAX-P2-1 | **CLOSED — `web_fetch` removed from search scope.** To avoid SSRF scope expansion, search/search_processor declarations and `SEARCH_CATEGORY_TOOL_IDS` now exclude `web_fetch`. Research profiles may still use `web_fetch` under broader research permissions. | `src/search/search-subagent-types.ts`; `src/taxonomy/agent-profile-registry.ts`; `src/subagents/builtin-definitions.ts`; `src/prompt/templates/agentProfile/search*.md`. | Closed by search scope tests and taxonomy migration tests. |
+| TAX-P2-2 | **Legacy `output:*` IDs coexist with `outputContract:*` IDs.** `output:planner.schema` and `output:memory-candidate.schema` are referenced in `AGENT_TAXONOMY_DRAFT.md` example profiles alongside the new `outputContract:planner.schema` and `outputContract:memory-candidate.schema` registry entries. | `AGENT_TAXONOMY_DRAFT.md:125,137` uses `output:*` format. `src/prompt/prompt-template-registry.ts:283-310` registers `outputContract:*` format. | Update `AGENT_TAXONOMY_DRAFT.md` examples to use `outputContract:*` format. Verify no code resolves `output:*` IDs. |
+| TAX-P2-3 | **`persona:default` is orphaned from taxonomy layers.** `persona:default` is registered at layer 5 but uses `persona:` prefix instead of `agentProfile:`. The migration spec says persona rendering uses `PersonaProjection`, not template resolution. | `src/prompt/prompt-template-registry.ts:165-173` registers `persona:default` at layer 5 with `agentKind: '*'`. | Decide whether `persona:default` should become `agentProfile:default` or remain a special-case template outside the taxonomy. Document the decision. |
+| TAX-P2-4 | **Legacy fallback removal incomplete in feature flags.** T5/T6/T7 consumption flags default to OFF. When they flip ON, the legacy `agents:*` entries must be deleted in the same PR. No tracking exists for this coordination. | `docs/architecture/prompt-architecture-migration-spec.md:289-293` defines the three flags. | Add a release checklist item: "When PROMPT_T*_TEMPLATE_CONSUMPTION_ENABLED flips ON, delete corresponding `agents:*` legacy entries in the same PR." |
+
+### 10.3 Evidence Summary
+
+| Source File | Lines | What It Shows |
+|---|---|---|
+| `src/prompt/prompt-template-registry.ts` | current | Full taxonomy registry: explicit `platform`, `provider`, `agentType`, `outputContract`, `agentProfile`, `toolProjection`, and `runtimeContext` records; no `agents:*` records. |
+| `src/taxonomy/agent-profile-registry.ts` | current | System profiles use taxonomy `agentProfile:*` and `outputContract:*` prompt IDs. |
+| `src/subagents/builtin-definitions.ts` | current | Built-in subagent definitions use `agentProfile:*` prompt IDs. |
+| `src/taxonomy/agent-label-normalizer.ts` | 72-76 | Maps legacy processor labels to `{agentType: 'subagent', agentProfile: '*'}` tuples |
+| `tests/unit/taxonomy/prompt-taxonomy-migration-gaps.test.ts` | current | Regression coverage: all profile IDs resolve, no legacy prefixes, all agent types/providers/profiles covered, search scope aligned. |
+| `docs/architecture/AGENT_TAXONOMY_IMPLEMENTATION.md` | 66-78 | Documents `kernel` decomposition plan across new layers |
+| `docs/reports/LEGACY_PROMPT_PATH_CLEANUP.md` | 79-85 | Documents four legacy feature flags already removed |
+
+### 10.4 Gap Closure Tracking (Taxonomy)
+
+| Gap ID | Status | Closing PR | Target Test |
+|---|---|---|---|
+| TAX-P0-1 | closed | local migration | `tests/unit/taxonomy/prompt-taxonomy-migration-gaps.test.ts` |
+| TAX-P0-2 | closed | local migration | Registry audit: no `agents:*` entries in `PROMPT_TEMPLATE_REGISTRY` |
+| TAX-P0-3 | closed | local migration | Model-input taxonomy tests |
+| TAX-P1-1 | closed | local migration | Registry entry exists for `agentType:workflow_step` |
+| TAX-P1-2 | closed | local migration | Registry entry exists for `agentType:remote` |
+| TAX-P1-3 | closed | local migration | Registry entries exist for all 5 processor profiles |
+| TAX-P1-4 | closed | local migration | Registry entries exist for `provider:ollama`, `provider:anthropic`, and `provider:gemini` |
+| TAX-P2-1 | closed | local migration | Search scope excludes `web_fetch`; profile defaults are scope subsets |
+| TAX-P2-2 | open | TBD | Documentation audit: `AGENT_TAXONOMY_DRAFT.md` uses `outputContract:*` format |
+| TAX-P2-3 | open | TBD | Decision documented: `persona:default` fate |
+| TAX-P2-4 | open | TBD | Release checklist item added for flag/legacy coordination |
