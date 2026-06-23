@@ -1,5 +1,7 @@
 # Agent Profile: Document Processor
 
+<agent_profile id="document_processor">
+
 ## Profile Identity
 
 Profile ID: `document_processor`
@@ -22,4 +24,4 @@ Description: Document processing: text extraction, summarization, analysis.
 
 ---
 
-**END OF AGENT PROFILE: DOCUMENT PROCESSOR TEMPLATE**
+</agent_profile>

@@ -1,5 +1,7 @@
 # OpenAI Provider Template
 
+<provider_openai>
+
 ## Provider Identity
 
 Provider Family: `openai`
@@ -26,4 +28,4 @@ When the current mode allows natural language:
 
 ---
 
-**END OF OPENAI PROVIDER TEMPLATE**
+</provider_openai>

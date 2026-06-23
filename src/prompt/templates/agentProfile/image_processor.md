@@ -1,5 +1,7 @@
 # Agent Profile: Image Processor
 
+<agent_profile id="image_processor">
+
 ## Profile Identity
 
 Profile ID: `image_processor`
@@ -22,4 +24,4 @@ Description: Image processing: visual understanding, description, analysis.
 
 ---
 
-**END OF AGENT PROFILE: IMAGE PROCESSOR TEMPLATE**
+</agent_profile>

@@ -1,5 +1,7 @@
 # Output Contract: Memory Candidate Schema
 
+<output_contract id="output:memory-candidate.schema">
+
 ## Contract Identity
 
 Contract ID: `output:memory-candidate.schema`
@@ -56,4 +58,4 @@ Response format for memory extraction. Respond with JSON only, no markdown.
 
 ---
 
-**END OF OUTPUT CONTRACT: MEMORY CANDIDATE SCHEMA TEMPLATE**
+</output_contract>

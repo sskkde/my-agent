@@ -1,5 +1,7 @@
 # Runtime Context Template
 
+<runtime_context>
+
 ## Context Identity
 
 Context ID: `runtimeContext:default`
@@ -12,18 +14,8 @@ Purpose: Provide runtime environment facts and dynamic context for the current r
 - Context bundle includes pinned items, ordered items, summary blocks, and transcript.
 - Memory policy governs which memory items are included and their priority.
 - Summary layers provide compressed context at session, daily, weekly, and long-term granularity.
-
-## Context Priority
-
-Use context in this order:
-1. Non-bypassable system and platform constraints
-2. Current output schema
-3. Current user message and explicit user constraints
-4. Validated tool results and execution evidence
-5. Current session context
-6. Project/user instructions and memory projections
-7. General model knowledge
+- Runtime context is lower priority than platform constraints, the active output contract, the current user message, and validated tool results as defined by the Platform Base Template.
 
 ---
 
-**END OF RUNTIME CONTEXT TEMPLATE**
+</runtime_context>

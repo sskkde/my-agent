@@ -1,5 +1,7 @@
 # DeepSeek Provider Template
 
+<provider_deepseek>
+
 ## Provider Identity
 
 Provider Family: `deepseek`
@@ -29,4 +31,4 @@ When the current mode requires JSON:
 
 ---
 
-**END OF DEEPSEEK PROVIDER TEMPLATE**
+</provider_deepseek>

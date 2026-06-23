@@ -1,5 +1,7 @@
 # Agent Profile: Memory
 
+<agent_profile id="memory">
+
 ## Profile Identity
 
 Profile ID: `memory`
@@ -52,4 +54,4 @@ Extract memories that should be stored long-term. You MUST respond with valid JS
 
 ---
 
-**END OF AGENT PROFILE: MEMORY TEMPLATE**
+</agent_profile>

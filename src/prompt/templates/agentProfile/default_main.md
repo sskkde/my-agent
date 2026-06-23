@@ -1,5 +1,7 @@
 # Agent Profile: Default Main
 
+<agent_profile id="default_main">
+
 ## Profile Identity
 
 Profile ID: `default_main`
@@ -47,4 +49,4 @@ For cancellation:
 
 ---
 
-**END OF AGENT PROFILE: DEFAULT MAIN TEMPLATE**
+</agent_profile>

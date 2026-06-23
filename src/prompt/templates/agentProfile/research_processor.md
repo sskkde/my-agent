@@ -1,5 +1,7 @@
 # Agent Profile: Research Processor
 
+<agent_profile id="research_processor">
+
 ## Profile Identity
 
 Profile ID: `research_processor`
@@ -22,4 +24,4 @@ Description: Deep research retrieval: multi-source aggregation, analysis, report
 
 ---
 
-**END OF AGENT PROFILE: RESEARCH PROCESSOR TEMPLATE**
+</agent_profile>

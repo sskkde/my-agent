@@ -1,5 +1,7 @@
 # Agent Profile: Code Processor
 
+<agent_profile id="code_processor">
+
 ## Profile Identity
 
 Profile ID: `code_processor`
@@ -22,4 +24,4 @@ Description: Code processing: analysis, refactoring suggestions, generation.
 
 ---
 
-**END OF AGENT PROFILE: CODE PROCESSOR TEMPLATE**
+</agent_profile>

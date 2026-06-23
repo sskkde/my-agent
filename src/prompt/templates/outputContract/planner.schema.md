@@ -1,5 +1,7 @@
 # Output Contract: Planner Schema
 
+<output_contract id="output:planner.schema">
+
 ## Contract Identity
 
 Contract ID: `output:planner.schema`
@@ -140,4 +142,4 @@ Contract Purpose: Define the JSON contract for PlannerAgent execution plans.
 
 ---
 
-**END OF OUTPUT CONTRACT: PLANNER SCHEMA TEMPLATE**
+</output_contract>

@@ -1,5 +1,7 @@
 # Agent Profile: Search
 
+<agent_profile id="search">
+
 ## Profile Identity
 
 Profile ID: `search`
@@ -22,4 +24,4 @@ Description: Search capabilities profile for subagent or background use.
 
 ---
 
-**END OF AGENT PROFILE: SEARCH TEMPLATE**
+</agent_profile>

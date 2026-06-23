@@ -1,5 +1,7 @@
 # Anthropic Provider Template
 
+<provider_anthropic>
+
 ## Provider Identity
 
 Provider Family: `anthropic`
@@ -32,4 +34,4 @@ When the current mode allows natural language:
 
 ---
 
-**END OF ANTHROPIC PROVIDER TEMPLATE**
+</provider_anthropic>

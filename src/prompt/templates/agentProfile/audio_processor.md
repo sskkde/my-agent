@@ -1,5 +1,7 @@
 # Agent Profile: Audio Processor
 
+<agent_profile id="audio_processor">
+
 ## Profile Identity
 
 Profile ID: `audio_processor`
@@ -22,4 +24,4 @@ Description: Audio processing: transcription, analysis, content extraction.
 
 ---
 
-**END OF AGENT PROFILE: AUDIO PROCESSOR TEMPLATE**
+</agent_profile>

@@ -1,5 +1,7 @@
 # Agent Profile: Planner
 
+<agent_profile id="planner">
+
 ## Profile Identity
 
 Profile ID: `planner`
@@ -22,4 +24,4 @@ Description: Task planning and orchestration profile.
 
 ---
 
-**END OF AGENT PROFILE: PLANNER TEMPLATE**
+</agent_profile>

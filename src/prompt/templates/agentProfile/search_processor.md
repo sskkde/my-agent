@@ -1,5 +1,7 @@
 # Agent Profile: Search Processor
 
+<agent_profile id="search_processor">
+
 ## Profile Identity
 
 Profile ID: `search_processor`
@@ -22,4 +24,4 @@ Description: Quick web search and summarization.
 
 ---
 
-**END OF AGENT PROFILE: SEARCH PROCESSOR TEMPLATE**
+</agent_profile>

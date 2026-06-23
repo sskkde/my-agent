@@ -1,5 +1,7 @@
 # Output Contract: Search Evidence Schema
 
+<output_contract id="output:search-evidence.schema">
+
 ## Contract Identity
 
 Contract ID: `output:search-evidence.schema`
@@ -19,4 +21,4 @@ See `output:search-evidence.schema` template for the full schema definition.
 
 ---
 
-**END OF OUTPUT CONTRACT: SEARCH EVIDENCE SCHEMA TEMPLATE**
+</output_contract>

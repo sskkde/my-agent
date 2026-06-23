@@ -1,5 +1,7 @@
 # Agent Profile: Data Processor
 
+<agent_profile id="data_processor">
+
 ## Profile Identity
 
 Profile ID: `data_processor`
@@ -22,4 +24,4 @@ Description: Structured data processing: conversion, analysis, formatting.
 
 ---
 
-**END OF AGENT PROFILE: DATA PROCESSOR TEMPLATE**
+</agent_profile>

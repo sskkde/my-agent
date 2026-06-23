@@ -1,5 +1,7 @@
 # Agent Type: Remote
 
+<agent_type id="remote">
+
 ## Type Identity
 
 Agent Type: `remote`
@@ -21,4 +23,4 @@ Runtime Class: Externally-delegated agent for remote service execution.
 
 ---
 
-**END OF AGENT TYPE: REMOTE TEMPLATE**
+</agent_type>

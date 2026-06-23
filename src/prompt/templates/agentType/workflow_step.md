@@ -1,5 +1,7 @@
 # Agent Type: Workflow Step
 
+<agent_type id="workflow_step">
+
 ## Type Identity
 
 Agent Type: `workflow_step`
@@ -21,4 +23,4 @@ Runtime Class: Pipeline agent for orchestrated multi-step workflow execution.
 
 ---
 
-**END OF AGENT TYPE: WORKFLOW STEP TEMPLATE**
+</agent_type>

@@ -1,5 +1,7 @@
 # Ollama Provider Template
 
+<provider_ollama>
+
 ## Provider Identity
 
 Provider Family: `ollama`
@@ -30,4 +32,4 @@ When the current mode allows natural language:
 
 ---
 
-**END OF OLLAMA PROVIDER TEMPLATE**
+</provider_ollama>

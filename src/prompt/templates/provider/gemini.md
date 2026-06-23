@@ -1,5 +1,7 @@
 # Gemini Provider Template
 
+<provider_gemini>
+
 ## Provider Identity
 
 Provider Family: `gemini`
@@ -31,4 +33,4 @@ When the current mode allows natural language:
 
 ---
 
-**END OF GEMINI PROVIDER TEMPLATE**
+</provider_gemini>
