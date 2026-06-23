@@ -11,6 +11,7 @@ import type {
   PersonaProjection,
   ToolSelectionPolicyProjection,
   MemoryPolicyProjection,
+  ProviderFamily,
 } from '../kernel/model-input/model-input-types.js'
 import type { AgentType } from '../context/types.js'
 import type { LaunchSource } from '../taxonomy/launch-source-policy.js'
@@ -31,7 +32,7 @@ export interface PromptProjectionResolveInput {
   /** Audit-only launch source */
   launchSource?: LaunchSource
   /** Provider family for provider-specific projection adjustments */
-  providerFamily?: string
+  providerFamily?: ProviderFamily
 }
 
 /**
@@ -62,7 +63,7 @@ export interface PromptProjectionResolver {
   /**
    * Resolve prompt projections based on input parameters.
    *
-   * @param input - Resolution parameters (currently empty, reserved for future use)
+   * @param input - Resolution parameters used for agent/profile/contract/provider-specific projections
    * @returns Promise resolving to projection objects
    */
   resolve(input: PromptProjectionResolveInput): Promise<PromptProjectionResolveResult>

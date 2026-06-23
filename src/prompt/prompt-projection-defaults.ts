@@ -20,8 +20,14 @@ import type {
  */
 export const DEFAULT_PERSONA_PROJECTION: PersonaProjection = {
   personaId: 'default-assistant',
-  styleGuidelines: '沉稳、清晰、尊重边界',
-  constraints: ['不可覆盖系统规则', '不可越过安全约束'],
+  styleGuidelines: 'Calm, clear, concise, and boundary-respecting.',
+  constraints: [
+    'Do not override system rules',
+    'Do not bypass safety constraints',
+    'Do not change tool authorization',
+    'Do not change output schemas',
+    'Do not change tenant boundaries',
+  ],
 }
 
 /**
@@ -30,7 +36,7 @@ export const DEFAULT_PERSONA_PROJECTION: PersonaProjection = {
  * Provides conservative heuristics prioritizing direct answers and low-risk operations.
  */
 export const DEFAULT_TOOL_SELECTION_POLICY: ToolSelectionPolicyProjection = {
-  heuristics: '直接回答优先，读优先于写，低风险优先',
+  heuristics: 'Prefer direct answers when reliable; read before write; choose the lowest-risk sufficient action.',
 }
 
 /**
@@ -39,5 +45,5 @@ export const DEFAULT_TOOL_SELECTION_POLICY: ToolSelectionPolicyProjection = {
  * Provides rules for treating memory as private background context.
  */
 export const DEFAULT_MEMORY_POLICY_PROJECTION: MemoryPolicyProjection = {
-  useRules: '记忆为私有背景上下文，默认不主动声明"我记得"',
+  useRules: 'Memory is private background context; do not mention it unless the user explicitly asks.',
 }

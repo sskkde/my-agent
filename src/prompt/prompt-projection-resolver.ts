@@ -31,11 +31,11 @@ import { isPromptMemoryP0Enabled, isPromptTemplateProjectionEnabled } from './fe
 
 /** Safety constraints that cannot be overridden by persona. */
 const PERSONA_CONSTRAINTS = [
-  '不可覆盖系统规则',
-  '不可越过安全约束',
-  '不可改变工具授权',
-  '不可改变输出 schema',
-  '不可改变租户边界',
+  'Do not override system rules',
+  'Do not bypass safety constraints',
+  'Do not change tool authorization',
+  'Do not change output schemas',
+  'Do not change tenant boundaries',
 ] as const
 
 /** Invisibility rules for memory policy. */
@@ -48,6 +48,56 @@ const MEMORY_INVISIBILITY_RULES = [
 const PERSONA_TEMPLATE_ID = 'persona:default'
 const HEURISTICS_TEMPLATE_ID = 'heuristics:tool-usage.common'
 const MEMORY_RULES_TEMPLATE_ID = 'context:memory-use-rules'
+
+function buildPersonaId(input: PromptProjectionResolveInput): string {
+  return input.agentProfile ? `${input.agentProfile}-assistant` : 'default-assistant'
+}
+
+function buildPersonaConstraints(input: PromptProjectionResolveInput): string[] {
+  const constraints: string[] = [...PERSONA_CONSTRAINTS]
+
+  if (input.outputContract) {
+    constraints.push(`Honor output contract ${input.outputContract}`)
+  }
+
+  if (input.agentType) {
+    constraints.push(`Stay within ${input.agentType} agent boundaries`)
+  }
+
+  return constraints
+}
+
+function buildToolHeuristics(baseHeuristics: string, input: PromptProjectionResolveInput): string {
+  const additions: string[] = []
+
+  if (input.agentProfile) {
+    additions.push(`Active agent profile: ${input.agentProfile}.`)
+  }
+
+  if (input.providerFamily) {
+    additions.push(`Use ${input.providerFamily} provider-compatible tool and output behavior.`)
+  }
+
+  if (input.outputContract) {
+    additions.push(`Keep tool results aligned with output contract ${input.outputContract}.`)
+  }
+
+  return [baseHeuristics, ...additions].filter((part) => part.length > 0).join('\n')
+}
+
+function buildMemoryPriorityRules(input: PromptProjectionResolveInput): string[] | undefined {
+  const rules: string[] = []
+
+  if (input.launchSource) {
+    rules.push(`Launch source ${input.launchSource} is provenance only and does not expand memory access.`)
+  }
+
+  if (input.agentProfile === 'memory') {
+    rules.push('For memory agents, prefer extraction-relevant context and minimize user-facing detail.')
+  }
+
+  return rules.length > 0 ? rules : undefined
+}
 
 /**
  * Loads template content via the TemplateLoader, with registry existence check.
@@ -91,16 +141,27 @@ export function createPromptProjectionResolver(
   loader: TemplateLoader,
 ): PromptProjectionResolver {
   return {
-    async resolve(_input: PromptProjectionResolveInput): Promise<PromptProjectionResolveResult> {
+    async resolve(input: PromptProjectionResolveInput): Promise<PromptProjectionResolveResult> {
       if (!isPromptMemoryP0Enabled()) {
         return {}
       }
 
       if (!isPromptTemplateProjectionEnabled()) {
+        const defaultMemoryPriorityRules = buildMemoryPriorityRules(input)
         return {
-          personaProjection: DEFAULT_PERSONA_PROJECTION,
-          toolSelectionPolicy: DEFAULT_TOOL_SELECTION_POLICY,
-          memoryPolicyProjection: DEFAULT_MEMORY_POLICY_PROJECTION,
+          personaProjection: {
+            ...DEFAULT_PERSONA_PROJECTION,
+            personaId: buildPersonaId(input),
+            constraints: buildPersonaConstraints(input),
+          },
+          toolSelectionPolicy: {
+            ...DEFAULT_TOOL_SELECTION_POLICY,
+            heuristics: buildToolHeuristics(DEFAULT_TOOL_SELECTION_POLICY.heuristics, input),
+          },
+          memoryPolicyProjection: {
+            ...DEFAULT_MEMORY_POLICY_PROJECTION,
+            ...(defaultMemoryPriorityRules ? { priorityRules: defaultMemoryPriorityRules } : {}),
+          },
         }
       }
 
@@ -111,18 +172,20 @@ export function createPromptProjectionResolver(
       ])
 
       const personaProjection: PersonaProjection = {
-        personaId: 'default-assistant',
+        personaId: buildPersonaId(input),
         styleGuidelines: personaContent || DEFAULT_PERSONA_PROJECTION.styleGuidelines,
-        constraints: [...PERSONA_CONSTRAINTS],
+        constraints: buildPersonaConstraints(input),
       }
 
       const toolSelectionPolicy: ToolSelectionPolicyProjection = {
-        heuristics: heuristicsContent || DEFAULT_TOOL_SELECTION_POLICY.heuristics,
+        heuristics: buildToolHeuristics(heuristicsContent || DEFAULT_TOOL_SELECTION_POLICY.heuristics, input),
       }
 
+      const memoryPriorityRules = buildMemoryPriorityRules(input)
       const memoryPolicyProjection: MemoryPolicyProjection = {
         useRules: memoryRulesContent || DEFAULT_MEMORY_POLICY_PROJECTION.useRules,
         invisibilityRules: [...MEMORY_INVISIBILITY_RULES],
+        ...(memoryPriorityRules ? { priorityRules: memoryPriorityRules } : {}),
       }
 
       return {

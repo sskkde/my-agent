@@ -34,15 +34,19 @@ export function isToolLoopV2Enabled(): boolean {
 
 // ---------------------------------------------------------------------------
 // Prompt Migration Feature Flags (T5–T7 templates)
-// T5–T7 template consumption remains gated for rollout safety.
+// T5–T7 template consumption defaults to ON and can be explicitly disabled.
 // ---------------------------------------------------------------------------
+
+function isEnabledUnlessExplicitlyFalse(value: string | undefined): boolean {
+  return value !== 'false'
+}
 
 /**
  * Check if T5 agentProfile template consumption is enabled.
  * Controls T5 template rendering in Segment B.
  */
 export function isPromptT5TemplateConsumptionEnabled(): boolean {
-  return process.env.PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED === 'true'
+  return isEnabledUnlessExplicitlyFalse(process.env.PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED)
 }
 
 /**
@@ -50,7 +54,7 @@ export function isPromptT5TemplateConsumptionEnabled(): boolean {
  * Controls T6 template rendering in Segment C.
  */
 export function isPromptT6TemplateConsumptionEnabled(): boolean {
-  return process.env.PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED === 'true'
+  return isEnabledUnlessExplicitlyFalse(process.env.PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED)
 }
 
 /**
@@ -58,5 +62,5 @@ export function isPromptT6TemplateConsumptionEnabled(): boolean {
  * Controls T7 template rendering in Segment D.
  */
 export function isPromptT7TemplateConsumptionEnabled(): boolean {
-  return process.env.PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED === 'true'
+  return isEnabledUnlessExplicitlyFalse(process.env.PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED)
 }
