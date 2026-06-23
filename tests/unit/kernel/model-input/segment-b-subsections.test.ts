@@ -118,7 +118,7 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
       )
 
       const b2Index = result.segments.tenantProject.indexOf('Routing rules.')
-      const b3Index = result.segments.tenantProject.indexOf('风格指南')
+      const b3Index = result.segments.tenantProject.indexOf('Style Guidelines')
 
       expect(b2Index).toBeGreaterThanOrEqual(0)
       expect(b3Index).toBeGreaterThanOrEqual(0)
@@ -139,7 +139,7 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
       )
 
       const b1Index = result.segments.tenantProject.indexOf('Core instructions.')
-      const b3Index = result.segments.tenantProject.indexOf('风格指南')
+      const b3Index = result.segments.tenantProject.indexOf('Style Guidelines')
 
       expect(b1Index).toBeGreaterThanOrEqual(0)
       expect(b3Index).toBeGreaterThanOrEqual(0)
@@ -258,7 +258,7 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
         }),
       )
 
-      const SAFETY_PREFIX = '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界'
+      const SAFETY_PREFIX = 'Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.'
       expect(result.segments.tenantProject).toContain(SAFETY_PREFIX)
 
       // Safety prefix should appear before the style guidelines
@@ -270,6 +270,7 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
 
   describe('Segment B empty sub-sections', () => {
     it('Segment B is empty when all sub-sections are absent', async () => {
+      setFlag('PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED', false)
       const builder = makeBuilder()
       const result = await builder.build(makeMinimalInput())
 
@@ -277,6 +278,7 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
     })
 
     it('Segment B contains only B1 when B2/B3 absent', async () => {
+      setFlag('PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED', false)
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -303,7 +305,7 @@ describe('Segment B Sub-Sections (B1/B2/B3)', () => {
       )
 
       expect(result.segments.tenantProject).toContain('Only persona.')
-      expect(result.segments.tenantProject).toContain('风格指南')
+      expect(result.segments.tenantProject).toContain('Style Guidelines')
     })
   })
 

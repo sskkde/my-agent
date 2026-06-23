@@ -444,9 +444,9 @@ describe('Prompt Template Runtime - Hash Stability & Flag Interaction Matrix', (
       expect(projections.memoryPolicyProjection).toBeDefined()
 
       expect(projections.personaProjection!.personaId).toBe('default-assistant')
-      expect(projections.personaProjection!.styleGuidelines).toBe('沉稳、清晰、尊重边界')
-      expect(projections.toolSelectionPolicy!.heuristics).toBe('直接回答优先，读优先于写，低风险优先')
-      expect(projections.memoryPolicyProjection!.useRules).toBe('记忆为私有背景上下文，默认不主动声明"我记得"')
+      expect(projections.personaProjection!.styleGuidelines).toBe('Calm, clear, concise, and boundary-respecting.')
+      expect(projections.toolSelectionPolicy!.heuristics).toBe('Prefer direct answers when reliable; read before write; choose the lowest-risk sufficient action.')
+      expect(projections.memoryPolicyProjection!.useRules).toBe('Memory is private background context; do not mention it unless the user explicitly asks.')
 
       const builder = makeBuilder()
       clearFlagEnv()

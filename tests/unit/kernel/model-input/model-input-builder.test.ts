@@ -645,9 +645,9 @@ describe('PM-7: Three strategy projections render together', () => {
     )
 
     // Segment B contains persona content (rendered by renderPersonaProjection)
-    expect(result.segments.tenantProject).toContain('风格指南')
+    expect(result.segments.tenantProject).toContain('Style Guidelines')
     expect(result.segments.tenantProject).toContain('Be concise and professional.')
-    expect(result.segments.tenantProject).toContain('约束条件')
+    expect(result.segments.tenantProject).toContain('Constraints')
     expect(result.segments.tenantProject).toContain('No jargon')
 
     // Segment C contains tool selection policy (rendered by renderToolSelectionPolicy)

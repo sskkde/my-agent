@@ -171,8 +171,7 @@ describe('T5/T6/T7 Template Consumption', () => {
       expect(result.segments.tenantProject).toContain('You are a helpful assistant.')
     })
 
-    it('T5 agentProfile content is absent from Segment B when flag env is undefined (default OFF)', async () => {
-      // No flag set at all - should default to OFF
+    it('T5 agentProfile content appears in Segment B when flag env is undefined (default ON)', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -180,7 +179,7 @@ describe('T5/T6/T7 Template Consumption', () => {
         }),
       )
 
-      expect(result.segments.tenantProject).not.toContain('Foreground agent profile instructions')
+      expect(result.segments.tenantProject).toContain('Foreground agent profile instructions')
       expect(result.segments.tenantProject).toContain('System prompt text.')
     })
 
@@ -241,7 +240,7 @@ describe('T5/T6/T7 Template Consumption', () => {
       )
 
       const t5Index = result.segments.tenantProject.indexOf('Foreground agent profile instructions')
-      const b3Index = result.segments.tenantProject.indexOf('风格指南')
+      const b3Index = result.segments.tenantProject.indexOf('Style Guidelines')
 
       expect(t5Index).toBeGreaterThanOrEqual(0)
       expect(b3Index).toBeGreaterThanOrEqual(0)
@@ -261,11 +260,10 @@ describe('T5/T6/T7 Template Consumption', () => {
 
       expect(result.segments.toolPlane).not.toContain('Tool usage heuristics')
       expect(result.segments.toolPlane).not.toContain('prefer read-only tools first')
-      // Tool IDs should still be present
       expect(result.segments.toolPlane).toContain('file_read')
     })
 
-    it('T6 content absent when flag env is undefined (default OFF)', async () => {
+    it('T6 content appears when flag env is undefined (default ON)', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -273,7 +271,7 @@ describe('T5/T6/T7 Template Consumption', () => {
         }),
       )
 
-      expect(result.segments.toolPlane).not.toContain('Tool usage heuristics')
+      expect(result.segments.toolPlane).toContain('Tool usage heuristics')
       expect(result.segments.toolPlane).toContain('web_search')
     })
   })
@@ -324,7 +322,7 @@ describe('T5/T6/T7 Template Consumption', () => {
       expect(result.segments.contextBundle).toContain('Hello')
     })
 
-    it('T7 content absent when flag env is undefined (default OFF)', async () => {
+    it('T7 content appears when flag env is undefined (default ON)', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -332,7 +330,7 @@ describe('T5/T6/T7 Template Consumption', () => {
         }),
       )
 
-      expect(result.segments.contextBundle).not.toContain('Runtime context rules')
+      expect(result.segments.contextBundle).toContain('Runtime context rules')
     })
   })
 

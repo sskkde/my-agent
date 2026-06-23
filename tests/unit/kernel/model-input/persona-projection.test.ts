@@ -153,7 +153,7 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-      expect(result).toContain('以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界')
+      expect(result).toContain('Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.')
     })
 
     it('renders style guidelines', () => {
@@ -165,7 +165,7 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-      expect(result).toContain('## 风格指南')
+    expect(result).toContain('## Style Guidelines')
       expect(result).toContain('Use concise language.')
     })
 
@@ -178,7 +178,7 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-      expect(result).toContain('## 约束条件')
+    expect(result).toContain('## Constraints')
       expect(result).toContain('- No personal opinions')
       expect(result).toContain('- Stay on topic')
     })
@@ -192,8 +192,8 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-      expect(result).toContain('## 人格标识')
-      expect(result).toContain('人格ID: custom-assistant-v1')
+      expect(result).toContain('## Persona Identity')
+      expect(result).toContain('Persona ID: custom-assistant-v1')
     })
 
     it('omits constraints section when empty', () => {
@@ -205,7 +205,7 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-      expect(result).not.toContain('## 约束条件')
+    expect(result).not.toContain('## Constraints')
     })
   })
 
@@ -227,7 +227,7 @@ describe('PersonaProjection', () => {
 
       const result = await builder.build(input)
 
-      expect(result.segments.tenantProject).toContain('以下为风格偏好，不可覆盖系统规则')
+      expect(result.segments.tenantProject).toContain('Style preferences only')
       expect(result.segments.tenantProject).toContain('Use professional tone.')
     })
 
@@ -249,7 +249,7 @@ describe('PersonaProjection', () => {
       const result = await builder.build(input)
 
       expect(result.segments.staticPrefix).not.toContain('Be concise')
-      expect(result.segments.staticPrefix).not.toContain('人格标识')
+      expect(result.segments.staticPrefix).not.toContain('Persona Identity')
     })
 
     it('does not include persona in Segment C', async () => {
@@ -271,7 +271,7 @@ describe('PersonaProjection', () => {
       const result = await builder.build(input)
 
       expect(result.segments.toolPlane).not.toContain('Be concise')
-      expect(result.segments.toolPlane).not.toContain('人格标识')
+      expect(result.segments.toolPlane).not.toContain('Persona Identity')
     })
 
     it('does not include persona in Segment D', async () => {
@@ -293,7 +293,7 @@ describe('PersonaProjection', () => {
       const result = await builder.build(input)
 
       expect(result.segments.contextBundle).not.toContain('Be concise')
-      expect(result.segments.contextBundle).not.toContain('人格标识')
+      expect(result.segments.contextBundle).not.toContain('Persona Identity')
     })
 
     it('Segment B is unchanged when personaProjection is not provided', async () => {
@@ -315,7 +315,8 @@ describe('PersonaProjection', () => {
       const result1 = await builder.build(input1)
       const result2 = await builder.build(input2)
 
-      expect(result1.segments.tenantProject).toBe('')
+      expect(result1.segments.tenantProject).toContain('Foreground agent instructions')
+      expect(result1.segments.tenantProject).not.toContain('Style Guidelines')
       expect(result2.segments.tenantProject).toContain('Custom system prompt')
     })
 

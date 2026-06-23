@@ -47,7 +47,12 @@ describe('feature-flags', () => {
       }
     })
 
-    it('returns false when PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED is not set', () => {
+    it('returns true when PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED is not set', () => {
+      expect(isPromptT5TemplateConsumptionEnabled()).toBe(true)
+    })
+
+    it('returns false when PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED is set to "false"', () => {
+      process.env.PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED = 'false'
       expect(isPromptT5TemplateConsumptionEnabled()).toBe(false)
     })
 
@@ -72,7 +77,12 @@ describe('feature-flags', () => {
       }
     })
 
-    it('returns false when PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED is not set', () => {
+    it('returns true when PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED is not set', () => {
+      expect(isPromptT6TemplateConsumptionEnabled()).toBe(true)
+    })
+
+    it('returns false when PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED is set to "false"', () => {
+      process.env.PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED = 'false'
       expect(isPromptT6TemplateConsumptionEnabled()).toBe(false)
     })
 
@@ -97,7 +107,12 @@ describe('feature-flags', () => {
       }
     })
 
-    it('returns false when PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED is not set', () => {
+    it('returns true when PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED is not set', () => {
+      expect(isPromptT7TemplateConsumptionEnabled()).toBe(true)
+    })
+
+    it('returns false when PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED is set to "false"', () => {
+      process.env.PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED = 'false'
       expect(isPromptT7TemplateConsumptionEnabled()).toBe(false)
     })
 

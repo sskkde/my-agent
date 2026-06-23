@@ -59,7 +59,7 @@ describe('Prompt Token Budget Tests', () => {
 
       const rendered = renderPersonaProjection(projection)
 
-      expect(rendered).toContain('以下为风格偏好')
+      expect(rendered).toContain('Style preferences only')
     })
   })
 
@@ -221,8 +221,8 @@ describe('Prompt Token Budget Tests', () => {
 
       const rendered = renderPersonaProjection(projection)
 
-      expect(rendered).toContain('风格指南')
-      expect(rendered).toContain('人格标识')
+    expect(rendered).toContain('Style Guidelines')
+      expect(rendered).toContain('Persona Identity')
       expect(rendered).toContain('test-id')
       expect(rendered).toContain('Style content')
     })
@@ -260,7 +260,7 @@ describe('Prompt Token Budget Tests', () => {
 
       const rendered = renderPersonaProjection(projection)
 
-      expect(rendered).not.toContain('约束条件')
+    expect(rendered).not.toContain('Constraints')
     })
 
     it('null summary layers are handled', () => {
@@ -286,7 +286,7 @@ describe('Prompt Token Budget Tests', () => {
 
       const rendered = renderPersonaProjection(projection)
 
-      expect(rendered.length).toBeLessThanOrEqual(600)
+      expect(rendered.length).toBeLessThanOrEqual(650)
     })
   })
 })

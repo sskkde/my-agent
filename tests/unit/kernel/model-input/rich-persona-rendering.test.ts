@@ -250,7 +250,7 @@ describe('Unified Rich Persona Profile', () => {
       const rendered = renderPersonaProjection(projection)
 
       // Safety framing must be present
-      expect(rendered).toContain('以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界')
+    expect(rendered).toContain('Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.')
 
       // sourceProfile rich fields should be rendered in B3
       expect(rendered).toContain('Code Helper')
@@ -306,7 +306,7 @@ describe('Unified Rich Persona Profile', () => {
     it('nonOverridableConstraints are rendered with safety prefix (not as persona preferences)', () => {
       // Non-overridable constraints are platform-enforced and should be
       // rendered alongside the safety prefix, not as user-overridable preferences
-      const SAFETY_PREFIX = '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界'
+    const SAFETY_PREFIX = 'Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.'
 
       // This documents the contract: nonOverridableConstraints belong in the
       // safety-prefixed section, not in the user preference section
@@ -314,7 +314,7 @@ describe('Unified Rich Persona Profile', () => {
 
       // The safety prefix should always be present
       expect(SAFETY_PREFIX).toBeDefined()
-      expect(SAFETY_PREFIX).toContain('不可覆盖')
+    expect(SAFETY_PREFIX).toContain('cannot override')
 
       // Constraints should be rendered as part of the safety section
       expect(constraints).toHaveLength(2)

@@ -34,6 +34,22 @@ describe('resolveProviderFamily', () => {
     expect(resolveProviderFamily('openrouter')).toBe('openai')
   })
 
+  it('returns anthropic for anthropic provider', () => {
+    expect(resolveProviderFamily('anthropic')).toBe('anthropic')
+  })
+
+  it('returns anthropic for claude model strings', () => {
+    expect(resolveProviderFamily('claude-3-5-sonnet')).toBe('anthropic')
+  })
+
+  it('returns gemini for gemini provider', () => {
+    expect(resolveProviderFamily('gemini')).toBe('gemini')
+  })
+
+  it('returns gemini for google provider strings', () => {
+    expect(resolveProviderFamily('google/gemini-1.5-pro')).toBe('gemini')
+  })
+
   it('returns openai for gpt-4o-mini (model string)', () => {
     expect(resolveProviderFamily('gpt-4o-mini')).toBe('openai')
   })

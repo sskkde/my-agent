@@ -124,6 +124,31 @@ describe('PromptProjectionResolver', () => {
       expect(loader.load).not.toHaveBeenCalled()
     })
 
+    it('uses resolve input for profile, provider, contract, type, and launch source', async () => {
+      process.env.PROMPT_MEMORY_P0_ENABLED = 'true'
+      process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED = 'false'
+
+      const registry = createMockRegistry(true)
+      const loader = createMockLoader({})
+      const resolver = createPromptProjectionResolver(registry, loader)
+
+      const result = await resolver.resolve({
+        agentType: 'background',
+        agentProfile: 'memory',
+        outputContract: 'output:memory-candidate.schema',
+        providerFamily: 'gemini',
+        launchSource: 'background_subagent',
+      })
+
+      expect(result.personaProjection?.personaId).toBe('memory-assistant')
+      expect(result.personaProjection?.constraints).toContain('Honor output contract output:memory-candidate.schema')
+      expect(result.personaProjection?.constraints).toContain('Stay within background agent boundaries')
+      expect(result.toolSelectionPolicy?.heuristics).toContain('Active agent profile: memory.')
+      expect(result.toolSelectionPolicy?.heuristics).toContain('Use gemini provider-compatible tool and output behavior.')
+      expect(result.memoryPolicyProjection?.priorityRules).toContain('Launch source background_subagent is provenance only and does not expand memory access.')
+      expect(result.memoryPolicyProjection?.priorityRules).toContain('For memory agents, prefer extraction-relevant context and minimize user-facing detail.')
+    })
+
     it('should match hardcoded fallback values', async () => {
       process.env.PROMPT_MEMORY_P0_ENABLED = 'true'
       process.env.PROMPT_TEMPLATE_PROJECTION_ENABLED = 'false'
@@ -134,12 +159,17 @@ describe('PromptProjectionResolver', () => {
 
       const result = await resolver.resolve({})
 
-      // Verify exact hardcoded values
       expect(result.personaProjection?.personaId).toBe('default-assistant')
-      expect(result.personaProjection?.styleGuidelines).toBe('沉稳、清晰、尊重边界')
-      expect(result.personaProjection?.constraints).toEqual(['不可覆盖系统规则', '不可越过安全约束'])
-      expect(result.toolSelectionPolicy?.heuristics).toBe('直接回答优先，读优先于写，低风险优先')
-      expect(result.memoryPolicyProjection?.useRules).toBe('记忆为私有背景上下文，默认不主动声明"我记得"')
+      expect(result.personaProjection?.styleGuidelines).toBe('Calm, clear, concise, and boundary-respecting.')
+      expect(result.personaProjection?.constraints).toEqual([
+        'Do not override system rules',
+        'Do not bypass safety constraints',
+        'Do not change tool authorization',
+        'Do not change output schemas',
+        'Do not change tenant boundaries',
+      ])
+      expect(result.toolSelectionPolicy?.heuristics).toBe('Prefer direct answers when reliable; read before write; choose the lowest-risk sufficient action.')
+      expect(result.memoryPolicyProjection?.useRules).toBe('Memory is private background context; do not mention it unless the user explicitly asks.')
     })
   })
 
@@ -199,11 +229,11 @@ describe('PromptProjectionResolver', () => {
       const result = await resolver.resolve({})
 
       expect(result.personaProjection?.constraints).toEqual([
-        '不可覆盖系统规则',
-        '不可越过安全约束',
-        '不可改变工具授权',
-        '不可改变输出 schema',
-        '不可改变租户边界',
+        'Do not override system rules',
+        'Do not bypass safety constraints',
+        'Do not change tool authorization',
+        'Do not change output schemas',
+        'Do not change tenant boundaries',
       ])
     })
 
@@ -389,7 +419,7 @@ describe('PromptProjectionResolver', () => {
         personaProjection: result.personaProjection,
       })
 
-      expect(built.segments.tenantProject).toContain('风格指南')
+      expect(built.segments.tenantProject).toContain('Style Guidelines')
       expect(built.segments.tenantProject).toContain(DEFAULT_PERSONA_PROJECTION.styleGuidelines)
       expect(built.segments.staticPrefix).not.toContain(DEFAULT_PERSONA_PROJECTION.styleGuidelines)
     })
@@ -482,7 +512,7 @@ describe('PromptProjectionResolver', () => {
         currentUserMessage: 'Hello',
       })
 
-      expect(built.segments.tenantProject).not.toContain('风格指南')
+      expect(built.segments.tenantProject).not.toContain('Style Guidelines')
       expect(built.segments.toolPlane).not.toContain('Tool Selection Policy:')
       expect(built.segments.contextBundle).not.toContain('Memory Policy')
     })
