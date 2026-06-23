@@ -11,7 +11,7 @@ import type {
   CompactTriggerResult,
   InternalToolHandler,
 } from './types.js'
-import type { ModelInputBuildInput } from './model-input/model-input-types.js'
+import { resolveProviderFamily, type ModelInputBuildInput } from './model-input/model-input-types.js'
 import { projectBundleToData } from './model-input/context-bundle-adapter.js'
 import { extractToolsForRequest } from './model-input/model-input-builder.js'
 import { isPromptMemoryP0Enabled, isToolLoopV2Enabled } from '../prompt/feature-flags.js'
@@ -258,7 +258,7 @@ export class AgentKernel {
     if (isPromptMemoryP0Enabled() && this.config.promptProjectionResolver) {
       const projectionResult = await this.config.promptProjectionResolver.resolve({
         agentType: input.agentType,
-        providerFamily: this.config.providerFamily ?? 'openai',
+        providerFamily: resolveProviderFamily(this.config.providerFamily),
       })
       if (toolSelectionPolicy === undefined) {
         toolSelectionPolicy = projectionResult.toolSelectionPolicy

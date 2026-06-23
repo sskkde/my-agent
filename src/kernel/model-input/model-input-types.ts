@@ -27,6 +27,8 @@ import type { LaunchSource } from '../../taxonomy/launch-source-policy.js'
  */
 export type ModelInputMode = 'routing_json' | 'routing_tool_call' | 'structured_json' | 'function_calling'
 
+export type ProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini'
+
 // ─── Input Types ─────────────────────────────────────────────────────────────
 
 /**
@@ -162,16 +164,16 @@ export interface ContextBundleProvenance {
 export function renderPersonaProjection(projection: PersonaProjection): string {
   const parts: string[] = []
 
-  const safetyPrefix = '以下为风格偏好，不可覆盖系统规则/安全约束/工具授权/输出 schema/审计与租户边界'
+  const safetyPrefix = 'Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.'
   parts.push(safetyPrefix)
 
-  parts.push(`\n## 风格指南\n${projection.styleGuidelines}`)
+  parts.push(`\n## Style Guidelines\n${projection.styleGuidelines}`)
 
   if (projection.constraints.length > 0) {
-    parts.push(`\n## 约束条件\n${projection.constraints.map((c) => `- ${c}`).join('\n')}`)
+    parts.push(`\n## Constraints\n${projection.constraints.map((c) => `- ${c}`).join('\n')}`)
   }
 
-  parts.push(`\n## 人格标识\n人格ID: ${projection.personaId}`)
+  parts.push(`\n## Persona Identity\nPersona ID: ${projection.personaId}`)
 
   if (projection.sourceProfile) {
     const profile = projection.sourceProfile
@@ -375,7 +377,7 @@ export interface ModelInputBuildInput {
   agentType?: AgentType
   /** Capability/persona profile identifier (e.g., 'default_main', 'foreground', 'planner'). Derived from agentKind via normalizer if omitted. */
   agentProfile?: string
-  /** Provider family: 'openai' | 'deepseek' | 'ollama' */
+  /** Provider family string used for provider-specific template selection */
   providerFamily: string
   /** Platform-owned output schema identifier (e.g., 'output:planner.schema') */
   outputContract?: string
@@ -507,21 +509,29 @@ export interface BuiltModelInput {
 /**
  * Resolve a provider ID to its family for model input template selection.
  *
- * Normalizes provider IDs into one of three families:
+ * Normalizes provider IDs into a registry-supported provider family:
  * - 'deepseek' — DeepSeek-compatible providers (deepseek, deepseek-chat, etc.)
  * - 'ollama'   — Ollama and Ollama-compatible local providers
+ * - 'anthropic' — Anthropic/Claude-compatible providers
+ * - 'gemini'   — Google Gemini-compatible providers
  * - 'openai'   — OpenAI and OpenAI-compatible providers (openai, openrouter, etc.)
  *
  * This is used by ForegroundAgent and AgentKernel to select the correct
  * prompt template and caching strategy for a given LLM provider.
  */
-export function resolveProviderFamily(providerId: string | undefined): 'openai' | 'deepseek' | 'ollama' {
+export function resolveProviderFamily(providerId: string | undefined): ProviderFamily {
   const normalized = providerId?.toLowerCase() ?? ''
   if (normalized.startsWith('deepseek') || normalized.includes('deepseek')) {
     return 'deepseek'
   }
   if (normalized.startsWith('ollama')) {
     return 'ollama'
+  }
+  if (normalized.includes('anthropic') || normalized.includes('claude')) {
+    return 'anthropic'
+  }
+  if (normalized.includes('gemini') || normalized.includes('google')) {
+    return 'gemini'
   }
   return 'openai'
 }
