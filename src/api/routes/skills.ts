@@ -1,71 +1,63 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import type { SkillSummary } from '../types.js'
+import type { SkillSummary, SkillDetailResponse } from '../types.js'
 import type { ApiContext } from '../context.js'
-import { success } from '../response-envelope.js'
+import { success, envelopeError } from '../response-envelope.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
 
-const BUILTIN_SKILLS: SkillSummary[] = [
-  {
-    skillId: 'artifact_create',
-    name: 'artifact_create',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'artifact_update',
-    name: 'artifact_update',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'ask_user',
-    name: 'ask_user',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'status_query',
-    name: 'status_query',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'memory_retrieve',
-    name: 'memory_retrieve',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'transcript_search',
-    name: 'transcript_search',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'plan_patch',
-    name: 'plan_patch',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'docs_search',
-    name: 'docs_search',
-    type: 'builtin',
-    enabled: true,
-  },
-  {
-    skillId: 'web_search',
-    name: 'web_search',
-    type: 'builtin',
-    enabled: true,
-  },
-]
+export function registerSkillRoutes(server: FastifyInstance, context: ApiContext): void {
+  const { skillRegistry } = context
 
-export function registerSkillRoutes(server: FastifyInstance, _context: ApiContext): void {
   server.get('/api/v1/skills', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!request.requirePermission(ResourceType.settings, Action.read)) {
       return reply
     }
-    return reply.code(200).send(success({ skills: BUILTIN_SKILLS }, request.requestId))
+
+    const skills = skillRegistry.list().map(
+      (def): SkillSummary => ({
+        skillId: def.skillId,
+        name: def.name,
+        description: def.description,
+        category: def.category,
+        sensitivity: def.sensitivity,
+        enabled: def.enabled,
+        source: def.source,
+      }),
+    )
+
+    return reply.code(200).send(success({ skills, total: skills.length }, request.requestId))
   })
+
+  server.get<{ Params: { skillId: string } }>(
+    '/api/v1/skills/:skillId',
+    async (request: FastifyRequest<{ Params: { skillId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.settings, Action.read)) {
+        return reply
+      }
+
+      const { skillId } = request.params
+      const definition = skillRegistry.get(skillId)
+
+      if (!definition) {
+        return reply
+          .code(404)
+          .send(envelopeError('SKILL_NOT_FOUND', `Skill "${skillId}" not found`, request.requestId))
+      }
+
+      const response: SkillDetailResponse = {
+        skillId: definition.skillId,
+        name: definition.name,
+        description: definition.description,
+        category: definition.category,
+        sensitivity: definition.sensitivity,
+        enabled: definition.enabled,
+        source: definition.source,
+        allowedAgentTypes: definition.allowedAgentTypes,
+        defaultAgentProfiles: definition.defaultAgentProfiles,
+        ...(definition.summary !== undefined ? { summary: definition.summary } : {}),
+        ...(definition.tags !== undefined ? { tags: definition.tags } : {}),
+      }
+
+      return reply.code(200).send(success(response, request.requestId))
+    },
+  )
 }

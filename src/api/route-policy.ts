@@ -135,6 +135,7 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // Skills
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/skills', resource: ResourceType.settings, action: Action.read },
+  { method: 'GET', pathPattern: '/api/v1/skills/:skillId', resource: ResourceType.settings, action: Action.read },
 
   // ===========================================
   // Settings

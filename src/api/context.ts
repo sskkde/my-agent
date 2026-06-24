@@ -82,6 +82,9 @@ import {
 import { createAuditRecorder } from '../observability/audit-recorder.js'
 import { createAuditStore } from '../observability/audit-store.js'
 import type { AuditRecorder } from '../observability/audit-types.js'
+import type { SkillRegistry } from '../skills/types.js'
+import { createSkillRegistry } from '../skills/skill-registry.js'
+import { registerBuiltinSkills } from '../skills/builtin/manifest.js'
 import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead-letter-store.js'
 import type { DatabaseAdapter } from '../storage/database-adapter.js'
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js'
@@ -118,6 +121,7 @@ export interface ApiContext {
   permissionEngine: PermissionEngine
   toolRegistry: ToolRegistry
   toolExecutor: ToolExecutor
+  skillRegistry: SkillRegistry
   stores: {
     eventStore: EventStore
     runtimeActionStore: RuntimeActionStore
@@ -550,6 +554,10 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
   })
 
+  // Create skill registry and register built-in skills (active + deprecated aliases)
+  const skillRegistry = createSkillRegistry()
+  registerBuiltinSkills(skillRegistry)
+
   const globalAgentConfig = agentConfigStore.getGlobalDefault()
   const searchLlmProviderId = globalAgentConfig?.searchLlmProviderId ?? globalAgentConfig?.providerId ?? undefined
   const searchLlmModel = globalAgentConfig?.searchLlmModel ?? globalAgentConfig?.model ?? undefined
@@ -820,6 +828,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     permissionEngine,
     toolRegistry,
     toolExecutor,
+    skillRegistry,
     stores: {
       eventStore,
       runtimeActionStore,
