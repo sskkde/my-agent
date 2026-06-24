@@ -990,6 +990,7 @@ export interface TodoItem {
   priority: TodoPriority
   parentTodoId?: string
   position: number
+  ownerAgentId?: string
   createdAt: string
   updatedAt: string
 }
@@ -999,6 +1000,7 @@ export interface CreateTodoRequest {
   priority?: TodoPriority
   parentTodoId?: string
   status?: TodoStatus
+  ownerAgentId?: string
 }
 
 export interface UpdateTodoRequest {

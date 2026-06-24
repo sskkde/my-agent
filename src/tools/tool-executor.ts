@@ -19,7 +19,22 @@ class ToolExecutorImpl implements ToolExecutor {
   }
 
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
-    const { toolCallId, toolName, params, userId, sessionId, kernelRunId, permissionContext, signal, agentType, agentProfile, launchSource, outputContract, permissionPolicyRef } = request
+    const {
+      toolCallId,
+      toolName,
+      params,
+      userId,
+      sessionId,
+      kernelRunId,
+      permissionContext,
+      signal,
+      agentType,
+      agentId,
+      agentProfile,
+      launchSource,
+      outputContract,
+      permissionPolicyRef,
+    } = request
     const traceId = kernelRunId || toolCallId
     const spanId = `span_${toolCallId}`
     const startedAt = Date.now()
@@ -62,8 +77,23 @@ class ToolExecutorImpl implements ToolExecutor {
         return this.createErrorResult('TOOL_NOT_FOUND', `Tool not found: ${toolName}`, false)
       }
 
-      // Envelope enforcement: reject tools outside AgentType boundary
-      if (agentType && this.config.envelopeRegistry) {
+      if (this.config.envelopeRegistry) {
+        if (!agentType) {
+          const errorMessage = '[ENVELOPE_DENIED] Missing agentType for envelope enforcement'
+          this.config.toolExecutionStore.create({
+            toolCallId,
+            toolName,
+            userId,
+            sessionId,
+            kernelRunId,
+            status: TOOL_EXECUTION_STATES.DENIED,
+            sensitivity: tool.sensitivity,
+            errorMessage,
+          })
+          this.endToolSpan(spanId, startedAt, 'failed', errorMessage)
+          return this.createErrorResult('ENVELOPE_DENIED', errorMessage, false)
+        }
+
         const envelope = this.config.envelopeRegistry.getEnvelope(agentType as AgentType)
         if (!envelope) {
           const errorMessage = `[ENVELOPE_DENIED] No envelope for agentType: ${agentType}`
@@ -194,6 +224,10 @@ class ToolExecutorImpl implements ToolExecutor {
         permissionContext,
         executionStartTime: new Date().toISOString(),
         signal,
+        agentType,
+        agentId,
+        agentProfile,
+        launchSource,
         stores: {
           toolExecutionStore: {
             updateStatus: (id: string, status: string, errorMessage?: string) => {

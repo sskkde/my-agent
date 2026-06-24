@@ -1,6 +1,6 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js'
 import type { RuntimeContextDelta, ContextItem } from '../../context/types.js'
-import type { Todo, TodoWriteInput } from '../../todo/types.js'
+import type { CreateTodoInput, Todo, TodoStore, UpdateTodoInput } from '../../todo/store.js'
 import { TodoStatus, TodoPriority, TodoWriteMode, isValidTodoWriteMode } from '../../todo/types.js'
 
 export interface TodowriteParams {
@@ -32,32 +32,53 @@ export interface TodoItemOutput {
   parentId?: string
 }
 
-interface TodoStore {
-  findById(id: string): Todo | null
-  findBySession(sessionId: string): Todo[]
-  create(input: Omit<Todo, 'createdAt' | 'updatedAt' | 'position'> & { position?: number }): Todo
-  update(id: string, input: Partial<Omit<Todo, 'todoId' | 'sessionId' | 'tenantId' | 'createdAt'>>): Todo | null
-  remove(id: string): boolean
-  replace(sessionId: string, todos: TodoWriteInput[]): Todo[]
-}
-
 function mapTodoToOutput(todo: Todo): TodoItemOutput {
   return {
-    id: todo.todoId,
+    id: todo.id,
     content: todo.content,
     status: todo.status as TodoItemOutput['status'],
     priority: todo.priority as TodoItemOutput['priority'],
-    parentId: todo.parentTodoId ?? undefined,
+    parentId: todo.parentId,
   }
 }
 
-function mapInputToWriteInput(input: TodoItemInput): TodoWriteInput {
+function mapInputToCreateInput(input: TodoItemInput, sessionId: string, ownerAgentId: string): CreateTodoInput {
   return {
+    id: input.id,
+    sessionId,
     content: input.content,
     status: input.status as TodoStatus,
     priority: input.priority as TodoPriority,
-    parentTodoId: input.parentId,
+    parentId: input.parentId,
+    ownerAgentId,
   }
+}
+
+function makeEphemeralTodo(input: TodoItemInput, sessionId: string, ownerAgentId: string): Todo {
+  const now = new Date().toISOString()
+  return {
+    id: input.id,
+    sessionId,
+    content: input.content,
+    status: input.status as TodoStatus,
+    priority: input.priority as TodoPriority,
+    parentId: input.parentId,
+    depth: 0,
+    position: 0,
+    metadata: undefined,
+    tenantId: 'default',
+    ownerAgentId,
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+function makeStructuredContent(result: TodowriteResult): Record<string, unknown> {
+  const content: Record<string, unknown> = { todos: result.todos }
+  if (result.addedCount !== undefined) content.addedCount = result.addedCount
+  if (result.updatedCount !== undefined) content.updatedCount = result.updatedCount
+  if (result.removedCount !== undefined) content.removedCount = result.removedCount
+  return content
 }
 
 function createContextDelta(sessionId: string, todos: Todo[]): RuntimeContextDelta {
@@ -65,16 +86,16 @@ function createContextDelta(sessionId: string, todos: Todo[]): RuntimeContextDel
   const activeTodos = todos.filter(t => t.status === TodoStatus.pending || t.status === TodoStatus.in_progress)
   
   const items: ContextItem[] = activeTodos.map(todo => ({
-    itemId: `todo-${todo.todoId}`,
+    itemId: `todo-${todo.id}`,
     sourceType: 'system_note' as const,
     semanticType: 'entity_state' as const,
     content: `Todo: ${todo.content} [${todo.status}] [${todo.priority}]`,
     structuredPayload: {
-      id: todo.todoId,
+      id: todo.id,
       content: todo.content,
       status: todo.status,
       priority: todo.priority,
-      parentId: todo.parentTodoId ?? undefined,
+      parentId: todo.parentId,
     },
   }))
 
@@ -86,8 +107,24 @@ function createContextDelta(sessionId: string, todos: Todo[]): RuntimeContextDel
 }
 
 export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
-  const handler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
     const typedParams = params as Partial<TodowriteParams>
+
+    const effectiveSessionId = context.sessionId
+    if (!effectiveSessionId) {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_PARAMS',
+          message: 'No session available. Session ID is required for todo operations.',
+          recoverable: true,
+        },
+      }
+    }
+
+    // Owner identity is derived from execution context, NOT from caller params.
+    // This ensures each agent (foreground, subagent, background) only sees its own todos.
+    const ownerAgentId = context.agentId ?? context.agentType ?? 'foreground.default'
 
     // Validate required mode parameter
     if (!typedParams.mode) {
@@ -138,7 +175,6 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
 
     const mode = typedParams.mode as TodoWriteMode
     const inputTodos = typedParams.todos as TodoItemInput[]
-    const sessionId = typedParams.sessionId || 'default-session'
 
     // Handle modes
     let result: TodowriteResult
@@ -147,18 +183,7 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
     switch (mode) {
       case TodoWriteMode.append: {
         if (!todoStore) {
-          const fakeTodos: Todo[] = inputTodos.map(t => ({
-            todoId: t.id,
-            sessionId,
-            tenantId: 'default',
-            content: t.content,
-            status: t.status as TodoStatus,
-            priority: t.priority as TodoPriority,
-            parentTodoId: t.parentId ?? null,
-            position: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }))
+          const fakeTodos: Todo[] = inputTodos.map((todo) => makeEphemeralTodo(todo, effectiveSessionId, ownerAgentId))
           result = {
             todos: inputTodos.map(t => ({ id: t.id, content: t.content, status: t.status, priority: t.priority, parentId: t.parentId })),
             addedCount: inputTodos.length,
@@ -169,20 +194,27 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
           for (const input of inputTodos) {
             try {
               const created = todoStore.create({
-                todoId: input.id,
-                sessionId,
-                tenantId: 'default',
+                id: input.id,
+                sessionId: effectiveSessionId,
                 content: input.content,
                 status: input.status as TodoStatus,
                 priority: input.priority as TodoPriority,
-                parentTodoId: input.parentId ?? null,
+                parentId: input.parentId,
+                ownerAgentId,
               })
               added.push(created)
-            } catch (e) {
-              // Continue with other todos if one fails
+            } catch (error) {
+              return {
+                success: false,
+                error: {
+                  code: 'TODO_CREATE_FAILED',
+                  message: error instanceof Error ? error.message : 'Failed to create todo.',
+                  recoverable: true,
+                },
+              }
             }
           }
-          allTodos = todoStore.findBySession(sessionId)
+          allTodos = todoStore.findBySessionAndOwner(effectiveSessionId, ownerAgentId)
           result = {
             todos: allTodos.map(mapTodoToOutput),
             addedCount: added.length,
@@ -192,27 +224,19 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
       }
 
       case TodoWriteMode.replace: {
+        // Owner-scoped: replaces only todos belonging to ownerAgentId, not all session todos.
         if (!todoStore) {
-          const fakeTodos: Todo[] = inputTodos.map(t => ({
-            todoId: t.id,
-            sessionId,
-            tenantId: 'default',
-            content: t.content,
-            status: t.status as TodoStatus,
-            priority: t.priority as TodoPriority,
-            parentTodoId: t.parentId ?? null,
-            position: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }))
+          const fakeTodos: Todo[] = inputTodos.map((todo) => makeEphemeralTodo(todo, effectiveSessionId, ownerAgentId))
           result = {
             todos: inputTodos.map(t => ({ id: t.id, content: t.content, status: t.status, priority: t.priority, parentId: t.parentId })),
             addedCount: inputTodos.length,
           }
           allTodos = fakeTodos
         } else {
-          const writeInputs: TodoWriteInput[] = inputTodos.map(t => mapInputToWriteInput(t))
-          allTodos = todoStore.replace(sessionId, writeInputs)
+          const writeInputs: CreateTodoInput[] = inputTodos.map((todo) =>
+            mapInputToCreateInput(todo, effectiveSessionId, ownerAgentId),
+          )
+          allTodos = todoStore.replace(effectiveSessionId, writeInputs, ownerAgentId)
           result = {
             todos: allTodos.map(mapTodoToOutput),
             addedCount: allTodos.length,
@@ -223,18 +247,7 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
 
       case TodoWriteMode.update: {
         if (!todoStore) {
-          const fakeTodos: Todo[] = inputTodos.map(t => ({
-            todoId: t.id,
-            sessionId,
-            tenantId: 'default',
-            content: t.content,
-            status: t.status as TodoStatus,
-            priority: t.priority as TodoPriority,
-            parentTodoId: t.parentId ?? null,
-            position: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }))
+          const fakeTodos: Todo[] = inputTodos.map((todo) => makeEphemeralTodo(todo, effectiveSessionId, ownerAgentId))
           result = {
             todos: inputTodos.map(t => ({ id: t.id, content: t.content, status: t.status, priority: t.priority, parentId: t.parentId })),
             updatedCount: inputTodos.length,
@@ -244,8 +257,8 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
           let updated = 0
           for (const input of inputTodos) {
             const existing = todoStore.findById(input.id)
-            if (existing) {
-              const updateInput: Partial<Omit<Todo, 'todoId' | 'sessionId' | 'tenantId' | 'createdAt'>> = {}
+            if (existing?.sessionId === effectiveSessionId && existing.ownerAgentId === ownerAgentId) {
+              const updateInput: UpdateTodoInput = {}
               if (input.content) updateInput.content = input.content
               if (input.status) updateInput.status = input.status as TodoStatus
               if (input.priority) updateInput.priority = input.priority as TodoPriority
@@ -253,7 +266,7 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
               updated++
             }
           }
-          allTodos = todoStore.findBySession(sessionId)
+          allTodos = todoStore.findBySessionAndOwner(effectiveSessionId, ownerAgentId)
           result = {
             todos: allTodos.map(mapTodoToOutput),
             updatedCount: updated,
@@ -272,11 +285,12 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
         } else {
           let removed = 0
           for (const input of inputTodos) {
-            if (todoStore.remove(input.id)) {
+            const existing = todoStore.findById(input.id)
+            if (existing?.sessionId === effectiveSessionId && existing.ownerAgentId === ownerAgentId && todoStore.remove(input.id)) {
               removed++
             }
           }
-          allTodos = todoStore.findBySession(sessionId)
+          allTodos = todoStore.findBySessionAndOwner(effectiveSessionId, ownerAgentId)
           result = {
             todos: allTodos.map(mapTodoToOutput),
             removedCount: removed,
@@ -297,7 +311,7 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
     }
 
     // Create context delta with active todos only
-    const contextDelta = createContextDelta(sessionId, allTodos)
+    const contextDelta = createContextDelta(effectiveSessionId, allTodos)
 
     // Build result preview
     let preview = ''
@@ -311,13 +325,13 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
       data: result,
       contextDelta,
       resultPreview: preview.trim(),
-      structuredContent: result as unknown as Record<string, unknown>,
+      structuredContent: makeStructuredContent(result),
     }
   }
 
   return {
     name: 'todowrite',
-    description: 'Write todos with explicit mode. Modes: append (add new), replace (replace all), update (modify existing), remove (delete by ID). The mode parameter is REQUIRED on every call.',
+    description: 'Write todos with explicit mode. Modes: append (add new), replace (owner-scoped replace — only replaces todos owned by the calling agent), update (modify existing), remove (delete by ID). The mode parameter is REQUIRED on every call. Session and owner are derived from execution context.',
     category: 'write',
     sensitivity: 'low',
     schema: {
@@ -343,7 +357,7 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
           },
           description: 'Array of todo items',
         },
-        sessionId: { type: 'string', description: 'Session ID (optional)' },
+        sessionId: { type: 'string', description: 'Deprecated. Ignored; session is derived from execution context.' },
       },
       required: ['mode', 'todos'],
     },

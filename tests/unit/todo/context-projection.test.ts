@@ -20,6 +20,7 @@ interface TodoItem {
   status: TodoStatus
   priority: 'high' | 'medium' | 'low'
   content: string
+  ownerAgentId?: string
   createdAt: string
   updatedAt: string
 }
@@ -29,6 +30,7 @@ interface TodoProjectionInput {
   todos: TodoItem[]
   maxItems?: number
   maxTokens?: number
+  ownerAgentId?: string
 }
 
 // Note: TodoProjectionResult is defined by the implementation - we use inference
@@ -50,6 +52,7 @@ function createMockTodo(overrides: Partial<TodoItem> = {}): TodoItem {
     status: 'pending',
     priority: 'medium',
     content: 'Test todo content',
+    ownerAgentId: 'foreground.default',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -485,6 +488,241 @@ describe('Todo Context Projection (RED Phase)', () => {
       })
 
       expect(result.contextItems[0].semanticType).toBe('plan_view')
+    })
+  })
+
+  describe('Owner-aware active projection', () => {
+    it('should filter active todos by ownerAgentId when provided', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'owner-a-1', status: 'pending', content: 'Owner A task', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'owner-a-2', status: 'in_progress', content: 'Owner A active', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'owner-b-1', status: 'pending', content: 'Owner B task', ownerAgentId: 'agent-beta' }),
+        createMockTodo({ todoId: 'owner-b-2', status: 'in_progress', content: 'Owner B active', ownerAgentId: 'agent-beta' }),
+      ]
+
+      const result = projectActiveTodosToContext({
+        sessionId: 'session-001',
+        todos,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      // Should include only owner-alpha's active todos
+      expect(result.includedCount).toBe(2)
+      const todoIds = result.contextItems.map((item: ContextItem) => item.structuredPayload?.todoId)
+      expect(todoIds).toContain('owner-a-1')
+      expect(todoIds).toContain('owner-a-2')
+      expect(todoIds).not.toContain('owner-b-1')
+      expect(todoIds).not.toContain('owner-b-2')
+    })
+
+    it('should return all active todos when ownerAgentId is not specified (backward compat)', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-1', status: 'pending', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'b-1', status: 'pending', ownerAgentId: 'agent-beta' }),
+      ]
+
+      const result = projectActiveTodosToContext({
+        sessionId: 'session-001',
+        todos,
+      })
+
+      // Without ownerAgentId, all todos should be included
+      expect(result.includedCount).toBe(2)
+    })
+
+    it('should not inject owner B active todos into owner A scoped context', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-todo', status: 'pending', content: 'Agent alpha work', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'b-todo', status: 'in_progress', content: 'Agent beta work', ownerAgentId: 'agent-beta' }),
+        createMockTodo({ todoId: 'b-todo-2', status: 'pending', content: 'Agent beta work 2', ownerAgentId: 'agent-beta' }),
+      ]
+
+      const resultA = projectActiveTodosToContext({
+        sessionId: 'session-001',
+        todos,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      const resultB = projectActiveTodosToContext({
+        sessionId: 'session-001',
+        todos,
+        ownerAgentId: 'agent-beta',
+      })
+
+      // Owner A sees only its 1 todo
+      expect(resultA.includedCount).toBe(1)
+      expect(resultA.contextItems[0].structuredPayload?.todoId).toBe('a-todo')
+
+      // Owner B sees only its 2 todos
+      expect(resultB.includedCount).toBe(2)
+      const bIds = resultB.contextItems.map((item: ContextItem) => item.structuredPayload?.todoId)
+      expect(bIds).toContain('b-todo')
+      expect(bIds).toContain('b-todo-2')
+      expect(bIds).not.toContain('a-todo')
+    })
+
+    it('two owners in one session have separate active projections', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'main-1', status: 'pending', content: 'Main task', ownerAgentId: 'foreground.default' }),
+        createMockTodo({ todoId: 'main-2', status: 'in_progress', content: 'Main active', ownerAgentId: 'foreground.default' }),
+        createMockTodo({ todoId: 'sub-1', status: 'pending', content: 'Subagent task', ownerAgentId: 'subagent.planner' }),
+      ]
+
+      const mainResult = projectActiveTodosToContext({
+        sessionId: 'session-001',
+        todos,
+        ownerAgentId: 'foreground.default',
+      })
+
+      const subResult = projectActiveTodosToContext({
+        sessionId: 'session-001',
+        todos,
+        ownerAgentId: 'subagent.planner',
+      })
+
+      // Main agent sees 2 todos, subagent sees 1
+      expect(mainResult.includedCount).toBe(2)
+      expect(subResult.includedCount).toBe(1)
+
+      // No overlap
+      const mainIds = mainResult.contextItems.map((item: ContextItem) => item.structuredPayload?.todoId)
+      const subIds = subResult.contextItems.map((item: ContextItem) => item.structuredPayload?.todoId)
+      expect(mainIds).not.toContain('sub-1')
+      expect(subIds).not.toContain('main-1')
+      expect(subIds).not.toContain('main-2')
+    })
+
+    it('should handle totalTodosCount reflecting owner-scoped count', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-1', status: 'pending', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'a-2', status: 'completed', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'b-1', status: 'pending', ownerAgentId: 'agent-beta' }),
+      ]
+
+      const result = projectActiveTodosToContext({
+        sessionId: 'session-001',
+        todos,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      // totalTodosCount should reflect only owner-scoped todos
+      expect(result.totalTodosCount).toBe(2)
+      expect(result.includedCount).toBe(1) // only pending, completed excluded
+      expect(result.excludedCount).toBe(1)
+    })
+  })
+
+  describe('Owner-aware buildTodoContextDelta', () => {
+    it('should filter delta items by ownerAgentId when provided', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-1', status: 'pending', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'b-1', status: 'in_progress', ownerAgentId: 'agent-beta' }),
+      ]
+
+      const delta = buildTodoContextDelta({
+        runId: 'run-001',
+        sessionId: 'session-001',
+        todos,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      expect(delta.items.length).toBe(1)
+      expect(delta.items[0].structuredPayload?.todoId).toBe('a-1')
+    })
+  })
+
+  describe('Owner-grouped summary for plan context', () => {
+    it('should group plan-level summary by owner when todos have different owners', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-1', status: 'pending', ownerAgentId: 'foreground.default' }),
+        createMockTodo({ todoId: 'a-2', status: 'in_progress', ownerAgentId: 'foreground.default' }),
+        createMockTodo({ todoId: 'b-1', status: 'pending', ownerAgentId: 'subagent.planner' }),
+        createMockTodo({ todoId: 'b-2', status: 'completed', ownerAgentId: 'subagent.planner' }),
+      ]
+
+      const summary = getTodoSummaryForPlanContextView({
+        sessionId: 'session-001',
+        todos,
+      })
+
+      // Should have 2 groups (foreground.default, subagent.planner)
+      expect(summary.length).toBe(2)
+      const ownerTypes = summary.map((s) => s.ownerAgentType)
+      expect(ownerTypes).toContain('foreground.default')
+      expect(ownerTypes).toContain('subagent.planner')
+    })
+
+    it('should not collapse all owners to "main"', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-1', status: 'pending', ownerAgentId: 'foreground.default' }),
+        createMockTodo({ todoId: 'b-1', status: 'pending', ownerAgentId: 'subagent.reviewer' }),
+        createMockTodo({ todoId: 'c-1', status: 'in_progress', ownerAgentId: 'subagent.planner' }),
+      ]
+
+      const summary = getTodoSummaryForPlanContextView({
+        sessionId: 'session-001',
+        todos,
+      })
+
+      // Must NOT have all entries with ownerAgentType === 'main'
+      const ownerTypes = summary.map((s) => s.ownerAgentType)
+      expect(ownerTypes).not.toEqual(['main', 'main', 'main'])
+      expect(ownerTypes).toContain('foreground.default')
+      expect(ownerTypes).toContain('subagent.reviewer')
+      expect(ownerTypes).toContain('subagent.planner')
+    })
+
+    it('should use actual ownerAgentId values as ownerAgentType in summary', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-1', status: 'pending', ownerAgentId: 'my-custom-agent' }),
+        createMockTodo({ todoId: 'a-2', status: 'in_progress', ownerAgentId: 'my-custom-agent' }),
+      ]
+
+      const summary = getTodoSummaryForPlanContextView({
+        sessionId: 'session-001',
+        todos,
+      })
+
+      expect(summary.length).toBe(1)
+      expect(summary[0].ownerAgentType).toBe('my-custom-agent')
+    })
+
+    it('should include status breakdown per owner group', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ todoId: 'a-1', status: 'pending', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'a-2', status: 'pending', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'a-3', status: 'in_progress', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ todoId: 'b-1', status: 'pending', ownerAgentId: 'agent-beta' }),
+      ]
+
+      const summary = getTodoSummaryForPlanContextView({
+        sessionId: 'session-001',
+        todos,
+      })
+
+      const alphaEntry = summary.find((s) => s.ownerAgentType === 'agent-alpha')
+      const betaEntry = summary.find((s) => s.ownerAgentType === 'agent-beta')
+
+      expect(alphaEntry).toBeDefined()
+      expect(alphaEntry!.status).toContain('1 in_progress')
+      expect(alphaEntry!.status).toContain('2 pending')
+
+      expect(betaEntry).toBeDefined()
+      expect(betaEntry!.status).toContain('1 pending')
+    })
+
+    it('should return empty array when no active todos exist for any owner', () => {
+      const todos: TodoItem[] = [
+        createMockTodo({ status: 'completed', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({ status: 'cancelled', ownerAgentId: 'agent-beta' }),
+      ]
+
+      const summary = getTodoSummaryForPlanContextView({
+        sessionId: 'session-001',
+        todos,
+      })
+
+      expect(summary).toEqual([])
     })
   })
 })

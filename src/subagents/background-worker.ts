@@ -170,15 +170,32 @@ class BackgroundSubagentWorkerImpl implements BackgroundSubagentWorkerInstance {
   private buildMinimalContext(run: BackgroundRun): ContextBundle {
     const bundleId = `ctx-${hashToBase36(run.backgroundRunId)}`
 
+    const pinnedItems: ContextBundle['pinnedItems'] = []
+
+    // Include sessionId in a pinned context item so extractSessionId() in
+    // kernel-adapter can discover it. This is required for todo tool calls
+    // that need to scope to the originating session.
+    if (run.sessionId) {
+      pinnedItems.push({
+        itemId: `${bundleId}-session-ref`,
+        sourceType: 'system_note',
+        semanticType: 'entity_state',
+        content: `sessionId=${run.sessionId}`,
+        priority: 90,
+        isPinned: true,
+        structuredPayload: { sessionId: run.sessionId },
+      })
+    }
+
     return {
       bundleId,
       runId: run.backgroundRunId,
-      agentId: run.agentType,
+      agentId: `background.${run.agentType}.${run.backgroundRunId}`,
       agentType: 'background',
       userId: run.userId,
       invocationSource: 'background_subagent' as InvocationSource,
-      pinnedItems: [],
-      orderedItems: [],
+      pinnedItems,
+      orderedItems: [...pinnedItems],
       tokenEstimate: 0,
     }
   }

@@ -1,5 +1,5 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
-import type { Todo } from '../../todo/types.js'
+import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js'
+import type { Todo, TodoStore } from '../../todo/store.js'
 import { MAX_TODO_DEPTH } from '../../todo/types.js'
 
 export interface TodolistParams {
@@ -24,18 +24,13 @@ export interface TodolistResult {
   maxDepth: number
 }
 
-interface TodoStore {
-  findById(id: string): Todo | null
-  findBySession(sessionId: string): Todo[]
-}
-
 function mapTodoToItem(todo: Todo): TodoItem {
   return {
-    id: todo.todoId,
+    id: todo.id,
     content: todo.content,
     status: todo.status as TodoItem['status'],
     priority: todo.priority as TodoItem['priority'],
-    parentId: todo.parentTodoId ?? undefined,
+    parentId: todo.parentId,
   }
 }
 
@@ -50,11 +45,16 @@ function buildHierarchy(todos: TodoItem[]): TodoItem[] {
 
   // Second pass: build hierarchy
   for (const todo of todos) {
-    const item = byId.get(todo.id)!
+    const item = byId.get(todo.id)
+    if (!item) {
+      continue
+    }
     if (todo.parentId) {
       const parent = byId.get(todo.parentId)
       if (parent) {
-        parent.children!.push(item)
+        const children = parent.children ?? []
+        parent.children = children
+        children.push(item)
       } else {
         // Parent not found, treat as root
         roots.push(item)
@@ -119,28 +119,27 @@ function formatFlat(items: TodoItem[]): string {
 }
 
 export function createTodolistTool(todoStore?: TodoStore): ToolDefinition {
-  const handler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
     const typedParams = params as TodolistParams
 
-    // Get sessionId from params or default
-    const sessionId = typedParams.sessionId
+    const effectiveSessionId = context.sessionId
 
-    if (!sessionId) {
+    if (!effectiveSessionId) {
       return {
-        success: true,
-        data: {
-          todos: [],
-          hierarchicalOutput: 'No session specified.',
-          totalCount: 0,
-          activeCount: 0,
-          maxDepth: 0,
-        } as TodolistResult,
-        resultPreview: 'No session specified. Todo list is empty.',
+        success: false,
+        error: {
+          code: 'INVALID_PARAMS',
+          message: 'No session available. Session ID is required for todo list operations.',
+          recoverable: true,
+        },
       }
     }
 
-    // Get todos from store
-    const storeTodos = todoStore ? todoStore.findBySession(sessionId) : []
+    // Owner identity is derived from execution context, NOT from caller params.
+    // Each agent only sees its own todos within a session.
+    const ownerAgentId = context.agentId ?? context.agentType ?? 'foreground.default'
+
+    const storeTodos = todoStore ? todoStore.findBySessionAndOwner(effectiveSessionId, ownerAgentId) : []
     const todos = storeTodos.map(mapTodoToItem)
 
     // Build hierarchical structure
@@ -148,7 +147,7 @@ export function createTodolistTool(todoStore?: TodoStore): ToolDefinition {
 
     // Calculate stats
     const totalCount = todos.length
-    const activeCount = todos.filter(t => t.status === 'pending' || t.status === 'in_progress').length
+    const activeCount = todos.filter((t) => t.status === 'pending' || t.status === 'in_progress').length
     const maxDepth = Math.min(calculateMaxDepth(hierarchical), MAX_TODO_DEPTH)
 
     // Format output
@@ -180,19 +179,26 @@ export function createTodolistTool(todoStore?: TodoStore): ToolDefinition {
       success: true,
       data: result,
       resultPreview: `Todo list: ${totalCount} total, ${activeCount} active. Depth: ${maxDepth} levels.`,
-      structuredContent: result as unknown as Record<string, unknown>,
+      structuredContent: {
+        todos: result.todos,
+        hierarchicalOutput: result.hierarchicalOutput,
+        totalCount: result.totalCount,
+        activeCount: result.activeCount,
+        maxDepth: result.maxDepth,
+      },
     }
   }
 
   return {
     name: 'todolist',
-    description: 'List todos for a session with hierarchical tree output. Supports tree, markdown, and flat formats. Maximum depth of 3 levels.',
+    description:
+      "List todos for the current agent within a session with hierarchical tree output. Returns only the calling agent's todos (owner-scoped). Supports tree, markdown, and flat formats. Maximum depth of 3 levels. Session and owner are derived from execution context.",
     category: 'read',
     sensitivity: 'low',
     schema: {
       type: 'object',
       properties: {
-        sessionId: { type: 'string', description: 'Session ID to list todos for' },
+        sessionId: { type: 'string', description: 'Deprecated. Ignored; session is derived from execution context.' },
         format: {
           type: 'string',
           enum: ['tree', 'markdown', 'flat'],

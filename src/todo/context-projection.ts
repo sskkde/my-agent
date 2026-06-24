@@ -23,6 +23,7 @@ interface TodoItem {
   status: TodoStatus
   priority: TodoPriority
   content: string
+  ownerAgentId?: string
   createdAt: string
   updatedAt: string
 }
@@ -32,6 +33,7 @@ interface TodoProjectionInput {
   todos: TodoItem[]
   maxItems?: number
   maxTokens?: number
+  ownerAgentId?: string
 }
 
 // ── Output Types ──────────────────────────────────────────────────────────────
@@ -119,11 +121,15 @@ function sortByPriorityAndPosition(todos: TodoItem[]): TodoItem[] {
  * @returns Projection result with context items and metadata
  */
 export function projectActiveTodosToContext(input: TodoProjectionInput): TodoProjectionResult {
-  const { todos, maxItems, maxTokens } = input
+  const { todos, maxItems, maxTokens, ownerAgentId } = input
 
-  const totalTodosCount = todos.length
-  const activeTodos = todos.filter((t) => isActive(t.status))
-  const inactiveCount = todos.length - activeTodos.length
+  const scopedTodos = ownerAgentId
+    ? todos.filter((t) => t.ownerAgentId === ownerAgentId)
+    : todos
+
+  const totalTodosCount = scopedTodos.length
+  const activeTodos = scopedTodos.filter((t) => isActive(t.status))
+  const inactiveCount = scopedTodos.length - activeTodos.length
 
   if (activeTodos.length === 0) {
     return {
@@ -204,11 +210,15 @@ export function buildTodoContextDelta(input: {
   todos: TodoItem[]
   iteration?: number
   previousStatuses?: Record<string, TodoStatus>
+  ownerAgentId?: string
 }): RuntimeContextDelta {
-  const { runId, todos, iteration, previousStatuses } = input
+  const { runId, todos, iteration, previousStatuses, ownerAgentId } = input
 
-  // Only include active todos in delta
-  const activeTodos = todos.filter((t) => isActive(t.status))
+  const scopedTodos = ownerAgentId
+    ? todos.filter((t) => t.ownerAgentId === ownerAgentId)
+    : todos
+
+  const activeTodos = scopedTodos.filter((t) => isActive(t.status))
   const items = activeTodos.map(todoToContextItem)
 
   // Build replaceKeys for todos that changed status
@@ -252,19 +262,30 @@ export function getTodoSummaryForPlanContextView(input: {
     return []
   }
 
-  // Group by status for the summary
-  const pendingCount = activeTodos.filter((t) => t.status === 'pending').length
-  const inProgressCount = activeTodos.filter((t) => t.status === 'in_progress').length
+  const grouped = new Map<string, TodoItem[]>()
+  for (const todo of activeTodos) {
+    const owner = todo.ownerAgentId ?? 'foreground.default'
+    if (!grouped.has(owner)) {
+      grouped.set(owner, [])
+    }
+    grouped.get(owner)!.push(todo)
+  }
 
-  const statusParts: string[] = []
-  if (inProgressCount > 0) statusParts.push(`${inProgressCount} in_progress`)
-  if (pendingCount > 0) statusParts.push(`${pendingCount} pending`)
+  const entries: TodoSummaryEntry[] = []
+  for (const [owner, ownerTodos] of grouped) {
+    const pendingCount = ownerTodos.filter((t) => t.status === 'pending').length
+    const inProgressCount = ownerTodos.filter((t) => t.status === 'in_progress').length
 
-  return [
-    {
+    const statusParts: string[] = []
+    if (inProgressCount > 0) statusParts.push(`${inProgressCount} in_progress`)
+    if (pendingCount > 0) statusParts.push(`${pendingCount} pending`)
+
+    entries.push({
       todoListId: input.sessionId,
-      ownerAgentType: 'main',
+      ownerAgentType: owner,
       status: statusParts.join(', '),
-    },
-  ]
+    })
+  }
+
+  return entries
 }

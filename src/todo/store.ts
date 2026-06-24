@@ -1,6 +1,8 @@
 import type { TodoStatus, TodoPriority } from './types.js'
 import { MAX_TODO_DEPTH } from './types.js'
 
+export const DEFAULT_OWNER_AGENT_ID = 'foreground.default'
+
 export interface Todo {
   id: string
   sessionId: string
@@ -12,6 +14,7 @@ export interface Todo {
   position: number
   metadata: Record<string, unknown> | undefined
   tenantId: string
+  ownerAgentId: string
   createdAt: string
   updatedAt: string
 }
@@ -25,6 +28,7 @@ export interface CreateTodoInput {
   parentId?: string
   metadata?: Record<string, unknown>
   position?: number
+  ownerAgentId?: string
 }
 
 export interface UpdateTodoInput {
@@ -45,6 +49,7 @@ interface TodoRow {
   position: number
   metadata: string | null
   tenant_id: string
+  owner_agent_id: string
   created_at: string
   updated_at: string
 }
@@ -59,9 +64,10 @@ export interface TodoStore {
   create(input: CreateTodoInput): Todo
   findById(id: string): Todo | null
   findBySession(sessionId: string): Todo[]
+  findBySessionAndOwner(sessionId: string, ownerAgentId: string): Todo[]
   update(id: string, input: UpdateTodoInput): Todo | null
   remove(id: string): boolean
-  replace(sessionId: string, todos: CreateTodoInput[]): Todo[]
+  replace(sessionId: string, todos: CreateTodoInput[], ownerAgentId?: string): Todo[]
 }
 
 class TodoStoreImpl implements TodoStore {
@@ -78,6 +84,7 @@ class TodoStoreImpl implements TodoStore {
       throw new Error('Circular parent reference: todo cannot be its own parent')
     }
 
+    const ownerAgentId = input.ownerAgentId ?? DEFAULT_OWNER_AGENT_ID
     let depth = 0
     let parentId: string | null = null
 
@@ -86,12 +93,20 @@ class TodoStoreImpl implements TodoStore {
       if (!parent) {
         throw new Error(`Parent todo not found: ${input.parentId}`)
       }
-      
+      if (parent.sessionId !== input.sessionId) {
+        throw new Error('Parent todo must belong to the same session')
+      }
+      if (parent.ownerAgentId !== ownerAgentId) {
+        throw new Error('Parent todo must belong to the same owner agent')
+      }
+
       depth = parent.depth + 1
       parentId = input.parentId
 
       if (depth > MAX_TODO_DEPTH) {
-        throw new Error(`Maximum depth exceeded: depth ${depth} is greater than maximum allowed depth of ${MAX_TODO_DEPTH}`)
+        throw new Error(
+          `Maximum depth exceeded: depth ${depth} is greater than maximum allowed depth of ${MAX_TODO_DEPTH}`,
+        )
       }
     }
 
@@ -105,8 +120,8 @@ class TodoStoreImpl implements TodoStore {
 
     this.db.exec(
       `INSERT INTO todos (
-        id, session_id, content, status, priority, parent_id, depth, position, metadata, tenant_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, session_id, content, status, priority, parent_id, depth, position, metadata, tenant_id, owner_agent_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.id,
         input.sessionId,
@@ -118,19 +133,22 @@ class TodoStoreImpl implements TodoStore {
         position,
         input.metadata ? JSON.stringify(input.metadata) : null,
         this.tenantId,
+        ownerAgentId,
         now,
         now,
       ],
     )
 
-    return this.findById(input.id)!
+    const created = this.findById(input.id)
+    if (!created) {
+      throw new Error(`Todo was not created: ${input.id}`)
+    }
+
+    return created
   }
 
   findById(id: string): Todo | null {
-    const rows = this.db.query<TodoRow>(
-      'SELECT * FROM todos WHERE id = ? AND tenant_id = ?',
-      [id, this.tenantId],
-    )
+    const rows = this.db.query<TodoRow>('SELECT * FROM todos WHERE id = ? AND tenant_id = ?', [id, this.tenantId])
 
     if (rows.length === 0) {
       return null
@@ -140,9 +158,19 @@ class TodoStoreImpl implements TodoStore {
   }
 
   findBySession(sessionId: string): Todo[] {
+    const rows = this.db.query<TodoRow>('SELECT * FROM todos WHERE session_id = ? AND tenant_id = ?', [
+      sessionId,
+      this.tenantId,
+    ])
+
+    const todos = rows.map((row) => this.mapRow(row))
+    return this.sortHierarchically(todos)
+  }
+
+  findBySessionAndOwner(sessionId: string, ownerAgentId: string): Todo[] {
     const rows = this.db.query<TodoRow>(
-      'SELECT * FROM todos WHERE session_id = ? AND tenant_id = ?',
-      [sessionId, this.tenantId],
+      'SELECT * FROM todos WHERE session_id = ? AND tenant_id = ? AND owner_agent_id = ?',
+      [sessionId, this.tenantId, ownerAgentId],
     )
 
     const todos = rows.map((row) => this.mapRow(row))
@@ -191,10 +219,7 @@ class TodoStoreImpl implements TodoStore {
     values.push(id)
     values.push(this.tenantId)
 
-    this.db.exec(
-      `UPDATE todos SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`,
-      values,
-    )
+    this.db.exec(`UPDATE todos SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, values)
 
     return {
       ...existing,
@@ -214,21 +239,23 @@ class TodoStoreImpl implements TodoStore {
     return this.findById(id) === null
   }
 
-  replace(sessionId: string, todos: CreateTodoInput[]): Todo[] {
-    const existingTodos = this.findBySession(sessionId)
+  replace(sessionId: string, todos: CreateTodoInput[], ownerAgentId?: string): Todo[] {
+    const effectiveOwnerAgentId = ownerAgentId ?? todos[0]?.ownerAgentId ?? DEFAULT_OWNER_AGENT_ID
+
+    const existingTodos = this.findBySessionAndOwner(sessionId, effectiveOwnerAgentId)
 
     const deleteTodos = (): void => {
-      this.db.exec(
-        'DELETE FROM todos WHERE session_id = ? AND tenant_id = ?',
-        [sessionId, this.tenantId],
-      )
+      this.db.exec('DELETE FROM todos WHERE session_id = ? AND tenant_id = ? AND owner_agent_id = ?', [
+        sessionId,
+        this.tenantId,
+        effectiveOwnerAgentId,
+      ])
     }
 
     const createTodos = (): Todo[] => {
       const created: Todo[] = []
       for (const input of todos) {
-        input.sessionId = sessionId
-        created.push(this.create(input))
+        created.push(this.create({ ...input, sessionId, ownerAgentId: effectiveOwnerAgentId }))
       }
       return created
     }
@@ -241,13 +268,12 @@ class TodoStoreImpl implements TodoStore {
       try {
         return txn()
       } catch (error) {
-        // Re-create existing todos on failure
         deleteTodos()
         for (const todo of existingTodos) {
           this.db.exec(
             `INSERT INTO todos (
-              id, session_id, content, status, priority, parent_id, depth, position, metadata, tenant_id, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              id, session_id, content, status, priority, parent_id, depth, position, metadata, tenant_id, owner_agent_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               todo.id,
               todo.sessionId,
@@ -259,6 +285,7 @@ class TodoStoreImpl implements TodoStore {
               todo.position,
               todo.metadata ? JSON.stringify(todo.metadata) : null,
               this.tenantId,
+              todo.ownerAgentId,
               todo.createdAt,
               todo.updatedAt,
             ],
@@ -271,8 +298,7 @@ class TodoStoreImpl implements TodoStore {
       try {
         deleteTodos()
         for (const input of todos) {
-          input.sessionId = sessionId
-          created.push(this.create(input))
+          created.push(this.create({ ...input, sessionId, ownerAgentId: effectiveOwnerAgentId }))
         }
         return created
       } catch (error) {
@@ -282,8 +308,8 @@ class TodoStoreImpl implements TodoStore {
         for (const todo of existingTodos) {
           this.db.exec(
             `INSERT INTO todos (
-              id, session_id, content, status, priority, parent_id, depth, position, metadata, tenant_id, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              id, session_id, content, status, priority, parent_id, depth, position, metadata, tenant_id, owner_agent_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               todo.id,
               todo.sessionId,
@@ -295,6 +321,7 @@ class TodoStoreImpl implements TodoStore {
               todo.position,
               todo.metadata ? JSON.stringify(todo.metadata) : null,
               this.tenantId,
+              todo.ownerAgentId,
               todo.createdAt,
               todo.updatedAt,
             ],
@@ -363,6 +390,7 @@ class TodoStoreImpl implements TodoStore {
       position: row.position,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
       tenantId: row.tenant_id,
+      ownerAgentId: row.owner_agent_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }

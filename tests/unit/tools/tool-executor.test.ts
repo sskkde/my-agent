@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createToolExecutor, _categoryToOperationTypeForTesting } from '../../../src/tools/tool-executor.js'
+import { createAgentTypeToolEnvelopeRegistry } from '../../../src/permissions/agent-type-tool-envelope.js'
 import type {
   ToolDefinition,
   ToolRegistry,
@@ -162,6 +163,48 @@ describe('ToolExecutor', () => {
         'failed',
         undefined,
         "[SCHEMA_VALIDATION_FAILED] Schema validation failed: Field 'count' must be of type 'number', got 'string'",
+      )
+    })
+  })
+
+  describe('execute - envelope enforcement', () => {
+    it('should fail closed when envelope registry is configured but agentType is missing', async () => {
+      const tool: ToolDefinition = {
+        name: 'read-tool',
+        description: 'A read tool',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler: async () => ({ success: true, data: 'result' }),
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      executor = createToolExecutor({
+        registry: mockRegistry,
+        permissionEngine: mockPermissionEngine,
+        toolExecutionStore: mockToolExecutionStore,
+        eventStore: mockEventStore,
+        envelopeRegistry: createAgentTypeToolEnvelopeRegistry(),
+      })
+
+      const result = await executor.execute({
+        toolCallId: 'call-envelope-missing-agent-type',
+        toolName: 'read-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('ENVELOPE_DENIED')
+      expect(mockPermissionEngine.checkPermission).not.toHaveBeenCalled()
+      expect(mockToolExecutionStore.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toolCallId: 'call-envelope-missing-agent-type',
+          status: 'denied',
+          errorMessage: '[ENVELOPE_DENIED] Missing agentType for envelope enforcement',
+        }),
       )
     })
   })
@@ -967,6 +1010,81 @@ describe('ToolExecutor', () => {
           sessionId: 'session-1',
         }),
       )
+    })
+  })
+
+  describe('agent identity transport', () => {
+    it('should pass agentType, agentId, agentProfile, launchSource from request to handler context', async () => {
+      const handler = vi.fn().mockResolvedValue({ success: true })
+      const tool: ToolDefinition = {
+        name: 'identity-tool',
+        description: 'Receives agent identity',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision)
+
+      await executor.execute({
+        toolCallId: 'call-identity-1',
+        toolName: 'identity-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+        agentType: 'background.worker',
+        agentId: 'agent-uuid-123',
+        agentProfile: 'todo-isolation',
+        launchSource: 'subagent-dispatcher',
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      const receivedContext = handler.mock.calls[0][1]
+      expect(receivedContext.agentType).toBe('background.worker')
+      expect(receivedContext.agentId).toBe('agent-uuid-123')
+      expect(receivedContext.agentProfile).toBe('todo-isolation')
+      expect(receivedContext.launchSource).toBe('subagent-dispatcher')
+    })
+
+    it('should leave agent identity fields undefined when request omits them (no fabrication)', async () => {
+      const handler = vi.fn().mockResolvedValue({ success: true })
+      const tool: ToolDefinition = {
+        name: 'no-identity-tool',
+        description: 'No agent identity provided',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision)
+
+      await executor.execute({
+        toolCallId: 'call-identity-2',
+        toolName: 'no-identity-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      })
+
+      const receivedContext = handler.mock.calls[0][1]
+      expect(receivedContext.agentType).toBeUndefined()
+      expect(receivedContext.agentId).toBeUndefined()
+      expect(receivedContext.agentProfile).toBeUndefined()
+      expect(receivedContext.launchSource).toBeUndefined()
     })
   })
 })

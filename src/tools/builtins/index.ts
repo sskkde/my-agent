@@ -8,20 +8,7 @@ import type { ToolResultStore } from '../../storage/tool-result-store.js'
 import type { LongTermMemoryStore } from '../../storage/long-term-memory-store.js'
 import type { SessionStore } from '../../storage/session-store.js'
 import type { ProcessSessionStore } from './process-session-store.js'
-import type { Todo, TodoWriteInput } from '../../todo/types.js'
-
-/**
- * TodoStore interface for todo tool operations.
- * This is a placeholder that will be implemented in Task 9.
- */
-export interface TodoStore {
-  findById(id: string): Todo | null
-  findBySession(sessionId: string): Todo[]
-  create(input: Omit<Todo, 'createdAt' | 'updatedAt' | 'position'> & { position?: number }): Todo
-  update(id: string, input: Partial<Omit<Todo, 'todoId' | 'sessionId' | 'tenantId' | 'createdAt'>>): Todo | null
-  remove(id: string): boolean
-  replace(sessionId: string, todos: TodoWriteInput[]): Todo[]
-}
+import type { TodoStore } from '../../todo/store.js'
 
 import { createArtifactCreateTool } from './artifact-create.js'
 import { createArtifactUpdateTool } from './artifact-update.js'

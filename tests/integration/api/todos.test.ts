@@ -19,6 +19,7 @@ import {
   closeAuthenticatedTestContext,
   type AuthenticatedTestContext,
 } from '../../helpers/auth.js'
+import { TodoPriority, TodoStatus } from '../../../src/todo/types.js'
 
 // Todo types expected from API
 interface TodoItem {
@@ -29,6 +30,7 @@ interface TodoItem {
   priority: 'high' | 'medium' | 'low'
   parentTodoId?: string
   position: number
+  ownerAgentId?: string
   createdAt: string
   updatedAt: string
 }
@@ -143,6 +145,43 @@ describe('Todo API', () => {
 
       const childBody = (await childResponse.json()) as { ok: boolean; data: { todo: TodoItem } }
       expect(childBody.data.todo.parentTodoId).toBe(parentTodoId)
+    })
+
+    it('should reject ownerAgentId on create to prevent owner spoofing', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ content: 'Spoofed owner todo', ownerAgentId: 'agent.spoofed' }),
+      })
+
+      expect(response.status).toBe(400)
+      const body = (await response.json()) as { ok: boolean; error: { code: string; message: string } }
+      expect(body.ok).toBe(false)
+      expect(body.error.code).toBe('BAD_REQUEST')
+      expect(body.error.message).toContain('ownerAgentId cannot be set')
+    })
+
+    it('should reject parentTodoId owned by a different ownerAgentId', async () => {
+      const parentTodo = ctx.apiContext.stores.todoStore.create({
+        id: 'api-custom-owner-parent',
+        sessionId,
+        content: 'Custom owner parent',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent.parent',
+      })
+
+      const childResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ content: 'Default owner child', parentTodoId: parentTodo.id }),
+      })
+
+      expect(childResponse.status).toBe(400)
+      const childBody = (await childResponse.json()) as { ok: boolean; error: { code: string; message: string } }
+      expect(childBody.ok).toBe(false)
+      expect(childBody.error.code).toBe('BAD_REQUEST')
+      expect(childBody.error.message).toContain('same owner agent')
     })
 
     it('should return 400 for missing content', async () => {
@@ -418,9 +457,7 @@ describe('Todo API', () => {
       const updatedBody = (await updatedResponse.json()) as { data: { todos: TodoItem[] } }
       const updatedTodo = updatedBody.data.todos.find((t) => t.todoId === testTodoId)
 
-      expect(new Date(updatedTodo!.updatedAt).getTime()).toBeGreaterThanOrEqual(
-        new Date(originalUpdatedAt).getTime(),
-      )
+      expect(new Date(updatedTodo!.updatedAt).getTime()).toBeGreaterThanOrEqual(new Date(originalUpdatedAt).getTime())
     })
 
     it('should return 400 for invalid status', async () => {
@@ -454,6 +491,26 @@ describe('Todo API', () => {
 
       const body = (await response.json()) as { ok: boolean; error: { code: string } }
       expect(body.error.code).toBe('NOT_FOUND')
+    })
+
+    it('should return 404 when updating an agent-owned todo through session API', async () => {
+      const agentTodo = ctx.apiContext.stores.todoStore.create({
+        id: 'api-agent-owned-update-target',
+        sessionId,
+        content: 'Agent-owned update target',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent.custom',
+      })
+
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/todos/${agentTodo.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ content: 'Mutated by API' }),
+      })
+
+      expect(response.status).toBe(404)
+      expect(ctx.apiContext.stores.todoStore.findById(agentTodo.id)?.content).toBe('Agent-owned update target')
     })
 
     it('should return 404 for non-existent session', async () => {
@@ -514,6 +571,25 @@ describe('Todo API', () => {
 
       const body = (await response.json()) as { ok: boolean; error: { code: string } }
       expect(body.error.code).toBe('NOT_FOUND')
+    })
+
+    it('should return 404 when deleting an agent-owned todo through session API', async () => {
+      const agentTodo = ctx.apiContext.stores.todoStore.create({
+        id: 'api-agent-owned-delete-target',
+        sessionId,
+        content: 'Agent-owned delete target',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent.custom',
+      })
+
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/todos/${agentTodo.id}`, {
+        method: 'DELETE',
+        headers: { Cookie: authCookie },
+      })
+
+      expect(response.status).toBe(404)
+      expect(ctx.apiContext.stores.todoStore.findById(agentTodo.id)?.content).toBe('Agent-owned delete target')
     })
 
     it('should cascade delete descendants', async () => {
@@ -609,7 +685,11 @@ describe('Todo API', () => {
         body: JSON.stringify({}),
       })
 
-      const body = (await response.json()) as { ok: boolean; error: { code: string; message: string }; requestId: string }
+      const body = (await response.json()) as {
+        ok: boolean
+        error: { code: string; message: string }
+        requestId: string
+      }
 
       expect(body).toHaveProperty('ok')
       expect(body).toHaveProperty('error')
@@ -626,10 +706,105 @@ describe('Todo API', () => {
         body: JSON.stringify({ status: 'completed' }),
       })
 
-      const body = (await response.json()) as { ok: boolean; error: { code: string; message: string }; requestId: string }
+      const body = (await response.json()) as {
+        ok: boolean
+        error: { code: string; message: string }
+        requestId: string
+      }
 
       expect(body.ok).toBe(false)
       expect(body.error.code).toBe('NOT_FOUND')
+    })
+  })
+
+  // ===========================================================================
+  // Owner Filtering & Backward Compatibility
+  // ===========================================================================
+  describe('Owner Filtering & Backward Compatibility', () => {
+    let ownerTestSessionId: string
+
+    beforeAll(async () => {
+      const sessionResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const sessionBody = (await sessionResponse.json()) as { data: { session: { sessionId: string } } }
+      ownerTestSessionId = sessionBody.data.session.sessionId
+    })
+
+    it('should return all session todos from multiple owners (backward compatible)', async () => {
+      await fetch(`${baseUrl}/api/v1/sessions/${ownerTestSessionId}/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ content: 'Default owner todo' }),
+      })
+
+      ctx.apiContext.stores.todoStore.create({
+        id: 'api-custom-owner-list-todo',
+        sessionId: ownerTestSessionId,
+        content: 'Custom agent todo',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent.custom',
+      })
+
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${ownerTestSessionId}/todos`, {
+        headers: { Cookie: authCookie },
+      })
+
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as { data: { todos: TodoItem[]; total: number } }
+      expect(body.data.total).toBe(2)
+      expect(body.data.todos.length).toBe(2)
+    })
+
+    it('should include ownerAgentId in response', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${ownerTestSessionId}/todos`, {
+        headers: { Cookie: authCookie },
+      })
+
+      const body = (await response.json()) as { data: { todos: TodoItem[] } }
+      const todo = body.data.todos[0]
+      expect(todo).toHaveProperty('ownerAgentId')
+      expect(typeof todo!.ownerAgentId).toBe('string')
+    })
+
+    it('should filter by ownerAgentId when query param provided', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${ownerTestSessionId}/todos?ownerAgentId=agent.custom`, {
+        headers: { Cookie: authCookie },
+      })
+
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as { data: { todos: TodoItem[]; total: number } }
+      expect(body.data.total).toBe(1)
+      expect(body.data.todos[0]!.content).toBe('Custom agent todo')
+      expect(body.data.todos[0]!.ownerAgentId).toBe('agent.custom')
+    })
+
+    it('should return empty for non-existent ownerAgentId', async () => {
+      const response = await fetch(
+        `${baseUrl}/api/v1/sessions/${ownerTestSessionId}/todos?ownerAgentId=agent.nonexistent`,
+        { headers: { Cookie: authCookie } },
+      )
+
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as { data: { todos: TodoItem[]; total: number } }
+      expect(body.data.total).toBe(0)
+      expect(body.data.todos).toEqual([])
+    })
+
+    it('should return default owner todos when ownerAgentId is foreground.default', async () => {
+      const response = await fetch(
+        `${baseUrl}/api/v1/sessions/${ownerTestSessionId}/todos?ownerAgentId=foreground.default`,
+        { headers: { Cookie: authCookie } },
+      )
+
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as { data: { todos: TodoItem[]; total: number } }
+      expect(body.data.total).toBe(1)
+      expect(body.data.todos[0]!.content).toBe('Default owner todo')
+      expect(body.data.todos[0]!.ownerAgentId).toBe('foreground.default')
     })
   })
 })

@@ -172,6 +172,7 @@ function createMockEventStore(): MockEventStore {
 
 // Import the actual implementation (will fail initially)
 import { createBackgroundRuntime } from '../../../src/subagents/background-runtime.js'
+import { createAgentTypeToolEnvelopeRegistry } from '../../../src/permissions/agent-type-tool-envelope.js'
 
 describe('BackgroundRuntime', () => {
   let connection: MockConnectionManager
@@ -1043,5 +1044,112 @@ describe('BackgroundRuntime', () => {
       expect(cancelledEvents[0].payload.backgroundRunId).toBe(bgRunId)
       expect(cancelledEvents[0].payload.agentType).toBe('research-agent')
     })
+  })
+})
+
+describe('Background todo tool isolation', () => {
+  it('background envelope allows todowrite via category exception', () => {
+    const registry = createAgentTypeToolEnvelopeRegistry()
+
+    expect(registry.isToolAllowedByEnvelope('background', 'todowrite', 'write')).toBe(true)
+    expect(registry.isToolAllowedByEnvelope('background', 'todolist', 'read')).toBe(true)
+  })
+
+  it('background envelope rejects non-todo write tools', () => {
+    const registry = createAgentTypeToolEnvelopeRegistry()
+
+    expect(registry.isToolAllowedByEnvelope('background', 'artifact_create', 'write')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'artifact_update', 'write')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'file_write', 'write')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'exec', 'execute')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'admin_config', 'admin')).toBe(false)
+  })
+
+  it('background envelope denies shell/execute/admin tools unconditionally', () => {
+    const registry = createAgentTypeToolEnvelopeRegistry()
+
+    expect(registry.isToolAllowedByEnvelope('background', 'exec', 'execute')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'bash', 'execute')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'code_execution', 'execute')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'admin_config', 'admin')).toBe(false)
+    expect(registry.isToolAllowedByEnvelope('background', 'manage_users', 'admin')).toBe(false)
+  })
+
+  it('getAllowedToolIds for background includes todowrite but not other write tools', () => {
+    const registry = createAgentTypeToolEnvelopeRegistry()
+
+    const catalog = [
+      { id: 'file_read', category: 'read' as const },
+      { id: 'web_search', category: 'search' as const },
+      { id: 'todolist', category: 'read' as const },
+      { id: 'todowrite', category: 'write' as const },
+      { id: 'artifact_create', category: 'write' as const },
+      { id: 'artifact_update', category: 'write' as const },
+      { id: 'exec', category: 'execute' as const },
+      { id: 'admin_config', category: 'admin' as const },
+    ]
+
+    const allowed = registry.getAllowedToolIds('background', catalog)
+
+    expect(allowed).toContain('file_read')
+    expect(allowed).toContain('web_search')
+    expect(allowed).toContain('todolist')
+    expect(allowed).toContain('todowrite')
+
+    expect(allowed).not.toContain('artifact_create')
+    expect(allowed).not.toContain('artifact_update')
+    expect(allowed).not.toContain('exec')
+    expect(allowed).not.toContain('admin_config')
+  })
+})
+
+describe('Background context sessionId for todo calls', () => {
+  it('background run includes sessionId from the original enqueue input', () => {
+    const localBgRunStore = createMockBackgroundRunStore()
+    const localEventStore = createMockEventStore()
+    const localRuntime = createBackgroundRuntime({
+      backgroundRunStore: localBgRunStore,
+      eventStore: localEventStore,
+      maxConcurrentRuns: 2,
+      watchdogTimeoutMs: 5000,
+    })
+
+    const input: BackgroundRunInput = {
+      userId: 'user-123',
+      sessionId: 'session-abc',
+      agentType: 'research_processor',
+      taskSpec: { objective: 'Research topic X' },
+      launchSource: 'planner',
+    }
+
+    const bgRunId = localRuntime.enqueueBackgroundRun(input)
+    const run = localRuntime.getBackgroundRun(bgRunId)
+
+    expect(run).not.toBeNull()
+    expect(run?.sessionId).toBe('session-abc')
+  })
+
+  it('background run without sessionId has undefined sessionId', () => {
+    const localBgRunStore = createMockBackgroundRunStore()
+    const localEventStore = createMockEventStore()
+    const localRuntime = createBackgroundRuntime({
+      backgroundRunStore: localBgRunStore,
+      eventStore: localEventStore,
+      maxConcurrentRuns: 2,
+      watchdogTimeoutMs: 5000,
+    })
+
+    const input: BackgroundRunInput = {
+      userId: 'user-123',
+      agentType: 'research_processor',
+      taskSpec: { objective: 'Research topic X' },
+      launchSource: 'planner',
+    }
+
+    const bgRunId = localRuntime.enqueueBackgroundRun(input)
+    const run = localRuntime.getBackgroundRun(bgRunId)
+
+    expect(run).not.toBeNull()
+    expect(run?.sessionId).toBeUndefined()
   })
 })
