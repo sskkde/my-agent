@@ -267,6 +267,8 @@ export class AgentKernel {
       memoryPolicyProjection = projectionResult.memoryPolicyProjection
     }
 
+    const effectiveSkillProjection = input.skillProjection ?? this.config.skillProjection
+
     const buildInput: ModelInputBuildInput = input.modelInputOverride
       ? {
           ...input.modelInputOverride,
@@ -274,6 +276,7 @@ export class AgentKernel {
             ? { transcript: [...(input.modelInputOverride.transcript ?? []), ...transcriptMessages] }
             : {}),
           ...(input.toolProjection ? { toolProjection: input.toolProjection } : {}),
+          ...(effectiveSkillProjection ? { skillProjection: effectiveSkillProjection } : {}),
           ...(isPromptMemoryP0Enabled() && toolSelectionPolicy ? { toolSelectionPolicy } : {}),
           ...(isPromptMemoryP0Enabled() && personaProjection ? { personaProjection } : {}),
           ...(isPromptMemoryP0Enabled() && memoryPolicyProjection ? { memoryPolicyProjection } : {}),
@@ -289,6 +292,7 @@ export class AgentKernel {
           sessionId: input.sessionId,
           runId: input.runId ?? input.contextBundle.runId,
           toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
+          ...(effectiveSkillProjection ? { skillProjection: effectiveSkillProjection } : {}),
           outputContract: 'output:default-chat.schema',
           ...(isPromptMemoryP0Enabled()
             ? {

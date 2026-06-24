@@ -2,7 +2,7 @@ import type { ContextBundle, ContextItem } from '../context/types.js'
 import type { SubagentTaskSpec } from './types.js'
 import type { SubagentDefinition } from './registry.js'
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
-import type { BuiltModelInput, ModelInputBuildInput } from '../kernel/model-input/model-input-types.js'
+import type { BuiltModelInput, ModelInputBuildInput, SkillPlaneProjection } from '../kernel/model-input/model-input-types.js'
 
 export interface SubagentContextManager {
   createIsolatedContext(options: {
@@ -124,8 +124,9 @@ export async function buildSevenLayerModelInput(options: {
   taskSpec: SubagentTaskSpec
   providerFamily: string
   modelInputBuilder: ModelInputBuilder
+  skillProjection?: SkillPlaneProjection
 }): Promise<BuiltModelInput> {
-  const { definition, taskSpec, providerFamily, modelInputBuilder } = options
+  const { definition, taskSpec, providerFamily, modelInputBuilder, skillProjection } = options
 
   const agentProfile = definition.agentProfile ?? definition.agentType
 
@@ -138,6 +139,7 @@ export async function buildSevenLayerModelInput(options: {
     toolProjection: {
       toolIds: definition.allowedToolIds,
     },
+    ...(skillProjection ? { skillProjection } : {}),
     contextBundle: {
       pinnedItems: [
         {
