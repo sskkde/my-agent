@@ -7,7 +7,7 @@ import type { LLMAdapter } from '../llm/adapter.js'
 import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js'
 import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { ToolRegistry } from '../tools/types.js'
-import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
+import { buildContextBundleFromForegroundState, type AttachmentResolver } from './context-bundle-builder.js'
 import {
   DEFAULT_FOREGROUND_MAX_ITERATIONS,
   DEFAULT_FOREGROUND_TIMEOUT_MS,
@@ -34,6 +34,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private toolRegistry?: ToolRegistry
   private readonly maxIterations: number
   private readonly timeoutMs: number
+  private readonly attachmentResolver?: AttachmentResolver
 
   constructor(options?: CreateForegroundAgentOptions) {
     this.agentConfig = options?.agentConfig
@@ -42,6 +43,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.toolRegistry = options?.toolRegistry
     this.maxIterations = options?.maxIterations ?? DEFAULT_FOREGROUND_MAX_ITERATIONS
     this.timeoutMs = options?.timeoutMs ?? DEFAULT_FOREGROUND_TIMEOUT_MS
+    this.attachmentResolver = options?.attachmentResolver
   }
 
   setAgentKernel(kernel: AgentKernel): void {
@@ -69,7 +71,12 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
     }
 
-    const contextBundle = buildContextBundleFromForegroundState(input.foregroundState, input)
+    const contextBundle = buildContextBundleFromForegroundState(
+      input.foregroundState,
+      input,
+      undefined,
+      this.attachmentResolver,
+    )
     const allTools = this.toolCatalog ?? getToolCatalog()
     const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)
@@ -137,6 +144,7 @@ export interface CreateForegroundAgentOptions {
   readonly toolRegistry?: ToolRegistry
   readonly maxIterations?: number
   readonly timeoutMs?: number
+  readonly attachmentResolver?: AttachmentResolver
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
