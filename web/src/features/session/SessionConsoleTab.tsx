@@ -344,6 +344,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     clearPostSendPollTimeout,
     selectedFiles,
     setSelectedFiles,
+    handleFilesSelected,
     uploadErrors,
     isUploading,
   } = useComposerSubmission({
@@ -547,13 +548,6 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       setDraft(prompt)
     },
     [setDraft],
-  )
-
-  const handleFilesSelected = useCallback(
-    (files: File[]) => {
-      setSelectedFiles((prev) => [...prev, ...files])
-    },
-    [setSelectedFiles],
   )
 
   const handleRemoveFile = useCallback(

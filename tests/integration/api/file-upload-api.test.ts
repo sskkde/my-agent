@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { createHash } from 'node:crypto'
 import {
   createAuthenticatedTestContext,
   closeAuthenticatedTestContext,
@@ -23,9 +24,11 @@ interface FileMetadata {
   userId: string
   sessionId: string
   originalFilename: string
+  sanitizedName: string
   mimeType: string
   extension: string
   sizeBytes: number
+  previewStatus: 'pending' | 'generated' | 'skipped' | 'failed'
   status: string
   createdAt: string
   updatedAt: string
@@ -279,8 +282,7 @@ describe('File Upload API', () => {
   // GET /api/v1/files/:fileId/download - Download
   // ===========================================================================
   describe('GET /api/v1/files/:fileId/download', () => {
-    it('should return 501 for download (storage stub)', async () => {
-      // Upload a file
+    it('should stream file bytes with correct Content-Type and Content-Disposition headers', async () => {
       const formData = createMultipartBody('download-test.txt', 'download content')
       const uploadResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
         method: 'POST',
@@ -294,12 +296,13 @@ describe('File Upload API', () => {
         headers: { Cookie: authCookie },
       })
 
-      // Storage service not yet implemented - expect 501
-      expect(response.status).toBe(501)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe('text/plain')
+      expect(response.headers.get('content-disposition')).toContain('attachment')
+      expect(response.headers.get('content-disposition')).toContain('download-test.txt')
 
-      const body = (await response.json()) as ApiEnvelope<never>
-      expect(body.ok).toBe(false)
-      expect(body.error?.code).toBe('NOT_IMPLEMENTED')
+      const text = await response.text()
+      expect(text).toBe('download content')
     })
 
     it('should return 404 for non-existent file', async () => {
@@ -461,5 +464,443 @@ describe('File Upload API', () => {
       expect(body.error?.code).toBe('NOT_FOUND')
       expect(body).toHaveProperty('requestId')
     })
+  })
+
+  // ===========================================================================
+  // DTO contract: safe fields present, internal fields omitted
+  // ===========================================================================
+  describe('DTO contract — safe fields present, internal fields omitted', () => {
+    const FORBIDDEN_FIELDS = ['storageRef', 'checksum', 'tenantId', 'previewText', 'sensitivity', 'deletedAt'] as const
+    const ALLOWED_FIELDS: Array<keyof FileMetadata> = [
+      'fileId',
+      'userId',
+      'sessionId',
+      'originalFilename',
+      'sanitizedName',
+      'mimeType',
+      'extension',
+      'sizeBytes',
+      'previewStatus',
+      'status',
+      'createdAt',
+      'updatedAt',
+    ]
+
+    it('upload response includes sanitizedName and previewStatus', async () => {
+      const formData = createMultipartBody('dto-upload.txt', 'dto contract check')
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+
+      expect(response.status).toBe(201)
+      const body = (await response.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const file = body.data!.file
+
+      // Safe public fields MUST be present
+      expect(file.sanitizedName).toBeDefined()
+      expect(typeof file.sanitizedName).toBe('string')
+      expect(file.sanitizedName.length).toBeGreaterThan(0)
+      expect(file.previewStatus).toBeDefined()
+      expect(['pending', 'generated', 'skipped', 'failed']).toContain(file.previewStatus)
+    })
+
+    it('upload response omits storageRef, checksum, tenantId, previewText, sensitivity, deletedAt', async () => {
+      const formData = createMultipartBody('dto-omit-upload.txt', 'omit check')
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+
+      expect(response.status).toBe(201)
+      const body = (await response.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const file = body.data!.file as unknown as Record<string, unknown>
+
+      for (const field of FORBIDDEN_FIELDS) {
+        expect(file[field], `upload response must not expose "${field}"`).toBeUndefined()
+      }
+    })
+
+    it('list response includes sanitizedName and previewStatus on each item', async () => {
+      // Upload a file first
+      const formData = createMultipartBody('dto-list.txt', 'list contract check')
+      await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        headers: { Cookie: authCookie },
+      })
+
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as ApiEnvelope<{ files: FileMetadata[]; total: number }>
+      expect(body.data!.files.length).toBeGreaterThan(0)
+
+      for (const file of body.data!.files) {
+        expect(file.sanitizedName, 'list item must include sanitizedName').toBeDefined()
+        expect(typeof file.sanitizedName).toBe('string')
+        expect(file.previewStatus, 'list item must include previewStatus').toBeDefined()
+        expect(['pending', 'generated', 'skipped', 'failed']).toContain(file.previewStatus)
+      }
+    })
+
+    it('list response omits storageRef, checksum, tenantId, previewText, sensitivity, deletedAt on each item', async () => {
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        headers: { Cookie: authCookie },
+      })
+
+      const body = (await response.json()) as ApiEnvelope<{ files: FileMetadata[] }>
+      for (const file of body.data!.files) {
+        const rec = file as unknown as Record<string, unknown>
+        for (const field of FORBIDDEN_FIELDS) {
+          expect(rec[field], `list item must not expose "${field}"`).toBeUndefined()
+        }
+      }
+    })
+
+    it('metadata response includes sanitizedName and previewStatus', async () => {
+      const formData = createMultipartBody('dto-meta.txt', 'metadata contract')
+      const uploadResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+      const uploadBody = (await uploadResponse.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const fileId = uploadBody.data!.file.fileId
+
+      const response = await fetch(`${baseUrl}/api/v1/files/${fileId}`, {
+        headers: { Cookie: authCookie },
+      })
+
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const file = body.data!.file
+
+      expect(file.sanitizedName).toBeDefined()
+      expect(typeof file.sanitizedName).toBe('string')
+      expect(file.previewStatus).toBeDefined()
+      expect(['pending', 'generated', 'skipped', 'failed']).toContain(file.previewStatus)
+    })
+
+    it('metadata response omits storageRef, checksum, tenantId, previewText, sensitivity, deletedAt', async () => {
+      const formData = createMultipartBody('dto-meta-omit.txt', 'metadata omit check')
+      const uploadResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+      const uploadBody = (await uploadResponse.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const fileId = uploadBody.data!.file.fileId
+
+      const response = await fetch(`${baseUrl}/api/v1/files/${fileId}`, {
+        headers: { Cookie: authCookie },
+      })
+
+      const body = (await response.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const file = body.data!.file as unknown as Record<string, unknown>
+
+      for (const field of FORBIDDEN_FIELDS) {
+        expect(file[field], `metadata response must not expose "${field}"`).toBeUndefined()
+      }
+    })
+
+    it('upload response JSON shape matches expected allowed-field set', async () => {
+      const formData = createMultipartBody('dto-shape.txt', 'shape check')
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+
+      const body = (await response.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const file = body.data!.file as unknown as Record<string, unknown>
+      const actualKeys = Object.keys(file).sort()
+      const expectedKeys = ALLOWED_FIELDS.slice().sort()
+
+      expect(actualKeys).toEqual(expectedKeys)
+    })
+  })
+
+  // ===========================================================================
+  // Cross-layer attachment lifecycle
+  // Upload → send message → transcript → timeline → download → delete
+  // ===========================================================================
+  describe('Cross-layer attachment lifecycle', () => {
+    let lifecycleSessionId: string
+
+    // Deterministic content for reproducible tests
+    const DETERMINISTIC_CONTENT = 'The quick brown fox jumps over the lazy dog. 0123456789.'
+    const DETERMINISTIC_FILENAME = 'lifecycle-test.txt'
+    const EXPECTED_BYTES = new TextEncoder().encode(DETERMINISTIC_CONTENT)
+    const EXPECTED_SHA256 = createHash('sha256').update(DETERMINISTIC_CONTENT).digest('hex')
+
+    beforeAll(async () => {
+      const sessionResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const sessionBody = (await sessionResponse.json()) as { data: { session: { sessionId: string } } }
+      lifecycleSessionId = sessionBody.data.session.sessionId
+    }, 30000)
+
+    it('should complete full lifecycle: upload → message → transcript → timeline → download → delete', async () => {
+      // ── Step 1: Upload ──────────────────────────────────────────────
+      const formData = createMultipartBody(DETERMINISTIC_FILENAME, DETERMINISTIC_CONTENT)
+      const uploadResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+
+      expect(uploadResponse.status).toBe(201)
+      const uploadBody = (await uploadResponse.json()) as ApiEnvelope<{ file: FileMetadata }>
+      expect(uploadBody.ok).toBe(true)
+      const fileId = uploadBody.data!.file.fileId
+      expect(uploadBody.data!.file.originalFilename).toBe(DETERMINISTIC_FILENAME)
+      expect(uploadBody.data!.file.mimeType).toBe('text/plain')
+      expect(uploadBody.data!.file.sizeBytes).toBe(EXPECTED_BYTES.length)
+      expect(uploadBody.data!.file.status).toBe('ready')
+
+      // ── Step 2: Send message with attachment ────────────────────────
+      const messageResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({
+          text: 'Please analyze this file',
+          attachmentIds: [fileId],
+        }),
+      })
+
+      expect(messageResponse.status).toBe(202)
+      const messageBody = (await messageResponse.json()) as ApiEnvelope<{ accepted: boolean; envelopeId: string }>
+      expect(messageBody.ok).toBe(true)
+      expect(messageBody.data?.accepted).toBe(true)
+
+      // ── Step 3: Wait for processing and verify transcript ───────────
+      // Poll transcript until the turn appears (processing is async)
+      let transcripts: Array<{
+        turnId: string
+        input: { contentRefs?: string[]; userMessageSummary?: string }
+        output: { visibleMessages?: Array<{ role: string; content: string }> }
+      }> = []
+
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const transcriptResponse = await fetch(
+          `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/transcripts`,
+          { headers: { Cookie: authCookie } },
+        )
+        const transcriptBody = (await transcriptResponse.json()) as ApiEnvelope<{
+          transcripts: typeof transcripts
+          total: number
+        }>
+        transcripts = transcriptBody.data?.transcripts ?? []
+
+        // Look for a transcript turn that has our attachment contentRef
+        const found = transcripts.some(
+          (t) => t.input.contentRefs?.includes(`attachment:${fileId}`),
+        )
+        if (found) break
+
+        // Wait 200ms before retry
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+
+      // Verify transcript contains contentRef for our attachment
+      const matchingTurn = transcripts.find((t) =>
+        t.input.contentRefs?.includes(`attachment:${fileId}`),
+      )
+      expect(matchingTurn, 'transcript should contain a turn referencing our attachment').toBeDefined()
+      expect(matchingTurn!.input.userMessageSummary).toBe('Please analyze this file')
+      expect(matchingTurn!.input.contentRefs).toContain(`attachment:${fileId}`)
+
+      // ── Step 4: Verify timeline includes attachment metadata ────────
+      const timelineResponse = await fetch(
+        `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/timeline`,
+        { headers: { Cookie: authCookie } },
+      )
+      expect(timelineResponse.status).toBe(200)
+
+      const timelineBody = (await timelineResponse.json()) as ApiEnvelope<{
+        items: Array<{
+          eventId: string
+          eventType: string
+          content: string
+          metadata?: {
+            attachments?: Array<{
+              fileId: string
+              originalFilename: string
+              sizeBytes: number
+              mimeType: string
+            }>
+          }
+        }>
+        total: number
+      }>
+      expect(timelineBody.ok).toBe(true)
+
+      // Find the user_message event that references our attachment
+      const userMessageEvent = timelineBody.data!.items.find(
+        (e) =>
+          e.eventType === 'user_message' &&
+          e.metadata?.attachments?.some((a) => a.fileId === fileId),
+      )
+      expect(
+        userMessageEvent,
+        'timeline should contain a user_message event with attachment metadata',
+      ).toBeDefined()
+
+      const attachmentMeta = userMessageEvent!.metadata!.attachments!.find(
+        (a) => a.fileId === fileId,
+      )
+      expect(attachmentMeta).toBeDefined()
+      expect(attachmentMeta!.originalFilename).toBe(DETERMINISTIC_FILENAME)
+      expect(attachmentMeta!.sizeBytes).toBe(EXPECTED_BYTES.length)
+      expect(attachmentMeta!.mimeType).toBe('text/plain')
+
+      // ── Step 5: Download and verify bytes match ─────────────────────
+      const downloadResponse = await fetch(`${baseUrl}/api/v1/files/${fileId}/download`, {
+        headers: { Cookie: authCookie },
+      })
+      expect(downloadResponse.status).toBe(200)
+      expect(downloadResponse.headers.get('content-type')).toBe('text/plain')
+      expect(downloadResponse.headers.get('content-disposition')).toContain(DETERMINISTIC_FILENAME)
+
+      const downloadedText = await downloadResponse.text()
+      expect(downloadedText).toBe(DETERMINISTIC_CONTENT)
+
+      // Verify checksum of downloaded bytes
+      const downloadedSha256 = createHash('sha256').update(downloadedText).digest('hex')
+      expect(downloadedSha256).toBe(EXPECTED_SHA256)
+
+      // ── Step 6: Delete and verify access blocked ────────────────────
+      const deleteResponse = await fetch(`${baseUrl}/api/v1/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { Cookie: authCookie },
+      })
+      expect(deleteResponse.status).toBe(200)
+      const deleteBody = (await deleteResponse.json()) as ApiEnvelope<{ deleted: boolean; fileId: string }>
+      expect(deleteBody.ok).toBe(true)
+      expect(deleteBody.data?.deleted).toBe(true)
+
+      // Metadata should be 404 after deletion
+      const metaAfterDelete = await fetch(`${baseUrl}/api/v1/files/${fileId}`, {
+        headers: { Cookie: authCookie },
+      })
+      expect(metaAfterDelete.status).toBe(404)
+
+      // Download should be 404 after deletion
+      const dlAfterDelete = await fetch(`${baseUrl}/api/v1/files/${fileId}/download`, {
+        headers: { Cookie: authCookie },
+      })
+      expect(dlAfterDelete.status).toBe(404)
+    }, 60000)
+
+    it('should verify image attachment shows metadata-only in context (not visual understanding)', async () => {
+      // Upload a small valid PNG (1x1 pixel red dot)
+      const pngBase64 =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+      const pngBytes = Uint8Array.from(atob(pngBase64), (c) => c.charCodeAt(0))
+      const pngBlob = new Blob([pngBytes], { type: 'image/png' })
+      const formData = new FormData()
+      formData.append('file', pngBlob, 'test-image.png')
+
+      const uploadResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: authCookie },
+        body: formData,
+      })
+
+      expect(uploadResponse.status).toBe(201)
+      const uploadBody = (await uploadResponse.json()) as ApiEnvelope<{ file: FileMetadata }>
+      const imageFileId = uploadBody.data!.file.fileId
+      expect(uploadBody.data!.file.mimeType).toBe('image/png')
+
+      // Send message with image attachment
+      const messageResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({
+          text: 'Check this image',
+          attachmentIds: [imageFileId],
+        }),
+      })
+      expect(messageResponse.status).toBe(202)
+
+      // Wait for processing
+      let transcripts: Array<{
+        input: { contentRefs?: string[] }
+      }> = []
+
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const transcriptResponse = await fetch(
+          `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/transcripts`,
+          { headers: { Cookie: authCookie } },
+        )
+        const transcriptBody = (await transcriptResponse.json()) as ApiEnvelope<{
+          transcripts: typeof transcripts
+        }>
+        transcripts = transcriptBody.data?.transcripts ?? []
+
+        const found = transcripts.some((t) =>
+          t.input.contentRefs?.includes(`attachment:${imageFileId}`),
+        )
+        if (found) break
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+
+      // Verify transcript references the image attachment
+      const imageTurn = transcripts.find((t) =>
+        t.input.contentRefs?.includes(`attachment:${imageFileId}`),
+      )
+      expect(imageTurn).toBeDefined()
+
+      // Verify the timeline includes the image attachment metadata
+      const timelineResponse = await fetch(
+        `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/timeline`,
+        { headers: { Cookie: authCookie } },
+      )
+      const timelineBody = (await timelineResponse.json()) as ApiEnvelope<{
+        items: Array<{
+          eventType: string
+          metadata?: {
+            attachments?: Array<{
+              fileId: string
+              mimeType: string
+            }>
+          }
+        }>
+      }>
+
+      const imageEvent = timelineBody.data!.items.find(
+        (e) =>
+          e.eventType === 'user_message' &&
+          e.metadata?.attachments?.some((a) => a.fileId === imageFileId),
+      )
+      expect(imageEvent, 'timeline should include image attachment metadata').toBeDefined()
+      expect(
+        imageEvent!.metadata!.attachments!.find((a) => a.fileId === imageFileId)?.mimeType,
+      ).toBe('image/png')
+
+      // Download the image and verify bytes match (binary round-trip)
+      const dlResponse = await fetch(`${baseUrl}/api/v1/files/${imageFileId}/download`, {
+        headers: { Cookie: authCookie },
+      })
+      expect(dlResponse.status).toBe(200)
+      expect(dlResponse.headers.get('content-type')).toBe('image/png')
+
+      const downloadedBuffer = await dlResponse.arrayBuffer()
+      const downloadedBytes = new Uint8Array(downloadedBuffer)
+      expect(downloadedBytes.length).toBe(pngBytes.length)
+
+      // Verify SHA-256 of downloaded image matches uploaded
+      const expectedPngSha256 = createHash('sha256').update(Buffer.from(pngBytes)).digest('hex')
+      const actualPngSha256 = createHash('sha256').update(Buffer.from(downloadedBytes)).digest('hex')
+      expect(actualPngSha256).toBe(expectedPngSha256)
+    }, 60000)
   })
 })

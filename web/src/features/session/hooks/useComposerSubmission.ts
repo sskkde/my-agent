@@ -13,6 +13,7 @@ import {
   hasAssistantOrErrorReplyAfter,
 } from '../session-utils'
 import type { AssistantPlaceholder } from '../session-utils'
+import { validateFile, CLIENT_MAX_ATTACHMENTS_PER_MESSAGE } from '../../../config/upload-constants'
 
 /** Attachment metadata stored on a local optimistic message event. */
 export interface LocalAttachmentMeta {
@@ -52,6 +53,7 @@ export interface UseComposerSubmissionReturn {
   clearPostSendPollTimeout: () => void
   selectedFiles: File[]
   setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>
+  handleFilesSelected: (files: File[]) => void
   uploadErrors: string[]
   isUploading: boolean
 }
@@ -92,6 +94,45 @@ export function useComposerSubmission(options: {
 
   const callbacksRef = useRef(callbacks)
   callbacksRef.current = callbacks
+
+  const handleFilesSelected = useCallback(
+    (incoming: File[]) => {
+      const errors: string[] = []
+      const valid: File[] = []
+
+      for (const file of incoming) {
+        const error = validateFile(file)
+        if (error) {
+          errors.push(error)
+        } else {
+          valid.push(file)
+        }
+      }
+
+      const currentCount = selectedFilesRef.current.length
+      const remaining = CLIENT_MAX_ATTACHMENTS_PER_MESSAGE - currentCount
+
+      if (remaining <= 0) {
+        errors.push(`Maximum ${CLIENT_MAX_ATTACHMENTS_PER_MESSAGE} attachments per message`)
+        if (errors.length > 0) setUploadErrors((prev) => [...prev, ...errors])
+        return
+      }
+
+      const accepted = valid.slice(0, remaining)
+      if (valid.length > remaining) {
+        errors.push(`Maximum ${CLIENT_MAX_ATTACHMENTS_PER_MESSAGE} attachments per message`)
+      }
+
+      if (accepted.length > 0) {
+        setSelectedFiles((prev) => [...prev, ...accepted])
+      }
+
+      if (errors.length > 0) {
+        setUploadErrors((prev) => [...prev, ...errors])
+      }
+    },
+    [],
+  )
 
   const clearPostSendPollTimeout = useCallback(() => {
     if (postSendPollTimeoutRef.current !== null) {
@@ -203,7 +244,7 @@ export function useComposerSubmission(options: {
 
   const handleSend = async () => {
     const sessionId = selectedSessionId
-    if (!sessionId || !draft.trim() || sending) return
+    if (!sessionId || (!draft.trim() && selectedFilesRef.current.length === 0) || sending) return
 
     const trimmedDraft = draft.trim()
     const cbs = callbacksRef.current
@@ -337,7 +378,7 @@ export function useComposerSubmission(options: {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      if (draft.trim() && !sending) {
+      if ((draft.trim() || selectedFiles.length > 0) && !sending) {
         handleSend()
       }
     }
@@ -356,6 +397,7 @@ export function useComposerSubmission(options: {
     clearPostSendPollTimeout,
     selectedFiles,
     setSelectedFiles,
+    handleFilesSelected,
     uploadErrors,
     isUploading,
   }

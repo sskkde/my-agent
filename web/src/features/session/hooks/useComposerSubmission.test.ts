@@ -145,6 +145,20 @@ describe('useComposerSubmission', () => {
     expect(mockSendMessage).not.toHaveBeenCalled()
   })
 
+  it('does not send blank message when no files selected', async () => {
+    const { result } = renderComposerHook()
+
+    act(() => {
+      result.current.setDraft('   ')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(mockSendMessage).not.toHaveBeenCalled()
+  })
+
   it('sends // prefix as escaped text', async () => {
     mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-1' })
 
@@ -515,5 +529,228 @@ describe('useComposerSubmission', () => {
 
     expect(mockUploadSessionFile).not.toHaveBeenCalled()
     expect(mockSendMessage).toHaveBeenCalledWith('session-1', 'Plain message', undefined)
+  })
+
+  it('uploads files and sends empty text when only files selected with empty draft', async () => {
+    mockUploadSessionFile.mockResolvedValue({
+      fileId: 'file-5',
+      originalFilename: 'photo.jpg',
+      sizeBytes: 4096,
+      mimeType: 'image/jpeg',
+    })
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-5' })
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    expect(result.current.draft).toBe('')
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(mockUploadSessionFile).toHaveBeenCalledWith('session-1', file)
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', '', ['file-5'])
+    expect(result.current.selectedFiles).toEqual([])
+    expect(result.current.draft).toBe('')
+  })
+
+  it('preserves files and draft when upload fails during file-only send', async () => {
+    mockUploadSessionFile.mockRejectedValue(new Error('Upload timeout'))
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['data'], 'report.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(mockSendMessage).not.toHaveBeenCalled()
+    expect(result.current.draft).toBe('')
+    expect(result.current.selectedFiles).toHaveLength(1)
+    expect(result.current.uploadErrors).toEqual(['Upload timeout'])
+    expect(result.current.sending).toBe(false)
+  })
+
+  it('does not interpret empty text with files as a command', async () => {
+    mockUploadSessionFile.mockResolvedValue({
+      fileId: 'file-6',
+      originalFilename: 'data.json',
+      sizeBytes: 128,
+      mimeType: 'application/json',
+    })
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-6' })
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['{}'], 'data.json', { type: 'application/json' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(mockParseInput).not.toHaveBeenCalled()
+    expect(mockExecuteCommand).not.toHaveBeenCalled()
+    expect(mockCreateCommandEvent).not.toHaveBeenCalled()
+
+    expect(mockUploadSessionFile).toHaveBeenCalledWith('session-1', file)
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', '', ['file-6'])
+  })
+
+  it('handleKeyDown triggers send on Enter when only files selected', async () => {
+    mockUploadSessionFile.mockResolvedValue({
+      fileId: 'file-7',
+      originalFilename: 'readme.md',
+      sizeBytes: 512,
+      mimeType: 'text/markdown',
+    })
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-7' })
+
+    const { result } = renderComposerHook()
+
+    const file = new File(['# Readme'], 'readme.md', { type: 'text/markdown' })
+    act(() => {
+      result.current.setSelectedFiles([file])
+    })
+
+    const preventDefault = vi.fn()
+    await act(async () => {
+      result.current.handleKeyDown({ key: 'Enter', shiftKey: false, preventDefault } as unknown as React.KeyboardEvent)
+    })
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(mockUploadSessionFile).toHaveBeenCalledWith('session-1', file)
+    expect(mockSendMessage).toHaveBeenCalledWith('session-1', '', ['file-7'])
+  })
+
+  describe('handleFilesSelected preflight validation', () => {
+    const createFile = (name: string, size: number, type = 'text/plain'): File => {
+      const file = new File(['x'.repeat(size)], name, { type })
+      Object.defineProperty(file, 'size', { value: size })
+      return file
+    }
+
+    it('accepts valid files and adds them to selectedFiles', () => {
+      const { result } = renderComposerHook()
+
+      const validFiles = [createFile('doc.txt', 100), createFile('image.png', 2048)]
+      act(() => {
+        result.current.handleFilesSelected(validFiles)
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(2)
+      expect(result.current.uploadErrors).toEqual([])
+    })
+
+    it('rejects files with unsupported extensions', () => {
+      const { result } = renderComposerHook()
+
+      const files = [createFile('script.exe', 100), createFile('valid.txt', 100)]
+      act(() => {
+        result.current.handleFilesSelected(files)
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(1)
+      expect(result.current.selectedFiles[0].name).toBe('valid.txt')
+      expect(result.current.uploadErrors).toHaveLength(1)
+      expect(result.current.uploadErrors[0]).toContain('unsupported file type')
+    })
+
+    it('rejects oversized files', () => {
+      const { result } = renderComposerHook()
+
+      const oversized = createFile('huge.txt', 11 * 1024 * 1024)
+      const valid = createFile('small.txt', 100)
+      act(() => {
+        result.current.handleFilesSelected([oversized, valid])
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(1)
+      expect(result.current.selectedFiles[0].name).toBe('small.txt')
+      expect(result.current.uploadErrors).toHaveLength(1)
+      expect(result.current.uploadErrors[0]).toContain('file too large')
+    })
+
+    it('rejects files when max attachments exceeded', () => {
+      const { result } = renderComposerHook()
+
+      const fiveFiles = Array.from({ length: 5 }, (_, i) => createFile(`f${i}.txt`, 10))
+      act(() => {
+        result.current.handleFilesSelected(fiveFiles)
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(5)
+      expect(result.current.uploadErrors).toEqual([])
+
+      const extraFile = createFile('extra.txt', 10)
+      act(() => {
+        result.current.handleFilesSelected([extraFile])
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(5)
+      expect(result.current.uploadErrors).toHaveLength(1)
+      expect(result.current.uploadErrors[0]).toContain('Maximum')
+    })
+
+    it('reports multiple per-file errors separately', () => {
+      const { result } = renderComposerHook()
+
+      const files = [
+        createFile('bad.exe', 100),
+        createFile('huge.txt', 11 * 1024 * 1024),
+        createFile('valid.txt', 100),
+      ]
+      act(() => {
+        result.current.handleFilesSelected(files)
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(1)
+      expect(result.current.selectedFiles[0].name).toBe('valid.txt')
+      expect(result.current.uploadErrors).toHaveLength(2)
+      expect(result.current.uploadErrors.some((e) => e.includes('unsupported'))).toBe(true)
+      expect(result.current.uploadErrors.some((e) => e.includes('too large'))).toBe(true)
+    })
+
+    it('keeps valid files selectable when some files are invalid', () => {
+      const { result } = renderComposerHook()
+
+      act(() => {
+        result.current.handleFilesSelected([createFile('bad.exe', 100)])
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(0)
+      expect(result.current.uploadErrors).toHaveLength(1)
+
+      act(() => {
+        result.current.handleFilesSelected([createFile('good.txt', 100)])
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(1)
+      expect(result.current.selectedFiles[0].name).toBe('good.txt')
+    })
+
+    it('rejects files with no extension', () => {
+      const { result } = renderComposerHook()
+
+      const file = createFile('noext', 100)
+      act(() => {
+        result.current.handleFilesSelected([file])
+      })
+
+      expect(result.current.selectedFiles).toHaveLength(0)
+      expect(result.current.uploadErrors).toHaveLength(1)
+      expect(result.current.uploadErrors[0]).toContain('no extension')
+    })
   })
 })

@@ -9,6 +9,7 @@ import type {
   FileUploadStore,
 } from '../../storage/file-upload-store.js'
 import type { SessionStore } from '../../storage/session-store.js'
+import { StorageSizeExceededError, StorageNotFoundError } from '../../storage/upload-file-service.js'
 
 
 // ── Response DTO (excludes storageRef and internal fields) ──────────────────
@@ -18,9 +19,11 @@ interface FileMetadataResponse {
   userId: string
   sessionId: string
   originalFilename: string
+  sanitizedName: string
   mimeType: string
   extension: string
   sizeBytes: number
+  previewStatus: string
   status: string
   createdAt: string
   updatedAt: string
@@ -32,9 +35,11 @@ function toFileMetadataResponse(record: FileUploadRecord): FileMetadataResponse 
     userId: record.userId,
     sessionId: record.sessionId,
     originalFilename: record.originalFilename,
+    sanitizedName: record.sanitizedName,
     mimeType: record.mimeType,
     extension: record.extension,
     sizeBytes: record.sizeBytes,
+    previewStatus: record.previewStatus,
     status: record.status,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -65,6 +70,7 @@ function sanitizeFilename(filename: string): string {
 export async function registerFileRoutes(server: FastifyInstance, context: ApiContext): Promise<void> {
   const fileUploadStore: FileUploadStore = context.stores.fileUploadStore
   const sessionStore: SessionStore = context.stores.sessionStore
+  const { uploadFileService, uploadPreviewExtractor } = context
 
   // ── POST /api/v1/sessions/:sessionId/files ──────────────────────────────
 
@@ -156,19 +162,23 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
         )
       }
 
-      // Compute checksum
-      const { createHash } = await import('node:crypto')
-      const checksum = createHash('sha256').update(fileBuffer).digest('hex')
+      // Enforce per-session upload quota
+      const existingFiles = fileUploadStore.listBySession(sessionId)
+      const currentSessionBytes = existingFiles.reduce((sum, f) => sum + f.sizeBytes, 0)
+      if (currentSessionBytes + fileBuffer.length > uploadConfig.perSessionQuotaBytes) {
+        return reply.code(413).send(
+          envelopeError(
+            'SESSION_QUOTA_EXCEEDED',
+            `Session upload quota of ${uploadConfig.perSessionQuotaBytes} bytes would be exceeded. Current usage: ${currentSessionBytes} bytes, upload size: ${fileBuffer.length} bytes`,
+            request.requestId,
+          ),
+        )
+      }
 
-      // Build record
       const originalFilename = file.filename ?? 'unnamed'
       const sanitizedName = sanitizeFilename(originalFilename)
-      const storageRef = `local://${sessionId}/${checksum}${extension}`
 
-      // Stub: In Task 4, this will write bytes to the storage service.
-      // For now, we just create the metadata record.
-
-      const record = fileUploadStore.create({
+      const preliminaryRecord = fileUploadStore.create({
         userId,
         sessionId,
         tenantId,
@@ -176,14 +186,52 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
         sanitizedName,
         mimeType: file.mimetype,
         extension,
-        sizeBytes: fileBuffer.length,
-        checksum,
-        storageRef,
+        sizeBytes: 0,
+        checksum: '',
+        storageRef: '',
         previewText: undefined,
-        previewStatus: 'skipped',
+        previewStatus: 'pending',
         sensitivity: 'low',
+        status: 'uploading',
+      })
+
+      let writeResult
+      try {
+        const webStream = new Blob([fileBuffer]).stream() as ReadableStream<Uint8Array>
+        writeResult = await uploadFileService.write(
+          preliminaryRecord.fileId,
+          webStream,
+          fileBuffer.length,
+        )
+      } catch (err) {
+        fileUploadStore.delete(preliminaryRecord.fileId)
+        if (err instanceof StorageSizeExceededError) {
+          return reply.code(413).send(
+            envelopeError('FILE_TOO_LARGE', err.message, request.requestId),
+          )
+        }
+        throw err
+      }
+
+      const previewResult = uploadPreviewExtractor.extract(fileBuffer, file.mimetype)
+
+      const record = fileUploadStore.update(preliminaryRecord.fileId, {
+        sizeBytes: writeResult.sizeBytes,
+        checksum: writeResult.checksum,
+        storageRef: writeResult.storageRef,
+        previewText: previewResult.previewText,
+        previewStatus: previewResult.previewStatus,
         status: 'ready',
       })
+
+      if (!record) {
+        try {
+          uploadFileService.delete(writeResult.storageRef)
+        } catch {
+          // best-effort: write already succeeded, metadata update failed
+        }
+        throw new Error(`Failed to update file record ${preliminaryRecord.fileId}`)
+      }
 
       return reply.code(201).send(success({ file: toFileMetadataResponse(record) }, request.requestId))
     },
@@ -267,11 +315,25 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
         return reply.code(404).send(envelopeError('NOT_FOUND', 'File not found', request.requestId))
       }
 
-      // Stub: In Task 4, this will read bytes from the storage service.
-      // For now, return a 501 indicating storage service is not yet implemented.
+      let fileStream
+      try {
+        fileStream = uploadFileService.read(record.storageRef)
+      } catch (err) {
+        if (err instanceof StorageNotFoundError) {
+          // Stored bytes missing — file record exists but content is gone
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'File content not found', request.requestId))
+        }
+        throw err
+      }
+
+      const safeName = record.sanitizedName || sanitizeFilename(record.originalFilename)
+      const escapedName = safeName.replace(/["\\]/g, '_')
+
       return reply
-        .code(501)
-        .send(envelopeError('NOT_IMPLEMENTED', 'File download storage service not yet available', request.requestId))
+        .header('Content-Type', record.mimeType)
+        .header('Content-Disposition', `attachment; filename="${escapedName}"`)
+        .header('Content-Length', record.sizeBytes)
+        .send(fileStream)
     },
   )
 
@@ -297,6 +359,12 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
       }
 
       fileUploadStore.markDeleted(fileId)
+
+      try {
+        uploadFileService.delete(record.storageRef)
+      } catch {
+        // best-effort: metadata already marked deleted
+      }
 
       return reply.code(200).send(success({ deleted: true, fileId }, request.requestId))
     },

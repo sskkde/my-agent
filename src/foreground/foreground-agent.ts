@@ -13,7 +13,7 @@ import { buildSkillPlaneProjection } from '../skills/skill-plane-projection.js'
 import type { AgentProfileRegistry } from '../taxonomy/agent-profile-registry.js'
 import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { ToolRegistry } from '../tools/types.js'
-import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
+import { buildContextBundleFromForegroundState, type AttachmentResolver } from './context-bundle-builder.js'
 import {
   DEFAULT_FOREGROUND_MAX_ITERATIONS,
   DEFAULT_FOREGROUND_TIMEOUT_MS,
@@ -45,6 +45,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private readonly skillEnvelopeRegistry?: AgentTypeSkillEnvelopeRegistry
   private readonly skillDocumentLoader?: SkillDocumentLoader
   private readonly agentProfileRegistry?: AgentProfileRegistry
+  private readonly attachmentResolver?: AttachmentResolver
 
   constructor(options?: CreateForegroundAgentOptions) {
     this.agentConfig = options?.agentConfig
@@ -57,6 +58,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.skillEnvelopeRegistry = options?.skillEnvelopeRegistry
     this.skillDocumentLoader = options?.skillDocumentLoader
     this.agentProfileRegistry = options?.agentProfileRegistry
+    this.attachmentResolver = options?.attachmentResolver
   }
 
   setAgentKernel(kernel: AgentKernel): void {
@@ -84,7 +86,13 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
     }
 
-    const contextBundle = buildContextBundleFromForegroundState(input.foregroundState, input, undefined, DEFAULT_FOREGROUND_TOKEN_BUDGET)
+    const contextBundle = buildContextBundleFromForegroundState(
+      input.foregroundState,
+      input,
+      undefined,
+      DEFAULT_FOREGROUND_TOKEN_BUDGET,
+      this.attachmentResolver,
+    )
     const allTools = this.toolCatalog ?? getToolCatalog()
     const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)
@@ -180,6 +188,7 @@ export interface CreateForegroundAgentOptions {
   readonly agentProfileRegistry?: AgentProfileRegistry
   readonly maxIterations?: number
   readonly timeoutMs?: number
+  readonly attachmentResolver?: AttachmentResolver
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {

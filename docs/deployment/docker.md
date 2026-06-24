@@ -235,6 +235,27 @@ services:
       - UPLOAD_DIR=/data/uploads
 ```
 
+**⚠️ Persistence warning:** The upload directory stores raw file bytes. If the volume is lost or recreated, uploaded files become unrecoverable. Always back up the upload directory alongside the database.
+
+**Text preview vs binary behavior:**
+
+| File type | LLM context behavior |
+|-----------|---------------------|
+| `.txt`, `.md`, `.csv`, `.json` | Text preview (up to `UPLOAD_PREVIEW_MAX_BYTES` bytes) is extracted at upload time and injected into LLM context |
+| `.png`, `.jpg`, `.gif`, `.webp`, `.pdf` | Only metadata (filename, MIME type, size) is available to the LLM. File content bytes are **not** included in context |
+
+**Upload environment variables (see [env-reference.md](./env-reference.md#文件上传配置) for full details):**
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `UPLOAD_DIR` | `./data/uploads` | Storage directory |
+| `UPLOAD_MAX_FILE_SIZE_BYTES` | `10485760` (10 MiB) | Per-file size limit |
+| `UPLOAD_MAX_ATTACHMENTS_PER_MESSAGE` | `5` | Max attachments per message |
+| `UPLOAD_PER_SESSION_QUOTA_BYTES` | `104857600` (100 MiB) | Per-session storage quota |
+| `UPLOAD_PREVIEW_MAX_BYTES` | `4096` | Max bytes for text preview extraction |
+| `UPLOAD_ALLOWED_MIME_TYPES` | text,image,json,pdf | Allowed MIME types |
+| `UPLOAD_ALLOWED_EXTENSIONS` | `.txt,.md,.json,.csv,.png,.jpg,.jpeg,.gif,.webp,.pdf` | Allowed extensions |
+
 **Custom upload directory example:**
 
 ```yaml

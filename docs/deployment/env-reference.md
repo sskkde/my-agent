@@ -527,13 +527,17 @@ OPENROUTER_API_KEY=sk-or-xxx
 
 ## 文件上传配置
 
+> 文件上传功能将用户附件持久化存储到磁盘。文本类文件（`text/plain`, `text/markdown`, `text/csv`, `application/json`）会自动提取文本预览并注入 LLM 上下文；图片、PDF 等二进制文件仅存储原始字节，LLM 上下文中只包含文件元数据（文件名、MIME 类型、大小），不包含文件内容。
+
 ### UPLOAD_DIR
 
 | 属性 | 值 |
 |------|-----|
 | **用途** | 文件上传存储目录 |
 | **默认值** | `./data/uploads` |
-| **生产要求** | 建议设置为持久化存储路径 |
+| **生产要求** | **必须设置为持久化存储路径** |
+
+**⚠️ 持久化要求：** 此目录存储所有上传文件的原始字节。如果目录丢失或重建，已上传的文件将无法下载。Docker 部署中默认路径已被 `agent_data` 卷覆盖；自定义路径时必须确保对应目录也做了卷挂载。
 
 **示例**：
 ```bash
@@ -744,13 +748,17 @@ UPLOAD_PREVIEW_MAX_BYTES=4096
 
 | 变量 | 默认值 | 生产必需 |
 |------|--------|----------|
-| `UPLOAD_DIR` | `./data/uploads` | 建议持久化路径 |
+| `UPLOAD_DIR` | `./data/uploads` | ✓ 持久化卷 |
 | `UPLOAD_MAX_FILE_SIZE_BYTES` | `10485760` (10 MiB) | - |
 | `UPLOAD_MAX_ATTACHMENTS_PER_MESSAGE` | `5` | - |
 | `UPLOAD_ALLOWED_MIME_TYPES` | text,image,json,pdf | - |
 | `UPLOAD_ALLOWED_EXTENSIONS` | .txt,.md,.json,.csv,.png,.jpg,.jpeg,.gif,.webp,.pdf | - |
 | `UPLOAD_PER_SESSION_QUOTA_BYTES` | `104857600` (100 MiB) | - |
 | `UPLOAD_PREVIEW_MAX_BYTES` | `4096` | - |
+
+**预览行为：**
+- `text/plain`, `text/markdown`, `text/csv`, `application/json` → 上传时提取文本预览（最多 `UPLOAD_PREVIEW_MAX_BYTES` 字节），预览内容注入 LLM 上下文
+- `image/*`, `application/pdf` 等二进制类型 → 跳过预览提取，LLM 上下文中仅包含文件元数据
 
 ---
 

@@ -1,5 +1,6 @@
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, useCallback, useState } from 'react'
 import './ComposerDock.css'
+import { CLIENT_ACCEPT_STRING } from '../config/upload-constants'
 
 interface ComposerDockProps {
   /** Current draft text value */
@@ -71,6 +72,8 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const selectedModel = model
+  const [isDragOver, setIsDragOver] = useState(false)
+  const dragCounterRef = useRef(0)
 
   // Auto-resize textarea to fit content
   useEffect(() => {
@@ -123,11 +126,84 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
     [onRemoveFile],
   )
 
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (!onFilesSelected) return
+      dragCounterRef.current += 1
+      if (e.dataTransfer.types.includes('Files')) {
+        setIsDragOver(true)
+      }
+    },
+    [onFilesSelected],
+  )
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (!onFilesSelected) return
+      e.dataTransfer.dropEffect = 'copy'
+    },
+    [onFilesSelected],
+  )
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (!onFilesSelected) return
+      dragCounterRef.current -= 1
+      if (dragCounterRef.current === 0) {
+        setIsDragOver(false)
+      }
+    },
+    [onFilesSelected],
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (!onFilesSelected) return
+      dragCounterRef.current = 0
+      setIsDragOver(false)
+      const files = e.dataTransfer.files
+      if (files && files.length > 0) {
+        onFilesSelected(Array.from(files))
+      }
+    },
+    [onFilesSelected],
+  )
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!onFilesSelected) return
+      const files = Array.from(e.clipboardData.items)
+        .filter((item) => item.kind === 'file')
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => file !== null)
+      if (files.length > 0) {
+        e.preventDefault()
+        onFilesSelected(files)
+      }
+    },
+    [onFilesSelected],
+  )
+
   const isSendDisabled = !value.trim() && selectedFiles.length === 0 || sending
 
   return (
     <div className={`composer-dock ${className}`}>
-      <div className="composer-card">
+      <div
+        className={`composer-card${isDragOver ? ' composer-card--drag-over' : ''}`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        data-testid="composer-card"
+      >
         {/* Toolbar with tool buttons */}
         <div className="composer-toolbar">
           <button
@@ -202,6 +278,7 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
             className="composer-file-input"
             data-testid="composer-file-input"
             multiple
+            accept={CLIENT_ACCEPT_STRING}
             onChange={handleFileChange}
             tabIndex={-1}
             aria-hidden="true"
@@ -227,6 +304,7 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             disabled={sending}
             rows={1}
           />

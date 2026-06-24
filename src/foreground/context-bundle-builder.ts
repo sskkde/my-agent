@@ -8,8 +8,136 @@
 import type { ForegroundSessionState } from './types.js'
 import type { ForegroundTurnInput } from './foreground-runner-types.js'
 import type { ContextBundle, ContextItem } from '../context/types.js'
+import type { FileUploadStore, FileUploadAccessor } from '../storage/file-upload-store.js'
 import { projectActiveTodosToContext } from '../todo/context-projection.js'
 import { generateForegroundCompactHints } from './compact-hints.js'
+
+/**
+ * Maximum characters allowed for attachment preview text in context.
+ * ~2000 tokens worth of content. Prevents oversized context injection.
+ */
+const MAX_PREVIEW_CHARS = 8000
+
+/**
+ * Resolved attachment metadata for context injection.
+ * Contains only safe, user-facing fields — no storageRef or internal IDs.
+ */
+export interface ResolvedAttachment {
+  sanitizedName: string
+  mimeType: string
+  sizeBytes: number
+  previewText?: string
+  previewStatus: 'pending' | 'generated' | 'skipped' | 'failed'
+}
+
+/**
+ * Resolves attachment IDs to their metadata for context injection.
+ */
+export type AttachmentResolver = (attachmentIds: string[]) => ResolvedAttachment[]
+
+/**
+ * Creates an AttachmentResolver backed by a FileUploadStore.
+ *
+ * @param store - The file upload store to query
+ * @param accessor - Ownership context (userId and/or sessionId)
+ * @returns An AttachmentResolver function
+ */
+export function createStoreAttachmentResolver(
+  store: FileUploadStore,
+  accessor: FileUploadAccessor,
+): AttachmentResolver {
+  return (attachmentIds: string[]): ResolvedAttachment[] => {
+    const results: ResolvedAttachment[] = []
+    for (const fileId of attachmentIds) {
+      const record = store.getById(fileId, accessor)
+      if (record && record.status === 'ready') {
+        results.push({
+          sanitizedName: record.sanitizedName,
+          mimeType: record.mimeType,
+          sizeBytes: record.sizeBytes,
+          previewText: record.previewText,
+          previewStatus: record.previewStatus,
+        })
+      }
+    }
+    return results
+  }
+}
+
+/**
+ * Determines whether a MIME type represents a text-like content type
+ * whose preview text is meaningful for the model.
+ */
+function isTextLikeMime(mimeType: string): boolean {
+  const textPrefixes = [
+    'text/',
+    'application/json',
+    'application/xml',
+    'application/javascript',
+    'application/typescript',
+    'application/x-yaml',
+    'application/yaml',
+    'application/toml',
+    'application/csv',
+    'application/x-sh',
+    'application/x-typescript',
+  ]
+  return textPrefixes.some((prefix) => mimeType.startsWith(prefix))
+}
+
+/**
+ * Formats a byte count into a human-readable size string.
+ */
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/**
+ * Truncates preview text to the configured maximum, appending a notice if truncated.
+ */
+function boundedPreview(text: string, maxChars: number): string {
+  if (text.length <= maxChars) {
+    return text
+  }
+  return text.slice(0, maxChars) + '\n[... truncated — preview exceeds limit ...]'
+}
+
+/**
+ * Builds context items from resolved attachment metadata.
+ *
+ * For text-like uploads with `previewStatus: 'generated'`, includes
+ * filename, MIME, size, and bounded preview text.
+ *
+ * For images, PDFs, binaries, or skipped/failed previews, includes
+ * filename, MIME, size, and a note that content was not included.
+ *
+ * No storageRef is ever included in the context.
+ *
+ * @param attachments - Resolved attachment metadata
+ * @returns Array of ContextItems representing the attachments
+ */
+export function buildAttachmentContextItems(attachments: ResolvedAttachment[]): ContextItem[] {
+  return attachments.map((att, index) => {
+    const header = `[Attachment: ${att.sanitizedName} | ${att.mimeType} | ${formatFileSize(att.sizeBytes)}]`
+
+    let body: string
+    if (att.previewStatus === 'generated' && att.previewText && isTextLikeMime(att.mimeType)) {
+      body = boundedPreview(att.previewText, MAX_PREVIEW_CHARS)
+    } else {
+      body = '[Content bytes were not included in context. Only metadata is available.]'
+    }
+
+    return {
+      itemId: `attachment-${index}-${att.sanitizedName}`,
+      sourceType: 'attachment' as const,
+      semanticType: 'attachment_ref' as const,
+      content: `${header}\n${body}`,
+      estimatedTokens: estimateTokens(header) + estimateTokens(body),
+    }
+  })
+}
 
 /**
  * Helper function to estimate token count from text.
@@ -36,6 +164,7 @@ function generateBundleId(): string {
  * @param state - The foreground session state
  * @param input - The foreground turn input
  * @param activeTodos - Optional active todos to project into context
+ * @param attachmentResolver - Optional resolver for turning attachmentIds into context items
  * @returns A ContextBundle ready for kernel processing
  */
 export function buildContextBundleFromForegroundState(
@@ -54,12 +183,21 @@ export function buildContextBundleFromForegroundState(
     updatedAt: string
   }>,
   tokenBudget?: number,
+  attachmentResolver?: AttachmentResolver,
 ): ContextBundle {
   const pinnedItems: ContextItem[] = buildPinnedItems(state)
   const todoContextItems: ContextItem[] = activeTodos
     ? projectActiveTodosToContext({ sessionId: input.sessionId, todos: activeTodos }).contextItems
     : []
-  const orderedItems: ContextItem[] = [...buildOrderedItems(input), ...todoContextItems]
+  const attachmentContextItems: ContextItem[] =
+    input.attachmentIds && input.attachmentIds.length > 0 && attachmentResolver
+      ? buildAttachmentContextItems(attachmentResolver(input.attachmentIds))
+      : []
+  const orderedItems: ContextItem[] = [
+    ...buildOrderedItems(input),
+    ...attachmentContextItems,
+    ...todoContextItems,
+  ]
   const totalTokens =
     pinnedItems.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0) +
     orderedItems.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0) +

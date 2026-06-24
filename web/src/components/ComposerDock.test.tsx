@@ -268,6 +268,31 @@ describe('ComposerDock', () => {
       expect(fileInput).toBeInTheDocument()
     })
 
+    it('file input has accept attribute covering allowed types', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      const fileInput = screen.getByTestId('composer-file-input') as HTMLInputElement
+      const accept = fileInput.getAttribute('accept')
+      expect(accept).toBeTruthy()
+      expect(accept).toContain('.txt')
+      expect(accept).toContain('.md')
+      expect(accept).toContain('.json')
+      expect(accept).toContain('.csv')
+      expect(accept).toContain('.png')
+      expect(accept).toContain('.jpg')
+      expect(accept).toContain('.jpeg')
+      expect(accept).toContain('.gif')
+      expect(accept).toContain('.webp')
+      expect(accept).toContain('.pdf')
+    })
+
     it('calls onFilesSelected when files are selected', () => {
       render(
         <ComposerDock
@@ -480,6 +505,123 @@ describe('ComposerDock', () => {
 
       expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
       expect(screen.getByTestId('session-send-button')).toBeInTheDocument()
+    })
+
+    it('calls onFilesSelected when files are dropped on composer card', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      const card = screen.getByTestId('composer-card')
+      const file = createFile('dropped.txt', 100)
+
+      const dataTransfer = {
+        types: ['Files'],
+        files: [file],
+        dropEffect: '',
+      }
+
+      fireEvent.dragEnter(card, { dataTransfer })
+      fireEvent.dragOver(card, { dataTransfer })
+      fireEvent.drop(card, { dataTransfer })
+
+      expect(mockOnFilesSelected).toHaveBeenCalledWith([file])
+    })
+
+    it('adds drag-over class when dragging files over composer card', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      const card = screen.getByTestId('composer-card')
+      const dataTransfer = {
+        types: ['Files'],
+        files: [],
+      }
+
+      fireEvent.dragEnter(card, { dataTransfer })
+      expect(card).toHaveClass('composer-card--drag-over')
+
+      fireEvent.dragLeave(card, { dataTransfer })
+      expect(card).not.toHaveClass('composer-card--drag-over')
+    })
+
+    it('does not call onFilesSelected when onFilesSelected is not provided', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+        />,
+      )
+
+      const card = screen.getByTestId('composer-card')
+      const file = createFile('dropped.txt', 100)
+      const dataTransfer = {
+        types: ['Files'],
+        files: [file],
+      }
+
+      fireEvent.drop(card, { dataTransfer })
+      expect(mockOnFilesSelected).not.toHaveBeenCalled()
+    })
+
+    it('calls onFilesSelected when files are pasted into textarea', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      const textarea = screen.getByTestId('session-message-input')
+      const file = createFile('pasted.png', 200, 'image/png')
+
+      const clipboardData = {
+        items: [
+          { kind: 'file', getAsFile: () => file },
+        ],
+        types: ['Files'],
+      }
+
+      fireEvent.paste(textarea, { clipboardData })
+
+      expect(mockOnFilesSelected).toHaveBeenCalledWith([file])
+    })
+
+    it('does not prevent default paste when no files in clipboard', () => {
+      render(
+        <ComposerDock
+          value=""
+          onChange={mockOnChange}
+          onSend={mockOnSend}
+          onFilesSelected={mockOnFilesSelected}
+        />,
+      )
+
+      const textarea = screen.getByTestId('session-message-input')
+      const clipboardData = {
+        items: [
+          { kind: 'string', getAsFile: () => null },
+        ],
+        types: ['text/plain'],
+      }
+
+      fireEvent.paste(textarea, { clipboardData })
+
+      expect(mockOnFilesSelected).not.toHaveBeenCalled()
     })
   })
 })

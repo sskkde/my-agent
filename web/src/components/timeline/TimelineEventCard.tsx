@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import './Timeline.css'
 import type { ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/types'
+import { downloadFile } from '../../api/client'
 import { ToolCallCard } from '../ToolCallCard'
 import { ApprovalCard } from '../ApprovalCard'
 import { BackgroundTaskCard } from '../BackgroundTaskCard'
@@ -95,6 +96,28 @@ const extractAttachments = (metadata: Record<string, unknown> | undefined): Atta
       typeof (item as Record<string, unknown>).fileId === 'string' &&
       typeof (item as Record<string, unknown>).originalFilename === 'string' &&
       typeof (item as Record<string, unknown>).sizeBytes === 'number',
+  )
+}
+
+const AttachmentChips: React.FC<{ attachments: AttachmentMeta[] }> = ({ attachments }) => {
+  if (attachments.length === 0) return null
+  return (
+    <div className="timeline-attachment-chips" data-testid="timeline-attachments">
+      {attachments.map((att) => (
+        <button
+          key={att.fileId}
+          type="button"
+          className="timeline-attachment-chip"
+          data-testid="timeline-attachment-chip"
+          onClick={() => downloadFile(att.fileId)}
+          title={`Download ${att.originalFilename}`}
+        >
+          <span className="timeline-attachment-chip-icon">📎</span>
+          <span className="timeline-attachment-chip-name">{att.originalFilename}</span>
+          <span className="timeline-attachment-chip-size">{formatFileSize(att.sizeBytes)}</span>
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -307,32 +330,12 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
         return isChatMessage ? (
           <>
             {event.content && <MessageContent text={event.content} role={messageRole} mode={messageMode} />}
-            {attachments.length > 0 && (
-              <div className="timeline-attachment-chips" data-testid="timeline-attachments">
-                {attachments.map((att) => (
-                  <span key={att.fileId} className="timeline-attachment-chip" data-testid="timeline-attachment-chip">
-                    <span className="timeline-attachment-chip-icon">📎</span>
-                    <span className="timeline-attachment-chip-name">{att.originalFilename}</span>
-                    <span className="timeline-attachment-chip-size">{formatFileSize(att.sizeBytes)}</span>
-                  </span>
-                ))}
-              </div>
-            )}
+            <AttachmentChips attachments={attachments} />
           </>
         ) : (
           <div className="timeline-event-content">
             {event.content && <MessageContent text={event.content} role={messageRole} mode={messageMode} />}
-            {attachments.length > 0 && (
-              <div className="timeline-attachment-chips" data-testid="timeline-attachments">
-                {attachments.map((att) => (
-                  <span key={att.fileId} className="timeline-attachment-chip" data-testid="timeline-attachment-chip">
-                    <span className="timeline-attachment-chip-icon">📎</span>
-                    <span className="timeline-attachment-chip-name">{att.originalFilename}</span>
-                    <span className="timeline-attachment-chip-size">{formatFileSize(att.sizeBytes)}</span>
-                  </span>
-                ))}
-              </div>
-            )}
+            <AttachmentChips attachments={attachments} />
           </div>
         )
     }

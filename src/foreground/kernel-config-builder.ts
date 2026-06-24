@@ -11,6 +11,7 @@ import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { ForegroundTurnInput } from './foreground-runner-types.js'
 import type { ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js'
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
+import type { AttachmentResolver } from './context-bundle-builder.js'
 import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js'
 import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
 import { DEFAULT_FOREGROUND_TOKEN_BUDGET } from './kernel-guard-constants.js'
@@ -24,6 +25,7 @@ export class ForegroundContextManager implements ContextManager {
   private state: {
     foregroundState?: import('./types.js').ForegroundSessionState
     turnInput?: ForegroundTurnInput
+    attachmentResolver?: AttachmentResolver
     items: ContextItem[]
   } = { items: [] }
 
@@ -34,9 +36,11 @@ export class ForegroundContextManager implements ContextManager {
   setForegroundContext(
     foregroundState: import('./types.js').ForegroundSessionState,
     turnInput: ForegroundTurnInput,
+    attachmentResolver?: AttachmentResolver,
   ): void {
     this.state.foregroundState = foregroundState
     this.state.turnInput = turnInput
+    this.state.attachmentResolver = attachmentResolver
   }
 
   assembleBundle(): ContextBundle {
@@ -46,6 +50,7 @@ export class ForegroundContextManager implements ContextManager {
         this.state.turnInput,
         undefined,
         DEFAULT_FOREGROUND_TOKEN_BUDGET,
+        this.state.attachmentResolver,
       )
     }
 
