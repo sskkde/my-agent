@@ -95,6 +95,10 @@ function createToolExecutorAdapter(deps: ProcessorOrchestrationDeps): ToolExecut
             userId: request.userId,
             sessionId: request.sessionId,
             kernelRunId: request.kernelRunId,
+            agentId: request.agentId,
+            agentType: request.agentType,
+            agentProfile: request.agentProfile,
+            launchSource: request.launchSource,
             permissionContext: request.permissionContext,
           },
           source: {

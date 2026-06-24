@@ -105,7 +105,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
     let taskSpec = options.taskSpec
 
     if (!definition) {
-      const lookupType = taskSpec?.agentType ?? contextBundle.agentType
+      const lookupType = taskSpec?.agentType ?? contextBundle.agentProfile ?? contextBundle.agentType
       const resolved = this.subagentRegistry.get(lookupType)
       if (resolved) {
         definition = resolved

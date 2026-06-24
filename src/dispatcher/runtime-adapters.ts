@@ -70,9 +70,17 @@ export function registerDefaultRuntimeAdapters(deps: {
           params?: unknown
           kernelRunId?: string
           timeoutMs?: number
+          agentType?: string
+          agentId?: string
+          agentProfile?: string
+          launchSource?: string
         }>
         params?: unknown
         kernelRunId?: string
+        agentType?: string
+        agentId?: string
+        agentProfile?: string
+        launchSource?: string
       }
 
       if (payload.toolUses) {
@@ -100,6 +108,10 @@ export function registerDefaultRuntimeAdapters(deps: {
             kernelRunId: toolUse.kernelRunId ?? payload.kernelRunId,
             permissionContext,
             timeoutMs: toolUse.timeoutMs,
+            agentType: toolUse.agentType ?? payload.agentType,
+            agentId: toolUse.agentId ?? payload.agentId,
+            agentProfile: toolUse.agentProfile ?? payload.agentProfile,
+            launchSource: toolUse.launchSource ?? payload.launchSource,
           }
         })
 
@@ -127,6 +139,10 @@ export function registerDefaultRuntimeAdapters(deps: {
         kernelRunId: payload.kernelRunId,
         permissionContext,
         signal: context.signal,
+        agentType: payload.agentType,
+        agentId: payload.agentId,
+        agentProfile: payload.agentProfile,
+        launchSource: payload.launchSource,
       })
 
       return result

@@ -9,7 +9,7 @@ export interface SubagentContextManager {
     parentContext: ContextBundle
     taskSpec: SubagentTaskSpec
     subagentRunId: string
-    definition: SubagentDefinition
+    definition?: SubagentDefinition
   }): ContextBundle
 }
 
@@ -22,7 +22,8 @@ export function createDefaultSubagentContextManager(deps: {
     createIsolatedContext(options): ContextBundle {
       const { parentContext, taskSpec, subagentRunId, definition } = options
 
-      const agentId = `subagent.${definition.agentType}`
+      const profileLabel = definition?.agentProfile ?? definition?.agentType ?? taskSpec.agentType ?? 'unknown'
+      const agentId = `subagent.${profileLabel}.${subagentRunId}`
       const bundleId = `bundle-${subagentRunId}`
 
       const systemPrompt = composeSevenLayerPrompt(definition, taskSpec)
@@ -69,8 +70,8 @@ export function createDefaultSubagentContextManager(deps: {
         bundleId,
         runId: subagentRunId,
         agentId,
-        agentType: definition.agentType,
-        agentProfile: definition.agentProfile ?? definition.agentType,
+        agentType: 'subagent',
+        agentProfile: profileLabel,
         userId: parentContext.userId,
         invocationSource: 'subagent_runtime',
         pinnedItems: relevantItems,
@@ -98,17 +99,21 @@ export function createDefaultSubagentContextManager(deps: {
  *   Segment C (Layer 6):   tool plane (allowed tool IDs)
  *   Segment D (Layer 7):   context bundle (objective)
  */
-function composeSevenLayerPrompt(definition: SubagentDefinition, taskSpec: SubagentTaskSpec): string {
+function composeSevenLayerPrompt(definition: SubagentDefinition | undefined, taskSpec: SubagentTaskSpec): string {
   const segments: string[] = []
 
   // Segment A – Layer 1-4: agent template content
-  segments.push(definition.description)
+  segments.push(definition?.description ?? `Subagent profile: ${taskSpec.agentType ?? 'unknown'}`)
 
   // Segment B – Layer 5: role identification (system prompt)
-  segments.push(`You are a "${definition.agentType}" subagent (${definition.displayName}).`)
+  segments.push(
+    definition
+      ? `You are a "${definition.agentType}" subagent (${definition.displayName}).`
+      : `You are a "${taskSpec.agentType ?? 'unknown'}" subagent.`,
+  )
 
   // Segment C – Layer 6: tool plane
-  if (definition.allowedToolIds.length > 0) {
+  if (definition && definition.allowedToolIds.length > 0) {
     segments.push(`Available Tool IDs: ${definition.allowedToolIds.join(', ')}`)
   }
 

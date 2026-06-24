@@ -82,6 +82,7 @@ export interface SubagentContextManager {
     parentContext: ContextBundle
     taskSpec: SubagentTaskSpec
     subagentRunId: string
+    definition?: SubagentDefinition
   }): ContextBundle
 }
 
