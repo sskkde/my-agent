@@ -217,6 +217,46 @@ npm run test:web
 - 丢弃和审计追踪
 - 幂等性保证
 
+### 文件上传
+
+平台支持在会话中上传、下载和删除文件附件。
+
+**上传 API：**
+
+```bash
+# 上传文件到会话（multipart/form-data）
+POST /api/v1/sessions/:sessionId/files
+
+# 获取文件元数据
+GET /api/v1/files/:fileId
+
+# 下载文件内容
+GET /api/v1/files/:fileId/download
+
+# 删除文件
+DELETE /api/v1/files/:fileId
+```
+
+**行为说明：**
+
+- 文本类文件（`.txt`, `.md`, `.csv`, `.json`）在上传时自动提取文本预览，预览内容会注入到 LLM 上下文中
+- 二进制文件（图片、PDF 等）仅存储原始字节，LLM 上下文中只包含文件名、MIME 类型和大小等元数据，不包含文件内容
+- 文件字节持久化写入磁盘，下载时以流式返回并设置安全响应头
+
+**环境变量（详见 [env-reference.md](docs/deployment/env-reference.md#文件上传配置)）：**
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `UPLOAD_DIR` | `./data/uploads` | 文件存储目录，**生产环境必须挂载持久化卷** |
+| `UPLOAD_MAX_FILE_SIZE_BYTES` | `10485760` (10 MiB) | 单个文件大小上限 |
+| `UPLOAD_MAX_ATTACHMENTS_PER_MESSAGE` | `5` | 每条消息最大附件数 |
+| `UPLOAD_PER_SESSION_QUOTA_BYTES` | `104857600` (100 MiB) | 单会话存储配额 |
+| `UPLOAD_PREVIEW_MAX_BYTES` | `4096` | 文本预览提取的最大字节数 |
+| `UPLOAD_ALLOWED_MIME_TYPES` | text,image,json,pdf | 允许的 MIME 类型（逗号分隔） |
+| `UPLOAD_ALLOWED_EXTENSIONS` | `.txt,.md,.json,.csv,.png,.jpg,.jpeg,.gif,.webp,.pdf` | 允许的扩展名（逗号分隔） |
+
+**持久化要求：** `UPLOAD_DIR` 指向的目录必须位于持久化存储卷上。默认路径 `./data/uploads` 在 Docker 部署中已被 `agent_data` 卷覆盖。如果自定义 `UPLOAD_DIR`，需确保对应目录也做了卷挂载（参见 [Docker 部署指南](docs/deployment/docker.md#file-uploads-storage)）。
+
 ## P6 功能 (Phase 6 Features)
 
 ### RBAC 权限控制
