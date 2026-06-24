@@ -767,8 +767,11 @@ export async function resetSubagentPreference(subagentType: string): Promise<voi
   }
 }
 
-export async function listTodos(sessionId: string): Promise<TodosResponse> {
-  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos`, {
+export async function listTodos(sessionId: string, ownerAgentId?: string): Promise<TodosResponse> {
+  const params = new URLSearchParams()
+  if (ownerAgentId) params.set('ownerAgentId', ownerAgentId)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos${query}`, {
     credentials: 'include',
   })
   return parseResponse<TodosResponse>(response)
@@ -821,6 +824,7 @@ export interface TodoItemWithChildren {
   priority: 'high' | 'medium' | 'low'
   parentTodoId?: string | null
   position: number
+  ownerAgentId?: string
   createdAt: string
   updatedAt: string
   children?: TodoItemWithChildren[]

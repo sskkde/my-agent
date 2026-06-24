@@ -3,6 +3,7 @@ import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
 import { isValidTodoStatus, isValidTodoPriority, TodoStatus, TodoPriority } from '../../todo/types.js'
+import { DEFAULT_OWNER_AGENT_ID } from '../../todo/store.js'
 import { randomUUID } from 'crypto'
 
 interface CreateTodoBody {
@@ -10,6 +11,7 @@ interface CreateTodoBody {
   priority?: 'high' | 'medium' | 'low'
   status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
   parentTodoId?: string
+  ownerAgentId?: string
 }
 
 interface UpdateTodoBody {
@@ -20,6 +22,10 @@ interface UpdateTodoBody {
 
 interface SessionParams {
   sessionId: string
+}
+
+interface TodoQueryParams {
+  ownerAgentId?: string
 }
 
 interface TodoParams extends SessionParams {
@@ -42,6 +48,7 @@ function canAccessSession(request: FastifyRequest, session: { userId: string }):
 
 /**
  * Map store Todo to API TodoItem format.
+ * ownerAgentId is included as an additive/optional field for backward compatibility.
  */
 function mapTodoToItem(todo: {
   id: string
@@ -51,6 +58,7 @@ function mapTodoToItem(todo: {
   priority: string
   parentId?: string
   position: number
+  ownerAgentId?: string
   createdAt: string
   updatedAt: string
 }) {
@@ -62,6 +70,7 @@ function mapTodoToItem(todo: {
     priority: todo.priority as 'high' | 'medium' | 'low',
     parentTodoId: todo.parentId,
     position: todo.position,
+    ownerAgentId: todo.ownerAgentId,
     createdAt: todo.createdAt,
     updatedAt: todo.updatedAt,
   }
@@ -82,7 +91,7 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
       }
 
       const { sessionId } = request.params
-      const { content, priority, status, parentTodoId } = request.body || {}
+      const { content, priority, status, parentTodoId, ownerAgentId } = request.body || {}
 
       // Verify session exists and user has access
       const session = sessionStore.getById(sessionId)
@@ -96,9 +105,7 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
 
       // Validate content
       if (content === undefined || content === null) {
-        return reply
-          .code(400)
-          .send(envelopeError('BAD_REQUEST', 'content is required', request.requestId))
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'content is required', request.requestId))
       }
 
       if (typeof content !== 'string' || content.trim().length === 0) {
@@ -107,18 +114,36 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
           .send(envelopeError('BAD_REQUEST', 'content must be a non-empty string', request.requestId))
       }
 
+      if (ownerAgentId !== undefined) {
+        return reply
+          .code(400)
+          .send(envelopeError('BAD_REQUEST', 'ownerAgentId cannot be set via the session todo API', request.requestId))
+      }
+
       // Validate priority
       if (priority !== undefined && !isValidTodoPriority(priority)) {
         return reply
           .code(400)
-          .send(envelopeError('BAD_REQUEST', `Invalid priority: ${priority}. Must be one of: high, medium, low`, request.requestId))
+          .send(
+            envelopeError(
+              'BAD_REQUEST',
+              `Invalid priority: ${priority}. Must be one of: high, medium, low`,
+              request.requestId,
+            ),
+          )
       }
 
       // Validate status
       if (status !== undefined && !isValidTodoStatus(status)) {
         return reply
           .code(400)
-          .send(envelopeError('BAD_REQUEST', `Invalid status: ${status}. Must be one of: pending, in_progress, completed, cancelled`, request.requestId))
+          .send(
+            envelopeError(
+              'BAD_REQUEST',
+              `Invalid status: ${status}. Must be one of: pending, in_progress, completed, cancelled`,
+              request.requestId,
+            ),
+          )
       }
 
       // Validate parentTodoId if provided
@@ -133,6 +158,11 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
           return reply
             .code(400)
             .send(envelopeError('BAD_REQUEST', 'Parent todo must belong to the same session', request.requestId))
+        }
+        if (parentTodo.ownerAgentId !== DEFAULT_OWNER_AGENT_ID) {
+          return reply
+            .code(400)
+            .send(envelopeError('BAD_REQUEST', 'Parent todo must belong to the same owner agent', request.requestId))
         }
       }
 
@@ -163,14 +193,15 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
   // ===========================================================================
   // GET /api/v1/sessions/:sessionId/todos - List Todos
   // ===========================================================================
-  server.get<{ Params: SessionParams }>(
+  server.get<{ Params: SessionParams; Querystring: TodoQueryParams }>(
     '/api/v1/sessions/:sessionId/todos',
-    async (request: FastifyRequest<{ Params: SessionParams }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Params: SessionParams; Querystring: TodoQueryParams }>, reply: FastifyReply) => {
       if (!request.requirePermission(ResourceType.todos, Action.read)) {
         return reply
       }
 
       const { sessionId } = request.params
+      const { ownerAgentId } = request.query
 
       // Verify session exists and user has access
       const session = sessionStore.getById(sessionId)
@@ -182,13 +213,15 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
         return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this session', request.requestId))
       }
 
-      // Get all todos for the session and sort by position (not hierarchy)
-      const todos = todoStore.findBySession(sessionId)
+      // Get todos for the session, optionally filtered by ownerAgentId
+      // Default (no ownerAgentId): returns ALL session todos (backward compatible)
+      // With ownerAgentId: returns only todos owned by that agent (debugging support)
+      const todos = ownerAgentId
+        ? todoStore.findBySessionAndOwner(sessionId, ownerAgentId)
+        : todoStore.findBySession(sessionId)
       const todoItems = todos.map(mapTodoToItem).sort((a, b) => a.position - b.position)
 
-      return reply
-        .code(200)
-        .send(success({ todos: todoItems, total: todoItems.length }, request.requestId))
+      return reply.code(200).send(success({ todos: todoItems, total: todoItems.length }, request.requestId))
     },
   )
 
@@ -219,14 +252,26 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
       if (status !== undefined && !isValidTodoStatus(status)) {
         return reply
           .code(400)
-          .send(envelopeError('BAD_REQUEST', `Invalid status: ${status}. Must be one of: pending, in_progress, completed, cancelled`, request.requestId))
+          .send(
+            envelopeError(
+              'BAD_REQUEST',
+              `Invalid status: ${status}. Must be one of: pending, in_progress, completed, cancelled`,
+              request.requestId,
+            ),
+          )
       }
 
       // Validate priority if provided
       if (priority !== undefined && !isValidTodoPriority(priority)) {
         return reply
           .code(400)
-          .send(envelopeError('BAD_REQUEST', `Invalid priority: ${priority}. Must be one of: high, medium, low`, request.requestId))
+          .send(
+            envelopeError(
+              'BAD_REQUEST',
+              `Invalid priority: ${priority}. Must be one of: high, medium, low`,
+              request.requestId,
+            ),
+          )
       }
 
       // Check if todo exists and belongs to the session
@@ -236,6 +281,10 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
       }
 
       if (existingTodo.sessionId !== sessionId) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Todo not found', request.requestId))
+      }
+
+      if (existingTodo.ownerAgentId !== DEFAULT_OWNER_AGENT_ID) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Todo not found', request.requestId))
       }
 
@@ -291,6 +340,10 @@ export async function registerTodoRoutes(server: FastifyInstance, context: ApiCo
       }
 
       if (existingTodo.sessionId !== sessionId) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Todo not found', request.requestId))
+      }
+
+      if (existingTodo.ownerAgentId !== DEFAULT_OWNER_AGENT_ID) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Todo not found', request.requestId))
       }
 

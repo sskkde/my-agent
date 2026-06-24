@@ -1,8 +1,22 @@
 /**
  * Todo Domain Types and Enums
- * 
+ *
  * This module defines the core types and enums for the Todo domain.
  * Todos are hierarchical task items with a maximum depth of 3 levels.
+ *
+ * ## Ownership Semantics
+ *
+ * Todo ownership is **context-derived**, not parameter-based:
+ * - `sessionId` is resolved from `ToolExecutionContext.sessionId` first;
+ *   the deprecated `params.sessionId` is a fallback for backward compat.
+ * - `ownerAgentId` is derived from `context.agentId ?? context.agentType ?? 'foreground.default'`.
+ * - All read/write operations (list, append, update, remove) are scoped
+ *   to the calling agent's owner identity within a session.
+ * - `replace` mode only replaces todos owned by the current owner —
+ *   it does NOT affect todos belonging to other agents in the same session.
+ * - Background agents have a narrow exception: the todo tools are allowed
+ *   via `categoryExceptionToolIds` in the background tool envelope, even
+ *   though background agents normally cannot use write-category tools.
  */
 
 // ============================================================================
@@ -37,10 +51,10 @@ export enum TodoPriority {
 
 /**
  * Write mode for todowrite operations.
- * - append: Add new todos to existing list
- * - replace: Replace all todos for a session (transactional)
- * - update: Update specific todo fields
- * - remove: Delete todos
+ * - append: Add new todos to the owner's list within the session
+ * - replace: Replace all todos for the current owner only (owner-scoped, transactional)
+ * - update: Update specific todo fields by ID
+ * - remove: Delete todos by ID
  */
 export enum TodoWriteMode {
   append = 'append',

@@ -9,6 +9,11 @@ import type {
 } from '../../../src/subagents/types.js'
 import type { KernelRunResult } from '../../../src/kernel/types.js'
 import { SubagentRuntimeImpl } from '../../../src/subagents/subagent-runtime.js'
+import { buildToolProjection } from '../../../src/subagents/kernel-adapter.js'
+import { createDefaultSubagentContextManager } from '../../../src/subagents/context-manager.js'
+import type { SubagentDefinition } from '../../../src/subagents/registry.js'
+import type { ToolDefinition, ToolRegistry, ToolCategory } from '../../../src/tools/types.js'
+import { createAgentTypeToolEnvelopeRegistry } from '../../../src/permissions/agent-type-tool-envelope.js'
 
 class FakeKernelAdapter implements KernelAdapter {
   private results: KernelRunResult[] = []
@@ -683,5 +688,167 @@ describe('Subagent Runtime', () => {
       expect(retrieved?.taskSpec.objective).toBe('Test objective')
       expect(retrieved?.status).toBe('queued')
     })
+  })
+})
+
+function createFakeToolRegistry(tools: Array<{ id: string; category: ToolCategory }>): ToolRegistry {
+  const toolMap = new Map<string, ToolDefinition>()
+  for (const t of tools) {
+    toolMap.set(t.id, {
+      name: t.id,
+      description: `Fake tool ${t.id}`,
+      category: t.category,
+      sensitivity: 'low',
+      schema: { type: 'object', properties: {} },
+      handler: async () => ({ success: true }),
+    })
+  }
+  return {
+    getTool: (id: string) => toolMap.get(id),
+    getAllTools: () => Array.from(toolMap.values()),
+    register: () => {},
+  } as unknown as ToolRegistry
+}
+
+describe('buildToolProjection — todo tools in subagent definitions', () => {
+  const fakeRegistry = createFakeToolRegistry([
+    { id: 'file_read', category: 'read' },
+    { id: 'file_glob', category: 'read' },
+    { id: 'file_grep', category: 'read' },
+    { id: 'docs_search', category: 'search' },
+    { id: 'artifact_create', category: 'write' },
+    { id: 'artifact_update', category: 'write' },
+    { id: 'web_search', category: 'search' },
+    { id: 'web_fetch', category: 'read' },
+    { id: 'todolist', category: 'read' },
+    { id: 'todowrite', category: 'write' },
+    { id: 'exec', category: 'execute' },
+    { id: 'bash', category: 'execute' },
+    { id: 'admin_config', category: 'admin' },
+  ])
+
+  const documentProcessorDef: SubagentDefinition = {
+    agentType: 'document_processor',
+    displayName: '文档处理',
+    description: '处理文档类内容',
+    modality: 'document',
+    promptId: 'agentProfile:document_processor',
+    allowedToolIds: [
+      'file_read',
+      'file_glob',
+      'file_grep',
+      'docs_search',
+      'artifact_create',
+      'artifact_update',
+      'todolist',
+      'todowrite',
+    ],
+    defaultMaxIterations: 8,
+    defaultTimeoutMs: 120_000,
+    supportedExecutionModes: ['sync', 'background'],
+    canRunInBackground: true,
+    providerPolicy: {
+      requiredCapabilities: ['text', 'long_context', 'json_schema'],
+      fallbackMode: 'any_compatible',
+    },
+    permissionProfile: 'ask_on_write',
+    summaryPolicy: { returnMode: 'summary_with_artifacts', maxSummaryTokens: 1500 },
+  }
+
+  const searchProcessorDef: SubagentDefinition = {
+    agentType: 'search_processor',
+    displayName: '搜索',
+    description: '执行快速网络搜索',
+    modality: 'text',
+    promptId: 'agentProfile:search_processor',
+    allowedToolIds: ['web_search', 'todolist', 'todowrite'],
+    defaultMaxIterations: 5,
+    defaultTimeoutMs: 60_000,
+    supportedExecutionModes: ['sync', 'background'],
+    canRunInBackground: true,
+    providerPolicy: {
+      requiredCapabilities: ['text', 'function_calling'],
+      fallbackMode: 'any_compatible',
+    },
+    permissionProfile: 'ask_on_write',
+    summaryPolicy: { returnMode: 'summary_with_artifacts', maxSummaryTokens: 1200 },
+  }
+
+  it('document_processor projection includes todolist and todowrite', () => {
+    const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
+    const projection = buildToolProjection(documentProcessorDef, { objective: 'test' }, fakeRegistry, envelopeRegistry)
+
+    expect(projection.toolIds).toContain('todolist')
+    expect(projection.toolIds).toContain('todowrite')
+    expect((projection.tools ?? []).length).toBeGreaterThan(0)
+  })
+
+  it('search_processor projection includes todolist and todowrite', () => {
+    const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
+    const projection = buildToolProjection(searchProcessorDef, { objective: 'test' }, fakeRegistry, envelopeRegistry)
+
+    expect(projection.toolIds).toContain('todolist')
+    expect(projection.toolIds).toContain('todowrite')
+  })
+
+  it('subagent projection excludes shell/admin tools even if listed', () => {
+    const defWithShell: SubagentDefinition = {
+      ...documentProcessorDef,
+      allowedToolIds: ['file_read', 'todolist', 'todowrite', 'exec', 'bash', 'admin_config'],
+    }
+
+    const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
+    const projection = buildToolProjection(defWithShell, { objective: 'test' }, fakeRegistry, envelopeRegistry)
+
+    expect(projection.toolIds).toContain('todolist')
+    expect(projection.toolIds).toContain('todowrite')
+    expect(projection.toolIds).not.toContain('exec')
+    expect(projection.toolIds).not.toContain('bash')
+    expect(projection.toolIds).not.toContain('admin_config')
+  })
+
+  it('background agentType allows todo tools via envelope exception', () => {
+    const backgroundDef: SubagentDefinition = {
+      ...documentProcessorDef,
+      agentType: 'memory',
+      agentProfile: 'memory',
+      allowedToolIds: ['file_read', 'web_search', 'todolist', 'todowrite', 'artifact_create'],
+    }
+
+    const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
+    const projection = buildToolProjection(backgroundDef, { objective: 'bg task' }, fakeRegistry, envelopeRegistry)
+
+    expect(projection.toolIds).toContain('todolist')
+    expect(projection.toolIds).toContain('todowrite')
+    expect(projection.toolIds).toContain('file_read')
+    expect(projection.toolIds).toContain('web_search')
+
+    expect(projection.toolIds).not.toContain('artifact_create')
+  })
+
+  it('default context manager keeps generic subagent agentType for profile labels', () => {
+    const manager = createDefaultSubagentContextManager({})
+    const sourceContext: ContextBundle = {
+      bundleId: 'parent-bundle-ctx-manager',
+      runId: 'parent-run-ctx-manager',
+      agentId: 'parent-agent',
+      agentType: 'main',
+      userId: 'test-user',
+      invocationSource: 'gateway_intent',
+      pinnedItems: [],
+      orderedItems: [],
+      tokenEstimate: 0,
+    }
+
+    const context = manager.createIsolatedContext({
+      parentContext: sourceContext,
+      taskSpec: { objective: 'Process a document', agentType: 'document_processor' },
+      subagentRunId: 'subagent-run-1',
+      definition: documentProcessorDef,
+    })
+
+    expect(context.agentType).toBe('subagent')
+    expect(context.agentProfile).toBe('document_processor')
+    expect(context.agentId).toBe('subagent.document_processor.subagent-run-1')
   })
 })

@@ -5,6 +5,7 @@ import {
   type Todo,
   type CreateTodoInput,
   type UpdateTodoInput,
+  DEFAULT_OWNER_AGENT_ID,
 } from '../../../src/todo/store.js'
 import { TodoStatus, TodoPriority } from '../../../src/todo/types.js'
 
@@ -46,6 +47,7 @@ function createTestSchema(db: TestDatabase): void {
       position INTEGER NOT NULL DEFAULT 0,
       metadata TEXT,
       tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      owner_agent_id TEXT NOT NULL DEFAULT 'foreground.default',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
@@ -59,13 +61,24 @@ function createTestSchema(db: TestDatabase): void {
   db.exec(`CREATE INDEX idx_todos_status ON todos(status)`)
   db.exec(`CREATE INDEX idx_todos_position ON todos(session_id, parent_id, position)`)
   db.exec(`CREATE INDEX idx_todos_tenant ON todos(tenant_id)`)
+  db.exec(`CREATE INDEX idx_todos_owner ON todos(tenant_id, session_id, owner_agent_id)`)
 }
 
 function seedTestSession(db: TestDatabase, sessionId: string = 'sess-1', tenantId: string = 'org_default'): void {
   db.exec(
     `INSERT INTO sessions (session_id, user_id, title, status, message_count, last_activity_at, created_at, updated_at, tenant_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [sessionId, 'user-1', 'Test Session', 'active', 0, '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z', tenantId],
+    [
+      sessionId,
+      'user-1',
+      'Test Session',
+      'active',
+      0,
+      '2026-06-01T00:00:00.000Z',
+      '2026-06-01T00:00:00.000Z',
+      '2026-06-01T00:00:00.000Z',
+      tenantId,
+    ],
   )
 }
 
@@ -111,7 +124,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Create parent todo
       store.create({
         id: 'todo-parent',
@@ -141,7 +154,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       const todo1 = store.create({
         id: 'todo-1',
         sessionId: 'sess-1',
@@ -177,7 +190,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Create a todo
       store.create({
         id: 'todo-1',
@@ -206,7 +219,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Create depth 0
       const t0 = store.create({
         id: 't0',
@@ -305,7 +318,7 @@ describe('TodoStore', () => {
       seedTestSession(db, 'sess-2')
 
       const store = createTodoStore(db)
-      
+
       // Session 1 todos
       store.create({
         id: 't1-s1',
@@ -343,7 +356,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Root level todos
       store.create({
         id: 'root-2',
@@ -481,7 +494,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Create hierarchy
       store.create({
         id: 'parent',
@@ -543,7 +556,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Create initial todos
       store.create({
         id: 'old-1',
@@ -589,11 +602,11 @@ describe('TodoStore', () => {
 
       expect(result).toHaveLength(3)
       expect(result.map((t: Todo) => t.id)).toEqual(['new-1', 'new-2', 'new-3'])
-      
+
       // Verify old todos are gone
       expect(store.findById('old-1')).toBeNull()
       expect(store.findById('old-2')).toBeNull()
-      
+
       // Verify new todos exist
       expect(store.findById('new-1')).not.toBeNull()
       expect(store.findById('new-2')).not.toBeNull()
@@ -606,7 +619,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Create initial todo
       store.create({
         id: 'existing',
@@ -707,7 +720,7 @@ describe('TodoStore', () => {
       const result = storeB.update('todo-a', { status: TodoStatus.completed })
 
       expect(result).toBeNull()
-      
+
       // Verify tenant A's todo is unchanged
       const todoA = storeA.findById('todo-a')
       expect(todoA?.status).toBe('pending')
@@ -735,7 +748,7 @@ describe('TodoStore', () => {
       const result = storeB.remove('todo-a')
 
       expect(result).toBe(false)
-      
+
       // Verify tenant A's todo still exists
       expect(storeA.findById('todo-a')).not.toBeNull()
     })
@@ -748,7 +761,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       // Create two root todos
       const root1 = store.create({
         id: 'root-1',
@@ -831,7 +844,7 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      
+
       store.create({
         id: 'todo-meta-update',
         sessionId: 'sess-1',
@@ -857,8 +870,20 @@ describe('TodoStore', () => {
 
       const store = createTodoStore(db)
 
-      store.create({ id: 't1', sessionId: 'sess-1', content: 'Task 1', status: TodoStatus.pending, priority: TodoPriority.medium })
-      store.create({ id: 't2', sessionId: 'sess-1', content: 'Task 2', status: TodoStatus.in_progress, priority: TodoPriority.high })
+      store.create({
+        id: 't1',
+        sessionId: 'sess-1',
+        content: 'Task 1',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+      })
+      store.create({
+        id: 't2',
+        sessionId: 'sess-1',
+        content: 'Task 2',
+        status: TodoStatus.in_progress,
+        priority: TodoPriority.high,
+      })
 
       const result = store.replace('sess-1', [])
 
@@ -939,10 +964,23 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      store.create({ id: 't1', sessionId: 'sess-1', content: 'Task', status: TodoStatus.pending, priority: TodoPriority.medium })
+      store.create({
+        id: 't1',
+        sessionId: 'sess-1',
+        content: 'Task',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+      })
 
       try {
-        store.create({ id: 't1', sessionId: 'sess-1', content: 'Task', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 't1' })
+        store.create({
+          id: 't1',
+          sessionId: 'sess-1',
+          content: 'Task',
+          status: TodoStatus.pending,
+          priority: TodoPriority.medium,
+          parentId: 't1',
+        })
         expect.fail('Should have thrown')
       } catch (error) {
         expect(error).toBeInstanceOf(Error)
@@ -956,13 +994,47 @@ describe('TodoStore', () => {
       seedTestSession(db)
 
       const store = createTodoStore(db)
-      store.create({ id: 'd0', sessionId: 'sess-1', content: 'D0', status: TodoStatus.pending, priority: TodoPriority.medium })
-      store.create({ id: 'd1', sessionId: 'sess-1', content: 'D1', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 'd0' })
-      store.create({ id: 'd2', sessionId: 'sess-1', content: 'D2', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 'd1' })
-      store.create({ id: 'd3', sessionId: 'sess-1', content: 'D3', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 'd2' })
+      store.create({
+        id: 'd0',
+        sessionId: 'sess-1',
+        content: 'D0',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+      })
+      store.create({
+        id: 'd1',
+        sessionId: 'sess-1',
+        content: 'D1',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        parentId: 'd0',
+      })
+      store.create({
+        id: 'd2',
+        sessionId: 'sess-1',
+        content: 'D2',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        parentId: 'd1',
+      })
+      store.create({
+        id: 'd3',
+        sessionId: 'sess-1',
+        content: 'D3',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        parentId: 'd2',
+      })
 
       try {
-        store.create({ id: 'd4', sessionId: 'sess-1', content: 'D4', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 'd3' })
+        store.create({
+          id: 'd4',
+          sessionId: 'sess-1',
+          content: 'D4',
+          status: TodoStatus.pending,
+          priority: TodoPriority.medium,
+          parentId: 'd3',
+        })
         expect.fail('Should have thrown')
       } catch (error) {
         expect(error).toBeInstanceOf(Error)
@@ -978,7 +1050,14 @@ describe('TodoStore', () => {
       const store = createTodoStore(db)
 
       try {
-        store.create({ id: 't1', sessionId: 'sess-1', content: 'Task', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 'missing' })
+        store.create({
+          id: 't1',
+          sessionId: 'sess-1',
+          content: 'Task',
+          status: TodoStatus.pending,
+          priority: TodoPriority.medium,
+          parentId: 'missing',
+        })
         expect.fail('Should have thrown')
       } catch (error) {
         expect(error).toBeInstanceOf(Error)
@@ -995,19 +1074,44 @@ describe('TodoStore', () => {
 
       const store = createTodoStore(db)
 
-      store.create({ id: 'orig-1', sessionId: 'sess-1', content: 'Original 1', status: TodoStatus.pending, priority: TodoPriority.high })
-      store.create({ id: 'orig-2', sessionId: 'sess-1', content: 'Original 2', status: TodoStatus.in_progress, priority: TodoPriority.medium })
+      store.create({
+        id: 'orig-1',
+        sessionId: 'sess-1',
+        content: 'Original 1',
+        status: TodoStatus.pending,
+        priority: TodoPriority.high,
+      })
+      store.create({
+        id: 'orig-2',
+        sessionId: 'sess-1',
+        content: 'Original 2',
+        status: TodoStatus.in_progress,
+        priority: TodoPriority.medium,
+      })
 
       const invalidTodos = [
-        { id: 'ok', sessionId: 'sess-1', content: 'Valid', status: TodoStatus.pending as const, priority: TodoPriority.medium as const },
-        { id: 'bad', sessionId: 'sess-1', content: 'Invalid parent', status: TodoStatus.pending as const, priority: TodoPriority.medium as const, parentId: 'nonexistent-parent' },
+        {
+          id: 'ok',
+          sessionId: 'sess-1',
+          content: 'Valid',
+          status: TodoStatus.pending as const,
+          priority: TodoPriority.medium as const,
+        },
+        {
+          id: 'bad',
+          sessionId: 'sess-1',
+          content: 'Invalid parent',
+          status: TodoStatus.pending as const,
+          priority: TodoPriority.medium as const,
+          parentId: 'nonexistent-parent',
+        },
       ]
 
       expect(() => store.replace('sess-1', invalidTodos)).toThrow()
 
       const remaining = store.findBySession('sess-1')
       expect(remaining).toHaveLength(2)
-      expect(remaining.map(t => t.id).sort()).toEqual(['orig-1', 'orig-2'])
+      expect(remaining.map((t) => t.id).sort()).toEqual(['orig-1', 'orig-2'])
     })
 
     it('rollback restores todos with correct content and status', () => {
@@ -1017,11 +1121,24 @@ describe('TodoStore', () => {
 
       const store = createTodoStore(db)
 
-      store.create({ id: 't1', sessionId: 'sess-1', content: 'Keep me', status: TodoStatus.in_progress, priority: TodoPriority.high })
+      store.create({
+        id: 't1',
+        sessionId: 'sess-1',
+        content: 'Keep me',
+        status: TodoStatus.in_progress,
+        priority: TodoPriority.high,
+      })
 
       expect(() =>
         store.replace('sess-1', [
-          { id: 'bad', sessionId: 'sess-1', content: 'Fail', status: TodoStatus.pending, priority: TodoPriority.low, parentId: 'no-such-parent' },
+          {
+            id: 'bad',
+            sessionId: 'sess-1',
+            content: 'Fail',
+            status: TodoStatus.pending,
+            priority: TodoPriority.low,
+            parentId: 'no-such-parent',
+          },
         ]),
       ).toThrow()
 
@@ -1043,8 +1160,22 @@ describe('TodoStore', () => {
 
       const todos = store.replace('sess-1', [
         { id: 'root', sessionId: 'sess-1', content: 'Root', status: TodoStatus.pending, priority: TodoPriority.high },
-        { id: 'child', sessionId: 'sess-1', content: 'Child', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 'root' },
-        { id: 'grandchild', sessionId: 'sess-1', content: 'Grandchild', status: TodoStatus.pending, priority: TodoPriority.low, parentId: 'child' },
+        {
+          id: 'child',
+          sessionId: 'sess-1',
+          content: 'Child',
+          status: TodoStatus.pending,
+          priority: TodoPriority.medium,
+          parentId: 'root',
+        },
+        {
+          id: 'grandchild',
+          sessionId: 'sess-1',
+          content: 'Grandchild',
+          status: TodoStatus.pending,
+          priority: TodoPriority.low,
+          parentId: 'child',
+        },
       ])
 
       expect(todos).toHaveLength(3)
@@ -1067,12 +1198,337 @@ describe('TodoStore', () => {
       expect(() =>
         store.replace('sess-1', [
           { id: 'd0', sessionId: 'sess-1', content: 'D0', status: TodoStatus.pending, priority: TodoPriority.high },
-          { id: 'd1', sessionId: 'sess-1', content: 'D1', status: TodoStatus.pending, priority: TodoPriority.medium, parentId: 'd0' },
-          { id: 'd2', sessionId: 'sess-1', content: 'D2', status: TodoStatus.pending, priority: TodoPriority.low, parentId: 'd1' },
-          { id: 'd3', sessionId: 'sess-1', content: 'D3', status: TodoStatus.pending, priority: TodoPriority.low, parentId: 'd2' },
-          { id: 'd4', sessionId: 'sess-1', content: 'D4', status: TodoStatus.pending, priority: TodoPriority.low, parentId: 'd3' },
+          {
+            id: 'd1',
+            sessionId: 'sess-1',
+            content: 'D1',
+            status: TodoStatus.pending,
+            priority: TodoPriority.medium,
+            parentId: 'd0',
+          },
+          {
+            id: 'd2',
+            sessionId: 'sess-1',
+            content: 'D2',
+            status: TodoStatus.pending,
+            priority: TodoPriority.low,
+            parentId: 'd1',
+          },
+          {
+            id: 'd3',
+            sessionId: 'sess-1',
+            content: 'D3',
+            status: TodoStatus.pending,
+            priority: TodoPriority.low,
+            parentId: 'd2',
+          },
+          {
+            id: 'd4',
+            sessionId: 'sess-1',
+            content: 'D4',
+            status: TodoStatus.pending,
+            priority: TodoPriority.low,
+            parentId: 'd3',
+          },
         ]),
       ).toThrow(/depth/i)
+    })
+  })
+
+  describe('owner agent isolation', () => {
+    it('defaults ownerAgentId to foreground.default when not specified', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+      const todo = store.create({
+        id: 'todo-default-owner',
+        sessionId: 'sess-1',
+        content: 'Task',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+      })
+
+      expect(todo.ownerAgentId).toBe(DEFAULT_OWNER_AGENT_ID)
+      expect(todo.ownerAgentId).toBe('foreground.default')
+    })
+
+    it('owner A and B can create todos in same session', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+
+      store.create({
+        id: 'todo-a1',
+        sessionId: 'sess-1',
+        content: 'Owner A task',
+        status: TodoStatus.pending,
+        priority: TodoPriority.high,
+        ownerAgentId: 'agent-alpha',
+      })
+      store.create({
+        id: 'todo-b1',
+        sessionId: 'sess-1',
+        content: 'Owner B task',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent-beta',
+      })
+
+      const all = store.findBySession('sess-1')
+      expect(all).toHaveLength(2)
+      expect(all.map((t) => t.id).sort()).toEqual(['todo-a1', 'todo-b1'])
+    })
+
+    it('rejects parent todo from a different session', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db, 'sess-1')
+      seedTestSession(db, 'sess-2')
+
+      const store = createTodoStore(db)
+      store.create({
+        id: 'parent-other-session',
+        sessionId: 'sess-2',
+        content: 'Parent from another session',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      expect(() =>
+        store.create({
+          id: 'child-cross-session',
+          sessionId: 'sess-1',
+          content: 'Child in current session',
+          status: TodoStatus.pending,
+          priority: TodoPriority.medium,
+          parentId: 'parent-other-session',
+          ownerAgentId: 'agent-alpha',
+        }),
+      ).toThrow('Parent todo must belong to the same session')
+    })
+
+    it('rejects parent todo from a different owner', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+      store.create({
+        id: 'parent-alpha',
+        sessionId: 'sess-1',
+        content: 'Alpha parent',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      expect(() =>
+        store.create({
+          id: 'child-beta',
+          sessionId: 'sess-1',
+          content: 'Beta child',
+          status: TodoStatus.pending,
+          priority: TodoPriority.medium,
+          parentId: 'parent-alpha',
+          ownerAgentId: 'agent-beta',
+        }),
+      ).toThrow('Parent todo must belong to the same owner agent')
+    })
+
+    it('findBySessionAndOwner returns only the specified owner todos', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+
+      store.create({
+        id: 'todo-a1',
+        sessionId: 'sess-1',
+        content: 'Owner A task 1',
+        status: TodoStatus.pending,
+        priority: TodoPriority.high,
+        ownerAgentId: 'agent-alpha',
+      })
+      store.create({
+        id: 'todo-a2',
+        sessionId: 'sess-1',
+        content: 'Owner A task 2',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent-alpha',
+      })
+      store.create({
+        id: 'todo-b1',
+        sessionId: 'sess-1',
+        content: 'Owner B task',
+        status: TodoStatus.pending,
+        priority: TodoPriority.low,
+        ownerAgentId: 'agent-beta',
+      })
+
+      const alphaTodos = store.findBySessionAndOwner('sess-1', 'agent-alpha')
+      expect(alphaTodos).toHaveLength(2)
+      expect(alphaTodos.map((t) => t.id).sort()).toEqual(['todo-a1', 'todo-a2'])
+      expect(alphaTodos.every((t) => t.ownerAgentId === 'agent-alpha')).toBe(true)
+
+      const betaTodos = store.findBySessionAndOwner('sess-1', 'agent-beta')
+      expect(betaTodos).toHaveLength(1)
+      expect(betaTodos[0]?.id).toBe('todo-b1')
+      expect(betaTodos[0]?.ownerAgentId).toBe('agent-beta')
+    })
+
+    it('findBySession returns all owners (backward compatible)', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+
+      store.create({
+        id: 'todo-a',
+        sessionId: 'sess-1',
+        content: 'Owner A',
+        status: TodoStatus.pending,
+        priority: TodoPriority.high,
+        ownerAgentId: 'agent-alpha',
+      })
+      store.create({
+        id: 'todo-b',
+        sessionId: 'sess-1',
+        content: 'Owner B',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent-beta',
+      })
+      store.create({
+        id: 'todo-default',
+        sessionId: 'sess-1',
+        content: 'Default owner',
+        status: TodoStatus.pending,
+        priority: TodoPriority.low,
+      })
+
+      const all = store.findBySession('sess-1')
+      expect(all).toHaveLength(3)
+      const owners = all.map((t) => t.ownerAgentId).sort()
+      expect(owners).toEqual(['agent-alpha', 'agent-beta', 'foreground.default'])
+    })
+
+    it('owner A replace does not delete owner B todos', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+
+      store.create({
+        id: 'a-old-1',
+        sessionId: 'sess-1',
+        content: 'Owner A old task',
+        status: TodoStatus.pending,
+        priority: TodoPriority.high,
+        ownerAgentId: 'agent-alpha',
+      })
+      store.create({
+        id: 'b-keep-1',
+        sessionId: 'sess-1',
+        content: 'Owner B task (must survive)',
+        status: TodoStatus.in_progress,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent-beta',
+      })
+
+      const result = store.replace('sess-1', [
+        {
+          id: 'a-new-1',
+          sessionId: 'sess-1',
+          content: 'Owner A new task',
+          status: TodoStatus.pending,
+          priority: TodoPriority.high,
+          ownerAgentId: 'agent-alpha',
+        },
+      ])
+
+      expect(result).toHaveLength(1)
+      expect(result[0]?.id).toBe('a-new-1')
+      expect(result[0]?.ownerAgentId).toBe('agent-alpha')
+
+      expect(store.findById('a-old-1')).toBeNull()
+      expect(store.findById('b-keep-1')).not.toBeNull()
+      expect(store.findById('b-keep-1')?.ownerAgentId).toBe('agent-beta')
+
+      const alphaTodos = store.findBySessionAndOwner('sess-1', 'agent-alpha')
+      expect(alphaTodos).toHaveLength(1)
+      expect(alphaTodos[0]?.id).toBe('a-new-1')
+
+      const betaTodos = store.findBySessionAndOwner('sess-1', 'agent-beta')
+      expect(betaTodos).toHaveLength(1)
+      expect(betaTodos[0]?.id).toBe('b-keep-1')
+    })
+
+    it('replace with default owner only affects default-owner todos', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+
+      store.create({
+        id: 'default-old',
+        sessionId: 'sess-1',
+        content: 'Default owner old',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+      })
+      store.create({
+        id: 'alpha-keep',
+        sessionId: 'sess-1',
+        content: 'Alpha owner (must survive)',
+        status: TodoStatus.pending,
+        priority: TodoPriority.high,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      store.replace('sess-1', [
+        {
+          id: 'default-new',
+          sessionId: 'sess-1',
+          content: 'Default owner new',
+          status: TodoStatus.in_progress,
+          priority: TodoPriority.low,
+        },
+      ])
+
+      expect(store.findById('default-old')).toBeNull()
+      expect(store.findById('default-new')).not.toBeNull()
+      expect(store.findById('default-new')?.ownerAgentId).toBe('foreground.default')
+      expect(store.findById('alpha-keep')).not.toBeNull()
+      expect(store.findById('alpha-keep')?.ownerAgentId).toBe('agent-alpha')
+    })
+
+    it('findBySessionAndOwner returns empty for owner with no todos', () => {
+      const db = openTestDatabase()
+      createTestSchema(db)
+      seedTestSession(db)
+
+      const store = createTodoStore(db)
+      store.create({
+        id: 'todo-a',
+        sessionId: 'sess-1',
+        content: 'Owner A task',
+        status: TodoStatus.pending,
+        priority: TodoPriority.medium,
+        ownerAgentId: 'agent-alpha',
+      })
+
+      const result = store.findBySessionAndOwner('sess-1', 'agent-nonexistent')
+      expect(result).toEqual([])
     })
   })
 })

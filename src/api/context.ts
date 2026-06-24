@@ -61,6 +61,7 @@ import { createScheduleTriggerStore, type ScheduleTriggerStore } from '../storag
 import { createConnectorStore, type ConnectorStore } from '../storage/connector-store.js'
 import { createEventTriggerRuntime, type EventTriggerRuntime } from '../triggers/event-trigger-runtime.js'
 import { createPermissionEngine, type PermissionEngine } from '../permissions/permission-engine.js'
+import { createAgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 import { createToolRegistry } from '../tools/tool-registry.js'
 import { createToolExecutor } from '../tools/tool-executor.js'
 import type { ToolRegistry, ToolExecutor } from '../tools/types.js'
@@ -551,6 +552,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     longTermMemoryStore,
     toolResultStore,
     sessionStore,
+    todoStore,
     webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
   })
 
@@ -598,10 +600,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       toolRegistry,
     })
 
+  const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
+
   // Create tool executor
   const toolExecutor = createToolExecutor({
     registry: toolRegistry,
     permissionEngine,
+    envelopeRegistry,
     toolExecutionStore: {
       create: (exec) =>
         toolExecutionStore.create({
@@ -631,9 +636,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
         toolName: request.toolName,
         params: request.params,
         userId: request.userId,
-        sessionId: request.sessionId,
-        kernelRunId: request.kernelRunId,
-        permissionContext: {
+	        sessionId: request.sessionId,
+	        kernelRunId: request.kernelRunId,
+	        agentId: request.agentId,
+	        agentType: request.agentType,
+	        agentProfile: request.agentProfile,
+	        launchSource: request.launchSource,
+	        permissionContext: {
           userId: request.permissionContext.userId,
           sessionId: request.sessionId ?? '',
           mode: 'ask_on_write',
@@ -763,10 +772,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     providerConfigStore,
     agentConfigStore,
     sessionStore,
-    toolRegistry,
-    preferenceStore: subagentProviderPreferenceStore,
-    runWithProvidersForUser,
-  })
+	    toolRegistry,
+	    preferenceStore: subagentProviderPreferenceStore,
+	    runWithProvidersForUser,
+	    envelopeRegistry,
+	  })
 
   const subagentRuntime = createSubagentRuntime({
     kernelAdapter: subagentKernelAdapter,

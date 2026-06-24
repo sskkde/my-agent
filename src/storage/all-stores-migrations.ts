@@ -2472,6 +2472,18 @@ export const todosTableMigration: Migration = {
   `,
 }
 
+export const todosOwnerAgentIdMigration: Migration = {
+  version: 64,
+  name: 'todos_owner_agent_id',
+  up: `
+    ALTER TABLE todos ADD COLUMN owner_agent_id TEXT NOT NULL DEFAULT 'foreground.default';
+    CREATE INDEX IF NOT EXISTS idx_todos_owner ON todos(tenant_id, session_id, owner_agent_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_todos_owner
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -2605,6 +2617,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Agent type/profile split: closed AgentType in agent_type, profile label in agent_profile
   agentTypeProfileSplitMigration, // v63
+
+  // Todo owner agent isolation
+  todosOwnerAgentIdMigration, // v64
 ]
 
 /**

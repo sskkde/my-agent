@@ -145,4 +145,69 @@ describe('runtime-tools-registration', () => {
     expect(registry.hasTool('process')).toBe(false)
     expect(registry.hasTool('code_execution')).toBe(false)
   })
+
+  it('registers todo tools when todoStore is provided', () => {
+    const mockTodoStore: any = {
+      findById: () => null,
+      findBySession: () => [],
+      create: () => ({}),
+      update: () => null,
+      remove: () => true,
+      replace: () => [],
+    }
+
+    registerBuiltInTools(registry, {
+      artifactStore: {} as any,
+      summaryStore: {} as any,
+      transcriptStore: {} as any,
+      planStore: {} as any,
+      longTermMemoryStore: {} as any,
+      sessionStore: {} as any,
+      todoStore: mockTodoStore,
+    })
+
+    expect(registry.hasTool('todolist')).toBe(true)
+    expect(registry.hasTool('todowrite')).toBe(true)
+  })
+
+  it('does not register todo tools when todoStore is not provided', () => {
+    registerBuiltInTools(registry, {
+      artifactStore: {} as any,
+      summaryStore: {} as any,
+      transcriptStore: {} as any,
+      planStore: {} as any,
+      longTermMemoryStore: {} as any,
+      sessionStore: {} as any,
+    })
+
+    expect(registry.hasTool('todolist')).toBe(false)
+    expect(registry.hasTool('todowrite')).toBe(false)
+  })
+
+  it('todo tools have correct categories (todolist=read, todowrite=write)', () => {
+    const mockTodoStore: any = {
+      findById: () => null,
+      findBySession: () => [],
+      create: () => ({}),
+      update: () => null,
+      remove: () => true,
+      replace: () => [],
+    }
+
+    registerBuiltInTools(registry, {
+      artifactStore: {} as any,
+      summaryStore: {} as any,
+      transcriptStore: {} as any,
+      planStore: {} as any,
+      longTermMemoryStore: {} as any,
+      sessionStore: {} as any,
+      todoStore: mockTodoStore,
+    })
+
+    const todolistTool = registry.getTool('todolist')
+    expect(todolistTool?.category).toBe('read')
+
+    const todowriteTool = registry.getTool('todowrite')
+    expect(todowriteTool?.category).toBe('write')
+  })
 })

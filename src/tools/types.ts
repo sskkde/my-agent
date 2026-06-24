@@ -62,6 +62,11 @@ export interface ToolExecutionContext {
   permissionContext: PermissionContext
   executionStartTime: string
   signal?: AbortSignal
+  // Agent identity transported from request (executor does NOT infer owner)
+  agentType?: string
+  agentId?: string
+  agentProfile?: string
+  launchSource?: string
   // Access to stores (injected by executor)
   stores: {
     toolExecutionStore: {
@@ -134,6 +139,7 @@ export interface ToolExecutionRequest {
   permissionContext: PermissionContext
   signal?: AbortSignal
   agentType?: string
+  agentId?: string
   agentProfile?: string
   launchSource?: string
   outputContract?: string

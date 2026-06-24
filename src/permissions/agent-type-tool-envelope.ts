@@ -39,6 +39,13 @@ export interface AgentTypeToolEnvelope {
    * filtering applies.
    */
   readonly allowedToolIds?: ReadonlySet<string>
+  /**
+   * Optional narrow exception allowlist. Tools listed here are permitted
+   * even if their category is not in allowedCategories. Unlike allowedToolIds,
+   * this does NOT restrict other tools — it only grants additional access
+   * to specific tool IDs whose category would otherwise be denied.
+   */
+  readonly categoryExceptionToolIds?: ReadonlySet<string>
   /** Human-readable reason for audit trail. */
   readonly reason: string
 }
@@ -138,13 +145,20 @@ const SUBAGENT_ENVELOPE: AgentTypeToolEnvelope = {
 
 /**
  * Background envelope — long-running background tasks.
- * Most restrictive non-remote envelope.
+ * Most restrictive non-remote envelope: read/search/internal only.
+ *
+ * Narrow exception: `todowrite` and `todolist` are permitted via
+ * `categoryExceptionToolIds` even though they belong to the 'write'
+ * category. This lets background agents track progress through the
+ * todo system without granting broad write access. Each background
+ * agent's todos are owner-scoped — it can only see/modify its own.
  */
 const BACKGROUND_ENVELOPE: AgentTypeToolEnvelope = {
   agentType: 'background',
   allowedCategories: BACKGROUND_CATEGORIES,
   deniedToolIds: new Set<string>(),
-  reason: 'Background: read/search/internal only — no side effects in unattended mode',
+  categoryExceptionToolIds: new Set<string>(['todowrite', 'todolist']),
+  reason: 'Background: read/search/internal only — no side effects in unattended mode, except todo tools (owner-scoped)',
 }
 
 /**
@@ -214,6 +228,12 @@ export function createAgentTypeToolEnvelopeRegistry(): AgentTypeToolEnvelopeRegi
       // Explicit denylist always wins
       if (envelope.deniedToolIds.has(toolId)) {
         return false
+      }
+
+      // Narrow category exception: allow specific tools even if their
+      // category is not in allowedCategories (e.g. todowrite for background)
+      if (envelope.categoryExceptionToolIds?.has(toolId)) {
+        return true
       }
 
       // If explicit allowlist is set, only those tools are permitted

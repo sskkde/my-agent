@@ -79,6 +79,34 @@ describe('AgentTypeToolEnvelopeRegistry', () => {
       expect(registry.isToolAllowedByEnvelope('background', 'artifact_create', 'write')).toBe(false)
     })
 
+    it('background: allows todolist (read category) for reading todos', () => {
+      expect(registry.isToolAllowedByEnvelope('background', 'todolist', 'read')).toBe(true)
+    })
+
+    it('background: allows todowrite via narrow category exception', () => {
+      expect(registry.isToolAllowedByEnvelope('background', 'todowrite', 'write')).toBe(true)
+    })
+
+    it('background: denies non-todo write tools like artifact_create', () => {
+      expect(registry.isToolAllowedByEnvelope('background', 'artifact_create', 'write')).toBe(false)
+      expect(registry.isToolAllowedByEnvelope('background', 'artifact_update', 'write')).toBe(false)
+      expect(registry.isToolAllowedByEnvelope('background', 'file_write', 'write')).toBe(false)
+      expect(registry.isToolAllowedByEnvelope('background', 'file_edit', 'write')).toBe(false)
+    })
+
+    it('background: does NOT have write category in allowedCategories', () => {
+      const envelope = registry.getEnvelope('background')
+      expect(envelope).toBeDefined()
+      expect(envelope!.allowedCategories.has('write')).toBe(false)
+    })
+
+    it('background: envelope has categoryExceptionToolIds containing todowrite', () => {
+      const envelope = registry.getEnvelope('background')
+      expect(envelope).toBeDefined()
+      expect(envelope!.categoryExceptionToolIds).toBeDefined()
+      expect(envelope!.categoryExceptionToolIds!.has('todowrite')).toBe(true)
+    })
+
     it('workflow_step: allows read/search/internal/write/execute', () => {
       expect(registry.isToolAllowedByEnvelope('workflow_step', 'file_read', 'read')).toBe(true)
       expect(registry.isToolAllowedByEnvelope('workflow_step', 'artifact_create', 'write')).toBe(true)
@@ -127,6 +155,26 @@ describe('AgentTypeToolEnvelopeRegistry', () => {
     it('remote: returns empty array', () => {
       const allowed = registry.getAllowedToolIds('remote', catalog)
       expect(allowed).toEqual([])
+    })
+
+    it('background: includes todo tools via narrow exception but excludes other write tools', () => {
+      const catalogWithTodos = [
+        ...catalog,
+        { id: 'todolist', category: 'read' as ToolCategory },
+        { id: 'todowrite', category: 'write' as ToolCategory },
+      ]
+      const allowed = registry.getAllowedToolIds('background', catalogWithTodos)
+
+      expect(allowed).toContain('file_read')
+      expect(allowed).toContain('web_search')
+      expect(allowed).toContain('status_query')
+      expect(allowed).toContain('todolist')
+
+      expect(allowed).toContain('todowrite')
+
+      expect(allowed).not.toContain('artifact_create')
+      expect(allowed).not.toContain('exec')
+      expect(allowed).not.toContain('admin_config')
     })
   })
 })
