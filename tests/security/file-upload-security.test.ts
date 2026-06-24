@@ -20,6 +20,7 @@ import {
   closeAuthenticatedTestContext,
   type AuthenticatedTestContext,
 } from '../helpers/auth.js'
+import { resetUploadConfigCache } from '../../src/config/upload-config.js'
 
 interface FileMetadata {
   fileId: string
@@ -77,7 +78,6 @@ describe('File Upload Security', () => {
 
   describe('Oversized file rejection', () => {
     it('should reject a file exceeding maxFileSizeBytes (10 MiB default)', async () => {
-      // Create a 12 MiB payload
       const largeContent = 'x'.repeat(12 * 1024 * 1024)
       const formData = createMultipartBody('large.txt', largeContent)
 
@@ -87,17 +87,10 @@ describe('File Upload Security', () => {
         body: formData,
       })
 
-      // May be 413 from multipart parser or from size check
-      if (response.status === 201) {
-        // If the server accepted it (e.g. multipart limit is higher), that's also valid
-        const body = (await response.json()) as ApiEnvelope<{ file: FileMetadata }>
-        expect(body.ok).toBe(true)
-      } else {
-        expect(response.status).toBe(413)
-        const body = (await response.json()) as ApiEnvelope<never>
-        expect(body.ok).toBe(false)
-        expect(body.error?.code).toBe('FILE_TOO_LARGE')
-      }
+      expect(response.status).toBe(413)
+      const body = (await response.json()) as ApiEnvelope<never>
+      expect(body.ok).toBe(false)
+      expect(body.error?.code).toBe('FILE_TOO_LARGE')
     })
 
     it('should reject a 0-byte file gracefully', async () => {
@@ -493,7 +486,7 @@ describe('File Upload Security', () => {
       expect(listText).not.toContain(secretContent)
     })
 
-    it('should not expose file content in download endpoint (501 stub)', async () => {
+    it('should stream file content in download endpoint', async () => {
       const formData = createMultipartBody('dl-stub.txt', 'download test')
       const uploadResponse = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/files`, {
         method: 'POST',
@@ -507,10 +500,9 @@ describe('File Upload Security', () => {
         headers: { Cookie: authCookie },
       })
 
-      // Currently returns 501 (stub) — no raw bytes exposed
-      expect(dlResponse.status).toBe(501)
-      const body = (await dlResponse.json()) as ApiEnvelope<never>
-      expect(body.error?.code).toBe('NOT_IMPLEMENTED')
+      expect(dlResponse.status).toBe(200)
+      const text = await dlResponse.text()
+      expect(text).toBe('download test')
     })
   })
 
@@ -546,6 +538,79 @@ describe('File Upload Security', () => {
     it('should require auth for file deletion', async () => {
       const response = await fetch(`${baseUrl}/api/v1/files/some-id`, { method: 'DELETE' })
       expect(response.status).toBe(401)
+    })
+  })
+
+  // ===========================================================================
+  // Per-session quota enforcement
+  // ===========================================================================
+
+  describe('Per-session quota enforcement', () => {
+    let quotaCtx: AuthenticatedTestContext
+    let quotaBaseUrl: string
+    let quotaAuthCookie: string
+    let quotaSessionId: string
+
+    let originalQuota: string | undefined
+
+    beforeAll(async () => {
+      originalQuota = process.env.UPLOAD_PER_SESSION_QUOTA_BYTES
+      process.env.UPLOAD_PER_SESSION_QUOTA_BYTES = '1024'
+      resetUploadConfigCache()
+
+      quotaCtx = await createAuthenticatedTestContext()
+      quotaBaseUrl = quotaCtx.baseUrl
+      quotaAuthCookie = quotaCtx.authCookie
+
+      const sessionResponse = await fetch(`${quotaBaseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: quotaAuthCookie },
+        body: JSON.stringify({}),
+      })
+      const sessionBody = (await sessionResponse.json()) as { data: { session: { sessionId: string } } }
+      quotaSessionId = sessionBody.data.session.sessionId
+    }, 30000)
+
+    afterAll(async () => {
+      await closeAuthenticatedTestContext(quotaCtx)
+      if (originalQuota === undefined) {
+        delete process.env.UPLOAD_PER_SESSION_QUOTA_BYTES
+      } else {
+        process.env.UPLOAD_PER_SESSION_QUOTA_BYTES = originalQuota
+      }
+      resetUploadConfigCache()
+    }, 30000)
+
+    it('should accept multiple small files within quota', async () => {
+      const formData1 = createMultipartBody('quota1.txt', 'a'.repeat(400))
+      const response1 = await fetch(`${quotaBaseUrl}/api/v1/sessions/${quotaSessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: quotaAuthCookie },
+        body: formData1,
+      })
+      expect(response1.status).toBe(201)
+
+      const formData2 = createMultipartBody('quota2.txt', 'b'.repeat(400))
+      const response2 = await fetch(`${quotaBaseUrl}/api/v1/sessions/${quotaSessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: quotaAuthCookie },
+        body: formData2,
+      })
+      expect(response2.status).toBe(201)
+    })
+
+    it('should reject upload that would exceed per-session quota', async () => {
+      const formData = createMultipartBody('over-quota.txt', 'c'.repeat(400))
+      const response = await fetch(`${quotaBaseUrl}/api/v1/sessions/${quotaSessionId}/files`, {
+        method: 'POST',
+        headers: { Cookie: quotaAuthCookie },
+        body: formData,
+      })
+
+      expect(response.status).toBe(413)
+      const body = (await response.json()) as ApiEnvelope<never>
+      expect(body.ok).toBe(false)
+      expect(body.error?.code).toBe('SESSION_QUOTA_EXCEEDED')
     })
   })
 })
