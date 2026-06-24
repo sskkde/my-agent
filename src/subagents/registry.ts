@@ -37,6 +37,8 @@ export interface SubagentDefinition {
   promptId: string
   allowedToolIds: string[]
   disallowedToolIds?: string[]
+  /** Allowed skill IDs — intersected with AgentType envelope at runtime. */
+  allowedSkillIds?: string[]
   defaultMaxIterations: number
   defaultTimeoutMs: number
   supportedExecutionModes: SubagentExecutionMode[]

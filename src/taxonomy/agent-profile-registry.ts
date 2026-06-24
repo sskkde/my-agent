@@ -11,6 +11,8 @@ export interface AgentProfile {
   allowedAgentTypes: AgentType[]
   promptTemplateIds: string[]
   defaultToolIds: string[]
+  /** Default skill IDs — intersected with AgentType envelope at runtime. */
+  defaultSkillIds?: string[]
   defaultModel?: string
   riskLevel: 'low' | 'medium' | 'high' | 'critical'
   ownerScope: 'system' | 'user' | 'workspace'
@@ -67,6 +69,7 @@ const defaultMain: AgentProfile = {
   allowedAgentTypes: ['main'],
   promptTemplateIds: ['agentProfile:default_main'],
   defaultToolIds: [],
+  defaultSkillIds: ['memory_research', 'session_status', 'documentation_search', 'web_research_guidance'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -78,6 +81,7 @@ const foreground: AgentProfile = {
   allowedAgentTypes: ['main'],
   promptTemplateIds: ['agentProfile:foreground'],
   defaultToolIds: ['foreground_spawn_planner', 'foreground_launch_subagent', 'foreground_status_query'],
+  defaultSkillIds: ['session_status', 'documentation_search', 'web_research_guidance'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -89,6 +93,7 @@ const planner: AgentProfile = {
   allowedAgentTypes: ['subagent', 'workflow_step'],
   promptTemplateIds: ['agentProfile:planner', 'outputContract:planner.schema'],
   defaultToolIds: ['ask_user', 'plan_patch'],
+  defaultSkillIds: ['artifact_workflow', 'memory_research', 'session_status', 'documentation_search', 'web_research_guidance'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -100,6 +105,7 @@ const memory: AgentProfile = {
   allowedAgentTypes: ['background'],
   promptTemplateIds: ['agentProfile:memory', 'outputContract:memory-candidate.schema'],
   defaultToolIds: ['transcript_search', 'memory_retrieve'],
+  defaultSkillIds: ['memory_research', 'session_status', 'documentation_search'],
   riskLevel: 'high',
   ownerScope: 'system',
 }
@@ -111,6 +117,7 @@ const search: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:search'],
   defaultToolIds: ['web_search', 'docs_search'],
+  defaultSkillIds: ['documentation_search', 'web_research_guidance'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -122,6 +129,7 @@ const documentProcessor: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:document_processor'],
   defaultToolIds: ['file_read', 'file_glob', 'file_grep', 'docs_search', 'artifact_create', 'artifact_update'],
+  defaultSkillIds: ['documentation_search'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -133,6 +141,7 @@ const imageProcessor: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:image_processor'],
   defaultToolIds: ['file_read', 'artifact_create', 'artifact_update'],
+  defaultSkillIds: ['documentation_search'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -144,6 +153,7 @@ const dataProcessor: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:data_processor'],
   defaultToolIds: ['file_read', 'file_glob', 'artifact_create', 'artifact_update'],
+  defaultSkillIds: ['documentation_search'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -155,6 +165,7 @@ const audioProcessor: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:audio_processor'],
   defaultToolIds: ['file_read', 'artifact_create', 'artifact_update'],
+  defaultSkillIds: ['documentation_search'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -166,6 +177,7 @@ const codeProcessor: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:code_processor'],
   defaultToolIds: ['file_read', 'file_glob', 'file_grep', 'artifact_create', 'artifact_update'],
+  defaultSkillIds: ['documentation_search'],
   riskLevel: 'high',
   ownerScope: 'system',
 }
@@ -177,6 +189,7 @@ const researchProcessor: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:research_processor'],
   defaultToolIds: ['web_search', 'web_fetch', 'docs_search', 'artifact_create', 'artifact_update'],
+  defaultSkillIds: ['documentation_search', 'web_research_guidance'],
   riskLevel: 'medium',
   ownerScope: 'system',
 }
@@ -188,6 +201,7 @@ const searchProcessor: AgentProfile = {
   allowedAgentTypes: ['subagent', 'background'],
   promptTemplateIds: ['agentProfile:search_processor'],
   defaultToolIds: ['web_search'],
+  defaultSkillIds: ['documentation_search', 'web_research_guidance'],
   riskLevel: 'low',
   ownerScope: 'system',
 }

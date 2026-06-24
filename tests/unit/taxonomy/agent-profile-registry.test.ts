@@ -5,6 +5,9 @@ import {
   type AgentProfile,
   type AgentProfileRegistry,
 } from '../../../src/taxonomy/agent-profile-registry.js'
+import { createSkillRegistry } from '../../../src/skills/skill-registry.js'
+import { registerBuiltinSkills } from '../../../src/skills/builtin/manifest.js'
+import { createAgentTypeSkillEnvelopeRegistry } from '../../../src/permissions/agent-type-skill-envelope.js'
 
 const REQUIRED_PROFILE_IDS = [
   'default_main',
@@ -207,6 +210,56 @@ describe('AgentProfileRegistry', () => {
       const registry = createRegistry()
       for (const profile of registry.list()) {
         expect(profile.promptTemplateIds.length).toBeGreaterThan(0)
+      }
+    })
+  })
+
+  describe('defaultSkillIds validation', () => {
+    const skillRegistry = createSkillRegistry()
+    registerBuiltinSkills(skillRegistry)
+    const envelopeRegistry = createAgentTypeSkillEnvelopeRegistry()
+
+    it('all system profiles should have defaultSkillIds defined', () => {
+      const registry = createRegistry()
+      for (const profile of registry.list()) {
+        expect(
+          profile.defaultSkillIds,
+          `Profile "${profile.id}" missing defaultSkillIds`,
+        ).toBeDefined()
+        expect(
+          profile.defaultSkillIds!.length,
+          `Profile "${profile.id}" has empty defaultSkillIds`,
+        ).toBeGreaterThan(0)
+      }
+    })
+
+    it('every declared skill ID should resolve in the skill registry', () => {
+      const registry = createRegistry()
+      for (const profile of registry.list()) {
+        const unresolved = (profile.defaultSkillIds ?? []).filter(
+          (id) => !skillRegistry.has(id),
+        )
+        expect(
+          unresolved,
+          `Profile "${profile.id}" has unresolved skill IDs: ${unresolved.join(', ')}`,
+        ).toEqual([])
+      }
+    })
+
+    it('every declared skill ID should be allowed by the envelope for all allowedAgentTypes', () => {
+      const registry = createRegistry()
+      for (const profile of registry.list()) {
+        for (const agentType of profile.allowedAgentTypes) {
+          const denied = (profile.defaultSkillIds ?? []).filter((id) => {
+            const skill = skillRegistry.get(id)
+            if (!skill) return true
+            return !envelopeRegistry.isSkillAllowedByEnvelope(agentType, id, skill.category)
+          })
+          expect(
+            denied,
+            `Profile "${profile.id}" skill IDs denied by ${agentType} envelope: ${denied.join(', ')}`,
+          ).toEqual([])
+        }
       }
     })
   })
