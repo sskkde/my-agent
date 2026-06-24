@@ -24,6 +24,7 @@ import { createConsoleTimelineService } from '../console-timeline.js'
 import type { TimelineBroadcaster, TimelineConnection } from '../timeline-broadcaster.js'
 import { convertInboundEnvelopeToProcessorInput } from '../../processing/message-processor.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
+import { getUploadConfig } from '../../config/upload-config.js'
 
 interface CreateSessionBody {
   userId?: string
@@ -337,11 +338,10 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           type: 'object',
           required: ['text'],
           properties: {
-            text: { type: 'string', minLength: 1 },
+            text: { type: 'string' },
             attachmentIds: {
               type: 'array',
               items: { type: 'string', minLength: 1 },
-              maxItems: 50,
             },
           },
         },
@@ -362,7 +362,15 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return sendSessionAccessDenied(request, reply)
       }
 
-      if (text.trim().length === 0) {
+      if (!('gateway' in context)) {
+        return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Gateway not available', request.requestId))
+      }
+
+      const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user'
+      const trimmedText = text.trim()
+      const hasAttachments = Array.isArray(attachmentIds) && attachmentIds.length > 0
+
+      if (trimmedText.length === 0 && !hasAttachments) {
         return reply
           .code(400)
           .send(
@@ -374,11 +382,58 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           )
       }
 
-      if (!('gateway' in context)) {
-        return reply.code(500).send(envelopeError('INTERNAL_ERROR', 'Gateway not available', request.requestId))
-      }
+      if (hasAttachments) {
+        const uploadConfig = getUploadConfig()
+        if (attachmentIds!.length > uploadConfig.maxAttachmentsPerMessage) {
+          return reply
+            .code(400)
+            .send(
+              envelopeError(
+                'TOO_MANY_ATTACHMENTS',
+                `Too many attachments. Maximum allowed: ${uploadConfig.maxAttachmentsPerMessage}`,
+                request.requestId,
+              ),
+            )
+        }
 
-      const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user'
+        const fileUploadStore = context.stores.fileUploadStore
+        for (const attachmentId of attachmentIds!) {
+          const file = fileUploadStore.getById(attachmentId, { sessionId })
+          if (!file) {
+            return reply
+              .code(404)
+              .send(
+                envelopeError(
+                  'ATTACHMENT_NOT_FOUND',
+                  `Attachment not found: ${attachmentId}`,
+                  request.requestId,
+                ),
+              )
+          }
+          if (file.userId !== userId) {
+            return reply
+              .code(403)
+              .send(
+                envelopeError(
+                  'ATTACHMENT_FORBIDDEN',
+                  `Attachment not accessible: ${attachmentId}`,
+                  request.requestId,
+                ),
+              )
+          }
+          if (file.status === 'deleted') {
+            return reply
+              .code(400)
+              .send(
+                envelopeError(
+                  'ATTACHMENT_DELETED',
+                  `Attachment has been deleted: ${attachmentId}`,
+                  request.requestId,
+                ),
+              )
+          }
+        }
+      }
 
       const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, 'webui', attachmentIds)
       const processorInput = convertInboundEnvelopeToProcessorInput(envelope)

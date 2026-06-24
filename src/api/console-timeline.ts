@@ -1,10 +1,12 @@
 import type { TranscriptStore, TurnTranscript } from '../storage/transcript-store.js'
 import type { EventStore, EventRecord } from '../storage/event-store.js'
+import type { FileUploadStore } from '../storage/file-upload-store.js'
 import type { ConsoleTimelineEvent, ConsoleTimelineEventType, PaginationParams } from './types.js'
 
 export interface ConsoleTimelineStores {
   transcriptStore: TranscriptStore
   eventStore: EventStore
+  fileUploadStore?: FileUploadStore
 }
 
 export interface TimelineOptions extends PaginationParams {
@@ -30,7 +32,7 @@ const MAX_LIMIT = 200
  * - approval_request: for each approvalSummary in runtimeSummary
  * - artifact_created: for each artifactRef in output
  */
-function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
+function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUploadStore): ConsoleTimelineEvent[] {
   const events: ConsoleTimelineEvent[] = []
   const baseMetadata: Record<string, unknown> = {
     turnId: turn.turnId,
@@ -40,15 +42,38 @@ function mapTurnToTimelineEvents(turn: TurnTranscript): ConsoleTimelineEvent[] {
   const userTimestamp = turn.input.inboundTimestamp ?? turn.createdAt
   const outputTimestamp = turn.createdAt
 
+  const attachmentFileIds = (turn.input.contentRefs ?? [])
+    .filter((ref) => ref.startsWith('attachment:'))
+    .map((ref) => ref.slice('attachment:'.length))
+
+  let attachments: Array<{ fileId: string; originalFilename: string; sizeBytes: number; mimeType: string }> | undefined
+  if (attachmentFileIds.length > 0 && fileUploadStore) {
+    attachments = []
+    for (const fileId of attachmentFileIds) {
+      const record = fileUploadStore.getById(fileId, { sessionId: turn.sessionId })
+      if (record && record.status !== 'deleted') {
+        attachments.push({
+          fileId: record.fileId,
+          originalFilename: record.originalFilename,
+          sizeBytes: record.sizeBytes,
+          mimeType: record.mimeType,
+        })
+      }
+    }
+    if (attachments.length === 0) attachments = undefined
+  }
+
   // User message event from input
   if (turn.input.userMessageSummary) {
+    const metadata: Record<string, unknown> = { ...baseMetadata }
+    if (attachments) metadata.attachments = attachments
     events.push({
       eventId: `turn-${turn.turnId}-input`,
       eventType: 'user_message',
       sessionId: turn.sessionId,
       timestamp: userTimestamp,
       content: turn.input.userMessageSummary,
-      metadata: { ...baseMetadata },
+      metadata,
       actor: turn.userId,
     })
   }
@@ -297,7 +322,7 @@ class ConsoleTimelineServiceImpl implements ConsoleTimelineService {
     const turns = this.stores.transcriptStore.findBySession(sessionId)
 
     for (const turn of turns) {
-      const events = mapTurnToTimelineEvents(turn)
+      const events = mapTurnToTimelineEvents(turn, this.stores.fileUploadStore)
       transcriptEvents.push(...events)
     }
 
