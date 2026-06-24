@@ -50,14 +50,20 @@ describe('SkillsTab', () => {
         {
           skillId: 'skill-1',
           name: 'Web Search',
-          type: 'native',
+          description: 'Search the web for information',
+          category: 'search',
+          sensitivity: 'medium',
           enabled: true,
+          source: 'builtin',
         },
         {
           skillId: 'skill-2',
           name: 'Code Execution',
-          type: 'mcp',
+          description: 'Execute code snippets',
+          category: 'write',
+          sensitivity: 'high',
           enabled: false,
+          source: 'plugin',
         },
       ],
     })
@@ -74,8 +80,10 @@ describe('SkillsTab', () => {
     expect(screen.getByText('Code Execution')).toBeInTheDocument()
     expect(screen.getByText('ID: skill-1')).toBeInTheDocument()
     expect(screen.getByText('ID: skill-2')).toBeInTheDocument()
-    expect(screen.getByText('native')).toBeInTheDocument()
-    expect(screen.getByText('mcp')).toBeInTheDocument()
+    expect(screen.getByText('search')).toBeInTheDocument()
+    expect(screen.getByText('write')).toBeInTheDocument()
+    expect(screen.getByText('Search the web for information')).toBeInTheDocument()
+    expect(screen.getByText('Execute code snippets')).toBeInTheDocument()
   })
 
   it('shows enabled checkmark correctly', async () => {
@@ -84,14 +92,20 @@ describe('SkillsTab', () => {
         {
           skillId: 'skill-1',
           name: 'Web Search',
-          type: 'native',
+          description: 'Search the web',
+          category: 'search',
+          sensitivity: 'medium',
           enabled: true,
+          source: 'builtin',
         },
         {
           skillId: 'skill-2',
           name: 'Code Execution',
-          type: 'mcp',
+          description: 'Execute code',
+          category: 'write',
+          sensitivity: 'high',
           enabled: false,
+          source: 'plugin',
         },
       ],
     })

@@ -39,13 +39,13 @@ const SkillsTab: React.FC = () => {
 
   const { skills, loading, error } = data
 
-  const getTypeBadgeClass = (type: string): string => {
-    switch (type.toLowerCase()) {
-      case 'native':
+  const getCategoryBadgeClass = (category: string): string => {
+    switch (category.toLowerCase()) {
+      case 'read':
         return 'type-badge native'
-      case 'mcp':
+      case 'write':
         return 'type-badge mcp'
-      case 'custom':
+      case 'search':
         return 'type-badge custom'
       default:
         return 'type-badge'
@@ -55,7 +55,7 @@ const SkillsTab: React.FC = () => {
   return (
     <div data-testid="skills-panel" className="skills-panel">
       <div className="content-header">
-        <h2>技能</h2>
+        <h2>技能文档</h2>
       </div>
 
       <div className="content-body">
@@ -83,9 +83,16 @@ const SkillsTab: React.FC = () => {
               <div key={skill.skillId} className="skill-card" data-testid={`skill-card-${index}`}>
                 <div className="skill-header">
                   <span className="skill-name">{skill.name}</span>
-                  <span className={getTypeBadgeClass(skill.type)}>{skill.type}</span>
+                  <span className={getCategoryBadgeClass(skill.category)}>{skill.category}</span>
                 </div>
                 <div className="skill-id">ID: {skill.skillId}</div>
+                <div className="skill-description" data-testid={`skill-description-${index}`}>
+                  {skill.description}
+                </div>
+                <div className="skill-meta">
+                  <span className="skill-source">来源: {skill.source}</span>
+                  <span className="skill-sensitivity">敏感度: {skill.sensitivity}</span>
+                </div>
                 <div className="skill-status">
                   {skill.enabled ? (
                     <span className="enabled-badge" data-testid={`skill-enabled-${index}`}>

@@ -28,8 +28,8 @@ describe('dataHandlers', () => {
   describe('handleSkill', () => {
     it('should list all skills when no args provided', async () => {
       const mockSkills = [
-        { skillId: 'skill1', name: 'Skill One', type: 'read', enabled: true },
-        { skillId: 'skill2', name: 'Skill Two', type: 'write', enabled: false },
+        { skillId: 'skill1', name: 'Skill One', description: 'First skill', category: 'read', sensitivity: 'low', enabled: true, source: 'builtin' },
+        { skillId: 'skill2', name: 'Skill Two', description: 'Second skill', category: 'write', sensitivity: 'medium', enabled: false, source: 'user' },
       ]
       ;(client.getSkills as Mock).mockResolvedValue({ skills: mockSkills })
 
@@ -42,8 +42,8 @@ describe('dataHandlers', () => {
 
     it('should filter skill by skillId when provided', async () => {
       const mockSkills = [
-        { skillId: 'skill1', name: 'Skill One', type: 'read', enabled: true },
-        { skillId: 'skill2', name: 'Skill Two', type: 'write', enabled: false },
+        { skillId: 'skill1', name: 'Skill One', description: 'First skill', category: 'read', sensitivity: 'low', enabled: true, source: 'builtin' },
+        { skillId: 'skill2', name: 'Skill Two', description: 'Second skill', category: 'write', sensitivity: 'medium', enabled: false, source: 'user' },
       ]
       ;(client.getSkills as Mock).mockResolvedValue({ skills: mockSkills })
 
@@ -55,7 +55,7 @@ describe('dataHandlers', () => {
     })
 
     it('should return error when skillId not found', async () => {
-      const mockSkills = [{ skillId: 'skill1', name: 'Skill One', type: 'read', enabled: true }]
+      const mockSkills = [{ skillId: 'skill1', name: 'Skill One', description: 'First skill', category: 'read', sensitivity: 'low', enabled: true, source: 'builtin' }]
       ;(client.getSkills as Mock).mockResolvedValue({ skills: mockSkills })
 
       const result = await handleSkill(['nonexistent'], createMockContext())

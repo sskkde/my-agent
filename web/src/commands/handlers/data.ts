@@ -62,7 +62,7 @@ export const handleSkill: CommandHandler = async (
         success: true,
         output: {
           type: 'structured',
-          content: `Skill: ${skill.name}\nID: ${skill.skillId}\nType: ${skill.type}\nEnabled: ${skill.enabled ? 'Yes' : 'No'}`,
+          content: `Skill: ${skill.name}\nID: ${skill.skillId}\nDescription: ${skill.description}\nCategory: ${skill.category}\nSource: ${skill.source}\nEnabled: ${skill.enabled ? 'Yes' : 'No'}`,
           data: skill,
         },
         data: skill,
@@ -72,7 +72,7 @@ export const handleSkill: CommandHandler = async (
     const skillList = skills
       .map(
         (skill: SkillSummary) =>
-          `${skill.skillId} | ${skill.name} | ${skill.type} | ${skill.enabled ? 'enabled' : 'disabled'}`,
+          `${skill.skillId} | ${skill.name} | ${skill.category} | ${skill.source} | ${skill.enabled ? 'enabled' : 'disabled'}`,
       )
       .join('\n')
 
@@ -80,12 +80,14 @@ export const handleSkill: CommandHandler = async (
       success: true,
       output: {
         type: 'structured',
-        content: `Skills (${skills.length}):\n\nID | Name | Type | Status\n${'-'.repeat(50)}\n${skillList}`,
+        content: `Skills (${skills.length}):\n\nID | Name | Category | Source | Status\n${'-'.repeat(60)}\n${skillList}`,
         data: {
           skills: skills.map((s: SkillSummary) => ({
             id: s.skillId,
             name: s.name,
-            type: s.type,
+            description: s.description,
+            category: s.category,
+            source: s.source,
             enabled: s.enabled,
           })),
           total: skills.length,
@@ -95,7 +97,9 @@ export const handleSkill: CommandHandler = async (
         skills: skills.map((s) => ({
           id: s.skillId,
           name: s.name,
-          type: s.type,
+          description: s.description,
+          category: s.category,
+          source: s.source,
           enabled: s.enabled,
         })),
         total: skills.length,

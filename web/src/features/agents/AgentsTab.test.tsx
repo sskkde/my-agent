@@ -101,11 +101,11 @@ describe('AgentsTab', () => {
 
   const mockSkills: SkillsResponse = {
     skills: [
-      { skillId: 'artifact_create', name: 'artifact_create', type: 'builtin', enabled: true },
-      { skillId: 'memory_retrieve', name: 'memory_retrieve', type: 'builtin', enabled: true },
-      { skillId: 'git', name: 'Git', type: 'native', enabled: true },
-      { skillId: 'docker', name: 'Docker', type: 'native', enabled: true },
-      { skillId: 'custom-skill', name: 'Custom Skill', type: 'custom', enabled: false },
+      { skillId: 'artifact_create', name: 'artifact_create', description: 'Create artifacts', category: 'write', sensitivity: 'medium', enabled: true, source: 'builtin' },
+      { skillId: 'memory_retrieve', name: 'memory_retrieve', description: 'Retrieve memory', category: 'read', sensitivity: 'medium', enabled: true, source: 'builtin' },
+      { skillId: 'git', name: 'Git', description: 'Git version control', category: 'automation', sensitivity: 'low', enabled: true, source: 'user' },
+      { skillId: 'docker', name: 'Docker', description: 'Docker container management', category: 'automation', sensitivity: 'medium', enabled: true, source: 'user' },
+      { skillId: 'custom-skill', name: 'Custom Skill', description: 'A custom skill', category: 'custom', sensitivity: 'low', enabled: false, source: 'user' },
     ],
   }
 
