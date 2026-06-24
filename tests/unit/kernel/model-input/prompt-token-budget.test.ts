@@ -22,7 +22,9 @@ import {
   type ToolSelectionPolicyProjection,
   type MemoryPolicyProjection,
   type SummaryLayerProjection,
+  type SkillPlaneProjection,
 } from '../../../../src/kernel/model-input/model-input-types.js'
+import { renderSummarySkillPlane, renderDocumentsSkillPlane } from '../../../../src/kernel/model-input/skill-plane-projection-renderer.js'
 
 describe('Prompt Token Budget Tests', () => {
   describe('persona projection budget', () => {
@@ -287,6 +289,80 @@ describe('Prompt Token Budget Tests', () => {
       const rendered = renderPersonaProjection(projection)
 
       expect(rendered.length).toBeLessThanOrEqual(650)
+    })
+  })
+
+  describe('skill plane budget', () => {
+    it('summary mode skill plane ≤ 500 chars for typical projection', () => {
+      const projection: SkillPlaneProjection = {
+        skillIds: ['code-review', 'git-master', 'debugging'],
+        renderMode: 'summary',
+        skillSummaries: 'Code review, git mastery, and debugging skills available for this session.',
+      }
+
+      const rendered = renderSummarySkillPlane(projection)
+
+      expect(rendered.length).toBeLessThanOrEqual(500)
+    })
+
+    it('documents mode respects tokenBudget of 0 (no documents)', () => {
+      const projection: SkillPlaneProjection = {
+        skillIds: ['code-review'],
+        renderMode: 'documents',
+        tokenBudget: 0,
+        skillDocuments: [
+          { skillId: 's1', name: 'Skill One', document: 'A'.repeat(1000) },
+        ],
+      }
+
+      const rendered = renderDocumentsSkillPlane(projection)
+
+      expect(rendered).not.toContain('## Skill Documents')
+      expect(rendered).not.toContain('Skill One')
+    })
+
+    it('documents mode clips documents exceeding tokenBudget', () => {
+      const projection: SkillPlaneProjection = {
+        skillIds: ['s1', 's2'],
+        renderMode: 'documents',
+        tokenBudget: 10,
+        skillDocuments: [
+          { skillId: 's1', name: 'Small Skill', document: 'Tiny doc.' },
+          { skillId: 's2', name: 'Big Skill', document: 'A'.repeat(1000) },
+        ],
+      }
+
+      const rendered = renderDocumentsSkillPlane(projection)
+
+      expect(rendered).toContain('Small Skill')
+      expect(rendered).not.toContain('Big Skill')
+    })
+
+    it('documents mode with undefined tokenBudget includes all documents', () => {
+      const projection: SkillPlaneProjection = {
+        skillIds: ['s1', 's2'],
+        renderMode: 'documents',
+        skillDocuments: [
+          { skillId: 's1', name: 'Skill One', document: 'Doc one content.' },
+          { skillId: 's2', name: 'Skill Two', document: 'Doc two content.' },
+        ],
+      }
+
+      const rendered = renderDocumentsSkillPlane(projection)
+
+      expect(rendered).toContain('Skill One')
+      expect(rendered).toContain('Skill Two')
+    })
+
+    it('empty skillIds produces empty output', () => {
+      const projection: SkillPlaneProjection = {
+        skillIds: [],
+        renderMode: 'summary',
+      }
+
+      const rendered = renderSummarySkillPlane(projection)
+
+      expect(rendered).toBe('')
     })
   })
 })

@@ -2,6 +2,7 @@ import type { ContextBundle } from '../context/types.js'
 import type { KernelRunResult } from '../kernel/types.js'
 import type { SubagentRunStore } from '../storage/subagent-run-store.js'
 import type { SubagentTranscriptStore } from '../storage/subagent-transcript-store.js'
+import type { SubagentDefinition } from './registry.js'
 
 export type SubagentRunState = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 
@@ -71,6 +72,8 @@ export interface KernelAdapter {
     maxIterations: number
     timeoutMs: number
     onCancel?: () => boolean
+    taskSpec?: SubagentTaskSpec
+    definition?: SubagentDefinition
   }): Promise<KernelRunResult>
 }
 

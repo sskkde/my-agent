@@ -8,7 +8,7 @@ import type {
   ContextManager,
   RuntimeDispatcher,
 } from '../../../src/kernel/types.js'
-import type { ToolPlaneProjection } from '../../../src/kernel/model-input/model-input-types.js'
+import type { ToolPlaneProjection, SkillPlaneProjection } from '../../../src/kernel/model-input/model-input-types.js'
 import { AgentKernel } from '../../../src/kernel/agent-kernel.js'
 import type { LLMAdapter, LLMAdapterConfig } from '../../../src/llm/adapter.js'
 import type { LLMProvider } from '../../../src/llm/provider.js'
@@ -742,5 +742,121 @@ describe('AgentKernel envelope enforcement', () => {
 
     expect(result.finalStatus).toBe('completed')
     expect(result.error).toBeUndefined()
+  })
+})
+
+const sampleSkillProjection: SkillPlaneProjection = {
+  skillIds: ['session_status', 'documentation_search'],
+  skillSummaries: 'Available Skills:\n- session_status (internal): Check session status\n- documentation_search (search): Search documentation',
+  renderMode: 'summary',
+}
+
+describe('AgentKernel skillProjection passthrough', () => {
+  let fakeLLM: FakeLLMAdapter
+
+  beforeEach(() => {
+    fakeLLM = new FakeLLMAdapter()
+  })
+
+  it('passes skillProjection from KernelRunInput to ModelInputBuildInput', async () => {
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run({
+      ...makeRunInput(),
+      skillProjection: sampleSkillProjection,
+    })
+
+    const request = fakeLLM.getLastRequest()
+    expect(request).toBeDefined()
+    const allSystemContent = request!.messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n')
+    expect(allSystemContent).toContain('Skill Plane')
+    expect(allSystemContent).toContain('session_status')
+  })
+
+  it('KernelRunInput.skillProjection overrides KernelConfig.skillProjection', async () => {
+    const configSkillProjection: SkillPlaneProjection = {
+      skillIds: ['memory_research'],
+      skillSummaries: 'Available Skills:\n- memory_research (read): Memory research',
+      renderMode: 'summary',
+    }
+    const runSkillProjection: SkillPlaneProjection = {
+      skillIds: ['session_status'],
+      skillSummaries: 'Available Skills:\n- session_status (internal): Check session status',
+      renderMode: 'summary',
+    }
+
+    const config = makeBaseConfig({
+      llmAdapter: fakeLLM,
+      skillProjection: configSkillProjection,
+    })
+    const kernel = new AgentKernel(config)
+    await kernel.run({
+      ...makeRunInput(),
+      skillProjection: runSkillProjection,
+    })
+
+    const request = fakeLLM.getLastRequest()
+    const allSystemContent = request!.messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n')
+    expect(allSystemContent).toContain('session_status')
+    expect(allSystemContent).not.toContain('memory_research')
+  })
+
+  it('falls back to KernelConfig.skillProjection when run input has none', async () => {
+    const configSkillProjection: SkillPlaneProjection = {
+      skillIds: ['memory_research'],
+      skillSummaries: 'Available Skills:\n- memory_research (read): Memory research',
+      renderMode: 'summary',
+    }
+
+    const config = makeBaseConfig({
+      llmAdapter: fakeLLM,
+      skillProjection: configSkillProjection,
+    })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
+
+    const request = fakeLLM.getLastRequest()
+    const allSystemContent = request!.messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n')
+    expect(allSystemContent).toContain('memory_research')
+  })
+
+  it('no skillProjection produces no skill plane content', async () => {
+    const config = makeBaseConfig({ llmAdapter: fakeLLM })
+    const kernel = new AgentKernel(config)
+    await kernel.run(makeRunInput())
+
+    const request = fakeLLM.getLastRequest()
+    const allSystemContent = request!.messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n')
+    expect(allSystemContent).not.toContain('Skill Plane')
+  })
+
+  it('tool callability is unchanged when skillProjection is present', async () => {
+    const config = makeBaseConfig({
+      llmAdapter: fakeLLM,
+      toolProjection: sampleToolProjection,
+    })
+    const kernel = new AgentKernel(config)
+    await kernel.run({
+      ...makeRunInput(),
+      skillProjection: sampleSkillProjection,
+    })
+
+    const request = fakeLLM.getLastRequest()
+    expect(request!.tools).toBeDefined()
+    expect(request!.tools!.length).toBe(2)
+    expect(request!.tools![0].function.name).toBe('status_query')
+    expect(request!.tools![1].function.name).toBe('web_search')
   })
 })

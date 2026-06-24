@@ -96,10 +96,9 @@ const getToolDisplay = (tool: ToolSummary): Required<LocalizedCatalogEntry> => {
 
 const getSkillDisplay = (skill: SkillSummary): LocalizedCatalogEntry => {
   const localized = BUILT_IN_SKILL_DISPLAY[skill.skillId] ?? BUILT_IN_SKILL_DISPLAY[skill.name]
-  const originalDescription = (skill as SkillSummary & { description?: string }).description
   return {
     displayName: localized?.displayName ?? skill.name,
-    description: localized?.description ?? originalDescription,
+    description: localized?.description ?? skill.description,
   }
 }
 
@@ -621,7 +620,7 @@ const AgentsTab: React.FC = () => {
                     <span className="multi-select-name">{display.displayName}</span>
                     <span className="multi-select-desc">({skill.skillId})</span>
                     {display.description && <span className="multi-select-desc">{display.description}</span>}
-                    <span className={`type-badge ${skill.type.toLowerCase()}`}>{skill.type}</span>
+                    <span className="type-badge">{skill.source}</span>
                   </span>
                 </label>
               )

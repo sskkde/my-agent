@@ -39,8 +39,8 @@ export const COMMAND_CATALOG: Record<CommandName, CommandDefinition> = {
   skill: {
     name: 'skill',
     aliases: [],
-    description: 'Execute a skill',
-    usage: '/skill <skill-name> [args...]',
+    description: 'List/show skill documentation',
+    usage: '/skill [skill-id]',
     category: 'help',
     risk: 'safe',
     requiresAuth: false,

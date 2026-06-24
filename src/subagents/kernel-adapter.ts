@@ -8,9 +8,13 @@ import type { ContextBundle, AgentType } from '../context/types.js'
 import type { ProviderConfigStore } from '../storage/provider-config-store.js'
 import type { AgentConfigStore } from '../storage/agent-config-store.js'
 import type { SessionStore } from '../storage/session-store.js'
-import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js'
+import type { ToolPlaneProjection, SkillPlaneProjection } from '../kernel/model-input/model-input-types.js'
 import type { ToolRegistry } from '../tools/types.js'
 import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
+import type { AgentTypeSkillEnvelopeRegistry } from '../permissions/agent-type-skill-envelope.js'
+import type { SkillRegistry } from '../skills/types.js'
+import type { SkillDocumentLoader } from '../skills/skill-document-loader.js'
+import { buildSkillPlaneProjection } from '../skills/skill-plane-projection.js'
 import { toLLMToolDefinition } from '../tools/tool-plane-prompt-projection.js'
 import { isKnownAgentLabel, normalizeAgentLabel } from '../taxonomy/agent-label-normalizer.js'
 
@@ -83,6 +87,9 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       preferredProviderId?: string,
     ) => Promise<T>,
     private readonly envelopeRegistry?: AgentTypeToolEnvelopeRegistry,
+    private readonly skillRegistry?: SkillRegistry,
+    private readonly skillEnvelopeRegistry?: AgentTypeSkillEnvelopeRegistry,
+    private readonly skillDocumentLoader?: SkillDocumentLoader,
   ) {}
 
   async execute(options: {
@@ -164,6 +171,8 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
 
     const toolProjection = buildToolProjection(definition, taskSpec, this.toolRegistry, this.envelopeRegistry)
 
+    const skillProjection = await this.buildSubagentSkillProjection(definition)
+
     const kernelInput: KernelRunInput = {
       contextBundle,
       runId: contextBundle.runId,
@@ -172,6 +181,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       userId,
       sessionId,
       toolProjection,
+      ...(skillProjection ? { skillProjection } : {}),
       maxIterations,
       timeoutMs,
       model: resolvedProvider.model,
@@ -185,6 +195,28 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
 
     return kernelRunFn()
   }
+
+  private async buildSubagentSkillProjection(
+    definition: SubagentDefinition,
+  ): Promise<SkillPlaneProjection | undefined> {
+    if (!this.skillRegistry || !this.skillEnvelopeRegistry || !this.skillDocumentLoader) {
+      return undefined
+    }
+
+    const profileLabel = definition.agentProfile ?? definition.agentType
+    const agentType: AgentType = isKnownAgentLabel(profileLabel)
+      ? normalizeAgentLabel(profileLabel).agentType
+      : 'subagent'
+
+    return buildSkillPlaneProjection({
+      agentType,
+      registry: this.skillRegistry,
+      envelopeRegistry: this.skillEnvelopeRegistry,
+      documentLoader: this.skillDocumentLoader,
+      profileDefaultSkillIds: definition.allowedSkillIds ?? undefined,
+      mode: 'documents',
+    })
+  }
 }
 
 export function createSubagentKernelAdapter(deps: {
@@ -197,6 +229,9 @@ export function createSubagentKernelAdapter(deps: {
   preferenceStore?: SubagentProviderPreferenceStore
   runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>
   envelopeRegistry?: AgentTypeToolEnvelopeRegistry
+  skillRegistry?: SkillRegistry
+  skillEnvelopeRegistry?: AgentTypeSkillEnvelopeRegistry
+  skillDocumentLoader?: SkillDocumentLoader
 }): KernelAdapter {
   return new AgentKernelSubagentAdapter(
     deps.agentKernel,
@@ -208,5 +243,8 @@ export function createSubagentKernelAdapter(deps: {
     deps.preferenceStore,
     deps.runWithProvidersForUser,
     deps.envelopeRegistry,
+    deps.skillRegistry,
+    deps.skillEnvelopeRegistry,
+    deps.skillDocumentLoader,
   )
 }

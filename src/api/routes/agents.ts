@@ -10,6 +10,7 @@ import {
   INHERIT_ROUTING_TIMEOUT_MS,
 } from '../../storage/agent-config-store.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
+import type { SkillRegistry } from '../../skills/types.js'
 
 /**
  * Minimal prompt resolver for API responses.
@@ -31,18 +32,6 @@ function resolvePrompt(
     },
   }
 }
-
-const BUILTIN_SKILL_IDS = [
-  'artifact_create',
-  'artifact_update',
-  'ask_user',
-  'status_query',
-  'memory_retrieve',
-  'transcript_search',
-  'plan_patch',
-  'docs_search',
-  'web_search',
-]
 
 const VALID_AGENT_IDS = ['foreground.default']
 
@@ -138,8 +127,8 @@ function getValidToolIds(): string[] {
   return tools.map((tool) => tool.name)
 }
 
-function getValidSkillIds(): string[] {
-  return [...BUILTIN_SKILL_IDS]
+function getValidSkillIds(skillRegistry: SkillRegistry): string[] {
+  return skillRegistry.list().map((def) => def.skillId)
 }
 
 function sanitizeConfigForResponse(config: Partial<AgentConfig> | null): Partial<AgentConfig> | null {
@@ -188,6 +177,7 @@ function buildDefaultGlobalConfig(agentId: string): AgentConfig {
 function validateConfigInput(
   input: UpdateGlobalConfigRequest | UpdateOverrideConfigRequest,
   providerConfigStore: ApiContext['providerConfigStore'],
+  skillRegistry: SkillRegistry,
   userId: string | null,
   isGlobal: boolean,
 ): { valid: boolean; error?: { code: string; message: string } } {
@@ -281,7 +271,7 @@ function validateConfigInput(
     if (!Array.isArray(input.allowedSkillIds)) {
       return { valid: false, error: { code: 'INVALID_SKILL_IDS', message: 'Skill IDs must be an array or null' } }
     }
-    const validSkillIds = getValidSkillIds()
+    const validSkillIds = getValidSkillIds(skillRegistry)
     const invalidSkills = input.allowedSkillIds.filter((id) => !validSkillIds.includes(id))
     if (invalidSkills.length > 0) {
       return {
@@ -347,7 +337,7 @@ function validateConfigInput(
 }
 
 export function registerAgentRoutes(server: FastifyInstance, context: ApiContext): void {
-  const { agentConfigStore, providerConfigStore } = context
+  const { agentConfigStore, providerConfigStore, skillRegistry } = context
 
   // GET /api/agents/:agentId/config
   server.get<{ Params: { agentId: string } }>(
@@ -435,7 +425,7 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
           )
       }
 
-      const validation = validateConfigInput(request.body, providerConfigStore, userId, true)
+      const validation = validateConfigInput(request.body, providerConfigStore, skillRegistry, userId, true)
       if (!validation.valid) {
         return reply.code(400).send(envelopeError(validation.error!.code, validation.error!.message, request.requestId))
       }
@@ -516,7 +506,7 @@ export function registerAgentRoutes(server: FastifyInstance, context: ApiContext
           )
       }
 
-      const validation = validateConfigInput(request.body, providerConfigStore, userId, false)
+      const validation = validateConfigInput(request.body, providerConfigStore, skillRegistry, userId, false)
       if (!validation.valid) {
         return reply.code(400).send(envelopeError(validation.error!.code, validation.error!.message, request.requestId))
       }

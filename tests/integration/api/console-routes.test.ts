@@ -104,6 +104,7 @@ describe('Console Routes API', () => {
             name: string
             type: string
             enabled: boolean
+            source: string
           }>
         }
       }
@@ -116,8 +117,8 @@ describe('Console Routes API', () => {
       const skill = body.data.skills[0]
       expect(skill.skillId).toBeDefined()
       expect(skill.name).toBeDefined()
-      expect(skill.type).toBe('builtin')
-      expect(skill.enabled).toBe(true)
+      expect(skill.source).toBe('builtin')
+      expect(skill.enabled).toBeDefined()
 
       const skillIds = body.data.skills.map((s) => s.skillId)
       expect(skillIds).toContain('artifact_create')

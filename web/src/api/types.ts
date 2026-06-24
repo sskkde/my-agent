@@ -325,8 +325,11 @@ export interface ChannelSummary {
 export interface SkillSummary {
   skillId: string
   name: string
-  type: string
+  description: string
+  category: string
+  sensitivity: string
   enabled: boolean
+  source: string
 }
 
 export interface SettingsConfig {

@@ -721,10 +721,43 @@ GET /api/v1/tools/:toolId
 | `routingPrompt` | string | Custom routing instructions |
 | `providerId` | string | Preferred LLM provider |
 | `model` | string | Specific model to use |
-| `allowedToolIds` | string[] | Permitted tool IDs |
-| `allowedSkillIds` | string[] | Permitted skill IDs |
+| `allowedToolIds` | string[] | Permitted tool IDs (tools execute actions) |
+| `allowedSkillIds` | string[] \| null | Permitted skill IDs (skills are documentation-only). See [Skill Allowlist Semantics](#skill-allowlist-semantics) |
 | `routingTimeoutMs` | number | LLM routing timeout |
 | `repairAttempts` | number | JSON repair retry count |
+
+### Skill Allowlist Semantics
+
+The `allowedSkillIds` field controls which documentation-only skills are visible to an agent. Skills are **not** executable — they provide guidance text that is injected into the model's context. Tools remain the only execution surface.
+
+| Value | Behavior |
+|-------|----------|
+| `null` (or omitted) | Inherits defaults from the agent profile and agent-type envelope |
+| `[]` (empty array) | No skills — the agent receives no skill documentation |
+| `["skill-a", "skill-b"]` (explicit list) | Intersects with the agent-type envelope; only skills in both the list and the envelope are projected |
+
+### Skills vs Tools
+
+| Aspect | Skills | Tools |
+|--------|--------|-------|
+| **Purpose** | Documentation and guidance for the LLM | Executable actions with side effects |
+| **Execution** | None — skills are prompt-visible text only | Tools execute code, API calls, file operations |
+| **API surface** | `GET /api/v1/skills` (read-only catalog) | `GET /api/v1/tools` + runtime execution |
+| **Run endpoint** | None — no `/skills/:id/run` | Tools are invoked during agent runs |
+| **Permission model** | `allowedSkillIds` + agent-type envelope | `allowedToolIds` + approval policies |
+
+### Skill System
+
+Skills are **documentation-only records** — metadata plus lazily-loaded markdown instructions. They provide context and guidance to the LLM without executing code.
+
+**Key characteristics:**
+- Skills are loaded from a source-controlled registry (built-in, user, plugin, or remote sources)
+- Skill descriptions are lazy-loaded: catalog endpoints return metadata only; full documents load on demand
+- Each agent type (`main`, `subagent`, `background`, `workflow_step`, `remote`) has its own skill envelope
+- Skills cannot contain handlers, scripts, shell commands, or executable code
+- Skills are rendered in the model input as documentation text, separate from tool schemas
+
+For detailed skill documentation, see [docs/skills.md](docs/skills.md).
 
 ## License
 

@@ -23,6 +23,7 @@ import type {
   ModelInputBuildInput,
   BuiltModelInput,
   ToolPlaneProjection,
+  SkillPlaneProjection,
   ContextItemData,
 } from './model-input-types.js'
 import {
@@ -33,6 +34,7 @@ import {
 } from './model-input-types.js'
 import { computeTemplateHash } from '../../prompt/template-hash.js'
 import { StaticPrefixBuilder } from './static-prefix-builder.js'
+import { renderDocumentsSkillPlane, renderSummarySkillPlane } from './skill-plane-projection-renderer.js'
 import type { PromptTemplateRegistry, PromptTemplateRecord, SevenLayerInput } from '../../prompt/prompt-template-registry.js'
 import type { TemplateLoader } from '../../prompt/template-loader.js'
 import { normalizeAgentLabel, isKnownAgentLabel } from '../../taxonomy/agent-label-normalizer.js'
@@ -234,19 +236,32 @@ export class ModelInputBuilder {
     }
 
     if (projection) {
+      let toolPlaneContent: string
       if (mode === 'routing_json') {
-        parts.push(this.renderRoutingToolPlane(projection))
+        toolPlaneContent = this.renderRoutingToolPlane(projection)
       } else if (mode === 'routing_tool_call') {
-        parts.push(this.renderRoutingToolCallPlane(projection))
+        toolPlaneContent = this.renderRoutingToolCallPlane(projection)
       } else if (mode === 'function_calling') {
-        parts.push(this.renderFunctionCallingToolPlane(projection))
+        toolPlaneContent = this.renderFunctionCallingToolPlane(projection)
       } else {
-        parts.push(this.renderStructuredJsonToolPlane(projection))
+        toolPlaneContent = this.renderStructuredJsonToolPlane(projection)
+      }
+      if (toolPlaneContent) {
+        parts.push('--- Tool Plane (callable tools) ---')
+        parts.push(toolPlaneContent)
       }
     }
 
     if (policy) {
       parts.push(renderToolSelectionPolicy(policy))
+    }
+
+    if (input.skillProjection) {
+      const skillContent = this.renderSkillPlane(input.skillProjection)
+      if (skillContent) {
+        parts.push('--- Skill Plane (documentation only) ---')
+        parts.push(skillContent)
+      }
     }
 
     const content = parts.join('\n\n')
@@ -509,6 +524,13 @@ export class ModelInputBuilder {
     }
 
     return `Available Tool IDs: ${projection.toolIds.join(', ')}`
+  }
+
+  private renderSkillPlane(projection: SkillPlaneProjection): string {
+    if (projection.renderMode === 'documents') {
+      return renderDocumentsSkillPlane(projection)
+    }
+    return renderSummarySkillPlane(projection)
   }
 
   private renderContextItems(label: string, items: ContextItemData[]): string {

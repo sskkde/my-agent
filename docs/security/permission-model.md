@@ -139,6 +139,50 @@ Permissions can be configured per agent:
 
 Tools not in `allowedToolIds` are blocked from execution.
 
+### Skill Permissions
+
+Skills are **documentation-only records** — they provide guidance text to the LLM but do **not** execute code. Unlike tools, skills have no execution surface, no approval flow, and no side effects.
+
+**Key security properties:**
+- Skills cannot execute code, make API calls, or perform file operations
+- Skills are rendered as documentation text in the model input, separate from tool schemas
+- No `/skills/:id/run` endpoint exists — skills are read-only
+- Skills cannot bypass tool permissions or become callable functions
+
+#### Skill Allowlist Semantics
+
+The `allowedSkillIds` field controls which skills are visible to an agent:
+
+| Value | Behavior |
+|-------|----------|
+| `null` (or omitted) | Inherits defaults from the agent profile and agent-type envelope |
+| `[]` (empty array) | No skills — the agent receives no skill documentation |
+| `["skill-a", "skill-b"]` (explicit list) | Intersects with the agent-type envelope; only skills in both the list and the envelope are projected |
+
+#### Agent-Type Skill Envelopes
+
+Each agent type has a built-in skill envelope that defines which skills are available by default:
+
+| Agent Type | Default Skills | Notes |
+|------------|----------------|-------|
+| `main` | Safe guidance skills | Primary user-facing agent |
+| `subagent` | Profile-relevant guidance | Task-specific subagent |
+| `background` | Read-only/status/research guidance | Background processing |
+| `workflow_step` | Workflow-step guidance | Workflow execution |
+| `remote` | None | Hard-denies all skills |
+
+The `remote` agent type hard-denies all skills as a security measure — remote agents should not receive documentation that could influence their behavior.
+
+#### Skill vs Tool Permission Model
+
+| Aspect | Skills | Tools |
+|--------|--------|-------|
+| **Execution** | None — documentation-only | Tools execute with side effects |
+| **Approval flow** | None required | Sensitive tools require approval |
+| **Permission field** | `allowedSkillIds` | `allowedToolIds` |
+| **Envelope** | Agent-type skill envelope | Agent-type tool envelope |
+| **Boundary** | Prompt section only | Function-call execution |
+
 ### Workflow Step Permissions
 
 Workflow steps can specify required permissions:

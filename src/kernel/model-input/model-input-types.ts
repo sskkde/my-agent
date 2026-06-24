@@ -47,6 +47,44 @@ export interface ToolPlaneProjection {
 }
 
 /**
+ * Skill plane projection data.
+ *
+ * Documentation-only skill records for the LLM prompt. Completely separate
+ * from {@link ToolPlaneProjection}: skills are never callable tools, never
+ * rendered as function schemas, and never included in `LLMRequest.tools`.
+ *
+ * - `summary` mode: only skill IDs and optional summaries (lightweight).
+ * - `documents` mode: skill IDs, summaries, and lazily loaded full documents.
+ */
+export interface SkillPlaneProjection {
+  /** Skill IDs available for this request */
+  skillIds: string[]
+  /** Optional human-readable summary of available skills */
+  skillSummaries?: string
+  /** Full skill documents, lazily loaded only in `documents` mode */
+  skillDocuments?: SkillDocumentEntry[]
+  /** Render mode: `summary` emits IDs + summaries; `documents` emits full docs */
+  renderMode: 'summary' | 'documents'
+  /** Token budget for skill document rendering (0 or undefined = no budget enforcement) */
+  tokenBudget?: number
+}
+
+/**
+ * A single skill document entry for the skill plane projection.
+ *
+ * Documentation-only: contains markdown text, never executable code or
+ * function-call schemas.
+ */
+export interface SkillDocumentEntry {
+  /** Skill identifier */
+  skillId: string
+  /** Human-readable skill name */
+  name: string
+  /** Full markdown document text */
+  document: string
+}
+
+/**
  * A single context item for the context bundle.
  */
 export interface ContextItemData {
@@ -413,6 +451,16 @@ export interface ModelInputBuildInput {
   /** Tool plane projection data */
   toolProjection?: ToolPlaneProjection
   toolSelectionPolicy?: ToolSelectionPolicyProjection
+  /**
+   * Skill plane projection (documentation-only).
+   *
+   * Rendered in Segment C alongside the tool plane with explicit
+   * `--- Skill Plane (documentation only) ---` / `--- Tool Plane (callable tools) ---`
+   * headings. Skills are never callable tools and never appear in
+   * `LLMRequest.tools`. Must NOT be rendered in Segment A (static prefix)
+   * to preserve provider cache stability.
+   */
+  skillProjection?: SkillPlaneProjection
 
   // Layer 7 (Context Bundle) - Segment D
   /** Context bundle data */

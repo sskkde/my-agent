@@ -347,8 +347,25 @@ export interface ChannelSummary {
 export interface SkillSummary {
   skillId: string
   name: string
-  type: string
+  description: string
+  category: string
+  sensitivity: string
   enabled: boolean
+  source: string
+}
+
+export interface SkillDetailResponse {
+  skillId: string
+  name: string
+  description: string
+  category: string
+  sensitivity: string
+  enabled: boolean
+  source: string
+  allowedAgentTypes: string[]
+  defaultAgentProfiles: string[]
+  summary?: string
+  tags?: string[]
 }
 
 export interface InstancesResponse {
@@ -361,6 +378,7 @@ export interface ChannelsResponse {
 
 export interface SkillsResponse {
   skills: SkillSummary[]
+  total: number
 }
 
 export interface SettingsConfig {

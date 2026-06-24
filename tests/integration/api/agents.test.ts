@@ -526,6 +526,23 @@ describe('Agent Config API Integration', () => {
       expect(body.data.allowedSkillIds).toEqual(['ask_user', 'artifact_create'])
     })
 
+    it('should accept new registry skill IDs', async () => {
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/api/v1/agents/foreground.default/config/global',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          allowedSkillIds: ['artifact_workflow', 'memory_research'],
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.allowedSkillIds).toEqual(['artifact_workflow', 'memory_research'])
+    })
+
     it('should return 400 for invalid agent ID', async () => {
       const response = await server.inject({
         method: 'PATCH',

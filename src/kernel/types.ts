@@ -6,6 +6,7 @@ import type {
   ModelInputBuildInput,
   ToolPlaneProjection,
   ToolSelectionPolicyProjection,
+  SkillPlaneProjection,
 } from './model-input/model-input-types.js'
 import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js'
 import type { TokenStreamPayload } from '../api/types.js'
@@ -70,6 +71,14 @@ export interface KernelRunInput {
   toolProjection?: ToolPlaneProjection
   /** Per-run tool selection policy — injected when PROMPT_MEMORY_P0_ENABLED is true. */
   toolSelectionPolicy?: ToolSelectionPolicyProjection
+  /**
+   * Per-run skill plane projection (documentation-only).
+   *
+   * When supplied, the kernel passes this to ModelInputBuilder so skill docs
+   * are rendered in Segment C alongside the tool plane. Skills are never
+   * callable tools and never appear in LLMRequest.tools.
+   */
+  skillProjection?: SkillPlaneProjection
   maxIterations?: number
   timeoutMs?: number
   config?: Record<string, unknown>
@@ -215,6 +224,7 @@ export interface KernelConfig {
   defaultModel?: string
   providerFamily?: string
   toolProjection?: ToolPlaneProjection
+  skillProjection?: SkillPlaneProjection
   modelInputSnapshotStore?: import('./model-input/model-input-snapshot-store.js').ModelInputSnapshotStore
   promptProjectionResolver?: PromptProjectionResolver
   /** Optional broadcaster for real-time token streaming to connected clients. */
