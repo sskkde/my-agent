@@ -506,3 +506,15 @@
     max-width: 900px;
   }
 }
+
+/* ==========================================================================
+   Drag-Over State
+   ========================================================================== */
+
+.composer-card--drag-over {
+  border-color: var(--chat-workspace-primary, #e07a5f);
+  box-shadow:
+    0 4px 16px rgba(42, 38, 34, 0.08),
+    0 2px 4px rgba(42, 38, 34, 0.04),
+    0 0 0 2px var(--chat-workspace-primary-subtle, rgba(224, 122, 95, 0.12));
+}

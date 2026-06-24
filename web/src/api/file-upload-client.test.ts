@@ -5,6 +5,8 @@ import {
   getFileMetadata,
   deleteFile,
   sendMessage,
+  getFileDownloadUrl,
+  downloadFile,
 } from './client'
 
 describe('file upload client helpers', () => {
@@ -232,5 +234,25 @@ describe('sendMessage with attachmentIds', () => {
     })
 
     await expect(sendMessage('s1', '')).rejects.toThrow('Invalid text')
+  })
+})
+
+describe('file download helpers', () => {
+  it('getFileDownloadUrl returns the correct API path', () => {
+    expect(getFileDownloadUrl('file-abc')).toBe('/api/v1/files/file-abc/download')
+  })
+
+  it('getFileDownloadUrl encodes special characters in fileId', () => {
+    expect(getFileDownloadUrl('file/with/slash')).toBe('/api/v1/files/file%2Fwith%2Fslash/download')
+  })
+
+  it('downloadFile opens a new window with the download URL', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    try {
+      downloadFile('file-123')
+      expect(openSpy).toHaveBeenCalledWith('/api/v1/files/file-123/download', '_blank')
+    } finally {
+      openSpy.mockRestore()
+    }
   })
 })

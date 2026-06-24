@@ -1078,6 +1078,14 @@
   color: var(--chat-workspace-text, var(--warm-paper-text, #2a2622));
   max-width: 180px;
   overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
+  text-align: left;
+}
+
+.timeline-attachment-chip:hover {
+  background: var(--chat-workspace-border, var(--warm-paper-border, #d8cfbe));
 }
 
 .timeline-attachment-chip-icon {

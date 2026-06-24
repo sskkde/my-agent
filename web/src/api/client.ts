@@ -921,3 +921,12 @@ export async function deleteFile(fileId: string): Promise<void> {
     )
   }
 }
+
+export function getFileDownloadUrl(fileId: string): string {
+  return `${API_BASE}/files/${encodeURIComponent(fileId)}/download`
+}
+
+export function downloadFile(fileId: string): void {
+  const url = getFileDownloadUrl(fileId)
+  window.open(url, '_blank')
+}

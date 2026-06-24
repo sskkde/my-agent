@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import { TimelineEventCard } from './TimelineEventCard'
 import type { ConsoleTimelineEvent } from '../../api/types'
+import { downloadFile } from '../../api/client'
+
+vi.mock('../../api/client', () => ({
+  downloadFile: vi.fn(),
+}))
 
 /**
  * Tests for TimelineEventCard integration with formatMessageContent
@@ -859,6 +864,112 @@ const a = 1
       const card = screen.getByTestId('timeline-event-test-event-1')
       expect(card.textContent).toContain('secret.txt')
       expect(card.textContent).not.toContain('file-contents-here')
+    })
+
+    it('renders attachment chips from server-shaped event metadata', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'Here is the report',
+        metadata: {
+          attachments: [
+            { fileId: 'srv-f1', originalFilename: 'report.pdf', sizeBytes: 2048, mimeType: 'application/pdf' },
+            { fileId: 'srv-f2', originalFilename: 'data.csv', sizeBytes: 512, mimeType: 'text/csv' },
+          ],
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const chips = screen.getAllByTestId('timeline-attachment-chip')
+      expect(chips).toHaveLength(2)
+      expect(chips[0].textContent).toContain('report.pdf')
+      expect(chips[0].textContent).toContain('2.0 KB')
+      expect(chips[1].textContent).toContain('data.csv')
+      expect(chips[1].textContent).toContain('512 B')
+    })
+
+    it('calls downloadFile when attachment chip is clicked', () => {
+      const mockDownload = vi.mocked(downloadFile)
+      mockDownload.mockClear()
+
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'Download this',
+        metadata: {
+          attachments: [
+            { fileId: 'f-download', originalFilename: 'result.txt', sizeBytes: 100, mimeType: 'text/plain' },
+          ],
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const chip = screen.getByTestId('timeline-attachment-chip')
+      fireEvent.click(chip)
+
+      expect(mockDownload).toHaveBeenCalledWith('f-download')
+      expect(mockDownload).toHaveBeenCalledTimes(1)
+    })
+
+    it('renders consistent chips for server and optimistic attachment metadata', () => {
+      const optimisticEvent = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'Optimistic message',
+        metadata: {
+          attachments: [
+            { fileId: 'f1', originalFilename: 'doc.pdf', sizeBytes: 1024, mimeType: 'application/pdf' },
+          ],
+        },
+      })
+
+      const serverEvent = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'Optimistic message',
+        metadata: {
+          turnId: 'turn-1',
+          userId: 'user-1',
+          attachments: [
+            { fileId: 'f1', originalFilename: 'doc.pdf', sizeBytes: 1024, mimeType: 'application/pdf' },
+          ],
+        },
+      })
+
+      const { unmount } = render(<TimelineEventCard event={optimisticEvent} />)
+      const optimisticChip = screen.getByTestId('timeline-attachment-chip')
+      const optimisticText = optimisticChip.textContent
+      unmount()
+
+      render(<TimelineEventCard event={serverEvent} />)
+      const serverChip = screen.getByTestId('timeline-attachment-chip')
+
+      expect(serverChip.textContent).toBe(optimisticText)
+      expect(serverChip.textContent).toContain('doc.pdf')
+      expect(serverChip.textContent).toContain('1.0 KB')
+    })
+
+    it('does not render attachment chip content from storageRef or previewText', () => {
+      const event = createEvent({
+        eventType: 'user_message',
+        actor: 'user',
+        content: 'See file',
+        metadata: {
+          attachments: [
+            { fileId: 'f1', originalFilename: 'file.txt', sizeBytes: 100, mimeType: 'text/plain' },
+          ],
+          storageRef: '/secret/path/to/file',
+          previewText: 'This is secret preview text',
+        },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const card = screen.getByTestId('timeline-event-test-event-1')
+      expect(card.textContent).not.toContain('/secret/path')
+      expect(card.textContent).not.toContain('secret preview')
     })
   })
 
