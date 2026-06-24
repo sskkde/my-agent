@@ -412,6 +412,7 @@ export interface FileUploadMetadata {
   previewStatus: 'pending' | 'generated' | 'skipped' | 'failed'
   status: 'uploading' | 'ready' | 'deleted'
   createdAt: string
+  updatedAt: string
 }
 
 export interface FileUploadResponse {

@@ -88,6 +88,8 @@ import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js'
 import { createTodoStore, type TodoStore } from '../todo/store.js'
 import { createFileUploadStore, type FileUploadStore } from '../storage/file-upload-store.js'
+import { createUploadFileService, type UploadFileService } from '../storage/upload-file-service.js'
+import { createUploadPreviewExtractor, type UploadPreviewExtractor } from '../storage/upload-preview.js'
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js'
 import { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js'
@@ -170,6 +172,8 @@ export interface ApiContext {
   subagentTranscriptStore: SubagentTranscriptStore
   subagentProviderPreferenceStore: SubagentProviderPreferenceStore
   auditRecorder: AuditRecorder
+  uploadFileService: UploadFileService
+  uploadPreviewExtractor: UploadPreviewExtractor
   webSearchBrowserProvider?: CloakBrowserProvider
 }
 
@@ -435,6 +439,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const consoleTimelineService = createConsoleTimelineService({
     transcriptStore,
     eventStore,
+    fileUploadStore,
   })
 
   // Use injected timeline broadcaster or create default
@@ -808,6 +813,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const auditStore = createAuditStore(connection)
   const auditRecorder = createAuditRecorder({ auditStore })
 
+  const uploadFileService = createUploadFileService()
+  const uploadPreviewExtractor = createUploadPreviewExtractor()
+
   return {
     gateway,
     channelRegistry,
@@ -870,6 +878,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     subagentTranscriptStore,
     subagentProviderPreferenceStore,
     auditRecorder,
+    uploadFileService,
+    uploadPreviewExtractor,
     webSearchBrowserProvider,
   }
 }
