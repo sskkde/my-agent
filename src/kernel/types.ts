@@ -124,10 +124,14 @@ export interface ToolExecutor {
     toolCallId: string
     toolName: string
     params: unknown
-    userId: string
-    sessionId?: string
-    kernelRunId?: string
-    permissionContext: {
+	    userId: string
+	    sessionId?: string
+	    kernelRunId?: string
+	    agentId?: string
+	    agentType?: AgentType
+	    agentProfile?: string
+	    launchSource?: string
+	    permissionContext: {
       userId: string
       permissions: string[]
     }

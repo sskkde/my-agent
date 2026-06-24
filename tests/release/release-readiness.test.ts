@@ -66,10 +66,10 @@ describe('Release Readiness', () => {
         const fullPath = join(dir, entry)
         const relativePath = relative(rootDir, fullPath)
 
-        // Skip node_modules, .git, and data directories (local DB files)
         if (
           relativePath.startsWith('node_modules') ||
           relativePath.startsWith('.git') ||
+          relativePath.startsWith('.codegraph') ||
           relativePath.startsWith('data/')
         ) {
           continue

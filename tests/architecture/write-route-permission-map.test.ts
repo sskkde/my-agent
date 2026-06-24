@@ -103,6 +103,18 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
     permission: 'ResourceType.observability, Action.delete',
   },
   {
+    file: 'files.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/files',
+    permission: 'ResourceType.files, Action.create',
+  },
+  {
+    file: 'files.ts',
+    method: 'DELETE',
+    path: '/api/v1/files/:fileId',
+    permission: 'ResourceType.files, Action.delete',
+  },
+  {
     file: 'memory.ts',
     method: 'POST',
     path: '/api/v1/memory/debug/extract',
@@ -235,6 +247,24 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
     method: 'DELETE',
     path: '/api/v1/subagents/:agentType/preference',
     permission: 'ResourceType.settings, Action.delete',
+  },
+  {
+    file: 'todos.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/todos',
+    permission: 'ResourceType.todos, Action.create',
+  },
+  {
+    file: 'todos.ts',
+    method: 'PATCH',
+    path: '/api/v1/sessions/:sessionId/todos/:todoId',
+    permission: 'ResourceType.todos, Action.update',
+  },
+  {
+    file: 'todos.ts',
+    method: 'DELETE',
+    path: '/api/v1/sessions/:sessionId/todos/:todoId',
+    permission: 'ResourceType.todos, Action.delete',
   },
   {
     file: 'triggers.ts',
