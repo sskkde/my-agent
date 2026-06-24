@@ -9,11 +9,13 @@ import type {
   ToolUseResult,
   KernelTranscriptEntry,
   CompactTriggerResult,
+  CompactExecutorResult,
   InternalToolHandler,
 } from './types.js'
 import { resolveProviderFamily, type ModelInputBuildInput } from './model-input/model-input-types.js'
 import { projectBundleToData } from './model-input/context-bundle-adapter.js'
 import { extractToolsForRequest } from './model-input/model-input-builder.js'
+import { applyCompactToBundle } from './model-input/compact-summary-rendering.js'
 import { isPromptMemoryP0Enabled, isToolLoopV2Enabled } from '../prompt/feature-flags.js'
 import { ToolResultPairingGuard } from './tool-result-pairing-guard.js'
 import {
@@ -206,8 +208,25 @@ export class AgentKernel {
           this.flushPairingGuard(pairingGuard, state, 'iteration_end')
 
           const compactResult = this.checkCompactTrigger(input.contextBundle, state)
+          let executionResult: CompactExecutorResult | undefined
+          if (compactResult.shouldCompact && this.config.compactExecutor) {
+            executionResult = await this.executeCompact(
+              compactResult.candidateItemIds ?? [],
+              compactResult.mustKeepItemIds ?? [],
+              state,
+              input,
+            )
+          }
           if (compactResult.shouldCompact) {
-            this.commitTranscript(state, 'compact', compactResult)
+            const transcriptResult = executionResult
+              ? executionResult.status === 'applied'
+                ? { status: executionResult.status, compactedItemIds: executionResult.compactedItemIds }
+                : executionResult
+              : undefined
+            this.commitTranscript(state, 'compact', {
+              ...compactResult,
+              ...(transcriptResult ? { executionResult: transcriptResult } : {}),
+            })
           }
 
           continue
@@ -243,11 +262,22 @@ export class AgentKernel {
       startTime: Date.now(),
       toolCalls: [],
       transcript: [],
+      compactedItemIds: new Set(),
+      compactedToolCallIds: new Set(),
+      lastCompactSummaryItem: undefined,
     }
   }
 
   private async buildLLMRequest(input: KernelRunInput, state: KernelRunState): Promise<LLMRequest> {
-    const contextBundleData = projectBundleToData(input.contextBundle)
+    let contextBundleData = projectBundleToData(input.contextBundle)
+
+    if (state.compactedItemIds.size > 0 && state.lastCompactSummaryItem) {
+      contextBundleData = applyCompactToBundle(
+        contextBundleData,
+        [...state.compactedItemIds],
+        state.lastCompactSummaryItem,
+      ).bundle
+    }
 
     const transcriptMessages = this.buildTranscriptMessages(state)
 
@@ -349,6 +379,11 @@ export class AgentKernel {
       }
     }
 
+    // Exclude tool results that were compacted away
+    const activeResultToolCallIds = new Set(
+      [...resultToolCallIds].filter((id) => !state.compactedToolCallIds.has(id)),
+    )
+
     for (const entry of state.transcript) {
       if (entry.type === 'llm_response') {
         const llmContent = entry.content as {
@@ -356,21 +391,21 @@ export class AgentKernel {
           toolCalls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>
         }
 
-        const hasToolCallsWithResults = llmContent.toolCalls?.some((tc) => resultToolCallIds.has(tc.id))
-        const hasToolCallsWithoutResults = llmContent.toolCalls?.some((tc) => !resultToolCallIds.has(tc.id))
+        const activeToolCalls = llmContent.toolCalls?.filter((tc) => !state.compactedToolCallIds.has(tc.id))
+        const hasToolCallsWithResults = activeToolCalls?.some((tc) => activeResultToolCallIds.has(tc.id))
+        const hasToolCallsWithoutResults = activeToolCalls?.some((tc) => !activeResultToolCallIds.has(tc.id))
 
         if (hasToolCallsWithResults) {
-          // ToolCalls with results must always be included to avoid orphan tool messages
           messages.push({
             role: 'assistant',
             content: llmContent.content ?? '',
-            toolCalls: llmContent.toolCalls,
+            toolCalls: activeToolCalls,
           })
         } else if (isToolLoopV2Enabled() && hasToolCallsWithoutResults) {
           messages.push({
             role: 'assistant',
             content: llmContent.content ?? '',
-            toolCalls: llmContent.toolCalls,
+            toolCalls: activeToolCalls,
           })
         } else if (llmContent.content) {
           messages.push({
@@ -380,6 +415,9 @@ export class AgentKernel {
         }
       } else if (entry.type === 'tool_result') {
         const toolResult = entry.content as ToolUseResult
+        if (state.compactedToolCallIds.has(toolResult.toolCallId)) {
+          continue
+        }
         messages.push({
           role: 'tool',
           content: toolResult.error ? `Error: ${toolResult.error.message}` : JSON.stringify(toolResult.result),
@@ -718,6 +756,7 @@ export class AgentKernel {
       sourceType: 'tool_result',
       semanticType: 'tool_output',
       content,
+      structuredPayload: { toolCallId: toolRequest.toolCallId },
       estimatedTokens: Math.ceil(content.length / 4),
       freshnessTs: new Date().toISOString(),
     }
@@ -756,6 +795,58 @@ export class AgentKernel {
     }
 
     return { shouldCompact: false }
+  }
+
+  private async executeCompact(
+    candidateItemIds: readonly string[],
+    mustKeepItemIds: readonly string[],
+    state: KernelRunState,
+    input: KernelRunInput,
+  ): Promise<CompactExecutorResult> {
+    try {
+      const result = await this.config.compactExecutor!({
+        candidateItemIds,
+        mustKeepItemIds,
+        contextItems: state.contextItems,
+      })
+
+      if (result.status === 'applied') {
+        // Defense-in-depth: verify executor did not return protected IDs
+        const protectedIds = new Set([
+          ...mustKeepItemIds,
+          ...state.contextItems.filter((i) => i.isPinned === true || i.isCompressible === false).map((i) => i.itemId),
+        ])
+        const compactedSet = new Set(result.compactedItemIds)
+        const hasProtected = [...compactedSet].some((id) => protectedIds.has(id))
+        if (hasProtected) {
+          return { status: 'skipped', reason: 'protected items in compacted set' }
+        }
+
+        for (const item of state.contextItems) {
+          if (compactedSet.has(item.itemId) && item.structuredPayload?.toolCallId) {
+            state.compactedToolCallIds.add(item.structuredPayload.toolCallId as string)
+          }
+        }
+        state.contextItems = [
+          ...state.contextItems.filter((item) => !compactedSet.has(item.itemId)),
+          result.summaryItem,
+        ]
+        for (const id of result.compactedItemIds) {
+          state.compactedItemIds.add(id)
+        }
+        state.lastCompactSummaryItem = result.summaryItem
+        this.config.contextManager.applyDelta({
+          runId: input.runId,
+          source: 'runtime_note',
+          items: [result.summaryItem],
+          replaceKeys: [...result.compactedItemIds],
+        })
+      }
+
+      return result
+    } catch {
+      return { status: 'skipped', reason: 'executor error' }
+    }
   }
 
   private commitTranscript(state: KernelRunState, type: KernelTranscriptEntry['type'], content: unknown): void {

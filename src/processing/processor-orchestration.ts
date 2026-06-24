@@ -34,6 +34,7 @@ import type { ProviderConfigStore } from '../storage/provider-config-store.js'
 import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-store.js'
 import type { SessionStore } from '../storage/session-store.js'
 import type { LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js'
+import type { SummaryManager } from '../memory/types.js'
 import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js'
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js'
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js'
@@ -78,6 +79,8 @@ export interface ProcessorOrchestrationDeps {
   }
   /** Scheduler for async long-term memory extraction after transcript persistence */
   memoryExtractionScheduler?: LongTermMemoryScheduler
+  /** Summary manager for compact summary persistence — enables compact executor DI */
+  summaryManager?: SummaryManager
 }
 
 /**

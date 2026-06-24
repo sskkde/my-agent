@@ -24,6 +24,13 @@ export const DEFAULT_FOREGROUND_MAX_ITERATIONS = 6
  */
 export const DEFAULT_FOREGROUND_TIMEOUT_MS = 60000
 
+/**
+ * Default token budget for foreground context bundles.
+ * Derived from maxContextTokens resource default (8000).
+ * Used to generate compactHints when assembling the context bundle.
+ */
+export const DEFAULT_FOREGROUND_TOKEN_BUDGET = 8000
+
 // ─── User-Visible Error Messages ──────────────────────────────────────────────
 
 /**

@@ -126,6 +126,9 @@ export interface KernelRunState {
   startTime: number
   toolCalls: ToolUseRequest[]
   transcript: KernelTranscriptEntry[]
+  compactedItemIds: Set<string>
+  compactedToolCallIds: Set<string>
+  lastCompactSummaryItem: ContextItem | undefined
 }
 
 export interface ToolExecutor {
@@ -225,6 +228,8 @@ export interface KernelConfig {
   maxIterations: number
   timeoutMs: number
   compactThreshold?: number
+  /** Optional executor invoked when the compact trigger fires. */
+  compactExecutor?: CompactExecutor
   defaultModel?: string
   providerFamily?: string
   toolProjection?: ToolPlaneProjection
@@ -242,3 +247,21 @@ export interface CompactTriggerResult {
   candidateItemIds?: string[]
   mustKeepItemIds?: string[]
 }
+
+export interface CompactExecutorInput {
+  readonly candidateItemIds: readonly string[]
+  readonly mustKeepItemIds: readonly string[]
+  readonly contextItems: readonly ContextItem[]
+}
+
+export type CompactExecutorResult =
+  | {
+      readonly status: 'applied'
+      readonly compactedItemIds: readonly string[]
+      readonly summaryItem: ContextItem
+      readonly compressionRatio: number
+    }
+  | { readonly status: 'skipped'; readonly reason: string }
+  | { readonly status: 'failed'; readonly reason: string }
+
+export type CompactExecutor = (input: CompactExecutorInput) => Promise<CompactExecutorResult>

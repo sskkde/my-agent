@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createForegroundAgent } from '../../../src/foreground/foreground-agent.js'
+import { buildKernelConfigFromDeps } from '../../../src/foreground/kernel-config-builder.js'
 import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js'
 import type { AgentKernel } from '../../../src/kernel/agent-kernel.js'
 import type { KernelRunInput, KernelRunResult } from '../../../src/kernel/types.js'
+import type { ProcessorOrchestrationDeps } from '../../../src/processing/processor-orchestration.js'
 import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js'
 import type { ForegroundSessionState } from '../../../src/foreground/types.js'
 import type { HydratedSessionState } from '../../../src/gateway/types.js'
 import type { ToolRegistry, ToolDefinition } from '../../../src/tools/types.js'
+import type { SummaryManager } from '../../../src/memory/types.js'
+import type { LLMAdapter } from '../../../src/llm/adapter.js'
+import type { RuntimeDispatcher } from '../../../src/dispatcher/types.js'
 import { createToolRegistry } from '../../../src/tools/tool-registry.js'
 import {
   DEFAULT_FOREGROUND_MAX_ITERATIONS,
@@ -216,6 +221,28 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
     expect(result.runtimeSummary).toBeDefined()
   })
 
+  it('long conversation history produces compactHints.shouldCompactSoon === true via tokenBudget', async () => {
+    const state = createMockForegroundState()
+    const longHistory = Array.from({ length: 20 }, (_, i) => ({
+      turnId: `turn-${i}`,
+      message: 'A'.repeat(1600),
+      timestamp: `2024-01-15T10:0${i}:00.000Z`,
+      role: 'user' as const,
+    }))
+    state.conversationHistory = longHistory
+
+    const input = createMockInput({ foregroundState: state })
+    await agent.runTurn!(input)
+
+    expect(mockAgentKernel.run).toHaveBeenCalledTimes(1)
+    const kernelInput = vi.mocked(mockAgentKernel.run).mock.calls[0][0] as KernelRunInput
+
+    expect(kernelInput.contextBundle.compactHints).toBeDefined()
+    expect(kernelInput.contextBundle.compactHints!.shouldCompactSoon).toBe(true)
+    expect(kernelInput.contextBundle.compactHints!.candidateItemIds).toBeDefined()
+    expect(kernelInput.contextBundle.compactHints!.candidateItemIds!.length).toBeGreaterThan(0)
+  })
+
   // ─── Tool Schema Exposure Tests ─────────────────────────────────────────────
 
   describe('Tool schema projection', () => {
@@ -396,5 +423,46 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
         expect(Object.keys(props).length).toBeGreaterThan(0)
       }
     })
+  })
+})
+
+describe('buildKernelConfigFromDeps — compact executor DI', () => {
+  function createMockDeps(overrides?: Partial<ProcessorOrchestrationDeps>): ProcessorOrchestrationDeps {
+    return {
+      gateway: {} as ProcessorOrchestrationDeps['gateway'],
+      stores: {} as ProcessorOrchestrationDeps['stores'],
+      runtimeDispatcher: { dispatch: vi.fn() } as unknown as RuntimeDispatcher,
+      plannerRuntime: {} as ProcessorOrchestrationDeps['plannerRuntime'],
+      agentKernel: {} as ProcessorOrchestrationDeps['agentKernel'],
+      llmAdapter: { complete: vi.fn() } as unknown as LLMAdapter,
+      transcriptStore: {} as ProcessorOrchestrationDeps['transcriptStore'],
+      ...overrides,
+    }
+  }
+
+  it('attaches compact executor when summaryManager is present in deps', () => {
+    const mockSummaryManager = {
+      writeCompactSummary: vi.fn(),
+    } as unknown as SummaryManager
+
+    const deps = createMockDeps({ summaryManager: mockSummaryManager })
+    const config = buildKernelConfigFromDeps(deps)
+
+    expect(config.compactExecutor).toBeDefined()
+    expect(typeof config.compactExecutor).toBe('function')
+  })
+
+  it('does not attach compact executor when summaryManager is absent', () => {
+    const deps = createMockDeps()
+    const config = buildKernelConfigFromDeps(deps)
+
+    expect(config.compactExecutor).toBeUndefined()
+  })
+
+  it('compactExecutor is undefined when summaryManager is explicitly undefined', () => {
+    const deps = createMockDeps({ summaryManager: undefined })
+    const config = buildKernelConfigFromDeps(deps)
+
+    expect(config.compactExecutor).toBeUndefined()
   })
 })

@@ -9,6 +9,7 @@ import type { ForegroundSessionState } from './types.js'
 import type { ForegroundTurnInput } from './foreground-runner-types.js'
 import type { ContextBundle, ContextItem } from '../context/types.js'
 import { projectActiveTodosToContext } from '../todo/context-projection.js'
+import { generateForegroundCompactHints } from './compact-hints.js'
 
 /**
  * Helper function to estimate token count from text.
@@ -52,6 +53,7 @@ export function buildContextBundleFromForegroundState(
     createdAt: string
     updatedAt: string
   }>,
+  tokenBudget?: number,
 ): ContextBundle {
   const pinnedItems: ContextItem[] = buildPinnedItems(state)
   const todoContextItems: ContextItem[] = activeTodos
@@ -76,7 +78,9 @@ export function buildContextBundleFromForegroundState(
     planView: undefined,
     workflowStepView: undefined,
     tokenEstimate: totalTokens,
-    compactHints: undefined,
+    compactHints: tokenBudget !== undefined
+      ? generateForegroundCompactHints([...pinnedItems, ...orderedItems], tokenBudget)
+      : undefined,
   }
 }
 
@@ -97,6 +101,7 @@ function buildPinnedItems(state: ForegroundSessionState): ContextItem[] {
     content: entry.message,
     estimatedTokens: estimateTokens(entry.message),
     freshnessTs: entry.timestamp,
+    isPinned: true,
   }))
 }
 
