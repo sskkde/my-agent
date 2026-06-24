@@ -3,7 +3,7 @@ import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../s
 import { TemplateLoader } from '../../../../src/prompt/template-loader.js'
 import { ModelInputBuilder } from '../../../../src/kernel/model-input/model-input-builder.js'
 import { computeTemplateHash } from '../../../../src/prompt/template-hash.js'
-import type { ModelInputBuildInput } from '../../../../src/kernel/model-input/model-input-types.js'
+import type { ModelInputBuildInput, SkillPlaneProjection } from '../../../../src/kernel/model-input/model-input-types.js'
 
 function makeTestTemplates(): Map<string, PromptTemplateRecord> {
   return new Map([
@@ -351,6 +351,86 @@ describe('Tool Projection Canonicalization', () => {
     it('hash is 64-character hex string', () => {
       const hash = computeTemplateHash('test content')
       expect(hash).toMatch(/^[a-f0-9]{64}$/)
+    })
+  })
+
+  describe('skill projection does not affect tool hash', () => {
+    it('adding skillProjection changes segmentC hash (skill is part of Segment C)', async () => {
+      const builder = makeBuilder()
+
+      const resultWithoutSkill = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read', 'web_search'] },
+        }),
+      )
+
+      const skillProjection: SkillPlaneProjection = {
+        skillIds: ['code-review'],
+        renderMode: 'summary',
+        skillSummaries: 'Code review skill.',
+      }
+
+      const resultWithSkill = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read', 'web_search'] },
+          skillProjection,
+        }),
+      )
+
+      expect(resultWithoutSkill.segmentHashes.segmentC).not.toBe(resultWithSkill.segmentHashes.segmentC)
+    })
+
+    it('tool schema content is preserved when skillProjection is added', async () => {
+      const builder = makeBuilder()
+
+      const tool = {
+        type: 'function' as const,
+        function: {
+          name: 'file_read',
+          description: 'Read a file from disk',
+          parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+        },
+      }
+
+      const resultWithoutSkill = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'], tools: [tool] },
+        }),
+      )
+
+      const resultWithSkill = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'], tools: [tool] },
+          skillProjection: {
+            skillIds: ['code-review'],
+            renderMode: 'summary',
+            skillSummaries: 'Code review skill.',
+          },
+        }),
+      )
+
+      expect(resultWithSkill.segments.toolPlane).toContain('Tool: file_read')
+      expect(resultWithSkill.segments.toolPlane).toContain('Read a file from disk')
+      expect(resultWithoutSkill.segments.toolPlane).toContain('Tool: file_read')
+    })
+
+    it('skill plane heading is separate from tool plane heading', async () => {
+      const builder = makeBuilder()
+
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+          skillProjection: {
+            skillIds: ['code-review'],
+            renderMode: 'summary',
+          },
+        }),
+      )
+
+      expect(result.segments.toolPlane).toContain('--- Tool Plane (callable tools) ---')
+      expect(result.segments.toolPlane).toContain('--- Skill Plane (documentation only) ---')
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).toContain('Available Skill IDs: code-review')
     })
   })
 })

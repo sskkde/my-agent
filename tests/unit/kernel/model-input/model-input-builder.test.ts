@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../src/prompt/prompt-template-registry.js'
 import { TemplateLoader } from '../../../../src/prompt/template-loader.js'
-import { ModelInputBuilder } from '../../../../src/kernel/model-input/model-input-builder.js'
+import { ModelInputBuilder, extractToolsForRequest } from '../../../../src/kernel/model-input/model-input-builder.js'
 import { computeCacheKey } from '../../../../src/kernel/model-input/model-input-cache-key.js'
 import { StaticPrefixBuilder } from '../../../../src/kernel/model-input/static-prefix-builder.js'
-import type { ModelInputBuildInput } from '../../../../src/kernel/model-input/model-input-types.js'
+import type { ModelInputBuildInput, SkillPlaneProjection } from '../../../../src/kernel/model-input/model-input-types.js'
 
 function makeTestTemplates(): Map<string, PromptTemplateRecord> {
   return new Map([
@@ -938,5 +938,268 @@ describe('PM-7: Default values are undefined (not empty string)', () => {
     expect(result.segmentHashes.segmentB).toMatch(/^[a-f0-9]{64}$/)
     expect(result.segmentHashes.segmentC).toMatch(/^[a-f0-9]{64}$/)
     expect(result.segmentHashes.segmentD).toMatch(/^[a-f0-9]{64}$/)
+  })
+})
+
+// ─── Skill Plane Projection Tests ────────────────────────────────────────────
+
+function makeSkillProjection(overrides: Partial<SkillPlaneProjection> = {}): SkillPlaneProjection {
+  return {
+    skillIds: ['code-review', 'git-master'],
+    renderMode: 'summary',
+    ...overrides,
+  }
+}
+
+describe('Skill Plane Projection', () => {
+  describe('segment placement', () => {
+    it('skill docs appear in Segment C (toolPlane), not Segment A or B', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+          skillProjection: makeSkillProjection({
+            skillSummaries: 'Code review and git mastery skills available.',
+          }),
+        }),
+      )
+
+      expect(result.segments.toolPlane).toContain('Available Skill IDs: code-review, git-master')
+      expect(result.segments.toolPlane).toContain('Code review and git mastery skills available.')
+      expect(result.segments.staticPrefix).not.toContain('Available Skill IDs')
+      expect(result.segments.staticPrefix).not.toContain('code-review')
+      expect(result.segments.tenantProject).not.toContain('Available Skill IDs')
+      expect(result.segments.tenantProject).not.toContain('code-review')
+    })
+
+    it('skill plane heading is explicit and separate from tool plane', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+          skillProjection: makeSkillProjection(),
+        }),
+      )
+
+      expect(result.segments.toolPlane).toContain('--- Tool Plane (callable tools) ---')
+      expect(result.segments.toolPlane).toContain('--- Skill Plane (documentation only) ---')
+    })
+
+    it('skill plane appears after tool plane in Segment C content', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+          skillProjection: makeSkillProjection({
+            skillSummaries: 'Skill summary text.',
+          }),
+        }),
+      )
+
+      const toolHeadingIdx = result.segments.toolPlane.indexOf('--- Tool Plane (callable tools) ---')
+      const skillHeadingIdx = result.segments.toolPlane.indexOf('--- Skill Plane (documentation only) ---')
+
+      expect(toolHeadingIdx).toBeGreaterThanOrEqual(0)
+      expect(skillHeadingIdx).toBeGreaterThan(toolHeadingIdx)
+    })
+
+    it('documents mode renders full skill documents in Segment C', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          skillProjection: makeSkillProjection({
+            renderMode: 'documents',
+            skillDocuments: [
+              {
+                skillId: 'code-review',
+                name: 'Code Review',
+                document: 'Review code for quality and correctness.',
+              },
+            ],
+          }),
+        }),
+      )
+
+      expect(result.segments.toolPlane).toContain('## Skill Documents')
+      expect(result.segments.toolPlane).toContain('### Code Review (code-review)')
+      expect(result.segments.toolPlane).toContain('Review code for quality and correctness.')
+    })
+  })
+
+  describe('Segment A hash stability', () => {
+    it('Segment A hash does NOT change when skillProjection changes', async () => {
+      const builder = makeBuilder()
+
+      const resultWithoutSkill = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+        }),
+      )
+
+      const resultWithSkill = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+          skillProjection: makeSkillProjection({
+            skillSummaries: 'New skill summary.',
+          }),
+        }),
+      )
+
+      expect(resultWithoutSkill.segmentHashes.segmentA).toBe(resultWithSkill.segmentHashes.segmentA)
+    })
+
+    it('Segment A content does NOT contain skill docs', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          skillProjection: makeSkillProjection({
+            skillSummaries: 'Secret skill data.',
+            skillDocuments: [
+              { skillId: 's1', name: 'Skill One', document: 'Doc content here.' },
+            ],
+          }),
+        }),
+      )
+
+      expect(result.segments.staticPrefix).not.toContain('Secret skill data')
+      expect(result.segments.staticPrefix).not.toContain('Doc content here')
+      expect(result.segments.staticPrefix).not.toContain('Available Skill IDs')
+    })
+  })
+
+  describe('tool schema isolation', () => {
+    it('tool schemas remain unaffected when skillProjection is added', async () => {
+      const builder = makeBuilder()
+
+      const tool = {
+        type: 'function' as const,
+        function: {
+          name: 'file_read',
+          description: 'Read a file from disk',
+          parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+        },
+      }
+
+      const resultWithoutSkill = await builder.build(
+        makeMinimalInput({
+          mode: 'function_calling',
+          toolProjection: { toolIds: ['file_read'], tools: [tool] },
+        }),
+      )
+
+      const resultWithSkill = await builder.build(
+        makeMinimalInput({
+          mode: 'function_calling',
+          toolProjection: { toolIds: ['file_read'], tools: [tool] },
+          skillProjection: makeSkillProjection({
+            skillSummaries: 'Extra skill summary.',
+          }),
+        }),
+      )
+
+      // Tool plane content should differ (skill added) but tool schema text is preserved
+      expect(resultWithSkill.segments.toolPlane).toContain('Tool: file_read')
+      expect(resultWithSkill.segments.toolPlane).toContain('Read a file from disk')
+      expect(resultWithSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+
+      expect(resultWithoutSkill.segments.toolPlane).toContain('Tool: file_read')
+      expect(resultWithoutSkill.segments.toolPlane).toContain('Read a file from disk')
+    })
+
+    it('extractToolsForRequest returns tool schemas, not skill docs', () => {
+      const tool = {
+        type: 'function' as const,
+        function: {
+          name: 'file_read',
+          description: 'Read a file',
+          parameters: { type: 'object' as const, properties: {} },
+        },
+      }
+
+      const input = makeMinimalInput({
+        mode: 'function_calling',
+        toolProjection: { toolIds: ['file_read'], tools: [tool] },
+        skillProjection: makeSkillProjection({
+          skillDocuments: [{ skillId: 's1', name: 'Skill', document: 'doc' }],
+        }),
+      })
+
+      const tools = extractToolsForRequest(input)
+      expect(tools).toBeDefined()
+      expect(tools).toHaveLength(1)
+      expect(tools![0].function.name).toBe('file_read')
+    })
+  })
+
+  describe('Segment C hash changes', () => {
+    it('Segment C hash changes when skillProjection is added', async () => {
+      const builder = makeBuilder()
+
+      const resultWithout = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+        }),
+      )
+
+      const resultWith = await builder.build(
+        makeMinimalInput({
+          toolProjection: { toolIds: ['file_read'] },
+          skillProjection: makeSkillProjection({
+            skillSummaries: 'Skill summary.',
+          }),
+        }),
+      )
+
+      expect(resultWithout.segmentHashes.segmentC).not.toBe(resultWith.segmentHashes.segmentC)
+    })
+
+    it('Segment B and D hashes remain stable when only skillProjection changes', async () => {
+      const builder = makeBuilder()
+
+      const resultWithout = await builder.build(
+        makeMinimalInput({
+          systemPrompt: 'Test',
+          toolProjection: { toolIds: ['file_read'] },
+          currentUserMessage: 'Hello',
+        }),
+      )
+
+      const resultWith = await builder.build(
+        makeMinimalInput({
+          systemPrompt: 'Test',
+          toolProjection: { toolIds: ['file_read'] },
+          currentUserMessage: 'Hello',
+          skillProjection: makeSkillProjection(),
+        }),
+      )
+
+      expect(resultWithout.segmentHashes.segmentB).toBe(resultWith.segmentHashes.segmentB)
+      expect(resultWithout.segmentHashes.segmentD).toBe(resultWith.segmentHashes.segmentD)
+    })
+  })
+
+  describe('empty skill projection', () => {
+    it('empty skillIds produces no skill plane output', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          skillProjection: makeSkillProjection({ skillIds: [] }),
+        }),
+      )
+
+      expect(result.segments.toolPlane).not.toContain('Available Skill IDs')
+      expect(result.segments.toolPlane).not.toContain('--- Skill Plane')
+    })
+
+    it('undefined skillProjection produces no skill plane output', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(
+        makeMinimalInput({
+          skillProjection: undefined,
+        }),
+      )
+
+      expect(result.segments.toolPlane).not.toContain('--- Skill Plane')
+    })
   })
 })
