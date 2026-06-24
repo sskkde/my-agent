@@ -91,18 +91,18 @@ Agent configuration controls LLM behavior at the agent level. The primary agent 
 
 ### Configuration Fields
 
-| Field                 | Type     | Description                           |
-| --------------------- | -------- | ------------------------------------- |
-| `providerId`          | string   | Preferred LLM provider                |
-| `model`               | string   | Specific model to use                 |
-| `systemPrompt`        | string   | Base system prompt                    |
-| `routingPrompt`       | string   | Custom routing instructions           |
-| `allowedToolIds`      | string[] | Permitted tool IDs                    |
-| `allowedSkillIds`     | string[] | Permitted skill IDs                   |
-| `routingTimeoutMs`    | number   | LLM routing timeout (default: 60000)  |
-| `repairAttempts`      | number   | JSON repair retries (default: 1)      |
-| `searchLlmProviderId` | string   | Provider for web search summarization |
-| `searchLlmModel`      | string   | Model for web search                  |
+| Field                 | Type           | Description                                       |
+| --------------------- | -------------- | ------------------------------------------------- |
+| `providerId`          | string         | Preferred LLM provider                            |
+| `model`               | string         | Specific model to use                             |
+| `systemPrompt`        | string         | Base system prompt                                |
+| `routingPrompt`       | string         | Custom routing instructions                       |
+| `allowedToolIds`      | string[]       | Permitted tool IDs (tools execute actions)         |
+| `allowedSkillIds`     | string[]\|null | Permitted skill IDs (documentation-only). See [Skill Configuration](#skill-configuration) |
+| `routingTimeoutMs`    | number         | LLM routing timeout (default: 60000)              |
+| `repairAttempts`      | number         | JSON repair retries (default: 1)                  |
+| `searchLlmProviderId` | string         | Provider for web search summarization             |
+| `searchLlmModel`      | string         | Model for web search                              |
 
 ### Global Configuration
 
@@ -183,6 +183,96 @@ PATCH /api/agents/foreground.default/config
 - Limit `file.read`, `file.grep` to trusted environments
 - `web.fetch` and `web.search` may expose sensitive queries
 - Review connector tool permissions separately
+
+---
+
+## Skill Configuration
+
+Skills are **documentation-only records** — metadata plus lazily-loaded markdown instructions that provide context and guidance to the LLM. Unlike tools, skills do **not** execute code, make API calls, or perform any side effects.
+
+### Skills vs Tools
+
+| Aspect | Skills | Tools |
+|--------|--------|-------|
+| **Purpose** | Documentation and guidance for the LLM | Executable actions with side effects |
+| **Execution** | None — skills are prompt-visible text only | Tools execute code, API calls, file operations |
+| **API surface** | `GET /api/v1/skills` (read-only catalog) | `GET /api/v1/tools` + runtime execution |
+| **Run endpoint** | None — no `/skills/:id/run` | Tools are invoked during agent runs |
+| **Permission model** | `allowedSkillIds` + agent-type envelope | `allowedToolIds` + approval policies |
+
+### Skill Allowlist Semantics
+
+The `allowedSkillIds` field in agent configuration controls which skills are visible to an agent:
+
+| Value | Behavior |
+|-------|----------|
+| `null` (or omitted) | Inherits defaults from the agent profile and agent-type envelope |
+| `[]` (empty array) | No skills — the agent receives no skill documentation |
+| `["skill-a", "skill-b"]` (explicit list) | Intersects with the agent-type envelope; only skills in both the list and the envelope are projected |
+
+### Agent-Type Skill Envelopes
+
+Each agent type has a built-in skill envelope that defines which skills are available by default:
+
+| Agent Type | Default Skills | Notes |
+|------------|----------------|-------|
+| `main` | Safe guidance skills | Primary user-facing agent |
+| `subagent` | Profile-relevant guidance | Task-specific subagent |
+| `background` | Read-only/status/research guidance | Background processing |
+| `workflow_step` | Workflow-step guidance | Workflow execution |
+| `remote` | None | Hard-denies all skills |
+
+### Configuring Skill Permissions
+
+Via agent configuration:
+
+```bash
+# Inherit defaults (null or omitted)
+PATCH /api/agents/foreground.default/config
+{
+  "allowedSkillIds": null
+}
+
+# No skills
+PATCH /api/agents/foreground.default/config
+{
+  "allowedSkillIds": []
+}
+
+# Explicit skill list (intersects with agent-type envelope)
+PATCH /api/agents/foreground.default/config
+{
+  "allowedSkillIds": ["artifact_workflow", "memory_research"]
+}
+```
+
+### Viewing Available Skills
+
+```bash
+# List all skills (metadata only, no full documents)
+GET /api/v1/skills
+
+# Get skill detail (includes full documentation)
+GET /api/v1/skills/:skillId
+```
+
+### Skill Sources
+
+| Source | Description |
+|--------|-------------|
+| `builtin` | Built-in skills shipped with the platform |
+| `user` | User-created skills |
+| `plugin` | Skills from plugins |
+| `remote` | Skills from remote registries |
+
+### Lazy Loading
+
+Skill documents are lazy-loaded for efficiency:
+- **Catalog endpoints** (`GET /api/v1/skills`) return metadata only — no full document content
+- **Detail endpoints** (`GET /api/v1/skills/:skillId`) return full documentation
+- **Runtime projection** loads documents only for skills that pass the allowlist intersection
+
+This ensures that listing skills does not require reading all markdown files.
 
 ---
 

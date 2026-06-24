@@ -1187,6 +1187,58 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   # ==========================================================================
+  # Skills (Read-only catalog)
+  # ==========================================================================
+  /api/v1/skills:
+    get:
+      tags: [Agents & Providers]
+      summary: List skills
+      description: |
+        Returns the read-only skill catalog from the registry.
+        Skills are documentation-only records — metadata plus lazily-loaded markdown.
+        No POST/PATCH/DELETE mutation or run endpoints exist.
+      operationId: listSkills
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: Skill catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/skills/{skillId}:
+    get:
+      tags: [Agents & Providers]
+      summary: Get skill detail
+      description: |
+        Returns read-only detail for a single skill from the registry.
+        Includes allowedAgentTypes, defaultAgentProfiles, summary, and tags.
+      operationId: getSkill
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: skillId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Skill detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ==========================================================================
   # Workflows
   # ==========================================================================
   /api/v1/workflows/drafts:
@@ -2540,24 +2592,6 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  /api/v1/skills:
-    get:
-      tags: [System]
-      summary: List skills
-      description: Returns available skills
-      operationId: listSkills
-      security:
-        - sessionAuth: []
-      responses:
-        "200":
-          description: Skills
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SkillsResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
   /api/v1/planner-runs/{plannerRunId}/events:
     get:
       tags: [System]
@@ -3588,10 +3622,24 @@ components:
           type: array
           items:
             type: string
+          description: |
+            Permitted tool IDs. Tools are the execution surface — they execute code, 
+            make API calls, and perform side effects. Tools not in this list are blocked 
+            from execution.
         allowedSkillIds:
           type: array
           items:
             type: string
+          nullable: true
+          description: |
+            Permitted skill IDs. Skills are documentation-only records — metadata plus 
+            lazily-loaded markdown instructions. Skills do NOT execute code.
+            
+            Semantics:
+            - null or omitted: inherits defaults from agent profile and agent-type envelope
+            - [] (empty array): no skills — agent receives no skill documentation
+            - ["skill-a", "skill-b"]: intersects with agent-type envelope; only skills 
+              in both the list and the envelope are projected
         routingTimeoutMs:
           type: integer
         repairAttempts:
@@ -3641,10 +3689,22 @@ components:
           type: array
           items:
             type: string
+          description: |
+            Permitted tool IDs. Tools are the execution surface — they execute code, 
+            make API calls, and perform side effects.
         allowedSkillIds:
           type: array
           items:
             type: string
+          nullable: true
+          description: |
+            Permitted skill IDs. Skills are documentation-only records — metadata plus 
+            lazily-loaded markdown instructions. Skills do NOT execute code.
+            
+            Semantics:
+            - null: inherits defaults from agent profile and agent-type envelope
+            - [] (empty array): no skills — agent receives no skill documentation
+            - ["skill-a", "skill-b"]: intersects with agent-type envelope
         routingTimeoutMs:
           type: integer
         repairAttempts:
@@ -3678,11 +3738,22 @@ components:
           items:
             type: string
           nullable: true
+          description: |
+            Permitted tool IDs. Tools are the execution surface — they execute code, 
+            make API calls, and perform side effects.
         allowedSkillIds:
           type: array
           items:
             type: string
           nullable: true
+          description: |
+            Permitted skill IDs. Skills are documentation-only records — metadata plus 
+            lazily-loaded markdown instructions. Skills do NOT execute code.
+            
+            Semantics:
+            - null: inherits defaults from agent profile and agent-type envelope
+            - [] (empty array): no skills — agent receives no skill documentation
+            - ["skill-a", "skill-b"]: intersects with agent-type envelope
         routingTimeoutMs:
           type: integer
         repairAttempts:
@@ -3871,6 +3942,88 @@ components:
                 createdAt:
                   type: string
                   format: date-time
+
+    # ---- Skills ----
+
+    SkillSummary:
+      type: object
+      required: [skillId, name, description, category, sensitivity, enabled, source]
+      properties:
+        skillId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [read, write, search, automation, admin, internal, custom]
+        sensitivity:
+          type: string
+          enum: [low, medium, high, restricted]
+        enabled:
+          type: boolean
+        source:
+          type: string
+          enum: [builtin, user, plugin, remote]
+
+    SkillDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [skillId, name, description, category, sensitivity, enabled, source, allowedAgentTypes, defaultAgentProfiles]
+              properties:
+                skillId:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                  enum: [read, write, search, automation, admin, internal, custom]
+                sensitivity:
+                  type: string
+                  enum: [low, medium, high, restricted]
+                enabled:
+                  type: boolean
+                source:
+                  type: string
+                  enum: [builtin, user, plugin, remote]
+                allowedAgentTypes:
+                  type: array
+                  items:
+                    type: string
+                    enum: [main, subagent, background, workflow_step, remote]
+                defaultAgentProfiles:
+                  type: array
+                  items:
+                    type: string
+                summary:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+
+    SkillsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [skills, total]
+              properties:
+                skills:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/SkillSummary"
+                total:
+                  type: integer
 
     # ---- Workflows ----
     WorkflowStep:
@@ -5030,32 +5183,6 @@ components:
                   type: array
                   items:
                     $ref: "#/components/schemas/ChannelSummary"
-
-    SkillSummary:
-      type: object
-      required: [skillId, name, type, enabled]
-      properties:
-        skillId:
-          type: string
-        name:
-          type: string
-        type:
-          type: string
-        enabled:
-          type: boolean
-
-    SkillsResponse:
-      allOf:
-        - $ref: "#/components/schemas/ApiEnvelope"
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                skills:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/SkillSummary"
 
     PlannerRunEventsResponse:
       allOf:
