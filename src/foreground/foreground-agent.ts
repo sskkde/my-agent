@@ -11,6 +11,7 @@ import { buildContextBundleFromForegroundState } from './context-bundle-builder.
 import {
   DEFAULT_FOREGROUND_MAX_ITERATIONS,
   DEFAULT_FOREGROUND_TIMEOUT_MS,
+  DEFAULT_FOREGROUND_TOKEN_BUDGET,
   mapKernelErrorToForegroundResult,
 } from './kernel-guard-constants.js'
 import type { ForegroundTurnInput, ForegroundTurnResult, ToolCallSummary } from './foreground-runner-types.js'
@@ -69,7 +70,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
     }
 
-    const contextBundle = buildContextBundleFromForegroundState(input.foregroundState, input)
+    const contextBundle = buildContextBundleFromForegroundState(input.foregroundState, input, undefined, DEFAULT_FOREGROUND_TOKEN_BUDGET)
     const allTools = this.toolCatalog ?? getToolCatalog()
     const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)

@@ -13,6 +13,8 @@ import type { ContextBundle, ContextItem, RuntimeContextDelta } from '../context
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js'
 import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
+import { DEFAULT_FOREGROUND_TOKEN_BUDGET } from './kernel-guard-constants.js'
+import { createForegroundCompactExecutor } from './compact-executor-factory.js'
 
 /**
  * ForegroundContextManager - ContextManager implementation for foreground runner.
@@ -39,7 +41,12 @@ export class ForegroundContextManager implements ContextManager {
 
   assembleBundle(): ContextBundle {
     if (this.state.foregroundState && this.state.turnInput) {
-      return buildContextBundleFromForegroundState(this.state.foregroundState, this.state.turnInput)
+      return buildContextBundleFromForegroundState(
+        this.state.foregroundState,
+        this.state.turnInput,
+        undefined,
+        DEFAULT_FOREGROUND_TOKEN_BUDGET,
+      )
     }
 
     return {
@@ -65,6 +72,10 @@ export class ForegroundContextManager implements ContextManager {
   }
 
   applyDelta(delta: RuntimeContextDelta): void {
+    if (delta.replaceKeys && delta.replaceKeys.length > 0) {
+      const replaceSet = new Set(delta.replaceKeys)
+      this.state.items = this.state.items.filter((item) => !replaceSet.has(item.itemId))
+    }
     for (const item of delta.items) {
       this.state.items.push(item)
     }
@@ -213,6 +224,15 @@ export function buildKernelConfigFromDeps(deps: ProcessorOrchestrationDeps, agen
   const dispatcher = createKernelDispatcherAdapter(deps.runtimeDispatcher)
   const modelInputBuilder = createMinimalModelInputBuilder()
 
+  const compactExecutor = deps.summaryManager
+    ? createForegroundCompactExecutor(
+        deps.llmAdapter,
+        deps.summaryManager,
+        contextManager,
+        agentConfig?.model ?? 'default',
+      )
+    : undefined
+
   return {
     llmAdapter: deps.llmAdapter,
     toolExecutor,
@@ -222,6 +242,7 @@ export function buildKernelConfigFromDeps(deps: ProcessorOrchestrationDeps, agen
     maxIterations: 5,
     timeoutMs: agentConfig?.routingTimeoutMs ?? 60000,
     defaultModel: agentConfig?.model ?? undefined,
+    compactExecutor,
   }
 }
 
