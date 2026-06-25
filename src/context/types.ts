@@ -351,6 +351,8 @@ export type ContextBundle = {
   attachmentRefs?: AttachmentRef[]
   tokenEstimate: number
   compactHints?: CompactHints
+  workDirRoot?: string
+  workDirId?: string
 }
 
 export type RuntimeContextDelta = {

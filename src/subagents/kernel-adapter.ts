@@ -185,6 +185,8 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       maxIterations,
       timeoutMs,
       model: resolvedProvider.model,
+      ...(contextBundle.workDirRoot ? { workDirRoot: contextBundle.workDirRoot } : {}),
+      ...(contextBundle.workDirId ? { workDirId: contextBundle.workDirId } : {}),
     }
 
     const kernelRunFn = () => this.agentKernel.run(kernelInput)

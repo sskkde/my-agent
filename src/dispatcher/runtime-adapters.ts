@@ -81,6 +81,10 @@ export function registerDefaultRuntimeAdapters(deps: {
         agentId?: string
         agentProfile?: string
         launchSource?: string
+        toolDispatchRequest?: {
+          workDirRoot?: string
+          workDirId?: string
+        }
       }
 
       if (payload.toolUses) {
@@ -112,6 +116,8 @@ export function registerDefaultRuntimeAdapters(deps: {
             agentId: toolUse.agentId ?? payload.agentId,
             agentProfile: toolUse.agentProfile ?? payload.agentProfile,
             launchSource: toolUse.launchSource ?? payload.launchSource,
+            workDirRoot: payload.toolDispatchRequest?.workDirRoot,
+            workDirId: payload.toolDispatchRequest?.workDirId,
           }
         })
 
@@ -143,6 +149,8 @@ export function registerDefaultRuntimeAdapters(deps: {
         agentId: payload.agentId,
         agentProfile: payload.agentProfile,
         launchSource: payload.launchSource,
+        workDirRoot: payload.toolDispatchRequest?.workDirRoot,
+        workDirId: payload.toolDispatchRequest?.workDirId,
       })
 
       return result

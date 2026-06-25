@@ -193,8 +193,12 @@ export function buildContextBundleFromForegroundState(
     input.attachmentIds && input.attachmentIds.length > 0 && attachmentResolver
       ? buildAttachmentContextItems(attachmentResolver(input.attachmentIds))
       : []
+  const workdirContextItems: ContextItem[] = input.workDirName
+    ? buildWorkdirContextItems(input.workDirName)
+    : []
   const orderedItems: ContextItem[] = [
     ...buildOrderedItems(input),
+    ...workdirContextItems,
     ...attachmentContextItems,
     ...todoContextItems,
   ]
@@ -219,6 +223,8 @@ export function buildContextBundleFromForegroundState(
     compactHints: tokenBudget !== undefined
       ? generateForegroundCompactHints([...pinnedItems, ...orderedItems], tokenBudget)
       : undefined,
+    ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
+    ...(input.workDirId ? { workDirId: input.workDirId } : {}),
   }
 }
 
@@ -255,6 +261,23 @@ function buildOrderedItems(input: ForegroundTurnInput): ContextItem[] {
       semanticType: 'instruction' as const,
       content: input.message,
       estimatedTokens: estimateTokens(input.message),
+    },
+  ]
+}
+
+function buildWorkdirContextItems(workDirName: string): ContextItem[] {
+  const content =
+    `[Active Work Directory: "${workDirName}"]\n` +
+    `All file read/write/edit/search operations are scoped to this work directory. ` +
+    `Do not attempt to access files outside this directory.`
+  return [
+    {
+      itemId: 'active_workdir',
+      sourceType: 'system_note' as const,
+      semanticType: 'constraint' as const,
+      content,
+      estimatedTokens: estimateTokens(content),
+      isPinned: true,
     },
   ]
 }
