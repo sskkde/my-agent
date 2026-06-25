@@ -32,7 +32,7 @@ export interface FileApplyPatchResult {
 export function createFileApplyPatchTool(): ToolDefinition {
   const handler: ToolHandler = async (
     params: unknown,
-    _context: ToolExecutionContext,
+    context: ToolExecutionContext,
   ): Promise<ToolExecutionResult> => {
     const typedParams = params as FileApplyPatchParams
 
@@ -94,7 +94,7 @@ export function createFileApplyPatchTool(): ToolDefinition {
       }
     }
 
-    const workspaceRoot = getWorkspaceRoot()
+    const workspaceRoot = context.workDirRoot ?? getWorkspaceRoot()
     const dryRun = typedParams.dryRun === true
     const results: OperationResult[] = []
     let applied = 0
@@ -103,7 +103,10 @@ export function createFileApplyPatchTool(): ToolDefinition {
     // Execute operations
     for (const op of operations) {
       // Validate path safety
-      const safetyResult = validateWritePathSafety(op.filePath, workspaceRoot, { allowNew: true })
+	      const safetyResult = validateWritePathSafety(op.filePath, workspaceRoot, {
+	        allowNew: true,
+	        enforceWorkdirBoundary: Boolean(context.workDirRoot),
+	      })
       if (!safetyResult.safe) {
         results.push({
           filePath: op.filePath,
@@ -148,6 +151,7 @@ export function createFileApplyPatchTool(): ToolDefinition {
                 workspaceRoot,
                 expectedHash: op.expectedHash,
                 createDirs: true,
+                enforceWorkdirBoundary: Boolean(context.workDirRoot),
               })
               results.push({
                 filePath: op.filePath,
@@ -164,6 +168,7 @@ export function createFileApplyPatchTool(): ToolDefinition {
             const readResult = readTextFileForEdit({
               filePath: op.filePath,
               workspaceRoot,
+              enforceWorkdirBoundary: Boolean(context.workDirRoot),
             })
 
             if (!readResult.exists) {
@@ -208,6 +213,7 @@ export function createFileApplyPatchTool(): ToolDefinition {
               workspaceRoot,
               expectedHash: readResult.hash,
               createDirs: false,
+              enforceWorkdirBoundary: Boolean(context.workDirRoot),
             })
 
             results.push({
