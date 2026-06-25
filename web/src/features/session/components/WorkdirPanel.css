@@ -1,0 +1,628 @@
+/* ==========================================================================
+   Workdir Panel Styles
+   ========================================================================== */
+
+.workdir-panel {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--chat-workspace-border, var(--border));
+  background: var(--chat-workspace-bg, var(--bg-elevated));
+  min-height: 200px;
+  max-height: 360px;
+  overflow: hidden;
+}
+
+/* Header with selector */
+.workdir-panel-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--chat-workspace-border, var(--border));
+  flex-shrink: 0;
+}
+
+/* Error bar */
+.workdir-panel-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background-color: #fef2f2;
+  color: #991b1b;
+  font-size: 12px;
+  border-bottom: 1px solid #fecaca;
+  flex-shrink: 0;
+}
+
+.workdir-panel-error-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #991b1b;
+  padding: 2px;
+}
+
+.workdir-panel-error-dismiss:hover {
+  color: #7f1d1d;
+}
+
+/* Content area */
+.workdir-panel-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workdir-panel-tree {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--chat-workspace-border, var(--border));
+}
+
+.workdir-panel-editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Empty state */
+.workdir-panel-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   Workdir Selector
+   ========================================================================== */
+
+.workdir-selector {
+  position: relative;
+  flex: 1;
+}
+
+.workdir-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--chat-workspace-border, var(--border));
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.workdir-selector-trigger:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.workdir-selector-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workdir-selector-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.workdir-selector-name {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workdir-selector-chevron {
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.workdir-selector-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--bg-elevated);
+  border: 1px solid var(--chat-workspace-border, var(--border));
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.workdir-selector-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.1s ease;
+}
+
+.workdir-selector-option:hover {
+  background-color: var(--bg);
+}
+
+.workdir-selector-option--active {
+  background-color: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.workdir-selector-option--clear {
+  color: var(--muted);
+  border-bottom: 1px solid var(--chat-workspace-border, var(--border));
+}
+
+.workdir-selector-option--create {
+  color: var(--accent);
+  font-weight: 500;
+  border-top: 1px solid var(--chat-workspace-border, var(--border));
+}
+
+.workdir-selector-option-check {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workdir-selector-create {
+  padding: 8px 12px;
+  border-top: 1px solid var(--chat-workspace-border, var(--border));
+}
+
+.workdir-selector-create-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--chat-workspace-border, var(--border));
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.workdir-selector-create-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.workdir-selector-create-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.workdir-selector-create-confirm,
+.workdir-selector-create-cancel {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--chat-workspace-border, var(--border));
+}
+
+.workdir-selector-create-confirm {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.workdir-selector-create-confirm:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.workdir-selector-create-cancel {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   File Tree
+   ========================================================================== */
+
+.workdir-file-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.workdir-file-tree--empty {
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.workdir-file-tree-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.workdir-file-tree-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--chat-workspace-border, var(--border));
+  flex-shrink: 0;
+}
+
+.workdir-file-tree-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.workdir-file-tree-toolbar-btn:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--chat-workspace-border, var(--border));
+}
+
+.workdir-file-tree-toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.workdir-file-tree-error {
+  padding: 6px 10px;
+  background-color: #fef2f2;
+  color: #991b1b;
+  font-size: 12px;
+  border-bottom: 1px solid #fecaca;
+}
+
+.workdir-file-tree-loading {
+  padding: 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workdir-file-tree-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.workdir-file-tree-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workdir-tree-node {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 4px 12px;
+  cursor: default;
+  transition: background-color 0.1s ease;
+}
+
+.workdir-tree-node--file {
+  cursor: pointer;
+}
+
+.workdir-tree-node--file:hover {
+  background-color: var(--bg);
+}
+
+.workdir-tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.workdir-tree-node-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.workdir-tree-node-name {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workdir-tree-rename-input {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.workdir-tree-rename-input:focus {
+  outline: none;
+}
+
+.workdir-tree-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.workdir-tree-node:hover .workdir-tree-node-actions {
+  opacity: 1;
+}
+
+.workdir-tree-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.workdir-tree-action-btn:hover {
+  background: var(--bg);
+}
+
+.workdir-tree-action-btn--danger:hover {
+  background: #fef2f2;
+}
+
+.workdir-tree-confirm-delete {
+  display: flex;
+  gap: 4px;
+  opacity: 1;
+}
+
+.workdir-tree-confirm-btn {
+  padding: 2px 6px;
+  border: 1px solid var(--chat-workspace-border, var(--border));
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.workdir-tree-confirm-btn--danger {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+/* Create form */
+.workdir-tree-create-form {
+  padding: 6px 8px;
+  border-top: 1px solid var(--chat-workspace-border, var(--border));
+}
+
+.workdir-tree-create-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.workdir-tree-create-input:focus {
+  outline: none;
+}
+
+.workdir-tree-create-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.workdir-tree-create-confirm,
+.workdir-tree-create-cancel {
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid var(--chat-workspace-border, var(--border));
+}
+
+.workdir-tree-create-confirm {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.workdir-tree-create-confirm:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.workdir-tree-create-cancel {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   File Editor
+   ========================================================================== */
+
+.workdir-file-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.workdir-file-editor--loading,
+.workdir-file-editor--error {
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.workdir-file-editor-loading {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workdir-file-editor-error {
+  color: #991b1b;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.workdir-file-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--chat-workspace-border, var(--border));
+  flex-shrink: 0;
+}
+
+.workdir-file-editor-filename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workdir-file-editor-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.workdir-file-editor-path {
+  font-size: 12px;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workdir-file-editor-dirty {
+  color: #f59e0b;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.workdir-file-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.workdir-file-editor-save-btn {
+  padding: 4px 10px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.workdir-file-editor-save-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.workdir-file-editor-save-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.workdir-file-editor-close-btn {
+  padding: 4px 8px;
+  background: none;
+  border: 1px solid var(--chat-workspace-border, var(--border));
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.workdir-file-editor-close-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.workdir-file-editor-save-error {
+  padding: 4px 10px;
+  background-color: #fef2f2;
+  color: #991b1b;
+  font-size: 11px;
+  border-bottom: 1px solid #fecaca;
+}
+
+.workdir-file-editor-textarea {
+  flex: 1;
+  width: 100%;
+  padding: 8px 10px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  border: none;
+  resize: none;
+}
+
+.workdir-file-editor-textarea:focus {
+  outline: none;
+}
+
+.workdir-file-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  border-top: 1px solid var(--chat-workspace-border, var(--border));
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
