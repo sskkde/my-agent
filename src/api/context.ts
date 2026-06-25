@@ -59,6 +59,8 @@ import { createWebhookTriggerStore, type WebhookTriggerStore } from '../storage/
 import { createWebhookDeliveryStore, type WebhookDeliveryStore } from '../storage/webhook-delivery-store.js'
 import { createScheduleTriggerStore, type ScheduleTriggerStore } from '../storage/schedule-trigger-store.js'
 import { createConnectorStore, type ConnectorStore } from '../storage/connector-store.js'
+import { createSessionChannelMapStore, type SessionChannelMapStore } from '../storage/session-channel-map-store.js'
+import { registerMessagingDefinitions } from '../connectors/messaging/definitions.js'
 import { createEventTriggerRuntime, type EventTriggerRuntime } from '../triggers/event-trigger-runtime.js'
 import { createPermissionEngine, type PermissionEngine } from '../permissions/permission-engine.js'
 import { createAgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
@@ -179,6 +181,7 @@ export interface ApiContext {
   auditRecorder: AuditRecorder
   uploadFileService: UploadFileService
   uploadPreviewExtractor: UploadPreviewExtractor
+  sessionChannelMapStore: SessionChannelMapStore
   webSearchBrowserProvider?: CloakBrowserProvider
 }
 
@@ -322,6 +325,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let webhookDeliveryStore: WebhookDeliveryStore
   let scheduleTriggerStore: ScheduleTriggerStore
   let connectorStore: ConnectorStore
+  let sessionChannelMapStore: SessionChannelMapStore
   let planStore: PlanStore
   let waitConditionStore: WaitConditionStore
   let artifactStore: ArtifactStore
@@ -388,6 +392,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     connectorStore =
       ((existingStores as Record<string, unknown>)?.connectorStore as ConnectorStore) ??
       createConnectorStore(connection)
+    sessionChannelMapStore = createSessionChannelMapStore(connection)
     planStore = ((existingStores as Record<string, unknown>)?.planStore as PlanStore) ?? createPlanStore(connection)
     waitConditionStore =
       ((existingStores as Record<string, unknown>)?.waitConditionStore as WaitConditionStore) ??
@@ -416,6 +421,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       details: error instanceof Error ? error.message : String(error),
     }
   }
+
+  registerMessagingDefinitions(connectorStore)
 
   const stores: Stores = {
     eventStore: {
@@ -899,6 +906,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     auditRecorder,
     uploadFileService,
     uploadPreviewExtractor,
+    sessionChannelMapStore,
     webSearchBrowserProvider,
   }
 }

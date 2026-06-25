@@ -343,6 +343,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
               type: 'array',
               items: { type: 'string', minLength: 1 },
             },
+            sourceChannel: { type: 'string' },
           },
         },
       },
@@ -352,7 +353,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply
       }
       const { sessionId } = request.params
-      const { text, attachmentIds } = request.body
+      const { text, attachmentIds, sourceChannel } = request.body
 
       const persistedSession = sessionStore?.getById(sessionId)
       if (!persistedSession) {
@@ -435,7 +436,11 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         }
       }
 
-      const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, 'webui', attachmentIds)
+      // Validate source channel: must be a registered channel, default to 'webui'
+      const validatedChannel =
+        sourceChannel && context.channelRegistry.has(sourceChannel) ? sourceChannel : 'webui'
+
+      const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, validatedChannel, attachmentIds)
       const processorInput = convertInboundEnvelopeToProcessorInput(envelope)
 
       sessionStore?.updateActivity(sessionId, new Date().toISOString())
@@ -460,7 +465,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
             envelope.envelopeId,
           )
 
-          context.channelRegistry.deliver(envelope.sourceChannel, outboundEnvelope)
+          await context.channelRegistry.deliver(envelope.sourceChannel, outboundEnvelope)
 
           if (sessionStore && 'stores' in context) {
             const transcripts = context.stores.transcriptStore.findBySession(sessionId)
@@ -490,7 +495,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
               envelope.envelopeId,
             )
 
-            context.channelRegistry.deliver(envelope.sourceChannel, errorEnvelope)
+            await context.channelRegistry.deliver(envelope.sourceChannel, errorEnvelope)
 
             if (sessionStore && 'stores' in context) {
               const transcripts = context.stores.transcriptStore.findBySession(sessionId)

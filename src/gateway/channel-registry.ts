@@ -12,6 +12,7 @@ export interface DeliveryResult {
     code: string
     message: string
   }
+  metadata?: Record<string, unknown>
 }
 
 /**
@@ -21,9 +22,9 @@ export interface ChannelHandler {
   /**
    * Deliver an outbound envelope to the channel
    * @param envelope - The outbound envelope to deliver
-   * @returns DeliveryResult indicating success or controlled failure
+   * @returns DeliveryResult or Promise<DeliveryResult> indicating success or controlled failure
    */
-  deliver(envelope: OutboundEnvelope): DeliveryResult
+  deliver(envelope: OutboundEnvelope): DeliveryResult | Promise<DeliveryResult>
 }
 
 /**
@@ -78,9 +79,9 @@ export interface ChannelRegistry {
    * Deliver an envelope to a specific channel
    * @param channelId - Target channel identifier
    * @param envelope - Outbound envelope to deliver
-   * @returns DeliveryResult - success or controlled failure for unknown channels
+   * @returns Promise<DeliveryResult> - success or controlled failure for unknown channels
    */
-  deliver(channelId: string, envelope: OutboundEnvelope): DeliveryResult
+  deliver(channelId: string, envelope: OutboundEnvelope): Promise<DeliveryResult>
 }
 
 /**
@@ -121,7 +122,7 @@ export function createChannelRegistry(): ChannelRegistry {
       return channels.has(id)
     },
 
-    deliver(channelId: string, envelope: OutboundEnvelope): DeliveryResult {
+    async deliver(channelId: string, envelope: OutboundEnvelope): Promise<DeliveryResult> {
       const entry = channels.get(channelId)
 
       if (!entry) {
@@ -135,7 +136,7 @@ export function createChannelRegistry(): ChannelRegistry {
       }
 
       try {
-        const result = entry.handler.deliver(envelope)
+        const result = await entry.handler.deliver(envelope)
         return result
       } catch (error) {
         return {

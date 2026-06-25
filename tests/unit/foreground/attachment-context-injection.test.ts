@@ -246,7 +246,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
     const input = createMockInput({ attachmentIds: ['file-001'] })
     const state = createMockState()
 
-    const bundle = buildContextBundleFromForegroundState(state, input, undefined, resolver)
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, undefined, resolver)
 
     // Should have: current_message + attachment item
     expect(bundle.orderedItems.length).toBeGreaterThanOrEqual(2)
@@ -267,7 +267,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
     const input = createMockInput({ attachmentIds: ['file-002'] })
     const state = createMockState()
 
-    const bundle = buildContextBundleFromForegroundState(state, input, undefined, resolver)
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, undefined, resolver)
 
     const attachmentItem = bundle.orderedItems.find((i) => i.sourceType === 'attachment')
     expect(attachmentItem).toBeDefined()
@@ -281,7 +281,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
     const input = createMockInput({ attachmentIds: [] })
     const state = createMockState()
 
-    const bundle = buildContextBundleFromForegroundState(state, input, undefined, resolver)
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, undefined, resolver)
 
     const attachmentItems = bundle.orderedItems.filter((i) => i.sourceType === 'attachment')
     expect(attachmentItems).toHaveLength(0)
@@ -292,7 +292,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
     const input = createMockInput() // no attachmentIds
     const state = createMockState()
 
-    const bundle = buildContextBundleFromForegroundState(state, input, undefined, resolver)
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, undefined, resolver)
 
     const attachmentItems = bundle.orderedItems.filter((i) => i.sourceType === 'attachment')
     expect(attachmentItems).toHaveLength(0)
@@ -313,7 +313,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
     const input = createMockInput({ attachmentIds: ['file-001'] })
     const state = createMockState()
 
-    const bundleWithAttachment = buildContextBundleFromForegroundState(state, input, undefined, resolver)
+    const bundleWithAttachment = buildContextBundleFromForegroundState(state, input, undefined, undefined, resolver)
     const bundleWithout = buildContextBundleFromForegroundState(state, createMockInput())
 
     expect(bundleWithAttachment.tokenEstimate).toBeGreaterThan(bundleWithout.tokenEstimate)
@@ -327,7 +327,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
     const input = createMockInput({ attachmentIds: ['file-001', 'file-002'] })
     const state = createMockState()
 
-    const bundle = buildContextBundleFromForegroundState(state, input, undefined, resolver)
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, undefined, resolver)
 
     for (const item of bundle.orderedItems) {
       expect(item.content).not.toContain('storageRef')
@@ -344,7 +344,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
     const input = createMockInput({ attachmentIds: ['file-nonexistent'] })
     const state = createMockState()
 
-    const bundle = buildContextBundleFromForegroundState(state, input, undefined, resolver)
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, undefined, resolver)
 
     const attachmentItems = bundle.orderedItems.filter((i) => i.sourceType === 'attachment')
     expect(attachmentItems).toHaveLength(0)

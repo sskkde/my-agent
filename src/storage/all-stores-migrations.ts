@@ -2585,6 +2585,43 @@ export const todosOwnerAgentIdMigration: Migration = {
   `,
 }
 
+// ============================================================================
+// STORE 65: Session Channel Mappings (version 65)
+// ============================================================================
+export const sessionChannelMappingsTableMigration: Migration = {
+  version: 65,
+  name: 'create_session_channel_mappings_table',
+  up: `
+    CREATE TABLE session_channel_mappings (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      provider TEXT NOT NULL,
+      external_conversation_id TEXT NOT NULL,
+      external_user_id TEXT NOT NULL,
+      connector_instance_id TEXT NOT NULL,
+      internal_user_id TEXT NOT NULL,
+      internal_session_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      last_seen_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX idx_scm_external_unique
+      ON session_channel_mappings(tenant_id, provider, external_conversation_id, external_user_id, connector_instance_id);
+    CREATE INDEX idx_scm_provider
+      ON session_channel_mappings(provider);
+    CREATE INDEX idx_scm_internal_session
+      ON session_channel_mappings(internal_session_id);
+    CREATE INDEX idx_scm_connector_instance
+      ON session_channel_mappings(connector_instance_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_scm_connector_instance;
+    DROP INDEX IF EXISTS idx_scm_internal_session;
+    DROP INDEX IF EXISTS idx_scm_provider;
+    DROP INDEX IF EXISTS idx_scm_external_unique;
+    DROP TABLE IF EXISTS session_channel_mappings
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -2724,6 +2761,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Domestic provider types
   domesticProviderTypesMigration, // v65
+
+  // Session Channel Mappings
+  sessionChannelMappingsTableMigration, // v66
 ]
 
 /**

@@ -97,6 +97,7 @@ export interface TranscriptsResponse {
 export interface SendMessageRequest {
   text: string
   attachmentIds?: string[]
+  sourceChannel?: string
 }
 
 export interface SendMessageResponse {
