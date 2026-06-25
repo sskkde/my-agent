@@ -105,6 +105,70 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
       'Covers web search planning, source credibility evaluation, and result synthesis.',
     tags: ['web', 'research', 'search'],
   },
+  {
+    skillId: 'pptx-generator',
+    name: 'PPTX Generator',
+    description:
+      'Guidance for generating and reading PowerPoint presentations (.pptx) via the MiniMax Document MCP server.',
+    category: 'write',
+    sensitivity: 'medium',
+    enabled: true,
+    source: 'builtin',
+    allowedAgentTypes: ['subagent', 'workflow_step'],
+    defaultAgentProfiles: ['default'],
+    documentPath: 'pptx-generator.md',
+    summary:
+      'Covers PPTX generation from structured content and text extraction from existing presentations.',
+    tags: ['pptx', 'presentation', 'document', 'mcp', 'minimax'],
+  },
+  {
+    skillId: 'minimax-xlsx',
+    name: 'MiniMax XLSX',
+    description:
+      'Guidance for reading and validating Excel spreadsheets (.xlsx) via the MiniMax Document MCP server.',
+    category: 'read',
+    sensitivity: 'medium',
+    enabled: true,
+    source: 'builtin',
+    allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
+    defaultAgentProfiles: ['default'],
+    documentPath: 'minimax-xlsx.md',
+    summary:
+      'Covers XLSX data extraction and file validation through MCP tools.',
+    tags: ['xlsx', 'excel', 'spreadsheet', 'mcp', 'minimax'],
+  },
+  {
+    skillId: 'minimax-docx',
+    name: 'MiniMax DOCX',
+    description:
+      'Guidance for generating Word documents (.docx) via the MiniMax Document MCP server.',
+    category: 'write',
+    sensitivity: 'medium',
+    enabled: true,
+    source: 'builtin',
+    allowedAgentTypes: ['subagent', 'workflow_step'],
+    defaultAgentProfiles: ['default'],
+    documentPath: 'minimax-docx.md',
+    summary:
+      'Covers DOCX generation from structured content including text, headings, lists, and tables.',
+    tags: ['docx', 'word', 'document', 'mcp', 'minimax'],
+  },
+  {
+    skillId: 'minimax-pdf',
+    name: 'MiniMax PDF',
+    description:
+      'Guidance for generating PDF documents via the MiniMax Document MCP server.',
+    category: 'write',
+    sensitivity: 'medium',
+    enabled: true,
+    source: 'builtin',
+    allowedAgentTypes: ['subagent', 'workflow_step'],
+    defaultAgentProfiles: ['default'],
+    documentPath: 'minimax-pdf.md',
+    summary:
+      'Covers PDF generation from structured content including text, tables, and formatted layouts.',
+    tags: ['pdf', 'document', 'mcp', 'minimax'],
+  },
 ]
 
 // ---------------------------------------------------------------------------
