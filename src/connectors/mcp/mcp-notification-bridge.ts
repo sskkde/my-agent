@@ -4,6 +4,7 @@ import type { EventStore } from '../../storage/event-store.js'
 import type { TriggerRegistration, TriggerStore, TriggerStatus } from '../../storage/trigger-store.js'
 import type { RuntimeTriggerEvent } from '../../triggers/types.js'
 import type { McpSessionManager } from './mcp-session-manager.js'
+import { redactMcpConfig } from './mcp-secret-redaction.js'
 
 export interface McpNotification {
   id?: string
@@ -78,7 +79,7 @@ export class McpNotificationBridge {
       correlationId: eventId,
       idempotencyKey,
       relatedRefs: {},
-      payload: {
+      payload: redactMcpConfig({
         eventType: 'mcp_notification',
         source: `mcp.${serverId}`,
         sessionId,
@@ -88,7 +89,7 @@ export class McpNotificationBridge {
           mcpSessionId: sessionId,
           mcpServerId: serverId,
         },
-      },
+      }),
       sensitivity: 'medium',
       retentionClass: 'standard',
       createdAt: new Date().toISOString(),
@@ -140,14 +141,14 @@ export class McpNotificationBridge {
       source: { sourceModule: 'trigger', sourceAction: 'mcp_notification' },
       targetRuntime: this.targetRuntime(trigger.targetType),
       targetAction: this.targetAction(trigger.targetType),
-      payload: {
+      payload: redactMcpConfig({
         triggerId: trigger.id,
         targetRef: trigger.targetRef,
         eventType: event.eventType,
         triggerEventId: event.eventId,
         notification: event.payload.notification,
         source: event.payload.source,
-      },
+      }),
       correlationId: event.correlationId,
       sessionId: event.sessionId,
       targetRef: this.targetRef(trigger.targetType, trigger.targetRef),

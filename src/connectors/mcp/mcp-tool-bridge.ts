@@ -11,6 +11,7 @@ import {
   type NormalizedConnectorResult,
 } from '../runtime/connector-response-normalizer.js'
 import type { AuditRecorder } from '../../observability/audit-types.js'
+import { redactMcpConfig, redactMcpErrorMessage } from './mcp-secret-redaction.js'
 
 export interface McpToolTransport {
   listTools(): Promise<MCPToolDescriptor[]> | MCPToolDescriptor[]
@@ -222,7 +223,7 @@ export class McpToolBridge {
         connectorInstanceId,
         error: {
           code: 'mcp_tool_call_failed',
-          message: `${this.errorMessage(error)}. Reconnect the MCP server and retry if the session was interrupted.`,
+          message: `${redactMcpErrorMessage(this.errorMessage(error))}. Reconnect the MCP server and retry if the session was interrupted.`,
           recoverable: true,
         },
       }
@@ -244,7 +245,7 @@ export class McpToolBridge {
         connectorInstanceId,
         error: {
           code: String(raw.error?.code ?? 'mcp_tool_error'),
-          message: String(raw.error?.message ?? 'MCP tool returned an error'),
+          message: redactMcpErrorMessage(String(raw.error?.message ?? 'MCP tool returned an error')),
           recoverable: false,
         },
       }
@@ -280,7 +281,7 @@ export class McpToolBridge {
       toolName,
       userId: options.userId ?? this.defaultUserId,
       sessionId: options.executionSessionId,
-      params,
+      params: redactMcpConfig(params),
       result,
       status: result.status === 'completed' ? 'success' : 'failure',
     })

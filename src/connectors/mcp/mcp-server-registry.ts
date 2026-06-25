@@ -1,5 +1,5 @@
 import type { ConnectionManager } from '../../storage/connection.js'
-import type { MCPServerDefinition } from '../types.js'
+import type { MCPServerDefinition, MCPServerAuthConfig } from '../types.js'
 
 export interface McpServerRegistry {
   registerServer(definition: MCPServerDefinition): void
@@ -14,14 +14,34 @@ interface McpServerRow {
   version: string
   description: string | null
   base_url: string
-  config_type: 'stdio' | 'http'
+  config_type: 'stdio' | 'http' | 'streamable_http'
   command: string | null
   args: string | null
+  authentication_json: string | null
   trust_level: 'trusted' | 'verified' | 'untrusted'
   sandbox_policy: string | null
   status: 'active' | 'inactive' | 'error'
   created_at: string
   updated_at: string
+}
+
+const SECRET_QUERY_PARAMS = ['key', 'api_key', 'apikey', 'token', 'secret', 'access_token']
+
+function redactSecretParams(baseUrl: string): string {
+  let parsedUrl: URL
+  try {
+    parsedUrl = new URL(baseUrl)
+  } catch {
+    return baseUrl
+  }
+  let mutated = false
+  for (const param of SECRET_QUERY_PARAMS) {
+    if (parsedUrl.searchParams.has(param)) {
+      parsedUrl.searchParams.delete(param)
+      mutated = true
+    }
+  }
+  return mutated ? parsedUrl.toString() : baseUrl
 }
 
 class SqliteMcpServerRegistry implements McpServerRegistry {
@@ -36,8 +56,8 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
     this.connection.exec(
       `INSERT INTO mcp_servers (
         server_id, name, version, description, base_url, config_type, command, args,
-        trust_level, sandbox_policy, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        authentication_json, trust_level, sandbox_policy, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(server_id) DO UPDATE SET
         name = excluded.name,
         version = excluded.version,
@@ -46,6 +66,7 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
         config_type = excluded.config_type,
         command = excluded.command,
         args = excluded.args,
+        authentication_json = excluded.authentication_json,
         trust_level = excluded.trust_level,
         sandbox_policy = excluded.sandbox_policy,
         status = excluded.status,
@@ -59,6 +80,7 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
         normalized.configType,
         normalized.command ?? null,
         normalized.args ? JSON.stringify(normalized.args) : null,
+        normalized.authentication ? JSON.stringify(normalized.authentication) : null,
         normalized.trustLevel,
         normalized.sandboxPolicy ? JSON.stringify(normalized.sandboxPolicy) : null,
         normalized.status,
@@ -105,19 +127,22 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
     if (configType === 'stdio' && definition.args !== undefined && !Array.isArray(definition.args)) {
       throw new Error('MCP stdio server args must be an array')
     }
-    if (configType === 'http') {
+    if (configType === 'http' || configType === 'streamable_http') {
       try {
         const parsedUrl = new URL(definition.baseUrl)
         if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
           throw new Error('unsupported protocol')
         }
       } catch {
-        throw new Error('MCP http server requires a valid http(s) baseUrl')
+        throw new Error(`MCP ${configType} server requires a valid http(s) baseUrl`)
       }
     }
 
+    const sanitizedBaseUrl = redactSecretParams(definition.baseUrl)
+
     return {
       ...definition,
+      baseUrl: sanitizedBaseUrl,
       configType,
       trustLevel: definition.trustLevel ?? 'untrusted',
       sandboxPolicy: definition.sandboxPolicy ?? {},
@@ -135,6 +160,7 @@ class SqliteMcpServerRegistry implements McpServerRegistry {
       configType: row.config_type,
       command: row.command ?? undefined,
       args: this.parseJson<string[]>(row.args, []),
+      authentication: this.parseJson<MCPServerAuthConfig | undefined>(row.authentication_json, undefined),
       capabilities: [],
       supportedFormats: ['json'],
       trustLevel: row.trust_level,
@@ -157,4 +183,4 @@ export function createMcpServerRegistry(connection: ConnectionManager): McpServe
   return new SqliteMcpServerRegistry(connection)
 }
 
-export { SqliteMcpServerRegistry }
+export { SqliteMcpServerRegistry, redactSecretParams }

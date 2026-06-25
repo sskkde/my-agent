@@ -1,5 +1,6 @@
 import type { ConnectionManager } from '../../storage/connection.js'
 import type { McpSession } from '../types.js'
+import { redactMcpErrorMessage } from './mcp-secret-redaction.js'
 
 export interface McpTransport {
   connect(): Promise<void> | void
@@ -47,12 +48,12 @@ class SqliteMcpSessionManager implements McpSessionManager {
       const result = transport?.connect()
       if (this.isPromiseLike(result)) {
         void result.catch((error) => {
-          this.markUnhealthy(sessionId, error instanceof Error ? error.message : String(error))
+          this.markUnhealthy(sessionId, redactMcpErrorMessage(error instanceof Error ? error.message : String(error)))
         })
       }
     } catch (error) {
       status = 'error'
-      lastError = error instanceof Error ? error.message : String(error)
+      lastError = redactMcpErrorMessage(error instanceof Error ? error.message : String(error))
     }
 
     this.connection.exec(
@@ -86,7 +87,7 @@ class SqliteMcpSessionManager implements McpSessionManager {
       `UPDATE mcp_sessions
        SET status = ?, last_error = ?, last_health_check = ?, updated_at = ?
        WHERE session_id = ?`,
-      ['error', error, now, now, sessionId],
+      ['error', redactMcpErrorMessage(error), now, now, sessionId],
     )
   }
 
