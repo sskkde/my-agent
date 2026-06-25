@@ -92,6 +92,10 @@ describe('Skills API Integration', () => {
       expect(skillIds).toContain('session_status')
       expect(skillIds).toContain('documentation_search')
       expect(skillIds).toContain('web_research_guidance')
+      expect(skillIds).toContain('pptx-generator')
+      expect(skillIds).toContain('minimax-xlsx')
+      expect(skillIds).toContain('minimax-docx')
+      expect(skillIds).toContain('minimax-pdf')
     })
 
     it('should include deprecated alias skills', async () => {

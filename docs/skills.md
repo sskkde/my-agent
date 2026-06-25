@@ -220,6 +220,10 @@ The platform ships with several built-in skills:
 | `session_status` | Guidance for session status queries | read | low |
 | `documentation_search` | Guidance for documentation search | search | low |
 | `web_research_guidance` | Guidance for web research tasks | search | medium |
+| `pptx-generator` | Guidance for generating and reading PowerPoint presentations through the MiniMax Document MCP server | write | medium |
+| `minimax-xlsx` | Guidance for reading and validating Excel spreadsheets through the MiniMax Document MCP server | read | medium |
+| `minimax-docx` | Guidance for generating Word documents through the MiniMax Document MCP server | write | medium |
+| `minimax-pdf` | Guidance for generating PDF documents through the MiniMax Document MCP server | write | medium |
 
 ## Creating Custom Skills
 

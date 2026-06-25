@@ -149,8 +149,9 @@ export class McpToolBridge {
     descriptor: MCPToolDescriptor,
   ): ToolDefinition {
     const name = this.bridgedToolName(serverId, descriptor.name)
-    const category = descriptor.annotations?.destructiveHint ? 'write' : 'read'
-    const sensitivity = descriptor.annotations?.destructiveHint ? 'high' : 'medium'
+    const isDestructive = descriptor.annotations?.destructiveHint === true
+    const category = isDestructive ? 'write' : 'read'
+    const sensitivity = isDestructive ? 'high' : 'medium'
     const definition: ToolDefinition = {
       name,
       description: descriptor.description,
@@ -158,7 +159,8 @@ export class McpToolBridge {
       sensitivity,
       schema: descriptor.inputSchema,
       idempotent: descriptor.annotations?.idempotentHint ?? false,
-      requiresPermission: !descriptor.annotations?.readOnlyHint,
+      // destructiveHint=true must always require permission, regardless of readOnlyHint
+      requiresPermission: isDestructive ? true : !descriptor.annotations?.readOnlyHint,
       metadata: {
         bridge: 'mcp',
         sessionId,
