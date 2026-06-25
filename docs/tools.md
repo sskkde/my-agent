@@ -95,6 +95,29 @@ Execute code in JavaScript, TypeScript, or Bash.
 - **TypeScript**: Requires `tsx` package
 - **Bash**: Requires `bash` in PATH
 
+## Workdir-Aware File Tools
+
+File-tree tools operate within the user's selected managed workdir. When a workdir is active, these tools execute **without approval** for paths inside that workdir:
+
+| Tool | Category | Approval (in workdir) | Description |
+|------|----------|----------------------|-------------|
+| `file_read` | file | No | Read file contents |
+| `file_write` | file | No | Write/create files |
+| `file_edit` | file | No | Edit existing files |
+| `file_glob` | file | No | Search files by pattern |
+| `file_grep` | file | No | Search file contents by regex |
+| `file_apply_patch` | file | No | Apply unified diffs |
+
+**Important caveats:**
+
+- No-approval applies **only** to file-tree operations inside the selected managed workdir
+- `exec`, `bash`, `code_execution`, and `process` tools **still require approval** regardless of workdir
+- Paths outside the active workdir are rejected (path traversal, symlink escape)
+- If no workdir is active, file tools fall back to standard approval flow
+- Arbitrary host paths are **not supported**; only managed workdir paths are accessible
+
+**Managed-directory-only policy:** The model can only access files within the user's selected workdir. It cannot read or write to arbitrary paths on the host filesystem.
+
 ## Security Boundaries
 
 ### Hard Limits
