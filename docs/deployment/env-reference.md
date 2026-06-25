@@ -19,7 +19,8 @@
 8. [文件上传配置](#文件上传配置)
 9. [运行时配置](#运行时配置)
 10. [OAuth 配置](#oauth-配置)
-11. [生产环境必需变量](#生产环境必需变量)
+11. [消息平台配置](#消息平台配置)
+12. [生产环境必需变量](#生产环境必需变量)
 
 ---
 
@@ -677,6 +678,182 @@ UPLOAD_PREVIEW_MAX_BYTES=4096
 | **用途** | Google OAuth 客户端密钥 |
 | **默认值** | 无 |
 | **生产要求** | 使用 Google OAuth 时必需 |
+
+---
+
+## 消息平台配置
+
+> 消息平台（Messaging Providers）允许 Agent 通过飞书、Telegram、钉钉、QQ、企业微信等平台接收和发送消息。
+> 所有 Provider 均为可选配置，按需启用。
+
+### Webhook URL 模式
+
+每个消息平台连接器通过统一的 Webhook 端点接收消息：
+
+```
+POST /api/v1/messaging/{provider}/{connectorInstanceId}/webhook
+```
+
+其中：
+- `{provider}` 为 Provider 标识符：`feishu`、`telegram`、`dingtalk`、`qq`、`wechat`
+- `{connectorInstanceId}` 为连接器实例 ID（创建连接器时生成）
+
+**示例**（以 Feishu 为例）：
+```
+POST https://your-domain.example.com/api/v1/messaging/feishu/inst_abc123/webhook
+```
+
+### 手动设置流程
+
+消息平台连接器不支持自动注册。每个 Provider 需要手动完成以下步骤：
+
+1. **创建应用**：在对应平台的开发者控制台创建应用
+2. **获取凭证**：从开发者控制台获取所需的 App ID / App Secret / Token 等
+3. **配置环境变量**：将凭证填入 `.env` 文件（见下方各 Provider 配置）
+4. **创建连接器实例**：通过 API 创建连接器实例并记录返回的 `connectorInstanceId`
+5. **配置 Webhook URL**：在平台开发者控制台中将 Webhook URL 设置为上述模式中的地址
+6. **验证连通性**：发送测试消息确认 Webhook 能正常接收
+
+### V1 限制
+
+当前版本（V1）的消息平台集成有以下限制：
+
+- **仅支持纯文本消息**：不支持富文本卡片、图片、文件等富媒体内容
+- **无自动注册**：所有连接器实例必须通过 API 手动创建
+- **无消息模板**：不支持预定义的消息模板或快捷回复
+- **单向 Webhook**：仅支持平台到 Agent 的入站消息，Agent 回复通过 API 主动调用
+
+---
+
+### Feishu（飞书）
+
+| 属性 | 值 |
+|------|-----|
+| **来源** | [飞书开放平台](https://open.feishu.cn/app) |
+| **必填** | 使用飞书时必需 |
+
+| 变量 | 用途 | 必需 |
+|------|------|------|
+| `FEISHU_APP_ID` | 飞书应用 App ID | ✓ |
+| `FEISHU_APP_SECRET` | 飞书应用 App Secret | ✓ |
+| `FEISHU_VERIFICATION_TOKEN` | Webhook 请求验证 Token | ✓ |
+| `FEISHU_ENCRYPT_KEY` | 请求体加密密钥 | 可选 |
+
+**创建应用**：登录飞书开放平台 → 创建企业自建应用 → 开启机器人能力 → 获取上述凭证。
+
+**示例**：
+```bash
+FEISHU_APP_ID=cli_xxxxxxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FEISHU_VERIFICATION_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+---
+
+### Telegram
+
+| 属性 | 值 |
+|------|-----|
+| **来源** | Telegram Bot API |
+| **必填** | 使用 Telegram 时必需 |
+
+| 变量 | 用途 | 必需 |
+|------|------|------|
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot Token | ✓ |
+| `TELEGRAM_WEBHOOK_SECRET` | Webhook 请求验证密钥 | ✓ |
+
+**创建 Bot**：在 Telegram 中向 [@BotFather](https://t.me/BotFather) 发送 `/newbot`，按提示创建 Bot 并获取 Token。
+
+**示例**：
+```bash
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_WEBHOOK_SECRET=your-webhook-secret
+```
+
+---
+
+### DingTalk（钉钉）
+
+| 属性 | 值 |
+|------|-----|
+| **来源** | [钉钉开放平台](https://open-dev.dingtalk.com/) |
+| **必填** | 使用钉钉时必需 |
+
+| 变量 | 用途 | 必需 |
+|------|------|------|
+| `DINGTALK_APP_KEY` | 钉钉应用 App Key | ✓ |
+| `DINGTALK_APP_SECRET` | 钉钉应用 App Secret | ✓ |
+| `DINGTALK_ROBOT_CODE` | 机器人代码 | ✓ |
+| `DINGTALK_SIGN_SECRET` | 请求签名验证密钥 | 可选 |
+
+**创建应用**：登录钉钉开放平台 → 创建企业内部应用 → 开启机器人能力 → 获取上述凭证。
+
+**示例**：
+```bash
+DINGTALK_APP_KEY=dingxxxxxxxxxxxxxxx
+DINGTALK_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DINGTALK_ROBOT_CODE=xxxxxxxxxxxxxxxx
+```
+
+---
+
+### QQ
+
+| 属性 | 值 |
+|------|-----|
+| **来源** | [QQ 开放平台](https://q.qq.com/) |
+| **必填** | 使用 QQ 时必需 |
+
+| 变量 | 用途 | 必需 |
+|------|------|------|
+| `QQ_APP_ID` | QQ 应用 App ID | ✓ |
+| `QQ_APP_SECRET` | QQ 应用 App Secret | ✓ |
+| `QQ_SANDBOX` | 是否使用沙箱环境（默认 `false`） | 可选 |
+
+**创建应用**：登录 QQ 开放平台 → 创建机器人应用 → 获取上述凭证。
+
+**示例**：
+```bash
+QQ_APP_ID=1234567890
+QQ_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+---
+
+### WeChat（企业微信）
+
+| 属性 | 值 |
+|------|-----|
+| **来源** | [企业微信管理后台](https://work.weixin.qq.com/) |
+| **必填** | 使用企业微信时必需 |
+
+| 变量 | 用途 | 必需 |
+|------|------|------|
+| `WECHAT_BOT_TOKEN` | 企业微信 Bot Token | ✓ |
+| `WECHAT_APP_SECRET` | 企业微信应用 Secret | ✓ |
+| `WECHAT_APP_ID` | 企业微信应用 ID（official 模式） | 可选 |
+| `WECHAT_ENCODING_AES_KEY` | 消息加密密钥 | 可选 |
+| `WECHAT_MODE` | 模式：`official`（默认）或 `ilink` | 可选 |
+
+**创建应用**：登录企业微信管理后台 → 应用管理 → 创建应用 → 获取上述凭证。
+
+**示例**：
+```bash
+WECHAT_BOT_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+WECHAT_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+---
+
+### 消息平台变量快速参考
+
+| Provider | 必填变量 | 可选变量 |
+|----------|----------|----------|
+| Feishu | `FEISHU_APP_ID`, `FEISHU_APP_SECRET`, `FEISHU_VERIFICATION_TOKEN` | `FEISHU_ENCRYPT_KEY` |
+| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | — |
+| DingTalk | `DINGTALK_APP_KEY`, `DINGTALK_APP_SECRET`, `DINGTALK_ROBOT_CODE` | `DINGTALK_SIGN_SECRET` |
+| QQ | `QQ_APP_ID`, `QQ_APP_SECRET` | `QQ_SANDBOX` |
+| WeChat | `WECHAT_BOT_TOKEN`, `WECHAT_APP_SECRET` | `WECHAT_APP_ID`, `WECHAT_ENCODING_AES_KEY`, `WECHAT_MODE` |
 
 ---
 
