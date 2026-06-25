@@ -341,7 +341,7 @@ describe('ApiContext Dependencies - Task 4', () => {
         get: (_id) => undefined,
         list: () => [],
         has: (_id) => false,
-        deliver: (_id, _envelope) => ({ success: false, error: { code: 'MOCK', message: 'mock' } }),
+        deliver: async (_id, _envelope) => ({ success: false, error: { code: 'MOCK', message: 'mock' } }),
       }
 
       const result = createApiContext({
@@ -844,7 +844,7 @@ describe('ApiContext Dependencies - Task 4', () => {
   })
 
   describe('Backward Compatibility', () => {
-    it('should preserve existing channel registry behavior', () => {
+    it('should preserve existing channel registry behavior', async () => {
       const result = createApiContext({ dbPath: ':memory:' })
       expect(isApiContextError(result)).toBe(false)
       if (isApiContextError(result)) return
@@ -854,7 +854,7 @@ describe('ApiContext Dependencies - Task 4', () => {
       expect(webui).toBeDefined()
       expect(webui?.status).toBe('active')
 
-      const deliveryResult = result.channelRegistry.deliver('unknown-channel', {
+      const deliveryResult = await result.channelRegistry.deliver('unknown-channel', {
         envelopeId: 'env-001',
         messageType: 'text',
         recipient: {

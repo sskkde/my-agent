@@ -81,7 +81,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
     apiContext.messageProcessor = createFailingProcessor(apiContext)
 
     const originalDeliver = apiContext.channelRegistry.deliver.bind(apiContext.channelRegistry)
-    apiContext.channelRegistry.deliver = (channelId: string, envelope: OutboundEnvelope): DeliveryResult => {
+    apiContext.channelRegistry.deliver = (channelId: string, envelope: OutboundEnvelope): Promise<DeliveryResult> => {
       deliveredEnvelopes.push({ channelId, envelope })
       return originalDeliver(channelId, envelope)
     }
@@ -204,6 +204,64 @@ describe('Outbound WebUI Routing - Task 8', () => {
       expect(webuiDelivery!.envelope.recipient.channel).toBe('webui')
     })
 
+    it('should default sourceChannel to webui when omitted', async () => {
+      deliveredEnvelopes = []
+
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const {
+        data: {
+          session: { sessionId },
+        },
+      } = (await createResponse.json()) as any
+
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ text: 'Default channel test' }),
+      })
+
+      expect(response.status).toBe(202)
+
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      const webuiDelivery = deliveredEnvelopes.find((d) => d.channelId === 'webui')
+      expect(webuiDelivery).toBeDefined()
+      expect(webuiDelivery!.envelope.recipient.channel).toBe('webui')
+    })
+
+    it('should fall back to webui when sourceChannel is not registered', async () => {
+      deliveredEnvelopes = []
+
+      const createResponse = await fetch(`${baseUrl}/api/v1/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({}),
+      })
+      const {
+        data: {
+          session: { sessionId },
+        },
+      } = (await createResponse.json()) as any
+
+      const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+        body: JSON.stringify({ text: 'Unknown channel test', sourceChannel: 'nonexistent-channel' }),
+      })
+
+      expect(response.status).toBe(202)
+
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      const webuiDelivery = deliveredEnvelopes.find((d) => d.channelId === 'webui')
+      expect(webuiDelivery).toBeDefined()
+      expect(webuiDelivery!.envelope.recipient.channel).toBe('webui')
+    })
+
     it('should route success responses through webui channel', async () => {
       deliveredEnvelopes = []
 
@@ -231,7 +289,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
       }
 
       const originalDeliver = successCtx.channelRegistry.deliver.bind(successCtx.channelRegistry)
-      successCtx.channelRegistry.deliver = (channelId: string, envelope: OutboundEnvelope): DeliveryResult => {
+      successCtx.channelRegistry.deliver = (channelId: string, envelope: OutboundEnvelope): Promise<DeliveryResult> => {
         deliveredEnvelopes.push({ channelId, envelope })
         return originalDeliver(channelId, envelope)
       }
