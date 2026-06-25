@@ -12,7 +12,7 @@ import { getWorkspaceRoot } from './safe-paths.js'
 import { randomBytes } from 'crypto'
 import { createRequire } from 'module'
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'fs'
-import { join, resolve } from 'path'
+import { join, resolve, relative, isAbsolute } from 'path'
 
 const require = createRequire(import.meta.url)
 
@@ -46,7 +46,7 @@ export function createCodeExecutionTool(store: ProcessSessionStore): ToolDefinit
   const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
     const typedParams = params as CodeExecutionParams
     const startTime = Date.now()
-    const workspaceRoot = getWorkspaceRoot()
+    const workspaceRoot = context.workDirRoot ?? getWorkspaceRoot()
 
     if (!typedParams.language || !['javascript', 'typescript', 'bash'].includes(typedParams.language)) {
       return {
@@ -149,6 +149,33 @@ export function createCodeExecutionTool(store: ProcessSessionStore): ToolDefinit
     }
 
     const workdir = typedParams.workdir ? resolve(workspaceRoot, typedParams.workdir) : workspaceRoot
+
+    // Validate workdir doesn't escape workspace root
+    if (typedParams.workdir) {
+      if (typedParams.workdir.includes('..')) {
+        return {
+          success: false,
+          error: {
+            code: 'WORKDIR_OUTSIDE_WORKSPACE',
+            message: 'workdir contains ".." which may escape workspace',
+            recoverable: false,
+          },
+        }
+      }
+
+      const relativePath = relative(workspaceRoot, workdir)
+      if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
+        return {
+          success: false,
+          error: {
+            code: 'WORKDIR_OUTSIDE_WORKSPACE',
+            message: 'workdir resolves outside workspace root',
+            recoverable: false,
+          },
+        }
+      }
+    }
+
     const timeoutMs = typedParams.timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS
     const maxOutputChars = typedParams.maxOutputChars ?? DEFAULT_EXEC_OUTPUT_CHARS
 
@@ -159,6 +186,7 @@ export function createCodeExecutionTool(store: ProcessSessionStore): ToolDefinit
       env: {},
       timeoutMs,
       maxOutputChars,
+      workDirId: context.workDirId,
     })
 
     const result = await new Promise<ToolExecutionResult>((resolve) => {
