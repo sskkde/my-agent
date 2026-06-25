@@ -57,6 +57,7 @@ const COMMAND_UI_OVERRIDES: Partial<Record<SharedCommandName, Partial<CommandUIM
   logout: { showInQuickActions: true },
   exit: { keyboardShortcut: 'Ctrl+Q' },
   quit: { keyboardShortcut: 'Ctrl+Q' },
+  workdir: { icon: 'folder' },
 }
 
 /**

@@ -62,6 +62,21 @@ import type {
   FileUploadMetadata,
   FileUploadResponse,
   FileListResponse,
+  WorkdirsResponse,
+  WorkdirResponse,
+  DeleteWorkdirResponse,
+  SessionWorkdirResponse,
+  ClearSessionWorkdirResponse,
+  WorkdirTreeResponse,
+  WorkdirFileContent,
+  WriteWorkdirFileRequest,
+  WriteWorkdirFileResponse,
+  MoveWorkdirEntryRequest,
+  MoveWorkdirEntryResponse,
+  DeleteWorkdirEntryResponse,
+  UploadWorkdirFileRequest,
+  UploadWorkdirFileResponse,
+  CreateWorkdirDirResponse,
 } from './types'
 
 const API_BASE = '/api/v1'
@@ -933,4 +948,179 @@ export function getFileDownloadUrl(fileId: string): string {
 export function downloadFile(fileId: string): void {
   const url = getFileDownloadUrl(fileId)
   window.open(url, '_blank')
+}
+
+// =============================================================================
+// Workdir API - User Session Workdirs
+// =============================================================================
+
+export async function listWorkdirs(): Promise<WorkdirsResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs`, { credentials: 'include' })
+  return parseResponse<WorkdirsResponse>(response)
+}
+
+export async function createWorkdir(name: string): Promise<WorkdirResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  return parseResponse<WorkdirResponse>(response)
+}
+
+export async function renameWorkdir(workdirId: string, name: string): Promise<WorkdirResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  return parseResponse<WorkdirResponse>(response)
+}
+
+export async function deleteWorkdir(workdirId: string): Promise<DeleteWorkdirResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  return parseResponse<DeleteWorkdirResponse>(response)
+}
+
+// =============================================================================
+// Session Workdir API
+// =============================================================================
+
+export async function getSessionWorkdir(sessionId: string): Promise<SessionWorkdirResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/workdir`, {
+    credentials: 'include',
+  })
+  return parseResponse<SessionWorkdirResponse>(response)
+}
+
+export async function setSessionWorkdir(
+  sessionId: string,
+  workdirId: string,
+): Promise<SessionWorkdirResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/workdir`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workdirId }),
+  })
+  return parseResponse<SessionWorkdirResponse>(response)
+}
+
+export async function clearSessionWorkdir(sessionId: string): Promise<ClearSessionWorkdirResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/workdir`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  return parseResponse<ClearSessionWorkdirResponse>(response)
+}
+
+// =============================================================================
+// Workdir File Tree API
+// =============================================================================
+
+export async function listWorkdirTree(
+  workdirId: string,
+  path?: string,
+): Promise<WorkdirTreeResponse> {
+  const params = new URLSearchParams()
+  if (path) params.set('path', path)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/tree${query}`, {
+    credentials: 'include',
+  })
+  return parseResponse<WorkdirTreeResponse>(response)
+}
+
+export async function readWorkdirFile(
+  workdirId: string,
+  path: string,
+): Promise<WorkdirFileContent> {
+  const params = new URLSearchParams({ path })
+  const response = await fetchWithTimeout(
+    `${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/files?${params.toString()}`,
+    { credentials: 'include' },
+  )
+  return parseResponse<WorkdirFileContent>(response)
+}
+
+export async function writeWorkdirFile(
+  workdirId: string,
+  path: string,
+  content: string,
+): Promise<WriteWorkdirFileResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/files`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, content } satisfies WriteWorkdirFileRequest),
+  })
+  return parseResponse<WriteWorkdirFileResponse>(response)
+}
+
+export async function createWorkdirDir(
+  workdirId: string,
+  path: string,
+): Promise<CreateWorkdirDirResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/dirs`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  })
+  return parseResponse<CreateWorkdirDirResponse>(response)
+}
+
+export async function moveWorkdirEntry(
+  workdirId: string,
+  fromPath: string,
+  toPath: string,
+): Promise<MoveWorkdirEntryResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/files`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fromPath, toPath } satisfies MoveWorkdirEntryRequest),
+  })
+  return parseResponse<MoveWorkdirEntryResponse>(response)
+}
+
+export async function deleteWorkdirEntry(
+  workdirId: string,
+  path: string,
+  options: { recursive?: boolean } = {},
+): Promise<DeleteWorkdirEntryResponse> {
+  const params = new URLSearchParams({ path })
+  if (options.recursive === true) params.set('recursive', 'true')
+  const response = await fetchWithTimeout(
+    `${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/files?${params.toString()}`,
+    {
+      method: 'DELETE',
+      credentials: 'include',
+    },
+  )
+  return parseResponse<DeleteWorkdirEntryResponse>(response)
+}
+
+export function getWorkdirFileDownloadUrl(workdirId: string, path: string): string {
+  const params = new URLSearchParams({ path })
+  return `${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/files/download?${params.toString()}`
+}
+
+export async function uploadWorkdirFile(
+  workdirId: string,
+  path: string,
+  content: string,
+): Promise<UploadWorkdirFileResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/files/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, content } satisfies UploadWorkdirFileRequest),
+  })
+  return parseResponse<UploadWorkdirFileResponse>(response)
 }
