@@ -47,3 +47,21 @@ export function readStoredTheme(): AppTheme {
 export function applyDocumentTheme(theme: AppTheme): void {
   document.documentElement.dataset.theme = theme
 }
+
+/**
+ * Persists the theme to localStorage, applies it to the document,
+ * and dispatches a custom event so other listeners can react.
+ *
+ * @param theme - The theme to persist and apply
+ */
+export function persistTheme(theme: AppTheme): void {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  } catch (error) {
+    console.warn('Failed to persist theme to localStorage:', error)
+  }
+  applyDocumentTheme(theme)
+  window.dispatchEvent(
+    new CustomEvent<AppTheme>('agent-platform-theme-change', { detail: theme }),
+  )
+}

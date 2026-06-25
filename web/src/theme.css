@@ -1,0 +1,194 @@
+/* ==========================================================================
+   Warm-Paper Theme Override
+   ==========================================================================
+   Activated when [data-theme="warm-paper"] is on <html>.
+   Imported after styles.css so it overrides base tokens.
+   ========================================================================== */
+
+[data-theme='warm-paper'] {
+  /* Core palette — paper, ink, seal-blue */
+  --accent: #537d96;
+  --accent-subtle: rgba(83, 125, 150, 0.08);
+  --bg: #f5efe4;
+  --bg-elevated: #fbf8f0;
+  --text: #2a2622;
+  --text-strong: #2a2622;
+  --muted: #6b6158;
+  --border: #d8cfbe;
+  --radius-md: 3px;
+
+  /* Paper surface layers */
+  --warm-paper-bg: #f5efe4;
+  --warm-paper-bg-elevated: #fbf8f0;
+  --warm-paper-bg-deep: #f5efe4;
+  --warm-paper-bg-glass: rgba(251, 248, 240, 0.92);
+
+  /* Ink text hierarchy */
+  --warm-paper-text: #2a2622;
+  --warm-paper-text-secondary: #4a433c;
+  --warm-paper-text-muted: #6b6158;
+
+  /* Border & line */
+  --warm-paper-border: #d8cfbe;
+  --warm-paper-border-width: 1px;
+
+  /* Seal-blue accent */
+  --warm-paper-accent: #537d96;
+  --warm-paper-accent-hover: #466a80;
+  --warm-paper-accent-subtle: rgba(83, 125, 150, 0.08);
+  --warm-paper-accent-rgb: 83, 125, 150;
+
+  /* Semantic colors — ink-dyed, minimal */
+  --warm-paper-success: #4a6b4a;
+  --warm-paper-success-rgb: 74, 107, 74;
+  --warm-paper-warning: #8b6f47;
+  --warm-paper-warning-rgb: 139, 111, 71;
+  --warm-paper-danger: #8b2c1f;
+  --warm-paper-danger-rgb: 139, 44, 31;
+
+  /* Border radius — low, seal-like */
+  --warm-paper-radius-sm: 2px;
+  --warm-paper-radius-md: 3px;
+  --warm-paper-radius-lg: 4px;
+
+  /* Elevation — paper layering */
+  --warm-paper-shadow-sm: 0 1px 2px rgba(42, 38, 34, 0.03);
+  --warm-paper-shadow-md: 0 2px 4px rgba(42, 38, 34, 0.04);
+  --warm-paper-shadow-lg: 0 4px 8px rgba(42, 38, 34, 0.05);
+
+  /* Interactive states */
+  --warm-paper-hover-overlay: rgba(42, 38, 34, 0.02);
+  --warm-paper-active-overlay: rgba(42, 38, 34, 0.04);
+  --warm-paper-focus-ring: rgba(83, 125, 150, 0.3);
+}
+
+/* Body surface */
+[data-theme='warm-paper'] body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Shell container — chat-only warm-paper surface */
+[data-theme='warm-paper'] .shell--chat {
+  background-color: var(--bg);
+}
+
+[data-theme='warm-paper'] .shell__content--chat {
+  background-color: var(--bg);
+}
+
+/* Product nav — warm paper elevation */
+[data-theme='warm-paper'] .product-nav {
+  background: var(--warm-paper-bg-elevated);
+  border-bottom: var(--warm-paper-border-width) solid var(--warm-paper-border);
+}
+
+/* Sidebar */
+[data-theme='warm-paper'] .sidebar-shell {
+  background: var(--warm-paper-bg-elevated);
+  border-color: var(--warm-paper-border);
+}
+
+/* Content cards */
+[data-theme='warm-paper'] .content-card,
+[data-theme='warm-paper'] .settings-section,
+[data-theme='warm-paper'] .dashboard-section {
+  background-color: var(--warm-paper-bg-elevated);
+  border-color: var(--warm-paper-border);
+  border-radius: var(--warm-paper-radius-md);
+  box-shadow: var(--warm-paper-shadow-sm);
+}
+
+/* Buttons */
+[data-theme='warm-paper'] .primary-button {
+  background-color: var(--warm-paper-accent);
+  border-radius: var(--warm-paper-radius-sm);
+}
+
+[data-theme='warm-paper'] .primary-button:hover {
+  background-color: var(--warm-paper-accent-hover);
+}
+
+[data-theme='warm-paper'] .secondary-button {
+  border-color: var(--warm-paper-border);
+  border-radius: var(--warm-paper-radius-sm);
+}
+
+/* Inputs */
+[data-theme='warm-paper'] .input-field,
+[data-theme='warm-paper'] .session-input,
+[data-theme='warm-paper'] .composer-input {
+  border-color: var(--warm-paper-border);
+  border-radius: var(--warm-paper-radius-sm);
+  background-color: var(--warm-paper-bg-elevated);
+}
+
+[data-theme='warm-paper'] .input-field:focus,
+[data-theme='warm-paper'] .session-input:focus {
+  border-color: var(--warm-paper-accent);
+  box-shadow: 0 0 0 3px var(--warm-paper-focus-ring);
+}
+
+/* Session messages */
+[data-theme='warm-paper'] .session-messages {
+  background-color: var(--warm-paper-bg);
+}
+
+[data-theme='warm-paper'] .session-input-dock {
+  background: var(--warm-paper-bg-elevated);
+  border-color: var(--warm-paper-border);
+}
+
+/* Version badge */
+[data-theme='warm-paper'] .version-badge {
+  background: var(--warm-paper-accent-subtle);
+  color: var(--warm-paper-accent);
+  border-radius: var(--warm-paper-radius-sm);
+}
+
+/* Context desk panel */
+[data-theme='warm-paper'] .context-desk {
+  background: var(--warm-paper-bg-elevated);
+  border-color: var(--warm-paper-border);
+}
+
+/* Scrollbar theming */
+[data-theme='warm-paper'] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-theme='warm-paper'] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme='warm-paper'] ::-webkit-scrollbar-thumb {
+  background: rgba(42, 38, 34, 0.12);
+  border-radius: 3px;
+}
+
+[data-theme='warm-paper'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(42, 38, 34, 0.22);
+}
+
+/* Focus ring */
+[data-theme='warm-paper'] *:focus-visible {
+  outline-color: var(--warm-paper-focus-ring);
+}
+
+@media (max-width: 640px) {
+  [data-theme='warm-paper'] .product-nav--chat {
+    padding-inline: 8px;
+    gap: 8px;
+  }
+
+  [data-theme='warm-paper'] .product-nav--chat .product-nav__switcher,
+  [data-theme='warm-paper'] .product-nav--chat .topbar__user {
+    display: none;
+  }
+
+  [data-theme='warm-paper'] .product-nav__controls {
+    gap: 8px;
+    margin-left: auto;
+  }
+}

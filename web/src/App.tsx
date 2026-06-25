@@ -11,6 +11,7 @@ import { SELECTED_SESSION_KEY } from './features/session/session-constants'
 import { readStoredTheme, applyDocumentTheme, type AppTheme } from './theme-storage'
 import type { TabId } from './components/TabNav'
 import './styles.css'
+import './theme.css'
 
 const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'))
 const OperationsPage = lazy(() => import('./features/operations/OperationsPage'))
