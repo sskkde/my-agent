@@ -30,6 +30,7 @@ import { registerToolResultsRoutes } from './routes/tool-results.js'
 import { registerTriggerRoutes } from './routes/triggers.js'
 import { registerConnectorRoutes } from './routes/connectors.js'
 import { registerFileRoutes } from './routes/files.js'
+import { registerWorkdirRoutes } from './routes/workdirs.js'
 import { registerPlannerRunRoutes } from './routes/planner-runs.js'
 import { registerObservabilityRoutes } from './routes/observability.js'
 import { registerApiKeyRoutes } from './routes/api-keys.js'
@@ -199,6 +200,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerTriggerRoutes(server, context)
     registerConnectorRoutes(server, context)
     registerFileRoutes(server, context)
+    registerWorkdirRoutes(server, context)
     registerPlannerRunRoutes(server, context)
     registerObservabilityRoutes(server, context)
     registerApiKeyRoutes(server, context)

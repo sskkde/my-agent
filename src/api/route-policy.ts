@@ -485,6 +485,50 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   },
   { method: 'GET', pathPattern: '/api/v1/admin/settings', resource: ResourceType.settings, action: Action.read },
   { method: 'PATCH', pathPattern: '/api/v1/admin/settings', resource: ResourceType.settings, action: Action.manage },
+
+  // ===========================================
+  // Workdirs
+  // ===========================================
+  { method: 'GET', pathPattern: '/api/v1/workdirs', resource: ResourceType.workdirs, action: Action.read },
+  { method: 'POST', pathPattern: '/api/v1/workdirs', resource: ResourceType.workdirs, action: Action.create },
+  { method: 'PATCH', pathPattern: '/api/v1/workdirs/:workdirId', resource: ResourceType.workdirs, action: Action.update },
+  { method: 'DELETE', pathPattern: '/api/v1/workdirs/:workdirId', resource: ResourceType.workdirs, action: Action.delete },
+  { method: 'GET', pathPattern: '/api/v1/workdirs/:workdirId/tree', resource: ResourceType.workdirs, action: Action.read },
+  { method: 'GET', pathPattern: '/api/v1/workdirs/:workdirId/files', resource: ResourceType.workdirs, action: Action.read },
+  { method: 'PUT', pathPattern: '/api/v1/workdirs/:workdirId/files', resource: ResourceType.workdirs, action: Action.update },
+  { method: 'DELETE', pathPattern: '/api/v1/workdirs/:workdirId/files', resource: ResourceType.workdirs, action: Action.delete },
+  { method: 'PATCH', pathPattern: '/api/v1/workdirs/:workdirId/files', resource: ResourceType.workdirs, action: Action.update },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/workdirs/:workdirId/files/download',
+    resource: ResourceType.workdirs,
+    action: Action.read,
+  },
+  {
+    method: 'POST',
+    pathPattern: '/api/v1/workdirs/:workdirId/files/upload',
+    resource: ResourceType.workdirs,
+    action: Action.create,
+  },
+  { method: 'POST', pathPattern: '/api/v1/workdirs/:workdirId/dirs', resource: ResourceType.workdirs, action: Action.create },
+  {
+    method: 'GET',
+    pathPattern: '/api/v1/sessions/:sessionId/workdir',
+    resource: ResourceType.workdirs,
+    action: Action.read,
+  },
+  {
+    method: 'PUT',
+    pathPattern: '/api/v1/sessions/:sessionId/workdir',
+    resource: ResourceType.workdirs,
+    action: Action.update,
+  },
+  {
+    method: 'DELETE',
+    pathPattern: '/api/v1/sessions/:sessionId/workdir',
+    resource: ResourceType.workdirs,
+    action: Action.delete,
+  },
 ]
 
 /**

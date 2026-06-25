@@ -94,6 +94,10 @@ import { createTodoStore, type TodoStore } from '../todo/store.js'
 import { createFileUploadStore, type FileUploadStore } from '../storage/file-upload-store.js'
 import { createUploadFileService, type UploadFileService } from '../storage/upload-file-service.js'
 import { createUploadPreviewExtractor, type UploadPreviewExtractor } from '../storage/upload-preview.js'
+import { createWorkdirStore, type WorkdirStore } from '../storage/workdir-store.js'
+import { createSessionWorkdirStateStore, type SessionWorkdirStateStore } from '../storage/session-workdir-state-store.js'
+import { createWorkdirService, type WorkdirService } from '../workdirs/workdir-service.js'
+import { ProcessSessionStore } from '../tools/builtins/process-session-store.js'
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js'
 import { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import { resolveProviderFamily } from '../kernel/model-input/model-input-types.js'
@@ -114,6 +118,7 @@ import { assertSearchScope } from '../search/search-subagent-types.js'
 
 export interface ApiContext {
   gateway: Gateway
+  resolveTenantId: () => string
   channelRegistry: ChannelRegistry
   messageProcessor: MessageProcessor
   foregroundAgent: ForegroundAgent
@@ -158,7 +163,10 @@ export interface ApiContext {
     organizationStore: OrganizationStore
     todoStore: TodoStore
     fileUploadStore: FileUploadStore
+    workdirStore: WorkdirStore
+    sessionWorkdirStateStore: SessionWorkdirStateStore
   }
+  workdirService: WorkdirService
   providerConfigStore: ProviderConfigStore
   agentConfigStore: AgentConfigStore
   refreshProvidersForUser: (userId: string) => void
@@ -330,6 +338,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let organizationStore: OrganizationStore
   let todoStore: TodoStore
   let fileUploadStore: FileUploadStore
+  let workdirStore: WorkdirStore
+  let sessionWorkdirStateStore: SessionWorkdirStateStore
   let subagentRunStore: SubagentRunStore
   let subagentTranscriptStore: SubagentTranscriptStore
   let subagentProviderPreferenceStore: SubagentProviderPreferenceStore
@@ -406,18 +416,29 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       ((existingStores as Record<string, unknown>)?.todoStore as TodoStore) ??
       createTodoStore(connection)
     fileUploadStore = createFileUploadStore(connection)
-    subagentRunStore = createSubagentRunStore(connection)
-    subagentTranscriptStore = createSubagentTranscriptStore(connection)
-    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
+	    workdirStore = createWorkdirStore(connection)
+	    sessionWorkdirStateStore = createSessionWorkdirStateStore(connection)
+	    subagentRunStore = createSubagentRunStore(connection)
+	    subagentTranscriptStore = createSubagentTranscriptStore(connection)
+	    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
       message: 'Failed to initialize stores',
       details: error instanceof Error ? error.message : String(error),
-    }
-  }
+	    }
+	  }
 
-  const stores: Stores = {
+	  const processSessionStore = new ProcessSessionStore()
+	  const workdirService = createWorkdirService({
+	    workdirStore,
+	    sessionStateStore: sessionWorkdirStateStore,
+	    onWorkdirDeleted: (workdirId) => {
+	      processSessionStore.killByWorkDirId(workdirId)
+	    },
+	  })
+
+	  const stores: Stores = {
     eventStore: {
       append: (event: unknown) => eventStore.append(event as Parameters<typeof eventStore.append>[0]),
       query: (filters: { sessionId?: string; eventType?: string }) => eventStore.query(filters) as unknown[],
@@ -428,15 +449,16 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     transcriptStore: {
       findBySession: (sessionId: string) => transcriptStore.findBySession(sessionId),
     },
-    runtimeActionStore: {
-      findBySessionId: (sessionId: string) =>
-        runtimeActionStore.query({ sessionId }) as unknown as Array<{
-          actionId: string
-          status: string
-          targetRef?: Record<string, unknown>
-        }>,
-    },
-  }
+	    runtimeActionStore: {
+	      findBySessionId: (sessionId: string) =>
+	        runtimeActionStore.query({ sessionId }) as unknown as Array<{
+	          actionId: string
+	          status: string
+	          targetRef?: Record<string, unknown>
+	        }>,
+	    },
+	    workdirService,
+	  }
 
   const gateway = createGateway({ stores })
 
@@ -547,8 +569,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     eventStore,
   })
 
-  // Create tool registry and register built-in tools
-  const toolRegistry = createToolRegistry()
+	  // Create tool registry and register built-in tools
+	  const toolRegistry = createToolRegistry()
   registerBuiltInTools(toolRegistry, {
     artifactStore,
     summaryStore,
@@ -557,6 +579,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     longTermMemoryStore,
     toolResultStore,
     sessionStore,
+    processSessionStore,
     todoStore,
     webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
   })
@@ -834,8 +857,12 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const uploadFileService = createUploadFileService()
   const uploadPreviewExtractor = createUploadPreviewExtractor()
 
-  return {
+	  return {
     gateway,
+    resolveTenantId: () => {
+      const tenantId = process.env.DEFAULT_TENANT_ID ?? 'org_default'
+      return tenantId
+    },
     channelRegistry,
     messageProcessor,
     foregroundAgent,
@@ -880,6 +907,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       organizationStore,
       todoStore,
       fileUploadStore,
+      workdirStore,
+      sessionWorkdirStateStore,
     },
     providerConfigStore,
     agentConfigStore,
@@ -897,6 +926,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     subagentTranscriptStore,
     subagentProviderPreferenceStore,
     auditRecorder,
+    workdirService,
     uploadFileService,
     uploadPreviewExtractor,
     webSearchBrowserProvider,
