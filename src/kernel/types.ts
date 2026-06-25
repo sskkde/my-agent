@@ -66,6 +66,10 @@ export interface KernelRunInput {
   userId: string
   /** Session ID for this run - optional, used for LLM request context. */
   sessionId?: string
+  /** Managed workdir root path — optional, threaded from session state. */
+  workDirRoot?: string
+  /** Managed workdir identifier — optional, threaded from session state. */
+  workDirId?: string
   /** Per-run tool projection — takes priority over KernelConfig.toolProjection.
    *  Allows different tool visibility per tenant, workflow step, approval state, or connector scope. */
   toolProjection?: ToolPlaneProjection
@@ -143,6 +147,8 @@ export interface ToolExecutor {
 	    agentType?: AgentType
 	    agentProfile?: string
 	    launchSource?: string
+	    workDirRoot?: string
+	    workDirId?: string
 	    permissionContext: {
       userId: string
       permissions: string[]

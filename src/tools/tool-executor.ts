@@ -10,6 +10,10 @@ import type { RuntimeContextDelta } from '../context/types.js'
 import type { AgentType } from '../context/types.js'
 import { TOOL_EXECUTION_STATES } from '../shared/states.js'
 import { sanitizeErrorMessage, formatPersistedError } from './error-sanitizer.js'
+import { isWorkdirFileTool } from '../permissions/types.js'
+import { isWithinWorkdir } from '../workdirs/workdir-paths.js'
+import { parsePatchText } from './builtins/patch-parser.js'
+import { resolve, isAbsolute } from 'path'
 
 class ToolExecutorImpl implements ToolExecutor {
   private config: ToolExecutorConfig
@@ -34,6 +38,8 @@ class ToolExecutorImpl implements ToolExecutor {
       launchSource,
       outputContract,
       permissionPolicyRef,
+      workDirRoot,
+      workDirId,
     } = request
     const traceId = kernelRunId || toolCallId
     const spanId = `span_${toolCallId}`
@@ -55,6 +61,8 @@ class ToolExecutorImpl implements ToolExecutor {
         ...(launchSource ? { launchSource } : {}),
         ...(outputContract ? { outputContract } : {}),
         ...(permissionPolicyRef ? { permissionPolicyRef } : {}),
+        ...(workDirRoot ? { workDirRoot } : {}),
+        ...(workDirId ? { workDirId } : {}),
       },
     })
 
@@ -156,12 +164,15 @@ class ToolExecutorImpl implements ToolExecutor {
       this.config.toolExecutionStore.updateStatus(toolCallId, TOOL_EXECUTION_STATES.PERMISSION_CHECKING)
 
       const operationType = this.categoryToOperationType(tool.category)
+      const permissionResource = derivePermissionResource(toolName, params, workDirRoot)
       const permissionDecision = this.config.permissionEngine.checkPermission({
         context: permissionContext,
         actionType: `tool:${toolName}`,
-        resource: toolName,
+        resource: permissionResource,
         operationType,
         justification: `Execute tool: ${tool.description}`,
+        workDirRoot,
+        workDirId,
       })
 
       if (!permissionDecision.allowed) {
@@ -228,6 +239,8 @@ class ToolExecutorImpl implements ToolExecutor {
         agentId,
         agentProfile,
         launchSource,
+        workDirRoot,
+        workDirId,
         stores: {
           toolExecutionStore: {
             updateStatus: (id: string, status: string, errorMessage?: string) => {
@@ -307,6 +320,9 @@ class ToolExecutorImpl implements ToolExecutor {
         launchSource,
         outputContract,
         permissionPolicyRef,
+        ...(permissionDecision.metadata?.workdirAutoAllow
+          ? { workdirAutoAllow: true, workDirRoot, workDirId }
+          : {}),
       })
       const spanError = finalResult.success
         ? undefined
@@ -459,7 +475,7 @@ class ToolExecutorImpl implements ToolExecutor {
     code: string,
     message: string,
     recoverable: boolean,
-    structuredContent?: Record<string, unknown>,
+    details?: Record<string, unknown>,
   ): ToolExecutionResult {
     return {
       success: false,
@@ -468,8 +484,83 @@ class ToolExecutorImpl implements ToolExecutor {
         message,
         recoverable,
       },
-      structuredContent,
+      structuredContent: details,
     }
+  }
+}
+
+function derivePermissionResource(toolName: string, params: unknown, workDirRoot?: string): string {
+  if (!workDirRoot || !isWorkdirFileTool(toolName)) {
+    return toolName
+  }
+
+  const paramsRecord = typeof params === 'object' && params !== null && !Array.isArray(params)
+    ? (params as Record<string, unknown>)
+    : undefined
+
+  if (toolName === 'file_apply_patch') {
+    return derivePatchPermissionResource(paramsRecord, workDirRoot)
+  }
+
+  const rawPath =
+    typeof paramsRecord?.filePath === 'string'
+      ? paramsRecord.filePath
+      : typeof paramsRecord?.path === 'string'
+        ? paramsRecord.path
+        : undefined
+
+  if (!rawPath) {
+    return toolName
+  }
+
+  if (isAbsolute(rawPath)) {
+    return rawPath
+  }
+
+  return resolve(workDirRoot, rawPath)
+}
+
+function derivePatchPermissionResource(paramsRecord: Record<string, unknown> | undefined, workDirRoot: string): string {
+  const rawPaths = collectPatchOperationPaths(paramsRecord)
+  if (rawPaths.length === 0) {
+    return 'file_apply_patch'
+  }
+
+  const resolvedPaths = rawPaths.map((rawPath) => isAbsolute(rawPath) ? rawPath : resolve(workDirRoot, rawPath))
+  const outsidePath = resolvedPaths.find((resolvedPath) => !isWithinWorkdir(resolvedPath, workDirRoot))
+  if (outsidePath) {
+    return outsidePath
+  }
+
+  return workDirRoot
+}
+
+function collectPatchOperationPaths(paramsRecord: Record<string, unknown> | undefined): string[] {
+  if (!paramsRecord) {
+    return []
+  }
+
+  if (Array.isArray(paramsRecord.operations)) {
+    return paramsRecord.operations.flatMap((operation) => {
+      if (typeof operation !== 'object' || operation === null || Array.isArray(operation)) {
+        return []
+      }
+      const filePath = (operation as Record<string, unknown>).filePath
+      return typeof filePath === 'string' ? [filePath] : []
+    })
+  }
+
+  if (typeof paramsRecord.patch !== 'string') {
+    return []
+  }
+
+  try {
+    return parsePatchText(paramsRecord.patch).operations.map((operation) => operation.filePath)
+  } catch (error) {
+    if (error instanceof Error) {
+      return []
+    }
+    throw error
   }
 }
 

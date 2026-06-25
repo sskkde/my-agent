@@ -67,6 +67,9 @@ export interface ToolExecutionContext {
   agentId?: string
   agentProfile?: string
   launchSource?: string
+  // Managed workdir context — optional, threaded from request/session state
+  workDirRoot?: string
+  workDirId?: string
   // Access to stores (injected by executor)
   stores: {
     toolExecutionStore: {
@@ -144,6 +147,8 @@ export interface ToolExecutionRequest {
   launchSource?: string
   outputContract?: string
   permissionPolicyRef?: string
+  workDirRoot?: string
+  workDirId?: string
 }
 
 // Tool execution status
@@ -172,6 +177,8 @@ export interface ToolExecutorConfig {
       resource?: string
       operationType: 'read' | 'write' | 'execute' | 'delete' | 'admin'
       justification?: string
+      workDirRoot?: string
+      workDirId?: string
     }) => PermissionDecision
   }
   toolExecutionStore: {

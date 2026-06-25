@@ -29,6 +29,8 @@ export interface ToolDispatchRequest {
   permissionContext: PermissionContext
   executionPolicy: ToolExecutionPolicy
   workingContextRef?: string
+  workDirRoot?: string
+  workDirId?: string
 }
 
 export interface ToolExecutionPolicy {
