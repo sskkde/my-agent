@@ -1042,3 +1042,123 @@ export interface TodoResponse {
 export interface DeleteTodoResponse {
   success: boolean
 }
+
+// =============================================================================
+// Workdir Types - User Session Workdirs
+// =============================================================================
+
+/** Safe workdir view — never includes raw absolute paths */
+export interface WorkdirInfo {
+  id: string
+  userId: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WorkdirsResponse {
+  workdirs: WorkdirInfo[]
+  total: number
+}
+
+export interface CreateWorkdirRequest {
+  name: string
+}
+
+export interface RenameWorkdirRequest {
+  name: string
+}
+
+export interface WorkdirResponse {
+  workdir: WorkdirInfo | null
+}
+
+export interface DeleteWorkdirResponse {
+  deleted: boolean
+  workdirId: string
+}
+
+// =============================================================================
+// Session Workdir Types
+// =============================================================================
+
+export interface SessionWorkdirResponse {
+  workdir: WorkdirInfo | null
+}
+
+export interface SetSessionWorkdirRequest {
+  workdirId: string
+}
+
+export interface ClearSessionWorkdirResponse {
+  cleared: boolean
+}
+
+// =============================================================================
+// Workdir File Tree Types
+// =============================================================================
+
+export interface WorkdirTreeNode {
+  name: string
+  type: 'file' | 'directory'
+  relativePath: string
+}
+
+export interface WorkdirTreeResponse {
+  tree: WorkdirTreeNode[]
+  path: string
+}
+
+// =============================================================================
+// Workdir File Types
+// =============================================================================
+
+export interface WorkdirFileContent {
+  path: string
+  content: string
+  sizeBytes: number
+  modifiedAt: string
+}
+
+export interface WriteWorkdirFileRequest {
+  path: string
+  content: string
+}
+
+export interface WriteWorkdirFileResponse {
+  path: string
+  sizeBytes: number
+  modifiedAt: string
+}
+
+export interface MoveWorkdirEntryRequest {
+  fromPath: string
+  toPath: string
+}
+
+export interface MoveWorkdirEntryResponse {
+  fromPath: string
+  path: string
+  type: 'file' | 'directory'
+}
+
+export interface DeleteWorkdirEntryResponse {
+  path: string
+  deleted: boolean
+}
+
+export interface UploadWorkdirFileRequest {
+  path: string
+  content: string
+}
+
+export type UploadWorkdirFileResponse = WriteWorkdirFileResponse
+
+export interface CreateWorkdirDirRequest {
+  path: string
+}
+
+export interface CreateWorkdirDirResponse {
+  path: string
+  created: boolean
+}

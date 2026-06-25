@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdirSync, writeFileSync, rmSync, symlinkSync, existsSync } from 'fs'
+import { mkdirSync, writeFileSync, rmSync, symlinkSync, existsSync, linkSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { createFileReadTool, type FileReadParams, type FileReadResult } from '../../../src/tools/builtins/file-read.js'
@@ -179,6 +179,24 @@ describe('file_read tool', () => {
       rmSync(outsideDir, { recursive: true, force: true })
     })
 
+    it('should reject hardlinked files when using managed workdir context', async () => {
+      const outsideDir = join(tmpdir(), `outside-hardlink-read-${Date.now()}`)
+      mkdirSync(outsideDir, { recursive: true })
+      const outsideFile = join(outsideDir, 'outside.txt')
+      writeFileSync(outsideFile, 'outside content')
+      linkSync(outsideFile, join(testDir, 'hardlink.txt'))
+
+      const params: FileReadParams = { filePath: 'hardlink.txt' }
+      const context = createToolContext({ workDirRoot: testDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('WORKDIR_HARDLINK_BOUNDARY')
+
+      rmSync(outsideDir, { recursive: true, force: true })
+    })
+
     it('should reject sensitive .env files', async () => {
       writeFileSync(join(testDir, '.env'), 'SECRET=value')
 
@@ -309,6 +327,80 @@ describe('file_read tool', () => {
 
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe('FILE_TOO_LARGE')
+    })
+  })
+
+  describe('workDirRoot support', () => {
+    let workDir: string
+
+    beforeEach(() => {
+      workDir = join(tmpdir(), `file-read-workdir-${Date.now()}`)
+      mkdirSync(workDir, { recursive: true })
+    })
+
+    afterEach(() => {
+      if (existsSync(workDir)) {
+        rmSync(workDir, { recursive: true, force: true })
+      }
+    })
+
+    it('should read file relative to context.workDirRoot when set', async () => {
+      writeFileSync(join(workDir, 'hello.txt'), 'from workdir')
+
+      const params: FileReadParams = { filePath: 'hello.txt' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as FileReadResult
+      expect(data.content).toBe('from workdir')
+      expect(data.filePath).toBe('hello.txt')
+    })
+
+    it('should reject path that escapes workDirRoot', async () => {
+      const params: FileReadParams = { filePath: '../escape.txt' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PATH_ESCAPE')
+    })
+
+    it('should reject absolute path outside workDirRoot', async () => {
+      const params: FileReadParams = { filePath: '/etc/passwd' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('OUTSIDE_WORKSPACE')
+    })
+
+    it('should use getWorkspaceRoot() fallback when workDirRoot is not set', async () => {
+      writeFileSync(join(testDir, 'fallback.txt'), 'from default')
+
+      const params: FileReadParams = { filePath: 'fallback.txt' }
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as FileReadResult
+      expect(data.content).toBe('from default')
+    })
+
+    it('should not find file in default dir when workDirRoot is set', async () => {
+      writeFileSync(join(testDir, 'default-only.txt'), 'in default')
+
+      const params: FileReadParams = { filePath: 'default-only.txt' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('FILE_NOT_FOUND')
     })
   })
 

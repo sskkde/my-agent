@@ -7,6 +7,7 @@
 
 import { realpathSync, lstatSync, existsSync } from 'fs'
 import { resolve, basename, extname, relative, isAbsolute } from 'path'
+import { validateWorkdirPath } from '../../workdirs/workdir-paths.js'
 
 // ============================================================================
 // Constants
@@ -218,6 +219,7 @@ export function validatePathSafety(
   options?: {
     allowBinary?: boolean
     customDenylist?: RegExp[]
+    enforceWorkdirBoundary?: boolean
   },
 ): PathSafetyResult {
   const root = workspaceRoot ?? getWorkspaceRoot()
@@ -244,6 +246,16 @@ export function validatePathSafety(
         code: 'OUTSIDE_WORKSPACE',
         message: 'Path resolves outside workspace root',
       },
+    }
+  }
+
+  if (options?.enforceWorkdirBoundary) {
+    const workdirValidation = validateWorkdirPath(canonicalPath, root)
+    if (!workdirValidation.ok) {
+      return {
+        safe: false,
+        error: workdirValidation.error,
+      }
     }
   }
 

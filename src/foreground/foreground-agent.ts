@@ -113,6 +113,8 @@ class ForegroundAgentImpl implements ForegroundAgent {
       model: resolvedModel,
       maxIterations: input.maxIterations ?? this.maxIterations,
       timeoutMs: input.timeoutMs ?? this.timeoutMs,
+      ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
+      ...(input.workDirId ? { workDirId: input.workDirId } : {}),
     }
 
     const kernelResult = await this.agentKernel.run(kernelInput)

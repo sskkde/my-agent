@@ -84,6 +84,12 @@ export interface ForegroundTurnInput {
   timeoutMs?: number
   /** References to pre-uploaded attachments (IDs only, no raw bytes) */
   attachmentIds?: string[]
+  /** Managed workdir root path — threaded from session state */
+  workDirRoot?: string
+  /** Managed workdir identifier — threaded from session state */
+  workDirId?: string
+  /** Managed workdir display name — threaded from session state */
+  workDirName?: string
 }
 
 /**

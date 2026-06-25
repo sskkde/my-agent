@@ -72,6 +72,7 @@ function collectFiles(
   workspaceRoot: string,
   results: FileEntry[],
   maxResults: number,
+  enforceWorkdirBoundary: boolean,
 ): void {
   if (results.length >= maxResults) return
 
@@ -87,11 +88,11 @@ function collectFiles(
 
     const fullPath = join(dir, entry.name as string)
 
-    const safetyResult = validatePathSafety(fullPath, workspaceRoot)
+    const safetyResult = validatePathSafety(fullPath, workspaceRoot, { enforceWorkdirBoundary })
     if (!safetyResult.safe) continue
 
     if (entry.isDirectory()) {
-      collectFiles(fullPath, basePattern, workspaceRoot, results, maxResults)
+      collectFiles(fullPath, basePattern, workspaceRoot, results, maxResults, enforceWorkdirBoundary)
     } else if (entry.isFile()) {
       if (matchGlobPattern(entry.name as string, basePattern)) {
         const stats = statSync(fullPath)
@@ -119,10 +120,11 @@ export function createFileGlobTool(): ToolDefinition {
       }
     }
 
-    const workspaceRoot = getWorkspaceRoot()
+    const workspaceRoot = context.workDirRoot ?? getWorkspaceRoot()
     const searchPath = typedParams.path ? resolve(workspaceRoot, typedParams.path) : workspaceRoot
 
-    const pathSafetyResult = validatePathSafety(searchPath, workspaceRoot)
+    const enforceWorkdirBoundary = Boolean(context.workDirRoot)
+    const pathSafetyResult = validatePathSafety(searchPath, workspaceRoot, { enforceWorkdirBoundary })
     if (!pathSafetyResult.safe) {
       return {
         success: false,
@@ -163,7 +165,7 @@ export function createFileGlobTool(): ToolDefinition {
     const patternParts = typedParams.pattern.split('/')
     const basePattern = patternParts[patternParts.length - 1] || '*'
 
-    collectFiles(searchPath, basePattern, workspaceRoot, results, maxLimit + 1)
+    collectFiles(searchPath, basePattern, workspaceRoot, results, maxLimit + 1, enforceWorkdirBoundary)
 
     results.sort((a, b) => b.mtime - a.mtime)
 

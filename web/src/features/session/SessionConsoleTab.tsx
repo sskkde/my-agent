@@ -18,6 +18,7 @@ import { useSessionPendingApproval } from './useSessionPendingApproval'
 import { useSessionList } from './hooks/useSessionList'
 import { useSelectedSession } from './hooks/useSelectedSession'
 import { useSSEStream } from './hooks/useSSEStream'
+import { useWorkdir } from './hooks/useWorkdir'
 import { useComposerSubmission } from './hooks/useComposerSubmission'
 import { getBaselineServerMessageCount } from './session-utils'
 import type { AssistantPlaceholder, StreamingDraft } from './session-utils'
@@ -25,6 +26,8 @@ import { SessionSidebar } from './components/SessionSidebar'
 import { TimelinePanel } from './components/TimelinePanel'
 import { SessionEmptyState } from './components/SessionEmptyState'
 import { MobileSessionDrawer } from './components/MobileSessionDrawer'
+import { WorkdirPanel } from './components/WorkdirPanel'
+import './components/WorkdirPanel.css'
 import ComposerDock from '../../components/ComposerDock'
 import { useAgentShellSidebar } from '../../layout/AgentShellSidebarContext'
 import { safeRemoveLocalStorage } from './session-migration'
@@ -331,6 +334,8 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     onEvent: handleSSEEvent,
     onToken: handleSSEToken,
   })
+
+  const workdirState = useWorkdir(selectedSessionId)
 
   const {
     draft,
@@ -785,6 +790,9 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
               processingStatus={processingStatus}
               onRetry={handleRetryStream}
             />
+
+            {/* Workdir Panel */}
+            <WorkdirPanel sessionId={selectedSessionId} workdirState={workdirState} />
 
             {/* Input Dock */}
             <ComposerDock

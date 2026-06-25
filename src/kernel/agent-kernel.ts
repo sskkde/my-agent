@@ -609,6 +609,8 @@ export class AgentKernel {
         mode: 'ask_on_write',
         grants: [],
       },
+      ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
+      ...(input.workDirId ? { workDirId: input.workDirId } : {}),
     })
     const dispatchResult = await this.config.dispatcher.dispatch({
       requestId: `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,

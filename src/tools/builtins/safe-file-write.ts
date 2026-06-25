@@ -10,6 +10,7 @@ import { writeFileSync, renameSync, unlinkSync, existsSync, mkdirSync, readFileS
 import { dirname, basename, resolve, relative, isAbsolute, join } from 'path'
 import { getWorkspaceRoot } from './safe-paths.js'
 import { SENSITIVE_FILE_PATTERNS, BINARY_EXTENSIONS } from './safe-paths.js'
+import { validateWorkdirWritePath } from '../../workdirs/workdir-paths.js'
 
 export { getWorkspaceRoot }
 
@@ -79,6 +80,7 @@ export function validateWritePathSafety(
   workspaceRoot?: string,
   options?: {
     allowNew?: boolean
+    enforceWorkdirBoundary?: boolean
   },
 ): WritePathSafetyResult {
   const root = workspaceRoot ?? getWorkspaceRoot()
@@ -116,6 +118,16 @@ export function validateWritePathSafety(
         code: 'OUTSIDE_WORKSPACE',
         message: 'Path resolves outside workspace root',
       },
+    }
+  }
+
+  if (options?.enforceWorkdirBoundary) {
+    const workdirValidation = validateWorkdirWritePath(canonicalPath, root)
+    if (!workdirValidation.ok) {
+      return {
+        safe: false,
+        error: workdirValidation.error,
+      }
     }
   }
 
@@ -200,6 +212,7 @@ export interface WriteTextFileAtomicParams {
   workspaceRoot?: string
   expectedHash?: string
   createDirs?: boolean
+  enforceWorkdirBoundary?: boolean
 }
 
 export interface WriteTextFileAtomicResult {
@@ -223,7 +236,7 @@ export interface WriteTextFileAtomicResult {
  * @throws Error with code field for specific failures
  */
 export function writeTextFileAtomic(params: WriteTextFileAtomicParams): WriteTextFileAtomicResult {
-  const { filePath, content, workspaceRoot, expectedHash, createDirs } = params
+  const { filePath, content, workspaceRoot, expectedHash, createDirs, enforceWorkdirBoundary } = params
   const root = workspaceRoot ?? getWorkspaceRoot()
 
   // Validate content for binary (NUL bytes)
@@ -243,7 +256,7 @@ export function writeTextFileAtomic(params: WriteTextFileAtomicParams): WriteTex
   }
 
   // Validate path safety
-  const safety = validateWritePathSafety(filePath, root, { allowNew: true })
+  const safety = validateWritePathSafety(filePath, root, { allowNew: true, enforceWorkdirBoundary })
   if (!safety.safe) {
     throw Object.assign(new Error(safety.error?.message ?? 'Path validation failed'), {
       code: safety.error?.code ?? 'PATH_UNSAFE',
@@ -328,6 +341,7 @@ export function writeTextFileAtomic(params: WriteTextFileAtomicParams): WriteTex
 export interface ReadTextFileForEditParams {
   filePath: string
   workspaceRoot?: string
+  enforceWorkdirBoundary?: boolean
 }
 
 export interface ReadTextFileForEditResult {
@@ -346,11 +360,11 @@ export interface ReadTextFileForEditResult {
  * @returns File content and hash, or empty if not exists
  */
 export function readTextFileForEdit(params: ReadTextFileForEditParams): ReadTextFileForEditResult {
-  const { filePath, workspaceRoot } = params
+  const { filePath, workspaceRoot, enforceWorkdirBoundary } = params
   const root = workspaceRoot ?? getWorkspaceRoot()
 
   // Validate path safety
-  const safety = validateWritePathSafety(filePath, root, { allowNew: true })
+  const safety = validateWritePathSafety(filePath, root, { allowNew: true, enforceWorkdirBoundary })
   if (!safety.safe) {
     throw Object.assign(new Error(safety.error?.message ?? 'Path validation failed'), {
       code: safety.error?.code ?? 'PATH_UNSAFE',

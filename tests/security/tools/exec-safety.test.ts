@@ -116,11 +116,104 @@ describe('exec-safety', () => {
 
   describe('user isolation', () => {
     it('process tool: user A cannot access user B session', () => {
-      // This would be tested in integration tests with actual ProcessSessionStore
-      // Here we just verify the validation logic doesn't leak information
       const result = validateExecParams({ command: 'ls' })
       expect(result.valid).toBe(true)
       expect(result.normalized).toBeDefined()
+    })
+  })
+
+  describe('workDirRoot support', () => {
+    it('uses workDirRoot as workspace root when provided', () => {
+      const workDirRoot = join(testDir, 'my-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const result = validateExecParams({
+        command: 'ls',
+        workspaceRoot: workDirRoot,
+      })
+
+      expect(result.valid).toBe(true)
+      expect(result.normalized?.workdir).toBe(workDirRoot)
+    })
+
+    it('resolves relative workdir against workDirRoot', () => {
+      const workDirRoot = join(testDir, 'my-workdir')
+      const subDir = join(workDirRoot, 'subdir')
+      mkdirSync(subDir, { recursive: true })
+
+      const result = validateExecParams({
+        command: 'ls',
+        workdir: 'subdir',
+        workspaceRoot: workDirRoot,
+      })
+
+      expect(result.valid).toBe(true)
+      expect(result.normalized?.workdir).toBe(subDir)
+    })
+
+    it('rejects workdir with .. that escapes workDirRoot', () => {
+      const workDirRoot = join(testDir, 'my-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const result = validateExecParams({
+        command: 'ls',
+        workdir: '../escape',
+        workspaceRoot: workDirRoot,
+      })
+
+      expect(result.valid).toBe(false)
+      expect(result.error?.code).toBe('WORKDIR_OUTSIDE_WORKSPACE')
+    })
+
+    it('rejects absolute workdir outside workDirRoot', () => {
+      const workDirRoot = join(testDir, 'my-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const result = validateExecParams({
+        command: 'ls',
+        workdir: '/etc',
+        workspaceRoot: workDirRoot,
+      })
+
+      expect(result.valid).toBe(false)
+      expect(result.error?.code).toBe('WORKDIR_OUTSIDE_WORKSPACE')
+    })
+
+    it('allows workdir inside workDirRoot without ..', () => {
+      const workDirRoot = join(testDir, 'my-workdir')
+      const nested = join(workDirRoot, 'a', 'b', 'c')
+      mkdirSync(nested, { recursive: true })
+
+      const result = validateExecParams({
+        command: 'ls',
+        workdir: 'a/b/c',
+        workspaceRoot: workDirRoot,
+      })
+
+      expect(result.valid).toBe(true)
+      expect(result.normalized?.workdir).toBe(nested)
+    })
+
+    it('dangerous commands still rejected with workDirRoot', () => {
+      const workDirRoot = join(testDir, 'my-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const result = validateExecParams({
+        command: 'rm -rf /',
+        workspaceRoot: workDirRoot,
+      })
+
+      expect(result.valid).toBe(false)
+      expect(result.error?.code).toBe('DANGEROUS_COMMAND')
+    })
+
+    it('falls back to getWorkspaceRoot when workspaceRoot not provided', () => {
+      const result = validateExecParams({
+        command: 'ls',
+      })
+
+      expect(result.valid).toBe(true)
+      expect(result.normalized?.workdir).toBe(testDir)
     })
   })
 })

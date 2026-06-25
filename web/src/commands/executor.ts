@@ -13,6 +13,7 @@ import { hasCommand, getCommand } from './catalog.js'
 import { preferenceHandlers } from './handlers/preferences.js'
 import { dataHandlers } from './handlers/data.js'
 import { providerHandlers } from './handlers/providers.js'
+import { workdirHandlers } from './handlers/workdir.js'
 
 /**
  * Placeholder handler for commands not yet implemented
@@ -61,6 +62,7 @@ const handlerMap: Record<
   models: createPlaceholderHandler('models'),
   providers: providerHandlers.providers,
   provider: providerHandlers.provider,
+  workdir: workdirHandlers.workdir,
   logout: createPlaceholderHandler('logout'),
   exit: createPlaceholderHandler('exit'),
   quit: createPlaceholderHandler('quit'),

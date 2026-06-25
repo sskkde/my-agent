@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs'
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, symlinkSync, linkSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import {
@@ -218,6 +218,50 @@ describe('file_write tool', () => {
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe('BINARY_FILE')
     })
+
+    it('should reject writes through symlinked parent directories when using managed workdir context', async () => {
+      const outsideDir = join(tmpdir(), `outside-symlink-write-${Date.now()}`)
+      mkdirSync(outsideDir, { recursive: true })
+      symlinkSync(outsideDir, join(testDir, 'linked-parent'), 'dir')
+
+      const params: FileWriteParams = {
+        filePath: 'linked-parent/new.txt',
+        content: 'blocked',
+        createDirs: true,
+      }
+      const context = createToolContext({ workDirRoot: testDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('WORKDIR_SYMLINK_ESCAPE')
+      expect(existsSync(join(outsideDir, 'new.txt'))).toBe(false)
+
+      rmSync(outsideDir, { recursive: true, force: true })
+    })
+
+    it('should reject hardlinked write targets when using managed workdir context', async () => {
+      const outsideDir = join(tmpdir(), `outside-hardlink-write-${Date.now()}`)
+      mkdirSync(outsideDir, { recursive: true })
+      const outsideFile = join(outsideDir, 'outside.txt')
+      writeFileSync(outsideFile, 'outside content')
+      linkSync(outsideFile, join(testDir, 'hardlink.txt'))
+
+      const params: FileWriteParams = {
+        filePath: 'hardlink.txt',
+        content: 'blocked',
+        overwrite: true,
+      }
+      const context = createToolContext({ workDirRoot: testDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('WORKDIR_HARDLINK_BOUNDARY')
+      expect(readFileSync(outsideFile, 'utf8')).toBe('outside content')
+
+      rmSync(outsideDir, { recursive: true, force: true })
+    })
   })
 
   describe('Content Validation', () => {
@@ -293,6 +337,75 @@ describe('file_write tool', () => {
 
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe('MISSING_CONTENT')
+    })
+  })
+
+  describe('workDirRoot support', () => {
+    let workDir: string
+
+    beforeEach(() => {
+      workDir = join(tmpdir(), `file-write-workdir-${Date.now()}`)
+      mkdirSync(workDir, { recursive: true })
+    })
+
+    afterEach(() => {
+      if (existsSync(workDir)) {
+        rmSync(workDir, { recursive: true, force: true })
+      }
+    })
+
+    it('should write file relative to context.workDirRoot when set', async () => {
+      const params: FileWriteParams = {
+        filePath: 'workdir-file.txt',
+        content: 'written to workdir',
+      }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      expect(existsSync(join(workDir, 'workdir-file.txt'))).toBe(true)
+      expect(readFileSync(join(workDir, 'workdir-file.txt'), 'utf8')).toBe('written to workdir')
+    })
+
+    it('should reject write that escapes workDirRoot', async () => {
+      const params: FileWriteParams = {
+        filePath: '../escape.txt',
+        content: 'escape attempt',
+      }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PATH_ESCAPE')
+    })
+
+    it('should reject write to absolute path outside workDirRoot', async () => {
+      const params: FileWriteParams = {
+        filePath: '/tmp/outside-workspace.txt',
+        content: 'outside',
+      }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('OUTSIDE_WORKSPACE')
+    })
+
+    it('should use getWorkspaceRoot() fallback when workDirRoot is not set', async () => {
+      const params: FileWriteParams = {
+        filePath: 'fallback-file.txt',
+        content: 'written to default',
+      }
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      expect(existsSync(join(testDir, 'fallback-file.txt'))).toBe(true)
+      expect(readFileSync(join(testDir, 'fallback-file.txt'), 'utf8')).toBe('written to default')
     })
   })
 

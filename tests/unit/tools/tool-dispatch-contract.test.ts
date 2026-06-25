@@ -80,6 +80,48 @@ describe('ToolDispatchContract', () => {
       expect(req.agentType).toBe('remote')
       expect(req.workingContextRef).toBe('ctx-1')
     })
+
+    it('supports optional workDirRoot and workDirId fields', () => {
+      const req = createToolDispatchRequest({
+        runId: 'run-workdir',
+        userId: 'user-1',
+        agentId: 'agent-1',
+        agentType: 'main',
+        assistantMessageId: 'assistant-1',
+        toolUses: [{ toolCallId: 'tc-wd', toolName: 'file_read', input: { path: 'test.txt' } }],
+        permissionContext: {
+          userId: 'user-1',
+          sessionId: 'sess-1',
+          mode: 'read_only',
+          grants: [],
+        },
+        workDirRoot: '/data/workdirs/user-1/wd-abc',
+        workDirId: 'wd-abc',
+      })
+
+      expect(req.workDirRoot).toBe('/data/workdirs/user-1/wd-abc')
+      expect(req.workDirId).toBe('wd-abc')
+    })
+
+    it('leaves workDirRoot and workDirId undefined when omitted', () => {
+      const req = createToolDispatchRequest({
+        runId: 'run-no-workdir',
+        userId: 'user-2',
+        agentId: 'agent-2',
+        agentType: 'main',
+        assistantMessageId: 'assistant-2',
+        toolUses: [{ toolCallId: 'tc-no-wd', toolName: 'file_read', input: { path: 'test.txt' } }],
+        permissionContext: {
+          userId: 'user-2',
+          sessionId: 'sess-2',
+          mode: 'read_only',
+          grants: [],
+        },
+      })
+
+      expect(req.workDirRoot).toBeUndefined()
+      expect(req.workDirId).toBeUndefined()
+    })
   })
 
   describe('createToolDispatchRequest', () => {

@@ -14,12 +14,12 @@ import {
 
 describe('Command Catalog', () => {
   describe('COMMAND_CATALOG', () => {
-    it('should contain exactly 24 commands', () => {
+    it('should contain exactly 25 commands', () => {
       const count = getCommandCount()
-      expect(count).toBe(24)
+      expect(count).toBe(25)
 
       const allCommands = getAllCommands()
-      expect(allCommands).toHaveLength(24)
+      expect(allCommands).toHaveLength(25)
     })
 
     it('should contain all expected command names', () => {
@@ -45,6 +45,7 @@ describe('Command Catalog', () => {
         'models',
         'providers',
         'provider',
+        'workdir',
         'logout',
         'exit',
         'quit',
@@ -238,6 +239,51 @@ describe('Command Catalog', () => {
       expect(hasSubcommand('session', 'clear')).toBe(true)
       expect(hasSubcommand('session', 'archive')).toBe(true)
       expect(hasSubcommand('session', 'delete')).toBe(true)
+    })
+  })
+
+  describe('Workdir subcommands', () => {
+    it('should have workdir subcommands', () => {
+      const workdirCmd = getCommand('workdir')
+      expect(workdirCmd?.subcommands).toBeDefined()
+
+      expect(hasSubcommand('workdir', 'list')).toBe(true)
+      expect(hasSubcommand('workdir', 'new')).toBe(true)
+      expect(hasSubcommand('workdir', 'switch')).toBe(true)
+      expect(hasSubcommand('workdir', 'pwd')).toBe(true)
+      expect(hasSubcommand('workdir', 'tree')).toBe(true)
+    })
+
+    it('should have correct workdir subcommand risk levels', () => {
+      const listCmd = getSubcommand('workdir', 'list')
+      expect(listCmd?.risk).toBe('safe')
+
+      const newCmd = getSubcommand('workdir', 'new')
+      expect(newCmd?.risk).toBe('mutation')
+
+      const switchCmd = getSubcommand('workdir', 'switch')
+      expect(switchCmd?.risk).toBe('mutation')
+
+      const pwdCmd = getSubcommand('workdir', 'pwd')
+      expect(pwdCmd?.risk).toBe('safe')
+
+      const treeCmd = getSubcommand('workdir', 'tree')
+      expect(treeCmd?.risk).toBe('safe')
+    })
+
+    it('should correctly identify workdir subcommand existence', () => {
+      expect(hasSubcommand('workdir', 'list')).toBe(true)
+      expect(hasSubcommand('workdir', 'nonexistent')).toBe(false)
+    })
+
+    it('should have workdir in session category', () => {
+      const workdirCmd = getCommand('workdir')
+      expect(workdirCmd?.category).toBe('session')
+    })
+
+    it('should have folder UI icon override', () => {
+      const workdirCmd = getCommand('workdir')
+      expect(workdirCmd?.ui?.icon).toBe('folder')
     })
   })
 })

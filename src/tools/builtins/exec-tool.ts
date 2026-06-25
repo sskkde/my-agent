@@ -47,6 +47,7 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
       maxOutputChars: typedParams.maxOutputChars,
       workdir: typedParams.workdir,
       env: typedParams.env,
+      workspaceRoot: _context.workDirRoot,
     })
 
     if (!validation.valid) {
@@ -70,6 +71,7 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
         env: normalized.env,
         timeoutMs: normalized.timeoutMs,
         maxOutputChars: normalized.maxOutputChars,
+        workDirId: _context.workDirId,
       })
 
       const result: ExecResult = {
@@ -98,6 +100,7 @@ export function createExecTool(store: ProcessSessionStore): ToolDefinition {
       env: normalized.env,
       timeoutMs: normalized.timeoutMs,
       maxOutputChars: normalized.maxOutputChars,
+      workDirId: _context.workDirId,
     })
 
     const yieldMs = normalized.yieldMs

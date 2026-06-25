@@ -275,6 +275,43 @@ export const COMMAND_CATALOG: Record<CommandName, CommandDefinition> = {
       },
     },
   },
+  workdir: {
+    name: 'workdir',
+    aliases: [],
+    description: 'Manage session work directories',
+    usage: '/workdir <subcommand>',
+    category: 'session',
+    risk: 'safe',
+    requiresAuth: false,
+    backendMutation: false,
+    subcommands: {
+      list: {
+        description: 'List all your workdirs',
+        usage: '/workdir list',
+        risk: 'safe',
+      },
+      new: {
+        description: 'Create a new workdir',
+        usage: '/workdir new <name>',
+        risk: 'mutation',
+      },
+      switch: {
+        description: 'Switch active workdir for current session',
+        usage: '/workdir switch <id|name>',
+        risk: 'mutation',
+      },
+      pwd: {
+        description: 'Show active workdir for current session',
+        usage: '/workdir pwd',
+        risk: 'safe',
+      },
+      tree: {
+        description: 'Show directory tree of active workdir',
+        usage: '/workdir tree [path]',
+        risk: 'safe',
+      },
+    },
+  },
   logout: {
     name: 'logout',
     aliases: [],

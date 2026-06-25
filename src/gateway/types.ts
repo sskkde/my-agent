@@ -51,6 +51,12 @@ export interface ActiveWorkRefs {
   activeRuns: string[]
 }
 
+export interface ActiveWorkdirInfo {
+  workDirId: string
+  workDirName: string
+  workDirRoot: string
+}
+
 export interface HydratedSessionState {
   userContext: {
     userId: string
@@ -64,6 +70,7 @@ export interface HydratedSessionState {
     activeBackgroundRunIds: string[]
   }
   activeWorkRefs: ActiveWorkRefs
+  activeWorkdir?: ActiveWorkdirInfo
   routingHints?: RoutingHints
 }
 
@@ -92,5 +99,18 @@ export interface Stores {
     findBySessionId?: (
       sessionId: string,
     ) => Array<{ actionId: string; status: string; targetRef?: Record<string, unknown> }>
+  }
+  workdirService?: {
+    getActiveWorkdir: (sessionId: string, userId: string, tenantId: string) => {
+      id: string
+      name: string
+      path: string
+    } | null
+    createDefaultWorkdir: (userId: string, tenantId: string) => {
+      id: string
+      name: string
+      path: string
+    }
+    setActiveWorkdir: (sessionId: string, workdirId: string, userId: string, tenantId: string) => void
   }
 }

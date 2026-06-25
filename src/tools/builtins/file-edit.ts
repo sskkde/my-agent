@@ -24,7 +24,7 @@ export interface FileEditResult {
 export function createFileEditTool(): ToolDefinition {
   const handler: ToolHandler = async (
     params: unknown,
-    _context: ToolExecutionContext,
+    context: ToolExecutionContext,
   ): Promise<ToolExecutionResult> => {
     const typedParams = params as FileEditParams
 
@@ -73,10 +73,13 @@ export function createFileEditTool(): ToolDefinition {
       }
     }
 
-    const workspaceRoot = getWorkspaceRoot()
+    const workspaceRoot = context.workDirRoot ?? getWorkspaceRoot()
 
-    // Validate path safety
-    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, { allowNew: false })
+    const enforceWorkdirBoundary = Boolean(context.workDirRoot)
+    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, {
+      allowNew: false,
+      enforceWorkdirBoundary,
+    })
 
     if (!safetyResult.safe) {
       return {
@@ -95,6 +98,7 @@ export function createFileEditTool(): ToolDefinition {
       readResult = readTextFileForEdit({
         filePath: typedParams.filePath,
         workspaceRoot,
+        enforceWorkdirBoundary,
       })
     } catch (err) {
       const error = err as Error & { code?: string }
@@ -185,6 +189,7 @@ export function createFileEditTool(): ToolDefinition {
         workspaceRoot,
         expectedHash: readResult.hash,
         createDirs: false,
+        enforceWorkdirBoundary,
       })
 
       const editResult: FileEditResult = {

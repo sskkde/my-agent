@@ -83,6 +83,26 @@ export function createPermissionContext(
   }
 }
 
+/**
+ * Set of file-tree tool IDs eligible for workdir-scoped permission carve-out.
+ *
+ * Only these tools may bypass approval when operating inside an active workdir.
+ * Exec/bash/code_execution, connector, admin, and send tools are NEVER included.
+ */
+export const WORKDIR_FILE_TOOL_IDS: ReadonlySet<string> = new Set([
+  'file_read',
+  'file_glob',
+  'file_grep',
+  'file_write',
+  'file_edit',
+  'file_apply_patch',
+])
+
+/** Check whether a tool ID is eligible for the workdir permission carve-out. */
+export function isWorkdirFileTool(toolId: string): boolean {
+  return WORKDIR_FILE_TOOL_IDS.has(toolId)
+}
+
 export interface PermissionCheckRequest {
   context: PermissionContext
   actionType: string
@@ -97,6 +117,10 @@ export interface PermissionCheckRequest {
   riskLevel?: RiskLevel
   scopeType?: PermissionScopeType
   scopeRef?: string
+  /** Active workdir root — when set, enables workdir-scoped auto-allow for file tools. */
+  workDirRoot?: string
+  /** Active workdir ID for audit correlation. */
+  workDirId?: string
 }
 
 export type PermissionDecisionStatus = 'allowed' | 'denied' | 'requires_approval' | 'pending_approval'
@@ -112,14 +136,20 @@ export interface PermissionDecision {
   auditLabel?: string
   approvalCode?: ApprovalCode
   bypassExpiresAt?: string
+  metadata?: Record<string, unknown>
 }
 
-export function createAllowedDecision(reason: string, grant?: StoragePermissionGrant): PermissionDecision {
+export function createAllowedDecision(
+  reason: string,
+  grant?: StoragePermissionGrant,
+  metadata?: Record<string, unknown>,
+): PermissionDecision {
   return {
     status: 'allowed',
     allowed: true,
     reason,
     grant,
+    metadata,
   }
 }
 

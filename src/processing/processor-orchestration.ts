@@ -200,7 +200,12 @@ export function createOrchestrationProcessor(
             buildStatusPayload(input.sessionId, input.correlationId, 'receiving', resolvedProviderId, resolvedModel),
           )
 
-          const hydratedSession = deps.gateway.assembleHydratedState(input.userId, input.sessionId, deps.stores)
+          const hydratedSession = deps.gateway.assembleHydratedState(
+            input.userId,
+            input.sessionId,
+            deps.stores,
+            (input.metadata?.tenantId as string | undefined),
+          )
 
           const agentConfig = deps.agentConfigStore?.getByUser(input.userId)
 
@@ -235,11 +240,14 @@ export function createOrchestrationProcessor(
             turnId: input.correlationId,
             message: input.text,
             timestamp: input.timestamp,
-            hydratedState: hydratedSession,
-            foregroundState,
-            agentConfig: agentConfig ?? undefined,
-            attachmentIds: input.attachmentIds,
-          }
+	            hydratedState: hydratedSession,
+	            foregroundState,
+	            agentConfig: agentConfig ?? undefined,
+	            attachmentIds: input.attachmentIds,
+	            workDirRoot: hydratedSession.activeWorkdir?.workDirRoot,
+	            workDirId: hydratedSession.activeWorkdir?.workDirId,
+	            workDirName: hydratedSession.activeWorkdir?.workDirName,
+	          }
 
           if (!deps.foregroundAgent?.runTurn) {
             output = createErrorOutput(

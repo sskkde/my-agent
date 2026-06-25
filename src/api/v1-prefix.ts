@@ -143,6 +143,12 @@ export const API_ROUTE_DEFINITIONS: ApiRouteDefinition[] = [
   { path: '/api/v1/workflows/drafts/:draftId/validate', methods: ['POST'] },
   { path: '/api/v1/workflows/runs', methods: ['GET', 'POST'] },
   { path: '/api/v1/workflows/runs/:workflowRunId', methods: ['GET'] },
+  { path: '/api/v1/workdirs', methods: ['GET', 'POST'] },
+  { path: '/api/v1/workdirs/:workdirId', methods: ['DELETE', 'PATCH'] },
+  { path: '/api/v1/workdirs/:workdirId/tree', methods: ['GET'] },
+  { path: '/api/v1/workdirs/:workdirId/files', methods: ['GET', 'PUT'] },
+  { path: '/api/v1/workdirs/:workdirId/dirs', methods: ['POST'] },
+  { path: '/api/v1/sessions/:sessionId/workdir', methods: ['DELETE', 'GET', 'PUT'] },
 ]
 
 export type LegacyRouteDefinition = ApiRouteDefinition & {

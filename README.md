@@ -257,6 +257,38 @@ DELETE /api/v1/files/:fileId
 
 **持久化要求：** `UPLOAD_DIR` 指向的目录必须位于持久化存储卷上。默认路径 `./data/uploads` 在 Docker 部署中已被 `agent_data` 卷覆盖。如果自定义 `UPLOAD_DIR`，需确保对应目录也做了卷挂载（参见 [Docker 部署指南](docs/deployment/docker.md#file-uploads-storage)）。
 
+### 工作目录（Workdirs）
+
+每个用户拥有隔离的托管工作目录。模型在选定的工作目录内执行文件操作（读取、写入、编辑、搜索、列目录）时无需审批。Shell 命令和代码执行仍需走审批流程。
+
+**托管目录策略：** 模型只能访问用户选定的托管工作目录。不支持任意主机路径。
+
+**环境变量（详见 [env-reference.md](docs/deployment/env-reference.md#工作目录配置)）：**
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `WORKDIR_ROOT` | `./data/workdirs` | 工作目录根路径，**生产环境必须挂载持久化卷** |
+
+**存储配额：**
+
+| 配额 | 默认值 | 说明 |
+|------|--------|------|
+| 每目录字节上限 | 1 GiB | 单个工作目录的存储空间 |
+| 每目录文件数上限 | 100,000 | 单个工作目录中的最大文件数 |
+| 目录深度上限 | 10 | 工作目录内的最大嵌套深度 |
+
+**持久化要求：** `WORKDIR_ROOT` 指向的目录必须位于持久化存储卷上。默认路径 `./data/workdirs` 在 Docker 部署中已被 `agent_data` 卷覆盖。如果自定义 `WORKDIR_ROOT`，需确保对应目录也做了卷挂载。
+
+**安全边界：**
+
+- 文件操作（`file_read`, `file_write`, `file_edit`, `file_glob`, `file_grep`, `file_apply_patch`）在选定工作目录内免审批
+- `exec`、`code_execution` 等执行工具仍需审批
+- 路径穿越（`../`）和符号链接逃逸会被拒绝
+- 跨用户隔离由数据库层强制执行
+- 不支持访问工作目录之外的任意路径
+
+架构详情参见 [docs/architecture/workdirs.md](docs/architecture/workdirs.md)。
+
 ## P6 功能 (Phase 6 Features)
 
 ### RBAC 权限控制

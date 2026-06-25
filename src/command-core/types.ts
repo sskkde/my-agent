@@ -25,6 +25,7 @@ export type CommandName =
   | 'models'
   | 'providers'
   | 'provider'
+  | 'workdir'
   | 'logout'
   | 'exit'
   | 'quit'

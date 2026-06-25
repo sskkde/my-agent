@@ -8,9 +8,12 @@ import type {
   EventType,
   MessageType,
   ActiveWorkRefs,
+  ActiveWorkdirInfo,
 } from './types.js'
+export type { Stores } from './types.js'
 import type { ApprovalResponse } from '../permissions/types.js'
 import type { EventRecord, SourceModule } from '../storage/event-store.js'
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 export interface Gateway {
   receiveUserMessage(userId: string, sessionId: string, text: string, channel?: string, attachmentIds?: string[]): InboundEnvelope
@@ -27,7 +30,12 @@ export interface Gateway {
     sessionId: string
     metadata?: Record<string, unknown>
   }): InboundEnvelope
-  assembleHydratedState(userId: string, sessionId: string, stores: Stores): HydratedSessionState
+  assembleHydratedState(
+    userId: string,
+    sessionId: string,
+    stores: Stores,
+    tenantId?: string,
+  ): HydratedSessionState
   formatOutbound(
     responseType: MessageType,
     content: {
@@ -132,7 +140,12 @@ export function createGateway(options: GatewayOptions): Gateway {
       return envelope
     },
 
-    assembleHydratedState(userId: string, sessionId: string, stores: Stores): HydratedSessionState {
+    assembleHydratedState(
+      userId: string,
+      sessionId: string,
+      stores: Stores,
+      tenantId?: string,
+    ): HydratedSessionState {
       const sessionMemory = stores.summaryStore.getSessionMemory(sessionId)
       const preferences = sessionMemory?.structuredState?.preferences as Record<string, unknown> | undefined
 
@@ -182,6 +195,22 @@ export function createGateway(options: GatewayOptions): Gateway {
         }
       }
 
+      // Resolve active workdir — create default if none exists
+      const effectiveTenantId = tenantId ?? DEFAULT_TENANT_ID
+      let activeWorkdir: ActiveWorkdirInfo | undefined
+      if (stores.workdirService) {
+        let workdir = stores.workdirService.getActiveWorkdir(sessionId, userId, effectiveTenantId)
+        if (!workdir) {
+          workdir = stores.workdirService.createDefaultWorkdir(userId, effectiveTenantId)
+          stores.workdirService.setActiveWorkdir(sessionId, workdir.id, userId, effectiveTenantId)
+        }
+        activeWorkdir = {
+          workDirId: workdir.id,
+          workDirName: workdir.name,
+          workDirRoot: workdir.path,
+        }
+      }
+
       const state: HydratedSessionState = {
         userContext: {
           userId,
@@ -195,6 +224,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           activeBackgroundRunIds,
         },
         activeWorkRefs,
+        ...(activeWorkdir ? { activeWorkdir } : {}),
       }
 
       emitGatewayEvent('gateway.hydration_complete', userId, sessionId, generateId(), {

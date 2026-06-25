@@ -60,8 +60,10 @@ export function createFileReadTool(): ToolDefinition {
       }
     }
 
-    const workspaceRoot = getWorkspaceRoot()
-    const safetyResult = validatePathSafety(typedParams.filePath, workspaceRoot)
+    const workspaceRoot = context.workDirRoot ?? getWorkspaceRoot()
+	    const safetyResult = validatePathSafety(typedParams.filePath, workspaceRoot, {
+	      enforceWorkdirBoundary: Boolean(context.workDirRoot),
+	    })
 
     if (!safetyResult.safe) {
       return {

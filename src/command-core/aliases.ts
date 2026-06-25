@@ -34,6 +34,7 @@ export const COMMAND_ALIASES_REVERSE: Record<CommandName, string[]> = {
   logout: [],
   exit: ['quit'],
   quit: [],
+  workdir: [],
 }
 
 /**

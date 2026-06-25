@@ -2622,6 +2622,48 @@ export const sessionChannelMappingsTableMigration: Migration = {
   `,
 }
 
+// ============================================================================
+// STORE 66: Work Directories Store (version 66)
+// ============================================================================
+export const workDirectoriesTableMigration: Migration = {
+  version: 66,
+  name: 'create_workdir_tables',
+  up: `
+    CREATE TABLE work_directories (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      path TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT,
+      metadata TEXT
+    );
+    CREATE INDEX idx_work_directories_user ON work_directories(tenant_id, user_id);
+    CREATE INDEX idx_work_directories_deleted ON work_directories(tenant_id, user_id, deleted_at);
+
+    CREATE TABLE session_workdir_state (
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      user_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      active_work_dir_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, user_id, session_id),
+      FOREIGN KEY (active_work_dir_id) REFERENCES work_directories(id)
+    );
+    CREATE INDEX idx_session_workdir_state_session ON session_workdir_state(tenant_id, user_id, session_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_session_workdir_state_session;
+    DROP TABLE IF EXISTS session_workdir_state;
+    DROP INDEX IF EXISTS idx_work_directories_deleted;
+    DROP INDEX IF EXISTS idx_work_directories_user;
+    DROP TABLE IF EXISTS work_directories
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -2764,6 +2806,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Session Channel Mappings
   sessionChannelMappingsTableMigration, // v66
+
+  // Work directories and session workdir state
+  workDirectoriesTableMigration, // v66
 ]
 
 /**

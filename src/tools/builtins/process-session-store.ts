@@ -16,6 +16,7 @@ export interface ProcessSession {
   userId: string
   command: string
   workdir: string
+  workDirId?: string
   status: ProcessStatus
   startedAt: string
   endedAt?: string
@@ -55,6 +56,7 @@ export class ProcessSessionStore {
     env: Record<string, string>
     timeoutMs: number
     maxOutputChars: number
+    workDirId?: string
   }): string {
     const sessionId = this.generateSessionId()
     const startedAt = new Date().toISOString()
@@ -72,6 +74,7 @@ export class ProcessSessionStore {
       userId: params.userId,
       command: params.command,
       workdir: params.workdir,
+      workDirId: params.workDirId,
       status: 'running',
       startedAt,
       output: '',
@@ -222,6 +225,22 @@ export class ProcessSessionStore {
     for (const [id, session] of Array.from(this.sessions.entries())) {
       if (session.status !== 'running') {
         this.sessions.delete(id)
+        count++
+      }
+    }
+
+    return count
+  }
+
+  killByWorkDirId(workDirId: string): number {
+    let count = 0
+
+    for (const session of Array.from(this.sessions.values())) {
+      if (session.workDirId === workDirId && session.status === 'running') {
+        session.child.kill('SIGTERM')
+        session.status = 'killed'
+        session.signal = 'SIGTERM'
+        session.endedAt = new Date().toISOString()
         count++
       }
     }

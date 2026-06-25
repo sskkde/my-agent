@@ -58,6 +58,7 @@ function isBinaryFile(path: string): boolean {
 
 function searchInFile(
   filePath: string,
+  displayPath: string,
   pattern: RegExp,
   outputMode: 'files_with_matches' | 'content' | 'count',
   maxMatches: number,
@@ -93,7 +94,7 @@ function searchInFile(
     for (const line of lines) {
       pattern.lastIndex = 0
       if (pattern.test(line)) {
-        return { result: { file: filePath, matches: 1 }, count: currentCount + 1 }
+        return { result: { file: displayPath, matches: 1 }, count: currentCount + 1 }
       }
     }
     return { result: null, count: currentCount }
@@ -109,7 +110,7 @@ function searchInFile(
       }
     }
     if (count > 0) {
-      return { result: { file: filePath, count }, count: currentCount + 1 }
+      return { result: { file: displayPath, count }, count: currentCount + 1 }
     }
     return { result: null, count: currentCount }
   }
@@ -119,7 +120,7 @@ function searchInFile(
     pattern.lastIndex = 0
     if (pattern.test(lines[i]!)) {
       contentMatches.push({
-        file: filePath,
+        file: displayPath,
         line: i + 1,
         content: lines[i]!.trim(),
       })
@@ -134,6 +135,7 @@ function collectFilesForGrep(
   workspaceRoot: string,
   includePattern: string | undefined,
   results: string[],
+  enforceWorkdirBoundary: boolean,
 ): void {
   let entries: import('fs').Dirent[]
   try {
@@ -145,11 +147,11 @@ function collectFilesForGrep(
   for (const entry of entries) {
     const fullPath = join(dir, entry.name as string)
 
-    const safetyResult = validatePathSafety(fullPath, workspaceRoot)
+    const safetyResult = validatePathSafety(fullPath, workspaceRoot, { enforceWorkdirBoundary })
     if (!safetyResult.safe) continue
 
     if (entry.isDirectory()) {
-      collectFilesForGrep(fullPath, workspaceRoot, includePattern, results)
+      collectFilesForGrep(fullPath, workspaceRoot, includePattern, results, enforceWorkdirBoundary)
     } else if (entry.isFile()) {
       if (shouldIncludeFile(entry.name as string, includePattern)) {
         results.push(safetyResult.relativePath!)
@@ -188,10 +190,11 @@ export function createFileGrepTool(): ToolDefinition {
       }
     }
 
-    const workspaceRoot = getWorkspaceRoot()
+    const workspaceRoot = context.workDirRoot ?? getWorkspaceRoot()
     const searchPath = typedParams.path ? resolve(workspaceRoot, typedParams.path) : workspaceRoot
 
-    const pathSafetyResult = validatePathSafety(searchPath, workspaceRoot)
+    const enforceWorkdirBoundary = Boolean(context.workDirRoot)
+    const pathSafetyResult = validatePathSafety(searchPath, workspaceRoot, { enforceWorkdirBoundary })
     if (!pathSafetyResult.safe) {
       return {
         success: false,
@@ -230,7 +233,7 @@ export function createFileGrepTool(): ToolDefinition {
     const maxLimit = Math.min(typedParams.headLimit ?? 250, GREP_HEAD_LIMIT)
 
     const filesToSearch: string[] = []
-    collectFilesForGrep(searchPath, workspaceRoot, typedParams.include, filesToSearch)
+    collectFilesForGrep(searchPath, workspaceRoot, typedParams.include, filesToSearch, enforceWorkdirBoundary)
 
     let totalResults = 0
 
@@ -241,7 +244,7 @@ export function createFileGrepTool(): ToolDefinition {
         if (totalResults >= maxLimit) break
 
         const fullPath = resolve(workspaceRoot, file)
-        const { result, count } = searchInFile(fullPath, searchPattern, outputMode, maxLimit, totalResults)
+        const { result, count } = searchInFile(fullPath, file, searchPattern, outputMode, maxLimit, totalResults)
 
         if (result) {
           matches.push(result as GrepFileMatch)
@@ -271,7 +274,7 @@ export function createFileGrepTool(): ToolDefinition {
         if (totalResults >= maxLimit) break
 
         const fullPath = resolve(workspaceRoot, file)
-        const { result, count } = searchInFile(fullPath, searchPattern, outputMode, maxLimit, totalResults)
+        const { result, count } = searchInFile(fullPath, file, searchPattern, outputMode, maxLimit, totalResults)
 
         if (result) {
           counts.push(result as GrepCountMatch)
@@ -300,7 +303,7 @@ export function createFileGrepTool(): ToolDefinition {
       if (totalResults >= maxLimit) break
 
       const fullPath = resolve(workspaceRoot, file)
-      const { result, count } = searchInFile(fullPath, searchPattern, outputMode, maxLimit, totalResults)
+      const { result, count } = searchInFile(fullPath, file, searchPattern, outputMode, maxLimit, totalResults)
 
       if (result) {
         files.push(...(result as GrepContentMatch[]))
