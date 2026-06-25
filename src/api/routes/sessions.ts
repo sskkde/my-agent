@@ -265,7 +265,8 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
               }>,
           },
         }
-        const hydratedState = context.gateway.assembleHydratedState(userId, sessionId, stores)
+        const tenantId = context.resolveTenantId?.() ?? 'org_default'
+        const hydratedState = context.gateway.assembleHydratedState(userId, sessionId, stores, tenantId)
 
         const sessionInfo = {
           sessionId,

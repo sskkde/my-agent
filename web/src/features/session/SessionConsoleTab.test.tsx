@@ -14,6 +14,17 @@ vi.mock('../../api/client', () => ({
   subscribeSessionTimeline: vi.fn(),
   getApprovals: vi.fn(),
   respondApproval: vi.fn(),
+  listWorkdirs: vi.fn(),
+  createWorkdir: vi.fn(),
+  renameWorkdir: vi.fn(),
+  deleteWorkdir: vi.fn(),
+  getSessionWorkdir: vi.fn(),
+  setSessionWorkdir: vi.fn(),
+  clearSessionWorkdir: vi.fn(),
+  listWorkdirTree: vi.fn(),
+  readWorkdirFile: vi.fn(),
+  writeWorkdirFile: vi.fn(),
+  createWorkdirDir: vi.fn(),
 }))
 
 import * as api from '../../api/client'
@@ -26,6 +37,17 @@ const mockSendMessage = api.sendMessage as ReturnType<typeof vi.fn>
 const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>
 const mockGetApprovals = api.getApprovals as ReturnType<typeof vi.fn>
 const mockRespondApproval = api.respondApproval as ReturnType<typeof vi.fn>
+const mockListWorkdirs = api.listWorkdirs as ReturnType<typeof vi.fn>
+const mockCreateWorkdir = api.createWorkdir as ReturnType<typeof vi.fn>
+const mockRenameWorkdir = api.renameWorkdir as ReturnType<typeof vi.fn>
+const mockDeleteWorkdir = api.deleteWorkdir as ReturnType<typeof vi.fn>
+const mockGetSessionWorkdir = api.getSessionWorkdir as ReturnType<typeof vi.fn>
+const mockSetSessionWorkdir = api.setSessionWorkdir as ReturnType<typeof vi.fn>
+const mockClearSessionWorkdir = api.clearSessionWorkdir as ReturnType<typeof vi.fn>
+const mockListWorkdirTree = api.listWorkdirTree as ReturnType<typeof vi.fn>
+const mockReadWorkdirFile = api.readWorkdirFile as ReturnType<typeof vi.fn>
+const mockWriteWorkdirFile = api.writeWorkdirFile as ReturnType<typeof vi.fn>
+const mockCreateWorkdirDir = api.createWorkdirDir as ReturnType<typeof vi.fn>
 
 const SELECTED_SESSION_KEY = 'session-console-selected-session'
 
@@ -4046,6 +4068,593 @@ describe('SessionConsoleTab - Selector Coverage', () => {
     // Verify approval-modal selector
     await waitFor(() => {
       expect(screen.getByTestId('approval-modal')).toBeInTheDocument()
+    })
+  })
+})
+
+// =============================================================================
+// Workdir Panel Tests (Task 13)
+// =============================================================================
+
+describe('SessionConsoleTab - Workdir Panel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    mockListWorkdirs.mockResolvedValue({ workdirs: [], total: 0 })
+    mockGetSessionWorkdir.mockResolvedValue({ workdir: null })
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('renders workdir panel when session is selected', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workdir-panel')).toBeInTheDocument()
+    })
+  })
+
+  it('shows empty workdir state when no workdir is selected', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockGetSessionWorkdir.mockResolvedValue({ workdir: null })
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workdir-panel-empty')).toBeInTheDocument()
+    })
+  })
+
+  it('loads active workdir for selected session', async () => {
+    const mockWorkdir = {
+      id: 'wd-1',
+      userId: 'user-1',
+      name: 'my-project',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    }
+
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockGetSessionWorkdir.mockResolvedValue({ workdir: mockWorkdir })
+    mockListWorkdirTree.mockResolvedValue({ tree: [], path: '' })
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(mockGetSessionWorkdir).toHaveBeenCalledWith('session-123')
+      expect(screen.getByText('my-project')).toBeInTheDocument()
+    })
+  })
+
+  it('switching sessions loads correct active workdir', async () => {
+    const mockWorkdir1 = {
+      id: 'wd-1',
+      userId: 'user-1',
+      name: 'project-a',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    }
+    const mockWorkdir2 = {
+      id: 'wd-2',
+      userId: 'user-1',
+      name: 'project-b',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    }
+
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-1',
+          userId: 'user-1',
+          title: 'Session 1',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          sessionId: 'session-2',
+          userId: 'user-1',
+          title: 'Session 2',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 2,
+    })
+    mockGetSession.mockImplementation((id: string) =>
+      Promise.resolve({
+        session: {
+          sessionId: id,
+          userId: 'user-1',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          activePlannerRunIds: [],
+          activeBackgroundRunIds: [],
+        },
+      }),
+    )
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockGetSessionWorkdir
+      .mockResolvedValueOnce({ workdir: mockWorkdir1 })
+      .mockResolvedValueOnce({ workdir: mockWorkdir2 })
+    mockListWorkdirTree.mockResolvedValue({ tree: [], path: '' })
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-1')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-1'))
+
+    await waitFor(() => {
+      expect(screen.getByText('project-a')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-2'))
+
+    await waitFor(() => {
+      expect(screen.getByText('project-b')).toBeInTheDocument()
+    })
+  })
+
+  it('renders file tree from API data when workdir is active', async () => {
+    const mockWorkdir = {
+      id: 'wd-1',
+      userId: 'user-1',
+      name: 'my-project',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    }
+
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockGetSessionWorkdir.mockResolvedValue({ workdir: mockWorkdir })
+    mockListWorkdirTree.mockResolvedValue({
+      tree: [
+        { name: 'src', type: 'directory', relativePath: 'src' },
+        { name: 'README.md', type: 'file', relativePath: 'README.md' },
+      ],
+      path: '',
+    })
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workdir-file-tree')).toBeInTheDocument()
+      expect(screen.getByText('src')).toBeInTheDocument()
+      expect(screen.getByText('README.md')).toBeInTheDocument()
+    })
+  })
+
+  it('shows file editor when a file is clicked', async () => {
+    const mockWorkdir = {
+      id: 'wd-1',
+      userId: 'user-1',
+      name: 'my-project',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    }
+
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockGetSessionWorkdir.mockResolvedValue({ workdir: mockWorkdir })
+    mockListWorkdirTree.mockResolvedValue({
+      tree: [{ name: 'README.md', type: 'file', relativePath: 'README.md' }],
+      path: '',
+    })
+    mockReadWorkdirFile.mockResolvedValue({
+      path: 'README.md',
+      content: '# Hello World',
+      sizeBytes: 12,
+      modifiedAt: new Date().toISOString(),
+    })
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByText('README.md')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('workdir-tree-node-README.md'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workdir-file-editor')).toBeInTheDocument()
+    })
+  })
+
+  it('saves edited file content', async () => {
+    const mockWorkdir = {
+      id: 'wd-1',
+      userId: 'user-1',
+      name: 'my-project',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    }
+
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockGetSessionWorkdir.mockResolvedValue({ workdir: mockWorkdir })
+    mockListWorkdirTree.mockResolvedValue({
+      tree: [{ name: 'README.md', type: 'file', relativePath: 'README.md' }],
+      path: '',
+    })
+    mockReadWorkdirFile.mockResolvedValue({
+      path: 'README.md',
+      content: '# Hello',
+      sizeBytes: 7,
+      modifiedAt: new Date().toISOString(),
+    })
+    mockWriteWorkdirFile.mockResolvedValue({
+      path: 'README.md',
+      sizeBytes: 12,
+      modifiedAt: new Date().toISOString(),
+    })
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByText('README.md')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('workdir-tree-node-README.md'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workdir-file-editor-textarea')).toBeInTheDocument()
+    })
+
+    // Edit content
+    fireEvent.change(screen.getByTestId('workdir-file-editor-textarea'), {
+      target: { value: '# Updated Content' },
+    })
+
+    // Save
+    fireEvent.click(screen.getByTestId('workdir-file-editor-save'))
+
+    await waitFor(() => {
+      expect(mockWriteWorkdirFile).toHaveBeenCalledWith('wd-1', 'README.md', '# Updated Content')
+    })
+  })
+
+  it('displays error state when API call fails', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockListWorkdirs.mockRejectedValue(new Error('FORBIDDEN'))
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workdir-panel-error')).toBeInTheDocument()
+      expect(screen.getByText('FORBIDDEN')).toBeInTheDocument()
+    })
+  })
+
+  it('does not crash timeline/composer when workdir API fails', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({
+      events: [
+        {
+          eventId: 'event-1',
+          eventType: 'user_message',
+          sessionId: 'session-123',
+          timestamp: new Date().toISOString(),
+          content: 'Hello',
+        },
+      ],
+      total: 1,
+    })
+    mockListWorkdirs.mockRejectedValue(new Error('API Error'))
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    // Timeline and composer should still work
+    await waitFor(() => {
+      expect(screen.getByTestId('session-timeline')).toBeInTheDocument()
+      expect(screen.getByText('Hello')).toBeInTheDocument()
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+      expect(screen.getByTestId('session-send-button')).toBeInTheDocument()
+    })
+  })
+
+  it('dismisses error when dismiss button is clicked', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
+    mockListWorkdirs.mockRejectedValue(new Error('Network error'))
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workdir-panel-error')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('workdir-panel-error-dismiss'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('workdir-panel-error')).not.toBeInTheDocument()
     })
   })
 })
