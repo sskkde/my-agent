@@ -18,8 +18,10 @@ import {
   createRequiresApprovalDecision,
   modeAllowsOperation,
   fromStorageApprovalRequest,
+  isWorkdirFileTool,
 } from './types.js'
 import { isDeniedByRestricted } from './tool-risk-policy.js'
+import { isWithinWorkdir } from '../workdirs/workdir-paths.js'
 import { APPROVAL_STATES } from '../storage/approval-store.js'
 
 export interface PermissionEngine {
@@ -372,6 +374,34 @@ export function createPermissionEngine(
         )
       }
 
+      if (
+        request.workDirRoot &&
+        resource &&
+        isWorkdirFileTool(actionType.replace('tool:', '')) &&
+        (operationType === 'read' || operationType === 'write') &&
+        isWithinWorkdir(resource, request.workDirRoot)
+      ) {
+        const workdirAutoAllowReason = `Workdir-scoped auto-allow: ${actionType} inside active workdir`
+        emitAuditEvent({
+          eventType: 'permission_granted',
+          userId: context.userId,
+          sessionId: context.sessionId,
+          actionType,
+          resource,
+          decision: 'allowed',
+          reason: workdirAutoAllowReason,
+          correlationId,
+          timestamp,
+        })
+        return finishDecision(
+          createAllowedDecision(workdirAutoAllowReason, undefined, {
+            workdirAutoAllow: true,
+            workDirRoot: request.workDirRoot,
+            workDirId: request.workDirId,
+          }),
+        )
+      }
+
       if (fullConfig.respectExistingGrants) {
         const grantCheck = checkExistingGrants(request)
         if (grantCheck.allowed) {
@@ -666,6 +696,34 @@ export function createPermissionEngine(
         })
         return finishDecision(
           createDeniedDecision(`Restricted mode denies ${request.riskLevel}-risk operation '${actionType}'`),
+        )
+      }
+
+      if (
+        request.workDirRoot &&
+        resource &&
+        isWorkdirFileTool(actionType.replace('tool:', '')) &&
+        (operationType === 'read' || operationType === 'write') &&
+        isWithinWorkdir(resource, request.workDirRoot)
+      ) {
+        const workdirAutoAllowReason = `Workdir-scoped auto-allow: ${actionType} inside active workdir`
+        emitAuditEvent({
+          eventType: 'permission_granted',
+          userId: context.userId,
+          sessionId: context.sessionId,
+          actionType,
+          resource,
+          decision: 'allowed',
+          reason: workdirAutoAllowReason,
+          correlationId,
+          timestamp,
+        })
+        return finishDecision(
+          createAllowedDecision(workdirAutoAllowReason, undefined, {
+            workdirAutoAllow: true,
+            workDirRoot: request.workDirRoot,
+            workDirId: request.workDirId,
+          }),
         )
       }
 

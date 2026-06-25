@@ -16,6 +16,7 @@ import type { ForegroundTurnInput } from './foreground-runner-types.js'
 import type { ToolCategory, ToolSensitivity, ToolRegistry } from '../tools/types.js'
 import type { AgentType } from '../context/types.js'
 import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
+import { getWorkdirFileToolIds } from '../permissions/agent-type-tool-envelope.js'
 import { toLLMToolDefinition } from '../tools/tool-plane-prompt-projection.js'
 
 /**
@@ -100,7 +101,7 @@ export interface ForegroundToolProjectionResult {
  * ```
  */
 export function buildForegroundToolProjection(
-  _input: ForegroundTurnInput,
+  input: ForegroundTurnInput,
   allTools: Array<{
     name: string
     category: ToolCategory
@@ -118,9 +119,18 @@ export function buildForegroundToolProjection(
 ): ForegroundToolProjectionResult {
   const safeTools = allTools.filter((tool) => isToolSafeForDefaultProjection(tool.category, tool.sensitivity))
 
+  let projectedTools = safeTools
+  if (input.workDirRoot) {
+    const workdirToolIds = getWorkdirFileToolIds()
+    const workdirFileTools = allTools.filter(
+      (tool) => workdirToolIds.has(tool.name) && !safeTools.some((s) => s.name === tool.name),
+    )
+    projectedTools = [...safeTools, ...workdirFileTools]
+  }
+
   // Apply preference: hide web_search when search_subagent is available
-  const hasSearchSubagent = safeTools.some((tool) => tool.name === 'search_subagent')
-  const projectedTools = hasSearchSubagent ? safeTools.filter((tool) => tool.name !== 'web_search') : safeTools
+  const hasSearchSubagent = projectedTools.some((tool) => tool.name === 'search_subagent')
+  projectedTools = hasSearchSubagent ? projectedTools.filter((tool) => tool.name !== 'web_search') : projectedTools
 
   const allowedToolIds = projectedTools.map((tool) => tool.name)
 

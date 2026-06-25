@@ -12,6 +12,19 @@ export interface ToolRiskPolicy {
 
 const DANGEROUS_CATEGORIES = new Set(['write', 'delete', 'send', 'execute', 'automation', 'admin', 'connector'])
 
+const WORKDIR_CARVEOUT_TOOLS: ReadonlySet<string> = new Set([
+  'file_read',
+  'file_glob',
+  'file_grep',
+  'file_write',
+  'file_edit',
+  'file_apply_patch',
+])
+
+export function isWorkdirCarveoutTool(toolId: string): boolean {
+  return WORKDIR_CARVEOUT_TOOLS.has(toolId)
+}
+
 /**
  * Map a tool's category + sensitivity to a RiskLevel.
  *

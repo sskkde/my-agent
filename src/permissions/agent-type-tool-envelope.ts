@@ -15,6 +15,23 @@ import type { AgentType } from '../context/types.js'
 import type { ToolCategory } from '../tools/types.js'
 
 // ---------------------------------------------------------------------------
+// Workdir file tool IDs — eligible for workdir-scoped permission carve-out
+// ---------------------------------------------------------------------------
+
+const WORKDIR_FILE_TOOL_IDS: ReadonlySet<string> = new Set([
+  'file_read',
+  'file_glob',
+  'file_grep',
+  'file_write',
+  'file_edit',
+  'file_apply_patch',
+])
+
+export function getWorkdirFileToolIds(): ReadonlySet<string> {
+  return WORKDIR_FILE_TOOL_IDS
+}
+
+// ---------------------------------------------------------------------------
 // Envelope definition
 // ---------------------------------------------------------------------------
 
