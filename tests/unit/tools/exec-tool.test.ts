@@ -243,4 +243,120 @@ describe('exec-tool', () => {
       expect(tool.requiresPermission).toBe(true)
     })
   })
+
+  describe('workDirRoot support', () => {
+    it('uses workDirRoot as workspace root when context provides it', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createExecTool(store)
+      const params: ExecParams = {
+        command: 'node -e "console.log(process.cwd())"',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as ExecResult
+      expect(data.status).toBe('completed')
+      expect(data.stdout.trim()).toBe(workDirRoot)
+    })
+
+    it('rejects workdir that escapes workDirRoot', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createExecTool(store)
+      const params: ExecParams = {
+        command: 'ls',
+        workdir: '../../escape',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error!.code).toBe('WORKDIR_OUTSIDE_WORKSPACE')
+    })
+
+    it('allows workdir relative to workDirRoot', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      const subDir = join(workDirRoot, 'subdir')
+      mkdirSync(subDir, { recursive: true })
+
+      const tool = createExecTool(store)
+      const params: ExecParams = {
+        command: 'node -e "console.log(process.cwd())"',
+        workdir: 'subdir',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as ExecResult
+      expect(data.status).toBe('completed')
+      expect(data.stdout.trim()).toBe(subDir)
+    })
+
+    it('dangerous commands still rejected with workDirRoot', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createExecTool(store)
+      const params: ExecParams = {
+        command: 'rm -rf /',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error!.code).toBe('DANGEROUS_COMMAND')
+    })
+
+    it('approval still required (requiresPermission remains true)', () => {
+      const tool = createExecTool(store)
+      expect(tool.requiresPermission).toBe(true)
+    })
+
+    it('bash tool inherits workDirRoot support', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createBashTool(store)
+      const params: ExecParams = {
+        command: 'node -e "console.log(process.cwd())"',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as ExecResult
+      expect(data.status).toBe('completed')
+      expect(data.stdout.trim()).toBe(workDirRoot)
+    })
+
+    it('falls back to getWorkspaceRoot when workDirRoot not set', async () => {
+      const tool = createExecTool(store)
+      const params: ExecParams = {
+        command: 'node -e "console.log(process.cwd())"',
+      }
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as ExecResult
+      expect(data.status).toBe('completed')
+      expect(data.stdout.trim()).toBe(testDir)
+    })
+  })
 })

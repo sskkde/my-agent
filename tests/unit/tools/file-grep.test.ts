@@ -69,9 +69,9 @@ describe('file_grep tool', () => {
       const data = result.data as { matches: Array<{ file: string }>; outputMode: string }
       expect(data.outputMode).toBe('files_with_matches')
       expect(data.matches.length).toBe(2)
-      expect(data.matches.map((m) => m.file)).toContain(join(testDir, 'file1.txt'))
-      expect(data.matches.map((m) => m.file)).toContain(join(testDir, 'file3.txt'))
-      expect(data.matches.map((m) => m.file)).not.toContain(join(testDir, 'file2.txt'))
+      expect(data.matches.map((m) => m.file)).toContain('file1.txt')
+      expect(data.matches.map((m) => m.file)).toContain('file3.txt')
+      expect(data.matches.map((m) => m.file)).not.toContain('file2.txt')
     })
 
     it('should search in subdirectories', async () => {
@@ -87,7 +87,7 @@ describe('file_grep tool', () => {
       expect(result.success).toBe(true)
       const data = result.data as { matches: Array<{ file: string }> }
       expect(data.matches.length).toBe(1)
-      expect(data.matches[0]?.file).toBe(join(testDir, 'src', 'index.ts'))
+      expect(data.matches[0]?.file).toBe(join('src', 'index.ts'))
     })
 
     it('should support regex patterns', async () => {
@@ -117,8 +117,8 @@ describe('file_grep tool', () => {
       const data = result.data as { files: Array<{ file: string; line: number; content: string }>; outputMode: string }
       expect(data.outputMode).toBe('content')
       expect(data.files.length).toBe(2)
-      expect(data.files[0]).toEqual({ file: join(testDir, 'test.txt'), line: 2, content: 'Hello World' })
-      expect(data.files[1]).toEqual({ file: join(testDir, 'test.txt'), line: 4, content: 'Hello again' })
+      expect(data.files[0]).toEqual({ file: 'test.txt', line: 2, content: 'Hello World' })
+      expect(data.files[1]).toEqual({ file: 'test.txt', line: 4, content: 'Hello again' })
     })
 
     it('should return matches from multiple files', async () => {
@@ -133,8 +133,8 @@ describe('file_grep tool', () => {
       expect(result.success).toBe(true)
       const data = result.data as { files: Array<{ file: string; line: number }> }
       expect(data.files.length).toBe(2)
-      expect(data.files.map((f) => f.file)).toContain(join(testDir, 'a.txt'))
-      expect(data.files.map((f) => f.file)).toContain(join(testDir, 'b.txt'))
+      expect(data.files.map((f) => f.file)).toContain('a.txt')
+      expect(data.files.map((f) => f.file)).toContain('b.txt')
     })
   })
 
@@ -151,7 +151,7 @@ describe('file_grep tool', () => {
       const data = result.data as { counts: Array<{ file: string; count: number }>; outputMode: string }
       expect(data.outputMode).toBe('count')
       expect(data.counts.length).toBe(1)
-      expect(data.counts[0]).toEqual({ file: join(testDir, 'test.txt'), count: 4 })
+      expect(data.counts[0]).toEqual({ file: 'test.txt', count: 4 })
     })
 
     it('should count matches across multiple files', async () => {
@@ -166,8 +166,8 @@ describe('file_grep tool', () => {
       expect(result.success).toBe(true)
       const data = result.data as { counts: Array<{ file: string; count: number }> }
       expect(data.counts.length).toBe(2)
-      const aCount = data.counts.find((c) => c.file === join(testDir, 'a.txt'))
-      const bCount = data.counts.find((c) => c.file === join(testDir, 'b.txt'))
+      const aCount = data.counts.find((c) => c.file === 'a.txt')
+      const bCount = data.counts.find((c) => c.file === 'b.txt')
       expect(aCount?.count).toBe(2)
       expect(bCount?.count).toBe(1)
     })
@@ -191,7 +191,7 @@ describe('file_grep tool', () => {
       expect(result.success).toBe(true)
       const data = result.data as { matches: Array<{ file: string }> }
       expect(data.matches.length).toBe(1)
-      expect(data.matches[0]?.file).toBe(join(testDir, 'test.ts'))
+      expect(data.matches[0]?.file).toBe('test.ts')
     })
   })
 
@@ -214,7 +214,7 @@ describe('file_grep tool', () => {
       expect(result.success).toBe(true)
       const data = result.data as { matches: Array<{ file: string }> }
       expect(data.matches.length).toBe(1)
-      expect(data.matches[0]?.file).toBe(join(testDir, 'src', 'index.ts'))
+      expect(data.matches[0]?.file).toBe(join('src', 'index.ts'))
     })
   })
 
@@ -272,7 +272,7 @@ describe('file_grep tool', () => {
       expect(result.success).toBe(true)
       const data = result.data as { matches: Array<{ file: string }> }
       expect(data.matches.map((m) => m.file)).not.toContain('.env')
-      expect(data.matches.map((m) => m.file)).toContain(join(testDir, 'normal.txt'))
+      expect(data.matches.map((m) => m.file)).toContain('normal.txt')
     })
 
     it('should skip binary files', async () => {
@@ -286,7 +286,7 @@ describe('file_grep tool', () => {
 
       expect(result.success).toBe(true)
       const data = result.data as { matches: Array<{ file: string }> }
-      expect(data.matches.map((m) => m.file)).not.toContain(join(testDir, 'binary.png'))
+      expect(data.matches.map((m) => m.file)).not.toContain('binary.png')
     })
 
     it('should skip files with null bytes', async () => {
@@ -300,7 +300,7 @@ describe('file_grep tool', () => {
 
       expect(result.success).toBe(true)
       const data = result.data as { matches: Array<{ file: string }> }
-      expect(data.matches.map((m) => m.file)).not.toContain(join(testDir, 'binary.dat'))
+      expect(data.matches.map((m) => m.file)).not.toContain('binary.dat')
     })
   })
 
@@ -355,6 +355,62 @@ describe('file_grep tool', () => {
 
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe('OUTSIDE_WORKSPACE')
+    })
+  })
+
+  describe('workDirRoot support', () => {
+    let workDir: string
+
+    beforeEach(() => {
+      workDir = join(tmpdir(), `file-grep-workdir-${Date.now()}`)
+      mkdirSync(workDir, { recursive: true })
+    })
+
+    afterEach(() => {
+      if (existsSync(workDir)) {
+        rmSync(workDir, { recursive: true, force: true })
+      }
+    })
+
+    it('should grep files relative to context.workDirRoot when set', async () => {
+      writeFileSync(join(workDir, 'match.txt'), 'hello world\n')
+      writeFileSync(join(testDir, 'default-match.txt'), 'hello default\n')
+
+      const params: FileGrepParams = { pattern: 'hello', outputMode: 'files_with_matches' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as { matches: Array<{ file: string }> }
+      expect(data.matches.length).toBe(1)
+      expect(data.matches[0]?.file).toBe('match.txt')
+      expect(data.matches[0]?.file).not.toContain(workDir)
+    })
+
+    it('should reject grep path that escapes workDirRoot', async () => {
+      const params: FileGrepParams = { pattern: 'test', path: '../outside' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('OUTSIDE_WORKSPACE')
+    })
+
+    it('should use getWorkspaceRoot() fallback when workDirRoot is not set', async () => {
+      writeFileSync(join(testDir, 'fallback.txt'), 'match content\n')
+
+      const params: FileGrepParams = { pattern: 'match', outputMode: 'files_with_matches' }
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as { matches: Array<{ file: string }> }
+      expect(data.matches.length).toBe(1)
+      expect(data.matches[0]?.file).toBe('fallback.txt')
+      expect(data.matches[0]?.file).not.toContain(testDir)
     })
   })
 

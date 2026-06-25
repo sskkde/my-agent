@@ -314,6 +314,83 @@ describe('file_edit tool', () => {
     })
   })
 
+  describe('workDirRoot support', () => {
+    let workDir: string
+
+    beforeEach(() => {
+      workDir = join(tmpdir(), `file-edit-workdir-${Date.now()}`)
+      mkdirSync(workDir, { recursive: true })
+    })
+
+    afterEach(() => {
+      if (existsSync(workDir)) {
+        rmSync(workDir, { recursive: true, force: true })
+      }
+    })
+
+    it('should edit file relative to context.workDirRoot when set', async () => {
+      writeFileSync(join(workDir, 'edit.txt'), 'Hello World')
+
+      const params: FileEditParams = {
+        filePath: 'edit.txt',
+        oldString: 'World',
+        newString: 'Universe',
+      }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      expect(readFileSync(join(workDir, 'edit.txt'), 'utf8')).toBe('Hello Universe')
+    })
+
+    it('should reject edit that escapes workDirRoot', async () => {
+      const params: FileEditParams = {
+        filePath: '../escape.txt',
+        oldString: 'old',
+        newString: 'new',
+      }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PATH_ESCAPE')
+    })
+
+    it('should use getWorkspaceRoot() fallback when workDirRoot is not set', async () => {
+      writeFileSync(join(testDir, 'fallback.txt'), 'Original')
+
+      const params: FileEditParams = {
+        filePath: 'fallback.txt',
+        oldString: 'Original',
+        newString: 'Modified',
+      }
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      expect(readFileSync(join(testDir, 'fallback.txt'), 'utf8')).toBe('Modified')
+    })
+
+    it('should not find file in default dir when workDirRoot is set', async () => {
+      writeFileSync(join(testDir, 'default-only.txt'), 'in default')
+
+      const params: FileEditParams = {
+        filePath: 'default-only.txt',
+        oldString: 'in default',
+        newString: 'changed',
+      }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('FILE_NOT_FOUND')
+    })
+  })
+
   describe('Tool Definition', () => {
     it('should have correct name', () => {
       expect(tool.name).toBe('file_edit')

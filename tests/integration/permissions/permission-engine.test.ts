@@ -7,6 +7,9 @@ import { createEventStore, type EventStore } from '../../../src/storage/event-st
 import { createPermissionEngine, type PermissionEngine } from '../../../src/permissions/permission-engine.js'
 import { createApprovalHandler, type ApprovalHandler } from '../../../src/permissions/approval-handler.js'
 import { createPermissionContext, type PermissionCheckRequest } from '../../../src/permissions/types.js'
+import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
 
 describe('Permission & Approval Engine', () => {
   let connection: ConnectionManager
@@ -708,6 +711,155 @@ describe('Permission & Approval Engine', () => {
 
       const active = grantStore.findActiveByUserAndScope(userId, scope)
       expect(active.length).toBe(0)
+    })
+  })
+
+  describe('Workdir permission carve-out', () => {
+    let testDir: string
+    let workdirRoot: string
+
+    beforeEach(() => {
+      testDir = join(tmpdir(), `perm-engine-workdir-test-${Date.now()}`)
+      workdirRoot = join(testDir, 'data', 'workdirs')
+      mkdirSync(workdirRoot, { recursive: true })
+    })
+
+    afterEach(() => {
+      if (existsSync(testDir)) {
+        rmSync(testDir, { recursive: true, force: true })
+      }
+    })
+
+    it('should auto-allow file_write in workdir without approval in ask_on_write mode', () => {
+      const userDir = join(workdirRoot, 'user-1', 'wd-1')
+      mkdirSync(userDir, { recursive: true })
+      writeFileSync(join(userDir, 'existing.txt'), 'data')
+
+      const context = createPermissionContext('user_1', 'sess_1', 'ask_on_write')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'tool:file_write',
+        resource: join(userDir, 'output.txt'),
+        operationType: 'write',
+        workDirRoot: workdirRoot,
+        workDirId: 'wd-1',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+      expect(decision.allowed).toBe(true)
+      expect(decision.status).toBe('allowed')
+      expect(decision.metadata?.workdirAutoAllow).toBe(true)
+    })
+
+    it('should auto-allow file_read in workdir in ask_on_write mode', () => {
+      const userDir = join(workdirRoot, 'user-1', 'wd-1')
+      mkdirSync(userDir, { recursive: true })
+      writeFileSync(join(userDir, 'file.txt'), 'content')
+
+      const context = createPermissionContext('user_1', 'sess_1', 'ask_on_write')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'tool:file_read',
+        resource: join(userDir, 'file.txt'),
+        operationType: 'read',
+        workDirRoot: workdirRoot,
+        workDirId: 'wd-1',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+      expect(decision.allowed).toBe(true)
+      expect(decision.metadata?.workdirAutoAllow).toBe(true)
+    })
+
+    it('should require approval for file_write outside workdir in ask_on_write mode', () => {
+      const context = createPermissionContext('user_1', 'sess_1', 'ask_on_write')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'tool:file_write',
+        resource: '/tmp/outside.txt',
+        operationType: 'write',
+        workDirRoot: workdirRoot,
+        workDirId: 'wd-1',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('requires_approval')
+    })
+
+    it('should require approval for exec in workdir in ask_on_write mode', () => {
+      const userDir = join(workdirRoot, 'user-1', 'wd-1')
+      mkdirSync(userDir, { recursive: true })
+
+      const context = createPermissionContext('user_1', 'sess_1', 'ask_on_write')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'tool:exec',
+        resource: join(userDir, 'script.sh'),
+        operationType: 'execute',
+        workDirRoot: workdirRoot,
+        workDirId: 'wd-1',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('requires_approval')
+    })
+
+    it('should auto-allow file operations in write_allowed mode with workdir', () => {
+      const userDir = join(workdirRoot, 'user-1', 'wd-1')
+      mkdirSync(userDir, { recursive: true })
+
+      const context = createPermissionContext('user_1', 'sess_1', 'write_allowed')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'tool:file_write',
+        resource: join(userDir, 'output.txt'),
+        operationType: 'write',
+        workDirRoot: workdirRoot,
+        workDirId: 'wd-1',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+      expect(decision.allowed).toBe(true)
+      expect(decision.metadata?.workdirAutoAllow).toBe(true)
+    })
+
+    it('should emit workdir auto-allow reason in decision', () => {
+      const userDir = join(workdirRoot, 'user-1', 'wd-1')
+      mkdirSync(userDir, { recursive: true })
+
+      const context = createPermissionContext('user_1', 'sess_1', 'ask_on_write')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'tool:file_write',
+        resource: join(userDir, 'output.txt'),
+        operationType: 'write',
+        workDirRoot: workdirRoot,
+        workDirId: 'wd-1',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+      expect(decision.reason).toContain('Workdir-scoped auto-allow')
+    })
+
+    it('should still deny in hard_deny mode even with workdir', () => {
+      const userDir = join(workdirRoot, 'user-1', 'wd-1')
+      mkdirSync(userDir, { recursive: true })
+
+      const context = createPermissionContext('user_1', 'sess_1', 'hard_deny')
+      const request: PermissionCheckRequest = {
+        context,
+        actionType: 'tool:file_write',
+        resource: join(userDir, 'output.txt'),
+        operationType: 'write',
+        workDirRoot: workdirRoot,
+        workDirId: 'wd-1',
+      }
+
+      const decision = permissionEngine.checkPermission(request)
+      expect(decision.allowed).toBe(false)
+      expect(decision.status).toBe('denied')
     })
   })
 })

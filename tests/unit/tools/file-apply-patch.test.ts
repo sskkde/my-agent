@@ -172,4 +172,60 @@ describe('file_apply_patch tool', () => {
     expect(data.applied).toBe(2)
     expect(data.failed).toBe(0)
   })
+
+  describe('workDirRoot support', () => {
+    let workDir: string
+
+    beforeEach(() => {
+      workDir = join(tmpdir(), `file-apply-patch-workdir-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      mkdirSync(workDir, { recursive: true })
+    })
+
+    afterEach(() => {
+      if (existsSync(workDir)) rmSync(workDir, { recursive: true, force: true })
+    })
+
+    it('should apply operations relative to context.workDirRoot when set', async () => {
+      writeFileSync(join(workDir, 'existing.txt'), 'old content')
+
+      const operations: FilePatchOperation[] = [
+        { type: 'add', filePath: 'new.txt', content: 'created in workdir' },
+        { type: 'update', filePath: 'existing.txt', oldString: 'old', newString: 'new' },
+      ]
+
+      const params: FileApplyPatchParams = { operations }
+      const result = await tool.handler(params, createToolContext({ workDirRoot: workDir }))
+
+      expect(result.success).toBe(true)
+      expect(existsSync(join(workDir, 'new.txt'))).toBe(true)
+      expect(readFileSync(join(workDir, 'new.txt'), 'utf8')).toBe('created in workdir')
+      expect(readFileSync(join(workDir, 'existing.txt'), 'utf8')).toBe('new content')
+    })
+
+    it('should reject operations that escape workDirRoot', async () => {
+      const operations: FilePatchOperation[] = [
+        { type: 'add', filePath: '../escape.txt', content: 'escape' },
+      ]
+
+      const params: FileApplyPatchParams = { operations }
+      const result = await tool.handler(params, createToolContext({ workDirRoot: workDir }))
+
+      expect(result.success).toBe(false)
+      const data = result.data as FileApplyPatchResult
+      expect(data.failed).toBe(1)
+    })
+
+    it('should use getWorkspaceRoot() fallback when workDirRoot is not set', async () => {
+      const operations: FilePatchOperation[] = [
+        { type: 'add', filePath: 'fallback.txt', content: 'in default' },
+      ]
+
+      const params: FileApplyPatchParams = { operations }
+      const result = await tool.handler(params, createToolContext())
+
+      expect(result.success).toBe(true)
+      expect(existsSync(join(testDir, 'fallback.txt'))).toBe(true)
+      expect(readFileSync(join(testDir, 'fallback.txt'), 'utf8')).toBe('in default')
+    })
+  })
 })

@@ -1087,6 +1087,187 @@ describe('ToolExecutor', () => {
       expect(receivedContext.launchSource).toBeUndefined()
     })
   })
+
+  describe('workdir context transport', () => {
+    it('should pass workDirRoot and workDirId from request to handler context unchanged', async () => {
+      const handler = vi.fn().mockResolvedValue({ success: true })
+      const tool: ToolDefinition = {
+        name: 'workdir-tool',
+        description: 'Receives workdir context',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision)
+
+      await executor.execute({
+        toolCallId: 'call-workdir-1',
+        toolName: 'workdir-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+        workDirRoot: '/data/workdirs/user-1/abc-123',
+        workDirId: 'abc-123',
+      })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      const receivedContext = handler.mock.calls[0][1]
+      expect(receivedContext.workDirRoot).toBe('/data/workdirs/user-1/abc-123')
+      expect(receivedContext.workDirId).toBe('abc-123')
+    })
+
+    it('should leave workDirRoot and workDirId undefined when request omits them (legacy behavior)', async () => {
+      const handler = vi.fn().mockResolvedValue({ success: true })
+      const tool: ToolDefinition = {
+        name: 'legacy-tool',
+        description: 'No workdir context provided',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision)
+
+      await executor.execute({
+        toolCallId: 'call-legacy-1',
+        toolName: 'legacy-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      })
+
+      const receivedContext = handler.mock.calls[0][1]
+      expect(receivedContext.workDirRoot).toBeUndefined()
+      expect(receivedContext.workDirId).toBeUndefined()
+    })
+
+    it('should not mutate global cwd when workdir fields are undefined', async () => {
+      const originalCwd = process.cwd()
+      const handler = vi.fn().mockResolvedValue({ success: true })
+      const tool: ToolDefinition = {
+        name: 'no-cwd-mutation-tool',
+        description: 'Should not change cwd',
+        category: 'read' as ToolCategory,
+        sensitivity: 'low' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Test allowed',
+      } as PermissionDecision)
+
+      await executor.execute({
+        toolCallId: 'call-no-cwd-1',
+        toolName: 'no-cwd-mutation-tool',
+        params: {},
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+      })
+
+      expect(process.cwd()).toBe(originalCwd)
+    })
+
+    it('should use active workDirRoot as permission resource when every patch operation stays inside workdir', async () => {
+      const handler = vi.fn().mockResolvedValue({ success: true })
+      const tool: ToolDefinition = {
+        name: 'file_apply_patch',
+        description: 'Apply patch',
+        category: 'write' as ToolCategory,
+        sensitivity: 'high' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'allowed',
+        allowed: true,
+        reason: 'Workdir auto allowed',
+      } as PermissionDecision)
+
+      await executor.execute({
+        toolCallId: 'call-patch-workdir-only',
+        toolName: 'file_apply_patch',
+        params: {
+          operations: [
+            { type: 'add', filePath: 'a.txt', content: 'a' },
+            { type: 'update', filePath: 'nested/b.txt', oldString: 'b', newString: 'bb' },
+          ],
+        },
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+        workDirRoot: '/data/workdirs/user-1/abc-123',
+        workDirId: 'abc-123',
+      })
+
+      expect(mockPermissionEngine.checkPermission).toHaveBeenCalledWith(
+        expect.objectContaining({ resource: '/data/workdirs/user-1/abc-123' }),
+      )
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it('should use the first outside path as permission resource when a patch mixes workdir and non-workdir targets', async () => {
+      const outsidePath = '/tmp/outside-workdir.txt'
+      const handler = vi.fn().mockResolvedValue({ success: true })
+      const tool: ToolDefinition = {
+        name: 'file_apply_patch',
+        description: 'Apply patch',
+        category: 'write' as ToolCategory,
+        sensitivity: 'high' as ToolSensitivity,
+        schema: { type: 'object', properties: {} },
+        handler,
+      }
+
+      vi.mocked(mockRegistry.getTool).mockReturnValue(tool)
+      vi.mocked(mockPermissionEngine.checkPermission).mockReturnValue({
+        status: 'requires_approval',
+        allowed: false,
+        reason: 'Outside workdir requires approval',
+      } as PermissionDecision)
+
+      const result = await executor.execute({
+        toolCallId: 'call-patch-mixed-targets',
+        toolName: 'file_apply_patch',
+        params: {
+          operations: [
+            { type: 'add', filePath: 'inside.txt', content: 'inside' },
+            { type: 'add', filePath: outsidePath, content: 'outside' },
+          ],
+        },
+        userId: 'user-1',
+        sessionId: 'session-1',
+        permissionContext: createTestPermissionContext(),
+        workDirRoot: '/data/workdirs/user-1/abc-123',
+        workDirId: 'abc-123',
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('APPROVAL_REQUIRED')
+      expect(mockPermissionEngine.checkPermission).toHaveBeenCalledWith(expect.objectContaining({ resource: outsidePath }))
+      expect(handler).not.toHaveBeenCalled()
+    })
+  })
 })
 
 describe('categoryToOperationType mapping', () => {

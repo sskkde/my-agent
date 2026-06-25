@@ -424,4 +424,118 @@ describe('buildForegroundToolProjection', () => {
       expect(result.allowedToolIds).not.toContain('admin_config')
     })
   })
+
+  describe('workdir file tool projection', () => {
+    const createMockInputWithWorkdir = (workDirRoot?: string): ForegroundTurnInput => ({
+      userId: 'test-user',
+      sessionId: 'test-session',
+      turnId: 'test-turn',
+      message: 'test message',
+      timestamp: new Date().toISOString(),
+      hydratedState: {} as any,
+      foregroundState: {} as any,
+      workDirRoot,
+      workDirId: 'test-workdir',
+    })
+
+    it('should include file_write in projection when workDirRoot is set', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('file_write', 'write', 'high'),
+        createTool('file_edit', 'write', 'high'),
+        createTool('file_apply_patch', 'write', 'high'),
+        createTool('file_glob', 'search', 'low'),
+        createTool('file_grep', 'search', 'medium'),
+        createTool('web_search', 'search', 'low'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInputWithWorkdir('/data/workdirs'), allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('file_write')
+      expect(result.allowedToolIds).toContain('file_edit')
+      expect(result.allowedToolIds).toContain('file_apply_patch')
+      expect(result.allowedToolIds).toContain('file_glob')
+      expect(result.allowedToolIds).toContain('file_grep')
+      expect(result.allowedToolIds).toContain('web_search')
+    })
+
+    it('should NOT include file_write in projection when workDirRoot is not set', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('file_write', 'write', 'high'),
+        createTool('file_edit', 'write', 'high'),
+        createTool('web_search', 'search', 'low'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('web_search')
+      expect(result.allowedToolIds).not.toContain('file_write')
+      expect(result.allowedToolIds).not.toContain('file_edit')
+    })
+
+    it('should NOT include exec tools in projection even with workDirRoot', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('file_write', 'write', 'high'),
+        createTool('exec', 'execute', 'high'),
+        createTool('bash', 'execute', 'high'),
+        createTool('code_execution', 'execute', 'high'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInputWithWorkdir('/data/workdirs'), allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('file_write')
+      expect(result.allowedToolIds).not.toContain('exec')
+      expect(result.allowedToolIds).not.toContain('bash')
+      expect(result.allowedToolIds).not.toContain('code_execution')
+    })
+
+    it('should NOT include admin/connector tools in projection even with workDirRoot', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('file_write', 'write', 'high'),
+        createTool('admin_config', 'admin', 'restricted'),
+        createTool('manage_users', 'admin', 'high'),
+        createTool('connector_send', 'send', 'high'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInputWithWorkdir('/data/workdirs'), allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('file_write')
+      expect(result.allowedToolIds).not.toContain('admin_config')
+      expect(result.allowedToolIds).not.toContain('manage_users')
+      expect(result.allowedToolIds).not.toContain('connector_send')
+    })
+
+    it('should generate tool definitions for workdir file tools in projection', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low', 'Read a file'),
+        createTool('file_write', 'write', 'high', 'Write to a file'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInputWithWorkdir('/data/workdirs'), allTools)
+
+      expect(result.toolDefinitions).toHaveLength(2)
+      expect(result.toolDefinitions[0].function.name).toBe('file_read')
+      expect(result.toolDefinitions[1].function.name).toBe('file_write')
+    })
+
+    it('should not duplicate tools when workDirRoot is set and tools are already safe', () => {
+      const allTools = [
+        createTool('file_read', 'read', 'low'),
+        createTool('file_glob', 'search', 'low'),
+        createTool('web_search', 'search', 'low'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInputWithWorkdir('/data/workdirs'), allTools)
+
+      const readCount = result.allowedToolIds.filter((id) => id === 'file_read').length
+      expect(readCount).toBe(1)
+    })
+  })
 })

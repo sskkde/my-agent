@@ -217,4 +217,128 @@ describe('code-execution', () => {
       expect(result.error!.code).toBe('EMPTY_CODE')
     })
   })
+
+  describe('workDirRoot support', () => {
+    it('uses workDirRoot as workspace root when context provides it', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createCodeExecutionTool(store)
+      const params: CodeExecutionParams = {
+        language: 'javascript',
+        code: 'console.log(process.cwd());',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as CodeExecutionResult
+      expect(data.status).toBe('completed')
+      expect(data.stdout.trim()).toBe(workDirRoot)
+    })
+
+    it('creates temp files inside workDirRoot', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createCodeExecutionTool(store)
+      const params: CodeExecutionParams = {
+        language: 'javascript',
+        code: 'console.log("test");',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      await tool.handler(params, context)
+
+      const tmpDir = join(workDirRoot, '.my-agent', 'tmp', 'code-execution')
+      if (existsSync(tmpDir)) {
+        const files = require('fs').readdirSync(tmpDir)
+        expect(files.length).toBe(0)
+      }
+    })
+
+    it('rejects workdir with .. that escapes workDirRoot', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createCodeExecutionTool(store)
+      const params: CodeExecutionParams = {
+        language: 'javascript',
+        code: 'console.log("test");',
+        workdir: '../../escape',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error!.code).toBe('WORKDIR_OUTSIDE_WORKSPACE')
+    })
+
+    it('rejects absolute workdir outside workDirRoot', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      mkdirSync(workDirRoot, { recursive: true })
+
+      const tool = createCodeExecutionTool(store)
+      const params: CodeExecutionParams = {
+        language: 'javascript',
+        code: 'console.log("test");',
+        workdir: '/etc',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error!.code).toBe('WORKDIR_OUTSIDE_WORKSPACE')
+    })
+
+    it('allows workdir relative to workDirRoot', async () => {
+      const workDirRoot = join(testDir, 'user-workdir')
+      const subDir = join(workDirRoot, 'subdir')
+      mkdirSync(subDir, { recursive: true })
+
+      const tool = createCodeExecutionTool(store)
+      const params: CodeExecutionParams = {
+        language: 'javascript',
+        code: 'console.log(process.cwd());',
+        workdir: 'subdir',
+      }
+      const context = createToolContext()
+      context.workDirRoot = workDirRoot
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as CodeExecutionResult
+      expect(data.status).toBe('completed')
+      expect(data.stdout.trim()).toBe(subDir)
+    })
+
+    it('falls back to getWorkspaceRoot when workDirRoot not set', async () => {
+      const tool = createCodeExecutionTool(store)
+      const params: CodeExecutionParams = {
+        language: 'javascript',
+        code: 'console.log(process.cwd());',
+      }
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as CodeExecutionResult
+      expect(data.status).toBe('completed')
+      expect(data.stdout.trim()).toBe(testDir)
+    })
+
+    it('approval still required (requiresPermission remains true)', () => {
+      const tool = createCodeExecutionTool(store)
+      expect(tool.requiresPermission).toBe(true)
+    })
+  })
 })

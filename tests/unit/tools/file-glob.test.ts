@@ -308,6 +308,62 @@ describe('file_glob tool', () => {
     })
   })
 
+  describe('workDirRoot support', () => {
+    let workDir: string
+
+    beforeEach(() => {
+      workDir = join(tmpdir(), `file-glob-workdir-${Date.now()}`)
+      mkdirSync(workDir, { recursive: true })
+    })
+
+    afterEach(() => {
+      if (existsSync(workDir)) {
+        rmSync(workDir, { recursive: true, force: true })
+      }
+    })
+
+    it('should glob files relative to context.workDirRoot when set', async () => {
+      writeFileSync(join(workDir, 'a.txt'), 'content')
+      writeFileSync(join(workDir, 'b.ts'), 'content')
+      // Also create files in default dir — should not be found
+      writeFileSync(join(testDir, 'c.txt'), 'content')
+
+      const params: FileGlobParams = { pattern: '*.txt' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as FileGlobResult
+      expect(data.files.length).toBe(1)
+      expect(data.files).toContain('a.txt')
+      expect(data.files).not.toContain('c.txt')
+    })
+
+    it('should reject glob path that escapes workDirRoot', async () => {
+      const params: FileGlobParams = { pattern: '*.txt', path: '../outside' }
+      const context = createToolContext({ workDirRoot: workDir })
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('OUTSIDE_WORKSPACE')
+    })
+
+    it('should use getWorkspaceRoot() fallback when workDirRoot is not set', async () => {
+      writeFileSync(join(testDir, 'fallback.txt'), 'content')
+
+      const params: FileGlobParams = { pattern: '*.txt' }
+      const context = createToolContext()
+
+      const result = await tool.handler(params, context)
+
+      expect(result.success).toBe(true)
+      const data = result.data as FileGlobResult
+      expect(data.files).toContain('fallback.txt')
+    })
+  })
+
   describe('Tool Definition', () => {
     it('should have correct name', () => {
       expect(tool.name).toBe('file_glob')

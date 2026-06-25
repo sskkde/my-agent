@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
+import { ROUTE_POLICY_MAP } from '../../src/api/route-policy.js'
+import { ResourceType, Action } from '../../src/permissions/rbac-types.js'
 
 interface WriteRoutePermission {
   file: string
@@ -314,6 +316,61 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
     path: '/api/v1/webhooks/:webhookId/deliver',
     permission: 'ResourceType.triggers, Action.execute',
   },
+  { file: 'workdirs.ts', method: 'POST', path: '/api/v1/workdirs', permission: 'ResourceType.workdirs, Action.create' },
+  {
+    file: 'workdirs.ts',
+    method: 'PATCH',
+    path: '/api/v1/workdirs/:workdirId',
+    permission: 'ResourceType.workdirs, Action.update',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'DELETE',
+    path: '/api/v1/workdirs/:workdirId',
+    permission: 'ResourceType.workdirs, Action.delete',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'PUT',
+    path: '/api/v1/sessions/:sessionId/workdir',
+    permission: 'ResourceType.workdirs, Action.update',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'DELETE',
+    path: '/api/v1/sessions/:sessionId/workdir',
+    permission: 'ResourceType.workdirs, Action.delete',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'PUT',
+    path: '/api/v1/workdirs/:workdirId/files',
+    permission: 'ResourceType.workdirs, Action.update',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'POST',
+    path: '/api/v1/workdirs/:workdirId/dirs',
+    permission: 'ResourceType.workdirs, Action.create',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'DELETE',
+    path: '/api/v1/workdirs/:workdirId/files',
+    permission: 'ResourceType.workdirs, Action.delete',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'PATCH',
+    path: '/api/v1/workdirs/:workdirId/files',
+    permission: 'ResourceType.workdirs, Action.update',
+  },
+  {
+    file: 'workdirs.ts',
+    method: 'POST',
+    path: '/api/v1/workdirs/:workdirId/files/upload',
+    permission: 'ResourceType.workdirs, Action.create',
+  },
   {
     file: 'workflows.ts',
     method: 'POST',
@@ -391,6 +448,37 @@ describe('write route permission map', () => {
 
     expect(actual).toEqual(EXPECTED_WRITE_ROUTE_PERMISSIONS)
     expect(actual.filter((route) => route.permission === 'MISSING')).toEqual([])
+  })
+
+  it('keeps P1 workdir file endpoints represented in the route policy map', () => {
+    expect(ROUTE_POLICY_MAP).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          method: 'DELETE',
+          pathPattern: '/api/v1/workdirs/:workdirId/files',
+          resource: ResourceType.workdirs,
+          action: Action.delete,
+        }),
+        expect.objectContaining({
+          method: 'PATCH',
+          pathPattern: '/api/v1/workdirs/:workdirId/files',
+          resource: ResourceType.workdirs,
+          action: Action.update,
+        }),
+        expect.objectContaining({
+          method: 'GET',
+          pathPattern: '/api/v1/workdirs/:workdirId/files/download',
+          resource: ResourceType.workdirs,
+          action: Action.read,
+        }),
+        expect.objectContaining({
+          method: 'POST',
+          pathPattern: '/api/v1/workdirs/:workdirId/files/upload',
+          resource: ResourceType.workdirs,
+          action: Action.create,
+        }),
+      ]),
+    )
   })
 
   it('keeps management route files bound to admin-only or explicit management permissions', () => {
