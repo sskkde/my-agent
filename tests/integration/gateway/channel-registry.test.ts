@@ -75,7 +75,7 @@ describe('Channel Registry', () => {
   })
 
   describe('webui channel', () => {
-    it('should have webui channel registered by default when created with factory', () => {
+    it('should have webui channel registered by default when created with factory', async () => {
       const webuiHandler = createWebUIChannelHandler()
 
       const envelope: OutboundEnvelope = {
@@ -87,7 +87,7 @@ describe('Channel Registry', () => {
         timestamp: new Date().toISOString(),
       }
 
-      const result = webuiHandler.deliver(envelope)
+      const result = await webuiHandler.deliver(envelope)
 
       expect(result.success).toBe(true)
     })
@@ -109,7 +109,7 @@ describe('Channel Registry', () => {
   })
 
   describe('delivery', () => {
-    it('should deliver envelope to registered channel', () => {
+    it('should deliver envelope to registered channel', async () => {
       const deliveredEnvelopes: OutboundEnvelope[] = []
       const handler: ChannelHandler = {
         deliver: (envelope: OutboundEnvelope): DeliveryResult => {
@@ -129,14 +129,14 @@ describe('Channel Registry', () => {
         timestamp: new Date().toISOString(),
       }
 
-      const result = registry.deliver('test-channel', envelope)
+      const result = await registry.deliver('test-channel', envelope)
 
       expect(result.success).toBe(true)
       expect(deliveredEnvelopes).toHaveLength(1)
       expect(deliveredEnvelopes[0].envelopeId).toBe('env-1')
     })
 
-    it('should return controlled failure for unknown channel', () => {
+    it('should return controlled failure for unknown channel', async () => {
       const envelope: OutboundEnvelope = {
         envelopeId: 'env-1',
         messageType: 'text',
@@ -146,7 +146,7 @@ describe('Channel Registry', () => {
         timestamp: new Date().toISOString(),
       }
 
-      const result = registry.deliver('unknown-channel', envelope)
+      const result = await registry.deliver('unknown-channel', envelope)
 
       expect(result.success).toBe(false)
       expect(result.error).toBeDefined()
@@ -154,7 +154,7 @@ describe('Channel Registry', () => {
       expect(result.error?.message).toContain('unknown-channel')
     })
 
-    it('should not throw for unknown channel delivery', () => {
+    it('should not throw for unknown channel delivery', async () => {
       const envelope: OutboundEnvelope = {
         envelopeId: 'env-1',
         messageType: 'text',
@@ -164,12 +164,12 @@ describe('Channel Registry', () => {
         timestamp: new Date().toISOString(),
       }
 
-      expect(() => {
-        registry.deliver('nonexistent-channel', envelope)
-      }).not.toThrow()
+      const result = await registry.deliver('nonexistent-channel', envelope)
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('CHANNEL_NOT_FOUND')
     })
 
-    it('should handle handler errors gracefully', () => {
+    it('should handle handler errors gracefully', async () => {
       const handler: ChannelHandler = {
         deliver: (): DeliveryResult => {
           throw new Error('Handler error')
@@ -187,13 +187,13 @@ describe('Channel Registry', () => {
         timestamp: new Date().toISOString(),
       }
 
-      const result = registry.deliver('error-channel', envelope)
+      const result = await registry.deliver('error-channel', envelope)
 
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe('DELIVERY_ERROR')
     })
 
-    it('should not throw when handler throws', () => {
+    it('should not throw when handler throws', async () => {
       const handler: ChannelHandler = {
         deliver: (): never => {
           throw new Error('Handler error')
@@ -211,9 +211,82 @@ describe('Channel Registry', () => {
         timestamp: new Date().toISOString(),
       }
 
-      expect(() => {
-        registry.deliver('error-channel', envelope)
-      }).not.toThrow()
+      const result = await registry.deliver('error-channel', envelope)
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('DELIVERY_ERROR')
+    })
+
+    it('should deliver via async handler that resolves', async () => {
+      const handler: ChannelHandler = {
+        deliver: async (_envelope: OutboundEnvelope): Promise<DeliveryResult> => {
+          return { success: true }
+        },
+      }
+
+      registry.register('async-channel', handler)
+
+      const envelope: OutboundEnvelope = {
+        envelopeId: 'env-1',
+        messageType: 'text',
+        recipient: { userId: 'user-1', sessionId: 'session-1', channel: 'async-channel' },
+        content: { text: 'Hello' },
+        correlationId: 'corr-1',
+        timestamp: new Date().toISOString(),
+      }
+
+      const result = await registry.deliver('async-channel', envelope)
+
+      expect(result.success).toBe(true)
+    })
+
+    it('should map async handler rejection to DELIVERY_ERROR', async () => {
+      const handler: ChannelHandler = {
+        deliver: async (_envelope: OutboundEnvelope): Promise<DeliveryResult> => {
+          throw new Error('Async rejection')
+        },
+      }
+
+      registry.register('async-reject-channel', handler)
+
+      const envelope: OutboundEnvelope = {
+        envelopeId: 'env-1',
+        messageType: 'text',
+        recipient: { userId: 'user-1', sessionId: 'session-1' },
+        content: { text: 'Hello' },
+        correlationId: 'corr-1',
+        timestamp: new Date().toISOString(),
+      }
+
+      const result = await registry.deliver('async-reject-channel', envelope)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('DELIVERY_ERROR')
+      expect(result.error?.message).toBe('Async rejection')
+    })
+
+    it('should map async handler throw to DELIVERY_ERROR', async () => {
+      const handler: ChannelHandler = {
+        deliver: async (_envelope: OutboundEnvelope): Promise<DeliveryResult> => {
+          throw new Error('Async throw')
+        },
+      }
+
+      registry.register('async-throw-channel', handler)
+
+      const envelope: OutboundEnvelope = {
+        envelopeId: 'env-1',
+        messageType: 'text',
+        recipient: { userId: 'user-1', sessionId: 'session-1' },
+        content: { text: 'Hello' },
+        correlationId: 'corr-1',
+        timestamp: new Date().toISOString(),
+      }
+
+      const result = await registry.deliver('async-throw-channel', envelope)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('DELIVERY_ERROR')
+      expect(result.error?.message).toBe('Async throw')
     })
   })
 
