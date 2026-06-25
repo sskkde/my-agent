@@ -32,9 +32,21 @@ interface ProviderFormData {
 const PROVIDER_TYPE_OPTIONS: { value: ProviderType; label: string }[] = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'openrouter', label: 'OpenRouter' },
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'ollama', label: 'Ollama' },
+  { value: 'ollama', label: 'Ollama (本地)' },
   { value: 'custom', label: '自定义' },
+  { value: 'deepseek', label: 'DeepSeek' },
+  { value: 'dashscope', label: 'DashScope (阿里云)' },
+  { value: 'volcengine', label: '火山引擎 (豆包)' },
+  { value: 'qianfan', label: '千帆 (百度)' },
+  { value: 'zhipu', label: '智谱 AI' },
+  { value: 'moonshot', label: 'Moonshot (月之暗面)' },
+  { value: 'minimax', label: 'MiniMax' },
+  { value: 'jdcloud-yanxi', label: '京东云言犀' },
+  { value: 'mimo', label: 'MiMo' },
+  { value: 'iflytek-spark', label: '讯飞星火' },
+  { value: 'stepfun', label: '阶跃星辰' },
+  { value: 'hunyuan', label: '混元 (腾讯)' },
+  { value: 'siliconflow', label: 'SiliconFlow (硅基流动)' },
 ]
 
 const getProviderTypeLabel = (type: ProviderType): string => {
@@ -52,6 +64,10 @@ const initialFormData: ProviderFormData = {
 
 const requiresApiKey = (providerType: ProviderType): boolean => providerType !== 'ollama'
 const requiresBaseUrl = (providerType: ProviderType): boolean => providerType === 'ollama' || providerType === 'custom'
+
+/** Domestic providers have built-in base URLs and only need an API key. */
+const isDomesticProvider = (providerType: ProviderType): boolean =>
+  !['openai', 'openrouter', 'ollama', 'custom'].includes(providerType)
 
 const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) => {
   const [providers, setProviders] = useState<ProviderSummary[]>([])
@@ -596,6 +612,9 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
                 {formData.providerType === 'custom' && (
                   <span className="form-hint">用于访问自定义 OpenAI 兼容接口的 Bearer API Key</span>
                 )}
+                {isDomesticProvider(formData.providerType) && (
+                  <span className="form-hint">国内提供商已内置 Base URL，只需填写 API Key</span>
+                )}
               </div>
 
               <div className="form-group">
@@ -613,7 +632,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
                       ? 'http://localhost:11434'
                       : formData.providerType === 'custom'
                         ? 'https://api.example.com/v1'
-                        : '可选，默认使用官方 API'
+                        : '可选，留空使用默认地址'
                   }
                   className={`input-field ${formErrors.baseUrl ? 'input-error' : ''}`}
                   data-testid="provider-base-url"

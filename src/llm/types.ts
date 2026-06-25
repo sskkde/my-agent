@@ -249,6 +249,7 @@ export interface ProviderRuntimeConfig extends ProviderConfig {
   customCapabilities?: Partial<ModelCapabilities>
   options?: Record<string, unknown>
   promptFamily?: PromptProviderFamily
+  providerType?: string
 }
 
 /**

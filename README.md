@@ -376,7 +376,7 @@ npm run typecheck
 
 ## LLM Provider Configuration
 
-The platform supports multiple LLM providers. Configure your environment variables:
+The platform supports multiple LLM providers, including 13 domestic (China-based) providers with OpenAI-compatible APIs. Configure your environment variables:
 
 ### OpenRouter
 
@@ -389,6 +389,28 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 ```bash
 OLLAMA_BASE_URL=http://localhost:11434
 ```
+
+### Domestic (China) Providers
+
+The platform supports 13 domestic LLM providers. Only one provider needs to be configured.
+
+| Provider | Display Name | API Key Env Var | Default Model |
+|----------|-------------|-----------------|---------------|
+| `dashscope` | DashScope (Alibaba Cloud) | `DASHSCOPE_API_KEY` | `qwen-plus` |
+| `volcengine` | Volcano Engine (ByteDance) | `VOLCENGINE_API_KEY` | `doubao-pro-32k` |
+| `qianfan` | Qianfan (Baidu) | `QIANFAN_API_KEY` | `ernie-4.0-8k` |
+| `zhipu` | Zhipu AI | `ZHIPU_API_KEY` | `glm-4-plus` |
+| `moonshot` | Moonshot AI | `MOONSHOT_API_KEY` | `moonshot-v1-auto` |
+| `minimax` | MiniMax | `MINIMAX_API_KEY` | `MiniMax-Text-01` |
+| `jdcloud-yanxi` | JD Cloud Yanxi | `JDCLOUD_YANXI_API_KEY` | `yanxi-v1` |
+| `mimo` | MiMo (Xiaomi) | `MIMO_API_KEY` | `mimo-v1` |
+| `iflytek-spark` | iFlyTek Spark | `IFLYTEK_SPARK_API_KEY` | `spark-max` |
+| `stepfun` | StepFun | `STEPFUN_API_KEY` | `step-1v-32k` |
+| `hunyuan` | Hunyuan (Tencent Cloud) | `HUNYUAN_API_KEY` | `hunyuan-pro` |
+| `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-v4-flash` |
+| `siliconflow` | SiliconFlow | `SILICONFLOW_API_KEY` | `Qwen/Qwen2.5-7B-Instruct` |
+
+Each domestic provider also supports an optional `*_BASE_URL` environment variable for custom endpoint overrides. See `.env.example` for the full list.
 
 Create a `.env` file from the example:
 

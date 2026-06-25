@@ -341,6 +341,331 @@ describe('Provider API Integration', () => {
       expect(body.error.code).toBe('API_KEY_REQUIRED')
     })
 
+    it('should create DashScope provider with key-only (no baseUrl)', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          providerType: 'dashscope',
+          displayName: 'My DashScope',
+          apiKey: 'sk-dashscope-test-key',
+        },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'dashscope',
+        displayName: 'My DashScope',
+        enabled: true,
+        configured: true,
+        apiKeyLast4: '-key',
+        baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        family: 'openai_compatible',
+        protocol: 'openai_chat',
+        defaultModel: 'qwen-plus',
+      })
+      expect(body.data.apiKey).toBeUndefined()
+    })
+
+    it('should create Spark provider with key-only (no baseUrl)', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          providerType: 'iflytek-spark',
+          displayName: 'My Spark',
+          apiKey: 'sk-spark-test-key',
+        },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'iflytek-spark',
+        displayName: 'My Spark',
+        enabled: true,
+        baseUrl: 'https://spark-api-open.xf-yun.com/v1',
+        defaultModel: 'spark-max',
+      })
+    })
+
+    it('should create Volcengine provider with key-only (no baseUrl)', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          providerType: 'volcengine',
+          displayName: 'My Volcengine',
+          apiKey: 'sk-volcengine-test-key',
+        },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'volcengine',
+        displayName: 'My Volcengine',
+        baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+      })
+    })
+
+    it('should allow domestic provider with custom baseUrl override', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          providerType: 'dashscope',
+          displayName: 'DashScope Custom URL',
+          apiKey: 'sk-dashscope-test-key',
+          baseUrl: 'https://custom.dashscope.com/v1',
+        },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data.baseUrl).toBe('https://custom.dashscope.com/v1')
+    })
+
+    it('should return 400 when domestic provider missing apiKey', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+        payload: {
+          providerType: 'dashscope',
+          displayName: 'DashScope No Key',
+        },
+      })
+
+      expect(response.statusCode).toBe(400)
+      const body = JSON.parse(response.body)
+      expect(body.error.code).toBe('API_KEY_REQUIRED')
+    })
+
+    it('should create Qianfan provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'qianfan', displayName: 'My Qianfan', apiKey: 'sk-qianfan-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'qianfan',
+        displayName: 'My Qianfan',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://qianfan.baidubce.com/v2',
+        defaultModel: 'ernie-4.0-8k',
+      })
+    })
+
+    it('should create Zhipu provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'zhipu', displayName: 'My Zhipu', apiKey: 'sk-zhipu-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'zhipu',
+        displayName: 'My Zhipu',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+        defaultModel: 'glm-4-plus',
+      })
+    })
+
+    it('should create Moonshot provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'moonshot', displayName: 'My Moonshot', apiKey: 'sk-moonshot-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'moonshot',
+        displayName: 'My Moonshot',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://api.moonshot.cn/v1',
+        defaultModel: 'moonshot-v1-auto',
+      })
+    })
+
+    it('should create MiniMax provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'minimax', displayName: 'My MiniMax', apiKey: 'sk-minimax-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'minimax',
+        displayName: 'My MiniMax',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://api.minimax.chat/v1',
+        defaultModel: 'MiniMax-Text-01',
+      })
+    })
+
+    it('should create JD Cloud Yanxi provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'jdcloud-yanxi', displayName: 'My JD Cloud', apiKey: 'sk-jdcloud-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'jdcloud-yanxi',
+        displayName: 'My JD Cloud',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://api.jd.com/v1',
+        defaultModel: 'yanxi-v1',
+      })
+    })
+
+    it('should create MiMo provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'mimo', displayName: 'My MiMo', apiKey: 'sk-mimo-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'mimo',
+        displayName: 'My MiMo',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://api.mimmo.com/v1',
+        defaultModel: 'mimo-v1',
+      })
+    })
+
+    it('should create StepFun provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'stepfun', displayName: 'My StepFun', apiKey: 'sk-stepfun-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'stepfun',
+        displayName: 'My StepFun',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://api.stepfun.com/v1',
+        defaultModel: 'step-1v-32k',
+      })
+    })
+
+    it('should create Hunyuan provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'hunyuan', displayName: 'My Hunyuan', apiKey: 'sk-hunyuan-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'hunyuan',
+        displayName: 'My Hunyuan',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://hunyuan.tencentcloudapi.com/v1',
+        defaultModel: 'hunyuan-pro',
+      })
+    })
+
+    it('should create DeepSeek provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'deepseek', displayName: 'My DeepSeek', apiKey: 'sk-deepseek-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'deepseek',
+        displayName: 'My DeepSeek',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://api.deepseek.com/v1',
+        defaultModel: 'deepseek-v4-flash',
+      })
+    })
+
+    it('should create SiliconFlow provider with key-only', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'siliconflow', displayName: 'My SiliconFlow', apiKey: 'sk-siliconflow-test-key' },
+      })
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data).toMatchObject({
+        providerType: 'siliconflow',
+        displayName: 'My SiliconFlow',
+        enabled: true,
+        configured: true,
+        baseUrl: 'https://api.siliconflow.cn/v1',
+        defaultModel: 'Qwen/Qwen2.5-7B-Instruct',
+      })
+    })
+
+    it('should return 400 when each domestic provider missing apiKey', async () => {
+      const domesticTypes = [
+        'qianfan', 'zhipu', 'moonshot', 'minimax', 'jdcloud-yanxi',
+        'mimo', 'stepfun', 'hunyuan', 'deepseek', 'siliconflow',
+      ]
+
+      for (const providerType of domesticTypes) {
+        const response = await server.inject({
+          method: 'POST',
+          url: '/api/v1/providers',
+          headers: { cookie: `agent-platform-session=${authToken}` },
+          payload: { providerType, displayName: `${providerType} No Key` },
+        })
+        expect(response.statusCode).toBe(400)
+        const body = JSON.parse(response.body)
+        expect(body.error.code).toBe('API_KEY_REQUIRED')
+      }
+    })
+
     it('should return 400 when custom provider missing baseUrl', async () => {
       const response = await server.inject({
         method: 'POST',
@@ -739,6 +1064,59 @@ describe('Provider API Integration', () => {
       expect(body.data.success).toBe(false)
       expect(body.data.error).toContain('http://127.0.0.1:1/api/coding/v3/models')
       expect(body.data.error).not.toContain('/api/v1/coding/v3/v1/models')
+    })
+
+    it('should test DashScope connection using catalog default baseUrl', async () => {
+      const provider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId,
+        providerType: 'dashscope',
+        displayName: 'DashScope Test',
+        apiKey: 'sk-dashscope-test-key',
+        enabled: true,
+      })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: `/api/v1/providers/${provider.providerId}/test`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data).toHaveProperty('success')
+      expect(body.data).toHaveProperty('latencyMs')
+      expect(body.data.success).toBe(false)
+      expect(body.data.error).toBeDefined()
+      expect(body.data.latencyMs).toBeGreaterThan(0)
+    })
+
+    it('should test domestic provider with custom baseUrl override', async () => {
+      const provider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId,
+        providerType: 'dashscope',
+        displayName: 'DashScope Custom URL',
+        apiKey: 'sk-dashscope-test-key',
+        baseUrl: 'http://127.0.0.1:1/v1',
+        enabled: true,
+      })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: `/api/v1/providers/${provider.providerId}/test`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(false)
+      expect(body.data.error).toContain('127.0.0.1:1')
+      expect(body.data.error).not.toContain('dashscope.aliyuncs.com')
     })
 
     it('should return 404 for non-existent provider', async () => {

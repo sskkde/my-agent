@@ -7,9 +7,9 @@ import { OllamaAdapter, OpenAIAdapter, OpenRouterAdapter } from './providers.js'
 import type { ProviderConfigStore, ProviderConfigWithSecret, ProviderType } from '../storage/provider-config-store.js'
 import { resolveProviderCandidates, type EnvProviderDescriptor } from './routing/provider-resolver.js'
 import { deriveRequestRequirements, canServeRequest } from './routing/request-requirements.js'
+import { DOMESTIC_PROVIDERS } from './catalog/domestic-providers.js'
 
 const DEFAULT_TIMEOUT_MS = 60000
-const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash'
 
 interface RefreshLLMProvidersOptions {
   adapter: LLMAdapter
@@ -31,13 +31,10 @@ function createProvider(providerType: ProviderType, config: RuntimeProviderConfi
       return new OpenRouterAdapter(config)
     case 'ollama':
       return new OllamaAdapter(config)
-    case 'deepseek':
-      return new OpenAIAdapter({
-        ...config,
-        baseUrl: config.baseUrl || 'https://api.deepseek.com',
-      })
     case 'openai':
     case 'custom':
+      return new OpenAIAdapter(config)
+    default:
       return new OpenAIAdapter(config)
   }
 }
@@ -79,14 +76,18 @@ function buildEnvProviderDescriptors(): EnvProviderDescriptor[] {
     })
   }
 
-  if (process.env.DEEPSEEK_API_KEY) {
-    descriptors.push({
-      providerType: 'deepseek',
-      providerId: 'deepseek',
-      apiKey: process.env.DEEPSEEK_API_KEY,
-      baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
-      model: DEFAULT_DEEPSEEK_MODEL,
-    })
+  for (const provider of DOMESTIC_PROVIDERS) {
+    const apiKey = process.env[provider.envApiKey]
+    if (apiKey) {
+      const baseUrlOverride = provider.envBaseUrl ? process.env[provider.envBaseUrl] : undefined
+      descriptors.push({
+        providerType: provider.providerType as ProviderType,
+        providerId: provider.providerType,
+        apiKey,
+        baseUrl: baseUrlOverride || provider.defaultBaseUrl,
+        model: provider.defaultModel,
+      })
+    }
   }
 
   return descriptors

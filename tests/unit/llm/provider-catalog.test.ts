@@ -5,6 +5,12 @@ import {
   isKnownProviderType,
   listProviderCatalogEntries,
 } from '../../../src/llm/catalog/provider-catalog.js'
+import {
+  DOMESTIC_PROVIDERS,
+  getDomesticProvider,
+  isDomesticProvider,
+  listDomesticProviders,
+} from '../../../src/llm/catalog/domestic-providers.js'
 
 describe('ProviderCatalog', () => {
   describe('BUILTIN_PROVIDER_CATALOG', () => {
@@ -33,11 +39,12 @@ describe('ProviderCatalog', () => {
       const entry = BUILTIN_PROVIDER_CATALOG.find((e) => e.providerType === 'deepseek')
       expect(entry).toBeDefined()
       expect(entry?.displayName).toBe('DeepSeek')
-      expect(entry?.family).toBe('deepseek')
+      expect(entry?.family).toBe('openai_compatible')
       expect(entry?.protocol).toBe('openai_chat')
+      expect(entry?.promptFamily).toBe('openai')
       expect(entry?.requiresApiKey).toBe(true)
       expect(entry?.requiresBaseUrl).toBe(false)
-      expect(entry?.defaultBaseUrl).toBe('https://api.deepseek.com')
+      expect(entry?.defaultBaseUrl).toBe('https://api.deepseek.com/v1')
       expect(entry?.defaultModel).toBe('deepseek-v4-flash')
     })
 
@@ -66,6 +73,23 @@ describe('ProviderCatalog', () => {
       for (const entry of BUILTIN_PROVIDER_CATALOG) {
         expect(entry.displayName).toBeDefined()
         expect(entry.displayName.length).toBeGreaterThan(0)
+      }
+    })
+
+    it('should have all 13 domestic providers in catalog', () => {
+      for (const domestic of DOMESTIC_PROVIDERS) {
+        const entry = BUILTIN_PROVIDER_CATALOG.find(
+          (e) => e.providerType === domestic.providerType,
+        )
+        expect(entry).toBeDefined()
+        expect(entry?.displayName).toBe(domestic.displayName)
+        expect(entry?.family).toBe('openai_compatible')
+        expect(entry?.protocol).toBe('openai_chat')
+        expect(entry?.promptFamily).toBe('openai')
+        expect(entry?.defaultBaseUrl).toBe(domestic.defaultBaseUrl)
+        expect(entry?.defaultModel).toBe(domestic.defaultModel)
+        expect(entry?.requiresApiKey).toBe(true)
+        expect(entry?.requiresBaseUrl).toBe(false)
       }
     })
   })
@@ -99,6 +123,9 @@ describe('ProviderCatalog', () => {
       expect(isKnownProviderType('deepseek')).toBe(true)
       expect(isKnownProviderType('ollama')).toBe(true)
       expect(isKnownProviderType('custom')).toBe(true)
+      for (const domestic of DOMESTIC_PROVIDERS) {
+        expect(isKnownProviderType(domestic.providerType)).toBe(true)
+      }
     })
 
     it('should return false for unknown provider types', () => {
@@ -108,10 +135,86 @@ describe('ProviderCatalog', () => {
     })
   })
 
+  describe('domestic provider definitions', () => {
+    it('should have exactly 13 domestic providers', () => {
+      expect(DOMESTIC_PROVIDERS.length).toBe(13)
+    })
+
+    it.each(DOMESTIC_PROVIDERS.map((p) => [p.providerType, p]))(
+      'should have required fields populated for %s',
+      (_type, provider) => {
+        expect(provider.displayName).toBeTruthy()
+        expect(provider.officialDocs).toMatch(/^https?:\/\//)
+        expect(provider.defaultBaseUrl).toMatch(/^https?:\/\//)
+        expect(provider.defaultModel).toBeTruthy()
+        expect(provider.envApiKey).toBeTruthy()
+        expect(provider.features).toBeDefined()
+        expect(typeof provider.features.supportsStreaming).toBe('boolean')
+        expect(typeof provider.features.supportsFunctionCalling).toBe('boolean')
+        expect(typeof provider.features.supportsJsonMode).toBe('boolean')
+      },
+    )
+
+    it.each(DOMESTIC_PROVIDERS.map((p) => [p.providerType, p.envApiKey]))(
+      'should have envApiKey ending with _API_KEY for %s',
+      (_type, envApiKey) => {
+        expect(envApiKey).toMatch(/_API_KEY$/)
+      },
+    )
+
+    it('should have unique providerType identifiers', () => {
+      const types = DOMESTIC_PROVIDERS.map((p) => p.providerType)
+      expect(new Set(types).size).toBe(types.length)
+    })
+
+    it('should have unique envApiKey names', () => {
+      const keys = DOMESTIC_PROVIDERS.map((p) => p.envApiKey)
+      expect(new Set(keys).size).toBe(keys.length)
+    })
+  })
+
+  describe('domestic provider lookup helpers', () => {
+    it('getDomesticProvider returns definition for known type', () => {
+      const def = getDomesticProvider('dashscope')
+      expect(def).toBeDefined()
+      expect(def?.displayName).toBe('DashScope')
+    })
+
+    it('getDomesticProvider returns undefined for unknown type', () => {
+      expect(getDomesticProvider('nonexistent')).toBeUndefined()
+    })
+
+    it('isDomesticProvider returns true for all domestic types', () => {
+      for (const p of DOMESTIC_PROVIDERS) {
+        expect(isDomesticProvider(p.providerType)).toBe(true)
+      }
+    })
+
+    it('isDomesticProvider returns false for non-domestic types', () => {
+      expect(isDomesticProvider('openai')).toBe(false)
+      expect(isDomesticProvider('openrouter')).toBe(false)
+      expect(isDomesticProvider('ollama')).toBe(false)
+      expect(isDomesticProvider('custom')).toBe(false)
+      expect(isDomesticProvider('')).toBe(false)
+    })
+
+    it('listDomesticProviders returns all 13 providers', () => {
+      const list = listDomesticProviders()
+      expect(list.length).toBe(13)
+    })
+
+    it('listDomesticProviders returns a copy (no mutation)', () => {
+      const list1 = listDomesticProviders()
+      const list2 = listDomesticProviders()
+      expect(list1).not.toBe(list2)
+      expect(list1).toEqual(list2)
+    })
+  })
+
   describe('listProviderCatalogEntries', () => {
-    it('should return at least 5 entries', () => {
+    it('should return 17 entries (4 non-domestic + 13 domestic)', () => {
       const entries = listProviderCatalogEntries()
-      expect(entries.length).toBeGreaterThanOrEqual(5)
+      expect(entries.length).toBe(17)
     })
 
     it('should return a copy of the catalog', () => {
@@ -129,6 +232,9 @@ describe('ProviderCatalog', () => {
       expect(providerTypes).toContain('deepseek')
       expect(providerTypes).toContain('ollama')
       expect(providerTypes).toContain('custom')
+      for (const domestic of DOMESTIC_PROVIDERS) {
+        expect(providerTypes).toContain(domestic.providerType)
+      }
     })
   })
 })

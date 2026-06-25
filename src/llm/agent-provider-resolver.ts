@@ -1,6 +1,6 @@
 import type { ProviderConfigStore, ProviderConfigSanitized, ProviderType } from '../storage/provider-config-store.js'
-
-const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash'
+import { DOMESTIC_PROVIDERS } from './catalog/domestic-providers.js'
+import { getProviderCatalogEntry } from './catalog/provider-catalog.js'
 
 /**
  * Session provider/model selection
@@ -120,16 +120,18 @@ function getEnvProviderCandidates(): ProviderCandidate[] {
     })
   }
 
-  if (process.env.DEEPSEEK_API_KEY) {
-    candidates.push({
-      providerId: 'deepseek',
-      providerType: 'deepseek',
-      displayName: 'DeepSeek (Env)',
-      enabled: true,
-      configured: true,
-      selectedModel: DEFAULT_DEEPSEEK_MODEL,
-      source: 'env',
-    })
+  for (const provider of DOMESTIC_PROVIDERS) {
+    if (process.env[provider.envApiKey]) {
+      candidates.push({
+        providerId: provider.providerType,
+        providerType: provider.providerType as ProviderType,
+        displayName: `${provider.displayName} (Env)`,
+        enabled: true,
+        configured: true,
+        selectedModel: provider.defaultModel,
+        source: 'env',
+      })
+    }
   }
 
   return candidates
@@ -293,10 +295,12 @@ export function resolveProviderAndModel(options: ResolveProviderOptions): Provid
     selectedModel = session.selectedModel
   } else if (agentConfig.model) {
     selectedModel = agentConfig.model
-  } else if (selectedCandidate.providerType === 'deepseek') {
-    selectedModel = selectedCandidate.selectedModel ?? DEFAULT_DEEPSEEK_MODEL
   } else {
     selectedModel = selectedCandidate.selectedModel
+    if (!selectedModel) {
+      const catalog = getProviderCatalogEntry(selectedCandidate.providerType)
+      selectedModel = catalog?.defaultModel ?? null
+    }
   }
 
   // Build fallback metadata if we didn't use the first candidate

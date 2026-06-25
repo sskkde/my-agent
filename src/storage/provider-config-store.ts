@@ -25,7 +25,24 @@ function safeJsonStringify(value: unknown): string | null {
   }
 }
 
-export type ProviderType = 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom'
+export type ProviderType =
+  | 'openai'
+  | 'openrouter'
+  | 'ollama'
+  | 'deepseek'
+  | 'custom'
+  | 'dashscope'
+  | 'volcengine'
+  | 'qianfan'
+  | 'zhipu'
+  | 'moonshot'
+  | 'minimax'
+  | 'jdcloud-yanxi'
+  | 'mimo'
+  | 'iflytek-spark'
+  | 'stepfun'
+  | 'hunyuan'
+  | 'siliconflow'
 
 export interface ProviderConfig {
   providerId: string

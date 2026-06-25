@@ -408,8 +408,32 @@ async function testProviderConnection(
         return { success: false, latencyMs: 0, error: 'Base URL is required for custom provider' }
       }
       return testCustomConnection(apiKey, effectiveBaseUrl)
-    default:
-      return { success: false, latencyMs: 0, error: 'Unknown provider type' }
+    default: {
+      // Handle any known domestic/built-in provider type as OpenAI-compatible
+      if (!catalogEntry) {
+        return { success: false, latencyMs: 0, error: 'Unknown provider type' }
+      }
+      if (!apiKey) {
+        return {
+          success: false,
+          latencyMs: 0,
+          error: `API key is required for ${providerType} provider`,
+        }
+      }
+      if (!effectiveBaseUrl) {
+        return {
+          success: false,
+          latencyMs: 0,
+          error: `Base URL is required for ${providerType} provider`,
+        }
+      }
+      const result = await testOpenAICompatibleConnection(apiKey, effectiveBaseUrl)
+      // Spark-specific: clarify that APIPassword goes in the API key field
+      if (providerType === 'iflytek-spark' && result.error?.includes('Authentication failed')) {
+        result.error = 'Authentication failed: Please enter your APIPassword in the API key field'
+      }
+      return result
+    }
   }
 }
 

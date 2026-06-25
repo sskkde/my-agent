@@ -11,12 +11,46 @@ import { parseCommand } from '../command-core/parser.js'
 import { COMMAND_CATALOG, getAllCommands } from '../command-core/catalog.js'
 import { resolveAlias } from '../command-core/aliases.js'
 import type { CommandDefinition, ParsedCommand } from '../command-core/types.js'
+import { listProviderCatalogEntries } from '../llm/catalog/provider-catalog.js'
+import { DOMESTIC_PROVIDERS } from '../llm/catalog/domestic-providers.js'
+import type { ProviderType } from '../storage/provider-config-store.js'
 
-const VALID_PROVIDER_TYPES = ['openai', 'openrouter', 'deepseek', 'ollama'] as const
-type ProviderType = (typeof VALID_PROVIDER_TYPES)[number]
+/** Derived from catalog entries, excluding 'custom' which is not a direct-connect CLI target */
+const VALID_PROVIDER_TYPES: readonly ProviderType[] = listProviderCatalogEntries()
+  .filter((entry) => entry.providerType !== 'custom')
+  .map((entry) => entry.providerType)
 
-function isValidProviderType(type: string): type is ProviderType {
-  return VALID_PROVIDER_TYPES.includes(type as ProviderType)
+export function getValidProviderTypesForCli(): readonly ProviderType[] {
+  return VALID_PROVIDER_TYPES
+}
+
+export function isValidProviderType(type: string): type is ProviderType {
+  return (VALID_PROVIDER_TYPES as readonly string[]).includes(type)
+}
+
+export interface EnvProviderEntry {
+  readonly name: string
+  readonly providerType: string
+}
+
+export function collectEnvProvidersForDisplay(): EnvProviderEntry[] {
+  const result: EnvProviderEntry[] = []
+
+  if (process.env.OPENROUTER_API_KEY) {
+    result.push({ name: 'OpenRouter', providerType: 'openrouter' })
+  }
+
+  if (process.env.OLLAMA_BASE_URL) {
+    result.push({ name: 'Ollama', providerType: 'ollama' })
+  }
+
+  for (const domestic of DOMESTIC_PROVIDERS) {
+    if (process.env[domestic.envApiKey]) {
+      result.push({ name: domestic.displayName, providerType: domestic.providerType })
+    }
+  }
+
+  return result
 }
 
 // ANSI color codes for terminal output
@@ -257,27 +291,17 @@ async function executeProviders(): Promise<string> {
       output += `  Status: ${response.status} ${response.statusText}\n`
     }
   } catch {
-    // Fallback to local configuration
     output += `  ${COLORS.dim}API not available - showing local configuration${COLORS.reset}\n\n`
 
-    // Check for environment-based providers
-    const envProviders = []
-
-    if (process.env.OPENROUTER_API_KEY) {
-      envProviders.push({ name: 'OpenRouter', type: 'openrouter', enabled: true })
-    }
-
-    if (process.env.OLLAMA_BASE_URL) {
-      envProviders.push({ name: 'Ollama', type: 'ollama', enabled: true })
-    }
+    const envProviders = collectEnvProvidersForDisplay()
 
     if (envProviders.length > 0) {
       for (const provider of envProviders) {
-        output += `  ${COLORS.green}●${COLORS.reset} ${provider.name} (${provider.type})\n`
+        output += `  ${COLORS.green}●${COLORS.reset} ${provider.name} (${provider.providerType})\n`
       }
     } else {
       output += `  No providers configured in environment.\n`
-      output += `\nSet OPENROUTER_API_KEY or OLLAMA_BASE_URL environment variables.`
+      output += `\nSet an API key environment variable (e.g. OPENROUTER_API_KEY, OLLAMA_BASE_URL, or any domestic provider key).`
     }
   }
 
@@ -659,7 +683,7 @@ async function handleProviderSubcommand(args: string[]): Promise<string> {
     return (
       `Usage: /provider <subcommand>\n\n` +
       `Available subcommands:\n` +
-      `  connect <type>  - Connect to a new provider (openai, openrouter, ollama)\n` +
+      `  connect <type>  - Connect to a new provider (${VALID_PROVIDER_TYPES.join(', ')})\n` +
       `  test <id>       - Test provider connection\n` +
       `  enable <id>     - Enable a provider\n` +
       `  disable <id>    - Disable a provider\n` +
@@ -867,8 +891,15 @@ async function main(): Promise<void> {
   }
 }
 
-// Run the main function
-main().catch((error) => {
-  console.error('Fatal error:', error)
-  exit(1)
-})
+// ESM-safe entrypoint guard: only run when invoked directly, not on import
+const _invokedDirectly =
+  process.argv[1] != null &&
+  (import.meta.url === `file://${process.argv[1]}` ||
+    import.meta.url === `file://${decodeURIComponent(process.argv[1])}`)
+
+if (_invokedDirectly) {
+  main().catch((error) => {
+    console.error('Fatal error:', error)
+    exit(1)
+  })
+}

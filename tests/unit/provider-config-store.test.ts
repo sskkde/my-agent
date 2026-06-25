@@ -8,7 +8,7 @@ const CREATE_TABLE_SQL = `
   CREATE TABLE provider_configs (
     provider_id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom')),
+    provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom','dashscope','volcengine','qianfan','zhipu','moonshot','minimax','jdcloud-yanxi','mimo','iflytek-spark','stepfun','hunyuan','siliconflow')),
     display_name TEXT,
     enabled INTEGER NOT NULL DEFAULT 1,
     base_url TEXT,

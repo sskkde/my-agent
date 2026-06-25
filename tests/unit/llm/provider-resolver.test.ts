@@ -7,6 +7,7 @@ import {
 import type { ProviderConfigWithSecret } from '../../../src/storage/provider-config-store.js'
 import type { ModelInfo } from '../../../src/llm/types.js'
 import { getProviderCatalogEntry } from '../../../src/llm/catalog/provider-catalog.js'
+import { DOMESTIC_PROVIDERS, getDomesticProvider } from '../../../src/llm/catalog/domestic-providers.js'
 
 function createMockProvider(overrides: Partial<ProviderConfigWithSecret> = {}): ProviderConfigWithSecret {
   return {
@@ -123,7 +124,7 @@ describe('provider-resolver', () => {
 
       const config = buildProviderRuntimeConfig(provider, catalog, model)
 
-      expect(config.baseUrl).toBe('https://api.deepseek.com')
+      expect(config.baseUrl).toBe('https://api.deepseek.com/v1')
     })
 
     it('preserves explicit baseUrl for DeepSeek', () => {
@@ -808,6 +809,185 @@ describe('provider-resolver', () => {
 
       expect(candidates).toHaveLength(1)
       expect(candidates[0].model.modelId).toBe('deepseek-v4-flash')
+    })
+
+    it.each(DOMESTIC_PROVIDERS.map((p) => [p.providerType, p]))(
+      'domestic provider %s resolves with correct catalog entry',
+      (type) => {
+        const provider = createMockProvider({
+          providerType: type as any,
+          apiKey: `sk-${type}`,
+          selectedModel: null,
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        const catalog = getProviderCatalogEntry(type as string)
+        expect(catalog).not.toBeNull()
+        expect(candidates[0].config.family).toBe(catalog!.family)
+        expect(candidates[0].config.protocol).toBe(catalog!.protocol)
+      },
+    )
+
+    it.each(DOMESTIC_PROVIDERS.map((p) => [p.providerType, p.defaultModel]))(
+      'domestic provider %s uses default model %s when none selected',
+      (type, defaultModel) => {
+        const provider = createMockProvider({
+          providerType: type as any,
+          apiKey: `sk-${type}`,
+          selectedModel: null,
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        expect(candidates[0].model.modelId).toBe(defaultModel)
+      },
+    )
+
+    it('domestic providers without builtin models get feature-based capabilities', () => {
+      const provider = createMockProvider({
+        providerType: 'minimax',
+        apiKey: 'sk-minimax',
+        selectedModel: 'custom-nonexistent-model',
+      })
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [provider],
+        envProviders: [],
+        nodeEnv: 'development',
+      })
+
+      expect(candidates).toHaveLength(1)
+      const domesticDef = getDomesticProvider('minimax')
+      expect(domesticDef).toBeDefined()
+      expect(candidates[0].config.capabilities.supportsFunctionCalling).toBe(
+        domesticDef!.features.supportsFunctionCalling,
+      )
+      expect(candidates[0].config.capabilities.supportsJsonMode).toBe(
+        domesticDef!.features.supportsJsonMode,
+      )
+    })
+
+    it('domestic provider compat transform applies supportsStreaming from feature flags', () => {
+      for (const domestic of DOMESTIC_PROVIDERS) {
+        const provider = createMockProvider({
+          providerType: domestic.providerType as any,
+          apiKey: `sk-${domestic.providerType}`,
+          selectedModel: 'nonexistent-custom-model',
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        expect(candidates[0].model.capabilities.streaming, `${domestic.providerType} streaming`).toBe(true)
+      }
+    })
+
+    it('domestic provider env providers create candidates with correct capabilities', () => {
+      for (const domestic of DOMESTIC_PROVIDERS) {
+        const envProvider: EnvProviderDescriptor = {
+          providerType: domestic.providerType as any,
+          providerId: `env-${domestic.providerType}`,
+          apiKey: `sk-env-${domestic.providerType}`,
+          model: domestic.defaultModel,
+        }
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [],
+          envProviders: [envProvider],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates, `env candidate for ${domestic.providerType}`).toHaveLength(1)
+        expect(candidates[0].model.modelId).toBe(domestic.defaultModel)
+        expect(candidates[0].config.capabilities.supportsFunctionCalling).toBe(
+          domestic.features.supportsFunctionCalling,
+        )
+        expect(candidates[0].config.capabilities.supportsJsonMode).toBe(
+          domestic.features.supportsJsonMode,
+        )
+      }
+    })
+
+    it('domestic provider with explicit baseUrl preserves it over catalog default', () => {
+      for (const domestic of DOMESTIC_PROVIDERS) {
+        if (!domestic.envBaseUrl) continue
+        const provider = createMockProvider({
+          providerType: domestic.providerType as any,
+          baseUrl: 'https://custom.api.example.com/v1',
+          apiKey: `sk-${domestic.providerType}`,
+          selectedModel: null,
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        expect(candidates[0].config.baseUrl).toBe('https://custom.api.example.com/v1')
+      }
+    })
+
+    it('domestic provider without explicit baseUrl falls back to catalog default', () => {
+      for (const domestic of DOMESTIC_PROVIDERS) {
+        const provider = createMockProvider({
+          providerType: domestic.providerType as any,
+          baseUrl: null,
+          apiKey: `sk-${domestic.providerType}`,
+          selectedModel: null,
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        expect(candidates[0].config.baseUrl).toBe(domestic.defaultBaseUrl)
+      }
+    })
+
+    it('DB domestic provider overrides env provider with same ID', () => {
+      const domestic = DOMESTIC_PROVIDERS.find((p) => p.providerType === 'dashscope')!
+      const dbProvider = createMockProvider({
+        providerId: 'dashscope',
+        providerType: 'dashscope' as any,
+        apiKey: 'sk-db-dashscope',
+        selectedModel: 'qwen-plus',
+      })
+      const envProvider: EnvProviderDescriptor = {
+        providerType: 'dashscope' as any,
+        providerId: 'dashscope',
+        apiKey: 'sk-env-dashscope',
+        model: domestic.defaultModel,
+      }
+
+      const candidates = resolveProviderCandidates({
+        dbProviders: [dbProvider],
+        envProviders: [envProvider],
+        nodeEnv: 'development',
+      })
+
+      expect(candidates).toHaveLength(1)
+      expect(candidates[0].config.apiKey).toBe('sk-db-dashscope')
+      expect(candidates[0].priority).toBeLessThan(100)
     })
   })
 })

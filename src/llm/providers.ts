@@ -11,6 +11,8 @@ import {
 } from './transform/openai-chat-transformer.js'
 import { buildOllamaChatRequestBody, mapOllamaChatResponse } from './transform/ollama-transformer.js'
 import { createErrorFromResponse } from './transform/provider-errors.js'
+import { normalizeDomesticProviderRequest } from './transform/domestic-provider-compat.js'
+import { isDomesticProvider } from './catalog/domestic-providers.js'
 
 interface ExtendedProviderConfig extends ProviderConfig {
   apiKey?: string
@@ -20,6 +22,7 @@ interface ExtendedProviderConfig extends ProviderConfig {
   appName?: string
   circuitBreakerConfig?: Partial<CircuitBreakerConfig>
   headers?: Record<string, string>
+  providerType?: string
 }
 
 interface LLMAdapterConfig {
@@ -219,7 +222,10 @@ export class OpenAIAdapter extends BaseProvider {
 
     logRequest(url, headers, this.config.enableLogging || false)
 
-    const body = buildRequestBody(request)
+    let body = buildRequestBody(request)
+    if (this.config.providerType && isDomesticProvider(this.config.providerType)) {
+      body = normalizeDomesticProviderRequest(this.config.providerType, body)
+    }
 
     try {
       const controller = new AbortController()

@@ -10,6 +10,7 @@ import {
   DEFAULT_LIMITS,
   BUILTIN_MODELS,
 } from '../../../src/llm/catalog/builtin-models.js'
+import { DOMESTIC_PROVIDERS } from '../../../src/llm/catalog/domestic-providers.js'
 
 describe('Model Catalog', () => {
   describe('modelKey', () => {
@@ -63,6 +64,105 @@ describe('Model Catalog', () => {
       expect(result!.capabilities.functionCalling).toBe(true)
       expect(result!.capabilities.vision).toBe(true)
       expect(result!.capabilities.parallelToolCalls).toBe(true)
+    })
+
+    it('returns dashscope qwen-plus', () => {
+      const result = getBuiltinModel('dashscope', 'qwen-plus')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.streaming).toBe(true)
+      expect(result!.capabilities.functionCalling).toBe(true)
+      expect(result!.capabilities.jsonMode).toBe(true)
+      expect(result!.limits.contextTokens).toBe(128000)
+      expect(result!.limits.outputTokens).toBe(8192)
+    })
+
+    it('returns volcengine doubao-pro-32k', () => {
+      const result = getBuiltinModel('volcengine', 'doubao-pro-32k')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.functionCalling).toBe(true)
+      expect(result!.limits.contextTokens).toBe(32000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns qianfan ernie-4.0-8k', () => {
+      const result = getBuiltinModel('qianfan', 'ernie-4.0-8k')
+      expect(result).not.toBeNull()
+      expect(result!.limits.contextTokens).toBe(8000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns zhipu glm-4-plus', () => {
+      const result = getBuiltinModel('zhipu', 'glm-4-plus')
+      expect(result).not.toBeNull()
+      expect(result!.limits.contextTokens).toBe(128000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns moonshot moonshot-v1-auto', () => {
+      const result = getBuiltinModel('moonshot', 'moonshot-v1-auto')
+      expect(result).not.toBeNull()
+      expect(result!.limits.contextTokens).toBe(128000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns minimax MiniMax-Text-01 without jsonMode', () => {
+      const result = getBuiltinModel('minimax', 'MiniMax-Text-01')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.limits.contextTokens).toBe(256000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns jdcloud-yanxi yanxi-v1 with minimal capabilities', () => {
+      const result = getBuiltinModel('jdcloud-yanxi', 'yanxi-v1')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.streaming).toBe(true)
+      expect(result!.capabilities.functionCalling).toBe(false)
+      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.limits.contextTokens).toBe(8000)
+      expect(result!.limits.outputTokens).toBe(2048)
+    })
+
+    it('returns mimo mimo-v1', () => {
+      const result = getBuiltinModel('mimo', 'mimo-v1')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.functionCalling).toBe(true)
+      expect(result!.limits.contextTokens).toBe(32000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns iflytek-spark spark-max without jsonMode', () => {
+      const result = getBuiltinModel('iflytek-spark', 'spark-max')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.functionCalling).toBe(true)
+      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.limits.contextTokens).toBe(8000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns stepfun step-1v-32k without jsonMode', () => {
+      const result = getBuiltinModel('stepfun', 'step-1v-32k')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.functionCalling).toBe(true)
+      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.limits.contextTokens).toBe(32000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns hunyuan hunyuan-pro', () => {
+      const result = getBuiltinModel('hunyuan', 'hunyuan-pro')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.jsonMode).toBe(true)
+      expect(result!.limits.contextTokens).toBe(32000)
+      expect(result!.limits.outputTokens).toBe(4096)
+    })
+
+    it('returns siliconflow Qwen/Qwen2.5-7B-Instruct', () => {
+      const result = getBuiltinModel('siliconflow', 'Qwen/Qwen2.5-7B-Instruct')
+      expect(result).not.toBeNull()
+      expect(result!.capabilities.functionCalling).toBe(true)
+      expect(result!.limits.contextTokens).toBe(32000)
+      expect(result!.limits.outputTokens).toBe(4096)
     })
   })
 
@@ -144,8 +244,8 @@ describe('Model Catalog', () => {
   })
 
   describe('BUILTIN_MODELS', () => {
-    it('contains at least 3 models', () => {
-      expect(BUILTIN_MODELS.length).toBeGreaterThanOrEqual(3)
+    it('contains at least 16 models', () => {
+      expect(BUILTIN_MODELS.length).toBeGreaterThanOrEqual(16)
     })
 
     it('contains deepseek-chat', () => {
@@ -170,6 +270,82 @@ describe('Model Catalog', () => {
     it('contains gpt-4o-mini', () => {
       const gpt4oMini = BUILTIN_MODELS.find((m) => m.providerId === 'openai' && m.modelId === 'gpt-4o-mini')
       expect(gpt4oMini).toBeDefined()
+    })
+
+    it('contains entries for all 13 domestic providers', () => {
+      const domesticProviderIds = [
+        'dashscope',
+        'volcengine',
+        'qianfan',
+        'zhipu',
+        'moonshot',
+        'minimax',
+        'jdcloud-yanxi',
+        'mimo',
+        'iflytek-spark',
+        'stepfun',
+        'hunyuan',
+        'deepseek',
+        'siliconflow',
+      ]
+      for (const providerId of domesticProviderIds) {
+        const entry = BUILTIN_MODELS.find((m) => m.providerId === providerId)
+        expect(entry, `missing entry for domestic provider: ${providerId}`).toBeDefined()
+      }
+    })
+
+    it('all domestic models use openai_compatible family and openai_chat protocol', () => {
+      const domesticProviderIds = [
+        'dashscope',
+        'volcengine',
+        'qianfan',
+        'zhipu',
+        'moonshot',
+        'minimax',
+        'jdcloud-yanxi',
+        'mimo',
+        'iflytek-spark',
+        'stepfun',
+        'hunyuan',
+        'siliconflow',
+      ]
+      for (const providerId of domesticProviderIds) {
+        const model = BUILTIN_MODELS.find((m) => m.providerId === providerId)
+        expect(model, `missing model for ${providerId}`).toBeDefined()
+        expect(model!.family, `${providerId} family`).toBe('openai_compatible')
+        expect(model!.protocol, `${providerId} protocol`).toBe('openai_chat')
+      }
+    })
+
+    it('all domestic provider default models resolve correctly via getBuiltinModel', () => {
+      for (const provider of DOMESTIC_PROVIDERS) {
+        const model = getBuiltinModel(provider.providerType, provider.defaultModel)
+        expect(model, `missing builtin model for ${provider.providerType}/${provider.defaultModel}`).not.toBeNull()
+        expect(model!.providerId).toBe(provider.providerType)
+        expect(model!.modelId).toBe(provider.defaultModel)
+      }
+    })
+
+    it('domestic provider model capabilities match feature flags', () => {
+      for (const provider of DOMESTIC_PROVIDERS) {
+        const model = getBuiltinModel(provider.providerType, provider.defaultModel)
+        expect(model, `missing model for ${provider.providerType}`).not.toBeNull()
+        expect(model!.capabilities.functionCalling, `${provider.providerType} functionCalling`).toBe(
+          provider.features.supportsFunctionCalling,
+        )
+        expect(model!.capabilities.jsonMode, `${provider.providerType} jsonMode`).toBe(
+          provider.features.supportsJsonMode,
+        )
+      }
+    })
+
+    it('domestic provider default models have non-zero contextTokens', () => {
+      for (const provider of DOMESTIC_PROVIDERS) {
+        const model = getBuiltinModel(provider.providerType, provider.defaultModel)
+        expect(model, `missing model for ${provider.providerType}`).not.toBeNull()
+        expect(model!.limits.contextTokens, `${provider.providerType} contextTokens`).toBeGreaterThan(0)
+        expect(model!.limits.outputTokens, `${provider.providerType} outputTokens`).toBeGreaterThan(0)
+      }
     })
   })
 })

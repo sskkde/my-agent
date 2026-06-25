@@ -476,7 +476,24 @@ export interface AuthSuccessResponse {
 // Provider Types - Task 18
 // =============================================================================
 
-export type ProviderType = 'openai' | 'openrouter' | 'deepseek' | 'ollama' | 'custom'
+export type ProviderType =
+  | 'openai'
+  | 'openrouter'
+  | 'deepseek'
+  | 'ollama'
+  | 'custom'
+  | 'dashscope'
+  | 'volcengine'
+  | 'qianfan'
+  | 'zhipu'
+  | 'moonshot'
+  | 'minimax'
+  | 'jdcloud-yanxi'
+  | 'mimo'
+  | 'iflytek-spark'
+  | 'stepfun'
+  | 'hunyuan'
+  | 'siliconflow'
 
 export interface ProviderSummary {
   providerId: string

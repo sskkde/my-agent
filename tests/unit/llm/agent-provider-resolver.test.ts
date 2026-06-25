@@ -7,6 +7,7 @@ import {
   type ProviderResolutionResult,
   type NoProviderAvailableResult,
 } from '../../../src/llm/agent-provider-resolver.js'
+import { DOMESTIC_PROVIDERS } from '../../../src/llm/catalog/domestic-providers.js'
 
 const CREATE_TABLE_SQL = `
   CREATE TABLE provider_configs (
@@ -620,6 +621,91 @@ describe('agent-provider-resolver', () => {
       const successResult = result as ProviderResolutionResult
       expect(successResult.selectedProviderId).toBe('deepseek-provider')
       expect(successResult.selectedModel).toBe('deepseek-v4-flash')
+    })
+  })
+
+  describe('domestic provider env candidates', () => {
+    it.each(DOMESTIC_PROVIDERS.map((p) => [p.providerType, p.envApiKey, p.defaultModel]))(
+      'should include domestic provider %s as env candidate when %s is set',
+      (type, envKey, defaultModel) => {
+        const envBackup = { ...process.env }
+        process.env[envKey] = `sk-env-${type}`
+
+        const options: ResolveProviderOptions = {
+          session: {},
+          agentConfig: {},
+          userId: 'user-1',
+          providerConfigStore,
+          includeEnvProviders: true,
+        }
+
+        const result = resolveProviderAndModel(options)
+
+        process.env = envBackup
+
+        expect(result.type).toBe('success')
+        const successResult = result as ProviderResolutionResult
+        expect(successResult.selectedProviderId).toBe(type)
+        expect(successResult.selectedModel).toBe(defaultModel)
+        const candidate = successResult.candidates.find((c) => c.providerId === type)
+        expect(candidate).toBeDefined()
+        expect(candidate?.source).toBe('env')
+        expect(candidate?.displayName).toContain('(Env)')
+      },
+    )
+
+    it('domestic env providers are not included when includeEnvProviders=false', () => {
+      const envBackup = { ...process.env }
+      process.env.DASHSCOPE_API_KEY = 'sk-env-dashscope'
+
+      const options: ResolveProviderOptions = {
+        session: {},
+        agentConfig: {},
+        userId: 'user-1',
+        providerConfigStore,
+        includeEnvProviders: false,
+      }
+
+      const result = resolveProviderAndModel(options)
+
+      process.env = envBackup
+
+      const candidateIds = result.type === 'success' ? (result as ProviderResolutionResult).candidates.map((c) => c.providerId) : []
+      expect(candidateIds).not.toContain('dashscope')
+    })
+
+    it('domestic env providers do not override user DB providers with same ID', () => {
+      const envBackup = { ...process.env }
+      process.env.OPENAI_API_KEY = 'sk-env-openai'
+
+      providerConfigStore.create({
+        providerId: 'openai',
+        userId: 'user-1',
+        providerType: 'openai',
+        displayName: 'User OpenAI',
+        apiKey: 'sk-user-openai',
+        enabled: true,
+      })
+
+      const options: ResolveProviderOptions = {
+        session: {},
+        agentConfig: {},
+        userId: 'user-1',
+        providerConfigStore,
+        includeEnvProviders: true,
+      }
+
+      const result = resolveProviderAndModel(options)
+
+      process.env = envBackup
+
+      expect(result.type).toBe('success')
+      const successResult = result as ProviderResolutionResult
+      expect(successResult.selectedProviderId).toBe('openai')
+      const envCandidate = successResult.candidates.find(
+        (c) => c.providerId === 'openai' && c.source === 'env',
+      )
+      expect(envCandidate).toBeUndefined()
     })
   })
 })

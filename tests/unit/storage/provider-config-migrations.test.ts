@@ -5,6 +5,7 @@ import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.j
 import {
   customProviderTypeMigration,
   deepseekProviderTypeMigration,
+  domesticProviderTypesPgMigration,
 } from '../../../src/storage/adapters/postgres/pg-migrations.js'
 
 describe('provider config migrations', () => {
@@ -79,5 +80,78 @@ describe('provider config migrations', () => {
     expect(columnNames).toContain('models_json')
     expect(columnNames).toContain('default_model')
     expect(columnNames).toContain('options_json')
+  })
+
+  it('should apply v65 migration widening provider_type CHECK constraint for domestic providers', async () => {
+    const runner = createMigrationRunner(connection)
+    runner.init()
+    runner.apply(allStoreMigrations)
+
+    expect(runner.getCurrentVersion()).toBeGreaterThanOrEqual(65)
+
+    const columns = connection.query<{ name: string }>("PRAGMA table_info('provider_configs')")
+    const columnNames = columns.map((column) => column.name)
+    expect(columnNames).toContain('tenant_id')
+    expect(columnNames).toContain('family')
+    expect(columnNames).toContain('options_json')
+
+    const indexes = connection.query<{ name: string }>("PRAGMA index_list('provider_configs')")
+    const indexNames = indexes.map((index) => index.name)
+    expect(indexNames).toContain('idx_provider_configs_user')
+    expect(indexNames).toContain('idx_provider_configs_tenant')
+  })
+
+  it('preserves provider tenant columns and runtime metadata in the PostgreSQL domestic provider migration SQL', () => {
+    expect(domesticProviderTypesPgMigration.up).toContain("tenant_id TEXT NOT NULL DEFAULT 'org_default'")
+    expect(domesticProviderTypesPgMigration.up).toContain('family TEXT DEFAULT NULL')
+    expect(domesticProviderTypesPgMigration.up).toContain('options_json TEXT DEFAULT NULL')
+    expect(domesticProviderTypesPgMigration.up).toContain(
+      'CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)',
+    )
+
+    expect(domesticProviderTypesPgMigration.down).toContain("tenant_id TEXT NOT NULL DEFAULT 'org_default'")
+    expect(domesticProviderTypesPgMigration.down).toContain(
+      'CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)',
+    )
+  })
+
+  it('should allow all domestic provider types to be inserted after migration', async () => {
+    const runner = createMigrationRunner(connection)
+    runner.init()
+    runner.apply(allStoreMigrations)
+
+    const domesticTypes = [
+      'dashscope', 'volcengine', 'qianfan', 'zhipu', 'moonshot',
+      'minimax', 'jdcloud-yanxi', 'mimo', 'iflytek-spark', 'stepfun',
+      'hunyuan', 'deepseek', 'siliconflow',
+    ]
+
+    for (const providerType of domesticTypes) {
+      connection.exec(
+        `INSERT INTO provider_configs (provider_id, user_id, provider_type, display_name, source, created_at, updated_at)
+         VALUES (?, 'user-test', ?, ?, 'database', datetime('now'), datetime('now'))`,
+        [`test-${providerType}`, providerType, `Test ${providerType}`],
+      )
+
+      const rows = connection.query<{ provider_id: string; provider_type: string }>(
+        'SELECT provider_id, provider_type FROM provider_configs WHERE provider_id = ?',
+        [`test-${providerType}`],
+      )
+      expect(rows).toHaveLength(1)
+      expect(rows[0].provider_type).toBe(providerType)
+    }
+  })
+
+  it('should reject unknown provider types after migration', async () => {
+    const runner = createMigrationRunner(connection)
+    runner.init()
+    runner.apply(allStoreMigrations)
+
+    expect(() => {
+      connection.exec(
+        `INSERT INTO provider_configs (provider_id, user_id, provider_type, display_name, source, created_at, updated_at)
+         VALUES ('test-unknown', 'user-test', 'nonexistent-provider', 'Unknown', 'database', datetime('now'), datetime('now'))`,
+      )
+    }).toThrow()
   })
 })

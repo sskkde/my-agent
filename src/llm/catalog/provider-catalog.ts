@@ -5,6 +5,7 @@
 
 import type { ProviderFamily, ProviderProtocol, PromptProviderFamily } from '../types.js'
 import type { ProviderType } from '../../storage/provider-config-store.js'
+import { DOMESTIC_PROVIDERS } from './domestic-providers.js'
 
 /**
  * Provider catalog entry
@@ -32,10 +33,9 @@ export interface ProviderCatalogEntry {
 }
 
 /**
- * Built-in provider catalog
- * Registry of all supported provider types with their metadata
+ * Non-domestic provider catalog entries (hand-maintained)
  */
-export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
+const NON_DOMESTIC_CATALOG_ENTRIES: ProviderCatalogEntry[] = [
   {
     providerType: 'openai',
     displayName: 'OpenAI',
@@ -53,17 +53,6 @@ export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     promptFamily: 'openai',
     requiresApiKey: true,
     requiresBaseUrl: false,
-  },
-  {
-    providerType: 'deepseek',
-    displayName: 'DeepSeek',
-    family: 'deepseek',
-    protocol: 'openai_chat',
-    promptFamily: 'deepseek',
-    defaultBaseUrl: 'https://api.deepseek.com',
-    requiresApiKey: true,
-    requiresBaseUrl: false,
-    defaultModel: 'deepseek-v4-flash',
   },
   {
     providerType: 'ollama',
@@ -84,6 +73,31 @@ export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     requiresApiKey: true,
     requiresBaseUrl: true,
   },
+]
+
+/**
+ * Domestic provider catalog entries (generated from DOMESTIC_PROVIDERS definitions)
+ * All domestic providers use OpenAI-compatible API protocol.
+ */
+const DOMESTIC_CATALOG_ENTRIES: ProviderCatalogEntry[] = DOMESTIC_PROVIDERS.map((p) => ({
+  providerType: p.providerType as ProviderType,
+  displayName: p.displayName,
+  family: 'openai_compatible' as ProviderFamily,
+  protocol: 'openai_chat' as ProviderProtocol,
+  promptFamily: 'openai' as PromptProviderFamily,
+  defaultBaseUrl: p.defaultBaseUrl,
+  defaultModel: p.defaultModel,
+  requiresApiKey: true,
+  requiresBaseUrl: false,
+}))
+
+/**
+ * Built-in provider catalog
+ * Registry of all supported provider types with their metadata
+ */
+export const BUILTIN_PROVIDER_CATALOG: ProviderCatalogEntry[] = [
+  ...NON_DOMESTIC_CATALOG_ENTRIES,
+  ...DOMESTIC_CATALOG_ENTRIES,
 ]
 
 /**

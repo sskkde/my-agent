@@ -14,7 +14,8 @@ import type {
 import type { ProviderConfigWithSecret, ProviderType } from '../../storage/provider-config-store.js'
 import type { ProviderCatalogEntry } from '../catalog/provider-catalog.js'
 import { getProviderCatalogEntry } from '../catalog/provider-catalog.js'
-import { resolveModelInfo } from '../catalog/model-catalog.js'
+import { resolveModelInfo, getBuiltinModel } from '../catalog/model-catalog.js'
+import { getDomesticProvider } from '../catalog/domestic-providers.js'
 
 /**
  * Environment-derived provider descriptor
@@ -184,12 +185,10 @@ function hasUsableCredentials(provider: {
  * @param model - Model information
  * @returns Provider capabilities
  */
-function deriveProviderCapabilities(providerType: ProviderType, model: ModelInfo): ProviderCapabilities {
-  const supportsJsonMode = providerType === 'openai' || providerType === 'openrouter' || providerType === 'deepseek'
-
+function deriveProviderCapabilities(_providerType: ProviderType, model: ModelInfo): ProviderCapabilities {
   return {
     ...DEFAULT_CAPABILITIES,
-    supportsJsonMode,
+    supportsJsonMode: model.capabilities.jsonMode,
     supportsFunctionCalling: model.capabilities.functionCalling,
     supportsVision: model.capabilities.vision,
     maxTokens: model.limits.outputTokens,
@@ -230,11 +229,8 @@ export function buildProviderRuntimeConfig(
   // Derive capabilities
   const capabilities = deriveProviderCapabilities(provider.providerType, model)
 
-  // Apply DeepSeek default baseUrl if not set
-  let baseUrl = provider.baseUrl ?? undefined
-  if (provider.providerType === 'deepseek' && !baseUrl) {
-    baseUrl = 'https://api.deepseek.com'
-  }
+  // Apply catalog default baseUrl if not set
+  const baseUrl = provider.baseUrl ?? catalog?.defaultBaseUrl ?? undefined
 
   return {
     id: provider.providerId,
@@ -253,6 +249,7 @@ export function buildProviderRuntimeConfig(
     customCapabilities: provider.capabilities as Partial<ModelInfo['capabilities']> | undefined,
     options: provider.options ?? undefined,
     promptFamily: catalog?.promptFamily,
+    providerType: provider.providerType,
   }
 }
 
@@ -306,6 +303,21 @@ export function resolveProviderCandidates(options: ResolveProviderCandidatesOpti
     const catalog = getProviderCatalogEntry(provider.providerType)
     const modelId = provider.selectedModel ?? catalog?.defaultModel ?? 'gpt-4o-mini'
     let model = resolve(provider.providerType, modelId, catalog?.family, catalog?.protocol)
+
+    if (!getBuiltinModel(provider.providerType, modelId)) {
+      const domesticDef = getDomesticProvider(provider.providerType)
+      if (domesticDef) {
+        model = {
+          ...model,
+          capabilities: {
+            ...model.capabilities,
+            streaming: model.capabilities.streaming || domesticDef.features.supportsStreaming,
+            functionCalling: model.capabilities.functionCalling || domesticDef.features.supportsFunctionCalling,
+            jsonMode: model.capabilities.jsonMode || domesticDef.features.supportsJsonMode,
+          },
+        }
+      }
+    }
 
     model = applyModelOverrides(model, provider.models)
     model = {
@@ -372,7 +384,22 @@ export function resolveProviderCandidates(options: ResolveProviderCandidatesOpti
       const priority = isPreferred ? 1 : envPriority
 
       const modelId = env.model ?? catalog.defaultModel ?? 'gpt-4o-mini'
-      const model = resolve(env.providerId, modelId, catalog.family, catalog.protocol)
+      let model = resolve(env.providerId, modelId, catalog.family, catalog.protocol)
+
+      if (!getBuiltinModel(env.providerId, modelId)) {
+        const domesticDef = getDomesticProvider(env.providerType)
+        if (domesticDef) {
+          model = {
+            ...model,
+            capabilities: {
+              ...model.capabilities,
+              streaming: model.capabilities.streaming || domesticDef.features.supportsStreaming,
+              functionCalling: model.capabilities.functionCalling || domesticDef.features.supportsFunctionCalling,
+              jsonMode: model.capabilities.jsonMode || domesticDef.features.supportsJsonMode,
+            },
+          }
+        }
+      }
 
       const config = buildProviderRuntimeConfig(syntheticProvider, catalog, model)
 

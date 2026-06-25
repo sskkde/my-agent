@@ -334,6 +334,30 @@ OPENROUTER_API_KEY=sk-or-xxx
 
 ---
 
+### 国内 LLM Provider 环境变量
+
+平台支持 13 个国内（China-based）LLM Provider，均使用 OpenAI 兼容 API。只需配置其中一个即可。
+
+| Provider | API Key 环境变量 | Base URL 环境变量 | 默认模型 |
+|----------|-----------------|-------------------|----------|
+| DashScope (阿里云) | `DASHSCOPE_API_KEY` | `DASHSCOPE_BASE_URL` | `qwen-plus` |
+| Volcano Engine (字节跳动) | `VOLCENGINE_API_KEY` | `VOLCENGINE_BASE_URL` | `doubao-pro-32k` |
+| Qianfan (百度) | `QIANFAN_API_KEY` | `QIANFAN_BASE_URL` | `ernie-4.0-8k` |
+| Zhipu AI | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `glm-4-plus` |
+| Moonshot AI | `MOONSHOT_API_KEY` | `MOONSHOT_BASE_URL` | `moonshot-v1-auto` |
+| MiniMax | `MINIMAX_API_KEY` | `MINIMAX_BASE_URL` | `MiniMax-Text-01` |
+| JD Cloud Yanxi | `JDCLOUD_YANXI_API_KEY` | `JDCLOUD_YANXI_BASE_URL` | `yanxi-v1` |
+| MiMo (小米) | `MIMO_API_KEY` | `MIMO_BASE_URL` | `mimo-v1` |
+| iFlyTek Spark | `IFLYTEK_SPARK_API_KEY` | `IFLYTEK_SPARK_BASE_URL` | `spark-max` |
+| StepFun | `STEPFUN_API_KEY` | `STEPFUN_BASE_URL` | `step-1v-32k` |
+| Hunyuan (腾讯云) | `HUNYUAN_API_KEY` | `HUNYUAN_BASE_URL` | `hunyuan-pro` |
+| DeepSeek | `DEEPSEEK_API_KEY` | `DEEPSEEK_BASE_URL` | `deepseek-v4-flash` |
+| SiliconFlow | `SILICONFLOW_API_KEY` | `SILICONFLOW_BASE_URL` | `Qwen/Qwen2.5-7B-Instruct` |
+
+**使用方式**：在 `.env` 文件中设置对应 Provider 的 API Key 环境变量即可。`*_BASE_URL` 环境变量为可选覆盖，通常无需设置。
+
+---
+
 ### MVP_USE_MOCK_LLM
 
 | 属性 | 值 |
@@ -743,6 +767,19 @@ UPLOAD_PREVIEW_MAX_BYTES=4096
 | `OPENROUTER_API_KEY` | - | 至少一个 |
 | `OPENAI_API_KEY` | - | - |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | - |
+| `DASHSCOPE_API_KEY` | - | - |
+| `VOLCENGINE_API_KEY` | - | - |
+| `QIANFAN_API_KEY` | - | - |
+| `ZHIPU_API_KEY` | - | - |
+| `MOONSHOT_API_KEY` | - | - |
+| `MINIMAX_API_KEY` | - | - |
+| `JDCLOUD_YANXI_API_KEY` | - | - |
+| `MIMO_API_KEY` | - | - |
+| `IFLYTEK_SPARK_API_KEY` | - | - |
+| `STEPFUN_API_KEY` | - | - |
+| `HUNYUAN_API_KEY` | - | - |
+| `DEEPSEEK_API_KEY` | - | - |
+| `SILICONFLOW_API_KEY` | - | - |
 
 ### 文件上传变量
 
