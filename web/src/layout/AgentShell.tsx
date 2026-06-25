@@ -10,6 +10,7 @@ import {
 } from '../navigation/product-navigation'
 import type { UserMetadata } from '../api/types'
 import ContextDeskPanel from '../features/context/ContextDeskPanel'
+import FloatingSettingsMenu from '../features/settings/FloatingSettingsMenu'
 import logoUrl from '../assets/logo.svg?url'
 import { AgentShellSidebarContext } from './AgentShellSidebarContext'
 import packageInfo from '../../package.json'
@@ -232,6 +233,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
   const renderControls = () => (
     <div className="product-nav__controls">
       {contextDeskToggle}
+      <FloatingSettingsMenu />
       {userControls}
       {mobileNavToggle}
     </div>
@@ -261,24 +263,14 @@ const AgentShell: React.FC<AgentShellProps> = ({
         >
           {PRODUCT_SECTION_LABELS.workspace}
         </button>
-        <div className="product-nav__more">
-          <button
-            className={`product-nav__switch ${activeProductSection === 'operations' ? 'product-nav__switch--active' : ''}`}
-            onClick={() => handleProductSectionClick('operations')}
-            data-testid="product-nav-operations"
-            aria-current={activeProductSection === 'operations' ? 'page' : undefined}
-          >
-            {PRODUCT_SECTION_LABELS.operations}
-          </button>
-          <button
-            className={`product-nav__switch ${activeProductSection === 'admin' ? 'product-nav__switch--active' : ''}`}
-            onClick={() => handleProductSectionClick('admin')}
-            data-testid="product-nav-admin"
-            aria-current={activeProductSection === 'admin' ? 'page' : undefined}
-          >
-            {PRODUCT_SECTION_LABELS.admin}
-          </button>
-        </div>
+        <button
+          className={`product-nav__switch ${activeProductSection === 'operations' ? 'product-nav__switch--active' : ''}`}
+          onClick={() => handleProductSectionClick('operations')}
+          data-testid="product-nav-operations"
+          aria-current={activeProductSection === 'operations' ? 'page' : undefined}
+        >
+          {PRODUCT_SECTION_LABELS.operations}
+        </button>
       </div>
 
       {renderControls()}

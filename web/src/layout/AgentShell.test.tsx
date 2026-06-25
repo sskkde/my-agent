@@ -61,14 +61,14 @@ describe('AgentShell', () => {
         </AgentShell>,
       )
 
-      // session-console is in 'chat' section
+      // session-console is in 'chat' section; chat header has no admin switch
       const chatSection = screen.getByTestId('product-nav-chat')
       expect(chatSection).toHaveAttribute('aria-current', 'page')
 
       // Other sections should not be marked as current
       expect(screen.getByTestId('product-nav-workspace')).not.toHaveAttribute('aria-current')
       expect(screen.getByTestId('product-nav-operations')).not.toHaveAttribute('aria-current')
-      expect(screen.getByTestId('product-nav-admin')).not.toHaveAttribute('aria-current')
+      expect(screen.queryByTestId('product-nav-admin')).not.toBeInTheDocument()
     })
 
     it('marks workspace section as active when on dashboard tab', () => {
@@ -146,6 +146,17 @@ describe('AgentShell', () => {
 
       fireEvent.click(screen.getByTestId('product-nav-admin'))
       expect(mockOnTabChange).toHaveBeenCalledWith('settings')
+    })
+
+    it('chat header has floating settings menu and no admin switcher', () => {
+      renderWithRouter(
+        <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
+          <div>Content</div>
+        </AgentShell>,
+      )
+
+      expect(screen.getByTestId('floating-settings-trigger')).toBeInTheDocument()
+      expect(screen.queryByTestId('product-nav-admin')).not.toBeInTheDocument()
     })
   })
 
@@ -580,7 +591,7 @@ describe('AgentShell', () => {
   })
 
   describe('Secondary Navigation Scope', () => {
-    it('sidebar shows only chat tabs when chat section is active', () => {
+    it('sidebar shows no tabs when chat section is active', () => {
       renderWithRouter(
         <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
           <div>Content</div>
@@ -589,8 +600,8 @@ describe('AgentShell', () => {
 
       const sidebar = screen.getByTestId('sidebar')
 
-      expect(screen.getByTestId('tab-session-console')).toBeInTheDocument()
-
+      // Chat section uses the sidebar for session content, not tab navigation.
+      expect(sidebar.querySelectorAll('button[role="tab"]')).toHaveLength(0)
       expect(sidebar).not.toContainElement(screen.queryByTestId('tab-dashboard'))
       expect(sidebar).not.toContainElement(screen.queryByTestId('tab-agent-monitor'))
       expect(sidebar).not.toContainElement(screen.queryByTestId('tab-settings'))
@@ -656,7 +667,8 @@ describe('AgentShell', () => {
         </AgentShell>,
       )
 
-      expect(screen.getAllByRole('tab')).toHaveLength(1)
+      // Chat section has no sidebar tabs; settings are in the floating menu.
+      expect(screen.queryAllByRole('tab')).toHaveLength(0)
 
       rerender(
         <BrowserRouter>
