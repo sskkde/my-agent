@@ -52,7 +52,15 @@ export interface ExtractedFact {
 
   /** Optional relevance score to the original query */
   relevanceScore?: number
+
+  /** Optional source title where the fact was found */
+  sourceTitle?: string
+
+  /** Optional source rank after result selection */
+  sourceRank?: number
 }
+
+export type EvidenceSufficiency = 'sufficient' | 'partial' | 'insufficient'
 
 /**
  * Warning generated during search execution.
@@ -76,6 +84,9 @@ export interface SearchSubagentMetadata {
   resultCount: number
   uniqueSourceCount: number
   rankingVersion?: string
+  sourceQualityVersion?: string
+  evidenceSufficiency?: EvidenceSufficiency
+  searchCallCount?: number
   agentProfile?: string
 }
 
