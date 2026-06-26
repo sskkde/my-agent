@@ -75,7 +75,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
       throw new Error(`Connector definition not found: ${instance.connectorDefinitionId}`)
     }
 
-    const adapter = this.adapterRegistry.get(definition.connectorType)
+    const adapter = this.findAdapter(definition)
     if (!adapter) {
       const capabilities = this.createCapabilitiesFromDefinition(definition)
 
@@ -144,7 +144,7 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
       )
     }
 
-    const adapter = this.adapterRegistry.get(definition.connectorType)
+    const adapter = this.findAdapter(definition)
     if (!adapter) {
       return this.createErrorResponse(
         request.requestId,
@@ -319,6 +319,13 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
       requiresAuth: true,
       supportedOperations: ['execute'],
     }))
+  }
+
+  private findAdapter(definition: ConnectorDefinition): {
+    execute: (instance: ConnectorInstance, request: ConnectorCallRequest) => Promise<unknown>
+    discoverCapabilities: (instance: ConnectorInstance) => ConnectorCapability[]
+  } | undefined {
+    return this.adapterRegistry.get(definition.connectorId) ?? this.adapterRegistry.get(definition.connectorType)
   }
 
   private createErrorResponse(

@@ -61,6 +61,7 @@ import { createScheduleTriggerStore, type ScheduleTriggerStore } from '../storag
 import { createConnectorStore, type ConnectorStore } from '../storage/connector-store.js'
 import { createSessionChannelMapStore, type SessionChannelMapStore } from '../storage/session-channel-map-store.js'
 import { registerMessagingDefinitions } from '../connectors/messaging/definitions.js'
+import { registerAgentlyMailDefinition } from '../connectors/agently-mail/definitions.js'
 import { createEventTriggerRuntime, type EventTriggerRuntime } from '../triggers/event-trigger-runtime.js'
 import { createPermissionEngine, type PermissionEngine } from '../permissions/permission-engine.js'
 import { createAgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
@@ -444,6 +445,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 	  })
 
 	  registerMessagingDefinitions(connectorStore)
+	  registerAgentlyMailDefinition(connectorStore)
 
 	  const stores: Stores = {
     eventStore: {
