@@ -519,6 +519,69 @@ OPENROUTER_API_KEY=sk-or-xxx
 
 ---
 
+### AgentlyMail 连接器
+
+> AgentlyMail 是一个可选的邮件连接器，通过外部 CLI 二进制文件（`@tencent-qqmail/agently-cli`）提供邮件读取、搜索、发送和管理功能。CLI 二进制文件不随平台捆绑，需要单独安装。
+
+#### AGENTLY_MAIL_ENABLED
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 启用 AgentlyMail 邮件连接器 |
+| **默认值** | `false` |
+| **生产要求** | 可选 |
+
+设置为 `true` 时，平台会在启动时注册 AgentlyMail 连接器定义。如果 CLI 二进制文件不在 PATH 中，连接器将以 `inactive` 状态注册，API 会将其列为不可用但不会导致启动失败。
+
+**示例**：
+```bash
+AGENTLY_MAIL_ENABLED=true
+```
+
+---
+
+#### AGENTLY_MAIL_CLI_PATH
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 覆盖 agently-cli 二进制文件路径 |
+| **默认值** | `agently-cli`（从 PATH 查找） |
+| **生产要求** | 可选 |
+
+当 CLI 二进制文件不在系统 PATH 中时，可使用此变量指定完整路径。
+
+**示例**：
+```bash
+AGENTLY_MAIL_CLI_PATH=/usr/local/bin/agently-cli
+```
+
+---
+
+#### AGENTLY_MAIL_TIMEOUT_MS
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | CLI 命令执行超时时间（毫秒） |
+| **默认值** | `30000`（30 秒） |
+| **生产要求** | 可选 |
+
+控制单次 CLI 命令的最大执行时间。超时后命令将被终止。
+
+**示例**：
+```bash
+AGENTLY_MAIL_TIMEOUT_MS=60000
+```
+
+---
+
+**外部依赖说明**：AgentlyMail 连接器依赖 `@tencent-qqmail/agently-cli` npm 包提供的 CLI 二进制文件。该包未包含在平台的依赖中，需要根据实际使用需求单独安装。安装方式：
+
+```bash
+npm install -g @tencent-qqmail/agently-cli
+```
+
+---
+
 ## 资源限制配置
 
 ### MAX_CONCURRENT_LLM_CALLS
@@ -1017,6 +1080,16 @@ WECHAT_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | 变量 | 默认值 | 生产必需 |
 |------|--------|----------|
 | `WORKDIR_ROOT` | `./data/workdirs` | ✓ 持久化卷 |
+
+### AgentlyMail 连接器变量
+
+| 变量 | 默认值 | 生产必需 |
+|------|--------|----------|
+| `AGENTLY_MAIL_ENABLED` | `false` | - |
+| `AGENTLY_MAIL_CLI_PATH` | `agently-cli` | - |
+| `AGENTLY_MAIL_TIMEOUT_MS` | `30000` | - |
+
+> 所有 AgentlyMail 变量均为可选。CLI 二进制文件（`@tencent-qqmail/agently-cli`）需要单独安装。
 
 **预览行为：**
 - `text/plain`, `text/markdown`, `text/csv`, `application/json` → 上传时提取文本预览（最多 `UPLOAD_PREVIEW_MAX_BYTES` 字节），预览内容注入 LLM 上下文
