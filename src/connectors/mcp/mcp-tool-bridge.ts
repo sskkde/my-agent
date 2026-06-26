@@ -130,6 +130,23 @@ export class McpToolBridge {
       return normalized
     }
 
+    const schema = this.getSchemaForTool(toolName)
+    const validationError = this.validateParams(params, schema)
+    if (validationError) {
+      const normalized = normalizeConnectorResponse({
+        status: 'failed',
+        requestId,
+        connectorInstanceId,
+        error: {
+          code: 'mcp_invalid_params',
+          message: validationError,
+          recoverable: false,
+        },
+      })
+      this.auditToolCall(toolName, params, normalized, options, requestId)
+      return normalized
+    }
+
     const rawName = this.rawToolName(session.serverId, toolName)
     const response = await this.executeWithGuards(
       transport,
@@ -151,8 +168,9 @@ export class McpToolBridge {
   ): ToolDefinition {
     const name = this.bridgedToolName(serverId, descriptor.name)
     const isDestructive = descriptor.annotations?.destructiveHint === true
-    const category = isDestructive ? 'write' : 'read'
-    const sensitivity = isDestructive ? 'high' : 'medium'
+    const isReadOnly = descriptor.annotations?.readOnlyHint === true
+    const category: ToolDefinition['category'] = isDestructive ? 'write' : isReadOnly ? 'read' : 'read'
+    const sensitivity: ToolDefinition['sensitivity'] = isDestructive ? 'high' : isReadOnly ? 'medium' : 'medium'
     const definition: ToolDefinition = {
       name,
       description: descriptor.description,
@@ -160,8 +178,7 @@ export class McpToolBridge {
       sensitivity,
       schema: descriptor.inputSchema,
       idempotent: descriptor.annotations?.idempotentHint ?? false,
-      // destructiveHint=true must always require permission, regardless of readOnlyHint
-      requiresPermission: isDestructive ? true : !descriptor.annotations?.readOnlyHint,
+      requiresPermission: isDestructive ? true : !isReadOnly,
       metadata: {
         bridge: 'mcp',
         sessionId,
@@ -179,6 +196,7 @@ export class McpToolBridge {
         return this.toToolExecutionResult(result)
       },
     }
+    this.registerSchema(name, descriptor.inputSchema)
     return {
       ...definition,
       metadata: {
@@ -329,5 +347,29 @@ export class McpToolBridge {
 
   private errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
+  }
+
+  private readonly schemaByTool = new Map<string, ToolDefinition['schema']>()
+
+  registerSchema(toolName: string, schema: ToolDefinition['schema']): void {
+    this.schemaByTool.set(toolName, schema)
+  }
+
+  private getSchemaForTool(toolName: string): ToolDefinition['schema'] | undefined {
+    return this.schemaByTool.get(toolName)
+  }
+
+  private validateParams(
+    params: Record<string, unknown>,
+    schema: ToolDefinition['schema'] | undefined,
+  ): string | undefined {
+    if (!schema?.required || schema.required.length === 0) {
+      return undefined
+    }
+    const missing = schema.required.filter((field) => params[field] === undefined)
+    if (missing.length > 0) {
+      return `Missing required parameters: ${missing.join(', ')}`
+    }
+    return undefined
   }
 }

@@ -161,9 +161,9 @@ function redactSensitiveStrings(value: string): string {
   // Bearer tokens
   result = result.replace(/\b(bearer\s+)[a-zA-Z0-9_\-\.~+/]+=*/gi, `$1${REDACTED_MARKER}`)
 
-  // api_key / apikey / token / secret in key=value or key: value patterns
+  // api_key / apikey / key / token / secret in key=value or key: value patterns
   result = result.replace(
-    /(?:api[_\s-]?key|token|secret|access_token)\s*[:=]\s*['"]?[a-zA-Z0-9_\-\.~+/]{8,}['"]?/gi,
+    /(?:api[_\s-]?key|(?<![a-z_])key|token|secret|access_token)\s*[:=]\s*['"]?[a-zA-Z0-9_\-\.~+/]{8,}['"]?/gi,
     (match) => {
       const separator = match.match(/[:=]/)?.[0] ?? ':'
       const prefix = match.slice(0, match.indexOf(separator) + 1)

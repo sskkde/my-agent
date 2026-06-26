@@ -203,6 +203,55 @@ npm run test:web
 - 工具和事件清单查看
 - Mock 连接器支持
 
+### AMap MCP 地图工具（后端）
+
+平台支持通过高德官方 MCP Server 接入后端地图工具。这些工具运行在服务端，不包含前端地图 UI。
+
+**支持的工具类别：**
+
+| 类别 | 说明 | 示例 |
+|------|------|------|
+| 地理编码 | 地址与经纬度互查 | "北京市朝阳区" → 经纬度 |
+| POI 搜索 | 关键词/周边/分类搜索 | "附近的咖啡店" |
+| 路线规划 | 驾车/步行/骑行/公交路线 | A 到 B 的驾车路线 |
+| 天气查询 | 实时天气和预报 | "北京今天天气" |
+| 距离测量 | 多点间距离计算 | 两点间驾车距离 |
+
+**启用方式：**
+
+```bash
+# 在 .env 中设置
+AMAP_MCP_ENABLED=true
+AMAP_MAPS_API_KEY=your_amap_web_api_key_here
+```
+
+**环境变量：**
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `AMAP_MCP_ENABLED` | `false` | 是否启用 AMap MCP 工具 |
+| `AMAP_MAPS_API_KEY` | (无) | 高德 Web API Key，启用时必填 |
+| `AMAP_MCP_BASE_URL` | `https://mcp.amap.com/mcp` | MCP 服务端点 |
+| `AMAP_MCP_TIMEOUT_MS` | `30000` | 工具调用超时（毫秒） |
+| `AMAP_MCP_TRANSPORT` | `streamable_http` | 传输协议，支持 `streamable_http` 和 `stdio` |
+
+**传输协议：**
+
+- **Streamable HTTP**（默认）：通过 HTTP 长连接与 AMap MCP Server 通信，适合大多数部署场景
+- **stdio**：作为备选方案，通过标准输入输出与本地 MCP 进程通信
+
+**获取高德 Key：**
+
+1. 前往 [高德开放平台](https://console.amap.com/dev/key/app) 注册账号
+2. 创建应用并添加 Web 服务类型的 Key
+3. 将 Key 填入 `AMAP_MAPS_API_KEY` 环境变量
+
+⚠️ **安全提示：** API Key 属于敏感凭据，绝对不能提交到代码仓库。请通过环境变量或密钥管理服务注入。平台在存储和日志中会自动脱敏 Key 值。
+
+📖 详细配置文档请参阅 [docs/mcp/amap-mcp-setup.md](docs/mcp/amap-mcp-setup.md)。
+
+> **注意：** 前端地图展示（WebUI 地图渲染、标记点、路线可视化）属于独立计划，不在当前范围内。
+
 ### 可观测性控制台
 
 - 运行列表和状态过滤

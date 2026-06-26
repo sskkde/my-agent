@@ -68,6 +68,7 @@ import { createToolRegistry } from '../tools/tool-registry.js'
 import { createToolExecutor } from '../tools/tool-executor.js'
 import type { ToolRegistry, ToolExecutor } from '../tools/types.js'
 import { registerBuiltInTools } from '../tools/builtins/index.js'
+import { registerAMapMcpTools } from '../connectors/mcp/register-amap-mcp-tools.js'
 import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js'
 import { createBackgroundRuntime } from '../subagents/background-runtime.js'
 import { createSubagentRegistry, type SubagentRegistry } from '../subagents/registry.js'
@@ -590,6 +591,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     todoStore,
     webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
   })
+
+  // Register AMap MCP tools (opt-in via AMAP_MCP_ENABLED + AMAP_MAPS_API_KEY)
+  registerAMapMcpTools({ connection, toolRegistry })
 
   // Create skill registry and register built-in skills (active + deprecated aliases)
   const skillRegistry = createSkillRegistry()

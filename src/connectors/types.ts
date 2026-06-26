@@ -94,6 +94,22 @@ export interface ConnectorToolBridge {
   determineRiskLevel(capability: ConnectorCapability): ToolSensitivity
 }
 
+// MCP Server Authentication Config
+// Captures how to inject credentials without persisting actual secret values.
+// The secret itself is resolved at runtime from envVar or tokenRef.
+export interface MCPServerAuthConfig {
+  type: 'bearer' | 'api_key' | 'oauth2'
+  required: boolean
+  /** Where to inject: 'header' (Authorization) or 'query' (URL param) */
+  placement?: 'header' | 'query'
+  /** Name of the header or query parameter (e.g. 'X-API-Key', 'key') */
+  name?: string
+  /** Environment variable that holds the secret value at runtime */
+  envVar?: string
+  /** Reference to a stored secret/token (e.g. vault path, secret manager id) */
+  tokenRef?: string
+}
+
 // MCP Server Definition - Model Context Protocol server metadata
 export interface MCPServerDefinition {
   serverId: string
@@ -101,13 +117,10 @@ export interface MCPServerDefinition {
   version: string
   description?: string
   baseUrl: string
-  configType?: 'stdio' | 'http'
+  configType?: 'stdio' | 'http' | 'streamable_http'
   command?: string
   args?: string[]
-  authentication?: {
-    type: 'bearer' | 'api_key' | 'oauth2'
-    required: boolean
-  }
+  authentication?: MCPServerAuthConfig
   capabilities: string[]
   supportedFormats: string[]
   trustLevel?: 'trusted' | 'verified' | 'untrusted'

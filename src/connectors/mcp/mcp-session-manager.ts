@@ -9,6 +9,7 @@ export interface McpTransport {
 
 export interface McpSessionManager {
   openSession(serverId: string): McpSession
+  openSessionAsync(serverId: string): Promise<McpSession>
   closeSession(sessionId: string): void
   markUnhealthy(sessionId: string, error: string): void
   getSession(sessionId: string): McpSession | null
@@ -51,6 +52,31 @@ class SqliteMcpSessionManager implements McpSessionManager {
           this.markUnhealthy(sessionId, redactMcpErrorMessage(error instanceof Error ? error.message : String(error)))
         })
       }
+    } catch (error) {
+      status = 'error'
+      lastError = redactMcpErrorMessage(error instanceof Error ? error.message : String(error))
+    }
+
+    this.connection.exec(
+      `INSERT INTO mcp_sessions (
+        session_id, server_id, connector_instance_id, status, auth_token_ref, metadata,
+        last_error, last_health_check, connected_at, last_activity_at, disconnected_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [sessionId, serverId, null, status, null, null, lastError, now, now, now, null, now, now],
+    )
+
+    return this.getSession(sessionId) as McpSession
+  }
+
+  async openSessionAsync(serverId: string): Promise<McpSession> {
+    const now = new Date().toISOString()
+    const sessionId = crypto.randomUUID()
+    const transport = this.transports.get(serverId)
+    let status: 'connected' | 'error' = 'connected'
+    let lastError: string | null = null
+
+    try {
+      await transport?.connect()
     } catch (error) {
       status = 'error'
       lastError = redactMcpErrorMessage(error instanceof Error ? error.message : String(error))
