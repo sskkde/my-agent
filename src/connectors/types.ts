@@ -74,6 +74,9 @@ export interface ConnectorResponse {
     rateLimitResetAt?: string
     retryAfterMs?: number
     operationId?: string
+    confirmationToken?: string
+    summary?: string
+    expiresAt?: string
   }
 }
 
