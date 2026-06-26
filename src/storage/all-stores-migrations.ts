@@ -2586,10 +2586,10 @@ export const todosOwnerAgentIdMigration: Migration = {
 }
 
 // ============================================================================
-// STORE 65: Session Channel Mappings (version 65)
+// STORE 66: Session Channel Mappings (version 66)
 // ============================================================================
 export const sessionChannelMappingsTableMigration: Migration = {
-  version: 65,
+  version: 66,
   name: 'create_session_channel_mappings_table',
   up: `
     CREATE TABLE session_channel_mappings (
@@ -2623,10 +2623,10 @@ export const sessionChannelMappingsTableMigration: Migration = {
 }
 
 // ============================================================================
-// STORE 66: Work Directories Store (version 66)
+// STORE 67: Work Directories Store (version 67)
 // ============================================================================
 export const workDirectoriesTableMigration: Migration = {
-  version: 66,
+  version: 67,
   name: 'create_workdir_tables',
   up: `
     CREATE TABLE work_directories (
@@ -2808,7 +2808,7 @@ export const allStoreMigrations: Migration[] = [
   sessionChannelMappingsTableMigration, // v66
 
   // Work directories and session workdir state
-  workDirectoriesTableMigration, // v66
+  workDirectoriesTableMigration, // v67
 ]
 
 /**
