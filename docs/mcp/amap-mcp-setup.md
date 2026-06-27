@@ -11,7 +11,7 @@ This guide covers enabling and configuring AMap (高德地图) backend map tools
 
 AMap MCP provides server-side map capabilities to agents through the Model Context Protocol. Tools cover geocoding, POI search, route planning, weather queries, and distance calculations.
 
-**Scope:** Backend tools only. No frontend map UI, JSAPI integration, or browser-side rendering is included in this setup. Frontend map display is planned as a separate initiative.
+**Scope:** Backend map tools (geocoding, POI, routes, weather, distance) via AMap MCP Server. A frontend map UI with JSAPI rendering is also available, see [Frontend Map Configuration](#frontend-map-configuration).
 
 ---
 
@@ -122,6 +122,89 @@ Calculate distances between multiple points.
 5. Copy the generated key
 
 The key should be a 32-character hex string. Set it as `AMAP_MAPS_API_KEY` in your environment.
+
+---
+
+## Key Types: MCP Key vs JSAPI Key
+
+AMap uses **two separate key types** for backend and frontend access. They are not interchangeable.
+
+| Concern | Key Type (AMap Console) | Environment Variable | Where It Runs |
+|---------|------------------------|---------------------|---------------|
+| Backend MCP tools | **Web服务 (Web Service)** | `AMAP_MAPS_API_KEY` | Server-side (Node.js) |
+| Frontend map UI | **Web端 (JS API)** | `VITE_AMAP_JSAPI_KEY` | Browser-side (Vite) |
+
+**Do not swap these keys.** The Web服务 key authenticates server-to-server API calls. The Web端(JS API) key authenticates browser-side JSAPI loading with domain restrictions.
+
+To use both backend tools and the frontend map, create **two separate keys** in the AMap console under the same application.
+
+---
+
+## Frontend Map Configuration
+
+The platform includes a browser-side map UI that renders AMap JSAPI maps with markers, routes, polylines, and info windows. This is configured separately from the backend MCP tools.
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `VITE_AMAP_JSAPI_KEY` | For frontend map | (none) | AMap JSAPI key (Web端(JS API) type) |
+| `VITE_AMAP_SECURITY_JS_CODE` | In production | (none) | Security JS code for registered domains |
+| `VITE_AMAP_SERVICE_HOST` | No | (none) | Custom service host for reverse proxy |
+| `VITE_AMAP_MOCK` | No | `false` | Force mock mode (no real AMap calls) |
+
+### Local Development
+
+```bash
+# In .env or .env.local
+VITE_AMAP_JSAPI_KEY=your_amap_jsapi_key_here
+```
+
+With just the key set, the map loads from AMap's CDN. No security JS code or service host is needed for `localhost`.
+
+### Production Deployment
+
+Production deployments on a registered domain need two extra settings:
+
+1. **Security JS code** — obtain from the AMap console key settings page. This is required when the page is served from a non-localhost domain.
+
+2. **Service host** (optional) — if you run a reverse proxy on your own domain, set `VITE_AMAP_SERVICE_HOST` to route AMap API requests through it. This avoids cross-origin issues and lets you add caching or rate limiting.
+
+```bash
+# Production .env
+VITE_AMAP_JSAPI_KEY=your_amap_jsapi_key_here
+VITE_AMAP_SECURITY_JS_CODE=your_security_js_code_here
+VITE_AMAP_SERVICE_HOST=https://map-api.your-domain.com
+```
+
+### How It Works
+
+The config module at `web/src/config/amap.ts` reads these variables:
+
+- `getAmapConfig()` returns the resolved config object (or `null` if the key is missing)
+- `isAmapEnabled()` returns whether the map feature can load
+- `isAmapMockMode()` returns `true` when the key is absent or `VITE_AMAP_MOCK=true`
+
+Map components check `isAmapMockMode()` before loading the JSAPI. In mock mode, a placeholder renders instead of making network calls.
+
+---
+
+## Test Mocking
+
+Tests never make real AMap network calls. Two mechanisms ensure this:
+
+1. **Missing key** — test environments typically don't set `VITE_AMAP_JSAPI_KEY`. When the key is absent, `isAmapMockMode()` returns `true` and map components render a placeholder.
+
+2. **Explicit mock flag** — set `VITE_AMAP_MOCK=true` to force mock mode even when a key exists. This is useful for integration tests that configure the key but don't want JSAPI network traffic.
+
+```bash
+# In test environment or .env.test
+VITE_AMAP_MOCK=true
+```
+
+Unit tests for map components mock the `useAmapLoader` hook and `@amap/amap-jsapi-loader` module entirely, returning a fake AMap namespace with `vi.fn()` constructors. This gives full control over method assertions without any browser globals or network dependencies.
+
+The backend MCP tools (`AMAP_MAPS_API_KEY`) are separate. Tests for the MCP connector use the existing mock connector pattern (`CONNECTOR_MODE=mock`).
 
 ---
 

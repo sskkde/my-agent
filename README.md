@@ -203,9 +203,9 @@ npm run test:web
 - 工具和事件清单查看
 - Mock 连接器支持
 
-### AMap MCP 地图工具（后端）
+### AMap 地图工具（后端 + 前端）
 
-平台支持通过高德官方 MCP Server 接入后端地图工具。这些工具运行在服务端，不包含前端地图 UI。
+平台支持通过高德官方 MCP Server 接入后端地图工具，同时包含基于 JSAPI 的前端地图 UI。
 
 **支持的工具类别：**
 
@@ -250,7 +250,23 @@ AMAP_MAPS_API_KEY=your_amap_web_api_key_here
 
 📖 详细配置文档请参阅 [docs/mcp/amap-mcp-setup.md](docs/mcp/amap-mcp-setup.md)。
 
-> **注意：** 前端地图展示（WebUI 地图渲染、标记点、路线可视化）属于独立计划，不在当前范围内。
+**前端地图 UI：**
+
+平台内置了基于 AMap JSAPI 的前端地图组件，支持标记点、路线、信息窗口等交互。需要单独配置 JSAPI Key（与后端 MCP Key 类型不同）：
+
+```bash
+# 在 .env 中设置（与后端 MCP Key 分开）
+VITE_AMAP_JSAPI_KEY=your_amap_jsapi_key_here
+```
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `VITE_AMAP_JSAPI_KEY` | (无) | 前端 JSAPI Key（Web端(JS API) 类型），启用地图 UI 时必填 |
+| `VITE_AMAP_SECURITY_JS_CODE` | (无) | 生产环境安全密钥（注册域名部署时需要） |
+| `VITE_AMAP_SERVICE_HOST` | (无) | 自定义服务域名（通过反向代理路由 AMap 请求） |
+| `VITE_AMAP_MOCK` | `false` | 强制 Mock 模式（测试用，不发起真实网络请求） |
+
+⚠️ JSAPI Key 和 MCP Key 是高德控制台中两种不同的 Key 类型，不能混用。详见 [docs/mcp/amap-mcp-setup.md](docs/mcp/amap-mcp-setup.md#key-types-mcp-key-vs-jsapi-key)。
 
 ### 可观测性控制台
 
