@@ -16,6 +16,7 @@ import './theme.css'
 const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'))
 const OperationsPage = lazy(() => import('./features/operations/OperationsPage'))
 const AdminPage = lazy(() => import('./features/admin/AdminPage'))
+const SessionMapPage = lazy(() => import('./features/map/SessionMapPage'))
 
 const APP_THEMES = new Set<AppTheme>(['default', 'warm-paper', 'dark'])
 
@@ -158,6 +159,9 @@ function AppRoutes() {
 
           {/* Admin section route with tab parameter */}
           <Route path="/admin/:tabId" element={<AdminRouteContent onTabChange={handleTabChange} />} />
+
+          {/* AMap standalone route */}
+          <Route path="/map/:sessionId" element={<SessionMapPage />} />
 
           {/* Catch-all: redirect to root (renders Chat) */}
           <Route path="*" element={<Navigate to="/" replace />} />

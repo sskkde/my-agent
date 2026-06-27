@@ -18,6 +18,26 @@ vi.mock('../features/monitor/AgentMonitorTab', () => ({
   default: () => <div data-testid="agent-monitor-tab">AgentMonitorTab</div>,
 }))
 
+vi.mock('../features/map/SessionMapPage', () => ({
+  default: ({ sessionId }: { sessionId?: string }) => (
+    <div data-testid="session-map-page">
+      SessionMapPage{sessionId ? ` (${sessionId})` : ''}
+    </div>
+  ),
+}))
+
+vi.mock('../features/workspace/WorkspacePage', () => ({
+  default: () => <div data-testid="container-page-workspace">WorkspacePage</div>,
+}))
+
+vi.mock('../features/operations/OperationsPage', () => ({
+  default: () => <div data-testid="container-page-operations">OperationsPage</div>,
+}))
+
+vi.mock('../features/admin/AdminPage', () => ({
+  default: () => <div data-testid="container-page-admin">AdminPage</div>,
+}))
+
 const mockAuthenticatedUser = () => {
   vi.mocked(client.getSetupStatus).mockResolvedValue({ needsSetup: false })
   vi.mocked(client.getMe).mockResolvedValue({
@@ -27,6 +47,13 @@ const mockAuthenticatedUser = () => {
       createdAt: '2024-01-01T00:00:00Z',
     },
   })
+}
+
+const mockUnauthenticatedUser = () => {
+  vi.mocked(client.getSetupStatus).mockResolvedValue({ needsSetup: false })
+  vi.mocked(client.getMe).mockRejectedValue(
+    Object.assign(new Error('Unauthorized'), { status: 401 }),
+  )
 }
 
 const renderApp = (initialEntries: string[] = ['/']) => {
@@ -239,6 +266,40 @@ describe('Route Integration', () => {
       await waitFor(() => {
         expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('Map route /map/:sessionId', () => {
+    it('authenticated /map/:sessionId renders session map page', async () => {
+      mockAuthenticatedUser()
+      renderApp(['/map/ses_map_123'])
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-map-page')).toBeInTheDocument()
+      })
+    })
+
+    it('authenticated /map/:sessionId does not redirect to root', async () => {
+      mockAuthenticatedUser()
+      const { router } = renderApp(['/map/ses_map_123'])
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-map-page')).toBeInTheDocument()
+      })
+
+      expect(router.state.location.pathname).toBe('/map/ses_map_123')
+      expect(screen.queryByTestId('session-workspace')).not.toBeInTheDocument()
+    })
+
+    it('unauthenticated /map/:sessionId shows login page (auth-gated)', async () => {
+      mockUnauthenticatedUser()
+      renderApp(['/map/ses_map_123'])
+
+      await waitFor(() => {
+        expect(screen.getByTestId('login-page')).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId('session-map-page')).not.toBeInTheDocument()
     })
   })
 
