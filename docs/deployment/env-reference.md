@@ -19,9 +19,10 @@
 8. [文件上传配置](#文件上传配置)
 9. [工作目录配置](#工作目录配置)
 10. [运行时配置](#运行时配置)
-10. [OAuth 配置](#oauth-配置)
-11. [消息平台配置](#消息平台配置)
-12. [生产环境必需变量](#生产环境必需变量)
+11. [OAuth 配置](#oauth-配置)
+12. [消息平台配置](#消息平台配置)
+13. [CloakBrowser 配置](#cloakbrowser-配置)
+14. [生产环境必需变量](#生产环境必需变量)
 
 ---
 
@@ -986,6 +987,133 @@ WECHAT_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ---
 
+## CloakBrowser 配置
+
+> CloakBrowser 是平台的可视化浏览器引擎，用于 Web 搜索和浏览器 Handoff 功能。二进制文件约 206 MB，缓存在 `~/.cloakbrowser/`。未安装时平台自动回退到轻量级搜索 Provider。
+
+### CLOAKBROWSER_HEADLESS
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 是否以无头模式运行浏览器 |
+| **默认值** | `true` |
+| **生产要求** | 建议保持 `true` |
+
+**示例**：
+```bash
+CLOAKBROWSER_HEADLESS=true
+```
+
+---
+
+### CLOAKBROWSER_PROXY
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 浏览器代理地址 |
+| **默认值** | 无 |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+CLOAKBROWSER_PROXY=http://proxy.example.com:8080
+```
+
+---
+
+### CLOAKBROWSER_HUMANIZE
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 启用类人行为（鼠标移动、延迟等） |
+| **默认值** | `false` |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+CLOAKBROWSER_HUMANIZE=true
+```
+
+---
+
+### CLOAKBROWSER_GEOIP
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 基于 GeoIP 自动设置区域/时区 |
+| **默认值** | `false` |
+| **生产要求** | 可选 |
+
+---
+
+### CLOAKBROWSER_TIMEZONE
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 覆盖浏览器时区 |
+| **默认值** | 无（使用系统时区） |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+CLOAKBROWSER_TIMEZONE=Asia/Shanghai
+```
+
+---
+
+### CLOAKBROWSER_LOCALE
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 覆盖浏览器区域设置 |
+| **默认值** | 无（使用系统 locale） |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+CLOAKBROWSER_LOCALE=zh-CN
+```
+
+---
+
+### CLOAKBROWSER_ARGS
+
+| 属性 | 值 |
+|------|-----|
+| **用途** | 额外 Chromium 启动参数（逗号分隔） |
+| **默认值** | 无 |
+| **生产要求** | 可选 |
+
+**示例**：
+```bash
+CLOAKBROWSER_ARGS=--disable-gpu,--no-sandbox
+```
+
+---
+
+### 浏览器 Handoff 资源限制
+
+以下限制在代码中硬编码，暂不支持通过环境变量配置：
+
+| 资源 | 默认值 | 说明 |
+|------|--------|------|
+| 最大并发会话数 | 5 | 单实例最多 5 个浏览器会话 |
+| 空闲超时 | 5 分钟 | 无活动自动关闭会话 |
+| 视口分辨率 | 1280 x 720 | 截图和页面渲染尺寸 |
+| 截图质量 | JPEG 50 | 平衡质量和带宽 |
+| 最小帧间隔 | 100ms | 防止过度截图 |
+| 接管租约 TTL | 60 秒 | 人类接管后的自动过期时间 |
+| Handoff 等待超时 | 2 分钟 | Agent 等待人类解决 CAPTCHA 的最大时间 |
+
+**性能参考**：
+- 截图延迟：~81ms（1280x720, JPEG quality 50）
+- 每帧大小：~8KB
+- 二进制大小：~206 MB（`~/.cloakbrowser/`）
+
+详细文档参见 [浏览器 Handoff 功能文档](../features/browser-handoff.md)。
+
+---
+
 ## 生产环境必需变量
 
 以下变量在生产环境（`NODE_ENV=production`）中**必须**设置：
@@ -1080,6 +1208,20 @@ WECHAT_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | 变量 | 默认值 | 生产必需 |
 |------|--------|----------|
 | `WORKDIR_ROOT` | `./data/workdirs` | ✓ 持久化卷 |
+
+### CloakBrowser 变量
+
+| 变量 | 默认值 | 生产必需 |
+|------|--------|----------|
+| `CLOAKBROWSER_HEADLESS` | `true` | - |
+| `CLOAKBROWSER_PROXY` | - | - |
+| `CLOAKBROWSER_HUMANIZE` | `false` | - |
+| `CLOAKBROWSER_GEOIP` | `false` | - |
+| `CLOAKBROWSER_TIMEZONE` | - | - |
+| `CLOAKBROWSER_LOCALE` | - | - |
+| `CLOAKBROWSER_ARGS` | - | - |
+
+> 所有 CloakBrowser 变量均为可选。浏览器二进制文件通过 `npm run install:playwright` 安装。未安装时浏览器 Handoff 功能不可用。
 
 ### AgentlyMail 连接器变量
 
