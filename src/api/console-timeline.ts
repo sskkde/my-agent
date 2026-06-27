@@ -2,6 +2,7 @@ import type { TranscriptStore, TurnTranscript } from '../storage/transcript-stor
 import type { EventStore, EventRecord } from '../storage/event-store.js'
 import type { FileUploadStore } from '../storage/file-upload-store.js'
 import type { ConsoleTimelineEvent, ConsoleTimelineEventType, PaginationParams } from './types.js'
+import { redactMcpConfig } from '../connectors/mcp/mcp-secret-redaction.js'
 
 export interface ConsoleTimelineStores {
   transcriptStore: TranscriptStore
@@ -22,6 +23,125 @@ export interface TimelineResult {
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
 
+function isAMapMcpToolName(toolName: string): boolean {
+  if (typeof toolName !== 'string') return false
+  const lower = toolName.toLowerCase()
+  return lower.startsWith('mcp.amap-maps.') || lower.startsWith('amap_maps') || lower.startsWith('amap_geocode') || lower.startsWith('amap_poi') || lower.startsWith('amap_route') || lower.startsWith('amap_weather') || lower.startsWith('amap_distance')
+}
+
+function tryParseJsonSafe(text: string): unknown | undefined {
+  if (typeof text !== 'string' || text.length === 0) return undefined
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * SAFETY: Extracts only non-secret fields from parsed AMap results.
+ * Coordinates, addresses, and POI names are safe. API keys, tokens,
+ * and raw config are never included. Documented field lists below
+ * are the security allowlist — any new AMap field must be reviewed.
+ */
+function extractSafeAMapResult(parsed: unknown): Record<string, unknown> | undefined {
+  if (parsed === null || parsed === undefined || typeof parsed !== 'object') {
+    return undefined
+  }
+
+  const obj = parsed as Record<string, unknown>
+  const safe: Record<string, unknown> = {}
+
+  if (Array.isArray(obj.geocodes) && obj.geocodes.length > 0) {
+    const geocodes = obj.geocodes as Array<Record<string, unknown>>
+    safe.resultType = 'geocode'
+    safe.geocodes = geocodes.map((g) => ({
+      formatted_address: g.formatted_address,
+      location: g.location,
+      level: g.level,
+      province: g.province,
+      city: g.city,
+      district: g.district,
+    }))
+    return safe
+  }
+
+  if (Array.isArray(obj.pois) && obj.pois.length > 0) {
+    const pois = obj.pois as Array<Record<string, unknown>>
+    safe.resultType = 'poi'
+    safe.pois = pois.map((p) => ({
+      name: p.name,
+      location: p.location,
+      address: p.address,
+      type: p.type,
+      typecode: p.typecode,
+    }))
+    return safe
+  }
+
+  if (obj.route && typeof obj.route === 'object') {
+    const route = obj.route as Record<string, unknown>
+    safe.resultType = 'route'
+    safe.origin = route.origin
+    safe.destination = route.destination
+    if (Array.isArray(route.paths)) {
+      safe.paths = (route.paths as Array<Record<string, unknown>>).map((p) => ({
+        distance: p.distance,
+        duration: p.duration,
+      }))
+    }
+    return safe
+  }
+
+  if (Array.isArray(obj.lives) && obj.lives.length > 0) {
+    const lives = obj.lives as Array<Record<string, unknown>>
+    safe.resultType = 'weather'
+    safe.lives = lives.map((w) => ({
+      city: w.city,
+      weather: w.weather,
+      temperature: w.temperature,
+      winddirection: w.winddirection,
+      windpower: w.windpower,
+      humidity: w.humidity,
+    }))
+    return safe
+  }
+
+  if (Array.isArray(obj.results) && obj.results.length > 0) {
+    const results = obj.results as Array<Record<string, unknown>>
+    safe.resultType = 'distance'
+    safe.results = results.map((r) => ({
+      distance: r.distance,
+      duration: r.duration,
+    }))
+    return safe
+  }
+  if (obj.distances !== undefined) {
+    safe.resultType = 'distance'
+    safe.distances = obj.distances
+    return safe
+  }
+
+  return undefined
+}
+
+function buildAMapResultMetadata(content: string): Record<string, unknown> | undefined {
+  const parsed = tryParseJsonSafe(content)
+  if (parsed === undefined) return undefined
+
+  const safe = extractSafeAMapResult(parsed)
+  if (safe === undefined) return undefined
+
+  return redactMcpConfig(safe) as Record<string, unknown>
+}
+
+function collectAMapToolNames(turn: TurnTranscript): string[] {
+  if (!turn.runtimeSummary?.toolCallSummaries) return []
+  return turn.runtimeSummary.toolCallSummaries
+    .filter((s) => isAMapMcpToolName(s.toolName))
+    .map((s) => s.toolName)
+}
+
 /**
  * Maps a transcript turn to console timeline events.
  *
@@ -41,6 +161,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
 
   const userTimestamp = turn.input.inboundTimestamp ?? turn.createdAt
   const outputTimestamp = turn.createdAt
+  const amapToolNames = collectAMapToolNames(turn)
 
   const attachmentFileIds = (turn.input.contentRefs ?? [])
     .filter((ref) => ref.startsWith('attachment:'))
@@ -138,17 +259,27 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           actor: 'system',
         })
       } else if (msg.role === 'tool') {
+        const toolResultMetadata: Record<string, unknown> = {
+          ...baseMetadata,
+          messageId: msg.messageId,
+          messageIndex: index,
+        }
+
+        if (amapToolNames.length > 0) {
+          toolResultMetadata.amapToolNames = amapToolNames
+          const amapResult = buildAMapResultMetadata(msg.content)
+          if (amapResult) {
+            toolResultMetadata.amapResult = amapResult
+          }
+        }
+
         events.push({
           eventId: `turn-${turn.turnId}-tool-result-${index}`,
           eventType: 'tool_result',
           sessionId: turn.sessionId,
           timestamp: outputTimestamp,
           content: msg.content,
-          metadata: {
-            ...baseMetadata,
-            messageId: msg.messageId,
-            messageIndex: index,
-          },
+          metadata: toolResultMetadata,
           actor: 'system',
         })
       } else if (msg.role === 'error') {
@@ -182,6 +313,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           ...baseMetadata,
           toolCallIndex: index,
           toolCallId: summary.toolCallId,
+          toolName: summary.toolName,
         },
         actor: 'system',
       })

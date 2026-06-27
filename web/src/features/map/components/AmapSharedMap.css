@@ -1,0 +1,215 @@
+/* ==========================================================================
+   AmapSharedMap — Shared Map Surface Styles
+   ==========================================================================
+   Uses Warm-Paper design tokens for colors, spacing, and elevation.
+   Covers loading skeleton, error panel, empty state, and map container.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Map Container (root wrapper)
+   --------------------------------------------------------------------------- */
+
+.amap-shared-map {
+  width: 100%;
+  min-height: 400px;
+  position: relative;
+  border-radius: var(--warm-paper-radius-md, 3px);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Map Instance Container
+   --------------------------------------------------------------------------- */
+
+.amap-shared-map__container {
+  width: 100%;
+  height: 400px;
+  min-height: 400px;
+}
+
+/* ---------------------------------------------------------------------------
+   Loading Skeleton
+   --------------------------------------------------------------------------- */
+
+.amap-shared-map--loading {
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--warm-paper-bg-deep, #f5efe4);
+  border-radius: var(--warm-paper-radius-md, 3px);
+  border: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, #d8cfbe);
+  overflow: hidden;
+}
+
+.amap-shared-map__skeleton {
+  width: 100%;
+  min-height: 400px;
+  background: linear-gradient(
+    110deg,
+    var(--warm-paper-bg-deep, #f5efe4) 30%,
+    var(--warm-paper-bg-elevated, #fffcf7) 50%,
+    var(--warm-paper-bg-deep, #f5efe4) 70%
+  );
+  background-size: 200% 100%;
+  animation: amap-skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes amap-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Error Panel
+   --------------------------------------------------------------------------- */
+
+.amap-shared-map--error {
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--warm-paper-bg-elevated, #fffcf7);
+  border: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, #d8cfbe);
+  border-radius: var(--warm-paper-radius-md, 3px);
+  padding: var(--mobile-content-padding, 12px);
+  box-shadow: var(--warm-paper-shadow-sm);
+}
+
+.amap-shared-map__error-icon {
+  flex-shrink: 0;
+}
+
+.amap-shared-map__error-message {
+  margin-top: 8px;
+  color: var(--warm-paper-danger, #8b2c1f);
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.amap-shared-map__error-retry {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background-color: var(--warm-paper-accent, #537d96);
+  color: #fff;
+  border: none;
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  min-height: var(--mobile-touch-target, 44px);
+}
+
+.amap-shared-map__error-retry:hover {
+  background-color: var(--warm-paper-accent-hover, #466a80);
+}
+
+.amap-shared-map__error-retry:focus-visible {
+  outline: 2px solid var(--warm-paper-accent, #537d96);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Empty / Not Configured State
+   --------------------------------------------------------------------------- */
+
+.amap-shared-map--empty {
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--warm-paper-bg-deep, #f5efe4);
+  border: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, #d8cfbe);
+  border-radius: var(--warm-paper-radius-md, 3px);
+  gap: 8px;
+}
+
+.amap-shared-map__empty-icon {
+  flex-shrink: 0;
+}
+
+.amap-shared-map__empty-text {
+  margin: 0;
+  color: var(--warm-paper-text-muted, #6b6158);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------------------
+   Focus Ring (keyboard navigation)
+   --------------------------------------------------------------------------- */
+
+.amap-shared-map:focus-visible {
+  outline: 2px solid var(--warm-paper-focus-ring, rgba(83, 125, 150, 0.3));
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile Responsive (phone: < 480px)
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .amap-shared-map,
+  .amap-shared-map--loading,
+  .amap-shared-map--error,
+  .amap-shared-map--empty {
+    min-height: 280px;
+    border-radius: 0;
+  }
+
+  .amap-shared-map__skeleton {
+    min-height: 280px;
+  }
+
+  .amap-shared-map__container {
+    height: 280px;
+    min-height: 280px;
+  }
+
+  .amap-shared-map--error,
+  .amap-shared-map--empty {
+    padding: var(--mobile-content-padding, 12px);
+  }
+
+  .amap-shared-map__error-message {
+    font-size: 13px;
+  }
+
+  .amap-shared-map__empty-text {
+    font-size: 13px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Tablet Responsive (481px - 768px)
+   --------------------------------------------------------------------------- */
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .amap-shared-map__container {
+    height: 350px;
+    min-height: 350px;
+  }
+
+  .amap-shared-map,
+  .amap-shared-map--loading,
+  .amap-shared-map--error,
+  .amap-shared-map--empty {
+    min-height: 350px;
+  }
+
+  .amap-shared-map__skeleton {
+    min-height: 350px;
+  }
+}

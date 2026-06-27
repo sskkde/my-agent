@@ -45,6 +45,15 @@ export default defineConfig({
       },
       // No setup dependency - tests handle their own auth state
     },
+    {
+      name: 'amap-e2e',
+      testMatch: '**/amap-shared-map.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        // No storageState — test harness page is standalone, no auth required
+      },
+      // No setup dependency — harness page doesn't need authentication
+    },
   ],
   webServer: [
     {

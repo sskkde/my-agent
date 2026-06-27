@@ -1,0 +1,64 @@
+/* ==========================================================================
+   SessionMapPage — Standalone Map Route Styles
+   ========================================================================== */
+
+.session-map-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Missing Session / Error States
+   --------------------------------------------------------------------------- */
+
+.session-map-page--missing,
+.session-map-page--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: var(--warm-paper-bg-deep, #f5efe4);
+  border: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, #d8cfbe);
+  border-radius: var(--warm-paper-radius-md, 3px);
+}
+
+.session-map-page--missing p,
+.session-map-page--error p {
+  margin: 0;
+  color: var(--warm-paper-text-muted, #6b6158);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------------------
+   Send Controls
+   --------------------------------------------------------------------------- */
+
+.session-map-page__send {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.session-map-page__send button {
+  padding: 6px 16px;
+  border: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, #d8cfbe);
+  border-radius: var(--warm-paper-radius-md, 3px);
+  background: var(--warm-paper-bg, #faf6ee);
+  color: var(--warm-paper-text, #3d3428);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.session-map-page__send button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.session-map-page__send-error p {
+  margin: 0;
+  color: #c0392b;
+  font-size: 13px;
+}

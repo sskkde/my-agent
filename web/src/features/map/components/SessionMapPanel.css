@@ -1,0 +1,77 @@
+/* ==========================================================================
+   SessionMapPanel — Session-Bound Map Panel Styles
+   ==========================================================================
+   Wraps AmapSharedMap within the session context. Provides the panel
+   container and the "no session selected" empty state.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Panel Container
+   --------------------------------------------------------------------------- */
+
+.session-map-panel {
+  width: 100%;
+  min-height: 400px;
+}
+
+/* ---------------------------------------------------------------------------
+   Empty State (no session selected)
+   --------------------------------------------------------------------------- */
+
+.session-map-panel--empty {
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--warm-paper-bg-deep, #f5efe4);
+  border: var(--warm-paper-border-width, 1px) solid var(--warm-paper-border, #d8cfbe);
+  border-radius: var(--warm-paper-radius-md, 3px);
+  gap: 8px;
+}
+
+.session-map-panel__empty-icon {
+  flex-shrink: 0;
+}
+
+.session-map-panel__empty-text {
+  margin: 0;
+  color: var(--warm-paper-text-muted, #6b6158);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile Responsive (phone: < 480px)
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .session-map-panel {
+    min-height: 280px;
+  }
+
+  .session-map-panel--empty {
+    min-height: 280px;
+    border-radius: 0;
+    padding: var(--mobile-content-padding, 12px);
+  }
+
+  .session-map-panel__empty-text {
+    font-size: 13px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Tablet Responsive (481px - 768px)
+   --------------------------------------------------------------------------- */
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .session-map-panel {
+    min-height: 350px;
+  }
+
+  .session-map-panel--empty {
+    min-height: 350px;
+  }
+}
