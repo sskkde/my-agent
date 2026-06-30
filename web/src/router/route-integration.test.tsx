@@ -6,10 +6,10 @@ import * as client from '../api/client'
 
 vi.mock('../api/client')
 
-vi.mock('../features/session/SessionWorkspace', () => ({
+vi.mock('../features/session/chat/ChatPage', () => ({
   default: (props: any) => (
     <div data-testid="session-workspace">
-      SessionWorkspace{props?.initialSessionId ? ` (${props.initialSessionId})` : ''}
+      ChatPage{props?.initialSessionId ? ` (${props.initialSessionId})` : ''}
     </div>
   ),
 }))

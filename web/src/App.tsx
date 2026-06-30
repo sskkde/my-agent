@@ -1,7 +1,7 @@
 import { useCallback, useEffect, Suspense, lazy } from 'react'
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import AgentShell from './layout/AgentShell'
-import SessionWorkspace from './features/session/SessionWorkspace'
+import ChatPage from './features/session/chat/ChatPage'
 import LoginPage from './features/auth/LoginPage'
 import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -28,18 +28,13 @@ const APP_THEMES = new Set<AppTheme>(['default', 'warm-paper', 'dark'])
  * - localStorage is fallback when URL has no sessionId
  * - Uses resolveSessionId for safe precedence handling
  */
-function ChatRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
+function ChatRouteContent() {
   const location = useLocation()
   const navState = routeToNavigation(location.pathname)
   const localStorageSessionId = safeReadLocalStorage(SELECTED_SESSION_KEY)
   const resolvedSessionId = resolveSessionId(navState.sessionId ?? null, localStorageSessionId)
 
-  return (
-    <SessionWorkspace
-      initialSessionId={resolvedSessionId ?? undefined}
-      onTabChange={onTabChange}
-    />
-  )
+  return <ChatPage initialSessionId={resolvedSessionId ?? undefined} />
 }
 
 /**
@@ -145,11 +140,11 @@ function AppRoutes() {
       <Suspense fallback={<div className="center-stage-loading" data-testid="route-loading" />}>
         <Routes>
           {/* Root → renders Chat section (same as /chat) */}
-          <Route path="/" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+          <Route path="/" element={<ChatRouteContent />} />
 
           {/* Chat section routes */}
-          <Route path="/chat" element={<ChatRouteContent onTabChange={handleTabChange} />} />
-          <Route path="/chat/:sessionId" element={<ChatRouteContent onTabChange={handleTabChange} />} />
+          <Route path="/chat" element={<ChatRouteContent />} />
+          <Route path="/chat/:sessionId" element={<ChatRouteContent />} />
 
           {/* Workspace section route with tab parameter */}
           <Route path="/workspace/:tabId" element={<WorkspaceRouteContent onTabChange={handleTabChange} />} />
