@@ -1,0 +1,104 @@
+import React, { useState, useEffect } from 'react'
+
+export interface ChatShellProps {
+  title: string
+  sidebar: React.ReactNode
+  rightPanel: React.ReactNode
+  children: React.ReactNode
+  initialSidebarOpen?: boolean
+  initialRightOpen?: boolean
+}
+
+const ChatShell: React.FC<ChatShellProps> = ({
+  title,
+  sidebar,
+  rightPanel,
+  children,
+  initialSidebarOpen = true,
+  initialRightOpen = true,
+}) => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(initialSidebarOpen)
+  const [isRightOpen, setIsRightOpen] = useState(initialRightOpen)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        setIsMobile(window.matchMedia('(max-width: 1024px)').matches)
+      } else {
+        setIsMobile(false)
+      }
+    }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  return (
+    <div className="chat-page" data-testid="chat-shell">
+      <header className="chat-titlebar">
+        <div className="chat-titlebar__left">
+          <button
+            className="chat-titlebar__btn"
+            aria-label="切换侧边栏"
+            title="切换侧边栏"
+            onClick={() => setIsSidebarOpen((v) => !v)}
+            data-testid="chat-sidebar-toggle"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div className="chat-titlebar__title">{title}</div>
+        <div className="chat-titlebar__right">
+          <button
+            className="chat-titlebar__btn"
+            aria-label="切换右侧栏"
+            title="切换右侧栏"
+            onClick={() => setIsRightOpen((v) => !v)}
+            data-testid="chat-right-toggle"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="15" y1="3" x2="15" y2="21" />
+              <line x1="15" y1="12" x2="21" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div className="chat-shell">
+        {isMobile && isSidebarOpen && (
+          <div
+            className="chat-sidebar-backdrop"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <aside className={`chat-sidebar ${isSidebarOpen ? '' : 'collapsed'}`} data-testid="chat-sidebar">
+          {sidebar}
+        </aside>
+
+        <main className="chat-main" data-testid="chat-main">
+          {children}
+        </main>
+
+        {isMobile && isRightOpen && (
+          <div
+            className="chat-right-backdrop"
+            onClick={() => setIsRightOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <aside className={`chat-right-sidebar ${isRightOpen ? '' : 'collapsed'}`} data-testid="chat-right-sidebar">
+          {rightPanel}
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+export default ChatShell
