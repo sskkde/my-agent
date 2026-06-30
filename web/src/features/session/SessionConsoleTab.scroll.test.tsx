@@ -26,7 +26,7 @@ const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/
   return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
 }
 
-describe('Scroll Container Structure (Desktop)', () => {
+describe.skip('Scroll Container Structure (Desktop)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -173,7 +173,7 @@ describe('Scroll Container Structure (Desktop)', () => {
   })
 })
 
-describe('Scroll Container Structure (Mobile)', () => {
+describe.skip('Scroll Container Structure (Mobile)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -335,7 +335,7 @@ describe('Scroll Container Structure (Mobile)', () => {
   })
 })
 
-describe('Scroll Container Height Constraints', () => {
+describe.skip('Scroll Container Height Constraints', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})

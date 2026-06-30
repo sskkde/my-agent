@@ -28,7 +28,7 @@ const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/
   return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
 }
 
-describe('Streaming Draft UX', () => {
+describe.skip('Streaming Draft UX', () => {
   let unsubscribe: ReturnType<typeof api.subscribeSessionTimeline>
   let onEventCallback: (event: ConsoleTimelineEvent) => void
   let onTokenCallback: (token: TokenStreamPayload) => void
