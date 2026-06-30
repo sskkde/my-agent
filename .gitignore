@@ -67,6 +67,9 @@ agent/.sisyphus/
 AGENTS.md
 secrets/
 
+# Runtime data (uploads, workdirs)
+/data/
+
 # OpenCode metadata
 .omo/
 *.png
