@@ -23,6 +23,7 @@ vi.mock('../../api/client', async (importOriginal) => {
     getSessionTimeline: vi.fn(),
     sendMessage: vi.fn(),
     subscribeSessionTimeline: vi.fn(),
+    subscribeToFrames: vi.fn(() => () => {}),
     ApiClientError: MockApiClientError,
   }
 })
