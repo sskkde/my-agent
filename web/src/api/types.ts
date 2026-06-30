@@ -1162,3 +1162,76 @@ export interface CreateWorkdirDirResponse {
   path: string
   created: boolean
 }
+
+// =============================================================================
+// Browser Handoff Types
+// =============================================================================
+
+export type BrowserSessionState =
+  | 'idle'
+  | 'agent_controlled'
+  | 'user_controlled'
+  | 'handoff_requested'
+
+export interface BrowserStatusResponse {
+  sessionId: string
+  state: BrowserSessionState
+  url: string | null
+  lastActivityAt: string | null
+  viewport: { width: number; height: number } | null
+}
+
+export type BrowserStreamEventType = 'snapshot' | 'frame' | 'heartbeat'
+
+export interface BrowserSnapshotEvent {
+  type: 'snapshot'
+  state: BrowserSessionState
+  url: string | null
+  timestamp: string
+}
+
+export interface BrowserFrameEvent {
+  type: 'frame'
+  data: string // base64 JPEG
+  timestamp: string
+  width: number
+  height: number
+}
+
+export interface BrowserHeartbeatEvent {
+  type: 'heartbeat'
+  timestamp: string
+}
+
+export type BrowserStreamEvent =
+  | BrowserSnapshotEvent
+  | BrowserFrameEvent
+  | BrowserHeartbeatEvent
+
+export interface BrowserTakeoverResponse {
+  sessionId: string
+  state: BrowserSessionState
+  previousState: BrowserSessionState
+}
+
+export interface BrowserReleaseResponse {
+  sessionId: string
+  state: BrowserSessionState
+  previousState: BrowserSessionState
+}
+
+export type BrowserInputAction =
+  | 'click'
+  | 'keypress'
+  | 'type'
+  | 'scroll'
+  | 'navigate'
+
+export interface BrowserInputRequest {
+  action: BrowserInputAction
+  payload: Record<string, unknown>
+}
+
+export interface BrowserInputResponse {
+  success: boolean
+}

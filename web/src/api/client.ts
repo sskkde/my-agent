@@ -77,6 +77,12 @@ import type {
   UploadWorkdirFileRequest,
   UploadWorkdirFileResponse,
   CreateWorkdirDirResponse,
+  BrowserStatusResponse,
+  BrowserTakeoverResponse,
+  BrowserReleaseResponse,
+  BrowserInputRequest,
+  BrowserInputResponse,
+  BrowserStreamEvent,
 } from './types'
 
 const API_BASE = '/api/v1'
@@ -1123,4 +1129,103 @@ export async function uploadWorkdirFile(
     body: JSON.stringify({ path, content } satisfies UploadWorkdirFileRequest),
   })
   return parseResponse<UploadWorkdirFileResponse>(response)
+}
+
+// =============================================================================
+// Browser Handoff Client
+// =============================================================================
+
+export async function getBrowserStatus(sessionId: string): Promise<BrowserStatusResponse> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/status`,
+    { credentials: 'include' },
+  )
+  return parseResponse<BrowserStatusResponse>(response)
+}
+
+export async function acquireTakeover(sessionId: string): Promise<BrowserTakeoverResponse> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/takeover`,
+    { method: 'POST', credentials: 'include' },
+  )
+  return parseResponse<BrowserTakeoverResponse>(response)
+}
+
+export async function releaseTakeover(sessionId: string): Promise<BrowserReleaseResponse> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/release`,
+    { method: 'POST', credentials: 'include' },
+  )
+  return parseResponse<BrowserReleaseResponse>(response)
+}
+
+export async function sendInput(
+  sessionId: string,
+  input: BrowserInputRequest,
+): Promise<BrowserInputResponse> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/input`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  )
+  return parseResponse<BrowserInputResponse>(response)
+}
+
+export function subscribeToFrames(
+  sessionId: string,
+  onEvent: (event: BrowserStreamEvent) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  let eventSource: EventSource | null = null
+  let reconnectAttempts = 0
+  let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let closed = false
+
+  const connect = () => {
+    if (closed) return
+
+    eventSource = new EventSource(
+      `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/frame/stream`,
+      { withCredentials: true },
+    )
+
+    eventSource.onmessage = (event) => {
+      reconnectAttempts = 0
+      try {
+        const parsed = JSON.parse(event.data) as BrowserStreamEvent
+        onEvent(parsed)
+      } catch {
+        onError?.(new Error('Failed to parse browser frame SSE event'))
+      }
+    }
+
+    eventSource.onerror = () => {
+      if (closed) return
+      eventSource?.close()
+      eventSource = null
+      onError?.(new Error('Browser frame stream connection error'))
+      const delay = Math.min(
+        SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
+        SSE_RECONNECT_MAX_DELAY_MS,
+      )
+      reconnectAttempts += 1
+      reconnectTimeoutId = setTimeout(connect, delay)
+    }
+  }
+
+  connect()
+
+  return () => {
+    closed = true
+    if (reconnectTimeoutId) {
+      clearTimeout(reconnectTimeoutId)
+      reconnectTimeoutId = null
+    }
+    eventSource?.close()
+    eventSource = null
+  }
 }
