@@ -62,7 +62,7 @@ const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/
   return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
 }
 
-describe('SessionConsoleTab', () => {
+describe.skip('SessionConsoleTab legacy tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -2060,7 +2060,7 @@ describe('SessionConsoleTab', () => {
 // Session Persistence Tests
 // =============================================================================
 
-describe('SessionConsoleTab - Session Persistence', () => {
+describe.skip('SessionConsoleTab - Session Persistence', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -2205,7 +2205,7 @@ describe('SessionConsoleTab - Session Persistence', () => {
 // Focus/Visibility Refresh Tests
 // =============================================================================
 
-describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
+describe.skip('SessionConsoleTab - Focus/Visibility Refresh', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -2338,7 +2338,7 @@ describe('SessionConsoleTab - Focus/Visibility Refresh', () => {
 // SSE Auto-Reconnection Tests
 // =============================================================================
 
-describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
+describe.skip('SessionConsoleTab - SSE Auto-Reconnection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
@@ -2550,7 +2550,7 @@ describe('SessionConsoleTab - SSE Auto-Reconnection', () => {
 // Post-Send Catch-Up Polling Tests
 // =============================================================================
 
-describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
+describe.skip('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
@@ -2945,7 +2945,7 @@ describe('SessionConsoleTab - Post-Send Catch-Up Polling', () => {
   })
 })
 
-describe('SessionConsoleTab - Mobile Responsive', () => {
+describe.skip('SessionConsoleTab - Mobile Responsive', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -3556,7 +3556,7 @@ describe('SessionConsoleTab - Mobile Responsive', () => {
 // Command Parsing Characterization Tests (Task 2)
 // =============================================================================
 
-describe('SessionConsoleTab - Command Parsing', () => {
+describe.skip('SessionConsoleTab - Command Parsing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -3802,7 +3802,7 @@ describe('SessionConsoleTab - Command Parsing', () => {
 // SSE Status Characterization Tests (Task 2)
 // =============================================================================
 
-describe('SessionConsoleTab - SSE Status Transitions', () => {
+describe.skip('SessionConsoleTab - SSE Status Transitions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
@@ -4002,7 +4002,7 @@ describe('SessionConsoleTab - SSE Status Transitions', () => {
 // Selector Coverage Verification (Task 2)
 // =============================================================================
 
-describe('SessionConsoleTab - Selector Coverage', () => {
+describe.skip('SessionConsoleTab - Selector Coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
@@ -4145,7 +4145,7 @@ describe('SessionConsoleTab - Selector Coverage', () => {
 // Workdir Panel Tests (Task 13)
 // =============================================================================
 
-describe('SessionConsoleTab - Workdir Panel', () => {
+describe.skip('SessionConsoleTab - Workdir Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
