@@ -7,6 +7,8 @@ import { normalizeSearXNGResponse } from '../../search/providers/searxng.js'
 import { normalizeTavilyResponse } from '../../search/providers/tavily.js'
 import { normalizeLegacyRemoteResponse } from '../../search/providers/legacy-remote.js'
 import { searchWithDuckDuckGoBrowser } from '../../search/browser/duckduckgo-provider.js'
+import type { BrowserSessionId } from '../../search/browser/browser-session-types.js'
+import type { BrowserSessionManager } from '../../search/browser/browser-session-manager.js'
 
 export interface WebSearchParams {
   query: string
@@ -28,6 +30,10 @@ export interface WebSearchToolConfig {
   fetchImpl?: typeof fetch
   browser?: Browser
   browserProvider?: () => Promise<Browser | undefined>
+  browserSessionManager?: BrowserSessionManager
+  browserSessionId?: BrowserSessionId
+  /** Resolve a per-call BrowserSessionId from the active chat session id. */
+  browserSessionIdResolver?: (sessionId: string) => BrowserSessionId | undefined
 }
 
 const DEFAULT_LIMIT = 5
@@ -287,9 +293,41 @@ async function fetchWithPlaywright(
   timeoutMs: number,
   browser?: Browser,
   browserProvider?: () => Promise<Browser | undefined>,
+  browserSessionManager?: BrowserSessionManager,
+  browserSessionId?: BrowserSessionId,
 ): Promise<
   { success: true; result: WebSearchResult } | { success: false; errorCode: SearchErrorCode; message: string }
 > {
+  // Managed-session path: skip browser resolution, use the session's page.
+  if (browserSessionManager !== undefined && browserSessionId !== undefined) {
+    const browserResult = await searchWithDuckDuckGoBrowser({
+      query,
+      timeoutMs,
+      sessionId: browserSessionId,
+      manager: browserSessionManager,
+    })
+
+    if (!browserResult.success) {
+      return {
+        success: false,
+        errorCode: browserResult.errorCode ?? 'BROWSER_SEARCH_UNAVAILABLE',
+        message: 'Browser search failed',
+      }
+    }
+
+    const results = browserResult.results?.slice(0, limit) ?? []
+    return {
+      success: true,
+      result: {
+        query,
+        results,
+        total: results.length,
+        provider: browserResult.provider ?? 'duckduckgo-browser',
+        endpointHost: browserResult.endpointHost ?? 'duckduckgo.com',
+      },
+    }
+  }
+
   let resolvedBrowser: Browser | undefined
   try {
     resolvedBrowser = browser ?? (await browserProvider?.())
@@ -341,7 +379,7 @@ async function fetchWithPlaywright(
 export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefinition {
   const handler: ToolHandler = async (
     params: unknown,
-    _context: ToolExecutionContext,
+    context: ToolExecutionContext,
   ): Promise<ToolExecutionResult> => {
     const typedParams = params as WebSearchParams
     const query = typeof typedParams.query === 'string' ? typedParams.query.trim() : ''
@@ -360,6 +398,15 @@ export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefin
     const limit = normalizeLimit(typedParams.limit)
     const timeoutMs = validateTimeout(typedParams.timeoutMs)
     const fetchImpl = config.fetchImpl ?? globalThis.fetch
+
+    // Resolve the per-call browser session id from the active chat session when
+    // no static id is configured. This lets a single registered web_search tool
+    // dispatch to the correct managed browser session per user request.
+    const resolvedBrowserSessionId =
+      config.browserSessionId ??
+      (context.sessionId && config.browserSessionIdResolver
+        ? config.browserSessionIdResolver(context.sessionId)
+        : undefined)
 
     // Resolve backend from environment and config
     const backend = getBackendFromEnv()
@@ -444,7 +491,15 @@ export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefin
         break
 
       case 'playwright':
-        searchResult = await fetchWithPlaywright(query, limit, timeoutMs, config.browser, config.browserProvider)
+        searchResult = await fetchWithPlaywright(
+          query,
+          limit,
+          timeoutMs,
+          config.browser,
+          config.browserProvider,
+          config.browserSessionManager,
+          resolvedBrowserSessionId,
+        )
         break
 
       default:
@@ -603,7 +658,15 @@ export async function executeWebSearch(
       break
 
     case 'playwright':
-      searchResult = await fetchWithPlaywright(query, limit, timeoutMs, config.browser, config.browserProvider)
+      searchResult = await fetchWithPlaywright(
+        query,
+        limit,
+        timeoutMs,
+        config.browser,
+        config.browserProvider,
+        config.browserSessionManager,
+        config.browserSessionId,
+      )
       break
 
     default:

@@ -9,6 +9,8 @@ import type { LongTermMemoryStore } from '../../storage/long-term-memory-store.j
 import type { SessionStore } from '../../storage/session-store.js'
 import type { ProcessSessionStore } from './process-session-store.js'
 import type { TodoStore } from '../../todo/store.js'
+import type { BrowserSessionId } from '../../search/browser/browser-session-types.js'
+import type { BrowserSessionManager } from '../../search/browser/browser-session-manager.js'
 
 import { createArtifactCreateTool } from './artifact-create.js'
 import { createArtifactUpdateTool } from './artifact-update.js'
@@ -48,6 +50,9 @@ export interface BuiltInToolsConfig {
   enableRuntimeTools?: boolean // default: true
   webSearchBrowser?: Browser
   webSearchBrowserProvider?: () => Promise<Browser | undefined>
+  browserSessionManager?: BrowserSessionManager
+  /** Resolve a per-session BrowserSessionId from the active chat session id. */
+  browserSessionIdResolver?: (sessionId: string) => BrowserSessionId | undefined
 }
 
 export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInToolsConfig): void {
@@ -63,6 +68,8 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
     enableRuntimeTools = true,
     webSearchBrowser,
     webSearchBrowserProvider,
+    browserSessionManager,
+    browserSessionIdResolver,
   } = config
 
   registry.register(createArtifactCreateTool(artifactStore))
@@ -82,7 +89,14 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
   registry.register(createSessionListTool(sessionStore))
   registry.register(createSessionHistoryTool(sessionStore, transcriptStore))
   registry.register(createWebFetchTool())
-  registry.register(createWebSearchTool({ browser: webSearchBrowser, browserProvider: webSearchBrowserProvider }))
+  registry.register(
+    createWebSearchTool({
+      browser: webSearchBrowser,
+      browserProvider: webSearchBrowserProvider,
+      browserSessionManager,
+      browserSessionIdResolver: browserSessionIdResolver,
+    }),
+  )
 
   // Register todo tools
   if (config.todoStore) {
