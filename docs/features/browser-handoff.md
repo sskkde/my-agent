@@ -16,14 +16,16 @@ Each transition is validated at runtime. Invalid transitions are rejected.
 
 ### Ownership States
 
-| State | Who owns the page | Description |
-|---|---|---|
-| `agent_controlled` | Agent | Agent navigates and interacts freely |
-| `handoff_requested` | Nobody (transitional) | Agent asked for human help; waiting for takeover |
-| `human_controlled` | Human | Human has an active takeover lease |
-| `resuming` | Nobody (transitional) | Human released; agent is resuming |
-| `closed` | Nobody | Session shut down |
-| `error` | Nobody | Browser page crashed |
+The internal state machine has 6 states. The API surface collapses them into 4 wire states (see `mapOwnershipToState`): `resuming` is reported as `agent_controlled`, and `closed` / `error` are reported as `idle`.
+
+| Internal state | API `state` | Who owns the page | Description |
+|---|---|---|---|
+| `agent_controlled` | `agent_controlled` | Agent | Agent navigates and interacts freely |
+| `handoff_requested` | `handoff_requested` | Nobody (transitional) | Agent asked for human help; waiting for takeover |
+| `human_controlled` | `user_controlled` | Human | Human has an active takeover lease |
+| `resuming` | `agent_controlled` | Nobody (transitional) | Human released; agent is resuming |
+| `closed` | `idle` | Nobody | Session shut down |
+| `error` | `idle` | Nobody | Browser page crashed |
 
 ### Takeover Lease
 
@@ -115,16 +117,68 @@ If you need frame persistence for debugging or auditing, that would require expl
 
 ## API Endpoints
 
-All endpoints require authentication and live under `/api/v1/sessions/:sessionId/browser/`.
+All endpoints require authentication and live under `/api/v1/sessions/:sessionId/browser/`. Responses use the platform's standard envelope: success bodies are `{ "ok": true, "data": <payload>, "requestId": "<id>" }` and error bodies are `{ "ok": false, "error": { "code": "<CODE>", "message": "<text>" }, "requestId": "<id>" }`.
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/status` | GET | Current session state, URL, last activity |
-| `/frame/stream` | SSE | Live JPEG frame stream |
+| `/status` | GET | Current session state, URL, last activity, viewport |
+| `/frame/stream` | SSE | Live JPEG frame stream (snapshot → frames → heartbeats) |
 | `/takeover` | POST | Human acquires control (creates lease) |
-| `/input` | POST | Send click/type/scroll/navigate/keypress |
+| `/input` | POST | Send click / keypress / type / scroll / navigate |
 | `/release` | POST | Human releases control back to agent |
-| `/agent-request-takeover` | POST | Agent signals it needs human help |
+| `/agent-request-takeover` | POST | Agent signals it needs human help (returns current status) |
+
+### Response Shapes
+
+`GET /status` → `BrowserStatusResponse`:
+
+```json
+{
+  "ok": true,
+  "requestId": "req-1",
+  "data": {
+    "sessionId": "abc123",
+    "state": "agent_controlled",
+    "url": "https://example.com",
+    "lastActivityAt": "2026-06-30T12:00:00.000Z",
+    "viewport": { "width": 1280, "height": 720 }
+  }
+}
+```
+
+`POST /takeover` and `POST /release` → `BrowserTakeoverResponse`:
+
+```json
+{
+  "ok": true,
+  "requestId": "req-2",
+  "data": {
+    "sessionId": "abc123",
+    "state": "user_controlled",
+    "previousState": "idle"
+  }
+}
+```
+
+`POST /input` → `BrowserInputResponse`:
+
+```json
+{ "ok": true, "requestId": "req-3", "data": { "success": true } }
+```
+
+`POST /agent-request-takeover` → `BrowserStatusResponse` (same shape as `GET /status`).
+
+### SSE Frame Stream
+
+`GET /frame/stream` opens a `text/event-stream` and emits three event types, each serialized as `data: <json>\n\n`:
+
+| Event `type` | Fields | When |
+|---|---|---|
+| `snapshot` | `state`, `url`, `timestamp` | Emitted once on connection open |
+| `frame` | `data` (base64 JPEG), `timestamp`, `width`, `height` | Each captured frame |
+| `heartbeat` | `timestamp` | Every 5 seconds (keep-alive) |
+
+The stream closes when the client disconnects; the server unsubscribes from the frame stream and clears the heartbeat timer.
 
 ### Example: Take Over a Session
 
@@ -134,32 +188,32 @@ curl -X POST http://localhost:3003/api/v1/sessions/abc123/browser/takeover \
   -H "Content-Type: application/json"
 ```
 
-Response:
-```json
-{
-  "ok": true,
-  "data": {
-    "sessionId": "abc123",
-    "state": "user_controlled",
-    "previousState": "idle"
-  }
-}
-```
-
 ### Example: Send Input
 
 ```bash
-# Click at normalized coordinates (0.5, 0.3)
+# Click at normalized coordinates (0.5, 0.3) — x and y must be in [0, 1]
 curl -X POST http://localhost:3003/api/v1/sessions/abc123/browser/input \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action": "click", "payload": {"x": 0.5, "y": 0.3}}'
+
+# Press a key (action is "keypress"; payload.key is required, payload.modifiers is optional string[])
+curl -X POST http://localhost:3003/api/v1/sessions/abc123/browser/input \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "keypress", "payload": {"key": "Enter", "modifiers": ["Shift"]}}'
 
 # Type text
 curl -X POST http://localhost:3003/api/v1/sessions/abc123/browser/input \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action": "type", "payload": {"text": "hello@example.com"}}'
+
+# Scroll (deltaX/deltaY are pixel offsets, required; x/y are optional pixel anchors)
+curl -X POST http://localhost:3003/api/v1/sessions/abc123/browser/input \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "scroll", "payload": {"deltaX": 0, "deltaY": 300}}'
 
 # Navigate to URL
 curl -X POST http://localhost:3003/api/v1/sessions/abc123/browser/input \
@@ -175,6 +229,19 @@ curl -X POST http://localhost:3003/api/v1/sessions/abc123/browser/release \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+### Error Codes
+
+| HTTP | `error.code` | Trigger |
+|---|---|---|
+| 400 | `BAD_REQUEST` | Request body missing `action` or `payload` |
+| 400 | `INVALID_INPUT` | Boundary parse failure (non-finite number, click x/y outside [0,1], invalid button, non-positive clickCount, non-string modifiers, empty string, unknown action) |
+| 403 | `FORBIDDEN` | `POST /input` without an active lease; `POST /release` by a non-lease-holder |
+| 404 | `NOT_FOUND` | Browser session or live page not found |
+| 409 | `LEASE_CONFLICT` | `POST /takeover` while another user holds the lease |
+| 409 | `TAKEOVER_FAILED` / `RELEASE_FAILED` | Other takeover/release failures |
+| 500 | `INPUT_DISPATCH_FAILED` | Playwright `page.*` call rejected during input dispatch |
+| 503 | `SERVICE_UNAVAILABLE` | Browser session manager or frame stream not configured |
+
 ---
 
 ## Security Considerations
@@ -187,9 +254,13 @@ The browser runs headless on the same machine as the API server. No debug port i
 
 ### Input Validation
 
-- Click and scroll coordinates are normalized to the 0..1 range. Out-of-range values are rejected.
-- Keyboard and text inputs are validated against the `BrowserInputEvent` type at the API boundary.
-- Navigation URLs are passed directly to `page.goto()`. The browser's own security model (same-origin policy, HTTPS enforcement) applies.
+- Click coordinates (`x`, `y`) are normalized to the [0, 1] range. Out-of-range values are rejected with `INVALID_INPUT`.
+- Scroll `deltaX` / `deltaY` are pixel offsets (not normalized); both are required. Optional `x` / `y` are pixel anchors.
+- The `keypress` action requires a non-empty `payload.key`; `payload.modifiers` is an optional string array (defaults to `[]`).
+- The `type` action requires a non-empty `payload.text`.
+- The `navigate` action requires a non-empty `payload.url` and calls `page.goto()` directly. The browser's own security model (same-origin policy, HTTPS enforcement) applies.
+- The `click` action accepts optional `payload.button` (`left` | `middle` | `right`, default `left`) and `payload.clickCount` (positive integer, default `1`).
+- All input actions require an active takeover lease held by the caller. Requests without a lease are rejected with `FORBIDDEN` (403).
 
 ### Lease Isolation
 
@@ -270,13 +341,21 @@ If missing, run `npm run install:playwright`.
 - Confirm the session exists: `GET /api/v1/sessions/:id/browser/status`
 - Check that the session is not in `closed` or `error` state
 
-### Takeover returns 409
+### Takeover returns 409 (`LEASE_CONFLICT`)
 
-Another user already holds the lease. Wait for it to expire (60 seconds default) or ask them to release.
+Another user already holds the lease. Wait for it to expire (60 seconds default) or ask them to release. The same 409 is returned if the same user attempts a second takeover on a session they already hold.
 
-### Input returns 403
+### Input returns 403 (`FORBIDDEN`)
 
-You don't have an active takeover lease. Call `POST /browser/takeover` first.
+You don't have an active takeover lease for this session. Call `POST /takeover` first. The same code is returned when a non-lease-holder attempts `POST /release`.
+
+### Input returns 400 (`INVALID_INPUT`)
+
+The payload failed boundary parsing. Common causes: click `x`/`y` outside [0, 1]; missing or empty `key` / `text` / `url`; non-positive `clickCount`; `modifiers` not a string array; unknown `action`. The `error.message` names the offending field.
+
+### Status or takeover returns 503 (`SERVICE_UNAVAILABLE`)
+
+The browser session manager or frame stream is not configured on the server. This typically means the API context was built without a `CloakBrowserProvider`. Install the CloakBrowser binary (`npm run install:playwright`) and restart the API server.
 
 ---
 
