@@ -25,6 +25,11 @@ vi.mock('../../api/client', () => ({
   readWorkdirFile: vi.fn(),
   writeWorkdirFile: vi.fn(),
   createWorkdirDir: vi.fn(),
+  getBrowserStatus: vi.fn(),
+  acquireTakeover: vi.fn(),
+  releaseTakeover: vi.fn(),
+  sendInput: vi.fn(),
+  subscribeToFrames: vi.fn(),
 }))
 
 import * as api from '../../api/client'
@@ -48,6 +53,8 @@ const mockListWorkdirTree = api.listWorkdirTree as ReturnType<typeof vi.fn>
 const mockReadWorkdirFile = api.readWorkdirFile as ReturnType<typeof vi.fn>
 const mockWriteWorkdirFile = api.writeWorkdirFile as ReturnType<typeof vi.fn>
 const mockCreateWorkdirDir = api.createWorkdirDir as ReturnType<typeof vi.fn>
+const mockGetBrowserStatus = api.getBrowserStatus as ReturnType<typeof vi.fn>
+const mockSubscribeToFrames = api.subscribeToFrames as ReturnType<typeof vi.fn>
 
 const SELECTED_SESSION_KEY = 'session-console-selected-session'
 
@@ -59,6 +66,8 @@ describe('SessionConsoleTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
+    mockSubscribeToFrames.mockReturnValue(() => {})
+    mockGetBrowserStatus.mockResolvedValue({ state: 'idle', url: null })
     localStorage.clear()
   })
 
@@ -91,6 +100,8 @@ describe('SessionConsoleTab', () => {
     await waitFor(() => {
       expect(screen.getByTestId('session-empty-state')).toBeInTheDocument()
     })
+
+    expect(screen.queryByTestId('browser-handoff')).not.toBeInTheDocument()
   })
 
   it('shows sessions list when sessions exist', async () => {
@@ -220,6 +231,11 @@ describe('SessionConsoleTab', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('session-timeline')).toBeInTheDocument()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('browser-handoff')).toBeInTheDocument()
+      expect(screen.getByTestId('workdir-panel')).toBeInTheDocument()
     })
   })
 
@@ -1528,6 +1544,59 @@ describe('SessionConsoleTab', () => {
     expect(screen.getByText('工具：docs.search')).toBeInTheDocument()
     expect(screen.queryByText('模型：未知')).not.toBeInTheDocument()
     expect(screen.queryByText('上下文：未知')).not.toBeInTheDocument()
+  })
+
+  it('keeps composer usable when BrowserHandoffPanel API fails', async () => {
+    mockGetSessions.mockResolvedValue({
+      sessions: [
+        {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          title: 'Test Session',
+          status: 'active',
+          messageCount: 0,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    })
+    mockGetSession.mockResolvedValue({
+      session: {
+        sessionId: 'session-123',
+        userId: 'user-1',
+        messageCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    mockGetSessionTimeline.mockResolvedValue({
+      events: [],
+      total: 0,
+    })
+    mockGetBrowserStatus.mockRejectedValue(new Error('Browser handoff API unavailable'))
+    mockSubscribeSessionTimeline.mockImplementation(() => () => {})
+
+    renderWithRouter(<SessionConsoleTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-item-session-123')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('session-item-session-123'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-message-input')).toBeInTheDocument()
+    })
+
+    const input = screen.getByTestId('session-message-input')
+    fireEvent.change(input, { target: { value: 'Composer still works' } })
+    expect((input as HTMLInputElement).value).toBe('Composer still works')
+
+    const sendButton = screen.getByTestId('session-send-button')
+    expect(sendButton).not.toBeDisabled()
   })
 
   it('renders error event from SSE timeline and keeps input usable', async () => {

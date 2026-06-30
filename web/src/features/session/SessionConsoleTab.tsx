@@ -28,6 +28,7 @@ import { SessionEmptyState } from './components/SessionEmptyState'
 import { MobileSessionDrawer } from './components/MobileSessionDrawer'
 import { WorkdirPanel } from './components/WorkdirPanel'
 import './components/WorkdirPanel.css'
+import BrowserHandoffPanel from '../../components/BrowserHandoffPanel'
 import ComposerDock from '../../components/ComposerDock'
 import { useAgentShellSidebar } from '../../layout/AgentShellSidebarContext'
 import { safeRemoveLocalStorage } from './session-migration'
@@ -793,6 +794,9 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
 
             {/* Workdir Panel */}
             <WorkdirPanel sessionId={selectedSessionId} workdirState={workdirState} />
+
+            {/* Browser Handoff Panel */}
+            <BrowserHandoffPanel sessionId={selectedSessionId} />
 
             {/* Input Dock */}
             <ComposerDock
