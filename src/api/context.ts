@@ -111,6 +111,8 @@ import { createPromptProjectionResolver } from '../prompt/prompt-projection-reso
 import { createModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js'
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js'
 import { createCloakBrowserProvider, type CloakBrowserProvider } from '../search/browser/cloakbrowser-launcher.js'
+import { BrowserSessionManager, toBrowserSessionId } from '../search/browser/browser-session-manager.js'
+import { BrowserFrameStream } from '../search/browser/browser-frame-stream.js'
 import { createSearchSubagent, type SearchSubagent } from '../search/search-subagent.js'
 import { executeWebSearch } from '../tools/builtins/web-search.js'
 import {
@@ -193,6 +195,8 @@ export interface ApiContext {
   uploadPreviewExtractor: UploadPreviewExtractor
   sessionChannelMapStore: SessionChannelMapStore
   webSearchBrowserProvider?: CloakBrowserProvider
+  browserSessionManager?: BrowserSessionManager
+  browserFrameStream?: BrowserFrameStream
 }
 
 export interface ApiContextOptions {
@@ -208,6 +212,8 @@ export interface ApiContextOptions {
   timelineBroadcaster?: TimelineBroadcaster
   channelRegistry?: ChannelRegistry
   webSearchBrowserProvider?: CloakBrowserProvider
+  browserSessionManager?: BrowserSessionManager
+  browserFrameStream?: BrowserFrameStream
 }
 
 export interface ApiContextError {
@@ -278,9 +284,15 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     timelineBroadcaster: injectedTimelineBroadcaster,
     channelRegistry: injectedChannelRegistry,
     webSearchBrowserProvider: injectedWebSearchBrowserProvider,
+    browserSessionManager: injectedBrowserSessionManager,
+    browserFrameStream: injectedBrowserFrameStream,
   } = options
 
   const webSearchBrowserProvider = injectedWebSearchBrowserProvider ?? createCloakBrowserProvider()
+  const browserSessionManager =
+    injectedBrowserSessionManager ?? new BrowserSessionManager(webSearchBrowserProvider)
+  const browserFrameStream =
+    injectedBrowserFrameStream ?? new BrowserFrameStream(browserSessionManager)
 
   const connection = existingConnection ?? createConnectionManager(dbPath)
 
@@ -592,6 +604,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     processSessionStore,
     todoStore,
     webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
+    browserSessionManager,
+    browserSessionIdResolver: (chatSessionId: string) =>
+      toBrowserSessionId(chatSessionId),
   })
 
   // Register AMap MCP tools (opt-in via AMAP_MCP_ENABLED + AMAP_MAPS_API_KEY)
@@ -944,6 +959,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     uploadPreviewExtractor,
     sessionChannelMapStore,
     webSearchBrowserProvider,
+    browserSessionManager,
+    browserFrameStream,
   }
 }
 

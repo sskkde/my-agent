@@ -40,6 +40,7 @@ import { registerDlqRoutes } from './routes/dlq.js'
 import { registerAdminRoutes } from './routes/admin.js'
 import { registerSubagentRoutes } from './routes/subagents.js'
 import { registerTodoRoutes } from './routes/todos.js'
+import { registerBrowserSessionRoutes } from './routes/browser-sessions.js'
 import { registerMessagingWebhookRoutes } from './routes/messaging-webhooks.js'
 import { registerApiKeyAuth } from './middleware/api-key-auth.js'
 import { registerAuthMiddleware } from './middleware/auth.js'
@@ -104,6 +105,18 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
   if (context?.webSearchBrowserProvider) {
     server.addHook('onClose', async () => {
       await context.webSearchBrowserProvider?.closeBrowser()
+    })
+  }
+
+  if (context?.browserSessionManager) {
+    server.addHook('onClose', async () => {
+      await context.browserSessionManager?.closeAll()
+    })
+  }
+
+  if (context?.browserFrameStream) {
+    server.addHook('onClose', async () => {
+      context.browserFrameStream?.stopAll()
     })
   }
 
@@ -221,6 +234,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerAdminRoutes(server, context)
     registerSubagentRoutes(server, context)
     registerTodoRoutes(server, context)
+    registerBrowserSessionRoutes(server, context)
 
     const useMockMessaging = process.env.NODE_ENV === 'test' || process.env.MESSAGING_MOCK === 'true'
 
