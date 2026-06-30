@@ -1,0 +1,282 @@
+/* ==========================================================================
+   Browser Handoff Panel Styles
+   ========================================================================== */
+
+.browser-handoff {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Loading / empty states */
+.browser-handoff--loading,
+.browser-handoff--empty {
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  padding: 24px;
+}
+
+.browser-handoff--empty {
+  color: var(--muted);
+  text-align: center;
+}
+
+.browser-handoff__empty-icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.browser-handoff__empty-text {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Header */
+.browser-handoff__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* State badge */
+.browser-handoff__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.browser-handoff__badge--idle {
+  background-color: #f3f4f6;
+  color: var(--muted);
+}
+
+.browser-handoff__badge--agent {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.browser-handoff__badge--user {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.browser-handoff__badge--requested {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Actions */
+.browser-handoff__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.browser-handoff__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+  min-height: 36px;
+}
+
+.browser-handoff__btn:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.browser-handoff__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.browser-handoff__btn--takeover {
+  background-color: var(--accent);
+  color: white;
+}
+
+.browser-handoff__btn--takeover:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  filter: none;
+}
+
+.browser-handoff__btn--release {
+  background-color: #f3f4f6;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.browser-handoff__btn--release:hover:not(:disabled) {
+  background-color: #e5e7eb;
+  filter: none;
+}
+
+/* Handoff requested banner */
+.browser-handoff__banner {
+  padding: 10px 14px;
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Error display */
+.browser-handoff__error {
+  padding: 10px 14px;
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Frame wrapper */
+.browser-handoff__frame-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 160px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.browser-handoff__frame {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  cursor: crosshair;
+}
+
+.browser-handoff__frame:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.browser-handoff--active .browser-handoff__frame {
+  cursor: pointer;
+}
+
+.browser-handoff--focused .browser-handoff__frame {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.browser-handoff__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 160px;
+  color: var(--muted);
+}
+
+/* Input overlay */
+.browser-handoff__input-overlay {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.browser-handoff__text-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.browser-handoff__text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.browser-handoff__text-input::placeholder {
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   Responsive: Phone breakpoint (<480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .browser-handoff {
+    padding: 12px;
+    gap: 10px;
+    border-radius: 8px;
+  }
+
+  .browser-handoff__header {
+    gap: 8px;
+  }
+
+  .browser-handoff__badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .browser-handoff__btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  .browser-handoff__frame-wrapper {
+    min-height: 120px;
+    border-radius: 6px;
+  }
+
+  .browser-handoff__placeholder {
+    min-height: 120px;
+  }
+
+  .browser-handoff__input-overlay {
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .browser-handoff__text-input {
+    padding: 10px 12px;
+    font-size: 16px; /* Prevent iOS zoom on focus */
+    min-height: 44px; /* Touch target */
+  }
+}

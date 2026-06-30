@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import './BrowserHandoffPanel.css'
 import LoadingSpinner from './LoadingSpinner'
 import {
   getBrowserStatus,
