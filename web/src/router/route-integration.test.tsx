@@ -249,10 +249,10 @@ describe('Route Integration', () => {
         expect(screen.getByTestId('app-shell')).toBeInTheDocument()
       })
 
-      // Chat section is now rendered full-screen by ChatPage; verify the
-      // minimal topbar is shown instead of the legacy product nav.
-      expect(screen.getByTestId('topbar-user')).toBeInTheDocument()
-      expect(screen.getByTestId('floating-settings-trigger')).toBeInTheDocument()
+      // Chat section is now rendered full-screen by ChatPage; legacy product
+      // nav is not rendered. ChatPage itself is mocked in this test, so we
+      // verify the shell-level behavior only.
+      expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
       expect(screen.queryByTestId('product-nav-chat')).not.toBeInTheDocument()
     })
   })

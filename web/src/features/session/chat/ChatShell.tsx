@@ -62,7 +62,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
         <div className="chat-titlebar__right">
           {user && (
             <div className="chat-titlebar__user" data-testid="chat-titlebar-user">
-              <span className="chat-titlebar__username">{user.username}</span>
+              <span className="chat-titlebar__username" data-testid="username-display">{user.username}</span>
               {onLogout && (
                 <button
                   className="chat-titlebar__logout"
