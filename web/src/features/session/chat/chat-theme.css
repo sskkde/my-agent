@@ -985,6 +985,61 @@
   stroke-width: 1.5;
 }
 
+/* Desk file list */
+.chat-desk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-desk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm, 2px);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.chat-desk-item:hover {
+  background: rgba(42, 38, 34, 0.03);
+}
+
+.chat-desk-item__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--chat-text-faint);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.chat-desk-item__icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.5;
+}
+
+.chat-desk-item__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-desk-item__name {
+  font-size: 0.8rem;
+  color: var(--chat-text);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-desk-item__meta {
+  font-size: 0.7rem;
+  color: var(--chat-text-faint);
+  margin-top: 2px;
+}
+
 /* Add task button */
 .chat-rs-add-btn {
   display: flex;
