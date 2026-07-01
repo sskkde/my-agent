@@ -17,6 +17,7 @@ import type { AssistantPlaceholder } from '../session-utils'
 import type { CommandContext } from '../../../commands/types'
 import { safeRemoveLocalStorage } from '../session-migration'
 import { SELECTED_SESSION_KEY } from '../session-constants'
+import { useAuth } from '../../../context/AuthContext'
 
 export interface ChatPageProps {
   initialSessionId?: string
@@ -26,6 +27,7 @@ type StreamStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'erro
 
 const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const {
     selectedSessionId,
     setSelectedSessionId,
@@ -233,6 +235,8 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     <>
       <ChatShell
         title={selectedSession?.title || 'My Agent'}
+        user={user}
+        onLogout={logout}
         sidebar={
           <ChatSessionList
             sessions={sessions}

@@ -149,16 +149,16 @@ describe('AgentShell', () => {
       expect(mockOnTabChange).toHaveBeenCalledWith('settings')
     })
 
-    it('chat section shows minimal topbar with settings and no admin switcher', () => {
+    it('chat section hides product nav and context desk panel', () => {
       renderWithRouter(
         <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
           <div>Content</div>
         </AgentShell>,
       )
 
-      expect(screen.getByTestId('floating-settings-trigger')).toBeInTheDocument()
-      expect(screen.queryByTestId('product-nav-admin')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('product-nav-chat')).not.toBeInTheDocument()
+      expect(screen.getByTestId('center-stage')).toBeInTheDocument()
+      expect(screen.queryByTestId('product-nav')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('context-desk-panel')).not.toBeInTheDocument()
     })
   })
 

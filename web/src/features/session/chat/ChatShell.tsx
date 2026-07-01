@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import type { UserMetadata } from '../../../api/types'
+import FloatingSettingsMenu from '../../settings/FloatingSettingsMenu'
 
 export interface ChatShellProps {
   title: string
@@ -7,6 +9,8 @@ export interface ChatShellProps {
   children: React.ReactNode
   initialSidebarOpen?: boolean
   initialRightOpen?: boolean
+  user?: UserMetadata | null
+  onLogout?: () => void
 }
 
 const ChatShell: React.FC<ChatShellProps> = ({
@@ -16,6 +20,8 @@ const ChatShell: React.FC<ChatShellProps> = ({
   children,
   initialSidebarOpen = true,
   initialRightOpen = true,
+  user,
+  onLogout,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(initialSidebarOpen)
   const [isRightOpen, setIsRightOpen] = useState(initialRightOpen)
@@ -54,6 +60,22 @@ const ChatShell: React.FC<ChatShellProps> = ({
         </div>
         <div className="chat-titlebar__title">{title}</div>
         <div className="chat-titlebar__right">
+          {user && (
+            <div className="chat-titlebar__user" data-testid="chat-titlebar-user">
+              <span className="chat-titlebar__username">{user.username}</span>
+              {onLogout && (
+                <button
+                  className="chat-titlebar__logout"
+                  onClick={onLogout}
+                  data-testid="chat-titlebar-logout"
+                  title="退出登录"
+                >
+                  退出
+                </button>
+              )}
+            </div>
+          )}
+          <FloatingSettingsMenu />
           <button
             className="chat-titlebar__btn"
             aria-label="切换右侧栏"

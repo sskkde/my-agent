@@ -15,7 +15,6 @@ import logoUrl from '../assets/logo.svg?url'
 import { AgentShellSidebarContext } from './AgentShellSidebarContext'
 import packageInfo from '../../package.json'
 import '../styles.css'
-import './chat-minimal-topbar.css'
 
 interface AgentShellProps {
   children: React.ReactNode
@@ -245,15 +244,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
     <AgentShellSidebarContext.Provider value={sidebarContextValue}>
       <div data-testid="agent-shell" className="agent-shell-container">
       {isChatSection ? (
-        // Chat section is rendered full-screen by ChatPage; only keep a minimal
-        // top bar for settings/user controls.
         <div data-testid="app-shell" className={`shell shell--chat ${isMobile ? 'shell--mobile' : ''}`}>
-          <div className="chat-minimal-topbar">
-            <div className="chat-minimal-topbar__controls">
-              <FloatingSettingsMenu />
-              {userControls}
-            </div>
-          </div>
           <main data-testid="center-stage" className="shell__content shell__content--chat">
             {children}
           </main>
