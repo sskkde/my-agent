@@ -953,6 +953,161 @@
   color: var(--text-ghost);
 }
 
+/* Panel header actions */
+.chat-rs-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.chat-rs-panel__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: var(--radius-sm, 2px);
+  background: transparent;
+  color: var(--chat-text-faint);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chat-rs-panel__action:hover {
+  color: var(--chat-text-muted);
+  background: rgba(42, 38, 34, 0.03);
+}
+
+.chat-rs-panel__action svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.5;
+}
+
+/* Add task button */
+.chat-rs-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: calc(100% - 8px);
+  margin: 0 4px 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 2px);
+  border: 0.5px dashed var(--chat-border);
+  background: transparent;
+  color: var(--chat-text-muted);
+  font-size: 0.76rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chat-rs-add-btn:hover {
+  background: rgba(83, 125, 150, 0.06);
+  color: var(--chat-accent);
+  border-color: rgba(83, 125, 150, 0.2);
+}
+
+.chat-rs-add-btn svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.5;
+  flex-shrink: 0;
+}
+
+/* Example task list */
+.todo-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.todo-plan-group {
+  margin-bottom: 8px;
+}
+
+.todo-plan-group__title {
+  font-size: 0.64rem;
+  color: var(--chat-text-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 8px 6px 4px;
+}
+
+.todo-plan-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm, 2px);
+  transition: background 0.15s;
+}
+
+.todo-plan-item:hover {
+  background: rgba(42, 38, 34, 0.03);
+}
+
+.todo-plan-item__checkbox {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--chat-text-faint);
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.todo-plan-item__checkbox--completed {
+  background: var(--chat-accent);
+  border-color: var(--chat-accent);
+  color: #fff;
+}
+
+.todo-plan-item__checkbox svg {
+  width: 8px;
+  height: 8px;
+  stroke-width: 3;
+}
+
+.todo-plan-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-plan-item__text {
+  font-size: 0.8rem;
+  color: var(--chat-text);
+  line-height: 1.4;
+}
+
+.todo-plan-item__text--completed {
+  text-decoration: line-through;
+  color: var(--chat-text-faint);
+}
+
+.todo-plan-item__meta {
+  font-size: 0.7rem;
+  color: var(--chat-text-faint);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-plan-item__priority {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.todo-plan-item__priority--high { background: #c45c4a; }
+.todo-plan-item__priority--medium { background: #c9a14a; }
+.todo-plan-item__priority--low { background: var(--chat-text-faint); }
+
 /* 错误/空状态 */
 .chat-error,
 .chat-session-status {
