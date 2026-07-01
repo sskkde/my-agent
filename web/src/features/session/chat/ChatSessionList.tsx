@@ -121,6 +121,15 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({
           </React.Fragment>
         ))}
       </div>
+
+      <div className="chat-archive-entry" data-testid="chat-archive-entry">
+        <button className="chat-archive-entry__btn" onClick={() => showToast('归档功能后续接入')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" />
+          </svg>
+          <span>归档</span>
+        </button>
+      </div>
     </div>
   )
 }
