@@ -339,46 +339,46 @@
 }
 
 .chat-welcome__logo {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: var(--chat-bg-card, #fbf7ee);
+  background: var(--chat-bg-card);
   border: 0.5px solid var(--chat-border);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(42, 38, 34, 0.04);
+  box-shadow: 0 1px 4px rgba(42, 38, 34, 0.03);
 }
 
 .chat-welcome__logo svg {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   color: var(--chat-accent);
   stroke-width: 1.5;
 }
 
 .chat-welcome__title {
-  font-family: 'EB Garamond', 'Noto Serif SC', serif;
-  font-size: 1.75rem;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', serif;
+  font-size: 2.25rem;
   font-weight: 500;
   color: var(--chat-text);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   letter-spacing: 0.01em;
 }
 
 .chat-welcome__subtitle {
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   color: var(--chat-text-muted);
-  max-width: 28rem;
-  line-height: 1.6;
+  max-width: 34rem;
+  line-height: 1.5;
 }
 
 .chat-welcome__prompts {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 40px;
+  gap: 12px;
+  margin-top: 44px;
   max-width: 36rem;
   width: 100%;
 }
@@ -387,11 +387,11 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  padding: 16px;
-  background: var(--chat-bg-card, #fbf7ee);
-  border: 0.5px solid var(--chat-border);
-  border-radius: var(--radius-md, 3px);
+  gap: 6px;
+  padding: 18px;
+  background: transparent;
+  border: 0.5px solid rgba(216, 207, 190, 0.35);
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
@@ -399,7 +399,7 @@
 }
 
 .chat-prompt-card:hover {
-  background: rgba(83, 125, 150, 0.08);
+  background: rgba(83, 125, 150, 0.06);
   border-color: rgba(83, 125, 150, 0.15);
   transform: translateY(-1px);
 }
