@@ -56,19 +56,18 @@ describe('AgentShell', () => {
 
     it('marks active product section with aria-current="page"', () => {
       renderWithRouter(
-        <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
+        <AgentShell activeTab="dashboard" onTabChange={mockOnTabChange}>
           <div>Content</div>
         </AgentShell>,
       )
 
-      // session-console is in 'chat' section; chat header has no admin switch
-      const chatSection = screen.getByTestId('product-nav-chat')
-      expect(chatSection).toHaveAttribute('aria-current', 'page')
+      const workspaceSection = screen.getByTestId('product-nav-workspace')
+      expect(workspaceSection).toHaveAttribute('aria-current', 'page')
 
       // Other sections should not be marked as current
-      expect(screen.getByTestId('product-nav-workspace')).not.toHaveAttribute('aria-current')
+      expect(screen.getByTestId('product-nav-chat')).not.toHaveAttribute('aria-current')
       expect(screen.getByTestId('product-nav-operations')).not.toHaveAttribute('aria-current')
-      expect(screen.queryByTestId('product-nav-admin')).not.toBeInTheDocument()
+      expect(screen.getByTestId('product-nav-admin')).not.toHaveAttribute('aria-current')
     })
 
     it('marks workspace section as active when on dashboard tab', () => {
@@ -115,15 +114,17 @@ describe('AgentShell', () => {
       expect(mockOnTabChange).toHaveBeenCalledWith('session-console')
     })
 
-    it('navigates to dashboard when workspace section is clicked', () => {
+    it('does not render legacy product nav in chat section', () => {
       renderWithRouter(
         <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
           <div>Content</div>
         </AgentShell>,
       )
 
-      fireEvent.click(screen.getByTestId('product-nav-workspace'))
-      expect(mockOnTabChange).toHaveBeenCalledWith('dashboard')
+      expect(screen.queryByTestId('product-nav-chat')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('product-nav-workspace')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('product-nav-operations')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('product-nav-admin')).not.toBeInTheDocument()
     })
 
     it('navigates to agent-monitor when operations section is clicked', () => {
@@ -148,7 +149,7 @@ describe('AgentShell', () => {
       expect(mockOnTabChange).toHaveBeenCalledWith('settings')
     })
 
-    it('chat header has floating settings menu and no admin switcher', () => {
+    it('chat section shows minimal topbar with settings and no admin switcher', () => {
       renderWithRouter(
         <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
           <div>Content</div>
@@ -157,6 +158,7 @@ describe('AgentShell', () => {
 
       expect(screen.getByTestId('floating-settings-trigger')).toBeInTheDocument()
       expect(screen.queryByTestId('product-nav-admin')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('product-nav-chat')).not.toBeInTheDocument()
     })
   })
 
@@ -471,27 +473,18 @@ describe('AgentShell', () => {
       expect(screen.getByTestId('context-card-tools')).toBeInTheDocument()
     })
 
-    it('passes sessionId to ContextDeskPanel', () => {
-      const contextDeskCards = {
-        approvalState: loading(),
-        memoryState: loading(),
-        runsState: loading(),
-        toolActivityState: loading(),
-      }
-
+    it('does not render context desk panel in chat section', () => {
       renderWithRouter(
         <AgentShell
           activeTab="session-console"
           onTabChange={mockOnTabChange}
-          contextDeskCards={contextDeskCards}
           sessionId="session-123"
         >
           <div>Content</div>
         </AgentShell>,
       )
 
-      // Chat mode (session-console) 默认打开右侧面板
-      expect(screen.getByTestId('context-desk-panel')).toBeInTheDocument()
+      expect(screen.queryByTestId('context-desk-panel')).not.toBeInTheDocument()
     })
 
     it('handles missing sessionId gracefully', () => {
@@ -591,20 +584,15 @@ describe('AgentShell', () => {
   })
 
   describe('Secondary Navigation Scope', () => {
-    it('sidebar shows no tabs when chat section is active', () => {
+    it('does not render legacy sidebar in chat section', () => {
       renderWithRouter(
         <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
           <div>Content</div>
         </AgentShell>,
       )
 
-      const sidebar = screen.getByTestId('sidebar')
-
-      // Chat section uses the sidebar for session content, not tab navigation.
-      expect(sidebar.querySelectorAll('button[role="tab"]')).toHaveLength(0)
-      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-dashboard'))
-      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-agent-monitor'))
-      expect(sidebar).not.toContainElement(screen.queryByTestId('tab-settings'))
+      expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
+      expect(screen.getByTestId('center-stage')).toBeInTheDocument()
     })
 
     it('sidebar shows only workspace tabs when workspace section is active', () => {
@@ -768,17 +756,17 @@ describe('AgentShell', () => {
       return <div>Chat content</div>
     }
 
-    it('renders registered chat session content inside the AgentShell sidebar for chat routes', async () => {
+    it('does not use legacy AgentShell sidebar slot in chat section', async () => {
       renderWithRouter(
         <AgentShell activeTab="session-console" onTabChange={mockOnTabChange}>
           <MockChatSidebarRegistrar />
         </AgentShell>,
       )
 
-      const panel = await screen.findByTestId('sidebar-session-panel')
-      expect(panel).toContainElement(screen.getByTestId('mock-chat-session-sidebar'))
-      expect(screen.getByTestId('sidebar')).toContainElement(panel)
-      expect(screen.getByTestId('center-stage')).not.toContainElement(panel)
+      await waitFor(() => {
+        expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
+      })
+      expect(screen.queryByTestId('sidebar-session-panel')).not.toBeInTheDocument()
     })
 
     it('hides registered chat session content outside the chat product section', async () => {

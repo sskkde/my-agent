@@ -249,8 +249,11 @@ describe('Route Integration', () => {
         expect(screen.getByTestId('app-shell')).toBeInTheDocument()
       })
 
-      const chatButton = screen.getByTestId('product-nav-chat')
-      expect(chatButton).toHaveClass(/product-nav__switch--active/)
+      // Chat section is now rendered full-screen by ChatPage; verify the
+      // minimal topbar is shown instead of the legacy product nav.
+      expect(screen.getByTestId('topbar-user')).toBeInTheDocument()
+      expect(screen.getByTestId('floating-settings-trigger')).toBeInTheDocument()
+      expect(screen.queryByTestId('product-nav-chat')).not.toBeInTheDocument()
     })
   })
 

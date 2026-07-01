@@ -15,6 +15,7 @@ import logoUrl from '../assets/logo.svg?url'
 import { AgentShellSidebarContext } from './AgentShellSidebarContext'
 import packageInfo from '../../package.json'
 import '../styles.css'
+import './chat-minimal-topbar.css'
 
 interface AgentShellProps {
   children: React.ReactNode
@@ -45,7 +46,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
   const [isMobile, setIsMobile] = useState(false)
   // 桌面 Chat 模式默认打开右侧面板，其他模式默认关闭
   const [isContextDeskOpen, setIsContextDeskOpen] = useState(() => activeProductSection === 'chat')
-  const [chatSidebarContent, setChatSidebarContent] = useState<React.ReactNode | null>(null)
   const [hasUserToggledContextDesk, setHasUserToggledContextDesk] = useState(false)
 
   const isNavCollapsed = controlledNavCollapsed !== undefined ? controlledNavCollapsed : internalNavCollapsed
@@ -147,7 +147,7 @@ const AgentShell: React.FC<AgentShellProps> = ({
 
   const sidebarContextValue = useMemo(
     () => ({
-      setChatSidebarContent,
+      setChatSidebarContent: (_content: React.ReactNode | null) => {},
       openNavDrawer,
       closeNavDrawer,
     }),
@@ -239,159 +239,125 @@ const AgentShell: React.FC<AgentShellProps> = ({
     </div>
   )
 
-  const renderChatHeader = () => (
-    <nav className="product-nav product-nav--chat" data-testid="product-nav" role="navigation" aria-label="Product sections">
-      <div className="product-nav__brand">
-        <img className="product-nav__brand-logo" src={logoUrl} alt="" aria-hidden="true" />
-        <span className="product-nav__brand-name">My Agent</span>
-      </div>
-
-      <div className="product-nav__switcher">
-        <button
-          className={`product-nav__switch ${activeProductSection === 'chat' ? 'product-nav__switch--active' : ''}`}
-          onClick={() => handleProductSectionClick('chat')}
-          data-testid="product-nav-chat"
-          aria-current={activeProductSection === 'chat' ? 'page' : undefined}
-        >
-          {PRODUCT_SECTION_LABELS.chat}
-        </button>
-        <button
-          className={`product-nav__switch ${activeProductSection === 'workspace' ? 'product-nav__switch--active' : ''}`}
-          onClick={() => handleProductSectionClick('workspace')}
-          data-testid="product-nav-workspace"
-          aria-current={activeProductSection === 'workspace' ? 'page' : undefined}
-        >
-          {PRODUCT_SECTION_LABELS.workspace}
-        </button>
-        <button
-          className={`product-nav__switch ${activeProductSection === 'operations' ? 'product-nav__switch--active' : ''}`}
-          onClick={() => handleProductSectionClick('operations')}
-          data-testid="product-nav-operations"
-          aria-current={activeProductSection === 'operations' ? 'page' : undefined}
-        >
-          {PRODUCT_SECTION_LABELS.operations}
-        </button>
-      </div>
-
-      {renderControls()}
-    </nav>
-  )
+  const isChatSection = activeProductSection === 'chat'
 
   return (
     <AgentShellSidebarContext.Provider value={sidebarContextValue}>
       <div data-testid="agent-shell" className="agent-shell-container">
-      {/* Product Navigation Bar */}
-      {activeProductSection === 'chat' ? (
-        renderChatHeader()
-      ) : (
-        <nav className="product-nav" data-testid="product-nav" role="navigation" aria-label="Product sections">
-          <div className="product-nav__switcher">
-            {PRODUCT_SECTIONS.map((section) => (
-              <button
-                key={section}
-                className={`product-nav__item ${activeProductSection === section ? 'product-nav__item--active' : ''}`}
-                onClick={() => handleProductSectionClick(section)}
-                data-testid={`product-nav-${section}`}
-                aria-current={activeProductSection === section ? 'page' : undefined}
-              >
-                {PRODUCT_SECTION_LABELS[section]}
-              </button>
-            ))}
+      {isChatSection ? (
+        // Chat section is rendered full-screen by ChatPage; only keep a minimal
+        // top bar for settings/user controls.
+        <div data-testid="app-shell" className={`shell shell--chat ${isMobile ? 'shell--mobile' : ''}`}>
+          <div className="chat-minimal-topbar">
+            <div className="chat-minimal-topbar__controls">
+              <FloatingSettingsMenu />
+              {userControls}
+            </div>
           </div>
-          {renderControls()}
-        </nav>
-      )}
-
-      {/* Main Shell Content - preserves app-shell compatibility */}
-      <div data-testid="app-shell" className={shellClasses}>
-        {isMobile && isNavDrawerOpen && (
-          <div
-            data-testid="mobile-nav-backdrop"
-            className="mobile-nav-backdrop"
-            aria-hidden="true"
-            onClick={() => setIsNavDrawerOpen(false)}
-          />
-        )}
-
-        <div className="shell__nav-wrapper">
-          <aside
-            data-testid="sidebar"
-            id="sidebar"
-            className={`sidebar-shell ${isNavCollapsed ? 'sidebar-shell--collapsed' : ''}`}
-          >
-            {activeProductSection !== 'chat' && (
-              <div className="sidebar-shell__header">
-                <h1 className="sidebar-shell__brand">
-                  <img className="sidebar-shell__brand-logo" src={logoUrl} alt="" aria-hidden="true" />
-                  <span className="sidebar-shell__brand-name">Agent Platform</span>
-                </h1>
+          <main data-testid="center-stage" className="shell__content shell__content--chat">
+            {children}
+          </main>
+        </div>
+      ) : (
+        <>
+          {/* Product Navigation Bar */}
+          <nav className="product-nav" data-testid="product-nav" role="navigation" aria-label="Product sections">
+            <div className="product-nav__switcher">
+              {PRODUCT_SECTIONS.map((section) => (
                 <button
-                  data-testid="sidebar-collapse-toggle"
-                  className="sidebar-collapse-toggle"
-                  onClick={handleToggleNavCollapsed}
-                  aria-expanded={!isNavCollapsed}
-                  aria-controls="sidebar"
-                  aria-label={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                  title={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  key={section}
+                  className={`product-nav__item ${activeProductSection === section ? 'product-nav__item--active' : ''}`}
+                  onClick={() => handleProductSectionClick(section)}
+                  data-testid={`product-nav-${section}`}
+                  aria-current={activeProductSection === section ? 'page' : undefined}
                 >
-                  <CollapseIcon className={`collapse-icon ${isNavCollapsed ? 'collapse-icon--flipped' : ''}`} />
+                  {PRODUCT_SECTION_LABELS[section]}
                 </button>
-              </div>
+              ))}
+            </div>
+            {renderControls()}
+          </nav>
+
+          {/* Main Shell Content - preserves app-shell compatibility */}
+          <div data-testid="app-shell" className={shellClasses}>
+            {isMobile && isNavDrawerOpen && (
+              <div
+                data-testid="mobile-nav-backdrop"
+                className="mobile-nav-backdrop"
+                aria-hidden="true"
+                onClick={() => setIsNavDrawerOpen(false)}
+              />
             )}
 
-            <div className="sidebar-shell__body">
-              {activeProductSection !== 'chat' && (
-                <div className="sidebar-shell__primary-nav">
-                  <TabNav activeTab={activeTab} onTabChange={handleTabChange} activeSection={activeProductSection} />
+            <div className="shell__nav-wrapper">
+              <aside
+                data-testid="sidebar"
+                id="sidebar"
+                className={`sidebar-shell ${isNavCollapsed ? 'sidebar-shell--collapsed' : ''}`}
+              >
+                <div className="sidebar-shell__header">
+                  <h1 className="sidebar-shell__brand">
+                    <img className="sidebar-shell__brand-logo" src={logoUrl} alt="" aria-hidden="true" />
+                    <span className="sidebar-shell__brand-name">Agent Platform</span>
+                  </h1>
+                  <button
+                    data-testid="sidebar-collapse-toggle"
+                    className="sidebar-collapse-toggle"
+                    onClick={handleToggleNavCollapsed}
+                    aria-expanded={!isNavCollapsed}
+                    aria-controls="sidebar"
+                    aria-label={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    title={isNavCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  >
+                    <CollapseIcon className={`collapse-icon ${isNavCollapsed ? 'collapse-icon--flipped' : ''}`} />
+                  </button>
                 </div>
-              )}
-              {activeProductSection === 'chat' && chatSidebarContent && (
-                <div className="sidebar-shell__session-panel" data-testid="sidebar-session-panel">
-                  {chatSidebarContent}
+
+                <div className="sidebar-shell__body">
+                  <div className="sidebar-shell__primary-nav">
+                    <TabNav activeTab={activeTab} onTabChange={handleTabChange} activeSection={activeProductSection} />
+                  </div>
                 </div>
-              )}
+
+                <div className="sidebar-shell__footer">
+                  <span className="version-badge">v{packageInfo.version}</span>
+                </div>
+              </aside>
             </div>
 
-            <div className="sidebar-shell__footer">
-              <span className="version-badge">v{packageInfo.version}</span>
-            </div>
-          </aside>
-        </div>
+            {/* Center Stage - main content area */}
+            <main data-testid="center-stage" className="shell__content center-stage">
+              {children}
+            </main>
 
-        {/* Center Stage - main content area */}
-        <main
-          data-testid="center-stage"
-          className={`shell__content center-stage ${activeProductSection === 'chat' ? 'shell__content--chat' : ''}`}
-        >
-          {children}
-        </main>
-
-        {/* Context Desk Panel - desktop companion, mobile drawer */}
-        {isContextDeskOpen && contextDeskMode === 'drawer' && (
-          <div
-            data-testid="context-desk-backdrop"
-            className="context-desk-backdrop"
-            aria-hidden="true"
-            onClick={handleCloseContextDesk}
-          />
-        )}
-        {isContextDeskOpen && (
-          <aside
-            id="context-desk-panel"
-            data-testid="context-desk-panel"
-            className={`context-desk context-desk--${contextDeskMode}`}
-            aria-label="书桌"
-          >
-            <div className="context-desk__body">
-              <ContextDeskPanel
-                sessionId={sessionId}
-                activeTab={activeTab}
-                testId="context-desk-panel-content"
+            {/* Context Desk Panel - desktop companion, mobile drawer */}
+            {isContextDeskOpen && contextDeskMode === 'drawer' && (
+              <div
+                data-testid="context-desk-backdrop"
+                className="context-desk-backdrop"
+                aria-hidden="true"
+                onClick={handleCloseContextDesk}
               />
-            </div>
-          </aside>
-        )}
-      </div>
+            )}
+            {isContextDeskOpen && (
+              <aside
+                id="context-desk-panel"
+                data-testid="context-desk-panel"
+                className={`context-desk context-desk--${contextDeskMode}`}
+                aria-label="书桌"
+              >
+                <div className="context-desk__body">
+                  <ContextDeskPanel
+                    sessionId={sessionId}
+                    activeTab={activeTab}
+                    testId="context-desk-panel-content"
+                  />
+                </div>
+              </aside>
+            )}
+          </div>
+        </>
+      )}
       </div>
     </AgentShellSidebarContext.Provider>
   )
