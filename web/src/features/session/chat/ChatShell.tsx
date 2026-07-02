@@ -26,19 +26,37 @@ const ChatShell: React.FC<ChatShellProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(initialSidebarOpen)
   const [isRightOpen, setIsRightOpen] = useState(initialRightOpen)
   const [isMobile, setIsMobile] = useState(false)
+  const [isTabletOrBelow, setIsTabletOrBelow] = useState(false)
 
   useEffect(() => {
     const check = () => {
       if (typeof window !== 'undefined' && window.matchMedia) {
-        setIsMobile(window.matchMedia('(max-width: 1024px)').matches)
+        const mobile = window.matchMedia('(max-width: 768px)').matches
+        const tabletOrBelow = window.matchMedia('(max-width: 1024px)').matches
+        setIsMobile(mobile)
+        setIsTabletOrBelow(tabletOrBelow)
       } else {
         setIsMobile(false)
+        setIsTabletOrBelow(false)
       }
     }
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarOpen(false)
+      setIsRightOpen(false)
+    } else if (isTabletOrBelow) {
+      setIsSidebarOpen(true)
+      setIsRightOpen(false)
+    } else {
+      setIsSidebarOpen(initialSidebarOpen)
+      setIsRightOpen(initialRightOpen)
+    }
+  }, [isMobile, isTabletOrBelow, initialSidebarOpen, initialRightOpen])
 
   return (
     <div className="chat-page" data-testid="chat-shell">
@@ -93,11 +111,12 @@ const ChatShell: React.FC<ChatShellProps> = ({
       </header>
 
       <div className="chat-shell">
-        {isMobile && isSidebarOpen && (
+        {(isMobile || isTabletOrBelow) && isSidebarOpen && (
           <div
-            className="chat-sidebar-backdrop"
+            className="chat-drawer-backdrop"
             onClick={() => setIsSidebarOpen(false)}
             aria-hidden="true"
+            data-testid="chat-left-backdrop"
           />
         )}
         <aside className={`chat-sidebar ${isSidebarOpen ? '' : 'collapsed'}`} data-testid="chat-sidebar">
@@ -108,11 +127,12 @@ const ChatShell: React.FC<ChatShellProps> = ({
           {children}
         </main>
 
-        {isMobile && isRightOpen && (
+        {isTabletOrBelow && isRightOpen && (
           <div
-            className="chat-right-backdrop"
+            className="chat-drawer-backdrop"
             onClick={() => setIsRightOpen(false)}
             aria-hidden="true"
+            data-testid="chat-right-backdrop"
           />
         )}
         <aside className={`chat-right-sidebar ${isRightOpen ? '' : 'collapsed'}`} data-testid="chat-right-sidebar">
