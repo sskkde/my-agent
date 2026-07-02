@@ -863,12 +863,31 @@
 
 @media (max-width: 1024px) {
   .chat-right-sidebar {
-    position: absolute;
+    position: fixed;
     right: 0;
-    top: 0;
-    height: 100%;
+    top: var(--chat-titlebar-h, 48px);
+    height: calc(100% - var(--chat-titlebar-h, 48px));
+    width: 300px;
+    transform: translateX(100%);
     z-index: 100;
     box-shadow: -4px 0 16px rgba(42, 38, 34, 0.08);
+  }
+
+  .chat-right-sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  .chat-right-sidebar.collapsed {
+    width: 300px;
+    border-left-color: var(--chat-border);
+  }
+
+  .chat-sidebar {
+    z-index: 100;
+  }
+
+  :root .chat-page {
+    --chat-sidebar-width: 220px;
   }
 }
 
