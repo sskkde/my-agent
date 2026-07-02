@@ -58,6 +58,20 @@ const ChatShell: React.FC<ChatShellProps> = ({
     }
   }, [isMobile, isTabletOrBelow, initialSidebarOpen, initialRightOpen])
 
+  useEffect(() => {
+    const anyDrawerOpen = (isMobile && isSidebarOpen) || isRightOpen
+    const el = document.querySelector('.chat-page')
+    if (el instanceof HTMLElement) {
+      el.style.overflow = anyDrawerOpen ? 'hidden' : ''
+    }
+    return () => {
+      const el = document.querySelector('.chat-page')
+      if (el instanceof HTMLElement) {
+        el.style.overflow = ''
+      }
+    }
+  }, [isMobile, isSidebarOpen, isRightOpen])
+
   return (
     <div className="chat-page" data-testid="chat-shell">
       <header className="chat-titlebar">
@@ -111,7 +125,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
       </header>
 
       <div className="chat-shell">
-        {(isMobile || isTabletOrBelow) && isSidebarOpen && (
+        {isMobile && isSidebarOpen && (
           <div
             className="chat-drawer-backdrop"
             onClick={() => setIsSidebarOpen(false)}
@@ -119,7 +133,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
             data-testid="chat-left-backdrop"
           />
         )}
-        <aside className={`chat-sidebar ${isSidebarOpen ? '' : 'collapsed'}`} data-testid="chat-sidebar">
+        <aside className={`chat-sidebar ${isSidebarOpen ? '' : 'collapsed'}`} role="dialog" aria-modal="true" data-testid="chat-sidebar">
           {sidebar}
         </aside>
 
@@ -135,7 +149,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
             data-testid="chat-right-backdrop"
           />
         )}
-        <aside className={`chat-right-sidebar ${isRightOpen ? '' : 'collapsed'}`} data-testid="chat-right-sidebar">
+        <aside className={`chat-right-sidebar ${isRightOpen ? '' : 'collapsed'}`} role="dialog" aria-modal="true" data-testid="chat-right-sidebar">
           {rightPanel}
         </aside>
       </div>

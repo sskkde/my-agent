@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import ChatShell from './ChatShell'
 
 function mockMatchMedia(matchesMap: Record<string, boolean>) {
@@ -17,6 +17,12 @@ function mockMatchMedia(matchesMap: Record<string, boolean>) {
     })),
   })
 }
+
+const originalMatchMedia = window.matchMedia
+
+afterEach(() => {
+  window.matchMedia = originalMatchMedia
+})
 
 describe('ChatShell', () => {
   it('renders main content and sidebars', () => {
@@ -128,6 +134,37 @@ describe('ChatShell', () => {
     fireEvent.click(screen.getByTestId('chat-sidebar-toggle'))
     expect(screen.queryByTestId('chat-sidebar')).not.toHaveClass('collapsed')
     expect(screen.getByTestId('chat-left-backdrop')).toBeInTheDocument()
+  })
+
+  it('closes right sidebar when backdrop clicked on mobile', () => {
+    mockMatchMedia({ '(max-width: 768px)': true, '(max-width: 1024px)': true })
+    render(
+      <ChatShell
+        title="Chat"
+        sidebar={<div data-testid="sidebar">sidebar</div>}
+        rightPanel={<div data-testid="right">right</div>}
+      >
+        <div data-testid="main">main</div>
+      </ChatShell>
+    )
+    fireEvent.click(screen.getByTestId('chat-right-toggle'))
+    fireEvent.click(screen.getByTestId('chat-right-backdrop'))
+    expect(screen.queryByTestId('chat-right-sidebar')).toHaveClass('collapsed')
+  })
+
+  it('shows both sidebars by default on desktop', () => {
+    mockMatchMedia({ '(max-width: 768px)': false, '(max-width: 1024px)': false })
+    render(
+      <ChatShell
+        title="Chat"
+        sidebar={<div data-testid="sidebar">sidebar</div>}
+        rightPanel={<div data-testid="right">right</div>}
+      >
+        <div data-testid="main">main</div>
+      </ChatShell>
+    )
+    expect(screen.queryByTestId('chat-sidebar')).not.toHaveClass('collapsed')
+    expect(screen.queryByTestId('chat-right-sidebar')).not.toHaveClass('collapsed')
   })
 
   it('closes left sidebar when backdrop clicked', () => {
