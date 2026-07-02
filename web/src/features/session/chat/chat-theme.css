@@ -116,6 +116,13 @@
   background: var(--chat-bg);
 }
 
+.chat-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(42, 38, 34, 0.25);
+  z-index: 90;
+}
+
 .chat-sidebar {
   position: relative;
   width: var(--chat-sidebar-width);
@@ -126,7 +133,7 @@
   border-right: 0.5px solid var(--chat-border);
   border-top: 0.5px solid var(--chat-border);
   overflow: hidden;
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 10;
 }
 
@@ -837,7 +844,7 @@
   border-left: 0.5px solid var(--chat-border);
   border-top: 0.5px solid var(--chat-border);
   overflow: hidden;
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 10;
 }
 
@@ -867,15 +874,45 @@
 
 @media (max-width: 768px) {
   .chat-sidebar {
-    position: absolute;
-    height: 100%;
-    z-index: 100;
+    position: fixed;
+    left: 0;
+    top: var(--chat-titlebar-h, 48px);
+    height: calc(100% - var(--chat-titlebar-h, 48px));
+    width: min(80vw, 300px);
+    transform: translateX(-100%);
+    box-shadow: 4px 0 16px rgba(42, 38, 34, 0.08);
   }
+
+  .chat-sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  .chat-sidebar.collapsed {
+    width: min(80vw, 300px);
+    border-right-color: var(--chat-border);
+  }
+
+  .chat-right-sidebar {
+    position: fixed;
+    right: 0;
+    top: var(--chat-titlebar-h, 48px);
+    height: calc(100% - var(--chat-titlebar-h, 48px));
+    width: min(80vw, 320px);
+    transform: translateX(100%);
+    box-shadow: -4px 0 16px rgba(42, 38, 34, 0.08);
+  }
+
+  .chat-right-sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  .chat-right-sidebar.collapsed {
+    width: min(80vw, 320px);
+    border-left-color: var(--chat-border);
+  }
+
   .chat-welcome__prompts {
     grid-template-columns: 1fr;
-  }
-  .chat-right-sidebar {
-    width: 240px;
   }
 }
 
@@ -1192,14 +1229,15 @@
   color: #8b2c1f;
 }
 
-/* 侧边栏 backdrop */
-.chat-sidebar-backdrop,
-.chat-right-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(42, 38, 34, 0.08);
-  z-index: 90;
-}
+/* 侧边栏 backdrop (使用统一的 chat-drawer-backdrop) */
+/* .chat-sidebar-backdrop, */
+/* .chat-right-backdrop { */
+/*   position: fixed; */
+/*   inset: 0; */
+/*   background: rgba(42, 38, 34, 0.08); */
+/*   z-index: 90; */
+/* } */
+
 
 /* Shell layout for chat mode (moved from chat-minimal-topbar.css) */
 .shell--chat {
