@@ -66,4 +66,23 @@ describe('TodoWorkPlanCard', () => {
 
     expect(client.listTodos).not.toHaveBeenCalled()
   })
+
+  it('renders loading state while fetching', async () => {
+    vi.mocked(client.listTodos).mockImplementation(() => new Promise(() => {}))
+
+    render(<TodoWorkPlanCard sessionId={TEST_SESSION_ID} />)
+
+    expect(screen.getByText('加载中...')).toBeInTheDocument()
+  })
+
+  it('renders error state with retry button when fetch fails', async () => {
+    vi.mocked(client.listTodos).mockRejectedValue(new Error('Failed to load todos'))
+
+    render(<TodoWorkPlanCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('加载失败')).toBeInTheDocument()
+    })
+    expect(screen.getByText('重试')).toBeInTheDocument()
+  })
 })

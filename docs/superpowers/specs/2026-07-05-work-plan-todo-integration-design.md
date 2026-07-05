@@ -24,6 +24,10 @@
 - 不改动 `ContextDeskPanel`（workspace 视图）调用点
 - 不改动 `TodosTab` / `TodoTree` / `TodoItem`（完整 CRUD 视图保持独立）
 
+### 已知连带影响（接受）
+
+- `ContextDeskPanel`（workspace 视图）调用 `<TodoWorkPlanCard sessionId={...} />` 未显式传 `ownerAgentId`，会自动采用新的默认值 `'planner'`。该视图的「工作计划」从显示会话全部 todos 变为只显示 planner todos。此行为变更经评审确认为可接受（workspace 与聊天页保持一致语义），不改动 `ContextDeskPanel.tsx` 调用点代码。
+
 ## 3. 数据流
 
 ```

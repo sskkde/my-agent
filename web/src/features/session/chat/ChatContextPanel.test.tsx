@@ -39,6 +39,7 @@ describe('ChatContextPanel', () => {
 
   it('renders put-to-desk button', () => {
     render(<ChatContextPanel />)
+    expect(screen.getByTitle('筛选')).toBeInTheDocument()
     expect(screen.getByText('放到书桌')).toBeInTheDocument()
   })
 })
