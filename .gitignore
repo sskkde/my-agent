@@ -76,3 +76,9 @@ secrets/
 
 # Playwright MCP
 .playwright-mcp/
+
+# Compiled JavaScript (TypeScript output)
+src/**/*.js
+tests/**/*.js
+mcp-servers/**/*.js
+vitest.config.js
