@@ -96,7 +96,7 @@ describe('DeskWorkdirCard', () => {
         path: 'src',
       })
 
-    const { container } = render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+    render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
 
     await waitFor(() => {
       expect(screen.getByText('src')).toBeInTheDocument()
@@ -225,6 +225,30 @@ describe('DeskWorkdirCard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('同名文件已存在')).toBeInTheDocument()
+    })
+  })
+
+  it('shows 文件过大 error when upload returns 413', async () => {
+    vi.mocked(client.getSessionWorkdir).mockResolvedValue({
+      workdir: { id: 'wd-1', userId: 'u-1', name: 'project', createdAt: '', updatedAt: '' },
+    })
+    vi.mocked(client.listWorkdirTree).mockResolvedValue({ tree: [], path: '/' })
+    const tooLargeError = new Error('File content exceeds maximum size')
+    ;(tooLargeError as unknown as { status: number }).status = 413
+    vi.mocked(client.uploadWorkdirFile).mockRejectedValue(tooLargeError)
+
+    const file = new File(['x'.repeat(100)], 'big.txt', { type: 'text/plain' })
+
+    render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('放到书桌')).toBeInTheDocument()
+    })
+    const input = screen.getByTestId('desk-file-input') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByText('文件过大')).toBeInTheDocument()
     })
   })
 

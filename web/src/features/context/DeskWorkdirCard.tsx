@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import * as client from '../../api/client'
-import type { WorkdirInfo, WorkdirTreeNode, WorkdirFileContent } from '../../api/client'
+import type { WorkdirInfo, WorkdirTreeNode, WorkdirFileContent } from '../../api/types'
 
 export interface DeskWorkdirCardProps {
   sessionId?: string | null
@@ -144,7 +144,12 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
         }
       } catch (err) {
         if (workdirId === activeWorkdirIdRef.current) {
-          setPreviewError(err instanceof Error ? err.message : 'Failed to load file')
+          const status = (err as unknown as { status?: number })?.status
+          if (status === 413) {
+            setPreviewError('文件过大无法预览')
+          } else {
+            setPreviewError(err instanceof Error ? err.message : 'Failed to load file')
+          }
         }
       } finally {
         if (workdirId === activeWorkdirIdRef.current) {
