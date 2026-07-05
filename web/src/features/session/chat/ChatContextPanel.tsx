@@ -86,22 +86,8 @@ const ChatContextPanel: React.FC<ChatContextPanelProps> = ({ sessionId }) => {
             </svg>
             工作计划
           </span>
-          <div className="chat-rs-panel__actions">
-            <button className="chat-rs-panel__action" aria-label="筛选" title="筛选" onClick={() => showToast('筛选后续接入')}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-              </svg>
-            </button>
-          </div>
         </div>
         <div className="chat-rs-panel__body">
-          <button className="chat-rs-add-btn" onClick={() => showToast('添加任务后续接入')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            <span>添加任务</span>
-          </button>
           <TodoWorkPlanCard sessionId={sessionId} />
         </div>
       </div>

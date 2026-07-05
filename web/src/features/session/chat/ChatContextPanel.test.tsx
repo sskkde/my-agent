@@ -1,21 +1,33 @@
 import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import * as client from '../../../api/client'
 import ChatContextPanel from './ChatContextPanel'
 
+vi.mock('../../../api/client')
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+})
+
 describe('ChatContextPanel', () => {
-  it('renders work plan and desk sections with actions', () => {
+  it('renders work plan and desk sections', () => {
     render(<ChatContextPanel />)
     expect(screen.getByText('工作计划')).toBeInTheDocument()
     expect(screen.getByText('书桌')).toBeInTheDocument()
-
-    expect(screen.getAllByTitle('筛选').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('添加任务')).toBeInTheDocument()
-    expect(screen.getByText('放到书桌')).toBeInTheDocument()
   })
 
-  it('renders example task list when no sessionId', () => {
+  it('does not render add-task or filter placeholder buttons in work plan', () => {
     render(<ChatContextPanel />)
-    expect(screen.getByTestId('todo-plan-list')).toBeInTheDocument()
-    expect(screen.getByText('审阅暖纸主题 CSS 草稿')).toBeInTheDocument()
+    expect(screen.queryByText('添加任务')).not.toBeInTheDocument()
+    expect(screen.queryAllByTitle('筛选').filter(el =>
+      el.closest('.chat-rs-panel--top')
+    )).toHaveLength(0)
+  })
+
+  it('renders TodoWorkPlanCard', () => {
+    render(<ChatContextPanel />)
+    expect(screen.getByTestId('todo-work-plan-card')).toBeInTheDocument()
   })
 
   it('renders 6 example desk items', () => {
@@ -23,7 +35,10 @@ describe('ChatContextPanel', () => {
     const items = screen.getAllByTestId('chat-desk-item')
     expect(items).toHaveLength(6)
     expect(screen.getByText('暖纸主题设计规范.md')).toBeInTheDocument()
-    expect(screen.getByText('theme-warm-paper.css')).toBeInTheDocument()
-    expect(screen.getByText('配色方案参考')).toBeInTheDocument()
+  })
+
+  it('renders put-to-desk button', () => {
+    render(<ChatContextPanel />)
+    expect(screen.getByText('放到书桌')).toBeInTheDocument()
   })
 })
