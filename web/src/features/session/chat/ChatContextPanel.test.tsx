@@ -8,38 +8,36 @@ vi.mock('../../../api/client')
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+  vi.mocked(client.getSessionWorkdir).mockResolvedValue({ workdir: null })
+  vi.mocked(client.listWorkdirTree).mockResolvedValue({ tree: [], path: '' })
 })
 
 describe('ChatContextPanel', () => {
-  it('renders work plan and desk sections', () => {
+  it('renders work plan and desk titles', () => {
     render(<ChatContextPanel />)
     expect(screen.getByText('工作计划')).toBeInTheDocument()
     expect(screen.getByText('书桌')).toBeInTheDocument()
   })
 
-  it('does not render add-task or filter placeholder buttons in work plan', () => {
-    render(<ChatContextPanel />)
-    expect(screen.queryByText('添加任务')).not.toBeInTheDocument()
-    expect(screen.queryAllByTitle('筛选').filter(el =>
-      el.closest('.chat-rs-panel--top')
-    )).toHaveLength(0)
-  })
-
-  it('renders TodoWorkPlanCard', () => {
+  it('renders TodoWorkPlanCard and DeskWorkdirCard', () => {
     render(<ChatContextPanel />)
     expect(screen.getByTestId('todo-work-plan-card')).toBeInTheDocument()
+    expect(screen.getByTestId('desk-workdir-card')).toBeInTheDocument()
   })
 
-  it('renders 6 example desk items', () => {
+  it('does not render 放到书桌 button at ChatContextPanel level (it lives inside DeskWorkdirCard)', () => {
     render(<ChatContextPanel />)
-    const items = screen.getAllByTestId('chat-desk-item')
-    expect(items).toHaveLength(6)
-    expect(screen.getByText('暖纸主题设计规范.md')).toBeInTheDocument()
+    expect(screen.queryByText('放到书桌')).not.toBeInTheDocument()
   })
 
-  it('renders put-to-desk button', () => {
+  it('does not render 筛选 button', () => {
     render(<ChatContextPanel />)
-    expect(screen.getByTitle('筛选')).toBeInTheDocument()
-    expect(screen.getByText('放到书桌')).toBeInTheDocument()
+    expect(screen.queryAllByTitle('筛选')).toHaveLength(0)
+  })
+
+  it('does not render example desk items', () => {
+    render(<ChatContextPanel />)
+    expect(screen.queryByText('暖纸主题设计规范.md')).not.toBeInTheDocument()
+    expect(screen.queryByText('theme-warm-paper.css')).not.toBeInTheDocument()
   })
 })
