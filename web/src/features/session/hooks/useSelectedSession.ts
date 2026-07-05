@@ -19,6 +19,13 @@ import { safeReadLocalStorage } from '../session-migration'
 export interface UseSelectedSessionOptions {
   initialSessionId?: string
   navigate?: (path: string) => void
+  /**
+   * Known-valid session IDs (typically from the session list). When non-empty,
+   * the hook clears `selectedSessionId` if it is not in this list. When empty
+   * (list not loaded yet), the hook leaves `selectedSessionId` untouched so a
+   * stale localStorage value survives until the list arrives.
+   */
+  validSessionIds?: string[]
 }
 
 export interface UseSelectedSessionReturn {
@@ -52,6 +59,16 @@ export function useSelectedSession(options?: UseSelectedSessionOptions): UseSele
       setSelectedSessionId(options.initialSessionId)
     }
   }, [options?.initialSessionId, selectedSessionId])
+
+  // Reconcile against the known-valid session list. Only clears when the list
+  // is non-empty (loaded) and the current selection is absent — avoids wiping
+  // a valid selection before the list arrives.
+  useEffect(() => {
+    const validIds = options?.validSessionIds
+    if (validIds && validIds.length > 0 && selectedSessionId && !validIds.includes(selectedSessionId)) {
+      setSelectedSessionId(null)
+    }
+  }, [options?.validSessionIds, selectedSessionId])
 
   // Persist selected session ID to localStorage
   useEffect(() => {

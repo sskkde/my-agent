@@ -28,6 +28,14 @@ type StreamStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'erro
 const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  // Bridge ref so useSessionList's onSessionCreated can call setSelectedSessionId
+  // without forcing useSelectedSession to be declared before useSessionList.
+  const setSelectedSessionIdRef = useRef<React.Dispatch<React.SetStateAction<string | null>> | null>(null)
+
+  const { sessions, sessionsLoading, sessionsError, fetchSessions, handleCreateSession } = useSessionList({
+    onSessionCreated: (sessionId: string) => setSelectedSessionIdRef.current?.(sessionId),
+  })
+
   const {
     selectedSessionId,
     setSelectedSessionId,
@@ -35,11 +43,13 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     setSelectedSession,
     selectedSessionIdRef,
     handleSelectSession,
-  } = useSelectedSession({ initialSessionId, navigate })
-
-  const { sessions, sessionsLoading, sessionsError, fetchSessions, handleCreateSession } = useSessionList({
-    onSessionCreated: setSelectedSessionId,
+  } = useSelectedSession({
+    initialSessionId,
+    navigate,
+    validSessionIds: sessions.map((s) => s.sessionId),
   })
+
+  setSelectedSessionIdRef.current = setSelectedSessionId
 
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
   const [timelineLoading, setTimelineLoading] = useState(false)

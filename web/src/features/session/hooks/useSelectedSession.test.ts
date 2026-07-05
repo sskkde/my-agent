@@ -229,4 +229,54 @@ describe('useSelectedSession', () => {
       expect(result.current.selectedSessionId).toBe('session_xyz')
     })
   })
+
+  describe('validSessionIds reconciliation', () => {
+    it('clears selectedSessionId when it is not in validSessionIds', () => {
+      localStorage.setItem(SELECTED_SESSION_KEY, 'ses_stale')
+
+      const { result, rerender } = renderHook(
+        ({ validSessionIds }) => useSelectedSession({ validSessionIds }),
+        {
+          initialProps: { validSessionIds: [] as string[] },
+        },
+      )
+
+      expect(result.current.selectedSessionId).toBe('ses_stale')
+
+      rerender({ validSessionIds: ['ses_a', 'ses_b'] })
+
+      expect(result.current.selectedSessionId).toBeNull()
+      expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBeNull()
+    })
+
+    it('keeps selectedSessionId when it is present in validSessionIds', () => {
+      localStorage.setItem(SELECTED_SESSION_KEY, 'ses_keep')
+
+      const { result, rerender } = renderHook(
+        ({ validSessionIds }) => useSelectedSession({ validSessionIds }),
+        {
+          initialProps: { validSessionIds: [] as string[] },
+        },
+      )
+
+      rerender({ validSessionIds: ['ses_keep', 'ses_other'] })
+
+      expect(result.current.selectedSessionId).toBe('ses_keep')
+    })
+
+    it('does not clear when validSessionIds is empty (list not loaded yet)', () => {
+      localStorage.setItem(SELECTED_SESSION_KEY, 'ses_unknown')
+
+      const { result, rerender } = renderHook(
+        ({ validSessionIds }) => useSelectedSession({ validSessionIds }),
+        {
+          initialProps: { validSessionIds: [] as string[] },
+        },
+      )
+
+      rerender({ validSessionIds: [] })
+
+      expect(result.current.selectedSessionId).toBe('ses_unknown')
+    })
+  })
 })
