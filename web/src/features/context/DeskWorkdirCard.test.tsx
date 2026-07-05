@@ -97,4 +97,63 @@ describe('DeskWorkdirCard', () => {
     })
     expect(client.listWorkdirTree).toHaveBeenCalledWith('wd-1', 'src')
   })
+
+  it('shows read-only preview when file is clicked', async () => {
+    vi.mocked(client.getSessionWorkdir).mockResolvedValue({
+      workdir: { id: 'wd-1', userId: 'u-1', name: 'project', createdAt: '', updatedAt: '' },
+    })
+    vi.mocked(client.listWorkdirTree).mockResolvedValue({
+      tree: [{ name: 'README.md', type: 'file', relativePath: 'README.md' }],
+      path: '/',
+    })
+    vi.mocked(client.readWorkdirFile).mockResolvedValue({
+      path: 'README.md',
+      content: '# Hello World',
+      sizeBytes: 13,
+      modifiedAt: '2024-01-01T00:00:00Z',
+    })
+
+    render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('README.md')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('desk-tree-node-README.md'))
+
+    await waitFor(() => {
+      expect(screen.getByText('# Hello World')).toBeInTheDocument()
+    })
+    expect(client.readWorkdirFile).toHaveBeenCalledWith('wd-1', 'README.md')
+    expect(screen.getByText('关闭')).toBeInTheDocument()
+  })
+
+  it('closes preview when close button is clicked', async () => {
+    vi.mocked(client.getSessionWorkdir).mockResolvedValue({
+      workdir: { id: 'wd-1', userId: 'u-1', name: 'project', createdAt: '', updatedAt: '' },
+    })
+    vi.mocked(client.listWorkdirTree).mockResolvedValue({
+      tree: [{ name: 'README.md', type: 'file', relativePath: 'README.md' }],
+      path: '/',
+    })
+    vi.mocked(client.readWorkdirFile).mockResolvedValue({
+      path: 'README.md',
+      content: '# Hello World',
+      sizeBytes: 13,
+      modifiedAt: '2024-01-01T00:00:00Z',
+    })
+
+    render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('README.md')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('desk-tree-node-README.md'))
+    await waitFor(() => {
+      expect(screen.getByText('# Hello World')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('关闭'))
+    expect(screen.queryByText('# Hello World')).not.toBeInTheDocument()
+  })
 })

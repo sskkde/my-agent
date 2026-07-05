@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import * as client from '../../api/client'
-import type { WorkdirInfo, WorkdirTreeNode } from '../../api/client'
+import type { WorkdirInfo, WorkdirTreeNode, WorkdirFileContent } from '../../api/client'
 
 export interface DeskWorkdirCardProps {
   sessionId?: string | null
@@ -20,6 +20,9 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
   const [treeLoadingPaths, setTreeLoadingPaths] = useState<Set<string>>(new Set())
   const [treeErrorByPath, setTreeErrorByPath] = useState<Record<string, string>>({})
+  const [previewFile, setPreviewFile] = useState<WorkdirFileContent | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
 
   const sessionIdRef = useRef(sessionId)
   useEffect(() => {
@@ -124,6 +127,37 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
     [treeCache, loadTree],
   )
 
+  const handleFileClick = useCallback(
+    async (relativePath: string) => {
+      const workdirId = activeWorkdirIdRef.current
+      if (!workdirId) return
+      setPreviewLoading(true)
+      setPreviewError(null)
+      setPreviewFile(null)
+      try {
+        const content = await client.readWorkdirFile(workdirId, relativePath)
+        if (workdirId === activeWorkdirIdRef.current) {
+          setPreviewFile(content)
+        }
+      } catch (err) {
+        if (workdirId === activeWorkdirIdRef.current) {
+          setPreviewError(err instanceof Error ? err.message : 'Failed to load file')
+        }
+      } finally {
+        if (workdirId === activeWorkdirIdRef.current) {
+          setPreviewLoading(false)
+        }
+      }
+    },
+    [],
+  )
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewFile(null)
+    setPreviewError(null)
+    setPreviewLoading(false)
+  }, [])
+
   const renderTreeNode = (node: WorkdirTreeNode, depth: number): React.ReactNode => {
     const isDir = node.type === 'directory'
     const isExpanded = expandedPaths.has(node.relativePath)
@@ -137,7 +171,7 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
           className={`desk-tree-node desk-tree-node--${node.type}`}
           style={{ paddingLeft: `${depth * 16}px`}}
           data-testid={`desk-tree-node-${node.relativePath}`}
-          onClick={() => (isDir ? handleToggleDir(node.relativePath) : undefined)}
+          onClick={() => (isDir ? handleToggleDir(node.relativePath) : handleFileClick(node.relativePath))}
           role="treeitem"
         >
           <span className="desk-tree-node__chevron">
@@ -196,6 +230,37 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
               renderTreeNode(node, 0),
             )}
           </div>
+          {(previewLoading || previewError || previewFile) && (
+            <div className="desk-file-preview" data-testid="desk-file-preview">
+              <div className="desk-file-preview__header">
+                <span className="desk-file-preview__path">
+                  {previewFile?.path || '加载中...'}
+                </span>
+                <button
+                  className="desk-file-preview__close"
+                  onClick={handleClosePreview}
+                  data-testid="desk-file-preview-close"
+                >
+                  关闭
+                </button>
+              </div>
+              {previewLoading ? (
+                <div className="desk-file-preview__loading">⏳ 加载中...</div>
+              ) : previewError ? (
+                <div className="desk-file-preview__error">{previewError}</div>
+              ) : previewFile ? (
+                <>
+                  <pre className="desk-file-preview__content" data-testid="desk-file-preview-content">
+                    {previewFile.content}
+                  </pre>
+                  <div className="desk-file-preview__meta">
+                    <span>{previewFile.sizeBytes} 字节</span>
+                    <span>修改于 {new Date(previewFile.modifiedAt).toLocaleString()}</span>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
       )}
     </div>
