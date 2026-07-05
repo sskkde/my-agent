@@ -6,10 +6,8 @@ web/node_modules
 dist
 web/dist
 
-# Database files
-data/*.db
-data/*.db-wal
-data/*.db-shm
+# Database files and runtime data
+data/
 
 # Environment files
 .env
@@ -21,6 +19,16 @@ secrets/
 # Git
 .git
 .gitignore
+
+# Hidden metadata directories
+.sisyphus/
+.omo/
+.codegraph
+.release-readiness/
+.superpowers/
+.evidence/
+.playwright-mcp/
+.github/
 
 # IDE
 .vscode
