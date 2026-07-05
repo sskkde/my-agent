@@ -5,6 +5,18 @@ import * as client from '../../api/client'
 
 vi.mock('../../api/client')
 
+// Polyfill File.text() for jsdom (not available in jsdom <25)
+if (!File.prototype.text) {
+  File.prototype.text = function () {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsText(this)
+    })
+  }
+}
+
 const TEST_SESSION_ID = 'ses_desk_test'
 
 beforeEach(() => {
@@ -155,5 +167,76 @@ describe('DeskWorkdirCard', () => {
 
     fireEvent.click(screen.getByText('关闭'))
     expect(screen.queryByText('# Hello World')).not.toBeInTheDocument()
+  })
+
+  it('uploads file and refreshes tree when 放到书桌 is clicked', async () => {
+    vi.mocked(client.getSessionWorkdir).mockResolvedValue({
+      workdir: { id: 'wd-1', userId: 'u-1', name: 'project', createdAt: '', updatedAt: '' },
+    })
+    vi.mocked(client.listWorkdirTree)
+      .mockResolvedValueOnce({ tree: [], path: '/' })
+      .mockResolvedValueOnce({
+        tree: [{ name: 'notes.txt', type: 'file', relativePath: 'notes.txt' }],
+        path: '/',
+      })
+    vi.mocked(client.uploadWorkdirFile).mockResolvedValue({
+      path: 'notes.txt',
+      sizeBytes: 5,
+      modifiedAt: '2024-01-01T00:00:00Z',
+    })
+
+    const file = new File(['hello'], 'notes.txt', { type: 'text/plain' })
+
+    render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('放到书桌')).toBeInTheDocument()
+    })
+
+    const input = screen.getByTestId('desk-file-input') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(client.uploadWorkdirFile).toHaveBeenCalledWith('wd-1', 'notes.txt', 'hello')
+    })
+    await waitFor(() => {
+      expect(screen.getByText('notes.txt')).toBeInTheDocument()
+    })
+  })
+
+  it('shows error when upload returns 409 conflict', async () => {
+    vi.mocked(client.getSessionWorkdir).mockResolvedValue({
+      workdir: { id: 'wd-1', userId: 'u-1', name: 'project', createdAt: '', updatedAt: '' },
+    })
+    vi.mocked(client.listWorkdirTree).mockResolvedValue({ tree: [], path: '/' })
+    const conflictError = new Error('File already exists')
+    ;(conflictError as unknown as { status: number }).status = 409
+    vi.mocked(client.uploadWorkdirFile).mockRejectedValue(conflictError)
+
+    const file = new File(['hello'], 'dup.txt', { type: 'text/plain' })
+
+    render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('放到书桌')).toBeInTheDocument()
+    })
+    const input = screen.getByTestId('desk-file-input') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(screen.getByText('同名文件已存在')).toBeInTheDocument()
+    })
+  })
+
+  it('disables 放到书桌 button when no active workdir', async () => {
+    vi.mocked(client.getSessionWorkdir).mockResolvedValue({ workdir: null })
+
+    render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('暂无书桌内容')).toBeInTheDocument()
+    })
+    // Button should not be present in empty state (no workdir to upload to)
+    expect(screen.queryByText('放到书桌')).not.toBeInTheDocument()
   })
 })

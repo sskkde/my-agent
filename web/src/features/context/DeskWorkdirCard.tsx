@@ -23,6 +23,9 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
   const [previewFile, setPreviewFile] = useState<WorkdirFileContent | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const sessionIdRef = useRef(sessionId)
   useEffect(() => {
@@ -158,6 +161,49 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
     setPreviewLoading(false)
   }, [])
 
+  const handleUploadClick = useCallback(() => {
+    setUploadError(null)
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileSelected = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const workdirId = activeWorkdirIdRef.current
+      if (!workdirId) return
+
+      setUploading(true)
+      setUploadError(null)
+      try {
+        const content = await file.text()
+        await client.uploadWorkdirFile(workdirId, file.name, content)
+        if (workdirId === activeWorkdirIdRef.current) {
+          await loadTree('')
+        }
+      } catch (err) {
+        if (workdirId === activeWorkdirIdRef.current) {
+          const status = (err as unknown as { status?: number })?.status
+          if (status === 409) {
+            setUploadError('同名文件已存在')
+          } else if (status === 413) {
+            setUploadError('文件过大')
+          } else {
+            setUploadError(err instanceof Error ? err.message : '上传失败')
+          }
+        }
+      } finally {
+        if (workdirId === activeWorkdirIdRef.current) {
+          setUploading(false)
+        }
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+    },
+    [loadTree],
+  )
+
   const renderTreeNode = (node: WorkdirTreeNode, depth: number): React.ReactNode => {
     const isDir = node.type === 'directory'
     const isExpanded = expandedPaths.has(node.relativePath)
@@ -224,6 +270,29 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
         </div>
       ) : (
         <div className="desk-workdir-card__content" data-testid="desk-workdir-content">
+          <div className="desk-workdir-card__header">
+            <button
+              className="desk-upload-btn"
+              onClick={handleUploadClick}
+              disabled={uploading}
+              title="仅支持文本文件"
+              data-testid="desk-upload-btn"
+            >
+              {uploading ? '上传中...' : '放到书桌'}
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelected}
+              style={{ display: 'none' }}
+              data-testid="desk-file-input"
+            />
+          </div>
+          {uploadError && (
+            <div className="desk-upload-error" data-testid="desk-upload-error">
+              {uploadError}
+            </div>
+          )}
           <div className="desk-workdir-card__workdir-name">{activeWorkdir.name}</div>
           <div className="desk-tree" data-testid="desk-tree">
             {(treeCache[''] || []).map((node) =>
