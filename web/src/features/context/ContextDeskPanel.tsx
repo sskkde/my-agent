@@ -9,6 +9,7 @@
 import React from 'react'
 import type { TabId } from '../../components/TabNav'
 import TodoWorkPlanCard from './TodoWorkPlanCard'
+import DeskWorkdirCard from './DeskWorkdirCard'
 
 // =============================================================================
 // ContextDeskPanel Props
@@ -60,13 +61,7 @@ const ContextDeskPanel: React.FC<ContextDeskPanelProps> = ({
           <h3 id="workspace-desk-title" className="workspace-section__title">书桌</h3>
         </div>
         <div className="workspace-card workspace-card--desk" data-testid="workspace-desk">
-          <div className="workspace-desk__placeholder">
-            <div className="workspace-desk__icon">📁</div>
-            <div className="workspace-desk__text">
-              <span className="workspace-desk__title">文件与资源</span>
-              <span className="workspace-desk__hint">上传或关联文件以在此处查看</span>
-            </div>
-          </div>
+          <DeskWorkdirCard sessionId={scopedSessionId} />
         </div>
       </section>
     </div>

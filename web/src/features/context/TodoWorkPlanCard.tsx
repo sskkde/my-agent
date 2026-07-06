@@ -71,6 +71,8 @@ const TodoWorkPlanCard: React.FC<TodoWorkPlanCardProps> = ({
   const fetchTodos = useCallback(async () => {
     if (!sessionId) {
       setTodos([])
+      setLoading(false)
+      setError(null)
       return
     }
 

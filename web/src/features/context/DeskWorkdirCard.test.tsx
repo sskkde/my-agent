@@ -61,6 +61,23 @@ describe('DeskWorkdirCard', () => {
     expect(screen.getByText('重试')).toBeInTheDocument()
   })
 
+  it('clears stale error state when sessionId becomes null', async () => {
+    vi.mocked(client.getSessionWorkdir).mockRejectedValue(new Error('Session not found'))
+
+    const { rerender } = render(<DeskWorkdirCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('加载失败')).toBeInTheDocument()
+    })
+
+    rerender(<DeskWorkdirCard sessionId={null} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('暂无书桌内容')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('加载失败')).not.toBeInTheDocument()
+  })
+
   it('renders root tree nodes when active workdir exists', async () => {
     vi.mocked(client.getSessionWorkdir).mockResolvedValue({
       workdir: { id: 'wd-1', userId: 'u-1', name: 'project', createdAt: '', updatedAt: '' },

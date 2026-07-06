@@ -5,6 +5,7 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import ContextDeskPanel from './ContextDeskPanel'
+import * as client from '../../api/client'
 import type {
   ApprovalCardData,
   MemoryCardData,
@@ -12,6 +13,27 @@ import type {
   ToolActivityCardData,
 } from './card-contracts'
 import { loading, ready, empty, error } from './card-state'
+
+vi.mock('../../api/client')
+
+describe('ContextDeskPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
+    vi.mocked(client.getSessionWorkdir).mockResolvedValue({ workdir: null })
+    vi.mocked(client.listWorkdirTree).mockResolvedValue({ tree: [], path: '' })
+  })
+
+  it('mounts live work plan and desk cards for the current session', () => {
+    render(<ContextDeskPanel sessionId="session-1" />)
+
+    expect(screen.getByTestId('workspace-plan')).toBeInTheDocument()
+    expect(screen.getByTestId('todo-work-plan-card')).toBeInTheDocument()
+    expect(screen.getByTestId('workspace-desk')).toBeInTheDocument()
+    expect(screen.getByTestId('desk-workdir-card')).toBeInTheDocument()
+    expect(screen.queryByText('文件与资源')).not.toBeInTheDocument()
+  })
+})
 
 
 describe.skip('ContextDeskPanel legacy tests', () => {

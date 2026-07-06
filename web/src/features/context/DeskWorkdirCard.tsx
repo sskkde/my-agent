@@ -35,6 +35,8 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
   const fetchWorkdir = useCallback(async () => {
     if (!sessionId) {
       setActiveWorkdir(null)
+      setLoading(false)
+      setError(null)
       return
     }
     const currentSessionId = sessionId

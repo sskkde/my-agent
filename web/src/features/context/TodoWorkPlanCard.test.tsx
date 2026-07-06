@@ -85,4 +85,21 @@ describe('TodoWorkPlanCard', () => {
     })
     expect(screen.getByText('重试')).toBeInTheDocument()
   })
+
+  it('clears stale error state when sessionId becomes null', async () => {
+    vi.mocked(client.listTodos).mockRejectedValue(new Error('Session not found'))
+
+    const { rerender } = render(<TodoWorkPlanCard sessionId={TEST_SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('加载失败')).toBeInTheDocument()
+    })
+
+    rerender(<TodoWorkPlanCard sessionId={null} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('暂无工作计划')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('加载失败')).not.toBeInTheDocument()
+  })
 })
