@@ -38,6 +38,20 @@ describe('xlsx.read', () => {
     await cleanupWorkspace(workspace)
   })
 
+  it('reads from a caller-provided workspace root', async () => {
+    const externalRoot = await createWorkspace('xlsx-external-root-test')
+    try {
+      await fs.copyFile(path.join(FIXTURE_DIR, 'employees.xlsx'), path.join(externalRoot.root, 'employees.xlsx'))
+
+      const result = await readXlsx({ inputPath: 'employees.xlsx' }, externalRoot.root)
+
+      expect(result.sheetName).toBe('Employees')
+      expect(result.rows).toHaveLength(5)
+    } finally {
+      await cleanupWorkspace(externalRoot)
+    }
+  })
+
   it('reads basic employee data with headers and rows', async () => {
     const result = await readXlsx(
       { inputPath: 'employees.xlsx' },

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createApiServer } from '../../../src/api/server.js'
 import { createApiContext, isApiContextError, type ApiContext } from '../../../src/api/context.js'
 import type { FastifyInstance } from 'fastify'
+import { hashPassword } from '../../../src/storage/auth-crypto.js'
 
 describe('Auth Routes', () => {
   let server: FastifyInstance
@@ -283,6 +284,130 @@ describe('Auth Routes', () => {
 
       expect(response.status).toBe(200)
       await response.text()
+    })
+  })
+
+  describe('Disabled users', () => {
+    it('persists disabled status in admin user list', async () => {
+      const adminCookie = await createUserAndLogin('admin', 'password123')
+      const passwordHash = await hashPassword('password456')
+      const disabledUser = context.stores.userStore.create({
+        userId: 'disabled-user-1',
+        username: 'disableduser',
+        passwordHash,
+      })
+
+      const patchResponse = await fetch(`${baseUrl}/api/v1/admin/users/${disabledUser.userId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+        body: JSON.stringify({ status: 'disabled' }),
+      })
+      expect(patchResponse.status).toBe(200)
+
+      const listResponse = await fetch(`${baseUrl}/api/v1/admin/users`, {
+        headers: { Cookie: adminCookie },
+      })
+      expect(listResponse.status).toBe(200)
+      const listBody = (await listResponse.json()) as {
+        data: { users: Array<{ userId: string; status: string }> }
+      }
+      expect(listBody.data.users.find((user) => user.userId === disabledUser.userId)?.status).toBe('disabled')
+    })
+
+    it('rejects login for disabled users', async () => {
+      const adminCookie = await createUserAndLogin('admin', 'password123')
+      const passwordHash = await hashPassword('password456')
+      const disabledUser = context.stores.userStore.create({
+        userId: 'disabled-user-2',
+        username: 'nologin',
+        passwordHash,
+      })
+      context.stores.userStore.updateStatus(disabledUser.userId, 'disabled')
+
+      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+        body: JSON.stringify({ username: 'nologin', password: 'password456' }),
+      })
+      expect(response.status).toBe(401)
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('UNAUTHORIZED')
+    })
+
+    it('rejects existing sessions for disabled users', async () => {
+      await createUserAndLogin('admin', 'password123')
+      const passwordHash = await hashPassword('password456')
+      const targetUser = context.stores.userStore.create({
+        userId: 'disabled-user-3',
+        username: 'sessionuser',
+        passwordHash,
+      })
+
+      const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'sessionuser', password: 'password456' }),
+      })
+      expect(loginResponse.status).toBe(200)
+      const targetCookie = loginResponse.headers.get('set-cookie')
+      expect(targetCookie).toBeDefined()
+
+      context.stores.userStore.updateStatus(targetUser.userId, 'disabled')
+
+      const meResponse = await fetch(`${baseUrl}/api/v1/auth/me`, {
+        headers: { Cookie: targetCookie! },
+      })
+      expect(meResponse.status).toBe(401)
+    })
+  })
+
+  describe('System settings session TTL', () => {
+    it('uses configured sessionTokenTtlHours for login tokens', async () => {
+      const cookie = await createUserAndLogin('admin', 'password123')
+      const settingsResponse = await fetch(`${baseUrl}/api/v1/admin/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ sessionTokenTtlHours: 2 }),
+      })
+      expect(settingsResponse.status).toBe(200)
+
+      const beforeLogin = Date.now()
+      const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: 'password123' }),
+      })
+      expect(loginResponse.status).toBe(200)
+      const storedToken = context.connection.query<{ expires_at: string }>(
+        'SELECT expires_at FROM auth_tokens ORDER BY created_at DESC LIMIT 1',
+      )[0]
+      const ttlMs = new Date(storedToken.expires_at).getTime() - beforeLogin
+      expect(ttlMs).toBeGreaterThan(110 * 60 * 1000)
+      expect(ttlMs).toBeLessThan(130 * 60 * 1000)
+    })
+  })
+
+  describe('Admin settings persistence', () => {
+    it('persists PATCH /api/v1/admin/settings and returns the same values on GET', async () => {
+      const cookie = await createUserAndLogin('admin', 'password123')
+
+      const patchResponse = await fetch(`${baseUrl}/api/v1/admin/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ rateLimitPerMinute: 77, rateLimitPerHour: 1700, sessionTokenTtlHours: 12 }),
+      })
+      expect(patchResponse.status).toBe(200)
+
+      const getResponse = await fetch(`${baseUrl}/api/v1/admin/settings`, {
+        headers: { Cookie: cookie },
+      })
+      expect(getResponse.status).toBe(200)
+      const body = (await getResponse.json()) as { data: { settings: Record<string, number> } }
+      expect(body.data.settings).toEqual({
+        rateLimitPerMinute: 77,
+        rateLimitPerHour: 1700,
+        sessionTokenTtlHours: 12,
+      })
     })
   })
 

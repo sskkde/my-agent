@@ -116,7 +116,7 @@ function addSlideContent(pptx: PptxGenJS, slideDef: SlideDefinition): string[] {
           options: { bullet: true },
         }))
         slide.addText(rightText, {
-          x: 50, y: 1.3, w: '45%', h: 4,
+          x: 5.0, y: 1.3, w: '45%', h: 4,
           fontSize: 14, valign: 'top',
         })
       }

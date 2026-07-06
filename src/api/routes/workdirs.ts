@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import path from 'node:path'
 import fs from 'node:fs'
+import { createReadStream } from 'node:fs'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
@@ -10,6 +11,14 @@ import type { WorkdirStore, Workdir } from '../../storage/workdir-store.js'
 import type { SessionStore } from '../../storage/session-store.js'
 import { validateWorkdirPath, validateWorkdirWritePath } from '../../workdirs/workdir-paths.js'
 import { WORKDIR_MAX_FILE_BYTES, WORKDIR_MAX_FILES, WORKDIR_QUOTA_BYTES } from '../../workdirs/workdir-paths.js'
+
+export const WORKDIR_TEXT_READ_MAX_BYTES = 1 * 1024 * 1024
+
+function sanitizeDownloadFileName(filePath: string): string {
+  const baseName = path.basename(filePath)
+  const sanitized = baseName.replace(/[\r\n"\\]/g, '')
+  return sanitized.length > 0 ? sanitized : 'download'
+}
 
 interface WorkdirResponse {
   id: string
@@ -457,15 +466,15 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
       }
 
       try {
-        const stat = fs.statSync(validation.canonicalPath)
+        const stat = await fs.promises.stat(validation.canonicalPath)
         if (stat.isDirectory()) {
           return reply.code(400).send(envelopeError('BAD_REQUEST', 'Path is a directory, not a file', request.requestId))
         }
-        if (stat.size > WORKDIR_MAX_FILE_BYTES) {
-          return reply.code(413).send(envelopeError('QUOTA_EXCEEDED', `File exceeds maximum read size of ${WORKDIR_MAX_FILE_BYTES} bytes`, request.requestId))
+        if (stat.size > WORKDIR_TEXT_READ_MAX_BYTES) {
+          return reply.code(413).send(envelopeError('QUOTA_EXCEEDED', `File exceeds maximum text read size of ${WORKDIR_TEXT_READ_MAX_BYTES} bytes`, request.requestId))
         }
 
-        const content = fs.readFileSync(validation.canonicalPath, 'utf-8')
+        const content = await fs.promises.readFile(validation.canonicalPath, 'utf-8')
         return reply.code(200).send(
           success(
             {
@@ -720,8 +729,8 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
         }
         return reply
           .header('Content-Type', 'application/octet-stream')
-          .header('Content-Disposition', `attachment; filename="${path.basename(filePath).replace(/"/g, '')}"`)
-          .send(fs.readFileSync(validation.canonicalPath))
+          .header('Content-Disposition', `attachment; filename="${sanitizeDownloadFileName(filePath)}"`)
+          .send(createReadStream(validation.canonicalPath))
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           return reply.code(404).send(envelopeError('NOT_FOUND', 'File not found', request.requestId))

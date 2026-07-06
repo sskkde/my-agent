@@ -47,7 +47,7 @@ beforeEach(() => {
   globalThis.URL.createObjectURL = mockCreateObjectURL
   globalThis.URL.revokeObjectURL = mockRevokeObjectURL
   globalThis.Blob = mockBlob as unknown as typeof Blob
-  mockBlob.mockImplementation((parts: BlobPart[]) => ({ parts } as unknown as Blob))
+  mockBlob.mockImplementation(function (parts: BlobPart[]) { return { parts } } as unknown as typeof Blob)
 })
 
 afterEach(() => {

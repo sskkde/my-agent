@@ -2,12 +2,14 @@ import type { ConnectionManager } from './connection.js'
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 export type UserRole = 'admin' | 'user' | 'service'
+export type UserStatus = 'active' | 'disabled'
 
 export interface User {
   userId: string
   username: string
   passwordHash: string
   role: UserRole
+  status: UserStatus
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +28,7 @@ export interface UserStore {
   getFirstCreated(tenantId?: string): User | null
   list(tenantId?: string): User[]
   updatePassword(userId: string, passwordHash: string, tenantId?: string): boolean
+  updateStatus(userId: string, status: UserStatus, tenantId?: string): User | null
 }
 
 interface UserRow {
@@ -33,6 +36,7 @@ interface UserRow {
   username: string
   password_hash: string
   role: UserRole
+  status: UserStatus
   created_at: string
   updated_at: string
 }
@@ -53,17 +57,18 @@ class UserStoreImpl implements UserStore {
       username: input.username,
       passwordHash: input.passwordHash,
       role,
+      status: 'active',
       createdAt: now,
       updatedAt: now,
     }
 
     const sql = `
       INSERT INTO users (
-        user_id, username, password_hash, role, created_at, updated_at, tenant_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        user_id, username, password_hash, role, status, created_at, updated_at, tenant_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
 
-    const params = [user.userId, user.username, user.passwordHash, user.role, user.createdAt, user.updatedAt, tenantId]
+    const params = [user.userId, user.username, user.passwordHash, user.role, user.status, user.createdAt, user.updatedAt, tenantId]
 
     this.connection.exec(sql, params)
     return user
@@ -108,6 +113,15 @@ class UserStoreImpl implements UserStore {
     return rows.map((row) => this.rowToUser(row))
   }
 
+  updateStatus(userId: string, status: UserStatus, tenantId: string = DEFAULT_TENANT_ID): User | null {
+    const now = new Date().toISOString()
+    this.connection.exec(
+      'UPDATE users SET status = ?, updated_at = ? WHERE tenant_id = ? AND user_id = ?',
+      [status, now, tenantId, userId],
+    )
+    return this.getById(userId, tenantId)
+  }
+
   updatePassword(userId: string, passwordHash: string, tenantId: string = DEFAULT_TENANT_ID): boolean {
     const sql = `
       UPDATE users
@@ -131,6 +145,7 @@ class UserStoreImpl implements UserStore {
       username: row.username,
       passwordHash: row.password_hash,
       role: row.role,
+      status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }

@@ -168,7 +168,7 @@ export class FeishuAdapter implements MessagingAdapter {
 
   async verifyInbound(
     payload: unknown,
-    headers: Record<string, string>,
+    _headers: Record<string, string>,
   ): Promise<boolean> {
     const callback = this.parseCallback(payload)
     if (!callback) {
@@ -181,12 +181,9 @@ export class FeishuAdapter implements MessagingAdapter {
       return false
     }
 
-    // If an encrypt key is configured, verify the signature header
+    // If an encrypt key is configured, encrypted payload decryption is not in scope
     if (this.config.encryptKey) {
-      const signature = headers['x-lark-signature'] ?? headers['X-Lark-Signature']
-      if (!signature) {
-        return false
-      }
+      return false
     }
 
     return true

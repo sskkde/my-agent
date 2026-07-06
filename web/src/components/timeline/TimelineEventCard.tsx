@@ -320,7 +320,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
           </div>
         ) : null
 
-      default:
+      default: {
         if (!event.content && extractAttachments(event.metadata).length === 0) {
           return null
         }
@@ -338,6 +338,7 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
             <AttachmentChips attachments={attachments} />
           </div>
         )
+      }
     }
   }
 

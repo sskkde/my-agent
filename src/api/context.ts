@@ -100,6 +100,7 @@ import { createUploadFileService, type UploadFileService } from '../storage/uplo
 import { createUploadPreviewExtractor, type UploadPreviewExtractor } from '../storage/upload-preview.js'
 import { createWorkdirStore, type WorkdirStore } from '../storage/workdir-store.js'
 import { createSessionWorkdirStateStore, type SessionWorkdirStateStore } from '../storage/session-workdir-state-store.js'
+import { createSystemSettingsStore, type SystemSettingsStore } from '../storage/system-settings-store.js'
 import { createWorkdirService, type WorkdirService } from '../workdirs/workdir-service.js'
 import { ProcessSessionStore } from '../tools/builtins/process-session-store.js'
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js'
@@ -171,6 +172,7 @@ export interface ApiContext {
     fileUploadStore: FileUploadStore
     workdirStore: WorkdirStore
     sessionWorkdirStateStore: SessionWorkdirStateStore
+    systemSettingsStore: SystemSettingsStore
   }
   workdirService: WorkdirService
   providerConfigStore: ProviderConfigStore
@@ -358,6 +360,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let fileUploadStore: FileUploadStore
   let workdirStore: WorkdirStore
   let sessionWorkdirStateStore: SessionWorkdirStateStore
+  let systemSettingsStore: SystemSettingsStore
   let subagentRunStore: SubagentRunStore
   let subagentTranscriptStore: SubagentTranscriptStore
   let subagentProviderPreferenceStore: SubagentProviderPreferenceStore
@@ -437,9 +440,12 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     fileUploadStore = createFileUploadStore(connection)
 	    workdirStore = createWorkdirStore(connection)
 	    sessionWorkdirStateStore = createSessionWorkdirStateStore(connection)
-	    subagentRunStore = createSubagentRunStore(connection)
-	    subagentTranscriptStore = createSubagentTranscriptStore(connection)
-	    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
+ 	    systemSettingsStore =
+ 	      ((existingStores as Record<string, unknown>)?.systemSettingsStore as SystemSettingsStore) ??
+ 	      createSystemSettingsStore(connection)
+ 	    subagentRunStore = createSubagentRunStore(connection)
+ 	    subagentTranscriptStore = createSubagentTranscriptStore(connection)
+ 	    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -937,6 +943,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       fileUploadStore,
       workdirStore,
       sessionWorkdirStateStore,
+      systemSettingsStore,
     },
     providerConfigStore,
     agentConfigStore,

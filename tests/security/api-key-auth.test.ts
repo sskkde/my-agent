@@ -160,6 +160,20 @@ describe('API Key Authentication', () => {
       userApiKey = keyResult.key
     })
 
+    it('rejects API keys bound to disabled users', async () => {
+      const user = context.stores.userStore.getByUsername('testuser')!
+      context.stores.userStore.updateStatus(user.userId, 'disabled')
+
+      const response = await fetch(`${baseUrl}/api/v1/sessions`, {
+        headers: { Authorization: `Bearer ${userApiKey}` },
+      })
+
+      expect(response.status).toBe(401)
+      const body = (await response.json()) as { ok: boolean; error: { code: string } }
+      expect(body.ok).toBe(false)
+      expect(body.error.code).toBe('UNAUTHORIZED')
+    })
+
     it('should access protected endpoint with valid API key via Bearer token', async () => {
       const response = await fetch(`${baseUrl}/api/v1/sessions`, {
         headers: { Authorization: `Bearer ${userApiKey}` },

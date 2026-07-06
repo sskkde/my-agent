@@ -2,26 +2,31 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
-import type { UserRole } from '../../storage/user-store.js'
+import type { UserRole, UserStatus } from '../../storage/user-store.js'
 
 const VALID_ROLES: UserRole[] = ['admin', 'user', 'service']
+const VALID_STATUSES: UserStatus[] = ['active', 'disabled']
 
-function toAdminUser(
-  user: { userId: string; username: string; role: UserRole; createdAt: string; updatedAt: string },
-  status: 'active' | 'disabled' = 'active',
-) {
+function toAdminUser(user: {
+  userId: string
+  username: string
+  role: UserRole
+  status: UserStatus
+  createdAt: string
+  updatedAt: string
+}) {
   return {
     userId: user.userId,
     username: user.username,
     role: user.role,
-    status,
+    status: user.status,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   }
 }
 
 export function registerAdminRoutes(server: FastifyInstance, context: ApiContext): void {
-  const { userStore } = context.stores
+  const { userStore, systemSettingsStore } = context.stores
 
   server.get('/api/v1/admin/users', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!request.requirePermission(ResourceType.users, Action.manage)) {
@@ -54,20 +59,24 @@ export function registerAdminRoutes(server: FastifyInstance, context: ApiContext
     },
   )
 
-  server.patch<{ Params: { userId: string }; Body: { status: 'active' | 'disabled' } }>(
+  server.patch<{ Params: { userId: string }; Body: { status: UserStatus } }>(
     '/api/v1/admin/users/:userId/status',
     async (
-      request: FastifyRequest<{ Params: { userId: string }; Body: { status: 'active' | 'disabled' } }>,
+      request: FastifyRequest<{ Params: { userId: string }; Body: { status: UserStatus } }>,
       reply: FastifyReply,
     ) => {
       if (!request.requirePermission(ResourceType.users, Action.manage)) {
         return reply
       }
-      const user = userStore.getById(request.params.userId)
+      const { status } = request.body
+      if (!VALID_STATUSES.includes(status)) {
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'Invalid user status', request.requestId))
+      }
+      const user = userStore.updateStatus(request.params.userId, status)
       if (!user) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'User not found', request.requestId))
       }
-      return reply.code(200).send(success({ user: toAdminUser(user, request.body.status) }, request.requestId))
+      return reply.code(200).send(success({ user: toAdminUser(user) }, request.requestId))
     },
   )
 
@@ -96,14 +105,7 @@ export function registerAdminRoutes(server: FastifyInstance, context: ApiContext
     if (!request.requirePermission(ResourceType.settings, Action.read)) {
       return reply
     }
-    return reply
-      .code(200)
-      .send(
-        success(
-          { settings: { rateLimitPerMinute: 60, rateLimitPerHour: 1000, sessionTokenTtlHours: 24 } },
-          request.requestId,
-        ),
-      )
+    return reply.code(200).send(success({ settings: systemSettingsStore.get() }, request.requestId))
   })
 
   server.patch<{ Body: { rateLimitPerMinute?: number; rateLimitPerHour?: number; sessionTokenTtlHours?: number } }>(
@@ -117,12 +119,13 @@ export function registerAdminRoutes(server: FastifyInstance, context: ApiContext
       if (!request.requirePermission(ResourceType.settings, Action.manage)) {
         return reply
       }
-      const settings = {
-        rateLimitPerMinute: request.body.rateLimitPerMinute ?? 60,
-        rateLimitPerHour: request.body.rateLimitPerHour ?? 1000,
-        sessionTokenTtlHours: request.body.sessionTokenTtlHours ?? 24,
+      try {
+        const settings = systemSettingsStore.update(request.body)
+        return reply.code(200).send(success({ settings }, request.requestId))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid system settings'
+        return reply.code(400).send(envelopeError('BAD_REQUEST', message, request.requestId))
       }
-      return reply.code(200).send(success({ settings }, request.requestId))
     },
   )
 }

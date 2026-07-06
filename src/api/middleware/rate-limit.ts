@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import rateLimit from '@fastify/rate-limit'
+import type { SystemSettingsStore } from '../../storage/system-settings-store.js'
 
 export interface RateLimitMiddlewareOptions {
   /** Global max requests per timeWindow (default: 100) */
@@ -8,6 +9,7 @@ export interface RateLimitMiddlewareOptions {
   authMax?: number
   /** Time window (default: '1 minute') */
   timeWindow?: string
+  systemSettingsStore?: Pick<SystemSettingsStore, 'get'>
 }
 
 const SSE_TIMELINE_STREAM = '/timeline/stream'
@@ -97,6 +99,9 @@ export async function registerRateLimitMiddleware(
     max: (request: FastifyRequest) => {
       if (isAuthEndpoint(request.url)) {
         return authMax
+      }
+      if (options?.systemSettingsStore) {
+        return options.systemSettingsStore.get().rateLimitPerMinute
       }
       return globalMax
     },

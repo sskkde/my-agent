@@ -6,7 +6,6 @@ import { hashPassword, generateSessionToken, hashToken } from '../../storage/aut
 import { setSessionCookie } from '../middleware/auth.js'
 import { randomUUID } from 'crypto'
 
-const SESSION_TTL_HOURS = 24
 const LOCAL_USER_ID = 'local-user'
 
 async function migrateLocalUserSessions(
@@ -102,7 +101,8 @@ export function registerSetupRoutes(server: FastifyInstance, context: ApiContext
 
       const sessionToken = generateSessionToken()
       const tokenHash = hashToken(sessionToken)
-      const expiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 60 * 60 * 1000).toISOString()
+      const sessionTtlHours = context.stores.systemSettingsStore.get().sessionTokenTtlHours
+      const expiresAt = new Date(Date.now() + sessionTtlHours * 60 * 60 * 1000).toISOString()
 
       authTokenStore.create({
         tokenHash,

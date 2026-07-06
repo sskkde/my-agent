@@ -16,6 +16,13 @@ export function withV1Prefix(path: string): string {
   return `${V1_PREFIX}${normalizedPath}`
 }
 
+function appendOriginalQueryString(requestUrl: string | undefined, redirectPath: string): string {
+  if (!requestUrl) return redirectPath
+  const queryStart = requestUrl.indexOf('?')
+  if (queryStart === -1) return redirectPath
+  return `${redirectPath}${requestUrl.slice(queryStart)}`
+}
+
 export function createLegacyRedirect(legacyPath: string, v1Path: string, method: HTTPMethods = 'GET'): RouteOptions {
   return {
     method,
@@ -29,6 +36,8 @@ export function createLegacyRedirect(legacyPath: string, v1Path: string, method:
       }
 
       // Add deprecation headers for legacy API routes
+      redirectPath = appendOriginalQueryString(request.url, redirectPath)
+
       reply.header('Deprecation', 'true')
       reply.header('Link', `<${redirectPath}>; rel="successor-version"`)
 

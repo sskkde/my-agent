@@ -84,6 +84,23 @@ describe('API version redirect coverage', () => {
     }
   })
 
+  it('preserves query strings when redirecting legacy routes', async () => {
+    const redirect = createLegacyRedirect('/api/sessions', '/api/v1/sessions', 'GET')
+    const reply = {
+      header: vi.fn().mockReturnThis(),
+      redirect: vi.fn().mockReturnThis(),
+    }
+
+    await (redirect.handler as (request: unknown, reply: unknown) => Promise<unknown>).call(
+      null,
+      { params: {}, url: '/api/sessions?limit=10&offset=20' },
+      reply,
+    )
+
+    expect(reply.redirect).toHaveBeenCalledWith('/api/v1/sessions?limit=10&offset=20', 307)
+    expect(reply.header).toHaveBeenCalledWith('Link', '</api/v1/sessions?limit=10&offset=20>; rel="successor-version"')
+  })
+
   it('uses 307 redirects for all body-preserving legacy methods', async () => {
     const bodyMethods = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
     const bodyRoutes = LEGACY_ROUTE_DEFINITIONS.flatMap((route) =>

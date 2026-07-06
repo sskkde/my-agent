@@ -90,7 +90,7 @@ export async function authenticateRequest(
   }
 
   const user = userStore.getById(authToken.userId)
-  if (!user) {
+  if (!user || user.status === 'disabled') {
     return null
   }
 

@@ -6,8 +6,6 @@ import { verifyPassword, generateSessionToken, hashToken } from '../../storage/a
 import { setSessionCookie, clearSessionCookie, getSessionTokenFromRequest } from '../middleware/auth.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
 
-const SESSION_TTL_HOURS = 24
-
 export function registerAuthRoutes(server: FastifyInstance, context: ApiContext): void {
   const userStore = context.stores.userStore
   const authTokenStore = context.stores.authTokenStore
@@ -34,6 +32,10 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid username or password', request.requestId))
       }
 
+      if (user.status === 'disabled') {
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid username or password', request.requestId))
+      }
+
       const isPasswordValid = await verifyPassword(password, user.passwordHash)
       if (!isPasswordValid) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid username or password', request.requestId))
@@ -41,7 +43,8 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
 
       const sessionToken = generateSessionToken()
       const tokenHash = hashToken(sessionToken)
-      const expiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 60 * 60 * 1000).toISOString()
+      const sessionTtlHours = context.stores.systemSettingsStore.get().sessionTokenTtlHours
+      const expiresAt = new Date(Date.now() + sessionTtlHours * 60 * 60 * 1000).toISOString()
 
       authTokenStore.create({
         tokenHash,
@@ -88,6 +91,10 @@ export function registerAuthRoutes(server: FastifyInstance, context: ApiContext)
     const user = userStore.getById(request.user.userId)
     if (!user) {
       return reply.code(401).send(envelopeError('UNAUTHORIZED', 'User not found', request.requestId))
+    }
+
+    if (user.status === 'disabled') {
+      return reply.code(401).send(envelopeError('UNAUTHORIZED', 'User disabled', request.requestId))
     }
 
     const response = {

@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { createHash } from 'crypto'
 import type { ApiKeyStore } from '../../storage/api-key-store.js'
+import type { UserRole, UserStore } from '../../storage/user-store.js'
 import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js'
 import { envelopeError } from '../response-envelope.js'
 
@@ -23,6 +24,7 @@ function hashKey(key: string): string {
 export async function authenticateApiKey(
   request: FastifyRequest,
   apiKeyStore: ApiKeyStore,
+  userStore?: UserStore,
 ): Promise<ApiKeyIdentity | null> {
   const authHeader = request.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -49,6 +51,13 @@ export async function authenticateApiKey(
     return null
   }
 
+  if (apiKey.userId && userStore) {
+    const user = userStore.getById(apiKey.userId)
+    if (!user || user.status === 'disabled') {
+      return null
+    }
+  }
+
   apiKeyStore.updateLastUsed(keyHash)
 
   return {
@@ -58,7 +67,7 @@ export async function authenticateApiKey(
   }
 }
 
-export function registerApiKeyAuth(server: FastifyInstance, apiKeyStore: ApiKeyStore): void {
+export function registerApiKeyAuth(server: FastifyInstance, apiKeyStore: ApiKeyStore, userStore?: UserStore): void {
   server.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
     // Skip if already authenticated or response already sent
     if (request.user || reply.sent) {
@@ -70,13 +79,13 @@ export function registerApiKeyAuth(server: FastifyInstance, apiKeyStore: ApiKeyS
       return
     }
 
-    const identity = await authenticateApiKey(request, apiKeyStore)
+    const identity = await authenticateApiKey(request, apiKeyStore, userStore)
     if (identity) {
       request.apiKey = identity
       request.user = {
         userId: identity.userId ?? identity.id,
         username: `api-key:${identity.id}`,
-        role: identity.role as import('../../storage/user-store.js').UserRole,
+        role: identity.role as UserRole,
         tenantId: DEFAULT_TENANT_ID,
       }
       return

@@ -159,7 +159,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
   registerRequestIdMiddleware(server)
 
   if (context) {
-    await registerRateLimitMiddleware(server)
+    await registerRateLimitMiddleware(server, { systemSettingsStore: context.stores.systemSettingsStore })
     registerSetupRoutes(server, context)
     registerAuthRoutes(server, context)
 
@@ -196,7 +196,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
 
     await registerAuthToken(server, { token: process.env.API_AUTH_TOKEN })
 
-    registerApiKeyAuth(server, context.stores.apiKeyStore)
+    registerApiKeyAuth(server, context.stores.apiKeyStore, context.stores.userStore)
 
     // Register RBAC middleware after auth and api-key-auth
     await registerRbacMiddleware(server)

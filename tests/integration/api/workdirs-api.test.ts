@@ -42,6 +42,8 @@ interface TreeData {
   path: string
 }
 
+const WORKDIR_TEXT_READ_MAX_BYTES = 1 * 1024 * 1024
+
 interface FileData {
   path: string
   content: string
@@ -563,7 +565,7 @@ describe('Workdirs API', () => {
     it('should reject reading files larger than the API read limit', async () => {
       const largeFilePath = path.join(workdirPath, 'oversized-read.txt')
       const handle = fs.openSync(largeFilePath, 'w')
-      fs.writeSync(handle, Buffer.from('x'), 0, 1, WORKDIR_MAX_FILE_BYTES)
+      fs.writeSync(handle, Buffer.from('x'), 0, 1, WORKDIR_TEXT_READ_MAX_BYTES)
       fs.closeSync(handle)
 
       const response = await fetch(`${baseUrl}/api/v1/workdirs/${workdirId}/files?path=oversized-read.txt`, {
@@ -666,6 +668,23 @@ describe('Workdirs API', () => {
       const body = (await response.json()) as EnvelopeResponse
       expect(body.error!.message).toBe('Workdir filesystem operation failed')
       expect(body.error!.message).not.toContain(failureWorkdirPath)
+    })
+
+    it('sanitizes Content-Disposition filenames for downloads', async () => {
+      fs.writeFileSync(path.join(workdirPath, 'quoted-name.txt'), 'safe download', 'utf-8')
+
+      const response = await fetch(
+        `${baseUrl}/api/v1/workdirs/${workdirId}/files/download?path=${encodeURIComponent('quoted-name.txt')}`,
+        { headers: { Cookie: authCookie } },
+      )
+
+      expect(response.status).toBe(200)
+      const disposition = response.headers.get('content-disposition') ?? ''
+      expect(disposition).toBe('attachment; filename="quoted-name.txt"')
+      expect(disposition).not.toContain('\\')
+      expect(disposition).not.toContain('\r')
+      expect(disposition).not.toContain('\n')
+      expect(await response.text()).toBe('safe download')
     })
   })
 

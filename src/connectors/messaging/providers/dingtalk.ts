@@ -119,8 +119,7 @@ export class DingTalkAdapter implements MessagingAdapter {
   ): Promise<boolean> {
     const signSecret = this.config.signSecret
     if (!signSecret) {
-      // No sign secret configured — skip verification
-      return true
+      return false
     }
 
     const sign = headers['sign']

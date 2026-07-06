@@ -11,34 +11,18 @@ import { z } from "zod";
 import { readXlsx, validateXlsx } from "./tools/xlsx.js";
 import { registerPptxTools } from "./tools/pptx.js";
 import {
-  createWorkspace,
-  cleanupWorkspace,
   withTimeout,
   getTimeoutMs,
   isSandboxError,
   createSandboxError,
   type SandboxErrorResponse,
 } from "./sandbox.js";
+import { resolveDocumentWorkspaceRoot } from "./workspace-root.js";
 
 const server = new McpServer({
   name: "minimax-document-mcp",
   version: "0.1.0",
 });
-
-// ---------------------------------------------------------------------------
-// Helper: Run tool in sandboxed workspace
-// ---------------------------------------------------------------------------
-
-async function runInSandbox<T>(
-  fn: (workspaceRoot: string) => Promise<T>,
-): Promise<T> {
-  const workspace = await createWorkspace("mcp-tool");
-  try {
-    return await fn(workspace.root);
-  } finally {
-    await cleanupWorkspace(workspace);
-  }
-}
 
 function formatSandboxError(error: unknown): { isError: boolean; content: Array<{ type: "text"; text: string }> } {
   if (isSandboxError(error)) {
@@ -104,8 +88,9 @@ server.registerTool(
   async (args) => {
     try {
       const result = await withTimeout(
-        () => runInSandbox((workspaceRoot) =>
-          readXlsx(
+        async () => {
+          const workspaceRoot = await resolveDocumentWorkspaceRoot()
+          return readXlsx(
             {
               inputPath: args.inputPath,
               sheetName: args.sheetName,
@@ -114,8 +99,8 @@ server.registerTool(
               maxRows: args.maxRows,
             },
             workspaceRoot,
-          ),
-        ),
+          )
+        },
         getTimeoutMs("fast"),
         "xlsx.read",
       );
@@ -181,16 +166,17 @@ server.registerTool(
   async (args) => {
     try {
       const result = await withTimeout(
-        () => runInSandbox((workspaceRoot) =>
-          validateXlsx(
+        async () => {
+          const workspaceRoot = await resolveDocumentWorkspaceRoot()
+          return validateXlsx(
             {
               inputPath: args.inputPath,
               rules: args.rules as import("./tools/xlsx.js").ValidationRule[] | undefined,
               sheetName: args.sheetName,
             },
             workspaceRoot,
-          ),
-        ),
+          )
+        },
         getTimeoutMs("fast"),
         "xlsx.validate",
       );

@@ -197,6 +197,25 @@ describe('Rate Limit Middleware', () => {
       await server.close()
     })
 
+    it('uses system settings store for non-auth request limits', async () => {
+      const server = Fastify({ logger: false })
+      await registerRateLimitMiddleware(server, {
+        authMax: 10,
+        systemSettingsStore: {
+          get: () => ({ rateLimitPerMinute: 2, rateLimitPerHour: 1000, sessionTokenTtlHours: 24 }),
+        },
+      })
+      server.get('/limited', async () => ({ ok: true }))
+      await server.ready()
+
+      const remoteAddress = '10.0.0.202'
+      expect((await server.inject({ method: 'GET', url: '/limited', remoteAddress })).statusCode).toBe(200)
+      expect((await server.inject({ method: 'GET', url: '/limited', remoteAddress })).statusCode).toBe(200)
+      expect((await server.inject({ method: 'GET', url: '/limited', remoteAddress })).statusCode).toBe(429)
+
+      await server.close()
+    })
+
     it('should exempt SSE endpoints', async () => {
       const server = Fastify({ logger: false })
       await registerRateLimitMiddleware(server, { globalMax: 2, authMax: 1 })

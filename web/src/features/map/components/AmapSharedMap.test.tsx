@@ -65,11 +65,13 @@ let mockDisconnect: ReturnType<typeof vi.fn>
 beforeEach(() => {
   mockObserve = vi.fn()
   mockDisconnect = vi.fn()
-  window.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: mockObserve,
-    disconnect: mockDisconnect,
-    unobserve: vi.fn(),
-  }))
+  window.ResizeObserver = vi.fn().mockImplementation(function () {
+    return {
+      observe: mockObserve,
+      disconnect: mockDisconnect,
+      unobserve: vi.fn(),
+    }
+  })
 })
 
 afterEach(() => {
@@ -91,23 +93,29 @@ describe('AmapSharedMap', () => {
     vi.clearAllMocks()
 
     mockMap = createMockMapInstance()
-    mockMapConstructor = vi.fn().mockReturnValue(mockMap)
+    mockMapConstructor = vi.fn().mockImplementation(function () { return mockMap })
 
-    mockMarkerConstructor = vi.fn().mockImplementation((opts) => ({
-      ...opts,
-      on: vi.fn(),
-      off: vi.fn(),
-    }))
+    mockMarkerConstructor = vi.fn().mockImplementation(function (opts: Record<string, unknown>) {
+      return {
+        ...opts,
+        on: vi.fn(),
+        off: vi.fn(),
+      }
+    })
 
-    mockPolylineConstructor = vi.fn().mockImplementation((opts) => ({
-      ...opts,
-    }))
+    mockPolylineConstructor = vi.fn().mockImplementation(function (opts: Record<string, unknown>) {
+      return {
+        ...opts,
+      }
+    })
 
-    mockInfoWindowConstructor = vi.fn().mockImplementation((opts) => ({
-      ...opts,
-      open: vi.fn(),
-      close: vi.fn(),
-    }))
+    mockInfoWindowConstructor = vi.fn().mockImplementation(function (opts: Record<string, unknown>) {
+      return {
+        ...opts,
+        open: vi.fn(),
+        close: vi.fn(),
+      }
+    })
 
     mockUseAmapLoader.mockReturnValue({
       amap: {

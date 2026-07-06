@@ -203,7 +203,7 @@ describe('browser handoff client', () => {
 
       vi.stubGlobal(
         'EventSource',
-        vi.fn().mockImplementation(() => mockEventSource),
+        vi.fn().mockImplementation(function () { return mockEventSource }),
       )
     })
 

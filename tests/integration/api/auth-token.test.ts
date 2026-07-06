@@ -76,6 +76,11 @@ describe('API Auth Token Middleware', () => {
         server.get('/api/v1/tools', async () => ({ ok: true, data: [], requestId: 'test' }))
         server.get('/api/v1/protected', async () => ({ ok: true, data: { secret: 'data' }, requestId: 'test' }))
         server.get('/api/v1/webhooks/test', async () => ({ ok: true, data: {}, requestId: 'test' }))
+        server.post('/api/v1/messaging/telegram/inst-1/webhook', async () => ({
+          ok: true,
+          data: { accepted: true },
+          requestId: 'test',
+        }))
 
         await server.ready()
       })
@@ -177,6 +182,15 @@ describe('API Auth Token Middleware', () => {
         const response = await server.inject({
           method: 'GET',
           url: '/api/v1/webhooks/test',
+        })
+        expect(response.statusCode).toBe(200)
+      })
+
+      it('should exempt /api/v1/messaging/* from auth token middleware', async () => {
+        const response = await server.inject({
+          method: 'POST',
+          url: '/api/v1/messaging/telegram/inst-1/webhook',
+          payload: { update_id: 1 },
         })
         expect(response.statusCode).toBe(200)
       })

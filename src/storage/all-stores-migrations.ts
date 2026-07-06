@@ -2664,6 +2664,36 @@ export const workDirectoriesTableMigration: Migration = {
   `,
 }
 
+export const usersStatusColumnMigration: Migration = {
+  version: 68,
+  name: 'add_users_status_column',
+  up: `
+    ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'
+      CHECK(status IN ('active', 'disabled'));
+    CREATE INDEX IF NOT EXISTS idx_users_status ON users(tenant_id, status)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_users_status
+  `,
+}
+
+export const systemSettingsTableMigration: Migration = {
+  version: 69,
+  name: 'create_system_settings_table',
+  up: `
+    CREATE TABLE system_settings (
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      key TEXT NOT NULL,
+      value_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, key)
+    )
+  `,
+  down: `
+    DROP TABLE IF EXISTS system_settings
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -2809,6 +2839,12 @@ export const allStoreMigrations: Migration[] = [
 
   // Work directories and session workdir state
   workDirectoriesTableMigration, // v67
+
+  // User disabled state
+  usersStatusColumnMigration, // v68
+
+  // Tenant system settings
+  systemSettingsTableMigration, // v69
 ]
 
 /**
