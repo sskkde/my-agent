@@ -33,12 +33,83 @@ function createSafeEventStore(eventStore: ApiContext['stores']['eventStore']): A
   }
 }
 
-export function createStubbedForegroundAgent(decision: ForegroundDecision): ApiContext['foregroundAgent'] {
+export function createStubbedForegroundAgent(
+  decision: ForegroundDecision,
+  stores?: ApiContext['stores'],
+): ApiContext['foregroundAgent'] {
   return {
-    runTurn: vi.fn().mockResolvedValue({
-      status: 'completed',
-      finalResponse: decision.userVisibleResponse ?? '',
-      decisionTrace: decision,
+    runTurn: vi.fn().mockImplementation(async (input: { userId: string; sessionId: string }) => {
+      const now = new Date().toISOString()
+
+      if (decision.route === 'spawn_planner' && stores) {
+        const planId = `plan-smoke-${Date.now()}`
+        const plannerRunId = `pl-run-smoke-${Date.now()}`
+
+        stores.planStore.createPlan({
+          planId,
+          userId: input.userId,
+          sessionId: input.sessionId,
+          objective: decision.reason ?? 'Smoke test plan',
+          status: 'draft',
+          currentVersion: 1,
+          plannerRunIds: [plannerRunId],
+          steps: [
+            { stepId: 'step-1', description: 'Analyze objective', status: 'pending' },
+            { stepId: 'step-2', description: 'Execute actions', status: 'pending' },
+            { stepId: 'step-3', description: 'Summarize results', status: 'pending' },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        stores.plannerRunStore.create({
+          plannerRunId,
+          planId,
+          userId: input.userId,
+          sessionId: input.sessionId,
+          status: 'initializing',
+          checkpoint: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+      }
+
+      if (decision.route === 'dispatch_tool' && stores) {
+        const toolCallId = `tc-smoke-${Date.now()}`
+        const actionId = `action-${Date.now()}`
+
+        stores.runtimeActionStore.save({
+          actionId,
+          actionType: 'execute_tool',
+          source: { sourceModule: 'foreground' },
+          targetRuntime: 'local',
+          targetAction: 'execute_tool',
+          payload: {
+            toolName: decision.suggestedTools?.[0] ?? 'docs_search',
+            toolCallId,
+          },
+          sessionId: input.sessionId,
+          userId: input.userId,
+          status: 'completed',
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        stores.toolExecutionStore.create({
+          toolCallId,
+          toolName: decision.suggestedTools?.[0] ?? 'docs_search',
+          userId: input.userId,
+          sessionId: input.sessionId,
+          status: 'completed',
+          sensitivity: 'low',
+        })
+      }
+
+      return {
+        status: 'completed' as const,
+        finalResponse: decision.userVisibleResponse ?? '',
+        decisionTrace: decision,
+      }
     }),
   } as unknown as ApiContext['foregroundAgent']
 }
@@ -118,7 +189,7 @@ export async function createSmokeHarness(options: {
       ...baseCtx.stores,
       eventStore: createSafeEventStore(baseCtx.stores.eventStore),
     },
-    foregroundAgent: options.foregroundDecision ? createStubbedForegroundAgent(options.foregroundDecision) : undefined,
+    foregroundAgent: options.foregroundDecision ? createStubbedForegroundAgent(options.foregroundDecision, baseCtx.stores) : undefined,
     timelineBroadcaster: baseCtx.timelineBroadcaster,
     channelRegistry: baseCtx.channelRegistry,
     llmAdapter: createMockLlmAdapter({ enableToolCall: options.enableToolCall }),

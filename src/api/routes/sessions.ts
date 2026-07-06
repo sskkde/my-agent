@@ -369,6 +369,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
 
       const userId = request.user?.userId ?? persistedSession.userId ?? 'local-user'
+
       const trimmedText = text.trim()
       const hasAttachments = Array.isArray(attachmentIds) && attachmentIds.length > 0
 

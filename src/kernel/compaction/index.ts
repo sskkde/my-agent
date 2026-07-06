@@ -8,7 +8,7 @@ export {
   buildCompactPrompt,
   SOURCE_OPEN_DELIMITER,
   SOURCE_CLOSE_DELIMITER,
-} from './compact-prompt-builder.js'
+} from './compact-prompt.js'
 
 export {
   parseCompactResponse,

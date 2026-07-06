@@ -232,7 +232,7 @@ describe('Sessions API', () => {
 
       expect(response.status).toBe(400)
       const body = (await response.json()) as { error: { code: string } }
-      expect(body.error.code).toBe('VALIDATION_ERROR')
+      expect(body.error.code).toBe('INVALID_MESSAGE_TEXT')
     })
 
     it('should reject whitespace-only message with 400', async () => {

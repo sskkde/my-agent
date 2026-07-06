@@ -197,7 +197,7 @@ describe('RBAC Engine', () => {
 
     it('should return user permissions', () => {
       const permissions = getRolePermissions('user')
-      expect(permissions).toHaveLength(34)
+      expect(permissions).toHaveLength(38)
     })
 
     it('should return service permissions', () => {

@@ -156,7 +156,7 @@ describe('Request Validation', () => {
       })
       expect(response.status).toBe(400)
       const body = (await response.json()) as EnvelopeError
-      expectEnvelopeError(body, 'VALIDATION_ERROR')
+      expectEnvelopeError(body, 'INVALID_MESSAGE_TEXT')
     })
   })
 

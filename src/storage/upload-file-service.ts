@@ -78,9 +78,10 @@ class UploadFileServiceImpl implements UploadFileService {
     const hash = crypto.createHash('sha256')
 
     let writeStream: fs.WriteStream | undefined
+    let nodeReadable: Readable | undefined
     try {
       writeStream = fs.createWriteStream(tmpPath)
-      const nodeReadable = Readable.fromWeb(stream)
+      nodeReadable = Readable.fromWeb(stream)
 
       // Consume stream, enforce size, compute checksum
       for await (const chunk of nodeReadable) {
@@ -113,14 +114,18 @@ class UploadFileServiceImpl implements UploadFileService {
       const checksum = hash.digest('hex')
       return { storageRef, checksum, sizeBytes: bytesWritten }
     } catch (err) {
-      // Destroy write stream before cleanup to release file handle
+      // Destroy readable stream to stop pending pull operations
+      if (nodeReadable) {
+        nodeReadable.destroy()
+      }
+      // Destroy write stream and wait for it to fully close before cleanup
       if (writeStream) {
-        writeStream.destroy()
-        // Wait briefly for the stream to close
         await new Promise<void>((resolve) => {
-          writeStream!.on('close', resolve)
-          // Resolve immediately if already closed
-          if (writeStream!.destroyed) resolve()
+          const done = () => resolve()
+          writeStream!.once('close', done)
+          writeStream!.once('error', done)
+          try { writeStream!.destroy() } catch { done() }
+          setTimeout(done, 500)
         })
       }
       // Clean up partial write

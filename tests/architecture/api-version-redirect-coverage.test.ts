@@ -36,6 +36,11 @@ const routeFiles = [
   'src/api/routes/triggers.ts',
   'src/api/routes/usage.ts',
   'src/api/routes/workflows.ts',
+  'src/api/routes/browser-sessions.ts',
+  'src/api/routes/files.ts',
+  'src/api/routes/messaging-webhooks.ts',
+  'src/api/routes/todos.ts',
+  'src/api/routes/workdirs.ts',
 ]
 
 type RouteRegistration = { method: string; path: string }

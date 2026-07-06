@@ -35,6 +35,7 @@ const RBAC_EXEMPT_PATHS = [
   '/api/v1/auth/logout',
   '/api/v1/tools',
   '/api/v1/webhooks/*',
+  '/api/v1/messaging/*',
   '/api/v1/metrics',
 ]
 

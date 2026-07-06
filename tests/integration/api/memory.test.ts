@@ -54,7 +54,8 @@ describe('Memory Management API', () => {
   })
 
   afterAll(async () => {
-    await server.close()
+    try { server.server.closeAllConnections?.() } catch {}
+    try { await server.close() } catch {}
     apiContext.connection.close()
   })
 

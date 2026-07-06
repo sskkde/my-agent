@@ -9,7 +9,7 @@ import {
   buildCompactPrompt,
   SOURCE_OPEN_DELIMITER,
   SOURCE_CLOSE_DELIMITER,
-} from '../../../src/kernel/compaction/compact-prompt-builder.js'
+} from '../../../src/kernel/compaction/compact-prompt.js'
 import {
   parseCompactResponse,
   type CompactSummaryResult,

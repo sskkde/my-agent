@@ -167,12 +167,16 @@ describe("Skill Catalog Consistency", () => {
 		it("should derive active skill IDs from manifest", () => {
 			const activeSkillIds = getActiveSkillIds();
 
-			expect(activeSkillIds.length).toBe(5);
+			expect(activeSkillIds.length).toBe(9);
 			expect(activeSkillIds).toContain("artifact_workflow");
 			expect(activeSkillIds).toContain("memory_research");
 			expect(activeSkillIds).toContain("session_status");
 			expect(activeSkillIds).toContain("documentation_search");
 			expect(activeSkillIds).toContain("web_research_guidance");
+			expect(activeSkillIds).toContain("pptx-generator");
+			expect(activeSkillIds).toContain("minimax-xlsx");
+			expect(activeSkillIds).toContain("minimax-docx");
+			expect(activeSkillIds).toContain("minimax-pdf");
 		});
 
 		it("should derive known tool IDs from catalog", () => {

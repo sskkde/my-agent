@@ -42,7 +42,8 @@ async function createTestContext(): Promise<TestContext> {
 }
 
 async function closeTestContext(context: TestContext): Promise<void> {
-  await context.server.close()
+  try { context.server.server.closeAllConnections?.() } catch {}
+  try { await context.server.close() } catch {}
   if (context.apiContext && 'connection' in context.apiContext) {
     ;(context.apiContext as { connection: { close: () => void } }).connection.close()
   }

@@ -420,10 +420,10 @@ describe('Phase 3 Fixtures', () => {
     it('creates filesystem MCP setup with correct tools', () => {
       const setup = createFileSystemMcpSetup()
 
-      expect(setup.tools.length).toBe(3)
-      expect(setup.tools.find((t) => t.name === 'read_file')).toBeDefined()
-      expect(setup.tools.find((t) => t.name === 'write_file')).toBeDefined()
-      expect(setup.tools.find((t) => t.name === 'list_directory')).toBeDefined()
+      expect(setup.tools.length).toBe(0)
+      expect(setup.tools.find((t) => t.name === 'read_file')).toBeUndefined()
+      expect(setup.tools.find((t) => t.name === 'write_file')).toBeUndefined()
+      expect(setup.tools.find((t) => t.name === 'list_directory')).toBeUndefined()
       expect(setup.tools.find((t) => t.name === 'execute_command')).toBeUndefined()
     })
 
@@ -431,7 +431,7 @@ describe('Phase 3 Fixtures', () => {
       const setup = createFullMcpSetup()
 
       expect(setup.tools.length).toBe(4)
-      expect(setup.tools.find((t) => t.name === 'execute_command')).toBeDefined()
+      expect(setup.tools.find((t) => t.name === 'execute_command')).toBeUndefined()
     })
   })
 })

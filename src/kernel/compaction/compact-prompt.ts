@@ -7,7 +7,7 @@
  * 3. Exclude transient noise (intermediate steps, debug output)
  * 4. Return structured JSON matching CompactSummaryResult
  *
- * @module kernel/compaction/compact-prompt-builder
+ * @module kernel/compaction/compact-prompt
  */
 
 import type { ContextItem } from '../../context/types.js'

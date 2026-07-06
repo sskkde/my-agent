@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
+import { ResourceType, Action } from '../../permissions/rbac-types.js'
 import { toBrowserSessionId } from '../../search/browser/browser-session-manager.js'
 import {
   mapRouteInputToEvent,
@@ -87,6 +88,10 @@ export async function registerBrowserSessionRoutes(
   server.post<{ Params: BrowserSessionParams }>(
     '/api/v1/sessions/:sessionId/browser/takeover',
     async (request: FastifyRequest<{ Params: BrowserSessionParams }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.execute)) {
+        return reply
+      }
+
       const { sessionId } = request.params
 
       const persisted = await loadAndAuthorizeSession(request, reply, sessionStore, sessionId)
@@ -134,6 +139,10 @@ export async function registerBrowserSessionRoutes(
       request: FastifyRequest<{ Params: BrowserSessionParams; Body: BrowserInputBody }>,
       reply: FastifyReply,
     ) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.execute)) {
+        return reply
+      }
+
       const { sessionId } = request.params
 
       const persisted = await loadAndAuthorizeSession(request, reply, sessionStore, sessionId)
@@ -204,6 +213,10 @@ export async function registerBrowserSessionRoutes(
   server.post<{ Params: BrowserSessionParams }>(
     '/api/v1/sessions/:sessionId/browser/release',
     async (request: FastifyRequest<{ Params: BrowserSessionParams }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.update)) {
+        return reply
+      }
+
       const { sessionId } = request.params
 
       const persisted = await loadAndAuthorizeSession(request, reply, sessionStore, sessionId)
@@ -254,6 +267,10 @@ export async function registerBrowserSessionRoutes(
   server.post<{ Params: BrowserSessionParams }>(
     '/api/v1/sessions/:sessionId/browser/agent-request-takeover',
     async (request: FastifyRequest<{ Params: BrowserSessionParams }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.update)) {
+        return reply
+      }
+
       const { sessionId } = request.params
 
       const persisted = await loadAndAuthorizeSession(request, reply, sessionStore, sessionId)

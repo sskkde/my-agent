@@ -20,6 +20,7 @@ const PUBLIC_WRITE_ROUTES = new Map<string, string>([
   ['auth.ts POST /api/v1/auth/login', 'public-auth'],
   ['auth.ts POST /api/v1/auth/logout', 'public-auth'],
   ['setup.ts POST /api/v1/setup/user', 'public-bootstrap'],
+  ['messaging-webhooks.ts POST /api/v1/messaging/:provider/:connectorInstanceId/webhook', 'public-webhook'],
 ])
 
 const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
@@ -75,6 +76,30 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
   { file: 'auth.ts', method: 'POST', path: '/api/v1/auth/login', permission: 'public-auth' },
   { file: 'auth.ts', method: 'POST', path: '/api/v1/auth/logout', permission: 'public-auth' },
   {
+    file: 'browser-sessions.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/browser/takeover',
+    permission: 'ResourceType.sessions, Action.execute',
+  },
+  {
+    file: 'browser-sessions.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/browser/input',
+    permission: 'ResourceType.sessions, Action.execute',
+  },
+  {
+    file: 'browser-sessions.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/browser/release',
+    permission: 'ResourceType.sessions, Action.update',
+  },
+  {
+    file: 'browser-sessions.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/browser/agent-request-takeover',
+    permission: 'ResourceType.sessions, Action.update',
+  },
+  {
     file: 'connectors.ts',
     method: 'PATCH',
     path: '/api/v1/connectors/:id/instances/:iid/config',
@@ -127,6 +152,12 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
     method: 'DELETE',
     path: '/api/v1/memory/:memoryId',
     permission: 'ResourceType.memory, Action.delete',
+  },
+  {
+    file: 'messaging-webhooks.ts',
+    method: 'POST',
+    path: '/api/v1/messaging/:provider/:connectorInstanceId/webhook',
+    permission: 'public-webhook',
   },
   {
     file: 'oauth.ts',

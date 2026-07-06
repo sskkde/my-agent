@@ -1,9 +1,9 @@
 import type { LLMAdapter } from '../../llm/adapter.js'
 import type { ContextItem } from '../../context/types.js'
-import type { SummaryManager } from '../../memory/types.js'
+import type { SummaryManager } from '../../shared/summary-manager-types.js'
 import type { SourceRefs, SummaryRecord } from '../../storage/summary-store.js'
 import type { ContextManager, CompactExecutor, CompactExecutorInput, CompactExecutorResult } from '../types.js'
-import { buildCompactPrompt } from './compact-prompt-builder.js'
+import { buildCompactPrompt } from './compact-prompt.js'
 import { parseCompactResponse } from './compact-response-parser.js'
 
 const MAX_COMPACT_TOKENS = 2048

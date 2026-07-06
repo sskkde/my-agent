@@ -13,6 +13,7 @@ import type {
   RetrievalMetadata,
 } from '../storage/summary-store.js'
 import type { PlannerStatePatch } from '../planner/types.js'
+export type { SummaryManager } from '../shared/summary-manager-types.js'
 
 // ============================================================================
 // Working Summary Types
@@ -355,149 +356,7 @@ export type PlannerRunSummaryContent = SummaryContent & {
 // Manager Interface Types
 // ============================================================================
 
-/**
- * Summary manager interface for all summary write operations
- *
- * All write methods enforce source-bound controls:
- * - sourceRefs is REQUIRED (non-empty)
- * - Deterministic fields are protected from LLM overwrites
- * - Invalid schemas trigger low-confidence fallback
- * - Versioning tracks all changes
- */
-export interface SummaryManager {
-  /**
-   * Generate a working summary from transcript references
-   */
-  generateWorkingSummary(request: WorkingSummaryRequest): WorkingSummary
-
-  /**
-   * Check if source references are valid
-   */
-  validateSourceRefs(sourceRefs: SourceRefs): boolean
-
-  // =========================================================================
-  // Source-bound Write Methods
-  // =========================================================================
-
-  /**
-   * Write working summary with source-bound controls
-   * @throws Error with code MISSING_SOURCE_REFS if sourceRefs is empty
-   */
-  writeWorkingSummary(
-    sessionId: string,
-    runId: string,
-    userId: string,
-    content: SummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<WorkingSummary>>
-
-  /**
-   * Write session memory with source-bound controls
-   */
-  writeSessionMemory(
-    sessionId: string,
-    userId: string,
-    content: SummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SessionMemory>>
-
-  /**
-   * Write rolling summary with source-bound controls
-   */
-  writeRollingSummary(
-    sessionId: string,
-    userId: string,
-    summaryType: 'rolling_5_turns' | 'rolling_10_turns',
-    content: RollingSummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SummaryRecord>>
-
-  /**
-   * Write daily summary with source-bound controls
-   */
-  writeDailySummary(
-    userId: string,
-    content: SummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SummaryRecord>>
-
-  /**
-   * Write weekly summary with source-bound controls
-   */
-  writeWeeklySummary(
-    userId: string,
-    content: WeeklySummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SummaryRecord>>
-
-  /**
-   * Write workflow run summary with source-bound controls
-   */
-  writeWorkflowRunSummary(
-    workflowRunId: string,
-    userId: string,
-    content: WorkflowRunSummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SummaryRecord>>
-
-  /**
-   * Write background subagent summary with source-bound controls
-   */
-  writeBackgroundSubagentSummary(
-    backgroundRunId: string,
-    userId: string,
-    content: BackgroundSubagentSummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SummaryRecord>>
-
-  /**
-   * Write compact summary with source-bound controls
-   */
-  writeCompactSummary(
-    sessionId: string,
-    userId: string,
-    content: CompactSummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SummaryRecord>>
-
-  /**
-   * Write planner run summary with source-bound controls
-   */
-  writePlannerRunSummary(
-    userId: string,
-    content: PlannerRunSummaryContent,
-    options: SummaryWriteOptions,
-  ): Promise<SummaryWriteResult<SummaryRecord>>
-
-  // =========================================================================
-  // Versioning and History
-  // =========================================================================
-
-  /**
-   * Get version history for a summary
-   */
-  getVersionHistory(summaryId: string, limit?: number): SummaryVersionEntry[]
-
-  /**
-   * Get current version number for a summary
-   */
-  getCurrentVersion(summaryId: string): number
-
-  // =========================================================================
-  // Low-confidence Fallback
-  // =========================================================================
-
-  /**
-   * Store a low-confidence fallback summary (for invalid schemas)
-   */
-  storeLowConfidenceFallback(
-    summaryType: SummaryType,
-    userId: string,
-    rawContent: unknown,
-    validationErrors: string[],
-    options: SummaryWriteOptions,
-  ): SummaryRecord
-}
+// SummaryManager interface is re-exported from src/shared/summary-manager-types.ts
 
 /**
  * Session memory manager interface

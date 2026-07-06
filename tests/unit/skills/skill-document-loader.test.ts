@@ -42,8 +42,8 @@ function makeRegistryWithBuiltinSkills() {
 
 describe('Built-in skill manifest', () => {
   describe('BUILTIN_ACTIVE_SKILL_DEFINITIONS', () => {
-    it('contains exactly 5 active documentation skills', () => {
-      expect(BUILTIN_ACTIVE_SKILL_DEFINITIONS).toHaveLength(5)
+    it('contains exactly 9 active documentation skills', () => {
+      expect(BUILTIN_ACTIVE_SKILL_DEFINITIONS).toHaveLength(9)
     })
 
     it('includes all required skill IDs', () => {
@@ -53,6 +53,10 @@ describe('Built-in skill manifest', () => {
       expect(ids).toContain('session_status')
       expect(ids).toContain('documentation_search')
       expect(ids).toContain('web_research_guidance')
+      expect(ids).toContain('pptx-generator')
+      expect(ids).toContain('minimax-xlsx')
+      expect(ids).toContain('minimax-docx')
+      expect(ids).toContain('minimax-pdf')
     })
 
     it('all active skills are enabled', () => {
@@ -251,13 +255,17 @@ describe('SkillDocumentLoader', () => {
       )
     })
 
-    it('loads all 5 required documentation files', async () => {
+    it('loads all 9 required documentation files', async () => {
       const ids = [
         'artifact_workflow',
         'memory_research',
         'session_status',
         'documentation_search',
         'web_research_guidance',
+        'pptx-generator',
+        'minimax-xlsx',
+        'minimax-docx',
+        'minimax-pdf',
       ]
 
       for (const id of ids) {

@@ -473,7 +473,7 @@ describe('SearchSubagentTool', () => {
       expect(result.success).toBe(true)
       const toolResult = result.data as SearchSubagentToolResult
       expect(toolResult.results[0].title).toBe('TypeScript module resolution guide')
-      expect(toolResult.metadata.rankingVersion).toBe('relevance-v1')
+      expect(toolResult.metadata.rankingVersion).toBe('relevance-source-quality-v1')
     })
 
     it('prioritizes dated results when freshness is required', async () => {

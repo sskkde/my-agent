@@ -1,5 +1,5 @@
 import type { LLMAdapter } from '../llm/adapter.js'
-import type { SummaryManager } from '../memory/types.js'
+import type { SummaryManager } from '../shared/summary-manager-types.js'
 import type { ContextManager, CompactExecutor } from '../kernel/types.js'
 import type { SourceRefs } from '../storage/summary-store.js'
 import { createCompactExecutor } from '../kernel/compaction/compact-executor.js'
