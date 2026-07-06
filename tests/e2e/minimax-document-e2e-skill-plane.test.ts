@@ -9,16 +9,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createConnectionManager, type ConnectionManager } from '../../src/storage/connection.js'
 import { createMcpServerRegistry, type McpServerRegistry } from '../../src/connectors/mcp/mcp-server-registry.js'
 import { createMcpSessionManager, type McpSessionManager } from '../../src/connectors/mcp/mcp-session-manager.js'
-import { McpToolBridge } from '../../src/connectors/mcp/mcp-tool-bridge.js'
-import { createToolRegistry } from '../../src/tools/tool-registry.js'
-import type { ToolRegistry } from '../../src/tools/types.js'
 import { createSkillRegistry, type SkillRegistry } from '../../src/skills/skill-registry.js'
 import { registerBuiltinSkills } from '../../src/skills/builtin/manifest.js'
 import { createMockMcpServer } from '../fixtures/phase3-mock-mcp.js'
-import {
-  PromptTemplateRegistry,
-  type PromptTemplateRecord,
-} from '../../src/prompt/prompt-template-registry.js'
+import { PromptTemplateRegistry } from '../../src/prompt/prompt-template-registry.js'
 import { TemplateLoader } from '../../src/prompt/template-loader.js'
 import { ModelInputBuilder } from '../../src/kernel/model-input/model-input-builder.js'
 import {
@@ -36,9 +30,7 @@ describe('MiniMax Document MCP - Skill Plane Verification', () => {
   let serverRegistry: McpServerRegistry
   let sessionManager: McpSessionManager
   let transport: MiniMaxDocumentMockTransport
-  let toolRegistry: ToolRegistry
   let skillRegistry: SkillRegistry
-  let bridge: McpToolBridge
 
   const MINIMAX_SKILL_IDS = ['pptx-generator', 'minimax-xlsx', 'minimax-docx', 'minimax-pdf']
 
@@ -50,7 +42,6 @@ describe('MiniMax Document MCP - Skill Plane Verification', () => {
     transport = new MiniMaxDocumentMockTransport()
     serverRegistry = createMcpServerRegistry(connection)
     sessionManager = createMcpSessionManager(connection, new Map([['minimax-document-mcp', transport]]))
-    toolRegistry = createToolRegistry()
 
     skillRegistry = createSkillRegistry()
     registerBuiltinSkills(skillRegistry)
@@ -69,12 +60,6 @@ describe('MiniMax Document MCP - Skill Plane Verification', () => {
     serverRegistry.registerServer(serverDef)
 
     sessionManager.openSession('minimax-document-mcp')
-
-    bridge = new McpToolBridge({
-      sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
-    })
   })
 
   it('all four MiniMax skills are registered in the skill registry', () => {
