@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import ChatShell from './ChatShell'
 import ChatSessionList from './ChatSessionList'
 import ChatMessageList from './ChatMessageList'
-import ChatComposer from './ChatComposer'
+import ChatComposer, { type ChatComposerStatus } from './ChatComposer'
 import ChatContextPanel from './ChatContextPanel'
 import ChatToast from './ChatToast'
 import './chat-theme.css'
@@ -12,7 +12,7 @@ import { useSelectedSession } from '../hooks/useSelectedSession'
 import { useComposerSubmission } from '../hooks/useComposerSubmission'
 import { useSSEStream } from '../hooks/useSSEStream'
 import * as api from '../../../api/client'
-import type { ConsoleTimelineEvent } from '../../../api/types'
+import type { ConsoleTimelineEvent, ProcessingStatusPayload } from '../../../api/types'
 import type { AssistantPlaceholder } from '../session-utils'
 import type { CommandContext } from '../../../commands/types'
 import { safeRemoveLocalStorage } from '../session-migration'
@@ -23,7 +23,40 @@ export interface ChatPageProps {
   initialSessionId?: string
 }
 
-type StreamStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
+const ACTIVE_PROCESSING_STAGES = new Set<ProcessingStatusPayload['stage']>([
+  'receiving',
+  'routing',
+  'model_call',
+  'tool_call',
+  'streaming',
+  'persisting',
+])
+
+const toComposerStatus = (
+  processingStatus: ProcessingStatusPayload | null,
+  streamStatus: 'connecting' | 'connected' | 'disconnected',
+  sending: boolean,
+): ChatComposerStatus => {
+  if (processingStatus && ACTIVE_PROCESSING_STAGES.has(processingStatus.stage)) {
+    if (processingStatus.stage === 'tool_call' || processingStatus.activeTools.some((tool) => tool.status === 'running')) {
+      return 'tool'
+    }
+    if (processingStatus.stage === 'model_call' || processingStatus.stage === 'streaming') {
+      return 'generating'
+    }
+    return 'thinking'
+  }
+
+  if (sending) return 'generating'
+  if (streamStatus === 'connecting') return 'thinking'
+  return 'idle'
+}
+
+const getContextUsagePercent = (processingStatus: ProcessingStatusPayload | null): number | null => {
+  const usage = processingStatus?.contextUsage
+  if (!usage?.maxContextTokens) return null
+  return (usage.totalTokens / usage.maxContextTokens) * 100
+}
 
 const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const navigate = useNavigate()
@@ -54,7 +87,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
   const [timelineLoading, setTimelineLoading] = useState(false)
   const [timelineError, setTimelineError] = useState<string | null>(null)
-  const [streamStatus, setStreamStatus] = useState<StreamStatus>('idle')
 
   const mountedRef = useRef(true)
 
@@ -124,7 +156,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       try {
         const timelineResponse = await api.getSessionTimeline(sessionId)
         return timelineResponse.events
-      } catch (err) {
+      } catch {
         return null
       }
     },
@@ -153,6 +185,12 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     setDraft,
     sending,
     sendError,
+    clearPostSendPollTimeout,
+    selectedFiles,
+    setSelectedFiles,
+    handleFilesSelected,
+    uploadErrors,
+    isUploading,
     handleSend,
   } = useComposerSubmission({
     selectedSessionId,
@@ -171,7 +209,13 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     },
   })
 
-  const { connectSse, disconnectSse } = useSSEStream({
+  const {
+    streamStatus,
+    processingStatus,
+    connectSse,
+    resetStreamStatus,
+    disconnectSse,
+  } = useSSEStream({
     mountedRef,
     selectedSessionIdRef,
     onEvent: (event: ConsoleTimelineEvent) => {
@@ -187,10 +231,17 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   })
 
   useEffect(() => {
+    return () => {
+      clearPostSendPollTimeout()
+    }
+  }, [clearPostSendPollTimeout])
+
+  useEffect(() => {
     if (!selectedSessionId) {
       setEvents([])
       setTimelineError(null)
       disconnectSse()
+      resetStreamStatus()
       return
     }
 
@@ -212,7 +263,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         if (cancelled || selectedSessionIdRef.current !== selectedSessionId) return
         setEvents(timelineResponse.events)
         connectSse(selectedSessionId)
-        setStreamStatus('connected')
       } catch (err) {
         if (!cancelled && selectedSessionIdRef.current === selectedSessionId) {
           const isMissingSession = err instanceof api.ApiClientError && ['FORBIDDEN', 'NOT_FOUND'].includes(err.code)
@@ -235,11 +285,19 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       cancelled = true
       disconnectSse()
     }
-  }, [selectedSessionId, selectedSessionIdRef, setSelectedSession, setSelectedSessionId, connectSse, disconnectSse])
+  }, [selectedSessionId, selectedSessionIdRef, setSelectedSession, setSelectedSessionId, connectSse, disconnectSse, resetStreamStatus])
 
   const mergedEvents: ConsoleTimelineEvent[] = events
 
-  const status: 'idle' | 'thinking' | 'tool' | 'generating' = streamStatus === 'connecting' ? 'thinking' : sending ? 'generating' : 'idle'
+  const currentProcessingStatus =
+    processingStatus && processingStatus.sessionId === selectedSessionId ? processingStatus : null
+  const status = toComposerStatus(currentProcessingStatus, streamStatus, sending)
+  const model = currentProcessingStatus?.model || 'GLM-4.6'
+  const ctxUsage = getContextUsagePercent(currentProcessingStatus) ?? Math.min(98, 12 + events.length * 2)
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setSelectedFiles((files) => files.filter((_, i) => i !== index))
+  }, [setSelectedFiles])
 
   return (
     <>
@@ -273,9 +331,15 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           onChange={setDraft}
           onSend={handleSend}
           sending={sending}
-          model="GLM-4.6"
+          model={model}
           status={status}
-          ctxUsage={Math.min(98, 12 + events.length * 2)}
+          statusLabel={currentProcessingStatus?.stageLabel}
+          ctxUsage={ctxUsage}
+          selectedFiles={selectedFiles}
+          onFilesSelected={handleFilesSelected}
+          onRemoveFile={handleRemoveFile}
+          uploadErrors={uploadErrors}
+          isUploading={isUploading}
         />
       </ChatShell>
       <ChatToast />

@@ -56,6 +56,7 @@ export function useSSEStream(options: {
       clearSseReconnectTimeout()
 
       setStreamStatus('connecting')
+      setProcessingStatus(null)
 
       unsubscribeRef.current = api.subscribeSessionTimeline(
         sessionId,

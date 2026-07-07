@@ -195,6 +195,43 @@ describe('useSSEStream', () => {
     expect(result.current.processingStatus).toEqual(status)
   })
 
+  it('clears stale processingStatus when connecting to a new session', () => {
+    let statusCallback: ((status: ProcessingStatusPayload) => void) | null = null
+    mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, _onError, onStatusCb, _onToken, onOpen) => {
+      statusCallback = onStatusCb
+      onOpen?.()
+      return () => {}
+    })
+
+    const { result } = renderSSEHook()
+
+    act(() => {
+      result.current.connectSse('session-1')
+    })
+
+    const status: ProcessingStatusPayload = {
+      sessionId: 'session-1',
+      attemptId: 'att-1',
+      stage: 'model_call',
+      stageLabel: 'Model calling',
+      activeTools: [],
+      timestamp: new Date().toISOString(),
+    }
+
+    act(() => {
+      statusCallback?.(status)
+    })
+
+    expect(result.current.processingStatus).toEqual(status)
+
+    act(() => {
+      selectedSessionIdRef.current = 'session-2'
+      result.current.connectSse('session-2')
+    })
+
+    expect(result.current.processingStatus).toBeNull()
+  })
+
   it('reconnects automatically after error with exponential backoff', async () => {
     let callCount = 0
     mockSubscribeSessionTimeline.mockImplementation((_sid, _onEvent, onError, _onStatus, _onToken, onOpen) => {
