@@ -1,12 +1,8 @@
 import { getToolCatalog } from '../api/tool-catalog.js'
 import type { AgentKernel } from '../kernel/agent-kernel.js'
-import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
-import type { ModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js'
 import type { SkillPlaneProjection } from '../kernel/model-input/model-input-types.js'
 import type { KernelRunInput, KernelRunResult } from '../kernel/types.js'
-import type { LLMAdapter } from '../llm/adapter.js'
 import type { AgentTypeSkillEnvelopeRegistry } from '../permissions/agent-type-skill-envelope.js'
-import type { PromptProjectionResolver } from '../prompt/prompt-projection-types.js'
 import type { SkillRegistry } from '../skills/types.js'
 import type { SkillDocumentLoader } from '../skills/skill-document-loader.js'
 import { buildSkillPlaneProjection } from '../skills/skill-plane-projection.js'
@@ -176,11 +172,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
 }
 
 export interface CreateForegroundAgentOptions {
-  readonly llmAdapter?: LLMAdapter
   readonly agentConfig?: AgentConfig
-  readonly modelInputBuilder?: ModelInputBuilder
-  readonly modelInputSnapshotStore?: ModelInputSnapshotStore
-  readonly promptProjectionResolver?: PromptProjectionResolver
   readonly agentKernel?: AgentKernel
   readonly toolCatalog?: ReturnType<typeof getToolCatalog>
   readonly toolRegistry?: ToolRegistry

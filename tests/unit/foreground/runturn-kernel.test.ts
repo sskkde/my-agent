@@ -13,6 +13,7 @@ import type { SummaryManager } from '../../../src/memory/types.js'
 import type { LLMAdapter } from '../../../src/llm/adapter.js'
 import type { RuntimeDispatcher } from '../../../src/dispatcher/types.js'
 import { createToolRegistry } from '../../../src/tools/tool-registry.js'
+import { createRealModelInputBuilder } from '../../helpers/model-input.js'
 import {
   DEFAULT_FOREGROUND_MAX_ITERATIONS,
   DEFAULT_FOREGROUND_TIMEOUT_MS,
@@ -122,6 +123,20 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
     expect(kernelInput.toolProjection!.toolIds).toContain('ask_user')
     expect(kernelInput.toolProjection!.toolIds).toContain('status_query')
     expect(kernelInput.toolProjection!.toolIds).toContain('memory_retrieve')
+  })
+
+  it('createForegroundAgent only relies on explicit foreground options it consumes', async () => {
+    const agentWithOptions = createForegroundAgent({
+      agentKernel: mockAgentKernel,
+      maxIterations: 2,
+      timeoutMs: 1234,
+    })
+
+    await agentWithOptions.runTurn(createMockInput())
+
+    const kernelInput = vi.mocked(mockAgentKernel.run).mock.calls[0][0] as KernelRunInput
+    expect(kernelInput.maxIterations).toBe(2)
+    expect(kernelInput.timeoutMs).toBe(1234)
   })
 
   it('Kernel failure does not route fallback — safe failed ForegroundTurnResult returned', async () => {
@@ -435,6 +450,7 @@ describe('buildKernelConfigFromDeps — compact executor DI', () => {
       plannerRuntime: {} as ProcessorOrchestrationDeps['plannerRuntime'],
       agentKernel: {} as ProcessorOrchestrationDeps['agentKernel'],
       llmAdapter: { complete: vi.fn() } as unknown as LLMAdapter,
+      modelInputBuilder: createRealModelInputBuilder(),
       transcriptStore: {} as ProcessorOrchestrationDeps['transcriptStore'],
       ...overrides,
     }

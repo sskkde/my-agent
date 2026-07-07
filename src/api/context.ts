@@ -875,6 +875,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       plannerRuntime,
       agentKernel,
       llmAdapter,
+      modelInputBuilder,
       transcriptStore,
       eventStore,
       providerConfigStore,

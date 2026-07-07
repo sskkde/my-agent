@@ -208,6 +208,60 @@ describe('No Legacy Prompt Path', () => {
     })
   })
 
+  describe('No Stub ModelInputBuilder Paths', () => {
+    it('no src/ file defines createMinimalModelInputBuilder', () => {
+      const violations: Array<{ file: string; line: number }> = []
+
+      for (const filePath of walkDirectory(srcDir)) {
+        const relativePath = relative(rootDir, filePath).replace(/\\/g, '/')
+        const content = readFileSync(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (let i = 0; i < lines.length; i++) {
+          if (/createMinimalModelInputBuilder/.test(lines[i])) {
+            violations.push({ file: relativePath, line: i + 1 })
+          }
+        }
+      }
+
+      if (violations.length > 0) {
+        const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
+        throw new Error(
+          `Found ${violations.length} createMinimalModelInputBuilder reference(s) in src/:\n${formatted}\n` +
+            `Production model input construction must use the real ModelInputBuilder dependency.`,
+        )
+      }
+
+      expect(violations).toHaveLength(0)
+    })
+
+    it('no src/ file returns empty model input segment hashes as a builder stub', () => {
+      const violations: Array<{ file: string; line: number }> = []
+
+      for (const filePath of walkDirectory(srcDir)) {
+        const relativePath = relative(rootDir, filePath).replace(/\\/g, '/')
+        const content = readFileSync(filePath, 'utf-8')
+        const lines = content.split('\n')
+
+        for (let i = 0; i < lines.length; i++) {
+          if (/segmentA\s*:\s*['"]['"]/.test(lines[i])) {
+            violations.push({ file: relativePath, line: i + 1 })
+          }
+        }
+      }
+
+      if (violations.length > 0) {
+        const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
+        throw new Error(
+          `Found ${violations.length} empty Segment A hash assignment(s) in src/:\n${formatted}\n` +
+            `Empty segment hashes indicate a stub model-input path. Use ModelInputBuilder.build().`,
+        )
+      }
+
+      expect(violations).toHaveLength(0)
+    })
+  })
+
   describe('New Path Preserved', () => {
     it('prompt-template-registry.ts exists (new path)', () => {
       const filePath = join(srcDir, 'prompt', 'prompt-template-registry.ts')

@@ -22,6 +22,7 @@ import type { Gateway } from '../../../src/gateway/gateway.js'
 import type { HydratedSessionState } from '../../../src/gateway/types.js'
 import type { TranscriptStore } from '../../../src/storage/transcript-store.js'
 import type { ProviderConfigStore } from '../../../src/storage/provider-config-store.js'
+import { createRealModelInputBuilder } from '../../helpers/model-input.js'
 
 // ─── Test Helpers ──────────────────────────────────────────────────────────────
 
@@ -152,6 +153,7 @@ describe('Kernel-Driven Foreground Turn Integration Tests', () => {
         complete: vi.fn(),
         stream: async function* () {},
       } as unknown as ProcessorOrchestrationDeps['llmAdapter'],
+      modelInputBuilder: createRealModelInputBuilder(),
       transcriptStore: mockTranscriptStore,
       providerConfigStore: mockProviderConfigStore as unknown as ProcessorOrchestrationDeps['providerConfigStore'],
       agentConfigStore: {

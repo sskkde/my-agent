@@ -13,6 +13,7 @@ import type { AgentKernel } from '../../../src/kernel/agent-kernel.js'
 import type { LLMAdapter } from '../../../src/llm/adapter.js'
 import type { TranscriptStore, TurnTranscript } from '../../../src/storage/transcript-store.js'
 import type { AgentConfig, AgentConfigStore } from '../../../src/storage/agent-config-store.js'
+import { createRealModelInputBuilder } from '../../helpers/model-input.js'
 import type { ProviderConfigStore } from '../../../src/storage/provider-config-store.js'
 import type { ForegroundTurnResult } from '../../../src/foreground/foreground-runner-types.js'
 
@@ -139,6 +140,7 @@ describe('ProcessorOrchestration', () => {
       plannerRuntime: mockPlannerRuntime,
       agentKernel: mockAgentKernel,
       llmAdapter: mockLlmAdapter,
+      modelInputBuilder: createRealModelInputBuilder(),
       transcriptStore: mockTranscriptStore,
     }
   })

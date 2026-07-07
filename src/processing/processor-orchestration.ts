@@ -28,6 +28,7 @@ import type { RuntimeDispatcher } from '../dispatcher/types.js'
 import type { PlannerRuntime } from '../planner/planner-runtime.js'
 import type { AgentKernel } from '../kernel/agent-kernel.js'
 import type { LLMAdapter } from '../llm/adapter.js'
+import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import type { TranscriptStore, TurnTranscript, VisibleMessage } from '../storage/transcript-store.js'
 import type { EventStore } from '../storage/event-store.js'
 import type { ProviderConfigStore } from '../storage/provider-config-store.js'
@@ -60,6 +61,8 @@ export interface ProcessorOrchestrationDeps {
   agentKernel: AgentKernel
   /** LLM adapter for provider access */
   llmAdapter: LLMAdapter
+  /** Shared builder for all LLM model input construction */
+  modelInputBuilder: ModelInputBuilder
   /** Transcript store for persisting turn transcripts */
   transcriptStore: TranscriptStore
   /** Event store for logging provider fallback events */

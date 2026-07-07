@@ -10,7 +10,6 @@ import type { ProcessorOrchestrationDeps } from '../processing/processor-orchest
 import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { ForegroundTurnInput } from './foreground-runner-types.js'
 import type { ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js'
-import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import type { AttachmentResolver } from './context-bundle-builder.js'
 import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js'
 import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
@@ -168,56 +167,6 @@ function createToolExecutorAdapter(deps: ProcessorOrchestrationDeps): ToolExecut
 }
 
 /**
- * Creates a minimal ModelInputBuilder.
- * Note: This is a stub implementation. A full implementation would require
- * templateRegistry and templateLoader from deps.
- */
-function createMinimalModelInputBuilder(): ModelInputBuilder {
-  // Stub: PromptTemplateRegistry and TemplateLoader not available in ProcessorOrchestrationDeps
-  return {
-    async build(input) {
-      const messages: import('../llm/types.js').LLMMessage[] = []
-
-      if (input.systemPrompt) {
-        messages.push({ role: 'system', content: input.systemPrompt })
-      }
-
-      if (input.currentUserMessage) {
-        messages.push({ role: 'user', content: input.currentUserMessage })
-      }
-
-      if (input.transcript && input.transcript.length > 0) {
-        for (const msg of input.transcript) {
-          messages.push(msg)
-        }
-      }
-
-      return {
-        messages,
-        segments: {
-          staticPrefix: '',
-          tenantProject: input.systemPrompt ?? '',
-          toolPlane: '',
-          contextBundle: input.currentUserMessage ?? '',
-        },
-        segmentHashes: {
-          segmentA: '',
-          segmentB: '',
-          segmentC: '',
-          segmentD: '',
-        },
-        metadata: {
-          mode: input.mode,
-          agentKind: input.agentKind,
-          providerFamily: input.providerFamily,
-          messageCount: messages.length,
-        },
-      }
-    },
-  } as ModelInputBuilder
-}
-
-/**
  * Builds a KernelConfig from ProcessorOrchestrationDeps.
  *
  * This function creates all necessary adapters to convert the foreground
@@ -231,7 +180,7 @@ export function buildKernelConfigFromDeps(deps: ProcessorOrchestrationDeps, agen
   const toolExecutor = createToolExecutorAdapter(deps)
   const contextManager = new ForegroundContextManager()
   const dispatcher = createKernelDispatcherAdapter(deps.runtimeDispatcher)
-  const modelInputBuilder = createMinimalModelInputBuilder()
+  const modelInputBuilder = deps.modelInputBuilder
 
   const compactExecutor = deps.summaryManager
     ? createForegroundCompactExecutor(

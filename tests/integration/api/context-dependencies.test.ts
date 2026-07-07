@@ -5,9 +5,10 @@
  * Verifies all required services are exposed and support test-friendly injection.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { createApiContext, DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS, isApiContextError } from '../../../src/api/context.js'
 import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../../../src/storage/agent-config-store.js'
+import { createMockLLMAdapter } from '../../../src/llm/mock-adapter.js'
 import type { MessageProcessor, MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js'
 import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js'
 import type { RuntimeDispatcher } from '../../../src/dispatcher/types.js'
@@ -648,6 +649,49 @@ describe('ApiContext Dependencies - Task 4', () => {
       expect(DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS).toBe(
         DEFAULT_ROUTING_TIMEOUT_MS * (1 + DEFAULT_REPAIR_ATTEMPTS) + 10000,
       )
+    })
+  })
+
+  describe('MessageProcessor Integration', () => {
+    it('default processing path sends non-empty seven-layer model input to LLM', async () => {
+      const llmAdapter = createMockLLMAdapter()
+      const completeSpy = vi.spyOn(llmAdapter, 'complete')
+
+      const result = createApiContext({
+        dbPath: ':memory:',
+        llmAdapter,
+      })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
+
+      result.providerConfigStore.create({
+        providerId: 'provider-phase0-user-001',
+        userId: 'user-phase0-001',
+        providerType: 'ollama',
+        displayName: 'Phase 0 Ollama',
+        baseUrl: 'http://localhost:11434',
+        selectedModel: 'mock-model',
+      })
+
+      const output = await result.messageProcessor.process({
+        correlationId: 'phase0-real-builder-001',
+        userId: 'user-phase0-001',
+        sessionId: 'session-phase0-001',
+        text: 'Hello from phase 0 real builder test',
+        timestamp: new Date().toISOString(),
+      })
+
+      expect(output.success).toBe(true)
+      expect(completeSpy).toHaveBeenCalled()
+
+      const request = completeSpy.mock.calls[0][0]
+      expect(request.messages.length).toBeGreaterThan(0)
+      expect(request.messages[0].role).toBe('system')
+      expect(request.messages[0].content).toContain('Platform Base Template')
+      expect(request.messages[0].content).toContain('Platform Safety Template')
+      expect(request.messages[0].content).not.toBe('')
+
+      result.connection.close()
     })
   })
 
