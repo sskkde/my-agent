@@ -14,6 +14,7 @@ import type { LLMMessage, ToolDefinition } from '../../llm/types.js'
 import type { AssistantPersonaProfile } from '../../foreground/types.js'
 import type { AgentType, SourceType, InvocationSource } from '../../context/types.js'
 import type { LaunchSource } from '../../taxonomy/launch-source-policy.js'
+import type { SegmentDBudgetConfig } from './segment-d-budget.js'
 
 // ─── Mode ────────────────────────────────────────────────────────────────────
 
@@ -486,6 +487,9 @@ export interface ModelInputBuildInput {
 
   /** Prior transcript messages for incremental context */
   transcript?: LLMMessage[]
+
+  /** Per-subsection token budget for Segment D context bundle trimming */
+  segmentDBudget?: SegmentDBudgetConfig
 }
 
 // ─── Output Types ────────────────────────────────────────────────────────────

@@ -33,6 +33,7 @@ import {
   renderSummaryLayers,
 } from './model-input-types.js'
 import { computeTemplateHash } from '../../prompt/template-hash.js'
+import { enforceSegmentDBudget } from './segment-d-budget.js'
 import { StaticPrefixBuilder } from './static-prefix-builder.js'
 import { renderDocumentsSkillPlane, renderSummarySkillPlane } from './skill-plane-projection-renderer.js'
 import type { PromptTemplateRegistry, PromptTemplateRecord, SevenLayerInput } from '../../prompt/prompt-template-registry.js'
@@ -360,10 +361,19 @@ export class ModelInputBuilder {
       parts.push(this.renderTranscript(input.transcript))
     }
 
-    const content = parts.join('\n\n')
+    const budget = input.segmentDBudget
+    let content: string
+    let droppedContextReasons: import('./segment-d-budget.js').DroppedContextReason[] = []
+    if (budget) {
+      const result = enforceSegmentDBudget(parts, budget)
+      content = result.content
+      droppedContextReasons = result.droppedReasons
+    } else {
+      content = parts.join('\n\n')
+    }
     const hash = computeTemplateHash(content)
 
-    return { content, hash }
+    return { content, hash, droppedContextReasons }
   }
 
   private assembleMessages(

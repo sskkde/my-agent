@@ -111,6 +111,7 @@ import { PromptTemplateRegistry } from '../prompt/prompt-template-registry.js'
 import { TemplateLoader } from '../prompt/template-loader.js'
 import { createPromptProjectionResolver } from '../prompt/prompt-projection-resolver.js'
 import { createModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js'
+import { DEFAULT_SEGMENT_D_BUDGET } from '../kernel/model-input/segment-d-budget.js'
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js'
 import { createCloakBrowserProvider, type CloakBrowserProvider } from '../search/browser/cloakbrowser-launcher.js'
 import { BrowserSessionManager, toBrowserSessionId } from '../search/browser/browser-session-manager.js'
@@ -768,6 +769,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       modelInputSnapshotStore,
       promptProjectionResolver,
       contextMetricsStore: createContextMetricsStore(connection),
+      segmentDBudget: DEFAULT_SEGMENT_D_BUDGET,
     })
 
   foregroundAgent.setAgentKernel?.(agentKernel)

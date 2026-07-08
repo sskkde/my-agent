@@ -247,6 +247,7 @@ export interface KernelConfig {
   /** Optional envelope registry for AgentType-level tool security boundary enforcement. */
   envelopeRegistry?: AgentTypeToolEnvelopeRegistry
   contextMetricsStore?: import('../storage/context-metrics-store.js').ContextMetricsStore
+  segmentDBudget?: import('./model-input/segment-d-budget.js').SegmentDBudgetConfig
 }
 
 export interface CompactTriggerResult {
