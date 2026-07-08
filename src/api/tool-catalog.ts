@@ -1,8 +1,9 @@
 import type { ToolSummary } from './types.js'
-import type { ToolDefinition } from '../llm/types.js'
+import type { ToolDefinition as LLMToolDefinition } from '../llm/types.js'
 import type { ToolRegistry } from '../tools/types.js'
 import type { CanonicalToolCatalogEntry } from '../tools/tool-catalog.js'
 import { getFallbackToolCatalog, buildRuntimeToolCatalog } from '../tools/tool-catalog.js'
+import { toLLMToolDefinition } from '../tools/tool-plane-prompt-projection.js'
 
 export const BUILT_IN_TOOLS: ToolSummary[] = [
   {
@@ -235,14 +236,6 @@ export function getToolCatalogWithMetadata(registry?: ToolRegistry): CanonicalTo
   return getFallbackToolCatalog()
 }
 
-export function getToolDefinitions(): ToolDefinition[] {
-  const fallbackCatalog = getFallbackToolCatalog()
-  return fallbackCatalog.map((tool) => ({
-    type: 'function' as const,
-    function: {
-      name: tool.name,
-      description: tool.description,
-      parameters: { type: 'object', properties: {} },
-    },
-  }))
+export function getToolDefinitions(registry: ToolRegistry): LLMToolDefinition[] {
+  return registry.listTools().map(toLLMToolDefinition)
 }

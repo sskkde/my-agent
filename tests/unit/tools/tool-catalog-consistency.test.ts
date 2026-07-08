@@ -11,6 +11,7 @@ import { createTranscriptStore } from '../../../src/storage/transcript-store.js'
 import { createPlanStore } from '../../../src/storage/plan-store.js'
 import { createLongTermMemoryStore } from '../../../src/storage/long-term-memory-store.js'
 import { createSessionStore } from '../../../src/storage/session-store.js'
+import { getToolDefinitions } from '../../../src/api/tool-catalog.js'
 
 describe('Tool Catalog Consistency', () => {
   let registry: ToolRegistry
@@ -168,5 +169,26 @@ describe('Tool Catalog Consistency', () => {
     for (const entry of fallbackCatalog) {
       expect(validSources).toContain(entry.source)
     }
+  })
+
+  it('getToolDefinitions should use registered ToolRegistry schemas exactly', () => {
+    const definitions = getToolDefinitions(registry)
+    const registeredTools = registry.listTools()
+    const registryByName = new Map(registeredTools.map((tool) => [tool.name, tool]))
+
+    expect(definitions).toHaveLength(registeredTools.length)
+
+    for (const definition of definitions) {
+      const registeredTool = registryByName.get(definition.function.name)
+      expect(registeredTool).toBeDefined()
+      expect(definition.function.description).toBe(registeredTool!.description)
+      expect(definition.function.parameters).toEqual(registeredTool!.schema)
+    }
+
+    const sessionHistory = definitions.find((definition) => definition.function.name === 'session_history')
+    expect(sessionHistory).toBeDefined()
+    const properties = sessionHistory!.function.parameters.properties as Record<string, unknown>
+    expect(properties.sessionId).toMatchObject({ type: 'string' })
+    expect(sessionHistory!.function.parameters.required).toContain('sessionId')
   })
 })
