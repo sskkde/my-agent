@@ -7,11 +7,21 @@
  * @module prompt/feature-flags
  */
 
+import {
+  getPromptMemoryP0Phase,
+  getToolLoopV2Phase,
+  isPromptMemoryP0PhaseActive,
+  isToolLoopV2PhaseActive,
+} from './feature-flag-phase.js'
+
 /**
  * Check if PROMPT_MEMORY_P0 feature is enabled.
  * This is the base flag for P0 prompt features.
  */
 export function isPromptMemoryP0Enabled(): boolean {
+  if (isPromptMemoryP0PhaseActive()) return true
+  const phase = getPromptMemoryP0Phase()
+  if (phase === 'shadow') return false
   return process.env.PROMPT_MEMORY_P0_ENABLED === 'true'
 }
 
@@ -29,6 +39,9 @@ export function isPromptTemplateProjectionEnabled(): boolean {
  * This is the feature flag for the new tool loop implementation.
  */
 export function isToolLoopV2Enabled(): boolean {
+  if (isToolLoopV2PhaseActive()) return true
+  const phase = getToolLoopV2Phase()
+  if (phase === 'shadow') return false
   return process.env.TOOL_LOOP_V2_ENABLED === 'true'
 }
 
@@ -64,3 +77,11 @@ export function isPromptT6TemplateConsumptionEnabled(): boolean {
 export function isPromptT7TemplateConsumptionEnabled(): boolean {
   return isEnabledUnlessExplicitlyFalse(process.env.PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED)
 }
+
+export {
+  getFlagPhase,
+  getPromptMemoryP0Phase,
+  getToolLoopV2Phase,
+  isPromptMemoryP0PhaseActive,
+  isToolLoopV2PhaseActive,
+} from './feature-flag-phase.js'
