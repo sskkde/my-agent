@@ -45,6 +45,10 @@ class StaticLLMAdapter implements LLMAdapter {
   updateProviderPriority(_providerId: string, _priority: number): void {}
 }
 
+function createStubModelInputBuilder(): ModelInputBuilder {
+  return { build: async (input: ModelInputBuildInput) => createBuiltModelInput(input) } as unknown as ModelInputBuilder
+}
+
 function createBuiltModelInput(input: ModelInputBuildInput): BuiltModelInput {
   return {
     messages: [{ role: 'user', content: input.currentUserMessage ?? 'test' }],
@@ -105,7 +109,7 @@ function createKernel(content: string): AgentKernel {
         createdAt: new Date().toISOString(),
       }),
     },
-    modelInputBuilder: { build: async (input: ModelInputBuildInput) => createBuiltModelInput(input) } as unknown as ModelInputBuilder,
+    modelInputBuilder: createStubModelInputBuilder(),
     maxIterations: 1,
     timeoutMs: 5000,
     defaultModel: 'test-model',
@@ -177,7 +181,46 @@ describe('AgentKernel output contract validation', () => {
 
     expect(result.finalStatus).toBe('failed')
     expect(result.error?.code).toBe('SCHEMA_MISMATCH')
-    expect(result.transcript.some((entry) => entry.type === 'error')).toBe(true)
+    const errorEntry = result.transcript.find((entry) => entry.type === 'error')
+    expect(errorEntry).toBeDefined()
+    const errorContent = errorEntry!.content as { code: string; message: string }
+    expect(errorContent.code).toBe('SCHEMA_MISMATCH')
+  })
+
+  it('fails structured_json final content when the LLM returns INVALID_JSON', async () => {
+    const kernel = createKernel('{ broken json')
+
+    const result = await kernel.run(
+      createRunInput({
+        mode: 'structured_json',
+        agentType: 'background',
+        agentProfile: 'memory',
+        providerFamily: 'openai',
+        outputContract: 'output:memory-candidate.schema',
+        currentUserMessage: 'extract memory',
+      }),
+    )
+
+    expect(result.finalStatus).toBe('failed')
+    expect(result.error?.code).toBe('INVALID_JSON')
+  })
+
+  it('fails structured_json final content when the output contract is unknown', async () => {
+    const kernel = createKernel(JSON.stringify(validMemoryEnvelope))
+
+    const result = await kernel.run(
+      createRunInput({
+        mode: 'structured_json',
+        agentType: 'background',
+        agentProfile: 'memory',
+        providerFamily: 'openai',
+        outputContract: 'output:unknown.schema',
+        currentUserMessage: 'extract memory',
+      }),
+    )
+
+    expect(result.finalStatus).toBe('failed')
+    expect(result.error?.code).toBe('UNKNOWN_OUTPUT_CONTRACT')
   })
 
   it('keeps default chat natural-language responses unchanged', async () => {
