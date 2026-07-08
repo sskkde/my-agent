@@ -35,15 +35,6 @@ export function generateDiffReport(
     const baselineResult = baselineMap.get(caseId)
     if (!baselineResult) continue
 
-    if (baselineResult.passed !== currentResult.passed) {
-      changed++
-      if (currentResult.passed && !baselineResult.passed) {
-        improvements++
-      } else {
-        regressions++
-      }
-    }
-
     for (const diff of currentResult.diffs) {
       if (diff.path.startsWith('segmentHash.')) {
         const segment = diff.path.replace('segmentHash.', '')
@@ -67,20 +58,14 @@ export function generateDiffReport(
       })
     }
 
-    const baselineToolDiff = baselineResult.diffs.find((d) => d.path === 'expectedTools')
-    const currentToolDiff = currentResult.diffs.find((d) => d.path === 'expectedTools')
-    if (baselineToolDiff || currentToolDiff) {
-      const baselineTools: string[] = baselineToolDiff
-        ? (baselineToolDiff.actual as string[])
-        : (currentToolDiff!.expected as string[])
-      const currentTools: string[] = currentToolDiff
-        ? (currentToolDiff.actual as string[])
-        : (baselineToolDiff!.expected as string[])
-      const addedTools = currentTools.filter((t) => !baselineTools.includes(t))
-      const removedTools = baselineTools.filter((t) => !currentTools.includes(t))
-      if (addedTools.length > 0 || removedTools.length > 0) {
-        toolSelectionChanges.push({ caseId, addedTools, removedTools })
-      }
+    const baselineToolDiff = baselineMap.get(caseId)?.diffs.find(d => d.path === 'toolsProjected')
+    const currentToolDiff = currentMap.get(caseId)?.diffs.find(d => d.path === 'toolsProjected')
+    const baselineTools = (baselineToolDiff?.actual as string[]) ?? []
+    const currentTools = (currentToolDiff?.actual as string[]) ?? []
+    const addedTools = currentTools.filter((t) => !baselineTools.includes(t))
+    const removedTools = baselineTools.filter((t) => !currentTools.includes(t))
+    if (addedTools.length > 0 || removedTools.length > 0) {
+      toolSelectionChanges.push({ caseId, addedTools, removedTools })
     }
 
     const baselineSchemaFailed = baselineResult.diffs.some((d) => d.path === 'outputContract')
@@ -91,6 +76,18 @@ export function generateDiffReport(
         baselineFailed: baselineSchemaFailed,
         currentFailed: currentSchemaFailed,
       })
+    }
+
+    const hasHashChanges = segmentHashChanges.some(d => d.caseId === caseId)
+    const hasTokenChanges = tokenChanges.some(d => d.caseId === caseId)
+    const hasToolChanges = toolSelectionChanges.some(d => d.caseId === caseId)
+    const hasSchemaChanges = schemaFailureRateChanges.some(d => d.caseId === caseId)
+    const hasAnyDiff = hasHashChanges || hasTokenChanges || hasToolChanges || hasSchemaChanges
+
+    if (hasAnyDiff || baselineResult.passed !== currentResult.passed) {
+      changed++
+      if (!currentResult.passed && baselineResult.passed) regressions++
+      else if (currentResult.passed && !baselineResult.passed) improvements++
     }
   }
 

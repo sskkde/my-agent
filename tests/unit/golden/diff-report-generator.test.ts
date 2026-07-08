@@ -46,7 +46,7 @@ describe('generateDiffReport', () => {
     ]
     const current: GoldenCaseResult[] = [
       makeCurrentResult('case-1', false, [
-        { path: 'expectedTools', expected: ['web.search'], actual: [], message: 'Missing tool' },
+        { path: 'toolsProjected', expected: ['web.search'], actual: ['file.read'], message: 'Tool mismatch' },
       ]),
     ]
 
@@ -68,6 +68,45 @@ describe('generateDiffReport', () => {
     const report = generateDiffReport(baseline, current)
 
     expect(report.summary.improvements).toBe(1)
+    expect(report.summary.changed).toBe(1)
+  })
+
+  it('detects token changes when maxTokenEstimate differs', () => {
+    const baseline: GoldenCaseResult[] = [
+      makeBaselineResult('case-1', true),
+    ]
+    const current: GoldenCaseResult[] = [
+      makeCurrentResult('case-1', true, [
+        { path: 'maxTokenEstimate', expected: 100, actual: 150, message: 'Token estimate changed' },
+      ]),
+    ]
+
+    const report = generateDiffReport(baseline, current)
+
+    expect(report.tokenChanges.length).toBe(1)
+    expect(report.tokenChanges[0].caseId).toBe('case-1')
+    expect(report.tokenChanges[0].baselineTokens).toBe(0)
+    expect(report.tokenChanges[0].currentTokens).toBe(150)
+    expect(report.tokenChanges[0].delta).toBe(150)
+    expect(report.summary.changed).toBe(1)
+  })
+
+  it('detects schema failure rate changes when outputContract diff appears', () => {
+    const baseline: GoldenCaseResult[] = [
+      makeBaselineResult('case-1', true),
+    ]
+    const current: GoldenCaseResult[] = [
+      makeCurrentResult('case-1', true, [
+        { path: 'outputContract', expected: 'valid', actual: 'invalid', message: 'Contract violation' },
+      ]),
+    ]
+
+    const report = generateDiffReport(baseline, current)
+
+    expect(report.schemaFailureRateChanges.length).toBe(1)
+    expect(report.schemaFailureRateChanges[0].caseId).toBe('case-1')
+    expect(report.schemaFailureRateChanges[0].baselineFailed).toBe(false)
+    expect(report.schemaFailureRateChanges[0].currentFailed).toBe(true)
     expect(report.summary.changed).toBe(1)
   })
 
