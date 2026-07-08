@@ -36,8 +36,8 @@ export function buildDecisionTrace(
   const observationSummaries = state.transcript
     .filter(isToolResultEntry)
     .map((entry) => {
-      const tc = state.toolCalls.find((t) => t.toolCallId === (entry.content as ToolUseResult).toolCallId)
-      return buildObservationSummary(tc?.toolName ?? 'unknown', entry.content as ToolUseResult)
+      const tc = state.toolCalls.find((t) => t.toolCallId === entry.content.toolCallId)
+      return buildObservationSummary(tc?.toolName ?? 'unknown', entry.content)
     })
 
   const riskAssessments: RiskAssessmentRecord[] = selectedTools
@@ -49,5 +49,7 @@ export function buildDecisionTrace(
   const finalAnswerSource = hasToolCalls && finalContent ? 'tool_synthesized' : state.status === 'failed' ? 'error' : 'llm_direct'
   const intent = (input.contextBundle?.agentType as string) ?? 'unknown'
 
-  return { route, intent, candidateTools, selectedTools, rejectedTools, observationSummaries, riskAssessments, finalAnswerSource }
+  const reasoningSummary = `LLM selected ${selectedTools.length} tool(s) from ${candidateTools.length} candidate(s); route: ${route}`
+
+  return { route, intent, candidateTools, selectedTools, rejectedTools, observationSummaries, riskAssessments, finalAnswerSource, reasoningSummary }
 }

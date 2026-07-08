@@ -27,6 +27,8 @@ describe('buildDecisionTrace', () => {
     const trace = buildDecisionTrace(state, input)
     expect(trace.route).toBe('answer_directly')
     expect(trace.finalAnswerSource).toBe('llm_direct')
+    expect(trace.reasoningSummary).toBeDefined()
+    expect(trace.reasoningSummary).toContain('LLM selected 0 tool(s) from 0 candidate(s); route: answer_directly')
   })
 
   it('route is tool_loop when tool calls exist', () => {
