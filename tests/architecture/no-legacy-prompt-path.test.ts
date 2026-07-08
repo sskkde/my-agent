@@ -540,12 +540,45 @@ describe('No Legacy Prompt Path', () => {
       expect(content).toContain('summaryLayers')
       expect(content).toContain('top-level')
     })
-
     it('MODEL_INPUT_ARCHITECTURE.md uses agentType + agentProfile (not agentKind as canonical)', () => {
       const filePath = join(rootDir, 'docs', 'architecture', 'MODEL_INPUT_ARCHITECTURE.md')
       const content = readFileSync(filePath, 'utf-8')
       expect(content).toContain('agentType')
       expect(content).toContain('agentProfile')
+    })
+  })
+
+  describe('Phase 2 Context Engineering Guards', () => {
+    it('feature-flag-phase.ts exists with getFlagPhase function', () => {
+      const filePath = join(srcDir, 'prompt', 'feature-flag-phase.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('getFlagPhase')
+      expect(content).toContain('isPromptMemoryP0PhaseActive')
+    })
+
+    it('context-metrics-store.ts exports record and getMetricsByRunId', () => {
+      const filePath = join(srcDir, 'storage', 'context-metrics-store.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('record(')
+      expect(content).toContain('getMetricsByRunId')
+    })
+
+    it('segment-d-budget.ts exists with enforceSegmentDBudget function', () => {
+      const filePath = join(srcDir, 'kernel', 'model-input', 'segment-d-budget.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('enforceSegmentDBudget')
+      expect(content).toContain('DEFAULT_SEGMENT_D_BUDGET')
+    })
+
+    it('long-term-memory-recall.ts contains MemoryProvenance and relevanceReason', () => {
+      const filePath = join(srcDir, 'memory', 'long-term-memory-recall.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('provenance')
+      expect(content).toContain('relevanceReason')
     })
   })
 })
