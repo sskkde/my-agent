@@ -95,6 +95,7 @@ export function mapKernelErrorToForegroundResult(kernelResult: KernelRunResult):
   return {
     status: 'failed',
     finalResponse: userMessage,
+    structuredTrace: kernelResult.structuredTrace,
     decisionTrace: {
       route: 'answer_directly',
       requiresPlanner: false,

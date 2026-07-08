@@ -6,7 +6,6 @@
 
 import type { KernelRunResult, KernelRunStatus } from '../../kernel/types.js'
 import type { TurnTranscript } from '../../storage/transcript-store.js'
-import type { ToolCallSummary } from '../../api/types.js'
 
 /**
  * Map kernel execution result to a safe transcript runtime summary.
@@ -22,27 +21,35 @@ import type { ToolCallSummary } from '../../api/types.js'
 export function mapKernelResultToTranscript(
   kernelResult?: KernelRunResult,
 ): TurnTranscript['runtimeSummary'] | undefined {
-  if (!kernelResult?.toolCalls || kernelResult.toolCalls.length === 0) {
+  if (!kernelResult) return undefined
+
+  const hasToolCalls = kernelResult.toolCalls && kernelResult.toolCalls.length > 0
+
+  if (!hasToolCalls && !kernelResult.structuredTrace) {
     return undefined
   }
 
-  const toolCallSummaries: ToolCallSummary[] = kernelResult.toolCalls.map((toolCall) => {
-    // SAFETY: We only extract ID, name, and status - NEVER raw params
-    const summary: ToolCallSummary = {
-      toolCallId: toolCall.toolCallId,
-      toolName: toolCall.toolName,
-      status: mapKernelStatusToToolCallStatus(kernelResult.finalStatus),
-    }
+  const runtimeSummary: TurnTranscript['runtimeSummary'] = {}
 
-    // Generate a safe summary description (tool name only, no args)
-    summary.summary = `Tool: ${toolCall.toolName}`
-
-    return summary
-  })
-
-  return {
-    toolCallSummaries,
+  if (kernelResult.structuredTrace) {
+    const trace = kernelResult.structuredTrace
+    runtimeSummary.structuredTrace = trace
+    runtimeSummary.observationSummaries = trace.observationSummaries
+    runtimeSummary.riskAssessments = trace.riskAssessments
   }
+
+  if (hasToolCalls) {
+    runtimeSummary.toolCallSummaries = kernelResult.toolCalls.map((toolCall) => {
+      return {
+        toolCallId: toolCall.toolCallId,
+        toolName: toolCall.toolName,
+        status: mapKernelStatusToToolCallStatus(kernelResult.finalStatus),
+        summary: `Tool: ${toolCall.toolName}`,
+      }
+    })
+  }
+
+  return runtimeSummary
 }
 
 /**

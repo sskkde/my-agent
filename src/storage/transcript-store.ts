@@ -1,5 +1,6 @@
 import type { ConnectionManager } from './connection.js'
 import type { ToolCallSummary } from '../api/types.js'
+import type { StructuredDecisionTrace, ObservationSummary, RiskAssessmentRecord } from '../kernel/decision-trace-types.js'
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 export type Visibility = 'public' | 'internal' | 'confidential'
@@ -34,6 +35,12 @@ export interface TurnTranscript {
     runtimeActionIds?: string[]
     toolCallSummaries?: ToolCallSummary[]
     approvalSummaries?: string[]
+    /** @since Phase 3 */
+    structuredTrace?: StructuredDecisionTrace
+    /** @since Phase 3 */
+    observationSummaries?: ObservationSummary[]
+    /** @since Phase 3 */
+    riskAssessments?: RiskAssessmentRecord[]
   }
 
   eventRange?: {

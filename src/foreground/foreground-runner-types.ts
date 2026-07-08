@@ -14,6 +14,7 @@ import type { ForegroundDecision, ForegroundSessionState } from './types.js'
 import type { HydratedSessionState } from '../gateway/types.js'
 import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js'
+import type { StructuredDecisionTrace } from '../kernel/decision-trace-types.js'
 import type { TurnTranscript } from '../storage/transcript-store.js'
 
 /**
@@ -122,6 +123,8 @@ export interface ForegroundTurnResult {
    * at the top level for convenience.
    */
   toolCallSummaries?: ToolCallSummary[]
+  /** Structured decision trace for this turn. */
+  structuredTrace?: StructuredDecisionTrace
   /** Error details if failed */
   error?: { code: string; message: string }
 }

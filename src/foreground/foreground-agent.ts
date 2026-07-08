@@ -144,6 +144,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
           requiresPlanner: false,
           reason: 'Kernel execution completed',
         },
+        structuredTrace: kernelResult.structuredTrace,
         runtimeSummary: mapKernelResultToTranscript(kernelResult) ?? undefined,
         toolCallSummaries: this.extractToolCallSummaries(kernelResult),
         kernelResult: {
