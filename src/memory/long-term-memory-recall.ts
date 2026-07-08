@@ -33,6 +33,7 @@ export type VectorRecallPlaceholder = {
 
 export type RecallMemoryResult = LongTermMemoryRecord & {
   source: 'long_term'
+  provenance: import('../memory/types.js').MemoryProvenance
 }
 
 export type RecallResult = {
@@ -172,6 +173,15 @@ class LongTermMemoryRecallServiceImpl implements LongTermMemoryRecallService {
     const resultMemories: RecallMemoryResult[] = limited.map((mem) => ({
       ...mem,
       source: 'long_term' as const,
+      provenance: {
+        sourceType: 'long_term_memory' as const,
+        sourceRef: mem.memoryId,
+        freshnessTs: mem.lifecycle.updatedAt,
+        relevanceReason: query.query
+          ? `keyword match: ${query.query}`
+          : 'high confidence',
+        retrievalScore: mem.relevanceScore > 0 ? mem.relevanceScore : undefined,
+      },
     }))
 
     return {

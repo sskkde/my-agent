@@ -15,6 +15,7 @@ import type { AssistantPersonaProfile } from '../../foreground/types.js'
 import type { AgentType, SourceType, InvocationSource } from '../../context/types.js'
 import type { LaunchSource } from '../../taxonomy/launch-source-policy.js'
 import type { SegmentDBudgetConfig } from './segment-d-budget.js'
+import type { MemoryProvenance } from '../../memory/types.js'
 
 // ─── Mode ────────────────────────────────────────────────────────────────────
 
@@ -315,6 +316,8 @@ export interface MemoryPolicyProjection {
   priorityRules?: string[]
   /** Token budget for memory items (optional) */
   tokenBudget?: number
+  /** Provenance of recalled memories */
+  provenance?: MemoryProvenance[]
 }
 
 /**

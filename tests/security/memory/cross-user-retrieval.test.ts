@@ -61,7 +61,16 @@ function makeUserIsolatedRecallService(
     recall: vi.fn().mockImplementation((query: RecallQuery): Promise<RecallResult> => {
       const userMemories = memoriesByUser.get(query.userId) ?? []
       return Promise.resolve({
-        memories: userMemories.map((mem) => ({ ...mem, source: 'long_term' as const })),
+        memories: userMemories.map((mem) => ({
+          ...mem,
+          source: 'long_term' as const,
+          provenance: {
+            sourceType: 'long_term_memory' as const,
+            sourceRef: mem.memoryId,
+            freshnessTs: mem.lifecycle.updatedAt,
+            relevanceReason: query.query ? `keyword match: ${query.query}` : 'high confidence',
+          },
+        })),
         total: userMemories.length,
       })
     }),
@@ -207,7 +216,16 @@ describe('Cross-User Retrieval Security Tests', () => {
       const service: LongTermMemoryRecallService = {
         recall: vi.fn().mockImplementation((_query: RecallQuery): Promise<RecallResult> => {
           return Promise.resolve({
-            memories: [{ ...memTenantA, source: 'long_term' as const }],
+            memories: [{
+            ...memTenantA,
+            source: 'long_term' as const,
+            provenance: {
+              sourceType: 'long_term_memory' as const,
+              sourceRef: memTenantA.memoryId,
+              freshnessTs: memTenantA.lifecycle.updatedAt,
+              relevanceReason: 'high confidence',
+            },
+          }],
             total: 1,
           })
         }),

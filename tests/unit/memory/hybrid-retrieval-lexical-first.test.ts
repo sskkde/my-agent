@@ -32,7 +32,16 @@ function makeMemory(overrides: Partial<LongTermMemoryRecord> = {}): LongTermMemo
 }
 
 function makeRecallService(memories: LongTermMemoryRecord[] = [], total?: number): LongTermMemoryRecallService {
-  const recallMemories: RecallMemoryResult[] = memories.map((m) => ({ ...m, source: 'long_term' as const }))
+  const recallMemories: RecallMemoryResult[] = memories.map((m) => ({
+    ...m,
+    source: 'long_term' as const,
+    provenance: {
+      sourceType: 'long_term_memory' as const,
+      sourceRef: m.memoryId,
+      freshnessTs: m.lifecycle.updatedAt,
+      relevanceReason: 'high confidence',
+    },
+  }))
   return {
     recall: vi.fn().mockResolvedValue({
       memories: recallMemories,

@@ -566,14 +566,28 @@ export class ModelInputBuilder {
     const freshnessTs = firstItem?.freshnessTs ?? input.currentDate ?? 'unspecified'
     const invocationSource = bundle?.invocationSource ?? this.defaultInvocationSource(input)
 
-    return [
+    const parts: string[] = [
       '## Provenance',
       `sourceType: ${sourceType}`,
       `sourceRef: ${sourceRef}`,
       `freshnessTs: ${freshnessTs}`,
       `invocationSource: ${invocationSource}`,
-      '--- Segment D: Context Bundle (Provenance) ---',
-    ].join('\n')
+    ]
+
+    if (input.memoryPolicyProjection?.provenance && input.memoryPolicyProjection.provenance.length > 0) {
+      parts.push('')
+      parts.push('### Memory Provenance')
+      for (const prov of input.memoryPolicyProjection.provenance) {
+        parts.push(
+          `- sourceType: ${prov.sourceType}, sourceRef: ${prov.sourceRef}, freshnessTs: ${prov.freshnessTs}, relevanceReason: ${prov.relevanceReason}` +
+            (prov.retrievalScore !== undefined ? `, retrievalScore: ${prov.retrievalScore}` : ''),
+        )
+      }
+    }
+
+    parts.push('--- Segment D: Context Bundle (Provenance) ---')
+
+    return parts.join('\n')
   }
 
   private defaultInvocationSource(input: ModelInputBuildInput): string {

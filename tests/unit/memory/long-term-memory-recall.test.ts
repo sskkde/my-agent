@@ -550,4 +550,65 @@ describe('Long-term Memory Recall Service', () => {
       expect(result.memories[0]?.source).toBe('long_term')
     })
   })
+
+  describe('Memory Provenance', () => {
+    it('should have MemoryProvenance type with required fields', () => {
+      const result: import('../../../src/memory/types.js').MemoryProvenance = {
+        sourceType: 'long_term_memory',
+        sourceRef: 'mem-test-1',
+        freshnessTs: '2026-07-08T10:00:00Z',
+        relevanceReason: 'keyword match: test',
+        retrievalScore: 0.85,
+      }
+      expect(result.sourceType).toBe('long_term_memory')
+      expect(result.relevanceReason).toContain('test')
+    })
+
+    it('recall returns provenance with sourceType and relevanceReason', async () => {
+      const mem = createTestMemory({
+        memoryId: 'mem-prov-1',
+        content: { text: 'User prefers dark mode' },
+      })
+
+      store.save(mem)
+
+      const query: RecallQuery = {
+        userId: 'user-123',
+        query: 'dark mode',
+      }
+
+      const result = await recallService.recall(query)
+
+      expect(result.memories).toHaveLength(1)
+      const recalled = result.memories[0]
+      expect(recalled).toHaveProperty('provenance')
+      expect(recalled.provenance.sourceType).toBe('long_term_memory')
+      expect(recalled.provenance.sourceRef).toBe('mem-prov-1')
+      expect(recalled.provenance.relevanceReason).toContain('keyword match')
+    })
+
+    it('provenance retrievalScore is present when relevanceScore > 0', async () => {
+      const mem = createTestMemory({
+        memoryId: 'mem-prov-2',
+        content: { text: 'Python programming language' },
+        retrieval: {
+          keywords: ['python', 'programming'],
+          recallCount: 0,
+        },
+      })
+
+      store.save(mem)
+
+      const query: RecallQuery = {
+        userId: 'user-123',
+        query: 'python',
+      }
+
+      const result = await recallService.recall(query)
+
+      expect(result.memories).toHaveLength(1)
+      const recalled = result.memories[0]
+      expect(recalled.provenance.retrievalScore).toBeGreaterThan(0)
+    })
+  })
 })

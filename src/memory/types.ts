@@ -398,6 +398,21 @@ export interface RollingSummaryPolicy {
   getDefaultConfig(): RollingSummaryConfig
 }
 
+// ============================================================================
+// Provenance Types
+// ============================================================================
+
+/**
+ * Provenance metadata for a recalled memory
+ */
+export interface MemoryProvenance {
+  sourceType: 'long_term_memory' | 'session_memory' | 'summary_layer' | 'working_summary'
+  sourceRef: string
+  freshnessTs: string
+  relevanceReason: string
+  retrievalScore?: number
+}
+
 /**
  * Memory search interface
  */
