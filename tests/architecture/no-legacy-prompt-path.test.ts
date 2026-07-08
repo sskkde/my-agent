@@ -582,6 +582,55 @@ describe('No Legacy Prompt Path', () => {
     })
   })
 
+  describe('Phase 4 Prompt Evaluation Guards', () => {
+    const ARCHIVE_DIR = join(process.cwd(), 'src', 'golden')
+
+    it('golden-case-types.ts exists with GoldenCase, GoldenCaseCategory', () => {
+      const filePath = join(ARCHIVE_DIR, 'golden-case-types.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('export interface GoldenCase')
+      expect(content).toContain('export type GoldenCaseCategory')
+    })
+
+    it('regression-runner.ts exists with runGoldenCase', () => {
+      const filePath = join(ARCHIVE_DIR, 'regression-runner.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('export async function runGoldenCase')
+    })
+
+    it('diff-report-generator.ts exists with generateDiffReport', () => {
+      const filePath = join(ARCHIVE_DIR, 'diff-report-generator.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('export function generateDiffReport')
+    })
+
+    it('candidate-runner.ts exists with runCandidate', () => {
+      const filePath = join(ARCHIVE_DIR, 'candidate-runner.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('export async function runCandidate')
+    })
+
+    it('tests/golden/cases/ directory has at least 7 case files', () => {
+      const casesDir = join(process.cwd(), 'tests', 'golden', 'cases')
+      expect(existsSync(casesDir)).toBe(true)
+      const caseFiles = readdirSync(casesDir).filter(
+        (f) => f.endsWith('.ts') && f !== 'index.ts',
+      )
+      expect(caseFiles.length).toBeGreaterThanOrEqual(7)
+    })
+
+    it('tests/golden/golden-regression.test.ts exists and contains runGoldenCase', () => {
+      const filePath = join(process.cwd(), 'tests', 'golden', 'golden-regression.test.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('runGoldenCase')
+    })
+  })
+
   describe('Phase 3 ReAct Trace Guards', () => {
     const srcDir = join(process.cwd(), 'src')
 
