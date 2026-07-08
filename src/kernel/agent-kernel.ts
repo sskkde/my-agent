@@ -17,6 +17,7 @@ import { projectBundleToData } from './model-input/context-bundle-adapter.js'
 import { extractToolsForRequest } from './model-input/model-input-builder.js'
 import { applyCompactToBundle } from './model-input/compact-summary-rendering.js'
 import { isPromptMemoryP0Enabled, isToolLoopV2Enabled } from '../prompt/feature-flags.js'
+import { getPromptMemoryP0Phase } from '../prompt/feature-flag-phase.js'
 import { ToolResultPairingGuard } from './tool-result-pairing-guard.js'
 import {
   createToolDispatchRequest,
@@ -331,6 +332,7 @@ export class AgentKernel {
           ...(isPromptMemoryP0Enabled() && toolSelectionPolicy ? { toolSelectionPolicy } : {}),
           ...(isPromptMemoryP0Enabled() && personaProjection ? { personaProjection } : {}),
           ...(isPromptMemoryP0Enabled() && memoryPolicyProjection ? { memoryPolicyProjection } : {}),
+          segmentDBudget: this.config.segmentDBudget,
         }
       : {
           mode: 'function_calling',
@@ -352,10 +354,14 @@ export class AgentKernel {
                 memoryPolicyProjection,
               }
             : {}),
+          segmentDBudget: this.config.segmentDBudget,
         }
 
     const builtInput = await this.config.modelInputBuilder.build(buildInput)
     this.lastBuiltModelInput = builtInput
+
+    const flagPhase = getPromptMemoryP0Phase() ?? null
+    const flagName = flagPhase !== null ? 'PROMPT_MEMORY_P0_PHASE' : null
 
     if (this.config.contextMetricsStore) {
       this.config.contextMetricsStore.record({
@@ -372,9 +378,9 @@ export class AgentKernel {
         transcriptTokenEstimate: 0,
         pinnedItemCount: input.contextBundle.pinnedItems.length,
         orderedItemCount: input.contextBundle.orderedItems.length,
-        droppedContextReasons: null,
-        flagPhase: null,
-        flagName: null,
+        droppedContextReasons: builtInput.segments.droppedContextReasons ?? null,
+        flagPhase,
+        flagName,
       })
     }
 

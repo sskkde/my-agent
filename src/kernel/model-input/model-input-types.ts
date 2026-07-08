@@ -509,6 +509,8 @@ export interface ModelInputSegments {
   toolPlane: string
   /** Segment D: Layer 7 (context bundle + dynamic) */
   contextBundle: string
+  /** Dropped context reasons JSON string from Segment D budget enforcement (null if none) */
+  droppedContextReasons?: string
 }
 
 /**

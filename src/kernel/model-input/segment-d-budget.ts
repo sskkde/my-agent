@@ -81,5 +81,44 @@ export function enforceSegmentDBudget(
     }
   }
 
+  // Total budget enforcement: if total exceeds totalBudget, trim
+  // from lowest-priority subsections (provenance first, then memoryPolicy, etc.)
+  if (budget.totalBudget > 0) {
+    let totalEst = tokenEstimate(trimmed.join('\n\n'))
+    if (totalEst > budget.totalBudget) {
+      for (let i = 0; i < trimmed.length && totalEst > budget.totalBudget; i++) {
+        const subsection = SUBSECTION_ORDER[i]
+        if (UNLIMITED_SUBSECTIONS.has(subsection.key)) continue
+
+        const currentText = trimmed[i]
+        if (!currentText || currentText.length === 0) continue
+
+        const currentEst = tokenEstimate(currentText)
+        const excess = totalEst - budget.totalBudget
+        const reduction = Math.min(currentEst, excess)
+        const ratio = (currentEst - reduction) / currentEst
+
+        if (ratio <= 0) {
+          trimmed[i] = ''
+          droppedReasons.push({
+            section: subsection.section,
+            reason: `removed entirely to meet total budget of ${budget.totalBudget} tokens`,
+            itemCount: 1,
+          })
+        } else {
+          const newLength = Math.floor(currentText.length * ratio)
+          trimmed[i] = currentText.slice(0, newLength)
+          droppedReasons.push({
+            section: subsection.section,
+            reason: `total budget exceeded: reduced from ${currentText.length} to ${newLength} chars to meet total budget of ${budget.totalBudget} tokens`,
+            itemCount: 1,
+          })
+        }
+
+        totalEst = tokenEstimate(trimmed.join('\n\n'))
+      }
+    }
+  }
+
   return { content: trimmed.join('\n\n'), droppedReasons }
 }

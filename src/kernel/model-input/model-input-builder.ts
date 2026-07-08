@@ -82,6 +82,11 @@ export class ModelInputBuilder {
 
     const messages = this.assembleMessages(segmentA, segmentB, segmentC, segmentD, input)
 
+    const droppedContextReasons =
+      segmentD.droppedContextReasons && segmentD.droppedContextReasons.length > 0
+        ? JSON.stringify(segmentD.droppedContextReasons)
+        : undefined
+
     return {
       messages,
       segments: {
@@ -89,6 +94,7 @@ export class ModelInputBuilder {
         tenantProject: segmentB.content,
         toolPlane: segmentC.content,
         contextBundle: segmentD.content,
+        droppedContextReasons,
       },
       segmentHashes: {
         segmentA: segmentA.hash,
