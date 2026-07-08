@@ -10,7 +10,7 @@ describe('ContextMetricsStore', () => {
 
   beforeEach(() => {
     connection.exec('DROP TABLE IF EXISTS context_metrics')
-    store.applyMigrations({ apply: (migrations) => { for (const m of migrations) { for (const stmt of m.up.split(';').filter(s => s.trim())) connection.exec(stmt) } } })
+    store.applyMigrations({ init: () => {}, getCurrentVersion: () => 0, apply: (migrations) => { for (const m of migrations) { for (const stmt of m.up.split(';').filter(s => s.trim())) connection.exec(stmt) } } })
   })
 
   afterAll(() => { connection.close() })
@@ -122,7 +122,7 @@ describe('ContextMetricsStore', () => {
     const reasons = JSON.stringify([
       { section: 'transcript', reason: 'exceeded budget', itemCount: 3 },
     ])
-    const id = store.record({
+    store.record({
       runId: 'run-5',
       agentId: 'agent-1',
       sessionId: null,
