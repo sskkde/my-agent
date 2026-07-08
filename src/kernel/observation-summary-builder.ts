@@ -38,6 +38,9 @@ function extractFilePreview(toolName: string, toolCallId: string, result: ToolUs
 }
 
 function extractMemoryKeywords(toolName: string, toolCallId: string, result: ToolUseResult): ObservationSummary {
+  if (result.error) {
+    return { toolName, toolCallId, summaryType: 'memory_keywords', summary: `Memory retrieval failed: ${result.error.message}` }
+  }
   const data = result.result as Record<string, unknown> | null | undefined
   const entries = data?.entries as Array<{ keyword: string }> | undefined
   const keywords = data?.keywords as string[] | undefined

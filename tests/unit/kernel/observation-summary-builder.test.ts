@@ -145,6 +145,19 @@ describe('buildObservationSummary', () => {
       expect(summary.evidenceCount).toBe(4)
     })
 
+    it('handles memory_retrieve error', () => {
+      const result = makeResult({
+        toolCallId: 'call_mem_err',
+        result: null,
+        error: { code: 'MEMORY_FAILED', message: 'Database connection lost', recoverable: true },
+      })
+      const summary = buildObservationSummary('memory_retrieve', result)
+      expect(summary.summaryType).toBe('memory_keywords')
+      expect(summary.summary).toContain('Memory retrieval failed')
+      expect(summary.summary).toContain('Database connection lost')
+      expect(summary.evidenceCount).toBeUndefined()
+    })
+
     it('handles memory_retrieve with fewer than 3 keywords', () => {
       const result = makeResult({
         toolCallId: 'call_mem2',
