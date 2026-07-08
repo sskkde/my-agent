@@ -523,7 +523,25 @@ describe('LongTermMemoryExtractorService', () => {
 
       expect(result.status).toBe('failed')
       if (result.status === 'failed') {
-        expect(result.errorCode).toBeDefined()
+        expect(result.errorCode).toBe('SCHEMA_MISMATCH')
+      }
+
+      const memories = longTermMemoryStore.getByUserId('user-1')
+      expect(memories).toHaveLength(0)
+    })
+
+    it('should mark run failed with SCHEMA_MISMATCH when structured output contract fails', async () => {
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-1' }))
+
+      const llmAdapter = createMockLLMAdapter(JSON.stringify({ candidates: [{ text: 'missing structural fields' }] }))
+      const deps = createDeps(llmAdapter)
+
+      const service = createLongTermMemoryExtractorService(deps)
+      const result = await service.run()
+
+      expect(result.status).toBe('failed')
+      if (result.status === 'failed') {
+        expect(result.errorCode).toBe('SCHEMA_MISMATCH')
       }
 
       const memories = longTermMemoryStore.getByUserId('user-1')

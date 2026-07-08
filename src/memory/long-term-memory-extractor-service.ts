@@ -7,6 +7,10 @@ import type { LLMAdapter } from '../llm/adapter.js'
 import type { LLMRequest } from '../llm/types.js'
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
 import {
+  StructuredOutputContractError,
+  validateOutputContractContent,
+} from '../contracts/output-contract-validator.js'
+import {
   stableJsonHash,
   fingerprintMemoryCandidate,
   validateExtractedCandidate,
@@ -82,18 +86,18 @@ function buildWindow(deps: ExtractorServiceDeps): MemoryExtractionWindow | null 
 }
 
 function parseLLMResponse(content: string): ExtractedMemoryCandidate[] {
-  const parsed: unknown = JSON.parse(content)
+  const validation = validateOutputContractContent({
+    contractId: 'output:memory-candidate.schema',
+    mode: 'structured_json',
+    content,
+  })
 
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    !('candidates' in parsed) ||
-    !Array.isArray((parsed as Record<string, unknown>).candidates)
-  ) {
-    throw new Error('Schema mismatch: missing candidates array')
+  if (!validation.ok) {
+    throw new StructuredOutputContractError(validation)
   }
 
-  return (parsed as { candidates: unknown[] }).candidates as ExtractedMemoryCandidate[]
+  const parsed = validation.parsed as { candidates: ExtractedMemoryCandidate[] }
+  return parsed.candidates
 }
 
 function buildMemoryRecord(
@@ -206,9 +210,10 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
         let candidates: ExtractedMemoryCandidate[]
         try {
           candidates = parseLLMResponse(llmResult.response.content)
-        } catch {
-          deps.memoryExtractionRunStore.markFailed(run.runId, 'INVALID_JSON')
-          return { status: 'failed', errorCode: 'INVALID_JSON' }
+        } catch (error) {
+          const errorCode = error instanceof StructuredOutputContractError ? error.code : 'INVALID_JSON'
+          deps.memoryExtractionRunStore.markFailed(run.runId, errorCode)
+          return { status: 'failed', errorCode }
         }
 
         const resultCounts: ResultCounts = {
