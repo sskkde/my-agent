@@ -4,6 +4,7 @@ import { TemplateLoader } from '../../../src/prompt/template-loader.js'
 import { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
 import { runGoldenCase } from '../../../src/golden/regression-runner.js'
 import type { GoldenCase } from '../../../src/golden/golden-case-types.js'
+import type { BuiltModelInput } from '../../../src/kernel/model-input/model-input-types.js'
 
 function makeMinimalTestTemplates(): Map<string, PromptTemplateRecord> {
   return new Map([
@@ -148,5 +149,109 @@ describe('runGoldenCase', () => {
     expect(result.passed).toBe(false)
     expect(result.diffs.length).toBeGreaterThan(0)
     expect(result.diffs.some((d) => d.path === 'expectedTools' && Array.isArray(d.expected) && d.expected.includes('web.search'))).toBe(true)
+  })
+
+  it('detects expectedSegmentHashes match and mismatch', async () => {
+    const templates = makeMinimalTestTemplates()
+    const registry = new PromptTemplateRegistry(templates, '/nonexistent')
+    const loader = new TemplateLoader('/nonexistent')
+    const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
+
+    const built = await builder.build({
+      mode: 'function_calling',
+      agentType: 'main',
+      agentProfile: 'default_main',
+      providerFamily: 'openai',
+      currentUserMessage: 'Hello',
+    }) as BuiltModelInput
+
+    const baseInput = {
+      mode: 'function_calling' as const,
+      agentType: 'main' as const,
+      agentProfile: 'default_main',
+      providerFamily: 'openai',
+      currentUserMessage: 'Hello',
+    }
+
+    const matchCase: GoldenCase = {
+      id: 'test-hash-match',
+      category: 'direct_answer',
+      description: 'Test hash match',
+      input: baseInput,
+      expectations: {
+        expectedSegmentHashes: built.segmentHashes,
+      },
+    }
+    const matchResult = await runGoldenCase(matchCase, { builder })
+    expect(matchResult.passed).toBe(true)
+    expect(matchResult.diffs).toEqual([])
+
+    const mismatchCase: GoldenCase = {
+      id: 'test-hash-mismatch',
+      category: 'direct_answer',
+      description: 'Test hash mismatch',
+      input: baseInput,
+      expectations: {
+        expectedSegmentHashes: { segmentA: '000000wronghash000000' },
+      },
+    }
+    const mismatchResult = await runGoldenCase(mismatchCase, { builder })
+    expect(mismatchResult.passed).toBe(false)
+    expect(mismatchResult.diffs.some((d) => d.path === 'segmentHash.segmentA')).toBe(true)
+  })
+
+  it('detects maxTokenEstimate exceeded', async () => {
+    const templates = makeMinimalTestTemplates()
+    const registry = new PromptTemplateRegistry(templates, '/nonexistent')
+    const loader = new TemplateLoader('/nonexistent')
+    const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
+
+    const goldenCase: GoldenCase = {
+      id: 'test-max-tokens',
+      category: 'direct_answer',
+      description: 'Test max token estimate',
+      input: {
+        mode: 'function_calling',
+        agentType: 'main',
+        agentProfile: 'default_main',
+        providerFamily: 'openai',
+        currentUserMessage: 'Hello, how are you?',
+      },
+      expectations: {
+        maxTokenEstimate: 1,
+      },
+    }
+
+    const result = await runGoldenCase(goldenCase, { builder })
+    expect(result.passed).toBe(false)
+    expect(result.diffs.some((d) => d.path === 'maxTokenEstimate')).toBe(true)
+  })
+
+  it('detects output contract validation failure in structured_json mode', async () => {
+    const templates = makeMinimalTestTemplates()
+    const registry = new PromptTemplateRegistry(templates, '/nonexistent')
+    const loader = new TemplateLoader('/nonexistent')
+    const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
+
+    const goldenCase: GoldenCase = {
+      id: 'test-output-contract',
+      category: 'direct_answer',
+      description: 'Test output contract validation',
+      input: {
+        mode: 'structured_json',
+        agentType: 'main',
+        agentProfile: 'default_main',
+        providerFamily: 'openai',
+        outputContract: 'output:memory-candidate.schema',
+        currentUserMessage: 'Extract memories',
+      },
+      expectations: {
+        outputContractMustValidate: true,
+      },
+    }
+
+    const result = await runGoldenCase(goldenCase, { builder })
+    expect(result.passed).toBe(false)
+    expect(result.diffs.some((d) => d.path === 'outputContract')).toBe(true)
   })
 })

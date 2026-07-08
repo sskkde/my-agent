@@ -1,4 +1,5 @@
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
+import type { BuiltModelInput } from '../kernel/model-input/model-input-types.js'
 import type { GoldenCase } from './golden-case-types.js'
 import { validateOutputContractContent } from '../contracts/output-contract-validator.js'
 
@@ -31,16 +32,30 @@ export async function runGoldenCase(
   const { input, expectations } = goldenCase
   const diffs: GoldenCaseDiff[] = []
 
-  const result = await builder.build({
-    mode: input.mode,
-    agentType: input.agentType,
-    agentProfile: input.agentProfile,
-    providerFamily: input.providerFamily,
-    outputContract: input.outputContract,
-    currentUserMessage: input.currentUserMessage,
-    toolProjection: input.toolProjection,
-    contextBundle: input.contextBundle as Record<string, unknown> | undefined,
-  })
+  let result: BuiltModelInput
+  try {
+    result = await builder.build({
+      mode: input.mode,
+      agentType: input.agentType,
+      agentProfile: input.agentProfile,
+      providerFamily: input.providerFamily,
+      outputContract: input.outputContract,
+      currentUserMessage: input.currentUserMessage,
+      toolProjection: input.toolProjection,
+      contextBundle: input.contextBundle as Record<string, unknown> | undefined,
+    })
+  } catch (error) {
+    return {
+      caseId: goldenCase.id,
+      passed: false,
+      diffs: [{
+        path: 'builder.build()',
+        expected: 'successful build',
+        actual: error instanceof Error ? error.message : String(error),
+        message: 'ModelInputBuilder.build() threw an exception',
+      }],
+    }
+  }
 
   if (expectations.expectedTools) {
     const missing = expectations.expectedTools.filter(
