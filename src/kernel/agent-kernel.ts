@@ -28,6 +28,7 @@ import type { RuntimeContextDelta } from '../context/types.js'
 import type { ToolExecutionResult } from '../tools/types.js'
 import type { TokenStreamPayload } from '../api/types.js'
 import { validateOutputContractContent } from '../contracts/output-contract-validator.js'
+import { buildDecisionTrace } from './decision-trace-builder.js'
 
 function stateSafeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -63,7 +64,7 @@ export class AgentKernel {
 
     if (timeoutMs <= 0) {
       state.status = 'failed'
-      return this.buildResult(state, 'timeout')
+      return this.buildResult(state, 'timeout', undefined, undefined, undefined, input)
     }
 
     const startTime = Date.now()
@@ -75,7 +76,7 @@ export class AgentKernel {
         if (Date.now() - startTime > timeoutMs) {
           this.flushPairingGuard(pairingGuard, state, 'timeout')
           state.status = 'failed'
-          return this.buildResult(state, 'timeout')
+          return this.buildResult(state, 'timeout', undefined, undefined, undefined, input)
         }
 
         const llmRequest = await this.buildLLMRequest(input, state)
@@ -105,7 +106,7 @@ export class AgentKernel {
               !this.hasToolCalls(fallbackResult.response)
             ) {
               state.status = 'completed'
-              return this.buildResult(state, 'completed', undefined, '')
+              return this.buildResult(state, 'completed', undefined, '', undefined, input)
             }
             llmResult = fallbackResult
           }
@@ -123,7 +124,7 @@ export class AgentKernel {
           return this.buildResult(state, 'failed', {
             code: llmResult.error.code,
             message: llmResult.error.message,
-          })
+          }, undefined, undefined, input)
         }
 
         this.config.modelInputSnapshotStore?.record({
@@ -203,7 +204,7 @@ export class AgentKernel {
             if (shouldStop) {
               this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop')
               state.status = 'completed'
-              return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult)
+              return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult, input)
             }
           }
 
@@ -246,7 +247,7 @@ export class AgentKernel {
             return this.buildResult(state, 'failed', {
               code: finalContentValidation.code,
               message: finalContentValidation.message,
-            })
+            }, undefined, undefined, input)
           }
 
           state.status = 'completed'
@@ -256,13 +257,14 @@ export class AgentKernel {
             undefined,
             llmResponse.content,
             finalContentValidation.structuredResult,
+            input,
           )
         }
       }
 
       this.flushPairingGuard(pairingGuard, state, 'max_iterations')
       state.status = 'failed'
-      return this.buildResult(state, 'max_iterations_reached')
+      return this.buildResult(state, 'max_iterations_reached', undefined, undefined, undefined, input)
     } catch (error) {
       this.flushPairingGuard(pairingGuard, state, 'kernel_error')
       state.status = 'failed'
@@ -272,7 +274,7 @@ export class AgentKernel {
       return this.buildResult(state, 'failed', {
         code: streamingErrorMatch ? 'STREAMING_ERROR' : 'KERNEL_ERROR',
         message: streamingErrorMatch ? streamingErrorMatch[1] : errorMessage,
-      })
+      }, undefined, undefined, input)
     }
   }
 
@@ -936,8 +938,9 @@ export class AgentKernel {
     error?: { code: string; message: string },
     finalResponse?: string,
     structuredResult?: unknown,
+    input?: KernelRunInput,
   ): KernelRunResult {
-    return {
+    const result: KernelRunResult = {
       finalStatus,
       finalResponse,
       iterationsUsed: state.currentIteration,
@@ -946,5 +949,11 @@ export class AgentKernel {
       error,
       ...(structuredResult !== undefined ? { structuredResult } : {}),
     }
+
+    if (input) {
+      result.structuredTrace = buildDecisionTrace(state, input, result.finalResponse)
+    }
+
+    return result
   }
 }

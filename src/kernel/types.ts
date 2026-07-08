@@ -2,6 +2,7 @@ import type { AgentType, ContextBundle, ContextItem, RuntimeContextDelta } from 
 import type { LLMAdapter } from '../llm/adapter.js'
 import type { LLMRequest } from '../llm/types.js'
 import type { ModelInputBuilder } from './model-input/model-input-builder.js'
+import type { StructuredDecisionTrace } from './decision-trace-types.js'
 import type {
   ModelInputBuildInput,
   ToolPlaneProjection,
@@ -114,6 +115,8 @@ export interface KernelRunResult {
   }
   /** Structured payload from an internal tool handler that signaled stop. */
   structuredResult?: unknown
+  /** Structured decision trace for this run. */
+  structuredTrace?: StructuredDecisionTrace
 }
 
 export interface KernelTranscriptEntry {
