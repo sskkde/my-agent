@@ -81,6 +81,31 @@ export interface ForegroundToolProjectionResult {
   projectionMode: 'function_calling'
 }
 
+function toLLMToolDefinitionFromSummary(tool: {
+  name: string
+  description: string
+  schema?: {
+    type: 'object'
+    properties: Record<string, unknown>
+    required?: string[]
+    additionalProperties?: boolean
+    description?: string
+  }
+}): ToolDefinition {
+  if (!tool.schema) {
+    throw new Error(`Tool schema unavailable for ${tool.name}; pass ToolRegistry or include summary schema`)
+  }
+
+  return {
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.schema,
+    },
+  }
+}
+
 /**
  * Build a foreground tool projection for the kernel execution phase.
  *
@@ -134,26 +159,15 @@ export function buildForegroundToolProjection(
 
   const allowedToolIds = projectedTools.map((tool) => tool.name)
 
-  // Use ToolRegistry to get full tool definitions with real schemas
   const toolDefinitions: ToolDefinition[] = projectedTools.map((tool) => {
-    // If ToolRegistry is provided, look up the full tool definition
     if (toolRegistry) {
       const fullTool = toolRegistry.getTool(tool.name)
       if (fullTool) {
-        // Use the helper to convert with real schema
         return toLLMToolDefinition(fullTool)
       }
     }
 
-    // Fallback: use the schema from the summary if available, otherwise empty schema
-    return {
-      type: 'function' as const,
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.schema ?? { type: 'object' as const, properties: {} },
-      },
-    }
+    return toLLMToolDefinitionFromSummary(tool)
   })
 
   return {

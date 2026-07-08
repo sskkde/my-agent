@@ -31,11 +31,28 @@ describe('buildForegroundToolProjection', () => {
     category: ToolCategory,
     sensitivity: ToolSensitivity,
     description: string = 'Test tool',
+    schema: {
+      type: 'object'
+      properties: Record<string, unknown>
+      required?: string[]
+      additionalProperties?: boolean
+      description?: string
+    } = {
+      type: 'object' as const,
+      properties: {
+        input: {
+          type: 'string',
+          description: 'Test input',
+        },
+      },
+      required: [] as string[],
+    },
   ) => ({
     name,
     category,
     sensitivity,
     description,
+    schema,
   })
 
   describe('default projection excludes high-risk tools', () => {
@@ -146,7 +163,16 @@ describe('buildForegroundToolProjection', () => {
         function: {
           name: 'web_search',
           description: 'Search the web',
-          parameters: { type: 'object', properties: {} },
+          parameters: {
+            type: 'object',
+            properties: {
+              input: {
+                type: 'string',
+                description: 'Test input',
+              },
+            },
+            required: [],
+          },
         },
       })
       expect(result.toolDefinitions[1]).toEqual({
@@ -154,7 +180,16 @@ describe('buildForegroundToolProjection', () => {
         function: {
           name: 'status_query',
           description: 'Query status',
-          parameters: { type: 'object', properties: {} },
+          parameters: {
+            type: 'object',
+            properties: {
+              input: {
+                type: 'string',
+                description: 'Test input',
+              },
+            },
+            required: [],
+          },
         },
       })
     })
@@ -274,6 +309,29 @@ describe('buildForegroundToolProjection', () => {
       const required = statusQueryDef.function.parameters.required as string[]
       expect(required).toEqual([])
     })
+
+    it('uses ToolRegistry schema before summary schema when both are present', () => {
+      const toolRegistry = createToolRegistry()
+      toolRegistry.register(createStatusQueryTool())
+
+      const allTools = [
+        createTool('status_query', 'internal', 'low', 'Query active work status', {
+          type: 'object',
+          properties: {
+            wrong: { type: 'string' },
+          },
+          required: ['wrong'],
+        }),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools, toolRegistry)
+      const statusQueryDef = result.toolDefinitions[0]
+      const properties = statusQueryDef.function.parameters.properties as Record<string, unknown>
+
+      expect(properties).toHaveProperty('targetId')
+      expect(properties).not.toHaveProperty('wrong')
+      expect(statusQueryDef.function.parameters.required).toEqual([])
+    })
   })
 
   describe('unprojected call handling', () => {
@@ -309,6 +367,21 @@ describe('buildForegroundToolProjection', () => {
 
       expect(result.allowedToolIds).toEqual([])
       expect(result.toolDefinitions).toEqual([])
+    })
+
+    it('throws when projected tool lacks registry and summary schema', () => {
+      const allTools = [
+        {
+          name: 'web_search',
+          category: 'search' as ToolCategory,
+          sensitivity: 'low' as ToolSensitivity,
+          description: 'Search the web',
+        },
+      ]
+
+      expect(() => buildForegroundToolProjection(createMockInput(), allTools)).toThrow(
+        'Tool schema unavailable for web_search; pass ToolRegistry or include summary schema',
+      )
     })
 
     it('should handle tools with all safe categories', () => {

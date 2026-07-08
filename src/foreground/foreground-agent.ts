@@ -65,6 +65,23 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.toolRegistry = registry
   }
 
+  private getToolSummaries(): ReturnType<typeof getToolCatalog> {
+    if (this.toolCatalog) {
+      return this.toolCatalog
+    }
+
+    if (!this.toolRegistry) {
+      return []
+    }
+
+    return this.toolRegistry.listTools().map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      category: tool.category,
+      sensitivity: tool.sensitivity,
+    }))
+  }
+
   async runTurn(input: ForegroundTurnInput): Promise<ForegroundTurnResult> {
     if (!this.agentKernel) {
       return {
@@ -89,7 +106,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       DEFAULT_FOREGROUND_TOKEN_BUDGET,
       this.attachmentResolver,
     )
-    const allTools = this.toolCatalog ?? getToolCatalog()
+    const allTools = this.getToolSummaries()
     const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)
     const effectiveConfig = input.agentConfig ?? this.agentConfig

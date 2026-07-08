@@ -88,6 +88,60 @@ function createMockKernelResult(overrides?: Partial<KernelRunResult>): KernelRun
   }
 }
 
+function createSchemaBackedToolRegistry(): ToolRegistry {
+  const registry = createToolRegistry()
+  const tools: ToolDefinition[] = [
+    {
+      name: 'ask_user',
+      description: 'Ask the user for clarification',
+      category: 'internal',
+      sensitivity: 'low',
+      schema: {
+        type: 'object',
+        properties: {
+          question: { type: 'string', description: 'Question to ask the user' },
+        },
+        required: ['question'],
+      },
+      handler: async () => ({ success: true, data: {} }),
+    },
+    {
+      name: 'status_query',
+      description: 'Query active work status',
+      category: 'read',
+      sensitivity: 'low',
+      schema: {
+        type: 'object',
+        properties: {
+          targetId: { type: 'string', description: 'Optional target ID' },
+        },
+        required: [],
+      },
+      handler: async () => ({ success: true, data: {} }),
+    },
+    {
+      name: 'memory_retrieve',
+      description: 'Retrieve memory records',
+      category: 'read',
+      sensitivity: 'medium',
+      schema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Memory search query' },
+        },
+        required: ['query'],
+      },
+      handler: async () => ({ success: true, data: {} }),
+    },
+  ]
+
+  for (const tool of tools) {
+    registry.register(tool)
+  }
+
+  return registry
+}
+
 describe('ForegroundAgent.runTurn via AgentKernel', () => {
   let mockAgentKernel: AgentKernel
   let agent: ForegroundAgent
@@ -97,7 +151,7 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
       run: vi.fn().mockResolvedValue(createMockKernelResult()),
     } as unknown as AgentKernel
 
-    agent = createForegroundAgent({ agentKernel: mockAgentKernel })
+    agent = createForegroundAgent({ agentKernel: mockAgentKernel, toolRegistry: createSchemaBackedToolRegistry() })
   })
 
   it('runTurn calls AgentKernel.run with function-calling projection — agent kind foreground, toolProjection present, maxIterations set, timeoutMs set', async () => {
@@ -378,6 +432,15 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
 
       // Verify exec is also not in toolIds
       expect(kernelInput.toolProjection!.toolIds).not.toContain('exec')
+    })
+
+    it('does not synthesize fallback tool schemas when no ToolRegistry is configured', async () => {
+      const agentWithoutRegistry = createForegroundAgent({ agentKernel: mockAgentKernel })
+
+      await agentWithoutRegistry.runTurn(createMockInput())
+
+      const kernelInput = vi.mocked(mockAgentKernel.run).mock.calls[0][0] as KernelRunInput
+      expect(kernelInput.toolProjection).toEqual({ toolIds: [], tools: [] })
     })
 
     it('tool parameters.properties is never empty for parameterized tools — proves schema exposure bug is fixed', async () => {
