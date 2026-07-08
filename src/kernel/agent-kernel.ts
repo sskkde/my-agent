@@ -26,6 +26,7 @@ import {
 import type { RuntimeContextDelta } from '../context/types.js'
 import type { ToolExecutionResult } from '../tools/types.js'
 import type { TokenStreamPayload } from '../api/types.js'
+import { validateOutputContractContent } from '../contracts/output-contract-validator.js'
 
 function stateSafeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -233,8 +234,28 @@ export class AgentKernel {
         }
 
         if (llmResponse.content) {
+          const finalContentValidation = this.validateFinalContentIfNeeded(llmResponse.content)
+          if (!finalContentValidation.ok) {
+            state.status = 'failed'
+            this.commitTranscript(state, 'error', {
+              code: finalContentValidation.code,
+              message: finalContentValidation.message,
+              details: finalContentValidation.details,
+            })
+            return this.buildResult(state, 'failed', {
+              code: finalContentValidation.code,
+              message: finalContentValidation.message,
+            })
+          }
+
           state.status = 'completed'
-          return this.buildResult(state, 'completed', undefined, llmResponse.content)
+          return this.buildResult(
+            state,
+            'completed',
+            undefined,
+            llmResponse.content,
+            finalContentValidation.structuredResult,
+          )
         }
       }
 
@@ -859,6 +880,27 @@ export class AgentKernel {
       content,
     }
     state.transcript.push(entry)
+  }
+
+  private validateFinalContentIfNeeded(
+    content: string,
+  ): { ok: true; structuredResult?: unknown } | { ok: false; code: string; message: string; details: readonly string[] } {
+    const validation = validateOutputContractContent({
+      contractId: this.lastBuiltModelInput?.metadata.outputContract,
+      mode: this.lastBuiltModelInput?.metadata.mode ?? 'function_calling',
+      content,
+    })
+
+    if (!validation.ok) {
+      return {
+        ok: false,
+        code: validation.code,
+        message: validation.message,
+        details: validation.details,
+      }
+    }
+
+    return validation.parsed === undefined ? { ok: true } : { ok: true, structuredResult: validation.parsed }
   }
 
   private buildResult(
