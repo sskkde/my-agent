@@ -58,8 +58,8 @@ export function generateDiffReport(
       })
     }
 
-    const baselineToolDiff = baselineMap.get(caseId)?.diffs.find(d => d.path === 'toolsProjected')
-    const currentToolDiff = currentMap.get(caseId)?.diffs.find(d => d.path === 'toolsProjected')
+    const baselineToolDiff = baselineResult.diffs.find(d => d.path === 'expectedTools')
+    const currentToolDiff = currentResult.diffs.find(d => d.path === 'expectedTools')
     const baselineTools = (baselineToolDiff?.actual as string[]) ?? []
     const currentTools = (currentToolDiff?.actual as string[]) ?? []
     const addedTools = currentTools.filter((t) => !baselineTools.includes(t))

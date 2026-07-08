@@ -19,7 +19,7 @@ export async function runCandidate(
   deps: CandidateRunnerDeps,
   goldenCases?: GoldenCase[],
 ): Promise<CandidateResult> {
-  const { templateLoader } = deps
+  const { templateRegistry, templateLoader } = deps
 
   const originalEnv: Record<string, string | undefined> = {}
 
@@ -29,12 +29,31 @@ export async function runCandidate(
   }
 
   try {
-    const registryCopy = new PromptTemplateRegistry()
+    const registryCopy = new PromptTemplateRegistry(new Map(), templateLoader.getBasePath())
+
+    // Copy all templates from the original registry
+    for (const templateId of templateRegistry.getAllTemplateIds()) {
+      const existing = templateRegistry.getTemplate(templateId)
+      if (existing) {
+        registryCopy.register(templateId, existing)
+      }
+    }
 
     for (const override of candidate.templateOverrides) {
       const existing = registryCopy.getTemplate(override.templateId)
       if (existing) {
         registryCopy.register(override.templateId, { ...existing, content: override.content })
+      } else {
+        registryCopy.register(override.templateId, {
+          id: override.templateId,
+          version: new Date().toISOString().split('T')[0],
+          path: '',
+          agentKind: '*',
+          providerFamily: '*',
+          layer: 0,
+          description: 'Candidate override',
+          content: override.content,
+        })
       }
     }
 

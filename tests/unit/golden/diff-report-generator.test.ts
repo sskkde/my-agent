@@ -46,7 +46,7 @@ describe('generateDiffReport', () => {
     ]
     const current: GoldenCaseResult[] = [
       makeCurrentResult('case-1', false, [
-        { path: 'toolsProjected', expected: ['web.search'], actual: ['file.read'], message: 'Tool mismatch' },
+        { path: 'expectedTools', expected: ['web.search'], actual: ['file.read'], message: 'Tool mismatch' },
       ]),
     ]
 
