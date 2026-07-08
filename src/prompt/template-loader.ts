@@ -100,6 +100,13 @@ export class TemplateLoader {
   }
 
   /**
+   * Gets the base path for template files.
+   */
+  getBasePath(): string {
+    return this.basePath
+  }
+
+  /**
    * Loads content for an array of resolved template records.
    *
    * Uses inline content if available (for testing), otherwise loads from filesystem.
