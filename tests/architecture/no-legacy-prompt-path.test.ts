@@ -262,6 +262,38 @@ describe('No Legacy Prompt Path', () => {
     })
   })
 
+  describe('Phase 1 Contract Hardening Guards', () => {
+    it('api tool catalog does not synthesize empty LLM parameter schemas', () => {
+      const filePath = join(srcDir, 'api', 'tool-catalog.ts')
+      const content = readFileSync(filePath, 'utf-8')
+
+      expect(content).toContain('getToolDefinitions(registry: ToolRegistry)')
+      expect(content).toContain('registry.listTools().map(toLLMToolDefinition)')
+      expect(content).not.toMatch(/parameters:\s*\{\s*type:\s*['"]object['"],\s*properties:\s*\{\s*\}\s*\}/)
+    })
+
+    it('foreground projection mapper fails closed when schemas are unavailable', () => {
+      const filePath = join(srcDir, 'foreground', 'tool-projection-mapper.ts')
+      const content = readFileSync(filePath, 'utf-8')
+
+      expect(content).toContain('Tool schema unavailable for')
+      expect(content).toContain('toLLMToolDefinitionFromSummary')
+      expect(content).not.toContain("tool.schema ?? { type: 'object' as const, properties: {} }")
+    })
+
+    it('structured output JSON boundaries use the shared contract validator', () => {
+      const memoryServicePath = join(srcDir, 'memory', 'long-term-memory-extractor-service.ts')
+      const agentKernelPath = join(srcDir, 'kernel', 'agent-kernel.ts')
+      const memoryService = readFileSync(memoryServicePath, 'utf-8')
+      const agentKernel = readFileSync(agentKernelPath, 'utf-8')
+
+      expect(memoryService).toContain('validateOutputContractContent')
+      expect(memoryService).toContain("contractId: 'output:memory-candidate.schema'")
+      expect(agentKernel).toContain('validateOutputContractContent')
+      expect(agentKernel).toContain('validateFinalContentIfNeeded')
+    })
+  })
+
   describe('New Path Preserved', () => {
     it('prompt-template-registry.ts exists (new path)', () => {
       const filePath = join(srcDir, 'prompt', 'prompt-template-registry.ts')
