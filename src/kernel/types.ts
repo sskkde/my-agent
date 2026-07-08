@@ -246,6 +246,7 @@ export interface KernelConfig {
   timelineBroadcaster?: TokenStreamBroadcaster
   /** Optional envelope registry for AgentType-level tool security boundary enforcement. */
   envelopeRegistry?: AgentTypeToolEnvelopeRegistry
+  contextMetricsStore?: import('../storage/context-metrics-store.js').ContextMetricsStore
 }
 
 export interface CompactTriggerResult {

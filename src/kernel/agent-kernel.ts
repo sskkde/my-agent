@@ -357,6 +357,27 @@ export class AgentKernel {
     const builtInput = await this.config.modelInputBuilder.build(buildInput)
     this.lastBuiltModelInput = builtInput
 
+    if (this.config.contextMetricsStore) {
+      this.config.contextMetricsStore.record({
+        runId: input.runId ?? input.contextBundle.runId,
+        agentId: input.agentId,
+        sessionId: input.sessionId,
+        timestamp: new Date().toISOString(),
+        segmentDTokenEstimate: input.contextBundle.tokenEstimate,
+        segmentDTokenActual: Math.ceil(builtInput.segments.contextBundle.length / 4),
+        memoryInjectedCount: 0,
+        memoryTokenEstimate: 0,
+        summaryHitCount: 0,
+        summaryTokenEstimate: 0,
+        transcriptTokenEstimate: 0,
+        pinnedItemCount: input.contextBundle.pinnedItems.length,
+        orderedItemCount: input.contextBundle.orderedItems.length,
+        droppedContextReasons: null,
+        flagPhase: null,
+        flagName: null,
+      })
+    }
+
     if (process.env.NODE_ENV !== 'production') {
       console.log('[AgentKernel] buildLLMRequest via ModelInputBuilder:', {
         messageCount: builtInput.messages.length,

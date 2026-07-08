@@ -42,6 +42,7 @@ import type { Stores } from '../gateway/types.js'
 import { createPlanStore, type PlanStore } from '../storage/plan-store.js'
 import { createWaitConditionStore, type WaitConditionStore } from '../storage/wait-condition-store.js'
 import { createArtifactStore, type ArtifactStore } from '../storage/artifact-store.js'
+import { createContextMetricsStore } from '../storage/context-metrics-store.js'
 import type { AdapterRegistry, TargetRuntime, RuntimeAdapter } from '../dispatcher/types.js'
 import { createLongTermMemoryStore, type LongTermMemoryStore } from '../storage/long-term-memory-store.js'
 import {
@@ -766,6 +767,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       providerFamily,
       modelInputSnapshotStore,
       promptProjectionResolver,
+      contextMetricsStore: createContextMetricsStore(connection),
     })
 
   foregroundAgent.setAgentKernel?.(agentKernel)
