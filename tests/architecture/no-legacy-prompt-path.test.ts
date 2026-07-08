@@ -581,4 +581,59 @@ describe('No Legacy Prompt Path', () => {
       expect(content).toContain('relevanceReason')
     })
   })
+
+  describe('Phase 3 ReAct Trace Guards', () => {
+    const srcDir = join(process.cwd(), 'src')
+
+    it('decision-trace-types.ts exists with StructuredDecisionTrace', () => {
+      const filePath = join(srcDir, 'kernel', 'decision-trace-types.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('StructuredDecisionTrace')
+      expect(content).toContain('ToolSelectionRecord')
+      expect(content).toContain('ObservationSummary')
+      expect(content).toContain('RiskAssessmentRecord')
+    })
+
+    it('observation-summary-builder.ts exists with buildObservationSummary', () => {
+      const filePath = join(srcDir, 'kernel', 'observation-summary-builder.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('buildObservationSummary')
+    })
+
+    it('decision-trace-builder.ts exists with buildDecisionTrace', () => {
+      const filePath = join(srcDir, 'kernel', 'decision-trace-builder.ts')
+      expect(existsSync(filePath)).toBe(true)
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('buildDecisionTrace')
+    })
+
+    it('agent-kernel.ts contains structuredTrace', () => {
+      const filePath = join(srcDir, 'kernel', 'agent-kernel.ts')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('structuredTrace')
+    })
+
+    it('foreground-agent.ts contains structuredTrace', () => {
+      const filePath = join(srcDir, 'foreground', 'foreground-agent.ts')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('structuredTrace')
+    })
+
+    it('transcript-store.ts runtimeSummary contains structuredTrace', () => {
+      const filePath = join(srcDir, 'storage', 'transcript-store.ts')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('structuredTrace')
+      expect(content).toContain('observationSummaries')
+      expect(content).toContain('riskAssessments')
+    })
+
+    it('ForegroundDecision is NOT deleted (deprecated coexistence)', () => {
+      const filePath = join(srcDir, 'foreground', 'types.ts')
+      const content = readFileSync(filePath, 'utf-8')
+      expect(content).toContain('ForegroundDecision')
+      expect(content).toContain('@deprecated')
+    })
+  })
 })
