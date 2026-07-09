@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ChatShell from './ChatShell'
 import ChatSessionList from './ChatSessionList'
@@ -13,7 +13,7 @@ import { useComposerSubmission } from '../hooks/useComposerSubmission'
 import { useSSEStream } from '../hooks/useSSEStream'
 import * as api from '../../../api/client'
 import type { ConsoleTimelineEvent, ProcessingStatusPayload } from '../../../api/types'
-import type { AssistantPlaceholder } from '../session-utils'
+import { getBaselineServerMessageCount, type AssistantPlaceholder } from '../session-utils'
 import type { CommandContext } from '../../../commands/types'
 import { safeRemoveLocalStorage } from '../session-migration'
 import { SELECTED_SESSION_KEY } from '../session-constants'
@@ -61,12 +61,10 @@ const getContextUsagePercent = (processingStatus: ProcessingStatusPayload | null
 const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  // Bridge ref so useSessionList's onSessionCreated can call setSelectedSessionId
-  // without forcing useSelectedSession to be declared before useSessionList.
-  const setSelectedSessionIdRef = useRef<React.Dispatch<React.SetStateAction<string | null>> | null>(null)
+  const handleSelectSessionRef = useRef<((sessionId: string) => void) | null>(null)
 
   const { sessions, sessionsLoading, sessionsError, fetchSessions, handleCreateSession } = useSessionList({
-    onSessionCreated: (sessionId: string) => setSelectedSessionIdRef.current?.(sessionId),
+    onSessionCreated: (sessionId: string) => handleSelectSessionRef.current?.(sessionId),
   })
 
   const {
@@ -82,7 +80,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     validSessionIds: sessions.map((s) => s.sessionId),
   })
 
-  setSelectedSessionIdRef.current = setSelectedSessionId
+  handleSelectSessionRef.current = handleSelectSession
 
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
   const [timelineLoading, setTimelineLoading] = useState(false)
@@ -155,12 +153,22 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     async (sessionId: string): Promise<ConsoleTimelineEvent[] | null> => {
       try {
         const timelineResponse = await api.getSessionTimeline(sessionId)
+        if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+          setEvents((prev) => {
+            const existingIds = new Set(prev.map((e) => e.eventId))
+            const newEvents = timelineResponse.events.filter((e) => !existingIds.has(e.eventId))
+            if (newEvents.length === 0) return prev
+            const merged = [...prev, ...newEvents]
+            merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+            return merged
+          })
+        }
         return timelineResponse.events
       } catch {
         return null
       }
     },
-    [],
+    [selectedSessionIdRef],
   )
 
   const createCommandContext = useCallback((): CommandContext => {
@@ -192,6 +200,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     uploadErrors,
     isUploading,
     handleSend,
+    localMessageEvents,
   } = useComposerSubmission({
     selectedSessionId,
     mountedRef,
@@ -287,7 +296,39 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     }
   }, [selectedSessionId, selectedSessionIdRef, setSelectedSession, setSelectedSessionId, connectSse, disconnectSse, resetStreamStatus])
 
-  const mergedEvents: ConsoleTimelineEvent[] = events
+  const mergedEvents = useMemo<ConsoleTimelineEvent[]>(() => {
+    const sessionLocalMessageEvents = selectedSessionId ? localMessageEvents.get(selectedSessionId) || [] : []
+
+    const serverUserMessageCounts = new Map<string, number>()
+    events.forEach((event) => {
+      if (event.eventType !== 'user_message' || !event.content) return
+      serverUserMessageCounts.set(event.content, (serverUserMessageCounts.get(event.content) || 0) + 1)
+    })
+
+    const nextServerMessageOrdinals = new Map<string, number>()
+    const orderedLocalMessageEvents = [...sessionLocalMessageEvents].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    )
+
+    const pendingMessageEvents = orderedLocalMessageEvents.filter((event) => {
+      if (!event.content) return false
+
+      const baselineServerMessageCount = getBaselineServerMessageCount(event)
+      const serverEventCount = serverUserMessageCounts.get(event.content) || 0
+      const nextServerMessageOrdinal = nextServerMessageOrdinals.get(event.content) || 1
+      const matchingServerMessageOrdinal = Math.max(nextServerMessageOrdinal, baselineServerMessageCount + 1)
+
+      if (matchingServerMessageOrdinal > serverEventCount) return true
+
+      nextServerMessageOrdinals.set(event.content, matchingServerMessageOrdinal + 1)
+      return false
+    })
+
+    const allEvents = [...events, ...pendingMessageEvents]
+    allEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+    return allEvents
+  }, [events, localMessageEvents, selectedSessionId])
 
   const currentProcessingStatus =
     processingStatus && processingStatus.sessionId === selectedSessionId ? processingStatus : null
