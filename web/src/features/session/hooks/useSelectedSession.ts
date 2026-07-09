@@ -53,12 +53,22 @@ export function useSelectedSession(options?: UseSelectedSessionOptions): UseSele
     selectedSessionIdRef.current = selectedSessionId
   }, [selectedSessionId])
 
-  // Sync with URL sessionId when it changes (e.g., /chat/ses_abc → /chat/ses_xyz)
+  // Sync with URL sessionId when it changes (e.g., /chat/ses_abc -> /chat/ses_xyz).
+  // IMPORTANT: Only react to initialSessionId changes (URL navigation), NOT to
+  // selectedSessionId changes. Otherwise, when selectedSessionId is cleared
+  // (e.g. stale session removed by ChatPage timeline error handler), this effect
+  // would re-fire and re-apply the stale initialSessionId prop, causing an
+  // infinite oscillation: stale-id -> fetch-fail -> clear -> re-apply -> repeat.
+  const lastInitialSessionIdRef = useRef(options?.initialSessionId)
   useEffect(() => {
-    if (options?.initialSessionId && options.initialSessionId !== selectedSessionId) {
-      setSelectedSessionId(options.initialSessionId)
+    const initial = options?.initialSessionId
+    if (initial !== lastInitialSessionIdRef.current) {
+      lastInitialSessionIdRef.current = initial
+      if (initial) {
+        setSelectedSessionId(initial)
+      }
     }
-  }, [options?.initialSessionId, selectedSessionId])
+  }, [options?.initialSessionId])
 
   // Reconcile against the known-valid session list. Only clears when the list
   // is non-empty (loaded) and the current selection is absent — avoids wiping

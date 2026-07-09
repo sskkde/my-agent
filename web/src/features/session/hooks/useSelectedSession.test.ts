@@ -279,4 +279,33 @@ describe('useSelectedSession', () => {
       expect(result.current.selectedSessionId).toBe('ses_unknown')
     })
   })
+
+  describe('initialSessionId sync (no oscillation)', () => {
+    it('does not re-apply stale initialSessionId after selectedSessionId is cleared', () => {
+      const { result } = renderHook(() =>
+        useSelectedSession({ initialSessionId: 'ses_stale' }),
+      )
+
+      expect(result.current.selectedSessionId).toBe('ses_stale')
+
+      act(() => {
+        result.current.setSelectedSessionId(null)
+      })
+
+      expect(result.current.selectedSessionId).toBeNull()
+    })
+
+    it('syncs when initialSessionId changes (URL navigation)', () => {
+      const { result, rerender } = renderHook(
+        ({ initialSessionId }) => useSelectedSession({ initialSessionId }),
+        { initialProps: { initialSessionId: 'ses_a' as string | undefined } },
+      )
+
+      expect(result.current.selectedSessionId).toBe('ses_a')
+
+      rerender({ initialSessionId: 'ses_b' })
+
+      expect(result.current.selectedSessionId).toBe('ses_b')
+    })
+  })
 })
