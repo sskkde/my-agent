@@ -14,7 +14,7 @@ const DeskWorkdirCard: React.FC<DeskWorkdirCardProps> = ({
   testId = 'desk-workdir-card',
 }) => {
   const [activeWorkdir, setActiveWorkdir] = useState<WorkdirInfo | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => Boolean(sessionId))
   const [error, setError] = useState<Error | null>(null)
   const [treeCache, setTreeCache] = useState<Record<string, WorkdirTreeNode[]>>({})
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())

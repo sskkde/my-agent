@@ -59,7 +59,7 @@ const TodoWorkPlanCard: React.FC<TodoWorkPlanCardProps> = ({
   testId = 'todo-work-plan-card',
 }) => {
   const [todos, setTodos] = useState<TodoItemWithChildren[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => Boolean(sessionId))
   const [error, setError] = useState<Error | null>(null)
 
   // Track current sessionId for stale response guard
