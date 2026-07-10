@@ -14,6 +14,7 @@ import { preferenceHandlers } from './handlers/preferences.js'
 import { dataHandlers } from './handlers/data.js'
 import { providerHandlers } from './handlers/providers.js'
 import { workdirHandlers } from './handlers/workdir.js'
+import { sessionHandlers } from './handlers/session.js'
 
 /**
  * Placeholder handler for commands not yet implemented
@@ -48,12 +49,12 @@ const handlerMap: Record<
   status: createPlaceholderHandler('status'),
   diagnostics: createPlaceholderHandler('diagnostics'),
   usage: dataHandlers.usage,
-  new: createPlaceholderHandler('new'),
-  session: createPlaceholderHandler('session'),
-  sessions: createPlaceholderHandler('sessions'),
+  new: sessionHandlers.new,
+  session: sessionHandlers.session,
+  sessions: sessionHandlers.sessions,
   logs: dataHandlers.logs,
   debug: dataHandlers.debug,
-  settings: createPlaceholderHandler('settings'),
+  settings: sessionHandlers.settings,
   'export-session': dataHandlers['export-session'],
   think: preferenceHandlers.think,
   verbose: preferenceHandlers.verbose,

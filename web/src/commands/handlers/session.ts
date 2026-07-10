@@ -1,6 +1,6 @@
 import type { CommandContext, CommandHandler, FrontendCommandResult } from '../types.js'
 import type { ConsoleSessionInfo } from '../../api/types.js'
-import { createSession, getSession, getSessions, getSettings } from '../../api/client.js'
+import { createSession, getSession, getSessions, getSettings, updateSession } from '../../api/client.js'
 
 export const handleNew: CommandHandler = async (
   _args: string[],
@@ -27,6 +27,49 @@ export const handleNew: CommandHandler = async (
       output: {
         type: 'error',
         content: `Failed to create session: ${error instanceof Error ? error.message : String(error)}`,
+      },
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+const SESSION_SUBCOMMANDS = new Set(['list', 'switch', 'rename', 'clear', 'archive', 'delete'])
+
+export const handleSessionArchive: CommandHandler = async (
+  _args: string[],
+  context: CommandContext,
+): Promise<FrontendCommandResult> => {
+  const currentSessionId = context.sessionId
+
+  if (!currentSessionId) {
+    return {
+      success: false,
+      output: {
+        type: 'error',
+        content: 'No session currently selected to archive',
+      },
+      error: 'No session selected',
+    }
+  }
+
+  try {
+    await updateSession(currentSessionId, { status: 'archived' })
+    await context.refreshSessions()
+
+    return {
+      success: true,
+      output: {
+        type: 'text',
+        content: `Session ${currentSessionId} has been archived`,
+      },
+      data: { sessionId: currentSessionId, status: 'archived' },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      output: {
+        type: 'error',
+        content: `Failed to archive session: ${error instanceof Error ? error.message : String(error)}`,
       },
       error: error instanceof Error ? error.message : String(error),
     }
@@ -86,7 +129,26 @@ export const handleSession: CommandHandler = async (
     }
   }
 
-  const targetSessionId = args[0]
+  const firstArg = args[0]
+  const subcommandArgs = args.slice(1)
+
+  if (SESSION_SUBCOMMANDS.has(firstArg)) {
+    switch (firstArg) {
+      case 'archive':
+        return await handleSessionArchive(subcommandArgs, context)
+      default:
+        return {
+          success: false,
+          output: {
+            type: 'error',
+            content: `Subcommand "${firstArg}" is defined but not yet implemented in the frontend handler.`,
+          },
+          error: `Subcommand not implemented: ${firstArg}`,
+        }
+    }
+  }
+
+  const targetSessionId = firstArg
 
   try {
     const response = await getSession(targetSessionId)

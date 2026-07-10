@@ -284,6 +284,133 @@
   margin-top: 2px;
 }
 
+.chat-session-item-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 10px;
+  margin-bottom: 1px;
+  border-radius: var(--radius-sm, 2px);
+  cursor: pointer;
+  transition: background 0.15s;
+  overflow: hidden;
+}
+
+.chat-session-item-wrapper:hover {
+  background: rgba(42, 38, 34, 0.04);
+}
+
+.chat-session-item-wrapper.active {
+  background: rgba(83, 125, 150, 0.12);
+}
+
+.chat-session-item-wrapper.active .chat-session-item__title {
+  color: var(--chat-accent);
+  font-weight: 600;
+}
+
+.chat-session-item__info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.chat-session-item__title {
+  font-size: 0.8rem;
+  color: var(--chat-text);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.chat-session-item__meta {
+  font-size: 0.66rem;
+  color: var(--chat-text-faint, #8f867b);
+  margin-top: 2px;
+}
+
+.chat-session-item__archive {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm, 2px);
+  background: transparent;
+  color: var(--chat-text-faint, #8f867b);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.chat-session-item-wrapper:hover .chat-session-item__archive {
+  opacity: 1;
+}
+
+.chat-session-item__archive:hover {
+  background: rgba(42, 38, 34, 0.06);
+  color: var(--chat-text-muted);
+}
+
+.chat-session-item__archive:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.chat-session-item__archive svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.5;
+}
+
+.chat-session-item__restore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm, 2px);
+  background: transparent;
+  color: var(--chat-text-faint, #8f867b);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.chat-session-item-wrapper:hover .chat-session-item__restore {
+  opacity: 1;
+}
+
+.chat-session-item__restore:hover {
+  background: rgba(83, 125, 150, 0.08);
+  color: var(--chat-accent);
+}
+
+.chat-session-item__restore:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.chat-session-item__restore svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.5;
+}
+
 .chat-archive-entry {
   padding: 8px 12px 12px;
   flex-shrink: 0;
