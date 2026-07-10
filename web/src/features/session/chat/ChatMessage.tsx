@@ -14,23 +14,25 @@ const copyToClipboard = async (text: string): Promise<void> => {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ role, content }) => {
   const isAssistant = role === 'assistant'
+  const roleLabel = isAssistant ? 'Hana' : '你'
+  const avatar = isAssistant ? (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+      <line x1="9" y1="9" x2="9.01" y2="9" />
+      <line x1="15" y1="9" x2="15.01" y2="9" />
+    </svg>
+  ) : (
+    '我'
+  )
 
   return (
-    <div className="chat-message" data-testid={`chat-message-${role}`}>
-      <div className={`chat-message__avatar chat-message__avatar--${role}`} aria-hidden="true">
-        {isAssistant ? (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-            <line x1="9" y1="9" x2="9.01" y2="9" />
-            <line x1="15" y1="9" x2="15.01" y2="9" />
-          </svg>
-        ) : (
-          '我'
-        )}
+    <div className={`chat-message chat-message--${role}`} data-testid={`chat-message-${role}`}>
+      <div className="chat-message__avatar-wrapper" aria-hidden="true">
+        <div className={`chat-message__avatar chat-message__avatar--${role}`}>{avatar}</div>
       </div>
       <div className="chat-message__content">
-        <div className="chat-message__role">{isAssistant ? 'Hana' : '你'}</div>
+        <div className="chat-message__role">{roleLabel}</div>
         <div className="chat-message__body">
           <MarkdownContent text={content} fullMarkdown />
         </div>
