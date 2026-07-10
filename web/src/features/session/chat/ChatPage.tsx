@@ -5,14 +5,14 @@ import ChatSessionList from './ChatSessionList'
 import ChatMessageList from './ChatMessageList'
 import ChatComposer, { type ChatComposerStatus } from './ChatComposer'
 import ChatContextPanel from './ChatContextPanel'
-import ChatToast from './ChatToast'
+import ChatToast, { showToast } from './ChatToast'
 import './chat-theme.css'
 import { useSessionList } from '../hooks/useSessionList'
 import { useSelectedSession } from '../hooks/useSelectedSession'
 import { useComposerSubmission } from '../hooks/useComposerSubmission'
 import { useSSEStream } from '../hooks/useSSEStream'
 import * as api from '../../../api/client'
-import type { ConsoleTimelineEvent, ProcessingStatusPayload } from '../../../api/types'
+import type { ConsoleSessionInfo, ConsoleTimelineEvent, ProcessingStatusPayload } from '../../../api/types'
 import { getBaselineServerMessageCount, type AssistantPlaceholder } from '../session-utils'
 import type { CommandContext } from '../../../commands/types'
 import { safeRemoveLocalStorage } from '../session-migration'
@@ -81,6 +81,58 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   })
 
   handleSelectSessionRef.current = handleSelectSession
+
+  const [archiveView, setArchiveView] = useState(false)
+  const [archivedSessions, setArchivedSessions] = useState<ConsoleSessionInfo[]>([])
+  const [archiveActionLoading, setArchiveActionLoading] = useState(false)
+
+  const handleToggleArchiveView = useCallback(async () => {
+    if (!archiveView) {
+      try {
+        setArchiveActionLoading(true)
+        const response = await api.getSessions('archived', 50, 0)
+        setArchivedSessions(response.sessions)
+      } catch (err) {
+        showToast('加载归档会话失败')
+      } finally {
+        setArchiveActionLoading(false)
+      }
+    }
+    setArchiveView((prev) => !prev)
+  }, [archiveView])
+
+  const handleArchiveSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        setArchiveActionLoading(true)
+        await api.updateSession(sessionId, { status: 'archived' })
+        await fetchSessions(true)
+        showToast('会话已归档')
+      } catch (err) {
+        showToast('归档失败')
+      } finally {
+        setArchiveActionLoading(false)
+      }
+    },
+    [fetchSessions],
+  )
+
+  const handleRestoreSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        setArchiveActionLoading(true)
+        await api.updateSession(sessionId, { status: 'active' })
+        setArchivedSessions((prev) => prev.filter((s) => s.sessionId !== sessionId))
+        await fetchSessions(true)
+        showToast('会话已恢复')
+      } catch (err) {
+        showToast('恢复失败')
+      } finally {
+        setArchiveActionLoading(false)
+      }
+    },
+    [fetchSessions],
+  )
 
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
   const [timelineLoading, setTimelineLoading] = useState(false)
@@ -354,6 +406,12 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
             onCreateSession={handleCreateSession}
             loading={sessionsLoading}
             error={sessionsError}
+            archiveView={archiveView}
+            archivedSessions={archivedSessions}
+            onToggleArchiveView={handleToggleArchiveView}
+            onArchiveSession={handleArchiveSession}
+            onRestoreSession={handleRestoreSession}
+            archiveActionLoading={archiveActionLoading}
           />
         }
         rightPanel={<ChatContextPanel sessionId={selectedSessionId} />}
