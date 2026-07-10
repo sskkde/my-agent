@@ -11,8 +11,8 @@ export interface ChatMessageListProps {
   onRetryStream: () => void
 }
 
-const actorToRole = (actor?: string): 'user' | 'assistant' => {
-  return actor === 'user' ? 'user' : 'assistant'
+const eventTypeToRole = (eventType?: string): 'user' | 'assistant' => {
+  return eventType === 'user_message' ? 'user' : 'assistant'
 }
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
@@ -44,7 +44,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
             {messageEvents.map((event) => (
               <div key={event.eventId} className="chat-message-group">
                 <ChatMessage
-                  role={actorToRole(event.actor)}
+                  role={eventTypeToRole(event.eventType)}
                   content={event.content || ''}
                 />
               </div>
