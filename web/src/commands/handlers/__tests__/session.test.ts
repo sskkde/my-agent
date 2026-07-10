@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, type MockedFunction } from 'vitest'
 import type { CommandContext } from '../../types.js'
 import * as apiClient from '../../../api/client.js'
-import { handleNew, handleSession, handleSessions, handleSettings, sessionHandlers } from '../session.js'
+import { handleNew, handleSession, handleSessions, handleSettings, handleSessionArchive, sessionHandlers } from '../session.js'
 
 describe('Session Command Handlers', () => {
   let mockContext: CommandContext
@@ -9,6 +9,7 @@ describe('Session Command Handlers', () => {
   let mockGetSession: MockedFunction<typeof apiClient.getSession>
   let mockGetSessions: MockedFunction<typeof apiClient.getSessions>
   let mockGetSettings: MockedFunction<typeof apiClient.getSettings>
+  let mockUpdateSession: MockedFunction<typeof apiClient.updateSession>
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -18,6 +19,7 @@ describe('Session Command Handlers', () => {
     mockGetSession = vi.spyOn(apiClient, 'getSession') as MockedFunction<typeof apiClient.getSession>
     mockGetSessions = vi.spyOn(apiClient, 'getSessions') as MockedFunction<typeof apiClient.getSessions>
     mockGetSettings = vi.spyOn(apiClient, 'getSettings') as MockedFunction<typeof apiClient.getSettings>
+    mockUpdateSession = vi.spyOn(apiClient, 'updateSession') as MockedFunction<typeof apiClient.updateSession>
 
     mockContext = {
       sessionId: 'session-123',
@@ -221,6 +223,47 @@ describe('Session Command Handlers', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('Database error')
+    })
+  })
+
+  describe('handleSession (archive subcommand)', () => {
+    it('should archive the current session via /session archive', async () => {
+      mockUpdateSession.mockResolvedValue({
+        session: {
+          sessionId: 'session-123',
+          userId: 'user-1',
+          messageCount: 5,
+          lastActivityAt: new Date().toISOString(),
+          activePlannerRunIds: [],
+          activeBackgroundRunIds: [],
+        },
+      })
+
+      const result = await handleSession(['archive'], mockContext)
+
+      expect(mockUpdateSession).toHaveBeenCalledWith('session-123', { status: 'archived' })
+      expect(mockContext.refreshSessions).toHaveBeenCalledTimes(1)
+      expect(result.success).toBe(true)
+      expect(result.output?.content).toContain('archived')
+    })
+
+    it('should return error when no session is selected for archive', async () => {
+      mockContext.sessionId = null
+
+      const result = await handleSession(['archive'], mockContext)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('No session selected')
+      expect(mockUpdateSession).not.toHaveBeenCalled()
+    })
+
+    it('should return error when archive fails', async () => {
+      mockUpdateSession.mockRejectedValue(new Error('Permission denied'))
+
+      const result = await handleSession(['archive'], mockContext)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Permission denied')
     })
   })
 
