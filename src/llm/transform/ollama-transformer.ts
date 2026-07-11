@@ -11,14 +11,14 @@ import type { LLMRequest, LLMResponse } from '../types'
  * @param request - LLMRequest to transform
  * @returns Ollama API request body
  */
-export function buildOllamaChatRequestBody(request: LLMRequest): Record<string, unknown> {
+export function buildOllamaChatRequestBody(request: LLMRequest, stream = false): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: request.model,
     messages: request.messages.map((m) => ({
       role: m.role,
       content: m.content,
     })),
-    stream: false,
+    stream,
   }
 
   if (request.temperature !== undefined) {
@@ -26,6 +26,23 @@ export function buildOllamaChatRequestBody(request: LLMRequest): Record<string, 
   }
 
   return body
+}
+
+export interface OllamaStreamChunk {
+  readonly message?: { readonly content?: string }
+  readonly done: boolean
+}
+
+export function parseOllamaStreamLine(line: string): string | null {
+  const trimmed = line.trim()
+  if (trimmed.length === 0) return null
+  try {
+    const parsed = JSON.parse(trimmed) as OllamaStreamChunk
+    const content = parsed.message?.content
+    return typeof content === 'string' && content.length > 0 ? content : null
+  } catch {
+    return null
+  }
 }
 
 /**

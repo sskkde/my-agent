@@ -82,7 +82,7 @@ export function buildOpenAICompatibleHeaders(input: {
  * @param request - LLMRequest to transform
  * @returns OpenAI API request body
  */
-export function buildOpenAIChatRequestBody(request: LLMRequest): Record<string, unknown> {
+export function buildOpenAIChatRequestBody(request: LLMRequest, stream = false): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: request.model,
     messages: request.messages.map((m) => ({
@@ -104,6 +104,7 @@ export function buildOpenAIChatRequestBody(request: LLMRequest): Record<string, 
     })),
   }
 
+  if (stream) body.stream = true
   if (request.temperature !== undefined) body.temperature = request.temperature
   if (request.maxTokens !== undefined) body.max_tokens = request.maxTokens
   if (request.topP !== undefined) body.top_p = request.topP
@@ -131,6 +132,26 @@ export function buildOpenAIChatRequestBody(request: LLMRequest): Record<string, 
   }
 
   return body
+}
+
+export interface OpenAIStreamChunk {
+  readonly choices: ReadonlyArray<{
+    readonly delta?: { readonly content?: string }
+    readonly finish_reason?: string | null
+  }>
+}
+
+export function parseOpenAIStreamLine(line: string): string | null {
+  if (!line.startsWith('data: ')) return null
+  const data = line.slice(6).trim()
+  if (data === '[DONE]') return null
+  try {
+    const parsed = JSON.parse(data) as OpenAIStreamChunk
+    const delta = parsed.choices?.[0]?.delta?.content
+    return typeof delta === 'string' && delta.length > 0 ? delta : null
+  } catch {
+    return null
+  }
 }
 
 /**
