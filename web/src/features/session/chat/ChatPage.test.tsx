@@ -52,6 +52,28 @@ describe('ChatPage', () => {
     })
     vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
     vi.mocked(client.getSessionWorkdir).mockResolvedValue({ workdir: null })
+    vi.mocked(client.getAgentConfig).mockResolvedValue({
+      agentId: 'foreground.default',
+      global: {
+        providerId: '',
+        model: '',
+        systemPrompt: '',
+        routingPrompt: '',
+        allowedToolIds: [],
+        allowedSkillIds: [],
+      },
+      userOverride: null,
+      effective: {
+        providerId: '',
+        model: '',
+        systemPrompt: '',
+        routingPrompt: '',
+        allowedToolIds: [],
+        allowedSkillIds: [],
+        routingTimeoutMs: 60000,
+        repairAttempts: 1,
+      },
+    })
   })
 
   it('renders chat shell', async () => {

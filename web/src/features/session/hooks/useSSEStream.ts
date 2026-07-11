@@ -8,6 +8,7 @@ type StreamStatus = 'connecting' | 'connected' | 'disconnected'
 export interface UseSSEStreamReturn {
   streamStatus: StreamStatus
   processingStatus: ProcessingStatusPayload | null
+  lastProcessingStatus: ProcessingStatusPayload | null
   connectSse: (sessionId: string) => void
   handleRetryStream: () => void
   clearSseReconnectTimeout: () => void
@@ -29,6 +30,7 @@ export function useSSEStream(options: {
 
   const [streamStatus, setStreamStatus] = useState<StreamStatus>('disconnected')
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatusPayload | null>(null)
+  const [lastProcessingStatus, setLastProcessingStatus] = useState<ProcessingStatusPayload | null>(null)
 
   const sseReconnectAttemptsRef = useRef(0)
   const sseReconnectTimeoutRef = useRef<number | null>(null)
@@ -57,6 +59,7 @@ export function useSSEStream(options: {
 
       setStreamStatus('connecting')
       setProcessingStatus(null)
+      setLastProcessingStatus(null)
 
       unsubscribeRef.current = api.subscribeSessionTimeline(
         sessionId,
@@ -91,6 +94,9 @@ export function useSSEStream(options: {
           if (!mountedRef.current) return
           if (selectedSessionIdRef.current !== sessionId) return
           setProcessingStatus(status)
+          if (status) {
+            setLastProcessingStatus(status)
+          }
         },
         (token) => {
           if (!mountedRef.current) return
@@ -140,6 +146,7 @@ export function useSSEStream(options: {
   return {
     streamStatus,
     processingStatus,
+    lastProcessingStatus,
     connectSse,
     handleRetryStream,
     clearSseReconnectTimeout,

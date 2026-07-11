@@ -82,6 +82,20 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
 
   handleSelectSessionRef.current = handleSelectSession
 
+  const [agentModel, setAgentModel] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api.getAgentConfig('foreground.default')
+      .then((config) => {
+        if (!cancelled && config.effective?.model) {
+          setAgentModel(config.effective.model)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   const [archiveView, setArchiveView] = useState(false)
   const [archivedSessions, setArchivedSessions] = useState<ConsoleSessionInfo[]>([])
   const [archiveActionLoading, setArchiveActionLoading] = useState(false)
@@ -284,6 +298,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const {
     streamStatus,
     processingStatus,
+    lastProcessingStatus,
     connectSse,
     resetStreamStatus,
     disconnectSse,
@@ -470,9 +485,15 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
 
   const currentProcessingStatus =
     processingStatus && processingStatus.sessionId === selectedSessionId ? processingStatus : null
+  const lastStatusForSession =
+    lastProcessingStatus && lastProcessingStatus.sessionId === selectedSessionId ? lastProcessingStatus : null
   const status = toComposerStatus(currentProcessingStatus, streamStatus, sending)
-  const model = selectedSessionId ? (currentProcessingStatus?.model || 'GLM-4.6') : '无'
-  const ctxUsage = selectedSessionId ? getContextUsage(currentProcessingStatus) : null
+  const model = selectedSessionId
+    ? (currentProcessingStatus?.model || agentModel || '无')
+    : '无'
+  const ctxUsage = selectedSessionId
+    ? getContextUsage(currentProcessingStatus) ?? getContextUsage(lastStatusForSession)
+    : null
 
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles((files) => files.filter((_, i) => i !== index))
