@@ -2727,6 +2727,23 @@ export const contextMetricsTableMigration: Migration = {
   `,
 }
 
+export const userSettingsTableMigration: Migration = {
+  version: 71,
+  name: 'create_user_settings_table',
+  up: `
+    CREATE TABLE IF NOT EXISTS user_settings (
+      user_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, key)
+    )
+  `,
+  down: `
+    DROP TABLE IF EXISTS user_settings
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -2881,6 +2898,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Context metrics store
   contextMetricsTableMigration, // v70
+
+  // User settings store (per-user key-value preferences: theme, command prefs)
+  userSettingsTableMigration, // v71
 ]
 
 /**
