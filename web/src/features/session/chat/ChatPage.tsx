@@ -12,8 +12,8 @@ import { useSelectedSession } from '../hooks/useSelectedSession'
 import { useComposerSubmission } from '../hooks/useComposerSubmission'
 import { useSSEStream } from '../hooks/useSSEStream'
 import * as api from '../../../api/client'
-import type { ConsoleSessionInfo, ConsoleTimelineEvent, ProcessingStatusPayload } from '../../../api/types'
-import { getBaselineServerMessageCount, type AssistantPlaceholder } from '../session-utils'
+import type { ConsoleSessionInfo, ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../../api/types'
+import { getBaselineServerMessageCount, type AssistantPlaceholder, type StreamingDraft } from '../session-utils'
 import type { CommandContext } from '../../../commands/types'
 import { safeRemoveLocalStorage } from '../session-migration'
 import { SELECTED_SESSION_KEY } from '../session-constants'
@@ -137,8 +137,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
   const [timelineLoading, setTimelineLoading] = useState(false)
   const [timelineError, setTimelineError] = useState<string | null>(null)
+  const [streamingDrafts, setStreamingDrafts] = useState<Map<string, StreamingDraft>>(new Map())
+  const [pendingAssistantPlaceholders, setPendingAssistantPlaceholders] = useState<Map<string, AssistantPlaceholder>>(new Map())
 
   const mountedRef = useRef(true)
+  const pendingAssistantPlaceholdersRef = useRef(pendingAssistantPlaceholders)
 
   useEffect(() => {
     mountedRef.current = true
@@ -149,8 +152,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
 
   const updatePendingAssistantPlaceholders = useCallback(
     (updater: (prev: Map<string, AssistantPlaceholder>) => Map<string, AssistantPlaceholder>) => {
-      // ChatPage does not render streaming placeholders; state is no-op.
-      void updater
+      setPendingAssistantPlaceholders((prev) => {
+        const next = updater(prev)
+        pendingAssistantPlaceholdersRef.current = next
+        return next
+      })
     },
     [],
   )
@@ -180,6 +186,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       const ids = attemptIds.filter((id): id is string => Boolean(id))
       if (ids.length === 0) return
       updatePendingAssistantPlaceholders((prev) => {
+        const next = new Map(prev)
+        for (const id of ids) next.delete(id)
+        return next.size === prev.size ? prev : next
+      })
+      setStreamingDrafts((prev) => {
         const next = new Map(prev)
         for (const id of ids) next.delete(id)
         return next.size === prev.size ? prev : next
@@ -287,8 +298,48 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
         fetchSessions(true)
       }
+      if (['assistant_message', 'error'].includes(event.eventType)) {
+        const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
+        const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+        clearAssistantActivity([attemptId, turnId], true)
+      }
     },
-    onToken: () => {},
+    onToken: (token: TokenStreamPayload) => {
+      if (!mountedRef.current) return
+      if (selectedSessionIdRef.current !== token.sessionId) return
+
+      const placeholderTimestamp =
+        pendingAssistantPlaceholdersRef.current.get(token.attemptId)?.timestamp ??
+        Array.from(pendingAssistantPlaceholdersRef.current.entries()).find(
+          ([, p]) => p.sessionId === token.sessionId,
+        )?.[1].timestamp
+      const placeholderIdToClear = pendingAssistantPlaceholdersRef.current.has(token.attemptId)
+        ? token.attemptId
+        : Array.from(pendingAssistantPlaceholdersRef.current.entries()).find(
+            ([, p]) => p.sessionId === token.sessionId,
+          )?.[0]
+
+      if (placeholderIdToClear) {
+        updatePendingAssistantPlaceholders((prev) => {
+          const next = new Map(prev)
+          next.delete(placeholderIdToClear)
+          return next
+        })
+      }
+
+      setStreamingDrafts((prev) => {
+        const existing = prev.get(token.attemptId)
+        if (existing && token.sequence <= existing.sequence) return prev
+        const next = new Map(prev)
+        next.set(token.attemptId, {
+          sessionId: token.sessionId,
+          content: (existing?.content || '') + token.delta,
+          sequence: token.sequence,
+          timestamp: existing?.timestamp ?? placeholderTimestamp ?? Date.now(),
+        })
+        return next
+      })
+    },
   })
 
   useEffect(() => {
@@ -296,6 +347,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       clearPostSendPollTimeout()
     }
   }, [clearPostSendPollTimeout])
+
+  useEffect(() => {
+    pendingAssistantPlaceholdersRef.current = pendingAssistantPlaceholders
+  }, [pendingAssistantPlaceholders])
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -376,11 +431,42 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       return false
     })
 
-    const allEvents = [...events, ...pendingMessageEvents]
-    allEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    const syntheticEvents: ConsoleTimelineEvent[] = []
+    if (selectedSessionId) {
+      pendingAssistantPlaceholders.forEach((placeholder, attemptId) => {
+        if (placeholder.sessionId !== selectedSessionId) return
+        syntheticEvents.push({
+          eventId: `synthetic-placeholder-${attemptId}`,
+          eventType: 'assistant_message',
+          sessionId: selectedSessionId,
+          timestamp: new Date(placeholder.timestamp).toISOString(),
+          metadata: { assistantPlaceholder: true, attemptId },
+          actor: 'assistant',
+        })
+      })
 
-    return allEvents
-  }, [events, localMessageEvents, selectedSessionId])
+      streamingDrafts.forEach((draft, attemptId) => {
+        if (draft.sessionId !== selectedSessionId) return
+        syntheticEvents.push({
+          eventId: `synthetic-draft-${attemptId}`,
+          eventType: 'assistant_message',
+          sessionId: selectedSessionId,
+          timestamp: new Date(draft.timestamp).toISOString(),
+          content: draft.content,
+          metadata: { streamingDraft: true, attemptId },
+          actor: 'assistant',
+        })
+      })
+    }
+
+    const allEvents = [...events, ...pendingMessageEvents, ...syntheticEvents]
+    const dedupedEvents = allEvents.filter(
+      (event, index) => allEvents.findIndex((candidate) => candidate.eventId === event.eventId) === index,
+    )
+    dedupedEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+    return dedupedEvents
+  }, [events, localMessageEvents, selectedSessionId, pendingAssistantPlaceholders, streamingDrafts])
 
   const currentProcessingStatus =
     processingStatus && processingStatus.sessionId === selectedSessionId ? processingStatus : null

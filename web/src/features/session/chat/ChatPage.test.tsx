@@ -327,9 +327,11 @@ describe('ChatPage', () => {
 
     await waitFor(
       () => {
-        expect(screen.getByTestId('chat-message-assistant')).toHaveTextContent('reply from poll')
+        const assistantMessages = screen.getAllByTestId('chat-message-assistant')
+        const replyMessage = assistantMessages.find((el) => el.textContent?.includes('reply from poll'))
+        expect(replyMessage).toBeDefined()
       },
-      { timeout: 4000 },
+      { timeout: 6000 },
     )
   })
 })
