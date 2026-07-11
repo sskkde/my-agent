@@ -1,4 +1,4 @@
-import type { LLMRequest, LLMResponse, LLMMessage } from '../llm/types.js'
+import type { LLMRequest, LLMResponse, LLMMessage, TokenUsage } from '../llm/types.js'
 import type { ContextBundle, ContextItem } from '../context/types.js'
 import type {
   KernelRunInput,
@@ -61,6 +61,7 @@ export class AgentKernel {
     const maxIterations = input.maxIterations ?? this.config.maxIterations
     const timeoutMs = input.timeoutMs ?? this.config.timeoutMs
     const pairingGuard = new ToolResultPairingGuard()
+    const aggregatedUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
 
     if (timeoutMs <= 0) {
       state.status = 'failed'
@@ -76,7 +77,7 @@ export class AgentKernel {
         if (Date.now() - startTime > timeoutMs) {
           this.flushPairingGuard(pairingGuard, state, 'timeout')
           state.status = 'failed'
-          return this.buildResult(state, 'timeout', undefined, undefined, undefined, input)
+          return this.buildResult(state, 'timeout', undefined, undefined, undefined, input, aggregatedUsage)
         }
 
         const llmRequest = await this.buildLLMRequest(input, state)
@@ -106,7 +107,7 @@ export class AgentKernel {
               !this.hasToolCalls(fallbackResult.response)
             ) {
               state.status = 'completed'
-              return this.buildResult(state, 'completed', undefined, '', undefined, input)
+              return this.buildResult(state, 'completed', undefined, '', undefined, input, aggregatedUsage)
             }
             llmResult = fallbackResult
           }
@@ -124,7 +125,7 @@ export class AgentKernel {
           return this.buildResult(state, 'failed', {
             code: llmResult.error.code,
             message: llmResult.error.message,
-          }, undefined, undefined, input)
+          }, undefined, undefined, input, aggregatedUsage)
         }
 
         this.config.modelInputSnapshotStore?.record({
@@ -140,6 +141,12 @@ export class AgentKernel {
           outputContract: this.lastBuiltModelInput!.metadata.outputContract,
           launchSource: this.lastBuiltModelInput!.metadata.launchSource,
         })
+
+        if (llmResult.response.usage) {
+          aggregatedUsage.promptTokens += llmResult.response.usage.promptTokens
+          aggregatedUsage.completionTokens += llmResult.response.usage.completionTokens
+          aggregatedUsage.totalTokens += llmResult.response.usage.totalTokens
+        }
 
         const llmResponse = llmResult.response
         this.commitTranscript(state, 'llm_response', {
@@ -204,7 +211,7 @@ export class AgentKernel {
             if (shouldStop) {
               this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop')
               state.status = 'completed'
-              return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult, input)
+              return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult, input, aggregatedUsage)
             }
           }
 
@@ -247,7 +254,7 @@ export class AgentKernel {
             return this.buildResult(state, 'failed', {
               code: finalContentValidation.code,
               message: finalContentValidation.message,
-            }, undefined, undefined, input)
+            }, undefined, undefined, input, aggregatedUsage)
           }
 
           state.status = 'completed'
@@ -258,13 +265,14 @@ export class AgentKernel {
             llmResponse.content,
             finalContentValidation.structuredResult,
             input,
+            aggregatedUsage,
           )
         }
       }
 
       this.flushPairingGuard(pairingGuard, state, 'max_iterations')
       state.status = 'failed'
-      return this.buildResult(state, 'max_iterations_reached', undefined, undefined, undefined, input)
+      return this.buildResult(state, 'max_iterations_reached', undefined, undefined, undefined, input, aggregatedUsage)
     } catch (error) {
       this.flushPairingGuard(pairingGuard, state, 'kernel_error')
       state.status = 'failed'
@@ -274,7 +282,7 @@ export class AgentKernel {
       return this.buildResult(state, 'failed', {
         code: streamingErrorMatch ? 'STREAMING_ERROR' : 'KERNEL_ERROR',
         message: streamingErrorMatch ? streamingErrorMatch[1] : errorMessage,
-      }, undefined, undefined, input)
+      }, undefined, undefined, input, aggregatedUsage)
     }
   }
 
@@ -939,6 +947,7 @@ export class AgentKernel {
     finalResponse?: string,
     structuredResult?: unknown,
     input?: KernelRunInput,
+    tokenUsage?: TokenUsage,
   ): KernelRunResult {
     const result: KernelRunResult = {
       finalStatus,
@@ -948,6 +957,7 @@ export class AgentKernel {
       transcript: state.transcript,
       error,
       ...(structuredResult !== undefined ? { structuredResult } : {}),
+      ...(tokenUsage && tokenUsage.totalTokens > 0 ? { tokenUsage } : {}),
     }
 
     if (input) {

@@ -1,6 +1,6 @@
 import type { AgentType, ContextBundle, ContextItem, RuntimeContextDelta } from '../context/types.js'
 import type { LLMAdapter } from '../llm/adapter.js'
-import type { LLMRequest } from '../llm/types.js'
+import type { LLMRequest, TokenUsage } from '../llm/types.js'
 import type { ModelInputBuilder } from './model-input/model-input-builder.js'
 import type { StructuredDecisionTrace } from './decision-trace-types.js'
 import type {
@@ -117,6 +117,8 @@ export interface KernelRunResult {
   structuredResult?: unknown
   /** Structured decision trace for this run. */
   structuredTrace?: StructuredDecisionTrace
+  /** Aggregated token usage from all LLM calls in this run. */
+  tokenUsage?: TokenUsage
 }
 
 export interface KernelTranscriptEntry {

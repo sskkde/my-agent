@@ -152,6 +152,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
           finalResponse: kernelResult.finalResponse,
           iterationsUsed: kernelResult.iterationsUsed,
           toolCallCount: kernelResult.toolCalls.length,
+          ...(kernelResult.tokenUsage ? { tokenUsage: kernelResult.tokenUsage } : {}),
         },
       }
     }

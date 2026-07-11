@@ -31,6 +31,7 @@ export interface RedactedKernelResult {
   finalResponse?: string
   iterationsUsed: number
   toolCallCount: number
+  tokenUsage?: import('../llm/types.js').TokenUsage
 }
 
 /**
