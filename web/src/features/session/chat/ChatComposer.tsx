@@ -175,14 +175,15 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
           </div>
 
           <div className="chat-status-bar" data-testid="chat-status-bar">
-            <div className="chat-status-segment" title="当前模型">
+            <div className="chat-status-segment chat-status-segment--model" title="当前模型">
               <span className={`chat-status-dot chat-status-dot--${status}`} />
               <span className="chat-status-label">{model}</span>
             </div>
-            <div className="chat-status-segment" title="工作阶段">
+            <div className="chat-status-segment chat-status-segment--stage" title="工作阶段">
               <span className="chat-status-sub">{displayStatusLabel}</span>
             </div>
-            <div className="chat-status-segment" title="上下文窗口占用">
+            <div className="chat-status-segment chat-status-segment--ctx" title="上下文窗口占用">
+              <span className="chat-ctx-label">上下文</span>
               <div className="chat-ctx-bar">
                 <div
                   className={`chat-ctx-fill ${ctxClass}`}

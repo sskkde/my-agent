@@ -24,15 +24,15 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 }) => {
   const chatAreaRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (chatAreaRef.current) {
-      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight
-    }
-  }, [events])
-
   const messageEvents = events.filter(
     (e) => e.eventType === 'user_message' || e.eventType === 'assistant_message',
   )
+
+  useEffect(() => {
+    if (chatAreaRef.current && messageEvents.length > 0) {
+      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight
+    }
+  }, [events, messageEvents.length])
 
   return (
     <div className="chat-area" ref={chatAreaRef} data-testid="chat-message-list">
