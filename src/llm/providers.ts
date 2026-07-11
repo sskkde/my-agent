@@ -8,8 +8,13 @@ import {
   mapOpenAIChatResponse,
   buildOpenAICompatibleHeaders,
   safeMergeHeaders,
+  parseOpenAIStreamLine,
 } from './transform/openai-chat-transformer.js'
-import { buildOllamaChatRequestBody, mapOllamaChatResponse } from './transform/ollama-transformer.js'
+import {
+  buildOllamaChatRequestBody,
+  mapOllamaChatResponse,
+  parseOllamaStreamLine,
+} from './transform/ollama-transformer.js'
 import { createErrorFromResponse } from './transform/provider-errors.js'
 import { normalizeDomesticProviderRequest } from './transform/domestic-provider-compat.js'
 import { isDomesticProvider } from './catalog/domestic-providers.js'
@@ -192,6 +197,38 @@ export class BaseProvider implements LLMProvider {
   }
 }
 
+async function* readStreamLines(
+  body: ReadableStream<Uint8Array>,
+  parseLine: (line: string) => string | null,
+  signal: AbortSignal,
+): AsyncGenerator<string> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    for (;;) {
+      if (signal.aborted) break
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const delta = parseLine(line)
+        if (delta !== null) yield delta
+      }
+    }
+    const remaining = buffer.trim()
+    if (remaining.length > 0) {
+      const delta = parseLine(remaining)
+      if (delta !== null) yield delta
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 export class OpenAIAdapter extends BaseProvider {
   private baseUrl: string
   private apiKey: string
@@ -281,6 +318,84 @@ export class OpenAIAdapter extends BaseProvider {
       this.updateStats(false, latencyMs)
       logResponse(this.id, false, latencyMs, this.config.enableLogging || false)
       return { success: false, error: connectionError, providerId: this.id }
+    }
+  }
+
+  async *stream(request: LLMRequest): AsyncGenerator<string> {
+    const source: ErrorSource = { module: 'openai_adapter', runId: request.model }
+
+    if (!this.circuitBreaker.canExecute()) {
+      throw this.createCircuitBreakerError(source)
+    }
+
+    const url = `${this.baseUrl}/chat/completions`
+    const baseHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.apiKey}`,
+    }
+    const headers = safeMergeHeaders(baseHeaders, this.config.headers)
+
+    let body = buildRequestBody(request)
+    body = { ...body, stream: true }
+    if (this.config.providerType && isDomesticProvider(this.config.providerType)) {
+      body = normalizeDomesticProviderRequest(this.config.providerType, body)
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs)
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        this.recordError(error)
+        throw error
+      }
+
+      if (!response.body) {
+        throw new Error('OpenAI stream response has no body')
+      }
+
+      const startTime = Date.now()
+      let yielded = false
+
+      for await (const delta of readStreamLines(response.body, parseOpenAIStreamLine, controller.signal)) {
+        yielded = true
+        yield delta
+      }
+
+      this.updateStats(true, Date.now() - startTime)
+      if (!yielded) {
+        throw new Error('OpenAI stream produced no content')
+      }
+    } catch (error) {
+      const latencyMs = Date.now() - Date.now()
+      if (error instanceof Error && error.name === 'AbortError') {
+        const timeoutError = this.createTimeoutError(source)
+        this.recordError(timeoutError)
+        this.updateStats(false, latencyMs, true)
+        throw timeoutError
+      }
+      const connectionError: RuntimeError = {
+        errorId: `err_stream_${this.id}_${Date.now()}`,
+        category: 'model_error',
+        code: 'STREAM_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown stream error',
+        recoverability: 'retryable_later',
+        source,
+        createdAt: new Date().toISOString(),
+      }
+      this.recordError(connectionError)
+      this.updateStats(false, latencyMs)
+      throw connectionError
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 }
@@ -379,6 +494,81 @@ export class OpenRouterAdapter extends BaseProvider {
       return { success: false, error: connectionError, providerId: this.id }
     }
   }
+
+  async *stream(request: LLMRequest): AsyncGenerator<string> {
+    const source: ErrorSource = { module: 'openrouter_adapter', runId: request.model }
+
+    if (!this.circuitBreaker.canExecute()) {
+      throw this.createCircuitBreakerError(source)
+    }
+
+    const url = `${this.baseUrl}/chat/completions`
+    const headers = buildOpenAICompatibleHeaders({
+      apiKey: this.apiKey,
+      baseUrl: this.baseUrl,
+      siteUrl: this.siteUrl,
+      appName: this.appName,
+      extraHeaders: this.config.headers,
+    })
+
+    const body = { ...buildRequestBody(request), stream: true }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs)
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        this.recordError(error)
+        throw error
+      }
+
+      if (!response.body) {
+        throw new Error('OpenRouter stream response has no body')
+      }
+
+      const startTime = Date.now()
+      let yielded = false
+
+      for await (const delta of readStreamLines(response.body, parseOpenAIStreamLine, controller.signal)) {
+        yielded = true
+        yield delta
+      }
+
+      this.updateStats(true, Date.now() - startTime)
+      if (!yielded) {
+        throw new Error('OpenRouter stream produced no content')
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        const timeoutError = this.createTimeoutError(source)
+        this.recordError(timeoutError)
+        this.updateStats(false, 0, true)
+        throw timeoutError
+      }
+      const streamError: RuntimeError = {
+        errorId: `err_stream_${this.id}_${Date.now()}`,
+        category: 'model_error',
+        code: 'STREAM_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown stream error',
+        recoverability: 'retryable_later',
+        source,
+        createdAt: new Date().toISOString(),
+      }
+      this.recordError(streamError)
+      this.updateStats(false, 0)
+      throw streamError
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
 }
 
 export class OllamaAdapter extends BaseProvider {
@@ -462,6 +652,78 @@ export class OllamaAdapter extends BaseProvider {
       this.updateStats(false, latencyMs)
       logResponse(this.id, false, latencyMs, this.config.enableLogging || false)
       return { success: false, error: connectionError, providerId: this.id }
+    }
+  }
+
+  async *stream(request: LLMRequest): AsyncGenerator<string> {
+    const source: ErrorSource = { module: 'ollama_adapter', runId: request.model }
+
+    if (!this.circuitBreaker.canExecute()) {
+      throw this.createCircuitBreakerError(source)
+    }
+
+    const url = `${this.baseUrl}/api/chat`
+    const baseHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    const headers = safeMergeHeaders(baseHeaders, this.config.headers)
+
+    const body = buildOllamaChatRequestBody(request, true)
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs)
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        this.recordError(error)
+        throw error
+      }
+
+      if (!response.body) {
+        throw new Error('Ollama stream response has no body')
+      }
+
+      const startTime = Date.now()
+      let yielded = false
+
+      for await (const delta of readStreamLines(response.body, parseOllamaStreamLine, controller.signal)) {
+        yielded = true
+        yield delta
+      }
+
+      this.updateStats(true, Date.now() - startTime)
+      if (!yielded) {
+        throw new Error('Ollama stream produced no content')
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        const timeoutError = this.createTimeoutError(source)
+        this.recordError(timeoutError)
+        this.updateStats(false, 0, true)
+        throw timeoutError
+      }
+      const streamError: RuntimeError = {
+        errorId: `err_stream_${this.id}_${Date.now()}`,
+        category: 'model_error',
+        code: 'STREAM_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown stream error',
+        recoverability: 'retryable_later',
+        source,
+        createdAt: new Date().toISOString(),
+      }
+      this.recordError(streamError)
+      this.updateStats(false, 0)
+      throw streamError
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 }

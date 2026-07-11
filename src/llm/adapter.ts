@@ -209,7 +209,14 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
       }
     }
 
-    return
+    const fallbackResult = await complete(request)
+    if (fallbackResult.success && fallbackResult.response.content) {
+      yield {
+        delta: fallbackResult.response.content,
+        providerId: fallbackResult.providerId,
+        model: request.model,
+      }
+    }
   }
 
   const addProvider = (provider: LLMProvider): void => {
