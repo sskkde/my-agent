@@ -20,8 +20,6 @@ const ChatShell: React.FC<ChatShellProps> = ({
   children,
   initialSidebarOpen = true,
   initialRightOpen = true,
-  user,
-  onLogout,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(initialSidebarOpen)
   const [isRightOpen, setIsRightOpen] = useState(initialRightOpen)
@@ -92,24 +90,9 @@ const ChatShell: React.FC<ChatShellProps> = ({
         </div>
         <div className="chat-titlebar__title">{title}</div>
         <div className="chat-titlebar__right">
-          {user && (
-            <div className="chat-titlebar__user" data-testid="chat-titlebar-user">
-              <span className="chat-titlebar__username" data-testid="username-display">{user.username}</span>
-              {onLogout && (
-                <button
-                  className="chat-titlebar__logout"
-                  onClick={onLogout}
-                  data-testid="chat-titlebar-logout"
-                  title="退出登录"
-                >
-                  退出
-                </button>
-              )}
-            </div>
-          )}
           <FloatingSettingsMenu />
           <button
-            className="chat-titlebar__btn"
+            className="chat-titlebar__btn chat-titlebar__btn--split"
             aria-label="切换右侧栏"
             title="切换右侧栏"
             onClick={() => setIsRightOpen((v) => !v)}

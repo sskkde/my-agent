@@ -1,8 +1,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import SettingsContent from './SettingsContent'
+import { useAuth } from '../../context/AuthContext'
 import './floating-settings.css'
 
 const FloatingSettingsMenu: React.FC = () => {
+  const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -97,6 +99,18 @@ const FloatingSettingsMenu: React.FC = () => {
           </div>
           <div className="floating-settings__panel-body">
             <SettingsContent embedMode />
+            {logout && (
+              <div className="floating-settings__logout-row">
+                <button
+                  type="button"
+                  className="floating-settings__logout-btn"
+                  onClick={logout}
+                  data-testid="floating-settings-logout"
+                >
+                  退出登录
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -33,8 +33,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
   onTabChange,
   onToggleNavCollapsed,
   isNavCollapsed: controlledNavCollapsed,
-  user,
-  onLogout,
   sessionId,
 }) => {
   // Determine active product section first for initial state calculation
@@ -105,12 +103,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
     setIsNavDrawerOpen(false)
   }, [])
 
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout()
-    }
-  }
-
   const handleTabChange = (tab: TabId) => {
     onTabChange(tab)
     if (isMobile) {
@@ -170,28 +162,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
 
   const CollapseIcon = ICONS.chevronLeft
 
-  const userControls = (
-    <>
-      {user && (
-        <div className="topbar__user" data-testid="topbar-user">
-          <span className="topbar__username" data-testid="username-display">
-            {user.username}
-          </span>
-          {onLogout && (
-            <button
-              className="topbar__logout-button"
-              onClick={handleLogout}
-              data-testid="logout-button"
-              title="退出登录"
-            >
-              退出
-            </button>
-          )}
-        </div>
-      )}
-    </>
-  )
-
   const contextDeskToggle = (
     <button
       data-testid="context-desk-toggle"
@@ -233,7 +203,6 @@ const AgentShell: React.FC<AgentShellProps> = ({
     <div className="product-nav__controls">
       {contextDeskToggle}
       <FloatingSettingsMenu />
-      {userControls}
       {mobileNavToggle}
     </div>
   )
