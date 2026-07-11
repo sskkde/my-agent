@@ -41,6 +41,8 @@ export interface UseSessionListReturn {
  */
 export function useSessionList(options?: {
   onSessionCreated?: (sessionId: string) => void
+  /** Session status filter; defaults to 'active'. Pass null to fetch all statuses. */
+  status?: 'active' | 'archived' | 'closed' | null
 }): UseSessionListReturn {
   const [sessions, setSessions] = useState<ConsoleSessionInfo[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(true)
@@ -65,7 +67,8 @@ export function useSessionList(options?: {
       } else {
         setSessionsLoading(true)
       }
-      const response = await api.getSessions()
+      const statusFilter = options?.status ?? 'active'
+      const response = await api.getSessions(statusFilter)
       if (mountedRef.current) {
         setSessions(response.sessions)
       }
@@ -78,7 +81,7 @@ export function useSessionList(options?: {
         setSessionsLoading(false)
       }
     }
-  }, [])
+  }, [options?.status])
 
   const scheduleSessionRefresh = useCallback(() => {
     if (sessionRefreshTimeoutRef.current !== null) return
