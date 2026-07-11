@@ -336,6 +336,12 @@ export interface SettingsConfig {
   localOnly: boolean
   providers: Record<string, { configured: boolean }>
   retentionDays: number
+  theme?: string
+  commandPrefs?: {
+    verbose: boolean
+    reasoningVisible: boolean
+    thinkingLevel: string
+  }
 }
 
 // =============================================================================
@@ -397,6 +403,15 @@ export interface SkillsResponse {
 
 export interface SettingsResponse {
   settings: SettingsConfig
+}
+
+export interface UpdateSettingsRequest {
+  theme?: string | null
+  commandPrefs?: {
+    verbose?: boolean
+    reasoningVisible?: boolean
+    thinkingLevel?: string
+  } | null
 }
 
 // =============================================================================
