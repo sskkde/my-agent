@@ -23,6 +23,7 @@ import type {
   ChannelsResponse,
   SkillsResponse,
   SettingsResponse,
+  UpdateSettingsRequest,
   SetupStatusResponse,
   AuthSuccessResponse,
   CreateUserRequest,
@@ -402,6 +403,16 @@ export async function getSkills(): Promise<SkillsResponse> {
 
 export async function getSettings(): Promise<SettingsResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/settings`, { credentials: 'include' })
+  return parseResponse<SettingsResponse>(response)
+}
+
+export async function updateSettings(request: UpdateSettingsRequest): Promise<SettingsResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/settings`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
   return parseResponse<SettingsResponse>(response)
 }
 
