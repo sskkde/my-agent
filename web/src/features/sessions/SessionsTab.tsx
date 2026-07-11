@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { getSessions, updateSession } from '../../api/client'
+import { useNavigate } from 'react-router-dom'
+import { getSessions, updateSession, createSession } from '../../api/client'
 import type { ConsoleSessionInfo, SessionsResponse } from '../../api/types'
 import ErrorMessage from '../../components/ErrorMessage'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -18,6 +19,7 @@ interface SessionsState {
 }
 
 const SessionsTab: React.FC = () => {
+  const navigate = useNavigate()
   const [sessionsState, setSessionsState] = useState<SessionsState>({
     sessions: [],
     total: 0,
@@ -131,6 +133,18 @@ const SessionsTab: React.FC = () => {
     setEditingTitle('')
   }
 
+  const handleCreateSession = useCallback(async () => {
+    try {
+      const response = await createSession()
+      navigate(`/chat/${response.session.sessionId}`)
+    } catch (err) {
+      setSessionsState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err : new Error('创建会话失败'),
+      }))
+    }
+  }, [navigate])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSaveTitle()
@@ -194,6 +208,14 @@ const SessionsTab: React.FC = () => {
             <div className="sessions-empty-state">
               <p>暂无符合条件的会话</p>
               <p>创建新会话后会显示在这里。</p>
+              <button
+                type="button"
+                className="sessions-empty-cta primary-button"
+                onClick={handleCreateSession}
+                data-testid="sessions-create-empty"
+              >
+                新建会话
+              </button>
             </div>
           ) : (
             <>
