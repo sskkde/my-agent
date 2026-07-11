@@ -91,6 +91,45 @@
   cursor: not-allowed;
 }
 
+.auth-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input--with-action {
+  padding-right: 42px;
+}
+
+.auth-input-action {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+
+.auth-input-action:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text);
+}
+
+.auth-input-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .auth-submit-button {
   width: 100%;
   padding: 12px 20px;
@@ -125,7 +164,8 @@
 /* Phone: <480px */
 @media (max-width: 480px) {
   .auth-page {
-    padding: var(--mobile-content-padding, 12px);
+    align-items: flex-start;
+    padding: 40px var(--mobile-content-padding, 12px) var(--mobile-content-padding, 12px);
   }
 
   .auth-card {
@@ -139,6 +179,10 @@
   .auth-input {
     min-height: var(--mobile-touch-target, 44px);
     padding: 12px 14px;
+  }
+
+  .auth-input--with-action {
+    padding-right: 44px;
   }
 
   .auth-submit-button {
