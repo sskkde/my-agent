@@ -36,7 +36,7 @@ import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-stor
 import type { SessionStore } from '../storage/session-store.js'
 import type { LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js'
 import type { SummaryManager } from '../memory/types.js'
-import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus } from '../api/types.js'
+import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus, ExactContextUsage } from '../api/types.js'
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js'
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js'
 import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js'
@@ -115,6 +115,7 @@ function buildStatusPayload(
   model?: string,
   activeTools: ProcessingToolStatus[] = [],
   error?: string,
+  contextUsage?: ExactContextUsage | null,
 ): ProcessingStatusPayload {
   return {
     sessionId,
@@ -123,7 +124,7 @@ function buildStatusPayload(
     stageLabel: ProcessingStageLabel[stage],
     providerId,
     model,
-    contextUsage: null, // Exact usage not available at this layer
+    contextUsage: contextUsage ?? null,
     activeTools,
     timestamp: new Date().toISOString(),
     error,
@@ -303,9 +304,20 @@ export function createOrchestrationProcessor(
         )
       }
 
+      const kernelTokenUsage = output.success
+        ? (output.result?.data?.kernelResult as { tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number } } | undefined)?.tokenUsage
+        : undefined
+      const contextUsage: ExactContextUsage | null = kernelTokenUsage
+        ? {
+            inputTokens: kernelTokenUsage.promptTokens,
+            outputTokens: kernelTokenUsage.completionTokens,
+            totalTokens: kernelTokenUsage.totalTokens,
+          }
+        : null
+
       emitStatus(
         deps,
-        buildStatusPayload(input.sessionId, input.correlationId, 'persisting', resolvedProviderId, resolvedModel),
+        buildStatusPayload(input.sessionId, input.correlationId, 'persisting', resolvedProviderId, resolvedModel, [], undefined, contextUsage),
       )
 
       const persisted = persistTurnTranscript(input, output, deps.transcriptStore)
@@ -320,7 +332,7 @@ export function createOrchestrationProcessor(
 
       emitStatus(
         deps,
-        buildStatusPayload(input.sessionId, input.correlationId, 'completed', resolvedProviderId, resolvedModel, []),
+        buildStatusPayload(input.sessionId, input.correlationId, 'completed', resolvedProviderId, resolvedModel, [], undefined, contextUsage),
       )
 
       return output
