@@ -15,6 +15,12 @@ const eventTypeToRole = (eventType?: string): 'user' | 'assistant' => {
   return eventType === 'user_message' ? 'user' : 'assistant'
 }
 
+const isStreamingDraft = (event: ConsoleTimelineEvent): boolean =>
+  event.metadata?.streamingDraft === true
+
+const isPlaceholder = (event: ConsoleTimelineEvent): boolean =>
+  event.metadata?.assistantPlaceholder === true
+
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
   events,
   loading,
@@ -34,6 +40,8 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
     }
   }, [events, messageEvents.length])
 
+  const showTypingIndicator = loading && messageEvents.length > 0 && !messageEvents.some(isStreamingDraft)
+
   return (
     <div className="chat-area" ref={chatAreaRef} data-testid="chat-message-list">
       <div className="chat-column">
@@ -41,17 +49,23 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
           <ChatWelcome onPromptSelect={onPromptSelect} />
         ) : (
           <div className="chat-messages">
-            {messageEvents.map((event) => (
-              <div key={event.eventId} className="chat-message-group">
-                <ChatMessage
-                  role={eventTypeToRole(event.eventType)}
-                  content={event.content || ''}
-                />
-              </div>
-            ))}
+            {messageEvents.map((event) => {
+              const streaming = isStreamingDraft(event)
+              const placeholder = isPlaceholder(event)
+              return (
+                <div key={event.eventId} className="chat-message-group">
+                  <ChatMessage
+                    role={eventTypeToRole(event.eventType)}
+                    content={streaming ? (event.content || '') : (event.content || '')}
+                    isStreaming={streaming}
+                    isPlaceholder={placeholder}
+                  />
+                </div>
+              )
+            })}
           </div>
         )}
-        {loading && messageEvents.length > 0 && (
+        {showTypingIndicator && (
           <div className="chat-message">
             <div className="chat-message__avatar chat-message__avatar--assistant" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">

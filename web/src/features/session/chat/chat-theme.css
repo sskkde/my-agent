@@ -588,6 +588,15 @@
   justify-content: flex-start;
 }
 
+.chat-message--streaming {
+  opacity: 0.92;
+}
+
+.chat-message--streaming .chat-message__body {
+  border-left: 2px solid var(--chat-accent);
+  padding-left: 8px;
+}
+
 .chat-message__avatar-wrapper {
   flex-shrink: 0;
   display: flex;
