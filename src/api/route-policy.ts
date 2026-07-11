@@ -141,6 +141,7 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // Settings
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/settings', resource: ResourceType.settings, action: Action.read },
+  { method: 'PATCH', pathPattern: '/api/v1/settings', resource: ResourceType.settings, action: Action.update },
 
   // ===========================================
   // Setup

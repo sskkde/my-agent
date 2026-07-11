@@ -125,7 +125,7 @@ export const API_ROUTE_DEFINITIONS: ApiRouteDefinition[] = [
   { path: '/api/v1/sessions/:sessionId/timeline/stream', methods: ['GET'] },
   { path: '/api/v1/sessions/:sessionId/transcripts', methods: ['GET'] },
   { path: '/api/v1/sessions/:sessionId/usage', methods: ['GET'] },
-  { path: '/api/v1/settings', methods: ['GET'] },
+  { path: '/api/v1/settings', methods: ['GET', 'PATCH'] },
   { path: '/api/v1/setup/readiness', methods: ['GET'] },
   { path: '/api/v1/setup/status', methods: ['GET'] },
   { path: '/api/v1/setup/user', methods: ['POST'] },

@@ -102,6 +102,7 @@ import { createUploadPreviewExtractor, type UploadPreviewExtractor } from '../st
 import { createWorkdirStore, type WorkdirStore } from '../storage/workdir-store.js'
 import { createSessionWorkdirStateStore, type SessionWorkdirStateStore } from '../storage/session-workdir-state-store.js'
 import { createSystemSettingsStore, type SystemSettingsStore } from '../storage/system-settings-store.js'
+import { createUserSettingsStore, type UserSettingsStore } from '../storage/user-settings-store.js'
 import { createWorkdirService, type WorkdirService } from '../workdirs/workdir-service.js'
 import { ProcessSessionStore } from '../tools/builtins/process-session-store.js'
 import { resolveProviderAndModel } from '../llm/agent-provider-resolver.js'
@@ -194,6 +195,7 @@ export interface ApiContext {
   subagentRunStore: SubagentRunStore
   subagentTranscriptStore: SubagentTranscriptStore
   subagentProviderPreferenceStore: SubagentProviderPreferenceStore
+  userSettingsStore: UserSettingsStore
   auditRecorder: AuditRecorder
   uploadFileService: UploadFileService
   uploadPreviewExtractor: UploadPreviewExtractor
@@ -363,6 +365,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let workdirStore: WorkdirStore
   let sessionWorkdirStateStore: SessionWorkdirStateStore
   let systemSettingsStore: SystemSettingsStore
+  let userSettingsStore: UserSettingsStore
   let subagentRunStore: SubagentRunStore
   let subagentTranscriptStore: SubagentTranscriptStore
   let subagentProviderPreferenceStore: SubagentProviderPreferenceStore
@@ -442,10 +445,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     fileUploadStore = createFileUploadStore(connection)
 	    workdirStore = createWorkdirStore(connection)
 	    sessionWorkdirStateStore = createSessionWorkdirStateStore(connection)
- 	    systemSettingsStore =
- 	      ((existingStores as Record<string, unknown>)?.systemSettingsStore as SystemSettingsStore) ??
- 	      createSystemSettingsStore(connection)
- 	    subagentRunStore = createSubagentRunStore(connection)
+	    systemSettingsStore =
+	      ((existingStores as Record<string, unknown>)?.systemSettingsStore as SystemSettingsStore) ??
+	      createSystemSettingsStore(connection)
+	    userSettingsStore = createUserSettingsStore(connection)
+	    subagentRunStore = createSubagentRunStore(connection)
  	    subagentTranscriptStore = createSubagentTranscriptStore(connection)
  	    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
   } catch (error) {
@@ -965,6 +969,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     subagentRunStore,
     subagentTranscriptStore,
     subagentProviderPreferenceStore,
+    userSettingsStore,
     auditRecorder,
     workdirService,
     uploadFileService,
