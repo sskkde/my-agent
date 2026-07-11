@@ -4,6 +4,11 @@ import { CLIENT_ACCEPT_STRING } from '../../../config/upload-constants'
 
 export type ChatComposerStatus = 'idle' | 'thinking' | 'tool' | 'generating'
 
+export interface ChatComposerCtxUsage {
+  totalTokens: number
+  maxContextTokens?: number
+}
+
 export interface ChatComposerProps {
   value: string
   onChange: (value: string) => void
@@ -12,7 +17,7 @@ export interface ChatComposerProps {
   model?: string
   status?: ChatComposerStatus
   statusLabel?: string
-  ctxUsage?: number
+  ctxUsage?: ChatComposerCtxUsage | null
   onFilesSelected?: (files: File[]) => void
   selectedFiles?: File[]
   onRemoveFile?: (index: number) => void
@@ -32,10 +37,10 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
   onChange,
   onSend,
   sending = false,
-  model = 'GLM-4.6',
+  model = '无',
   status = 'idle',
   statusLabel,
-  ctxUsage = 12,
+  ctxUsage = null,
   onFilesSelected,
   selectedFiles = [],
   onRemoveFile,
@@ -82,7 +87,12 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
     }
   }
 
-  const ctxClass = ctxUsage > 80 ? 'chat-ctx-fill--danger' : ctxUsage > 60 ? 'chat-ctx-fill--warn' : ''
+  const ctxTotalTokens = ctxUsage?.totalTokens ?? 0
+  const ctxMaxTokens = ctxUsage?.maxContextTokens
+  const ctxPercent =
+    ctxMaxTokens && ctxMaxTokens > 0 ? Math.min(100, Math.max(0, (ctxTotalTokens / ctxMaxTokens) * 100)) : 0
+  const ctxClass = ctxPercent > 80 ? 'chat-ctx-fill--danger' : ctxPercent > 60 ? 'chat-ctx-fill--warn' : ''
+  const ctxText = ctxMaxTokens ? `${ctxTotalTokens}/${ctxMaxTokens}` : `${ctxTotalTokens}`
   const displayStatusLabel = statusLabel || STATUS_LABELS[status]
 
   return (
@@ -187,11 +197,11 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
               <div className="chat-ctx-bar">
                 <div
                   className={`chat-ctx-fill ${ctxClass}`}
-                  style={{ width: `${Math.min(100, Math.max(0, ctxUsage))}%` }}
+                  style={{ width: `${ctxPercent}%` }}
                   data-testid="chat-ctx-fill"
                 />
               </div>
-              <span className="chat-ctx-pct" data-testid="chat-ctx-pct">{Math.round(ctxUsage)}%</span>
+              <span className="chat-ctx-pct" data-testid="chat-ctx-pct">{ctxText}</span>
             </div>
           </div>
 

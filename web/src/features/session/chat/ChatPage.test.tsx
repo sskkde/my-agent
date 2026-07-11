@@ -10,6 +10,7 @@ vi.mock('../../../api/client')
 
 describe('ChatPage', () => {
   beforeEach(() => {
+    localStorage.clear()
     vi.clearAllMocks()
     vi.mocked(client.getMe).mockResolvedValue({
       user: {
@@ -115,8 +116,21 @@ describe('ChatPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('chat-status-bar')).toHaveTextContent('gpt-4.1')
       expect(screen.getByTestId('chat-status-bar')).toHaveTextContent('模型调用')
-      expect(screen.getByTestId('chat-ctx-pct')).toHaveTextContent('30%')
+      expect(screen.getByTestId('chat-ctx-pct')).toHaveTextContent('30/100')
     })
+  })
+
+  it('shows 无 as the default model when no session is selected', async () => {
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-shell')
+    expect(screen.getByTestId('chat-status-bar')).toHaveTextContent('无')
   })
 
   it('uploads selected files before sending from the chat composer', async () => {

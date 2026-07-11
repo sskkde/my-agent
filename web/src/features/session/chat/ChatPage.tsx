@@ -52,10 +52,10 @@ const toComposerStatus = (
   return 'idle'
 }
 
-const getContextUsagePercent = (processingStatus: ProcessingStatusPayload | null): number | null => {
+const getContextUsage = (processingStatus: ProcessingStatusPayload | null): { totalTokens: number; maxContextTokens?: number } | null => {
   const usage = processingStatus?.contextUsage
-  if (!usage?.maxContextTokens) return null
-  return (usage.totalTokens / usage.maxContextTokens) * 100
+  if (!usage) return null
+  return { totalTokens: usage.totalTokens, maxContextTokens: usage.maxContextTokens }
 }
 
 const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
@@ -471,8 +471,8 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const currentProcessingStatus =
     processingStatus && processingStatus.sessionId === selectedSessionId ? processingStatus : null
   const status = toComposerStatus(currentProcessingStatus, streamStatus, sending)
-  const model = currentProcessingStatus?.model || 'GLM-4.6'
-  const ctxUsage = getContextUsagePercent(currentProcessingStatus) ?? Math.min(98, 12 + events.length * 2)
+  const model = selectedSessionId ? (currentProcessingStatus?.model || 'GLM-4.6') : '无'
+  const ctxUsage = selectedSessionId ? getContextUsage(currentProcessingStatus) : null
 
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles((files) => files.filter((_, i) => i !== index))
