@@ -62,7 +62,7 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
   sending = false,
   placeholder = '输入消息...',
   className = '',
-  model = 'claude-3.5',
+  model = '无',
   onFilesSelected,
   selectedFiles = [],
   onRemoveFile,
