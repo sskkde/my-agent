@@ -1,5 +1,6 @@
 import React from 'react'
 import { MarkdownContent } from '../../../components/message/MarkdownContent'
+import { StreamingMarkdownContent } from '../../../components/message/StreamingMarkdownContent'
 
 export interface ChatMessageProps {
   role: 'user' | 'assistant'
@@ -47,8 +48,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, isStreaming = 
               <span className="chat-typing__dot" />
               <span className="chat-typing__dot" />
             </div>
+          ) : isStreaming ? (
+            <StreamingMarkdownContent text={content} isStreaming />
           ) : (
-            <MarkdownContent text={content} isStreaming={isStreaming} fullMarkdown />
+            <MarkdownContent text={content} fullMarkdown />
           )}
         </div>
         {showActions && (
