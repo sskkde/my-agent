@@ -4,6 +4,7 @@ import { beforeEach, describe, it, expect, vi } from 'vitest'
 import ChatPage from './ChatPage'
 import { AuthProvider } from '../../../context/AuthContext'
 import * as client from '../../../api/client'
+import { SELECTED_SESSION_KEY } from '../session-constants'
 import type { ProcessingStatusPayload } from '../../../api/types'
 
 vi.mock('../../../api/client')
@@ -291,6 +292,39 @@ describe('ChatPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('location-path')).toHaveTextContent('/chat/new-session-id')
     })
+  })
+
+  it('navigates to /chat welcome page after archiving the current session', async () => {
+    function LocationDisplay() {
+      const location = useLocation()
+      return <div data-testid="location-path">{location.pathname}</div>
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/chat/session-1']}>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+          <LocationDisplay />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-shell')
+
+    const archiveBtn = screen
+      .getByTestId('chat-session-session-1')
+      .querySelector('.chat-session-item__archive') as HTMLButtonElement
+    fireEvent.click(archiveBtn)
+
+    await waitFor(() => {
+      expect(client.updateSession).toHaveBeenCalledWith('session-1', { status: 'archived' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-path')).toHaveTextContent('/chat')
+    })
+
+    expect(localStorage.getItem(SELECTED_SESSION_KEY)).toBeNull()
   })
 
   it('creates a session and sends the first message from the welcome page composer', async () => {

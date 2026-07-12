@@ -129,6 +129,15 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         setArchiveActionLoading(true)
         await api.updateSession(sessionId, { status: 'archived' })
         await fetchSessions(true)
+        // If the archived session is the currently selected one, jump back to the
+        // welcome page so the user is not left viewing an archived conversation.
+        // ChatRouteContent re-derives the session from URL + localStorage, so we
+        // must clear both state and localStorage and update the URL together.
+        if (selectedSessionIdRef.current === sessionId) {
+          setSelectedSessionId(null)
+          safeRemoveLocalStorage(SELECTED_SESSION_KEY)
+          navigate('/chat')
+        }
         showToast('会话已归档')
       } catch (err) {
         showToast('归档失败')
@@ -136,7 +145,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         setArchiveActionLoading(false)
       }
     },
-    [fetchSessions],
+    [fetchSessions, selectedSessionIdRef, setSelectedSessionId, navigate],
   )
 
   const handleRestoreSession = useCallback(
