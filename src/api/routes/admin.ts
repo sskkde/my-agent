@@ -1,7 +1,9 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { randomUUID } from 'crypto'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
+import { hashPassword } from '../../storage/auth-crypto.js'
 import type { UserRole, UserStatus } from '../../storage/user-store.js'
 
 const VALID_ROLES: UserRole[] = ['admin', 'user', 'service']
@@ -35,6 +37,66 @@ export function registerAdminRoutes(server: FastifyInstance, context: ApiContext
     const users = userStore.list().map((user) => toAdminUser(user))
     return reply.code(200).send(success({ users, total: users.length }, request.requestId))
   })
+
+  server.post<{ Body: { username: string; password: string; role: UserRole } }>(
+    '/api/v1/admin/users',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['username', 'password'],
+          properties: {
+            username: { type: 'string', minLength: 1 },
+            password: { type: 'string', minLength: 1 },
+            role: { type: 'string', enum: ['admin', 'user', 'service'] },
+          },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{ Body: { username: string; password: string; role: UserRole } }>,
+      reply: FastifyReply,
+    ) => {
+      if (!request.requirePermission(ResourceType.users, Action.manage)) {
+        return reply
+      }
+      const { username, password, role } = request.body || ({} as typeof request.body)
+
+      if (!username || typeof username !== 'string' || username.trim().length === 0) {
+        return reply
+          .code(400)
+          .send(envelopeError('BAD_REQUEST', 'Username is required and cannot be empty', request.requestId))
+      }
+
+      if (!password || typeof password !== 'string' || password.length === 0) {
+        return reply
+          .code(400)
+          .send(envelopeError('BAD_REQUEST', 'Password is required and cannot be empty', request.requestId))
+      }
+
+      const trimmedUsername = username.trim()
+      const resolvedRole: UserRole = role ?? 'user'
+      if (!VALID_ROLES.includes(resolvedRole)) {
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'Invalid user role', request.requestId))
+      }
+
+      const existing = userStore.getByUsername(trimmedUsername)
+      if (existing) {
+        return reply.code(409).send(envelopeError('CONFLICT', 'Username already exists', request.requestId))
+      }
+
+      const passwordHash = await hashPassword(password)
+      const userId = randomUUID()
+      const user = userStore.create({
+        userId,
+        username: trimmedUsername,
+        passwordHash,
+        role: resolvedRole,
+      })
+
+      return reply.code(201).send(success({ user: toAdminUser(user) }, request.requestId))
+    },
+  )
 
   server.patch<{ Params: { userId: string }; Body: { role: UserRole } }>(
     '/api/v1/admin/users/:userId/role',

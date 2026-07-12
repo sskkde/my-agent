@@ -466,6 +466,7 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   // Admin
   // ===========================================
   { method: 'GET', pathPattern: '/api/v1/admin/users', resource: ResourceType.users, action: Action.manage },
+  { method: 'POST', pathPattern: '/api/v1/admin/users', resource: ResourceType.users, action: Action.manage },
   {
     method: 'PATCH',
     pathPattern: '/api/v1/admin/users/:userId/role',

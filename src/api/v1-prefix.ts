@@ -54,7 +54,7 @@ export type ApiRouteDefinition = {
 export const API_ROUTE_DEFINITIONS: ApiRouteDefinition[] = [
   { path: '/api/v1/admin/connectors/health', methods: ['GET'] },
   { path: '/api/v1/admin/settings', methods: ['GET', 'PATCH'] },
-  { path: '/api/v1/admin/users', methods: ['GET'] },
+  { path: '/api/v1/admin/users', methods: ['GET', 'POST'] },
   { path: '/api/v1/admin/users/:userId/role', methods: ['PATCH'] },
   { path: '/api/v1/admin/users/:userId/status', methods: ['PATCH'] },
   { path: '/api/v1/agents/:agentId/config', methods: ['GET'] },
