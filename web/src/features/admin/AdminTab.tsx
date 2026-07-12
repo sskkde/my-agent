@@ -22,6 +22,11 @@ const AdminTab: React.FC = () => {
   const [createdKey, setCreatedKey] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false)
+  const [newUserName, setNewUserName] = useState('')
+  const [newUserPassword, setNewUserPassword] = useState('')
+  const [newUserRole, setNewUserRole] = useState<UserRole>('user')
+
   const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -67,6 +72,27 @@ const AdminTab: React.FC = () => {
       setUsers((prev) => prev.map((u) => (u.userId === userId ? updated : u)))
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新状态失败')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCreateUser = async () => {
+    if (!newUserName.trim() || !newUserPassword) return
+    setActionLoading('create-user')
+    try {
+      const created = await adminApi.createUser({
+        username: newUserName.trim(),
+        password: newUserPassword,
+        role: newUserRole,
+      })
+      setUsers((prev) => [...prev, created])
+      setNewUserName('')
+      setNewUserPassword('')
+      setNewUserRole('user')
+      setCreateUserDialogOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '创建用户失败')
     } finally {
       setActionLoading(null)
     }
@@ -173,9 +199,23 @@ const AdminTab: React.FC = () => {
         )}
 
         <section className="admin-section" data-testid="user-management-panel">
-          <h3>用户管理</h3>
+          <div className="section-header">
+            <h3>用户管理</h3>
+            <button
+              className="primary-button"
+              onClick={() => setCreateUserDialogOpen(true)}
+              data-testid="create-user-btn"
+            >
+              创建用户
+            </button>
+          </div>
           {users.length === 0 ? (
-            <EmptyState icon="👥" title="暂无用户" description="系统中还没有用户" />
+            <EmptyState
+              icon="👥"
+              title="暂无用户"
+              description="系统中还没有用户"
+              action={{ label: '创建用户', onClick: () => setCreateUserDialogOpen(true) }}
+            />
           ) : (
             <table className="admin-table">
               <thead>
@@ -224,6 +264,81 @@ const AdminTab: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {createUserDialogOpen && (
+            <div className="modal-overlay" data-testid="user-create-dialog">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h4>创建用户</h4>
+                  <button
+                    className="modal-close"
+                    onClick={() => setCreateUserDialogOpen(false)}
+                    data-testid="user-dialog-close"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label htmlFor="new-user-name">用户名</label>
+                    <input
+                      id="new-user-name"
+                      type="text"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      placeholder="例如: alice"
+                      className="input-field"
+                      data-testid="new-user-name-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="new-user-password">密码</label>
+                    <input
+                      id="new-user-password"
+                      type="password"
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                      placeholder="输入密码"
+                      className="input-field"
+                      data-testid="new-user-password-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="new-user-role">角色</label>
+                    <select
+                      id="new-user-role"
+                      value={newUserRole}
+                      onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+                      className="input-field"
+                      data-testid="new-user-role-select"
+                    >
+                      <option value="admin">管理员</option>
+                      <option value="user">用户</option>
+                      <option value="service">服务</option>
+                    </select>
+                  </div>
+                  <div className="modal-actions">
+                    <button
+                      className="secondary-button"
+                      onClick={() => setCreateUserDialogOpen(false)}
+                    >
+                      取消
+                    </button>
+                    <button
+                      className="primary-button"
+                      onClick={handleCreateUser}
+                      disabled={
+                        actionLoading === 'create-user' || !newUserName.trim() || !newUserPassword
+                      }
+                      data-testid="user-create-submit"
+                    >
+                      {actionLoading === 'create-user' ? '创建中...' : '创建'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </section>
 
