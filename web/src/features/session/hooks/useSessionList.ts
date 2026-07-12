@@ -26,8 +26,8 @@ export interface UseSessionListReturn {
   fetchSessions: (isRefresh?: boolean) => Promise<void>
   /** Schedule a debounced session list refresh (250ms) */
   scheduleSessionRefresh: () => void
-  /** Create a new session and select it */
-  handleCreateSession: () => Promise<void>
+  /** Create a new session and select it. Returns the new session ID on success. */
+  handleCreateSession: () => Promise<string | undefined>
   /** Refresh sessions (alias for fetchSessions(true)) */
   refreshSessions: () => Promise<void>
   /** Cancel any pending debounced session refresh */
@@ -103,10 +103,12 @@ export function useSessionList(options?: {
       }
       setSessions((prev) => [newSession, ...prev])
       onSessionCreatedRef.current?.(newSession.sessionId)
+      return newSession.sessionId
     } catch (err) {
       if (mountedRef.current) {
         setSessionsError(err instanceof Error ? err.message : 'Failed to create session')
       }
+      return undefined
     }
   }, [])
 
