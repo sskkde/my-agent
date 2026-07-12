@@ -931,7 +931,7 @@
   min-width: 0;
   height: 26px;
   padding: 0 4px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .chat-status-segment {
