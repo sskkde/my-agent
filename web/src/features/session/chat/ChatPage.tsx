@@ -12,7 +12,7 @@ import { useSelectedSession } from '../hooks/useSelectedSession'
 import { useComposerSubmission } from '../hooks/useComposerSubmission'
 import { useSSEStream } from '../hooks/useSSEStream'
 import * as api from '../../../api/client'
-import type { ConsoleSessionInfo, ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../../api/types'
+import type { ConsoleSessionInfo, ConsoleTimelineEvent, ModelsResponse, ProcessingStatusPayload, TokenStreamPayload } from '../../../api/types'
 import { getBaselineServerMessageCount, type AssistantPlaceholder, type StreamingDraft } from '../session-utils'
 import type { CommandContext } from '../../../commands/types'
 import { safeRemoveLocalStorage } from '../session-migration'
@@ -62,6 +62,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const handleSelectSessionRef = useRef<((sessionId: string) => void) | null>(null)
+  const fetchingModelsForSessionRef = useRef<string | null>(null)
 
   const { sessions, sessionsLoading, sessionsError, fetchSessions, handleCreateSession } = useSessionList({
     onSessionCreated: (sessionId: string) => handleSelectSessionRef.current?.(sessionId),
@@ -99,6 +100,13 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const [archiveView, setArchiveView] = useState(false)
   const [archivedSessions, setArchivedSessions] = useState<ConsoleSessionInfo[]>([])
   const [archiveActionLoading, setArchiveActionLoading] = useState(false)
+
+  const [modelsCache, setModelsCache] = useState<Record<string, ModelsResponse>>({})
+  const [modelsLoading, setModelsLoading] = useState(false)
+  const [modelsError, setModelsError] = useState<string | null>(null)
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
+  const [selectedSessionModel, setSelectedSessionModel] = useState<string | undefined>(undefined)
+  const [switchingModel, setSwitchingModel] = useState(false)
 
   const handleToggleArchiveView = useCallback(async () => {
     if (!archiveView) {
@@ -146,6 +154,80 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       }
     },
     [fetchSessions],
+  )
+
+  useEffect(() => {
+    setModelSelectorOpen(false)
+    setModelsError(null)
+    setSelectedSessionModel(undefined)
+  }, [selectedSessionId])
+
+  useEffect(() => {
+    if (!modelSelectorOpen || !selectedSessionId) return
+
+    const cached = modelsCache[selectedSessionId]
+    if (cached) {
+      setSelectedSessionModel(cached.selectedModel ?? undefined)
+      return
+    }
+    if (fetchingModelsForSessionRef.current === selectedSessionId) return
+
+    fetchingModelsForSessionRef.current = selectedSessionId
+    setModelsLoading(true)
+    setModelsError(null)
+
+    let cancelled = false
+    const load = async () => {
+      try {
+        const data = await api.getModels(selectedSessionId)
+        if (cancelled) return
+        setModelsCache((prev) => ({ ...prev, [selectedSessionId]: data }))
+        setSelectedSessionModel(data.selectedModel ?? undefined)
+      } catch (err) {
+        if (cancelled) return
+        const message = err instanceof api.ApiClientError ? err.message : '加载模型列表失败'
+        setModelsError(message)
+      } finally {
+        if (!cancelled) setModelsLoading(false)
+        if (fetchingModelsForSessionRef.current === selectedSessionId) {
+          fetchingModelsForSessionRef.current = null
+        }
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+      if (fetchingModelsForSessionRef.current === selectedSessionId) {
+        fetchingModelsForSessionRef.current = null
+      }
+    }
+  }, [modelSelectorOpen, selectedSessionId, modelsCache])
+
+  const handleModelSelect = useCallback(
+    async (providerId: string, model: string) => {
+      if (!selectedSessionId) return
+      setSwitchingModel(true)
+      try {
+        await api.setSessionModel(selectedSessionId, { providerId, model })
+        setSelectedSessionModel(model)
+        setModelsCache((prev) => {
+          const existing = prev[selectedSessionId]
+          if (!existing) return prev
+          return {
+            ...prev,
+            [selectedSessionId]: { ...existing, selectedModel: model, selectedProviderId: providerId },
+          }
+        })
+        setModelSelectorOpen(false)
+      } catch (err) {
+        const message = err instanceof api.ApiClientError ? err.message : '切换模型失败'
+        showToast(message)
+      } finally {
+        setSwitchingModel(false)
+      }
+    },
+    [selectedSessionId],
   )
 
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
@@ -495,11 +577,14 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     lastProcessingStatus && lastProcessingStatus.sessionId === selectedSessionId ? lastProcessingStatus : null
   const status = toComposerStatus(currentProcessingStatus, streamStatus, sending)
   const model = selectedSessionId
-    ? (currentProcessingStatus?.model || agentModel || '无')
+    ? (currentProcessingStatus?.model || selectedSessionModel || agentModel || '无')
     : '无'
   const ctxUsage = selectedSessionId
     ? getContextUsage(currentProcessingStatus) ?? getContextUsage(lastStatusForSession)
     : null
+
+  const modelSelectorDisabled =
+    sending || Boolean(currentProcessingStatus && ACTIVE_PROCESSING_STAGES.has(currentProcessingStatus.stage))
 
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles((files) => files.filter((_, i) => i !== index))
@@ -552,6 +637,16 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           onRemoveFile={handleRemoveFile}
           uploadErrors={uploadErrors}
           isUploading={isUploading}
+          sessionId={selectedSessionId}
+          modelSelectorOpen={modelSelectorOpen}
+          modelSelectorDisabled={modelSelectorDisabled || switchingModel}
+          modelsData={selectedSessionId ? modelsCache[selectedSessionId] : undefined}
+          modelsLoading={modelsLoading}
+          modelsError={modelsError}
+          selectedSessionModel={selectedSessionModel}
+          onModelSelectorOpen={() => setModelSelectorOpen(true)}
+          onModelSelectorClose={() => setModelSelectorOpen(false)}
+          onModelSelect={handleModelSelect}
         />
       </ChatShell>
       <ChatToast />

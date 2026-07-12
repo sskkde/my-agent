@@ -52,6 +52,37 @@ describe('ChatPage', () => {
     })
     vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
     vi.mocked(client.getSessionWorkdir).mockResolvedValue({ workdir: null })
+    vi.mocked(client.getModels).mockResolvedValue({
+      providers: [
+        {
+          providerId: 'openai',
+          providerType: 'openai',
+          displayName: 'OpenAI',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: '1234',
+          baseUrl: 'https://api.openai.com',
+          selectedModel: 'gpt-4.1',
+          source: 'env',
+          lastTestStatus: 'ok',
+          lastTestedAt: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+      ],
+      selectedModel: 'gpt-4.1',
+      selectedProviderId: 'openai',
+    })
+    vi.mocked(client.setSessionModel).mockResolvedValue({
+      session: {
+        sessionId: 'session-1',
+        userId: 'test-user-id',
+        messageCount: 0,
+        lastActivityAt: '2024-01-01T00:00:00Z',
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
     vi.mocked(client.getAgentConfig).mockResolvedValue({
       agentId: 'foreground.default',
       global: {
@@ -420,5 +451,119 @@ describe('ChatPage', () => {
       },
       { timeout: 6000 },
     )
+  })
+
+  it('opens the model selector and lists available providers', async () => {
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-shell')
+    await waitFor(() => expect(screen.getByTestId('chat-model-selector-trigger')).not.toBeDisabled())
+    fireEvent.click(screen.getByTestId('chat-model-selector-trigger'))
+
+    await waitFor(() => {
+      expect(client.getModels).toHaveBeenCalledWith('session-1')
+    })
+    expect(screen.getByTestId('chat-model-provider-openai')).toBeInTheDocument()
+    expect(screen.getByTestId('chat-model-option-openai')).toHaveTextContent('gpt-4.1')
+  })
+
+  it('switches the session model when an option is selected', async () => {
+    vi.mocked(client.getModels).mockResolvedValue({
+      providers: [
+        {
+          providerId: 'openai',
+          providerType: 'openai',
+          displayName: 'OpenAI',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: '1234',
+          baseUrl: 'https://api.openai.com',
+          selectedModel: 'gpt-4.1',
+          source: 'env',
+          lastTestStatus: 'ok',
+          lastTestedAt: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+        {
+          providerId: 'ollama',
+          providerType: 'ollama',
+          displayName: 'Ollama',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: null,
+          baseUrl: 'http://localhost:11434',
+          selectedModel: 'llama2',
+          source: 'user',
+          lastTestStatus: null,
+          lastTestedAt: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+      ],
+      selectedModel: 'gpt-4.1',
+      selectedProviderId: 'openai',
+    })
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-shell')
+    await waitFor(() => expect(screen.getByTestId('chat-model-selector-trigger')).not.toBeDisabled())
+    fireEvent.click(screen.getByTestId('chat-model-selector-trigger'))
+    await waitFor(() => expect(screen.getByTestId('chat-model-option-ollama')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByTestId('chat-model-option-ollama'))
+
+    await waitFor(() => {
+      expect(client.setSessionModel).toHaveBeenCalledWith('session-1', { providerId: 'ollama', model: 'llama2' })
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-status-bar')).toHaveTextContent('llama2')
+    })
+  })
+
+  it('disables the model selector when no session is selected', async () => {
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-shell')
+    expect(screen.getByTestId('chat-model-selector-trigger')).toBeDisabled()
+  })
+
+  it('shows an error when loading models fails', async () => {
+    vi.mocked(client.getModels).mockRejectedValue(new Error('network error'))
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-shell')
+    await waitFor(() => expect(screen.getByTestId('chat-model-selector-trigger')).not.toBeDisabled())
+    fireEvent.click(screen.getByTestId('chat-model-selector-trigger'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-model-error')).toBeInTheDocument()
+    })
   })
 })

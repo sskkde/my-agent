@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react'
 import { showToast } from './ChatToast'
 import { CLIENT_ACCEPT_STRING } from '../../../config/upload-constants'
+import ModelSelector from './ModelSelector'
+import type { ModelsResponse } from '../../../api/types'
 
 export type ChatComposerStatus = 'idle' | 'thinking' | 'tool' | 'generating'
 
@@ -23,6 +25,16 @@ export interface ChatComposerProps {
   onRemoveFile?: (index: number) => void
   uploadErrors?: string[]
   isUploading?: boolean
+  sessionId?: string | null
+  modelSelectorOpen?: boolean
+  modelSelectorDisabled?: boolean
+  modelsData?: ModelsResponse
+  modelsLoading?: boolean
+  modelsError?: string | null
+  selectedSessionModel?: string
+  onModelSelectorOpen?: () => void
+  onModelSelectorClose?: () => void
+  onModelSelect?: (providerId: string, model: string) => void
 }
 
 const STATUS_LABELS: Record<ChatComposerStatus, string> = {
@@ -46,6 +58,16 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
   onRemoveFile,
   uploadErrors = [],
   isUploading = false,
+  sessionId = null,
+  modelSelectorOpen = false,
+  modelSelectorDisabled = false,
+  modelsData,
+  modelsLoading = false,
+  modelsError = null,
+  selectedSessionModel,
+  onModelSelectorOpen,
+  onModelSelectorClose,
+  onModelSelect,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -185,10 +207,20 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
           </div>
 
           <div className="chat-status-bar" data-testid="chat-status-bar">
-            <div className="chat-status-segment chat-status-segment--model" title="当前模型">
-              <span className={`chat-status-dot chat-status-dot--${status}`} />
-              <span className="chat-status-label">{model}</span>
-            </div>
+            <ModelSelector
+              model={model}
+              status={status}
+              sessionId={sessionId}
+              disabled={modelSelectorDisabled}
+              modelsData={modelsData}
+              modelsLoading={modelsLoading}
+              modelsError={modelsError}
+              selectedSessionModel={selectedSessionModel}
+              onOpen={onModelSelectorOpen ?? (() => {})}
+              onClose={onModelSelectorClose ?? (() => {})}
+              onSelect={onModelSelect ?? (() => {})}
+              isOpen={modelSelectorOpen}
+            />
             <div className="chat-status-segment chat-status-segment--stage" title="工作阶段">
               <span className="chat-status-sub">{displayStatusLabel}</span>
             </div>
