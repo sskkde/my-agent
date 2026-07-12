@@ -38,6 +38,8 @@ export interface UseComposerSubmissionCallbacks {
   fetchTimeline: (sessionId: string) => Promise<ConsoleTimelineEvent[] | null>
   fetchSessions: (isRefresh?: boolean) => Promise<void>
   createCommandContext: () => CommandContext
+  /** Called when a send is attempted without a selected session. Should create/select a session and return its ID. */
+  onSessionRequired?: () => Promise<string | undefined>
 }
 
 export interface UseComposerSubmissionReturn {
@@ -243,7 +245,15 @@ export function useComposerSubmission(options: {
   )
 
   const handleSend = async () => {
-    const sessionId = selectedSessionId
+    let sessionId = selectedSessionId
+    if (!sessionId && callbacksRef.current.onSessionRequired) {
+      try {
+        sessionId = (await callbacksRef.current.onSessionRequired()) ?? null
+      } catch (err) {
+        setSendError(err instanceof Error ? err.message : 'Failed to create session')
+        return
+      }
+    }
     if (!sessionId || (!draft.trim() && selectedFilesRef.current.length === 0) || sending) return
 
     const trimmedDraft = draft.trim()

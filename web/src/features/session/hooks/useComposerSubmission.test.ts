@@ -46,6 +46,7 @@ describe('useComposerSubmission', () => {
     fetchTimeline: ReturnType<typeof vi.fn>
     fetchSessions: ReturnType<typeof vi.fn>
     createCommandContext: ReturnType<typeof vi.fn>
+    onSessionRequired?: ReturnType<typeof vi.fn>
   }
 
   beforeEach(() => {
@@ -143,6 +144,43 @@ describe('useComposerSubmission', () => {
     })
 
     expect(mockSendMessage).not.toHaveBeenCalled()
+  })
+
+  it('creates session and sends when onSessionRequired is provided without a session', async () => {
+    mockSendMessage.mockResolvedValue({ accepted: true, correlationId: 'corr-1' })
+    callbacks.onSessionRequired = vi.fn().mockResolvedValue('session-new')
+
+    const { result } = renderComposerHook(null)
+
+    act(() => {
+      result.current.setDraft('Hello')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(callbacks.onSessionRequired).toHaveBeenCalled()
+    expect(mockSendMessage).toHaveBeenCalledWith('session-new', 'Hello', undefined)
+    expect(result.current.draft).toBe('')
+  })
+
+  it('sets sendError when onSessionRequired fails', async () => {
+    callbacks.onSessionRequired = vi.fn().mockRejectedValue(new Error('Create session failed'))
+
+    const { result } = renderComposerHook(null)
+
+    act(() => {
+      result.current.setDraft('Hello')
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+
+    expect(callbacks.onSessionRequired).toHaveBeenCalled()
+    expect(mockSendMessage).not.toHaveBeenCalled()
+    expect(result.current.sendError).toBe('Create session failed')
   })
 
   it('does not send blank message when no files selected', async () => {
