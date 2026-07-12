@@ -30,6 +30,8 @@ import type {
   LoginRequest,
   UserMetadata,
   ProviderSummary,
+  ModelsResponse,
+  SetModelRequest,
   CreateProviderRequest,
   UpdateProviderRequest,
   AgentConfig,
@@ -554,6 +556,22 @@ export async function getMe(): Promise<{ user: UserMetadata | null }> {
 export async function getProviders(): Promise<ProviderSummary[]> {
   const response = await fetchWithTimeout(`${API_BASE}/providers`, { credentials: 'include' })
   return parseResponse<ProviderSummary[]>(response)
+}
+
+export async function getModels(sessionId?: string): Promise<ModelsResponse> {
+  const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''
+  const response = await fetchWithTimeout(`${API_BASE}/models${query}`, { credentials: 'include' })
+  return parseResponse<ModelsResponse>(response)
+}
+
+export async function setSessionModel(sessionId: string, request: SetModelRequest): Promise<SessionResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/model`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  return parseResponse<SessionResponse>(response)
 }
 
 export async function createProvider(request: CreateProviderRequest): Promise<ProviderSummary> {

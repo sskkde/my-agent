@@ -266,6 +266,8 @@ export interface ConsoleSessionInfo {
   lastActivityAt: string
   createdAt: string
   updatedAt: string
+  selectedModel?: string
+  selectedProviderId?: string
 }
 
 export interface PaginationParams {
@@ -524,6 +526,8 @@ export interface ProviderSummary {
   lastTestedAt: string | null
   createdAt: string
   updatedAt: string
+  defaultModel?: string | null
+  models?: Record<string, unknown>[] | null
 }
 
 export interface CreateProviderRequest {
@@ -547,6 +551,17 @@ export interface TestProviderResponse {
   latencyMs: number
   modelCount?: number
   error?: string
+}
+
+export interface SetModelRequest {
+  providerId: string
+  model: string
+}
+
+export interface ModelsResponse {
+  providers: ProviderSummary[]
+  selectedModel?: string
+  selectedProviderId?: string
 }
 
 // =============================================================================
