@@ -540,6 +540,31 @@ describe('agent-provider-resolver', () => {
       expect(successResult.selectedModel).toBe('session-specific-model')
     })
 
+    it('should resolve session-selected env provider (e.g. deepseek) as usable', () => {
+      const envBackup = { ...process.env }
+      process.env.DEEPSEEK_API_KEY = 'test-deepseek-key'
+
+      const options: ResolveProviderOptions = {
+        session: {
+          selectedProviderId: 'deepseek',
+          selectedModel: 'deepseek-v4-flash',
+        },
+        agentConfig: {},
+        userId: 'user-1',
+        providerConfigStore,
+        includeEnvProviders: true,
+      }
+
+      const result = resolveProviderAndModel(options)
+
+      process.env = envBackup
+
+      expect(result.type).toBe('success')
+      const successResult = result as ProviderResolutionResult
+      expect(successResult.selectedProviderId).toBe('deepseek')
+      expect(successResult.selectedModel).toBe('deepseek-v4-flash')
+    })
+
     it('should use agent config model when falling back to agent config', () => {
       // Create the agent config provider
       providerConfigStore.create({

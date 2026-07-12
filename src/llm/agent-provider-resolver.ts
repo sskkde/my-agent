@@ -202,13 +202,18 @@ export function resolveProviderAndModel(options: ResolveProviderOptions): Provid
   // 1. Session selected provider (highest precedence)
   if (session.selectedProviderId) {
     const sessionProvider = userProviders.find((p) => p.providerId === session.selectedProviderId)
+    // If not found in user providers, check env providers for enabled/configured status
+    const envProvider = !sessionProvider
+      ? getEnvProviderCandidates().find((p) => p.providerId === session.selectedProviderId)
+      : undefined
+    const isEnvConfigured = Boolean(envProvider?.enabled && envProvider?.configured)
     candidates.push({
       providerId: session.selectedProviderId,
-      providerType: sessionProvider?.providerType ?? 'custom',
-      displayName: sessionProvider?.displayName ?? session.selectedProviderId,
-      enabled: sessionProvider?.enabled ?? false,
-      configured: sessionProvider?.configured ?? false,
-      selectedModel: session.selectedModel ?? sessionProvider?.selectedModel ?? null,
+      providerType: sessionProvider?.providerType ?? envProvider?.providerType ?? 'custom',
+      displayName: sessionProvider?.displayName ?? envProvider?.displayName ?? session.selectedProviderId,
+      enabled: sessionProvider?.enabled ?? isEnvConfigured,
+      configured: sessionProvider?.configured ?? isEnvConfigured,
+      selectedModel: session.selectedModel ?? sessionProvider?.selectedModel ?? envProvider?.selectedModel ?? null,
       source: 'session',
     })
   }
@@ -216,15 +221,19 @@ export function resolveProviderAndModel(options: ResolveProviderOptions): Provid
   // 2. Agent config provider
   if (agentConfig.providerId) {
     const agentProvider = userProviders.find((p) => p.providerId === agentConfig.providerId)
+    const envAgentProvider = !agentProvider
+      ? getEnvProviderCandidates().find((p) => p.providerId === agentConfig.providerId)
+      : undefined
+    const isEnvAgentConfigured = Boolean(envAgentProvider?.enabled && envAgentProvider?.configured)
     // Only add if different from session provider
     if (!candidates.find((c) => c.providerId === agentConfig.providerId)) {
       candidates.push({
         providerId: agentConfig.providerId,
-        providerType: agentProvider?.providerType ?? 'custom',
-        displayName: agentProvider?.displayName ?? agentConfig.providerId,
-        enabled: agentProvider?.enabled ?? false,
-        configured: agentProvider?.configured ?? false,
-        selectedModel: agentConfig.model ?? agentProvider?.selectedModel ?? null,
+        providerType: agentProvider?.providerType ?? envAgentProvider?.providerType ?? 'custom',
+        displayName: agentProvider?.displayName ?? envAgentProvider?.displayName ?? agentConfig.providerId,
+        enabled: agentProvider?.enabled ?? isEnvAgentConfigured,
+        configured: agentProvider?.configured ?? isEnvAgentConfigured,
+        selectedModel: agentConfig.model ?? agentProvider?.selectedModel ?? envAgentProvider?.selectedModel ?? null,
         source: 'agent-config',
       })
     }

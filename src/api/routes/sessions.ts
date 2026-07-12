@@ -19,6 +19,7 @@ import { decodeCursor, applyCursorPagination } from '../pagination/cursor-pagina
 import type { Stores } from '../../gateway/types.js'
 import type { SessionStore, Session } from '../../storage/session-store.js'
 import type { ProviderConfigStore } from '../../storage/provider-config-store.js'
+import { isDomesticProvider } from '../../llm/catalog/domestic-providers.js'
 import type { ConsoleTimelineService, TimelineOptions } from '../console-timeline.js'
 import { createConsoleTimelineService } from '../console-timeline.js'
 import type { TimelineBroadcaster, TimelineConnection } from '../timeline-broadcaster.js'
@@ -847,8 +848,8 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
 
       const providerConfigStore: ProviderConfigStore | undefined = context.providerConfigStore
-      const settingsProviders = ['openrouter', 'ollama']
-      const isEnvProvider = settingsProviders.includes(providerId)
+      const envProviderIds = ['openrouter', 'ollama', 'openai']
+      const isEnvProvider = envProviderIds.includes(providerId) || isDomesticProvider(providerId)
 
       if (!isEnvProvider && providerConfigStore) {
         const provider = providerConfigStore.getById(providerId)

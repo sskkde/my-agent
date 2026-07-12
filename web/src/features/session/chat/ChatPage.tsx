@@ -576,8 +576,13 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const lastStatusForSession =
     lastProcessingStatus && lastProcessingStatus.sessionId === selectedSessionId ? lastProcessingStatus : null
   const status = toComposerStatus(currentProcessingStatus, streamStatus, sending)
+  const isProcessingActive = Boolean(
+    currentProcessingStatus && ACTIVE_PROCESSING_STAGES.has(currentProcessingStatus.stage),
+  )
   const model = selectedSessionId
-    ? (currentProcessingStatus?.model || selectedSessionModel || agentModel || '无')
+    ? (isProcessingActive
+      ? (currentProcessingStatus?.model || selectedSessionModel || agentModel || '无')
+      : (selectedSessionModel || currentProcessingStatus?.model || agentModel || '无'))
     : '无'
   const ctxUsage = selectedSessionId
     ? getContextUsage(currentProcessingStatus) ?? getContextUsage(lastStatusForSession)
