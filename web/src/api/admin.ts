@@ -3,6 +3,8 @@ import type {
   AdminUser,
   UpdateUserRoleRequest,
   UpdateUserStatusRequest,
+  CreateAdminUserRequest,
+  CreateAdminUserResponse,
   AdminApiKeysResponse,
   AdminApiKey,
   CreateApiKeyRequest,
@@ -67,6 +69,17 @@ export async function updateUserStatus(userId: string, request: UpdateUserStatus
     body: JSON.stringify(request),
   })
   const result = await parseResponse<{ data: { user: AdminUser } }>(response)
+  return result.data.user
+}
+
+export async function createUser(request: CreateAdminUserRequest): Promise<AdminUser> {
+  const response = await fetch(`${API_BASE}/admin/users`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  const result = await parseResponse<{ data: CreateAdminUserResponse }>(response)
   return result.data.user
 }
 

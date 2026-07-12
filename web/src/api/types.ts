@@ -903,6 +903,16 @@ export interface UpdateUserStatusRequest {
   status: UserStatus
 }
 
+export interface CreateAdminUserRequest {
+  username: string
+  password: string
+  role: UserRole
+}
+
+export interface CreateAdminUserResponse {
+  user: AdminUser
+}
+
 export interface AdminApiKey {
   id: string
   name: string
