@@ -56,14 +56,47 @@ function createMockCircuitBreaker(): CircuitBreaker {
 /**
  * Deterministic routing based on message keywords
  */
+function extractUserTextFromSegmentD(content: string): string {
+  // Segment D wraps the real user message. The current user instruction is
+  // rendered as a context item prefixed with `[sourceType: conversation_state]`.
+  const marker = '[sourceType: conversation_state]'
+  const idx = content.indexOf(marker)
+  if (idx !== -1) {
+    return content.slice(idx + marker.length).trimStart().split('\n')[0]
+  }
+
+  // Fallback for history/session-history wrappers that replay the conversation.
+  const userMarker = 'User:'
+  const userIdx = content.indexOf(userMarker)
+  if (userIdx !== -1) {
+    return content.slice(userIdx + userMarker.length).trimStart().split('\n')[0]
+  }
+
+  return content
+}
+
+function findActualUserMessage(messages: Array<{ role: string; content: string }>): string {
+  const userMessages = messages.filter((m) => m.role === 'user')
+  if (userMessages.length === 0) return ''
+
+  // Prefer the last user message that is not a provenance wrapper, otherwise
+  // extract the real user text from the Segment D wrapper.
+  for (let i = userMessages.length - 1; i >= 0; i--) {
+    const content = userMessages[i].content
+    if (!content.includes('## Provenance') && !content.includes('Segment D: Context Bundle')) {
+      return content
+    }
+  }
+
+  return extractUserTextFromSegmentD(userMessages[userMessages.length - 1].content)
+}
+
 function routeDeterministically(messages: Array<{ role: string; content: string }>): {
   route: string
   reason: string
   suggestedTools?: string[]
 } {
-  // Get the last user message
-  const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
-  const content = (lastUserMessage?.content ?? '').toLowerCase()
+  const content = findActualUserMessage(messages).toLowerCase()
 
   // Keyword-based routing
   if (content.includes('search') || content.includes('find') || content.includes('look up')) {
@@ -101,7 +134,7 @@ function routeDeterministically(messages: Array<{ role: string; content: string 
  */
 function createMockLLMProvider(): LLMProvider {
   const capabilities: ProviderCapabilities = {
-    supportsStreaming: false,
+    supportsStreaming: true,
     supportsFunctionCalling: true,
     supportsJsonMode: true,
     supportsVision: false,
@@ -137,15 +170,23 @@ function createMockLLMProvider(): LLMProvider {
     // Generate deterministic response based on message content
     const routing = routeDeterministically(request.messages)
 
+    // For direct answers, return plain text so the frontend streams readable prose.
+    // For routed/tooling intents, keep the structured JSON so the kernel can act on it.
+    const userVisibleResponse = `Mock response for: ${routing.route}`
+    const content =
+      routing.route === 'answer_directly'
+        ? userVisibleResponse
+        : JSON.stringify({
+            route: routing.route,
+            reason: routing.reason,
+            userVisibleResponse,
+            suggestedTools: routing.suggestedTools,
+          })
+
     const response: LLMResponse = {
       id: `mock-${Date.now()}`,
       model: request.model,
-      content: JSON.stringify({
-        route: routing.route,
-        reason: routing.reason,
-        userVisibleResponse: `Mock response for: ${routing.route}`,
-        suggestedTools: routing.suggestedTools,
-      }),
+      content,
       role: 'assistant',
       finishReason: 'stop',
       createdAt: new Date().toISOString(),
@@ -235,12 +276,22 @@ export function createMockLLMAdapter(): LLMAdapter {
     request: LLMRequest,
   ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }> {
     const result = await complete(request)
-    if (result.success) {
-      yield {
-        delta: result.response.content,
-        providerId: result.providerId,
-        model: result.response.model,
-      }
+    if (!result.success) {
+      return
+    }
+
+    const content = result.response.content
+    const providerId = result.providerId
+    const model = result.response.model
+
+    // Split into small chunks to simulate real LLM streaming so the frontend
+    // can render text progressively. A 25ms pause between chunks makes the
+    // effect observable without slowing tests excessively.
+    const chunkSize = 4
+    for (let i = 0; i < content.length; i += chunkSize) {
+      const chunk = content.slice(i, i + chunkSize)
+      yield { delta: chunk, providerId, model }
+      await new Promise((resolve) => setTimeout(resolve, 25))
     }
   }
 

@@ -505,7 +505,6 @@ export class AgentKernel {
 
   private shouldUseStreaming(request: LLMRequest): boolean {
     if (!this.config.timelineBroadcaster) return false
-    if (request.tools && request.tools.length > 0) return false
     return true
   }
 

@@ -748,6 +748,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     new AgentKernel({
       llmAdapter,
       toolExecutor: kernelToolExecutor,
+      timelineBroadcaster,
       contextManager: {
         assembleBundle: () => ({
           runId: 'default',
