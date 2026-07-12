@@ -32,6 +32,7 @@ export const COMMAND_ALIASES_REVERSE: Record<CommandName, string[]> = {
   providers: [],
   provider: [],
   logout: [],
+  login: [],
   exit: ['quit'],
   quit: [],
   workdir: [],

@@ -22,7 +22,7 @@ import {
 } from '../../src/command-core/index.js'
 
 describe('Command Types', () => {
-  it('should have all 25 command names defined', () => {
+  it('should have all 26 command names defined', () => {
     const expectedCommands: CommandName[] = [
       'help',
       'commands',
@@ -47,12 +47,13 @@ describe('Command Types', () => {
       'provider',
       'workdir',
       'logout',
+      'login',
       'exit',
       'quit',
     ]
 
     const actualCommands = Object.keys(COMMAND_CATALOG)
-    expect(actualCommands.length).toBe(25)
+    expect(actualCommands.length).toBe(26)
     expectedCommands.forEach((cmd) => {
       expect(actualCommands).toContain(cmd)
     })
@@ -103,9 +104,9 @@ describe('Command Catalog', () => {
     expect(hasCommand('')).toBe(false)
   })
 
-  it('getAllCommands should return all 25 commands', () => {
+  it('getAllCommands should return all 26 commands', () => {
     const commands = getAllCommands()
-    expect(commands.length).toBe(25)
+    expect(commands.length).toBe(26)
     expect(commands.every((cmd) => cmd.name)).toBe(true)
   })
 

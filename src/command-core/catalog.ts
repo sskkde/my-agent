@@ -322,6 +322,16 @@ export const COMMAND_CATALOG: Record<CommandName, CommandDefinition> = {
     requiresAuth: true,
     backendMutation: true,
   },
+  login: {
+    name: 'login',
+    aliases: [],
+    description: 'Log in and store a session cookie for this CLI process',
+    usage: '/login [username] [password]',
+    category: 'auth',
+    risk: 'mutation',
+    requiresAuth: false,
+    backendMutation: true,
+  },
   exit: {
     name: 'exit',
     aliases: ['quit'],

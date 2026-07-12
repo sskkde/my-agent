@@ -27,6 +27,7 @@ export type CommandName =
   | 'provider'
   | 'workdir'
   | 'logout'
+  | 'login'
   | 'exit'
   | 'quit'
 
