@@ -250,7 +250,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
 
   const createCommandContext = useCallback((): CommandContext => {
     return {
-      sessionId: selectedSessionId,
+      sessionId: selectedSessionIdRef.current,
       setSelectedSessionId,
       refreshSessions: async () => fetchSessions(true),
       setActiveTab: () => {},
@@ -263,7 +263,12 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         delete: async () => ({}),
       },
     }
-  }, [selectedSessionId, setSelectedSessionId, fetchSessions])
+  }, [selectedSessionIdRef, setSelectedSessionId, fetchSessions])
+
+  const handleSessionRequired = useCallback(async () => {
+    const sessionId = await handleCreateSession()
+    return sessionId
+  }, [handleCreateSession])
 
   const {
     draft,
@@ -292,6 +297,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       fetchTimeline,
       fetchSessions,
       createCommandContext,
+      onSessionRequired: handleSessionRequired,
     },
   })
 

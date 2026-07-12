@@ -262,6 +262,57 @@ describe('ChatPage', () => {
     })
   })
 
+  it('creates a session and sends the first message from the welcome page composer', async () => {
+    function LocationDisplay() {
+      const location = useLocation()
+      return <div data-testid="location-path">{location.pathname}</div>
+    }
+
+    vi.mocked(client.createSession).mockResolvedValue({
+      session: {
+        sessionId: 'welcome-session-id',
+        userId: 'test-user-id',
+        messageCount: 0,
+        lastActivityAt: '2024-01-01T00:00:00Z',
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    vi.mocked(client.sendMessage).mockResolvedValue({
+      accepted: true,
+      status: 'accepted',
+      correlationId: 'corr-1',
+      envelopeId: 'env-1',
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AuthProvider>
+          <ChatPage />
+          <LocationDisplay />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-shell')
+
+    const input = screen.getByTestId('chat-input')
+    fireEvent.change(input, { target: { value: 'welcome page first message' } })
+    fireEvent.click(screen.getByTestId('chat-send-button'))
+
+    await waitFor(() => {
+      expect(client.createSession).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(client.sendMessage).toHaveBeenCalledWith('welcome-session-id', 'welcome page first message', undefined)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-path')).toHaveTextContent('/chat/welcome-session-id')
+    })
+  })
+
   it('does not render a blank user bubble for file-only sends', async () => {
     const file = new File(['attachment'], 'notes.txt', { type: 'text/plain' })
     vi.mocked(client.uploadSessionFile).mockResolvedValue({
