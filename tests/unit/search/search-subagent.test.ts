@@ -196,10 +196,7 @@ describe('SearchSubagent contract tests', () => {
       const llmCall = mockLlmAdapter.complete.mock.calls[0]
       const llmRequest = llmCall[0]
 
-      expect(llmRequest.toolChoice).toEqual({
-        type: 'function',
-        function: { name: 'web_search' },
-      })
+      expect(llmRequest.toolChoice).toEqual('auto')
     })
 
     it('uses dedicated search model from config', async () => {
@@ -1210,11 +1207,8 @@ describe('SearchSubagent contract tests', () => {
       const llmCall = mockLlmAdapter.complete.mock.calls[0]
       const llmRequest = llmCall[0]
 
-      // Forced toolChoice - model has no freedom to choose
-      expect(llmRequest.toolChoice).toEqual({
-        type: 'function',
-        function: { name: 'web_search' },
-      })
+      // toolChoice is 'auto' to maintain compatibility with thinking models (e.g. DeepSeek)
+      expect(llmRequest.toolChoice).toEqual('auto')
     })
 
     it('execute() uses direct llmAdapter.complete() - no subagent_runtime', async () => {

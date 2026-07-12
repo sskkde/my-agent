@@ -56,6 +56,16 @@ export function resolveSearchLLM(options: ResolveSearchLLMOptions): ResolveSearc
     providerId = agentConfig.searchLlmProviderId
     model = agentConfig.searchLlmModel
   } else if (agentConfig.providerId && agentConfig.model) {
+    // Inherit foreground agent's model when search-specific model is not configured.
+    // Skip ollama providers — they are typically unreachable in containerized deployments.
+    const fgProvider = providerConfigStore.getById(agentConfig.providerId)
+    if (fgProvider && fgProvider.providerType === 'ollama') {
+      return {
+        type: 'error',
+        errorCode: 'SEARCH_PROVIDER_UNAVAILABLE',
+        message: `Foreground agent provider is ollama (unreachable in most deployments): ${agentConfig.providerId}`,
+      }
+    }
     providerId = agentConfig.providerId
     model = agentConfig.model
     usedMainConfigFallback = true

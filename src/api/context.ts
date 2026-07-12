@@ -629,12 +629,42 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   registerBuiltinSkills(skillRegistry)
 
   const globalAgentConfig = agentConfigStore.getGlobalDefault()
-  const searchLlmProviderId = globalAgentConfig?.searchLlmProviderId ?? globalAgentConfig?.providerId ?? undefined
-  const searchLlmModel = globalAgentConfig?.searchLlmModel ?? globalAgentConfig?.model ?? undefined
 
+  // Resolve search subagent LLM: searchLlm* > foreground agent providerId/model > first enabled provider.
+  // This ensures subagents inherit the foreground agent's model when not explicitly configured,
+  // and never fall back to an unreachable provider (e.g. a local Ollama in Docker).
+  const resolveSearchLlm = (): { providerId: string; model: string; providerType: string } | undefined => {
+    // 1. Explicit search-specific config
+    if (globalAgentConfig?.searchLlmProviderId && globalAgentConfig?.searchLlmModel) {
+      const p = providerConfigStore.getById(globalAgentConfig.searchLlmProviderId)
+      if (p?.providerType) {
+        return { providerId: globalAgentConfig.searchLlmProviderId, model: globalAgentConfig.searchLlmModel, providerType: p.providerType }
+      }
+    }
+    // 2. Foreground agent config (providerId/model)
+    const fgProviderId = globalAgentConfig?.providerId
+    const fgModel = globalAgentConfig?.model
+    if (fgProviderId && fgModel) {
+      const fgProvider = providerConfigStore.getById(fgProviderId)
+      if (fgProvider?.enabled && fgProvider.providerType !== 'ollama') {
+        return { providerId: fgProviderId, model: fgModel, providerType: fgProvider.providerType }
+      }
+    }
+    // 3. First enabled, non-ollama provider with credentials configured
+    const allProviders = providerConfigStore.listAll()
+    const usable = allProviders.find(
+      (p) => p.enabled && p.providerType !== 'ollama' && p.configured && p.selectedModel,
+    )
+    if (usable) {
+      return { providerId: usable.providerId, model: usable.selectedModel!, providerType: usable.providerType }
+    }
+    return undefined
+  }
+
+  const resolvedSearchLlm = resolveSearchLlm()
   let searchSubagent: SearchSubagent | undefined
-  if (searchLlmProviderId && searchLlmModel) {
-    const searchProviderFamily = resolveProviderFamily(searchLlmProviderId)
+  if (resolvedSearchLlm) {
+    const searchProviderFamily = resolveProviderFamily(resolvedSearchLlm.providerType)
     searchSubagent = createSearchSubagent({
       llmAdapter,
       webSearchExecutor: async (params) => {
@@ -643,8 +673,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       },
       modelInputBuilder,
       providerFamily: searchProviderFamily,
-      searchLlmProviderId,
-      searchLlmModel,
+      searchLlmProviderId: resolvedSearchLlm.providerId,
+      searchLlmModel: resolvedSearchLlm.model,
     })
   }
 

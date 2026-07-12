@@ -132,6 +132,7 @@ export interface ProviderConfigStore {
   getById(providerId: string, tenantId?: string): ProviderConfigSanitized | null
   getByIdWithSecret(providerId: string, tenantId?: string): ProviderConfigWithSecret | null
   listByUser(userId: string, tenantId?: string): ProviderConfigSanitized[]
+  listAll(tenantId?: string): ProviderConfigSanitized[]
   update(providerId: string, updates: UpdateProviderConfigInput, tenantId?: string): boolean
   remove(providerId: string, tenantId?: string): boolean
   updateTestStatus(providerId: string, status: string, tenantId?: string): boolean
@@ -314,6 +315,16 @@ class ProviderConfigStoreImpl implements ProviderConfigStore {
       ORDER BY created_at DESC
     `
     const rows = this.connection.query<ProviderConfigRow>(sql, [userId, tenantId])
+    return rows.map((row) => this.rowToSanitized(row))
+  }
+
+  listAll(tenantId: string = DEFAULT_TENANT_ID): ProviderConfigSanitized[] {
+    const sql = `
+      SELECT * FROM provider_configs
+      WHERE tenant_id = ?
+      ORDER BY created_at DESC
+    `
+    const rows = this.connection.query<ProviderConfigRow>(sql, [tenantId])
     return rows.map((row) => this.rowToSanitized(row))
   }
 

@@ -11,6 +11,7 @@ function createMockProviderConfigStore(providers: ProviderConfigWithSecret[]): P
   return {
     getByIdWithSecret: (providerId: string) => providers.find((p) => p.providerId === providerId) || null,
     listByUser: () => [],
+    listAll: () => [],
     create: () => ({}) as never,
     update: () => false,
     remove: () => false,

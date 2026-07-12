@@ -224,10 +224,7 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
       model: searchLlmModel,
       messages: phase1Built.messages,
       tools,
-      toolChoice: {
-        type: 'function',
-        function: { name: 'web_search' },
-      },
+      toolChoice: 'auto',
     }
 
     let llmResult

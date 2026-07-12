@@ -27,6 +27,7 @@ export interface ResolveSubagentProviderInput {
       providerId: string
       enabled: boolean
       selectedModel?: string
+      providerType?: string
     }>
   }
   agentConfigStore: {
@@ -299,7 +300,14 @@ export function resolveSubagentProvider(input: ResolveSubagentProviderInput): Re
   // -----------------------------------------------------------------------
   const globalConfig = agentConfigStore.getGlobal()
   if (globalConfig?.providerId && globalConfig.model) {
-    if (candidateMatchesPolicy(globalConfig.providerId, globalConfig.model, policy, providerConfigStore, userId)) {
+    // Skip ollama providers in global fallback — they are typically
+    // unreachable in containerized deployments and cause all subagent
+    // LLM calls to fail.
+    const globalProvider = providerConfigStore.getByUser(userId ?? '').find(
+      (p) => p.providerId === globalConfig.providerId && p.enabled,
+    )
+    const isOllama = globalProvider?.providerType === 'ollama'
+    if (!isOllama && candidateMatchesPolicy(globalConfig.providerId, globalConfig.model, policy, providerConfigStore, userId)) {
       return {
         providerId: globalConfig.providerId,
         model: globalConfig.model,
@@ -334,6 +342,7 @@ export function resolveSubagentProvider(input: ResolveSubagentProviderInput): Re
 
   for (const provider of scopedProviders) {
     if (!provider.enabled) continue
+    if (provider.providerType === 'ollama') continue
 
     const model = provider.selectedModel
     if (!model) continue
