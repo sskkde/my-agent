@@ -162,7 +162,7 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
       event,
       timestamp: new Date().toISOString(),
     }
-    const sseData = `id: ${event.eventId}\nevent: timeline_event\ndata: ${JSON.stringify(envelope)}\n\n`
+    const sseData = `id: ${event.eventId}\ndata: ${JSON.stringify(envelope)}\n\n`
     const success = connection.write(sseData)
     if (!success) {
       connection.active = false
@@ -178,7 +178,7 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
       event,
       timestamp: new Date().toISOString(),
     }
-    const sseData = `id: ${event.eventId}\nevent: timeline_event\ndata: ${JSON.stringify(envelope)}\n\n`
+    const sseData = `id: ${event.eventId}\ndata: ${JSON.stringify(envelope)}\n\n`
 
     for (const connectionId of connectionIds) {
       const connection = this.connections.get(connectionId)

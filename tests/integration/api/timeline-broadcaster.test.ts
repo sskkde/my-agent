@@ -127,7 +127,7 @@ describe('TimelineBroadcaster', () => {
 
       expect(writes.length).toBe(1)
       expect(writes[0]).toContain('id: evt-001')
-      expect(writes[0]).toContain('event: timeline_event')
+      expect(writes[0]).toContain('"type":"timeline_event"')
       expect(writes[0]).toContain('"eventId":"evt-001"')
     })
 
@@ -475,7 +475,7 @@ describe('TimelineBroadcaster - SSE format', () => {
     expect(writes.length).toBe(1)
     const sseOutput = writes[0]
     expect(sseOutput).toMatch(/^id: evt-001\n/)
-    expect(sseOutput).toContain('event: timeline_event')
+    expect(sseOutput).toContain('"type":"timeline_event"')
     expect(sseOutput).toContain('data:')
     expect(sseOutput).toContain('"eventId":"evt-001"')
     expect(sseOutput).toMatch(/\n\n$/)
