@@ -92,13 +92,28 @@ export class AgentKernel {
         let llmResult: Awaited<ReturnType<typeof this.callLLMWithTimeout>>
 
         if (useStreaming) {
-          const streamResult = await this.callLLMWithStreaming(llmRequest, remainingTimeout, input)
-          if (streamResult.success) {
-            llmResult = {
-              success: true,
-              response: streamResult.response,
-              providerId: streamResult.providerId,
+          let streamSuccess = false
+          let streamResponse: { response: LLMResponse; providerId: string } | undefined
+          let streamTimedOut = false
+          try {
+            const streamResult = await this.callLLMWithStreaming(llmRequest, remainingTimeout, input)
+            if (streamResult.success) {
+              streamSuccess = true
+              streamResponse = { response: streamResult.response, providerId: streamResult.providerId }
             }
+          } catch (streamError) {
+            const errMsg = streamError instanceof Error ? streamError.message : String(streamError)
+            if (errMsg.includes('timeout')) {
+              streamTimedOut = true
+            }
+            // Non-timeout streaming failures fall through to non-streaming complete().
+          }
+          if (streamSuccess && streamResponse) {
+            llmResult = { success: true, response: streamResponse.response, providerId: streamResponse.providerId }
+          } else if (streamTimedOut) {
+            this.flushPairingGuard(pairingGuard, state, 'timeout')
+            state.status = 'failed'
+            return this.buildResult(state, 'failed', { code: 'KERNEL_ERROR', message: 'LLM stream timeout' }, undefined, undefined, input, aggregatedUsage)
           } else {
             const fallbackResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout)
             if (

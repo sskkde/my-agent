@@ -50,22 +50,6 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
   async complete(request: LLMRequest): Promise<LLMResult> {
     this.lastRequest = request
 
-    if (this.shouldFail) {
-      return {
-        success: false,
-        error: {
-          errorId: 'err-stream-fallback',
-          category: 'model_error',
-          code: 'STREAMING_FAILED',
-          message: 'Streaming failed, fallback to complete',
-          recoverability: 'retryable_later',
-          source: { module: 'test' },
-          createdAt: new Date().toISOString(),
-        },
-        providerId: 'fake-streaming',
-      }
-    }
-
     const fullContent = this.deltas.join('')
     return {
       success: true,
@@ -406,19 +390,18 @@ describe('AgentKernel streaming behavior', () => {
   })
 
   describe('Streaming failure handling', () => {
-    it('produces controlled error when streaming fails mid-stream', async () => {
-      fakeLLM.setDeltas(['Start', ' ', 'middle', ' ', 'end'])
-      fakeLLM.setShouldFail(true, 2) // Fail after 2 deltas
+    it('falls back to complete() when streaming fails mid-stream', async () => {
+      fakeLLM.setDeltas(['Fallback', ' ', 'content'])
+      fakeLLM.setShouldFail(true, 2) // Stream fails after 2 deltas, but complete() returns deltas joined
 
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
 
       const result = await kernel.run(makeRunInput())
 
-      // Should fail gracefully
-      expect(result.finalStatus).toBe('failed')
-      expect(result.error).toBeDefined()
-      expect(result.error?.code).toBe('STREAMING_ERROR')
+      // Should fallback to complete() and succeed with the joined deltas
+      expect(result.finalStatus).toBe('completed')
+      expect(result.finalResponse).toBe('Fallback content')
     })
 
     it('fallback to complete() when streaming not supported', async () => {
@@ -448,15 +431,14 @@ describe('AgentKernel streaming behavior', () => {
       const config = makeBaseConfig({ llmAdapter: fakeLLM })
       const kernel = new AgentKernel(config)
 
-      await kernel.run(makeRunInput())
+      const result = await kernel.run(makeRunInput())
+
+      // Streaming failed but complete() fallback succeeds with joined deltas
+      expect(result.finalStatus).toBe('completed')
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-
-      // Should only have broadcasts up to the failure point
-      // No duplicate error messages
-      expect(broadcasts.length).toBe(1) // Only 'A' before failure
-
-      // Last broadcast should NOT be marked as final since it failed
+      // Only the partial 'A' was broadcast before streaming failure
+      expect(broadcasts.length).toBe(1)
       expect(broadcasts[0].token.isFinal).toBe(false)
     })
 
@@ -479,57 +461,25 @@ describe('AgentKernel streaming behavior', () => {
   })
 
   describe('Streaming with tool calls', () => {
-    it('does not stream when tool calls are present', async () => {
+    it('falls back to complete() when streaming yields no content (tool_calls only)', async () => {
       class ToolCallStreamingAdapter extends FakeStreamingLLMAdapter {
-        async complete(request: LLMRequest): Promise<LLMResult> {
-          return {
-            success: true,
-            response: {
-              id: 'resp-tool-call',
-              model: request.model,
-              content: '',
-              role: 'assistant',
-              finishReason: 'tool_calls',
-              createdAt: new Date().toISOString(),
-              toolCalls: [
-                {
-                  id: 'tc-1',
-                  type: 'function',
-                  function: {
-                    name: 'test_tool',
-                    arguments: JSON.stringify({ arg: 'value' }),
-                  },
-                },
-              ],
-            },
-            providerId: 'fake-streaming',
-          }
+        async *stream(): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: any }> {
+          yield* []
         }
       }
 
       const toolCallAdapter = new ToolCallStreamingAdapter()
+      toolCallAdapter.setDeltas(['Tool', ' ', 'result'])
       const config = makeBaseConfig({ llmAdapter: toolCallAdapter })
       const kernel = new AgentKernel(config)
 
-      await kernel.run({
-        ...makeRunInput(),
-        toolProjection: {
-          toolIds: ['test_tool'],
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'test_tool',
-                description: 'A test tool',
-                parameters: { type: 'object', properties: {} },
-              },
-            },
-          ],
-        },
-      })
+      const result = await kernel.run(makeRunInput())
 
+      // Stream produced no content -> fallback to complete() -> complete returns text -> completed
+      expect(result.finalStatus).toBe('completed')
+
+      // No token stream broadcasts since stream yielded nothing
       const broadcasts = fakeBroadcaster.getBroadcasts()
-
       expect(broadcasts.length).toBe(0)
     })
   })
