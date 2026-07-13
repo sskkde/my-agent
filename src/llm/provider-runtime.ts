@@ -4,6 +4,7 @@ import { createLLMAdapter } from './adapter.js'
 import type { LLMProvider } from './provider.js'
 import type { ProviderConfig as RuntimeProviderConfig, ProviderCandidate, AllProvidersFailedError } from './types.js'
 import { OllamaAdapter, OpenAIAdapter, OpenRouterAdapter } from './providers.js'
+import { MockProvider } from './mock-provider-adapter.js'
 import type { ProviderConfigStore, ProviderConfigWithSecret, ProviderType } from '../storage/provider-config-store.js'
 import { resolveProviderCandidates, type EnvProviderDescriptor } from './routing/provider-resolver.js'
 import { deriveRequestRequirements, canServeRequest } from './routing/request-requirements.js'
@@ -31,6 +32,8 @@ function createProvider(providerType: ProviderType, config: RuntimeProviderConfi
       return new OpenRouterAdapter(config)
     case 'ollama':
       return new OllamaAdapter(config)
+    case 'mock':
+      return new MockProvider(config)
     case 'openai':
     case 'custom':
       return new OpenAIAdapter(config)

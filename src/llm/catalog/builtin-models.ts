@@ -331,4 +331,23 @@ export const BUILTIN_MODELS: ModelInfo[] = [
       outputTokens: 4096,
     },
   },
+  {
+    providerId: 'mock',
+    modelId: 'mock-model',
+    family: 'openai_compatible',
+    protocol: 'openai_chat',
+    displayName: 'Mock LLM (Observability)',
+    capabilities: {
+      ...DEFAULT_TEXT_MODEL_CAPABILITIES,
+      streaming: true,
+      functionCalling: true,
+      jsonMode: true,
+      toolChoice: true,
+      parallelToolCalls: true,
+    },
+    limits: {
+      contextTokens: 1000000,
+      outputTokens: 1000000,
+    },
+  },
 ]

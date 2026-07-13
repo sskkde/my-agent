@@ -31,6 +31,7 @@ export type ProviderType =
   | 'ollama'
   | 'deepseek'
   | 'custom'
+  | 'mock'
   | 'dashscope'
   | 'volcengine'
   | 'qianfan'
@@ -170,6 +171,10 @@ function isConfiguredProvider(
 ): boolean {
   if (providerType === 'ollama') {
     return typeof baseUrl === 'string' && baseUrl.trim().length > 0
+  }
+
+  if (providerType === 'mock') {
+    return true
   }
 
   return encryptedApiKey !== null

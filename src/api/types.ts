@@ -432,7 +432,7 @@ export interface AuthSuccessResponse {
 // =============================================================================
 
 export type ProviderType =
-  | 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom'
+  | 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom' | 'mock'
   | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot'
   | 'minimax' | 'jdcloud-yanxi' | 'mimo' | 'iflytek-spark'
   | 'stepfun' | 'hunyuan' | 'siliconflow'

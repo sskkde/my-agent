@@ -73,6 +73,16 @@ const NON_DOMESTIC_CATALOG_ENTRIES: ProviderCatalogEntry[] = [
     requiresApiKey: true,
     requiresBaseUrl: true,
   },
+  {
+    providerType: 'mock',
+    displayName: 'Mock',
+    family: 'openai_compatible',
+    protocol: 'openai_chat',
+    promptFamily: 'openai',
+    requiresApiKey: false,
+    requiresBaseUrl: false,
+    defaultModel: 'mock-model',
+  },
 ]
 
 /**

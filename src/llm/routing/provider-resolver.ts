@@ -175,6 +175,9 @@ function hasUsableCredentials(provider: {
   if (provider.providerType === 'ollama') {
     return Boolean(provider.baseUrl)
   }
+  if (provider.providerType === 'mock') {
+    return true
+  }
   return Boolean(provider.apiKey)
 }
 

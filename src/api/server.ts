@@ -21,6 +21,7 @@ import { registerSettingsRoutes } from './routes/settings.js'
 import { registerSetupRoutes } from './routes/setup.js'
 import { registerAuthRoutes } from './routes/auth.js'
 import { registerProviderRoutes } from './routes/providers.js'
+import { registerMockProviderRoutes } from './routes/mock-provider.js'
 import { registerModelsRoutes } from './routes/models.js'
 import { registerToolsRoutes } from './routes/tools.js'
 import { registerAgentRoutes } from './routes/agents.js'
@@ -215,6 +216,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     registerSkillRoutes(server, context)
     registerSettingsRoutes(server, context)
     registerProviderRoutes(server, context)
+    registerMockProviderRoutes(server, context)
     registerModelsRoutes(server, context)
     registerToolsRoutes(server, context)
     registerAgentRoutes(server, context)

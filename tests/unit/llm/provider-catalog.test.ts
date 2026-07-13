@@ -212,9 +212,9 @@ describe('ProviderCatalog', () => {
   })
 
   describe('listProviderCatalogEntries', () => {
-    it('should return 17 entries (4 non-domestic + 13 domestic)', () => {
+    it('should return 18 entries (5 non-domestic + 13 domestic)', () => {
       const entries = listProviderCatalogEntries()
-      expect(entries.length).toBe(17)
+      expect(entries.length).toBe(18)
     })
 
     it('should return a copy of the catalog', () => {

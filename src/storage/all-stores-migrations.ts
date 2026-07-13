@@ -2744,6 +2744,104 @@ export const userSettingsTableMigration: Migration = {
   `,
 }
 
+export const mockProviderTypeMigration: Migration = {
+  version: 72,
+  name: 'add_mock_provider_type',
+  up: `
+    CREATE TABLE provider_configs_new (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom','mock','dashscope','volcengine','qianfan','zhipu','moonshot','minimax','jdcloud-yanxi','mimo','iflytek-spark','stepfun','hunyuan','siliconflow')),
+      display_name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      family TEXT DEFAULT NULL,
+      protocol TEXT DEFAULT NULL,
+      priority INTEGER DEFAULT NULL,
+      headers_json TEXT DEFAULT NULL,
+      capabilities_json TEXT DEFAULT NULL,
+      models_json TEXT DEFAULT NULL,
+      default_model TEXT DEFAULT NULL,
+      options_json TEXT DEFAULT NULL
+    );
+    INSERT INTO provider_configs_new (
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at,
+      family, protocol, priority, headers_json, capabilities_json, models_json,
+      default_model, options_json
+    ) SELECT
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at,
+      family, protocol, priority, headers_json, capabilities_json, models_json,
+      default_model, options_json
+    FROM provider_configs;
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP INDEX IF EXISTS idx_provider_configs_tenant;
+    DROP TABLE provider_configs;
+    ALTER TABLE provider_configs_new RENAME TO provider_configs;
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id);
+    CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)
+  `,
+  down: `
+    CREATE TABLE provider_configs_old (
+      provider_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider_type TEXT NOT NULL CHECK(provider_type IN ('openai','openrouter','ollama','deepseek','custom','dashscope','volcengine','qianfan','zhipu','moonshot','minimax','jdcloud-yanxi','mimo','iflytek-spark','stepfun','hunyuan','siliconflow')),
+      display_name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      base_url TEXT,
+      selected_model TEXT,
+      encrypted_api_key TEXT,
+      api_key_last4 TEXT,
+      source TEXT NOT NULL DEFAULT 'database',
+      last_test_status TEXT,
+      last_tested_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      family TEXT DEFAULT NULL,
+      protocol TEXT DEFAULT NULL,
+      priority INTEGER DEFAULT NULL,
+      headers_json TEXT DEFAULT NULL,
+      capabilities_json TEXT DEFAULT NULL,
+      models_json TEXT DEFAULT NULL,
+      default_model TEXT DEFAULT NULL,
+      options_json TEXT DEFAULT NULL
+    );
+    INSERT INTO provider_configs_old (
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at,
+      family, protocol, priority, headers_json, capabilities_json, models_json,
+      default_model, options_json
+    ) SELECT
+      provider_id, user_id, provider_type, display_name, enabled,
+      base_url, selected_model, encrypted_api_key, api_key_last4,
+      source, last_test_status, last_tested_at, tenant_id, created_at, updated_at,
+      family, protocol, priority, headers_json, capabilities_json, models_json,
+      default_model, options_json
+    FROM provider_configs
+    WHERE provider_type IN ('openai','openrouter','ollama','deepseek','custom','dashscope','volcengine','qianfan','zhipu','moonshot','minimax','jdcloud-yanxi','mimo','iflytek-spark','stepfun','hunyuan','siliconflow');
+    DROP INDEX IF EXISTS idx_provider_configs_user;
+    DROP INDEX IF EXISTS idx_provider_configs_tenant;
+    DROP TABLE provider_configs;
+    ALTER TABLE provider_configs_old RENAME TO provider_configs;
+    CREATE INDEX idx_provider_configs_user ON provider_configs(user_id);
+    CREATE INDEX idx_provider_configs_tenant ON provider_configs(tenant_id)
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -2901,6 +2999,9 @@ export const allStoreMigrations: Migration[] = [
 
   // User settings store (per-user key-value preferences: theme, command prefs)
   userSettingsTableMigration, // v71
+
+  // Mock provider type (add 'mock' to provider_configs CHECK constraint)
+  mockProviderTypeMigration, // v72
 ]
 
 /**
