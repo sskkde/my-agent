@@ -358,7 +358,6 @@ describe('capability-aware routing', () => {
           expect(result.error.code).toBe('ALL_PROVIDERS_FAILED')
           const attemptedIds = result.error.attempts?.map((a) => a.providerId) ?? []
           expect(attemptedIds).toContain('openai')
-          expect(attemptedIds).toContain('ollama')
         }
       })
     })

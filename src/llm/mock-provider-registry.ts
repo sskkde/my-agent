@@ -74,7 +74,23 @@ class MockProviderRegistry {
     return { ...this.defaultResponse }
   }
 
-  getNextResponse(request: LLMRequest): MockResponseConfig {
+  peekNextResponse(request: LLMRequest): MockResponseConfig {
+    if (this.mode === 'echo') {
+      const lastUserMessage = [...request.messages].reverse().find((m) => m.role === 'user')
+      return {
+        content: lastUserMessage?.content ?? '[Mock Echo] No user message found.',
+        finishReason: 'stop',
+      }
+    }
+
+    if (this.mode === 'queue' && this.responseQueue.length > 0) {
+      return { ...this.responseQueue[0]! }
+    }
+
+    return this.defaultResponse
+  }
+
+  consumeNextResponse(request: LLMRequest): MockResponseConfig {
     if (this.mode === 'echo') {
       const lastUserMessage = [...request.messages].reverse().find((m) => m.role === 'user')
       return {
@@ -88,6 +104,10 @@ class MockProviderRegistry {
     }
 
     return this.defaultResponse
+  }
+
+  getNextResponse(request: LLMRequest): MockResponseConfig {
+    return this.consumeNextResponse(request)
   }
 
   recordInteraction(

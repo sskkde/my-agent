@@ -92,7 +92,13 @@ export class MockProvider implements LLMProvider {
     this._stats.totalRequests++
 
     const registry = getMockProviderRegistry()
-    const responseConfig = registry.getNextResponse(request)
+    const peeked = registry.peekNextResponse(request)
+
+    if (!peeked.content || peeked.content.length === 0) {
+      return
+    }
+
+    const responseConfig = registry.consumeNextResponse(request)
 
     if (responseConfig.delayMs && responseConfig.delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, responseConfig.delayMs))

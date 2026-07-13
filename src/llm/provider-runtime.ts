@@ -182,7 +182,9 @@ export function createProviderScopedLLMAdapter(
     const candidates = buildCapabilityCandidates()
 
     const requirements = deriveRequestRequirements(request)
-    const eligible = candidates.filter((c) => canServeRequest(requirements, c.model))
+    const eligible = candidates.filter(
+      (c) => canServeRequest(requirements, c.model) && c.model.modelId === request.model,
+    )
 
     if (eligible.length === 0) {
       const error: AllProvidersFailedError = {
@@ -216,7 +218,9 @@ export function createProviderScopedLLMAdapter(
     const candidates = buildCapabilityCandidates()
 
     const requirements = deriveRequestRequirements(request)
-    const eligible = candidates.filter((c) => canServeRequest(requirements, c.model))
+    const eligible = candidates.filter(
+      (c) => canServeRequest(requirements, c.model) && c.model.modelId === request.model,
+    )
 
     if (eligible.length === 0) {
       return

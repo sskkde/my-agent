@@ -31,6 +31,7 @@ ENV HOST=0.0.0.0
 ENV PORT=3003
 ENV DATABASE_PATH=/data/agent-platform.db
 ENV NODE_ENV=production
+ENV TOOL_LOOP_V2_ENABLED=true
 
 # OCI image labels
 LABEL org.opencontainers.image.version="0.8.0-ga-candidate"
