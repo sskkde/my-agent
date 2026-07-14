@@ -40,6 +40,9 @@ import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus,
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js'
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js'
 import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js'
+import type { KernelRunStore } from '../storage/kernel-run-store.js'
+import type { TraceStore } from '../observability/types.js'
+import { KERNEL_RUN_STATES } from '../shared/states.js'
 
 const CONVERSATION_HISTORY_TURN_LIMIT = 20
 
@@ -71,6 +74,8 @@ export interface ProcessorOrchestrationDeps {
   providerConfigStore?: ProviderConfigStore
   /** Agent config store for agent configuration */
   agentConfigStore?: AgentConfigStore
+  kernelRunStore?: KernelRunStore
+  traceStore?: TraceStore
   /** Session store for session-specific provider/model selection */
   sessionStore?: SessionStore
   /** Runs processing with request-scoped LLM providers for the current user */
@@ -261,7 +266,94 @@ export function createOrchestrationProcessor(
               { foregroundErrorCode: 'FOREGROUND_AGENT_UNAVAILABLE' },
             )
           } else {
+            const kernelRunId = `kr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+            const rootSpanId = `span-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+            const kernelSpanId = `span-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+            const traceStartedAt = new Date().toISOString()
+
+            if (deps.traceStore) {
+              try {
+                deps.traceStore.createTrace({
+                  traceId: input.correlationId,
+                  rootSpanId,
+                  correlationId: input.correlationId,
+                  userId: input.userId,
+                  sessionId: input.sessionId,
+                  startedAt: traceStartedAt,
+                  status: 'active',
+                })
+                deps.traceStore.createSpan({
+                  spanId: rootSpanId,
+                  traceId: input.correlationId,
+                  spanType: 'foreground_run',
+                  module: 'foreground_agent',
+                  operation: 'runTurn',
+                  status: 'started',
+                  startTime: traceStartedAt,
+                })
+                deps.traceStore.createSpan({
+                  spanId: kernelSpanId,
+                  traceId: input.correlationId,
+                  parentSpanId: rootSpanId,
+                  spanType: 'kernel_run',
+                  module: 'kernel',
+                  operation: 'run',
+                  status: 'started',
+                  startTime: traceStartedAt,
+                })
+              } catch {
+                // best-effort: observability must not break message processing
+              }
+            }
+
+            if (deps.kernelRunStore) {
+              try {
+                deps.kernelRunStore.create({
+                  runId: kernelRunId,
+                  sessionId: input.sessionId,
+                  agentId: 'foreground.default',
+                  invocationSource: 'foreground',
+                  status: KERNEL_RUN_STATES.INITIALIZING,
+                  eventStart: Date.now(),
+                  rootRunId: kernelRunId,
+                })
+              } catch {
+                // best-effort: observability must not break message processing
+              }
+            }
+
             const turnResult = await deps.foregroundAgent.runTurn(turnInput)
+
+            const turnSucceeded = turnResult.status === 'completed'
+            const turnError = turnResult.error?.message
+
+            if (deps.kernelRunStore) {
+              try {
+                deps.kernelRunStore.updateStatus(
+                  kernelRunId,
+                  turnSucceeded ? KERNEL_RUN_STATES.COMPLETED : KERNEL_RUN_STATES.FAILED,
+                )
+                deps.kernelRunStore.saveFinalResult(kernelRunId, {
+                  status: turnResult.status,
+                  route: turnResult.decisionTrace?.route,
+                })
+              } catch {
+                // best-effort: observability must not break message processing
+              }
+            }
+
+            if (deps.traceStore) {
+              try {
+                deps.traceStore.endSpan(kernelSpanId, turnSucceeded ? 'completed' : 'failed', turnError)
+                deps.traceStore.endSpan(rootSpanId, turnSucceeded ? 'completed' : 'failed', turnError)
+                deps.traceStore.updateTraceStatus(
+                  input.correlationId,
+                  turnSucceeded ? 'completed' : 'failed',
+                )
+              } catch {
+                // best-effort: observability must not break message processing
+              }
+            }
 
             if (turnResult.status === 'failed' || turnResult.error) {
               output = createErrorOutput(

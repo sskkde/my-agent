@@ -12,6 +12,8 @@ import { createToolResultStore, type ToolResultStore } from '../storage/tool-res
 import { createPlannerRunStore, type PlannerRunStore } from '../storage/planner-run-store.js'
 import { createBackgroundRunStore, type BackgroundRunStore } from '../storage/background-run-store.js'
 import { createKernelRunStore, type KernelRunStore } from '../storage/kernel-run-store.js'
+import { createTraceStore } from '../observability/trace-store.js'
+import type { TraceStore } from '../observability/types.js'
 import { createSessionStore, type SessionStore } from '../storage/session-store.js'
 import { createUserStore, type UserStore } from '../storage/user-store.js'
 import { createAuthTokenStore, type AuthTokenStore } from '../storage/auth-token-store.js'
@@ -337,6 +339,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let plannerRunStore: PlannerRunStore
   let backgroundRunStore: BackgroundRunStore
   let kernelRunStore: KernelRunStore
+  let traceStore: TraceStore
   let sessionStore: SessionStore
   let userStore: UserStore
   let authTokenStore: AuthTokenStore
@@ -384,6 +387,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     plannerRunStore = existingStores?.plannerRunStore ?? createPlannerRunStore(connection)
     backgroundRunStore = existingStores?.backgroundRunStore ?? createBackgroundRunStore(connection)
     kernelRunStore = existingStores?.kernelRunStore ?? createKernelRunStore(connection)
+    traceStore = createTraceStore(connection)
     sessionStore = existingStores?.sessionStore ?? createSessionStore(connection)
     userStore = ((existingStores as Record<string, unknown>)?.userStore as UserStore) ?? createUserStore(connection)
     authTokenStore =
@@ -920,6 +924,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       eventStore,
       providerConfigStore,
       agentConfigStore,
+      kernelRunStore,
+      traceStore,
       sessionStore,
       runWithProvidersForUser,
       processingObserver,
