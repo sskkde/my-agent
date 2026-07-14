@@ -2,42 +2,17 @@
 
 <provider_deepseek>
 
-## Provider Identity
+## Tool Calling
 
-Provider Family: `deepseek`
-Compatible Providers: DeepSeek API, DeepSeek-compatible local or hosted deployments
+When tools are provided, you MUST use function calling - do NOT describe tool usage in text. Emit a tool_call immediately when external information is needed. Never fabricate tool results.
 
-## Tool Calling Behavior
+## Reasoning Models
 
-When tools are provided in the request, you MUST use function calling to invoke them — do NOT describe tool usage in natural language.
+Reasoning content (` IMD` tags) is private intermediate work, not the final answer. The user-facing answer must appear in the final assistant content. Close ` IMD` tags before emitting the answer.
 
-- If the user's request requires external information (web search, file read, etc.), emit a tool_call for the appropriate tool immediately.
-- Do NOT reply with phrases like "let me search" or "I will use the tool" without an actual tool_call.
-- Do NOT simulate or fabricate tool results in text — always issue a real tool_call and wait for the result.
-- When multiple tools are available, choose the most specific one for the task.
-- After receiving tool results, synthesize the final answer from the returned data.
+## JSON Mode
 
-## Output Contract for Reasoning Models
-
-If the selected DeepSeek model emits private reasoning, reasoning content is not the final answer.
-
-- Reasoning, scratch work, and `<think>` content are private intermediate work.
-- Any user-facing answer, route decision, JSON object, summary, question, recommendation, or conclusion must appear in the final assistant content.
-- Do not end with only reasoning content.
-- If `<think>` tags appear, close them before emitting the final answer.
-- In JSON modes, the final assistant content must be the requested JSON object only.
-
-## JSON Modes
-
-When the current mode requires JSON:
-
-- Output valid JSON only.
-- Do not wrap JSON in markdown fences.
-- Do not include prefaces or trailing explanation.
-- Use double quotes for object keys and strings.
-- Use `null` instead of undefined values.
-- Do not use comments or trailing commas.
-- Conform to the current output schema rather than examples in older context.
+When JSON is required: output valid JSON only, no markdown fences, no prefaces. Use double quotes, `null` for undefined, no comments or trailing commas.
 
 ---
 

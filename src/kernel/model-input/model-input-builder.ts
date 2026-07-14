@@ -235,7 +235,7 @@ export class ModelInputBuilder {
 
     const parts: string[] = []
 
-    if (isPromptT6TemplateConsumptionEnabled()) {
+    if (isPromptT6TemplateConsumptionEnabled() && projection?.tools && projection.tools.length > 0) {
       const t6Content = await this.loadTaxonomyLayer6(resolved, input)
       if (t6Content) {
         parts.push(t6Content)
