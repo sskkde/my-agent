@@ -181,7 +181,7 @@ export interface AllProvidersFailedError extends RuntimeError {
  * Provider family identifier
  * Categorizes providers by their underlying architecture
  */
-export type ProviderFamily = 'openai' | 'openai_compatible' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'bedrock'
+export type ProviderFamily = 'openai' | 'openai_compatible' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'bedrock' | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot' | 'minimax' | 'mimo' | 'iflytek-spark' | 'stepfun' | 'hunyuan' | 'siliconflow'
 
 /**
  * Provider communication protocol
@@ -199,7 +199,7 @@ export type ProviderProtocol =
  * Prompt provider family
  * Used for prompt template compatibility
  */
-export type PromptProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini'
+export type PromptProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini' | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot' | 'minimax' | 'mimo' | 'iflytek-spark' | 'stepfun' | 'hunyuan' | 'siliconflow'
 
 /**
  * Model limits

@@ -664,7 +664,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const resolvedSearchLlm = resolveSearchLlm()
   let searchSubagent: SearchSubagent | undefined
   if (resolvedSearchLlm) {
-    const searchProviderFamily = resolveProviderFamily(resolvedSearchLlm.providerType)
+    const searchProviderFamily = resolveProviderFamily(resolvedSearchLlm.providerType, resolvedSearchLlm.model)
     searchSubagent = createSearchSubagent({
       llmAdapter,
       webSearchExecutor: async (params) => {
@@ -771,6 +771,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 
   const providerFamily = resolveProviderFamily(
     modelResolution.type === 'success' ? modelResolution.selectedProviderId : undefined,
+    defaultModel,
   )
 
   const agentKernel =

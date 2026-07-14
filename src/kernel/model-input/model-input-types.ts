@@ -29,7 +29,7 @@ import type { MemoryProvenance } from '../../memory/types.js'
  */
 export type ModelInputMode = 'routing_json' | 'routing_tool_call' | 'structured_json' | 'function_calling'
 
-export type ProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini'
+export type ProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini' | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot' | 'minimax' | 'mimo' | 'iflytek-spark' | 'stepfun' | 'hunyuan' | 'siliconflow'
 
 // ─── Input Types ─────────────────────────────────────────────────────────────
 
@@ -564,20 +564,68 @@ export interface BuiltModelInput {
 }
 
 /**
- * Resolve a provider ID to its family for model input template selection.
+ * Resolve a provider type and/or model name to its prompt family.
  *
- * Normalizes provider IDs into a registry-supported provider family:
- * - 'deepseek' — DeepSeek-compatible providers (deepseek, deepseek-chat, etc.)
- * - 'ollama'   — Ollama and Ollama-compatible local providers
- * - 'anthropic' — Anthropic/Claude-compatible providers
- * - 'gemini'   — Google Gemini-compatible providers
- * - 'openai'   — OpenAI and OpenAI-compatible providers (openai, openrouter, etc.)
+ * The model name takes priority: e.g. a `glm-5.2` model served via
+ * volcengine should resolve to `zhipu` (GLM), not `volcengine`.
+ * If the model name doesn't match any known family, falls back to
+ * the provider type.
  *
- * This is used by ForegroundAgent and AgentKernel to select the correct
- * prompt template and caching strategy for a given LLM provider.
+ * @param providerTypeOrId - provider type slug (e.g. 'volcengine') or provider ID
+ * @param modelName - optional model name (e.g. 'glm-5.2'); takes priority
  */
-export function resolveProviderFamily(providerId: string | undefined): ProviderFamily {
-  const normalized = providerId?.toLowerCase() ?? ''
+export function resolveProviderFamily(
+  providerTypeOrId: string | undefined,
+  modelName?: string | undefined,
+): ProviderFamily {
+  const model = modelName?.toLowerCase() ?? ''
+
+  // Model name takes priority — match by model family keywords
+  if (model.includes('glm')) {
+    return 'zhipu'
+  }
+  if (model.includes('deepseek')) {
+    return 'deepseek'
+  }
+  if (model.includes('kimi') || model.includes('moonshot')) {
+    return 'moonshot'
+  }
+  if (model.includes('qwen') || model.includes('dashscope')) {
+    return 'dashscope'
+  }
+  if (model.includes('doubao')) {
+    return 'volcengine'
+  }
+  if (model.includes('ernie') || model.includes('qianfan')) {
+    return 'qianfan'
+  }
+  if (model.includes('minimax')) {
+    return 'minimax'
+  }
+  if (model.includes('mimo')) {
+    return 'mimo'
+  }
+  if (model.includes('spark')) {
+    return 'iflytek-spark'
+  }
+  if (model.includes('step-')) {
+    return 'stepfun'
+  }
+  if (model.includes('hunyuan')) {
+    return 'hunyuan'
+  }
+  if (model.includes('claude') || model.includes('anthropic')) {
+    return 'anthropic'
+  }
+  if (model.includes('gemini') || model.includes('gemma')) {
+    return 'gemini'
+  }
+  if (model.includes('gpt') || model.includes('o1') || model.includes('o3') || model.includes('o4')) {
+    return 'openai'
+  }
+
+  // Fallback: match by provider type / provider ID
+  const normalized = providerTypeOrId?.toLowerCase() ?? ''
   if (normalized.startsWith('deepseek') || normalized.includes('deepseek')) {
     return 'deepseek'
   }
@@ -589,6 +637,39 @@ export function resolveProviderFamily(providerId: string | undefined): ProviderF
   }
   if (normalized.includes('gemini') || normalized.includes('google')) {
     return 'gemini'
+  }
+  if (normalized.includes('dashscope') || normalized.includes('qwen')) {
+    return 'dashscope'
+  }
+  if (normalized.includes('volcengine') || normalized.includes('doubao')) {
+    return 'volcengine'
+  }
+  if (normalized.includes('qianfan') || normalized.includes('ernie') || normalized.includes('baidu')) {
+    return 'qianfan'
+  }
+  if (normalized.includes('zhipu') || normalized.includes('glm')) {
+    return 'zhipu'
+  }
+  if (normalized.includes('moonshot') || normalized.includes('kimi')) {
+    return 'moonshot'
+  }
+  if (normalized.includes('minimax')) {
+    return 'minimax'
+  }
+  if (normalized.includes('mimo')) {
+    return 'mimo'
+  }
+  if (normalized.includes('iflytek') || normalized.includes('spark')) {
+    return 'iflytek-spark'
+  }
+  if (normalized.includes('stepfun') || normalized.includes('step-')) {
+    return 'stepfun'
+  }
+  if (normalized.includes('hunyuan') || normalized.includes('tencent')) {
+    return 'hunyuan'
+  }
+  if (normalized.includes('siliconflow')) {
+    return 'siliconflow'
   }
   return 'openai'
 }

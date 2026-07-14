@@ -167,6 +167,127 @@ const PROVIDER_GEMINI_TEMPLATE: PromptTemplateRecord = {
   taxonomyLayer: 'provider',
 }
 
+const PROVIDER_ZHIPU_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:zhipu',
+  version: '2026-07-14',
+  path: 'provider/zhipu.md',
+  agentKind: '*',
+  providerFamily: 'zhipu',
+  layer: 2,
+  description: 'Zhipu GLM provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_MOONSHOT_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:moonshot',
+  version: '2026-07-14',
+  path: 'provider/moonshot.md',
+  agentKind: '*',
+  providerFamily: 'moonshot',
+  layer: 2,
+  description: 'Moonshot Kimi provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_MIMO_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:mimo',
+  version: '2026-07-14',
+  path: 'provider/mimo.md',
+  agentKind: '*',
+  providerFamily: 'mimo',
+  layer: 2,
+  description: 'MiMo (Xiaomi) provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_MINIMAX_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:minimax',
+  version: '2026-07-14',
+  path: 'provider/minimax.md',
+  agentKind: '*',
+  providerFamily: 'minimax',
+  layer: 2,
+  description: 'MiniMax provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_DASHSCOPE_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:dashscope',
+  version: '2026-07-14',
+  path: 'provider/dashscope.md',
+  agentKind: '*',
+  providerFamily: 'dashscope',
+  layer: 2,
+  description: 'DashScope (Qwen) provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_VOLCENGINE_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:volcengine',
+  version: '2026-07-14',
+  path: 'provider/volcengine.md',
+  agentKind: '*',
+  providerFamily: 'volcengine',
+  layer: 2,
+  description: 'Volcengine (Doubao) provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_QIANFAN_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:qianfan',
+  version: '2026-07-14',
+  path: 'provider/qianfan.md',
+  agentKind: '*',
+  providerFamily: 'qianfan',
+  layer: 2,
+  description: 'Qianfan (ERNIE/Baidu) provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_IFLYTEK_SPARK_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:iflytek-spark',
+  version: '2026-07-14',
+  path: 'provider/iflytek-spark.md',
+  agentKind: '*',
+  providerFamily: 'iflytek-spark',
+  layer: 2,
+  description: 'iFlyTek Spark provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_STEPFUN_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:stepfun',
+  version: '2026-07-14',
+  path: 'provider/stepfun.md',
+  agentKind: '*',
+  providerFamily: 'stepfun',
+  layer: 2,
+  description: 'StepFun provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_HUNYUAN_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:hunyuan',
+  version: '2026-07-14',
+  path: 'provider/hunyuan.md',
+  agentKind: '*',
+  providerFamily: 'hunyuan',
+  layer: 2,
+  description: 'Tencent Hunyuan provider template',
+  taxonomyLayer: 'provider',
+}
+
+const PROVIDER_SILICONFLOW_TEMPLATE: PromptTemplateRecord = {
+  id: 'provider:siliconflow',
+  version: '2026-07-14',
+  path: 'provider/siliconflow.md',
+  agentKind: '*',
+  providerFamily: 'siliconflow',
+  layer: 2,
+  description: 'SiliconFlow provider template',
+  taxonomyLayer: 'provider',
+}
+
 
 
 const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
@@ -543,6 +664,17 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['provider:ollama', PROVIDER_OLLAMA_TEMPLATE],
   ['provider:anthropic', PROVIDER_ANTHROPIC_TEMPLATE],
   ['provider:gemini', PROVIDER_GEMINI_TEMPLATE],
+  ['provider:zhipu', PROVIDER_ZHIPU_TEMPLATE],
+  ['provider:moonshot', PROVIDER_MOONSHOT_TEMPLATE],
+  ['provider:mimo', PROVIDER_MIMO_TEMPLATE],
+  ['provider:minimax', PROVIDER_MINIMAX_TEMPLATE],
+  ['provider:dashscope', PROVIDER_DASHSCOPE_TEMPLATE],
+  ['provider:volcengine', PROVIDER_VOLCENGINE_TEMPLATE],
+  ['provider:qianfan', PROVIDER_QIANFAN_TEMPLATE],
+  ['provider:iflytek-spark', PROVIDER_IFLYTEK_SPARK_TEMPLATE],
+  ['provider:stepfun', PROVIDER_STEPFUN_TEMPLATE],
+  ['provider:hunyuan', PROVIDER_HUNYUAN_TEMPLATE],
+  ['provider:siliconflow', PROVIDER_SILICONFLOW_TEMPLATE],
   // ── Cross-cutting templates (taxonomy-tagged) ────────────────────────────
   ['persona:default', PERSONA_DEFAULT_TEMPLATE],
   ['heuristics:tool-usage.common', HEURISTICS_TOOL_USAGE_COMMON_TEMPLATE],

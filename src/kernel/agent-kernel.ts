@@ -335,7 +335,7 @@ export class AgentKernel {
     if (isPromptMemoryP0Enabled() && this.config.promptProjectionResolver) {
       const projectionResult = await this.config.promptProjectionResolver.resolve({
         agentType: input.agentType,
-        providerFamily: resolveProviderFamily(this.config.providerFamily),
+        providerFamily: resolveProviderFamily(this.config.providerFamily, input.model),
       })
       if (toolSelectionPolicy === undefined) {
         toolSelectionPolicy = projectionResult.toolSelectionPolicy
@@ -363,7 +363,7 @@ export class AgentKernel {
           mode: 'function_calling',
           agentType: input.agentType,
           agentProfile: 'default_main',
-          providerFamily: this.config.providerFamily ?? 'openai',
+          providerFamily: resolveProviderFamily(this.config.providerFamily, input.model) ?? 'openai',
           contextBundle: contextBundleData,
           transcript: transcriptMessages,
           currentDate: new Date().toISOString(),
