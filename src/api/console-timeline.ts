@@ -199,6 +199,16 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
     })
   }
 
+  // Associate tool-role messages to toolCallSummaries only when deterministic.
+  const toolCallSummaries = turn.runtimeSummary?.toolCallSummaries ?? []
+  const toolRoleMessages =
+    turn.output.visibleMessages?.filter((msg) => msg.role === 'tool') ?? []
+  const canAssociateByOrdinal =
+    toolCallSummaries.length > 0 && toolCallSummaries.length === toolRoleMessages.length
+  const canAssociateSingle =
+    toolCallSummaries.length === 1 && toolRoleMessages.length === 1
+  let toolResultOrdinal = 0
+
   // Assistant visible messages and thinking summaries
   if (turn.output.visibleMessages && turn.output.visibleMessages.length > 0) {
     turn.output.visibleMessages.forEach((msg, index) => {
@@ -259,10 +269,20 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           actor: 'system',
         })
       } else if (msg.role === 'tool') {
+        const associatedSummary =
+          canAssociateByOrdinal || canAssociateSingle
+            ? toolCallSummaries[toolResultOrdinal]
+            : undefined
+        toolResultOrdinal += 1
+
         const toolResultMetadata: Record<string, unknown> = {
           ...baseMetadata,
           messageId: msg.messageId,
           messageIndex: index,
+          status: associatedSummary?.status ?? 'completed',
+        }
+        if (associatedSummary?.toolName) {
+          toolResultMetadata.toolName = associatedSummary.toolName
         }
 
         if (amapToolNames.length > 0) {
@@ -270,7 +290,11 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           const amapResult = buildAMapResultMetadata(msg.content)
           if (amapResult) {
             toolResultMetadata.amapResult = amapResult
+            // Prefer redacted structured AMap result over raw content (may contain secrets).
+            toolResultMetadata.result = JSON.stringify(amapResult)
           }
+        } else {
+          toolResultMetadata.result = msg.content
         }
 
         events.push({
@@ -301,8 +325,8 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
   }
 
   // Tool call summaries
-  if (turn.runtimeSummary?.toolCallSummaries && turn.runtimeSummary.toolCallSummaries.length > 0) {
-    turn.runtimeSummary.toolCallSummaries.forEach((summary, index) => {
+  if (toolCallSummaries.length > 0) {
+    toolCallSummaries.forEach((summary, index) => {
       events.push({
         eventId: `turn-${turn.turnId}-tool-${index}`,
         eventType: 'tool_call',
@@ -314,6 +338,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           toolCallIndex: index,
           toolCallId: summary.toolCallId,
           toolName: summary.toolName,
+          status: summary.status,
         },
         actor: 'system',
       })

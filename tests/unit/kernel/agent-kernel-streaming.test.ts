@@ -22,7 +22,7 @@ import { TemplateLoader } from '../../../src/prompt/template-loader.js'
  * Fake LLM adapter that supports streaming with controlled delta emission
  */
 class FakeStreamingLLMAdapter implements LLMAdapter {
-  private lastRequest: LLMRequest | undefined
+  protected lastRequest: LLMRequest | undefined
   private deltas: string[] = []
   private shouldFail = false
   private failureAfterDelta?: number
@@ -47,8 +47,12 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
     this.failureAfterDelta = afterDelta
   }
 
+  streamCallCount = 0
+  completeCallCount = 0
+
   async complete(request: LLMRequest): Promise<LLMResult> {
     this.lastRequest = request
+    this.completeCallCount++
 
     const fullContent = this.deltas.join('')
     return {
@@ -69,6 +73,7 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
     request: LLMRequest,
   ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: any }> {
     this.lastRequest = request
+    this.streamCallCount++
 
     for (let i = 0; i < this.deltas.length; i++) {
       if (this.shouldFail && this.failureAfterDelta !== undefined && i >= this.failureAfterDelta) {
@@ -155,7 +160,10 @@ class FakeContextManager implements ContextManager {
 }
 
 class FakeDispatcher implements RuntimeDispatcher {
+  dispatchCallCount = 0
+
   async dispatch() {
+    this.dispatchCallCount++
     return {
       requestId: 'req-test',
       actionId: 'act-test',
@@ -503,6 +511,122 @@ describe('AgentKernel streaming behavior', () => {
       const broadcasts = fakeBroadcaster.getBroadcasts()
       expect(broadcasts.length).toBe(1000)
     })
+  })
+})
+
+
+describe('AgentKernel streaming suppressed for tool-capable turns (Option A)', () => {
+  it('uses complete() not stream() when tools are projected; dispatches tool_calls once', async () => {
+    class ToolCapableAdapter extends FakeStreamingLLMAdapter {
+      private toolCallReturned = false
+
+      async complete(request: LLMRequest): Promise<LLMResult> {
+        this.lastRequest = request
+        this.completeCallCount++
+
+        if (!this.toolCallReturned) {
+          this.toolCallReturned = true
+          return {
+            success: true,
+            response: {
+              id: 'resp-toolcall',
+              model: request.model,
+              content: '',
+              role: 'assistant',
+              toolCalls: [
+                {
+                  id: 'call-1',
+                  type: 'function',
+                  function: {
+                    name: 'get_weather',
+                    arguments: '{"city":"SF"}',
+                  },
+                },
+              ],
+              finishReason: 'tool_calls',
+              createdAt: new Date().toISOString(),
+            },
+            providerId: 'fake-streaming',
+          }
+        }
+
+        return {
+          success: true,
+          response: {
+            id: 'resp-final',
+            model: request.model,
+            content: 'The weather in SF is sunny.',
+            role: 'assistant',
+            finishReason: 'stop',
+            createdAt: new Date().toISOString(),
+          },
+          providerId: 'fake-streaming',
+        }
+      }
+
+      async *stream(
+        request: LLMRequest,
+      ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: any }> {
+        this.lastRequest = request
+        this.streamCallCount++
+        // Intentionally empty — if streaming is selected, tool_calls would be lost.
+      }
+    }
+
+    const toolCallAdapter = new ToolCapableAdapter()
+    const countingDispatcher = new FakeDispatcher()
+    const toolProjection = {
+      toolIds: ['get_weather'],
+      tools: [
+        {
+          type: 'function' as const,
+          function: {
+            name: 'get_weather',
+            description: 'Get weather for a city',
+            parameters: {
+              type: 'object',
+              properties: { city: { type: 'string' } },
+              required: ['city'],
+            },
+          },
+        },
+      ],
+    }
+
+    const config = makeBaseConfig({
+      llmAdapter: toolCallAdapter,
+      dispatcher: countingDispatcher,
+    })
+    const kernel = new AgentKernel(config)
+
+    const result = await kernel.run({
+      ...makeRunInput(),
+      toolProjection,
+      maxIterations: 3,
+    })
+
+    expect(toolCallAdapter.streamCallCount).toBe(0)
+    expect(toolCallAdapter.completeCallCount).toBeGreaterThanOrEqual(2)
+    expect(countingDispatcher.dispatchCallCount).toBe(1)
+    expect(result.finalStatus).toBe('completed')
+    expect(result.finalResponse).toBe('The weather in SF is sunny.')
+    expect(result.toolCalls.length).toBe(1)
+    expect(result.toolCalls[0]?.toolName).toBe('get_weather')
+  })
+
+  it('still streams when no tools are projected', async () => {
+    defaultBroadcaster.clear()
+    const deltas = ['Hello', ' ', 'world']
+    const adapter = new FakeStreamingLLMAdapter(deltas)
+    const config = makeBaseConfig({ llmAdapter: adapter })
+    const kernel = new AgentKernel(config)
+
+    const result = await kernel.run(makeRunInput())
+
+    expect(adapter.streamCallCount).toBe(1)
+    expect(result.finalStatus).toBe('completed')
+    expect(result.finalResponse).toBe('Hello world')
+    expect(defaultBroadcaster.getBroadcasts().length).toBe(deltas.length)
   })
 })
 

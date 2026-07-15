@@ -66,6 +66,23 @@ const getMetadataString = (metadata: Record<string, unknown> | undefined, keys: 
   return undefined
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+type ToolStatus = 'running' | 'completed' | 'failed'
+
+const normalizeToolStatus = (event: ConsoleTimelineEvent): ToolStatus => {
+  if (event.metadata?.failed === true) return 'failed'
+  const raw = event.metadata?.status
+  if (raw === 'running' || raw === 'completed' || raw === 'failed') return raw
+  if (typeof event.content === 'string') {
+    const trimmed = event.content.trim()
+    if (/^[^:]+:\s*completed$/i.test(trimmed)) return 'completed'
+    if (/^[^:]+:\s*failed$/i.test(trimmed)) return 'failed'
+  }
+  return event.eventType === 'tool_call' ? 'running' : 'completed'
+}
+
 const getInitials = (name: string): string => {
   const trimmed = name.trim()
   if (!trimmed) return 'A'
@@ -153,15 +170,8 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
   const riskLevel = typeof event.metadata?.riskLevel === 'string' ? event.metadata.riskLevel : undefined
 
   const toolName = typeof event.metadata?.toolName === 'string' ? event.metadata.toolName : undefined
-  const parameters =
-    typeof event.metadata?.parameters === 'object' && event.metadata.parameters !== null
-      ? (event.metadata.parameters as Record<string, unknown>)
-      : undefined
+  const parameters = isRecord(event.metadata?.parameters) ? event.metadata.parameters : {}
   const toolResult = typeof event.metadata?.result === 'string' ? event.metadata.result : undefined
-  const toolStatus =
-    typeof event.metadata?.status === 'string'
-      ? (event.metadata.status as 'running' | 'completed' | 'failed')
-      : undefined
   const durationMs = typeof event.metadata?.durationMs === 'number' ? event.metadata.durationMs : undefined
 
   const taskId = typeof event.metadata?.taskId === 'string' ? event.metadata.taskId : undefined
@@ -251,13 +261,13 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
 
       case 'tool_call':
       case 'tool_result':
-        if (toolName && parameters) {
+        if (toolName) {
           return (
             <ToolCallCard
               toolName={toolName}
               parameters={parameters}
-              result={toolResult}
-              status={toolStatus ?? 'completed'}
+              result={event.eventType === 'tool_result' ? (toolResult ?? event.content) : toolResult}
+              status={normalizeToolStatus(event)}
               durationMs={durationMs}
             />
           )

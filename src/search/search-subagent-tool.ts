@@ -64,8 +64,20 @@ export async function handleSearchSubagentTool(
     deps.scopeGuard('web_search')
 
     const plan = deps.queryPlanner.plan(input)
+    const effectiveQuery =
+      typeof plan.searchQuery === 'string' && plan.searchQuery.trim().length > 0
+        ? plan.searchQuery.trim()
+        : input.originalQuestion.trim()
+    if (!effectiveQuery) {
+      return createErrorResult<SearchSubagentToolResult>(
+        'INVALID_TOOL_CALL',
+        'Search query is empty',
+        true,
+        'Search failed: empty query',
+      )
+    }
     const searchInput: SearchSubagentInput = {
-      query: plan.searchQuery,
+      query: effectiveQuery,
       userId: 'tool-invocation',
       sessionId: 'tool-invocation',
     }
@@ -91,7 +103,7 @@ export async function handleSearchSubagentTool(
     return createSuccessResult<SearchSubagentToolResult>(
       {
         originalQuestion: plan.originalQuestion,
-        searchQuery: plan.searchQuery,
+        searchQuery: effectiveQuery,
         intent: plan.intent,
         freshness: plan.requiresFreshness,
         locale: plan.locale,

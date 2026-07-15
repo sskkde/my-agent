@@ -225,69 +225,110 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
 
     const tools = extractToolsForRequest(phase1BuildInput)
 
-    const llmRequest: LLMRequest = {
-      model: searchLlmModel,
-      messages: phase1Built.messages,
-      tools,
-      toolChoice: 'auto',
+    // Phase 1 strategy:
+    // 1) Prefer forced web_search tool_choice (when provider supports it)
+    // 2) Retry with toolChoice auto if forced request fails (some providers reject forced)
+    // 3) If still no toolCalls, fall back to searching with input.query
+    //    (caller already planned the query via SearchQueryPlanner)
+    const forcedToolChoice = { type: 'function' as const, function: { name: 'web_search' } }
+
+    type Phase1Response = {
+      id: string
+      model: string
+      content: string
+      toolCalls?: Array<{
+        id: string
+        type: 'function'
+        function: { name: string; arguments: string }
+      }>
+      finishReason: string
     }
 
-    let llmResult
-    try {
-      llmResult = await llmAdapter.complete(llmRequest)
-    } catch (error) {
-      return {
-        success: false,
-        errorCode: 'MODEL_UNAVAILABLE',
-        message: error instanceof Error ? error.message : 'Model unavailable',
+    async function completePhase1(
+      toolChoice: LLMRequest['toolChoice'],
+    ): Promise<{ ok: true; response: Phase1Response } | { ok: false; message: string }> {
+      const request: LLMRequest = {
+        model: searchLlmModel,
+        messages: phase1Built.messages,
+        tools,
+        toolChoice,
+      }
+      try {
+        const result = await llmAdapter.complete(request)
+        if (!result.success || !result.response) {
+          return { ok: false, message: result.error?.message || 'Model request failed' }
+        }
+        return { ok: true, response: result.response }
+      } catch (error) {
+        return {
+          ok: false,
+          message: error instanceof Error ? error.message : 'Model unavailable',
+        }
       }
     }
 
-    if (!llmResult.success || !llmResult.response) {
-      return {
-        success: false,
-        errorCode: 'MODEL_UNAVAILABLE',
-        message: llmResult.error?.message || 'Model request failed',
-      }
-    }
+    let phase1Response: Phase1Response | undefined
+    let phase1Error: string | undefined
 
-    const response = llmResult.response
-
-    if (!response.toolCalls || response.toolCalls.length === 0) {
-      return {
-        success: false,
-        errorCode: 'NO_TOOL_CALL',
-        message: 'Model did not produce a tool call',
-      }
-    }
-
-    const toolCall = response.toolCalls[0]
-    if (toolCall.function.name !== 'web_search') {
-      return {
-        success: false,
-        errorCode: 'INVALID_TOOL_CALL',
-        message: `Model called invalid tool: ${toolCall.function.name}`,
+    const forcedAttempt = await completePhase1(forcedToolChoice)
+    if (forcedAttempt.ok) {
+      phase1Response = forcedAttempt.response
+    } else {
+      phase1Error = forcedAttempt.message
+      const autoAttempt = await completePhase1('auto')
+      if (autoAttempt.ok) {
+        phase1Response = autoAttempt.response
+      } else {
+        phase1Error = autoAttempt.message
       }
     }
 
     let searchQuery: string
-    try {
-      const args = JSON.parse(toolCall.function.arguments)
-      searchQuery = args.query
-      if (typeof searchQuery !== 'string' || searchQuery.trim().length === 0) {
+    let querySource: 'llm_tool_call' | 'input_fallback' = 'input_fallback'
+
+    if (phase1Response?.toolCalls && phase1Response.toolCalls.length > 0) {
+      const toolCall = phase1Response.toolCalls[0]
+      if (toolCall.function.name !== 'web_search') {
         return {
           success: false,
           errorCode: 'INVALID_TOOL_CALL',
-          message: 'Invalid web_search arguments: missing or empty query',
+          message: `Model called invalid tool: ${toolCall.function.name}`,
         }
       }
-    } catch {
-      return {
-        success: false,
-        errorCode: 'INVALID_TOOL_CALL',
-        message: 'Invalid web_search arguments: failed to parse JSON',
+      try {
+        const args = JSON.parse(toolCall.function.arguments) as { query?: unknown }
+        if (typeof args.query !== 'string' || args.query.trim().length === 0) {
+          return {
+            success: false,
+            errorCode: 'INVALID_TOOL_CALL',
+            message: 'Invalid web_search arguments: missing or empty query',
+          }
+        }
+        searchQuery = args.query.trim()
+        querySource = 'llm_tool_call'
+      } catch {
+        return {
+          success: false,
+          errorCode: 'INVALID_TOOL_CALL',
+          message: 'Invalid web_search arguments: failed to parse JSON',
+        }
       }
+    } else {
+      const fallbackQuery = input.query.trim()
+      if (fallbackQuery.length === 0) {
+        return {
+          success: false,
+          errorCode: phase1Response ? 'NO_TOOL_CALL' : 'MODEL_UNAVAILABLE',
+          message: phase1Response
+            ? 'Model did not produce a tool call and input query is empty'
+            : phase1Error || 'Model request failed',
+        }
+      }
+      searchQuery = fallbackQuery
+      querySource = 'input_fallback'
     }
+
+    void querySource
 
     const toolResult = await webSearchExecutor({ query: searchQuery })
 
