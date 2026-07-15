@@ -529,6 +529,9 @@ export class AgentKernel {
 
   private shouldUseStreaming(request: LLMRequest): boolean {
     if (!this.config.timelineBroadcaster) return false
+    // Tool-capable turns must use complete() so structured tool_calls are preserved.
+    // Streaming currently only accumulates text deltas and drops tool_calls.
+    if (request.tools !== undefined && request.tools.length > 0) return false
     return true
   }
 

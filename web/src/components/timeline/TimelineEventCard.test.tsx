@@ -531,6 +531,77 @@ const a = 1
     })
   })
 
+  describe('ToolCallCard rendering with partial metadata', () => {
+    it('renders ToolCallCard for tool_call with only toolName and defaults parameters to {}', () => {
+      const event = createEvent({
+        eventType: 'tool_call',
+        actor: 'tool',
+        content: '',
+        metadata: { toolName: 'file.read' },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const toolCard = screen.getByTestId('tool-call-card')
+      expect(toolCard).toBeInTheDocument()
+      expect(toolCard).toHaveAttribute('data-status', 'running')
+
+      act(() => {
+        screen.getByRole('button', { expanded: false }).click()
+      })
+
+      const codeBlocks = screen.getAllByTestId('code-block-container')
+      expect(codeBlocks.length).toBeGreaterThan(0)
+      expect(codeBlocks[0].textContent).toContain('{}')
+    })
+
+    it('renders ToolCallCard for tool_result with content as result when metadata.result is missing', () => {
+      const event = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: 'legacy result text',
+        metadata: { toolName: 'file.read' },
+      })
+
+      render(<TimelineEventCard event={event} />)
+
+      const toolCard = screen.getByTestId('tool-call-card')
+      expect(toolCard).toBeInTheDocument()
+      expect(toolCard).toHaveAttribute('data-status', 'completed')
+
+      act(() => {
+        screen.getByRole('button', { expanded: false }).click()
+      })
+
+      const codeBlocks = screen.getAllByTestId('code-block-container')
+      expect(codeBlocks.length).toBe(2)
+      expect(codeBlocks[1].textContent).toContain('legacy result text')
+    })
+
+    it('normalizes status from metadata.failed and content heuristics', () => {
+      const failedEvent = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: '',
+        metadata: { toolName: 'exec', failed: true },
+      })
+
+      const { unmount } = render(<TimelineEventCard event={failedEvent} />)
+      expect(screen.getByTestId('tool-call-card')).toHaveAttribute('data-status', 'failed')
+      unmount()
+
+      const contentCompletedEvent = createEvent({
+        eventType: 'tool_result',
+        actor: 'tool',
+        content: 'exec: completed',
+        metadata: { toolName: 'exec' },
+      })
+
+      render(<TimelineEventCard event={contentCompletedEvent} />)
+      expect(screen.getByTestId('tool-call-card')).toHaveAttribute('data-status', 'completed')
+    })
+  })
+
   describe('Streaming incomplete Markdown handling', () => {
     it('renders streaming draft with incomplete code fence safely', () => {
       const event = createEvent({

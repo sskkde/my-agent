@@ -610,4 +610,259 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
       expect(toolResult!.metadata?.userId).toBe('user-1')
     })
   })
+
+  describe('tool_call metadata.status mirrors summary status', () => {
+    const session = 'test-toolcall-status'
+
+    beforeEach(() => {
+      savedTranscripts.push({
+        turnId: 'turn-status-001',
+        sessionId: session,
+        userId: 'user-1',
+        input: { userMessageSummary: 'Run tools with various statuses' },
+        output: { visibleMessages: [] },
+        runtimeSummary: {
+          toolCallSummaries: [
+            { toolCallId: 'tc-ok', toolName: 'read_file', status: 'completed' as const },
+            { toolCallId: 'tc-fail', toolName: 'web_search', status: 'failed' as const },
+            { toolCallId: 'tc-pending', toolName: 'exec', status: 'pending' as const },
+            { toolCallId: 'tc-skip', toolName: 'bash', status: 'skipped' as const },
+          ],
+        },
+        visibility: 'public',
+        createdAt: '2026-06-28T10:00:00.000Z',
+      })
+    })
+
+    it('tool_call metadata.status matches summary.status for completed', () => {
+      const result = service.getTimeline(session)
+      const ev = result.events.find(
+        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-ok',
+      )
+      expect(ev).toBeDefined()
+      expect(ev!.metadata?.status).toBe('completed')
+    })
+
+    it('tool_call metadata.status matches summary.status for failed', () => {
+      const result = service.getTimeline(session)
+      const ev = result.events.find(
+        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-fail',
+      )
+      expect(ev).toBeDefined()
+      expect(ev!.metadata?.status).toBe('failed')
+    })
+
+    it('tool_call metadata.status matches summary.status for pending', () => {
+      const result = service.getTimeline(session)
+      const ev = result.events.find(
+        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-pending',
+      )
+      expect(ev).toBeDefined()
+      expect(ev!.metadata?.status).toBe('pending')
+    })
+
+    it('tool_call metadata.status matches summary.status for skipped', () => {
+      const result = service.getTimeline(session)
+      const ev = result.events.find(
+        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-skip',
+      )
+      expect(ev).toBeDefined()
+      expect(ev!.metadata?.status).toBe('skipped')
+    })
+  })
+
+  describe('tool_result enrichment from a 1:1 tool summary association', () => {
+    const session = 'test-toolresult-1to1'
+    const toolContent = '{"rows":42,"ok":true}'
+
+    beforeEach(() => {
+      savedTranscripts.push({
+        turnId: 'turn-1to1-001',
+        sessionId: session,
+        userId: 'user-1',
+        input: { userMessageSummary: 'Read a file' },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-1to1-tool', role: 'tool', content: toolContent },
+          ],
+        },
+        runtimeSummary: {
+          toolCallSummaries: [
+            { toolCallId: 'tc-1to1', toolName: 'read_file', status: 'completed' as const },
+          ],
+        },
+        visibility: 'public',
+        createdAt: '2026-06-28T11:00:00.000Z',
+      })
+    })
+
+    it('tool_result metadata.result equals the tool message content', () => {
+      const result = service.getTimeline(session)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.result).toBe(toolContent)
+    })
+
+    it('tool_result metadata.status mirrors the associated summary status', () => {
+      const result = service.getTimeline(session)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.status).toBe('completed')
+    })
+
+    it('tool_result metadata.toolName is set when association is deterministic', () => {
+      const result = service.getTimeline(session)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.toolName).toBe('read_file')
+    })
+
+    it('tool_result reflects a failed summary status in 1:1 association', () => {
+      const failSession = 'test-toolresult-1to1-failed'
+      savedTranscripts.push({
+        turnId: 'turn-1to1-fail',
+        sessionId: failSession,
+        userId: 'user-1',
+        input: { userMessageSummary: 'Failing tool' },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-1to1-fail', role: 'tool', content: 'Error: boom' },
+          ],
+        },
+        runtimeSummary: {
+          toolCallSummaries: [
+            { toolCallId: 'tc-1to1-fail', toolName: 'web_search', status: 'failed' as const },
+          ],
+        },
+        visibility: 'public',
+        createdAt: '2026-06-28T11:30:00.000Z',
+      })
+      const result = service.getTimeline(failSession)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.status).toBe('failed')
+      expect(toolResult!.metadata?.toolName).toBe('web_search')
+      expect(toolResult!.metadata?.result).toBe('Error: boom')
+    })
+  })
+
+  describe('tool_result enrichment with equal counts (multi, ordinal association)', () => {
+    const session = 'test-toolresult-multi-equal'
+
+    beforeEach(() => {
+      savedTranscripts.push({
+        turnId: 'turn-multi-equal',
+        sessionId: session,
+        userId: 'user-1',
+        input: { userMessageSummary: 'Two tools, two results' },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-multi-1', role: 'tool', content: 'result-A' },
+            { messageId: 'msg-multi-2', role: 'tool', content: 'result-B' },
+          ],
+        },
+        runtimeSummary: {
+          toolCallSummaries: [
+            { toolCallId: 'tc-multi-1', toolName: 'read_file', status: 'completed' as const },
+            { toolCallId: 'tc-multi-2', toolName: 'web_search', status: 'failed' as const },
+          ],
+        },
+        visibility: 'public',
+        createdAt: '2026-06-28T12:00:00.000Z',
+      })
+    })
+
+    it('associates each tool_result with its summary by ordinal position', () => {
+      const result = service.getTimeline(session)
+      const toolResults = result.events.filter((e) => e.eventType === 'tool_result')
+      expect(toolResults).toHaveLength(2)
+
+      expect(toolResults[0].metadata?.result).toBe('result-A')
+      expect(toolResults[0].metadata?.toolName).toBe('read_file')
+      expect(toolResults[0].metadata?.status).toBe('completed')
+
+      expect(toolResults[1].metadata?.result).toBe('result-B')
+      expect(toolResults[1].metadata?.toolName).toBe('web_search')
+      expect(toolResults[1].metadata?.status).toBe('failed')
+    })
+  })
+
+  describe('tool_result enrichment with ambiguous counts (no guessed toolName)', () => {
+    const session = 'test-toolresult-ambiguous'
+
+    beforeEach(() => {
+      savedTranscripts.push({
+        turnId: 'turn-ambig-001',
+        sessionId: session,
+        userId: 'user-1',
+        input: { userMessageSummary: 'Ambiguous tool results' },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-ambig-1', role: 'tool', content: 'lone-result' },
+          ],
+        },
+        runtimeSummary: {
+          toolCallSummaries: [
+            { toolCallId: 'tc-ambig-1', toolName: 'read_file', status: 'completed' as const },
+            { toolCallId: 'tc-ambig-2', toolName: 'web_search', status: 'failed' as const },
+          ],
+        },
+        visibility: 'public',
+        createdAt: '2026-06-28T13:00:00.000Z',
+      })
+    })
+
+    it('still exposes metadata.result for the tool message', () => {
+      const result = service.getTimeline(session)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.result).toBe('lone-result')
+    })
+
+    it('omits guessed toolName when association is ambiguous', () => {
+      const result = service.getTimeline(session)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.toolName).toBeUndefined()
+    })
+
+    it('defaults status to completed when association is ambiguous', () => {
+      const result = service.getTimeline(session)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.status).toBe('completed')
+    })
+  })
+
+  describe('tool_result with no tool summaries at all', () => {
+    const session = 'test-toolresult-no-summaries'
+
+    beforeEach(() => {
+      savedTranscripts.push({
+        turnId: 'turn-nosum-001',
+        sessionId: session,
+        userId: 'user-1',
+        input: { userMessageSummary: 'Tool message without summary' },
+        output: {
+          visibleMessages: [
+            { messageId: 'msg-nosum-1', role: 'tool', content: 'orphan-result' },
+          ],
+        },
+        runtimeSummary: {
+          toolCallSummaries: [],
+        },
+        visibility: 'public',
+        createdAt: '2026-06-28T14:00:00.000Z',
+      })
+    })
+
+    it('exposes result and defaults status, omits toolName', () => {
+      const result = service.getTimeline(session)
+      const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+      expect(toolResult).toBeDefined()
+      expect(toolResult!.metadata?.result).toBe('orphan-result')
+      expect(toolResult!.metadata?.status).toBe('completed')
+      expect(toolResult!.metadata?.toolName).toBeUndefined()
+    })
+  })
 })

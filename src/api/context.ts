@@ -20,7 +20,11 @@ import { createAuthTokenStore, type AuthTokenStore } from '../storage/auth-token
 import { createGateway, type Gateway } from '../gateway/gateway.js'
 import { createChannelRegistry, createWebUIChannelHandler, type ChannelRegistry } from '../gateway/channel-registry.js'
 import { createConsoleTimelineService, type ConsoleTimelineService } from './console-timeline.js'
-import { createProviderConfigStore, type ProviderConfigStore } from '../storage/provider-config-store.js'
+import {
+  createProviderConfigStore,
+  type ProviderConfigStore,
+  type ProviderConfigSanitized,
+} from '../storage/provider-config-store.js'
 import {
   createAgentConfigStore,
   DEFAULT_REPAIR_ATTEMPTS,
@@ -276,6 +280,91 @@ function isConnectionOpen(connection: ConnectionManager): boolean {
   } catch {
     return false
   }
+}
+
+export interface ResolvedSearchLlm {
+  providerId: string
+  model: string
+  providerType: string
+}
+
+export interface ResolveSearchLlmDeps {
+  agentConfigStore: Pick<AgentConfigStore, 'getGlobalDefault'>
+  providerConfigStore: Pick<ProviderConfigStore, 'getById' | 'listAll'>
+}
+
+/**
+ * A search LLM candidate is eligible when enabled, configured, and not a mock.
+ * Mock providers are dev/test stubs and must never satisfy production search LLM
+ * resolution; ineligible candidates fall through to the next source.
+ */
+export function isSearchLlmProviderEligible(
+  provider: Pick<ProviderConfigSanitized, 'providerType' | 'enabled' | 'configured'>,
+): boolean {
+  return (
+    provider.enabled === true &&
+    provider.configured === true &&
+    provider.providerType !== 'mock'
+  )
+}
+
+/**
+ * Resolves the search LLM to use for web-search subagent summarization.
+ *
+ * Resolution order (each candidate must be eligible - enabled, configured,
+ * non-mock; invalid candidates fall through rather than being returned):
+ *
+ * 1. Explicit searchLlmProviderId + searchLlmModel from the global agent config.
+ * 2. Foreground providerId + model (must additionally be non-ollama).
+ * 3. First listAll() provider that is enabled, configured, non-mock, non-ollama
+ *    and has a selectedModel.
+ * 4. undefined.
+ */
+export function resolveSearchLlm(deps: ResolveSearchLlmDeps): ResolvedSearchLlm | undefined {
+  const { agentConfigStore, providerConfigStore } = deps
+  const currentConfig = agentConfigStore.getGlobalDefault()
+
+  // 1. Explicit search-specific config
+  if (currentConfig?.searchLlmProviderId && currentConfig?.searchLlmModel) {
+    const p = providerConfigStore.getById(currentConfig.searchLlmProviderId)
+    if (p && isSearchLlmProviderEligible(p)) {
+      return {
+        providerId: currentConfig.searchLlmProviderId,
+        model: currentConfig.searchLlmModel,
+        providerType: p.providerType,
+      }
+    }
+  }
+
+  // 2. Foreground agent config (providerId/model) - must additionally be non-ollama
+  const fgProviderId = currentConfig?.providerId
+  const fgModel = currentConfig?.model
+  if (fgProviderId && fgModel) {
+    const fgProvider = providerConfigStore.getById(fgProviderId)
+    if (
+      fgProvider &&
+      isSearchLlmProviderEligible(fgProvider) &&
+      fgProvider.providerType !== 'ollama'
+    ) {
+      return { providerId: fgProviderId, model: fgModel, providerType: fgProvider.providerType }
+    }
+  }
+
+  // 3. First enabled, configured, non-mock, non-ollama provider with selectedModel
+  const allProviders = providerConfigStore.listAll()
+  const usable = allProviders.find(
+    (p) =>
+      isSearchLlmProviderEligible(p) && p.providerType !== 'ollama' && p.selectedModel,
+  )
+  if (usable && usable.selectedModel) {
+    return {
+      providerId: usable.providerId,
+      model: usable.selectedModel,
+      providerType: usable.providerType,
+    }
+  }
+
+  return undefined
 }
 
 export function createApiContext(options: ApiContextOptions = {}): ApiContext | ApiContextError {
@@ -632,36 +721,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const skillRegistry = createSkillRegistry()
   registerBuiltinSkills(skillRegistry)
 
-  const resolveSearchLlm = (): { providerId: string; model: string; providerType: string } | undefined => {
-    const currentConfig = agentConfigStore.getGlobalDefault()
-    // 1. Explicit search-specific config
-    if (currentConfig?.searchLlmProviderId && currentConfig?.searchLlmModel) {
-      const p = providerConfigStore.getById(currentConfig.searchLlmProviderId)
-      if (p?.providerType) {
-        return { providerId: currentConfig.searchLlmProviderId, model: currentConfig.searchLlmModel, providerType: p.providerType }
-      }
-    }
-    // 2. Foreground agent config (providerId/model)
-    const fgProviderId = currentConfig?.providerId
-    const fgModel = currentConfig?.model
-    if (fgProviderId && fgModel) {
-      const fgProvider = providerConfigStore.getById(fgProviderId)
-      if (fgProvider?.enabled && fgProvider.providerType !== 'ollama') {
-        return { providerId: fgProviderId, model: fgModel, providerType: fgProvider.providerType }
-      }
-    }
-    // 3. First enabled, non-ollama provider with credentials configured
-    const allProviders = providerConfigStore.listAll()
-    const usable = allProviders.find(
-      (p) => p.enabled && p.providerType !== 'ollama' && p.configured && p.selectedModel,
-    )
-    if (usable) {
-      return { providerId: usable.providerId, model: usable.selectedModel!, providerType: usable.providerType }
-    }
-    return undefined
-  }
-
-  const resolvedSearchLlm = resolveSearchLlm()
+  const resolvedSearchLlm = resolveSearchLlm({ agentConfigStore, providerConfigStore })
   const fallbackFamily = resolvedSearchLlm
     ? resolveProviderFamily(resolvedSearchLlm.providerType, resolvedSearchLlm.model)
     : 'openai_compatible'
@@ -673,11 +733,17 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     },
     modelInputBuilder,
     providerFamily: () => {
-      const r = resolveSearchLlm()
+      const r = resolveSearchLlm({ agentConfigStore, providerConfigStore })
       return r ? resolveProviderFamily(r.providerType, r.model) : fallbackFamily
     },
-    searchLlmProviderId: () => resolveSearchLlm()?.providerId ?? resolvedSearchLlm?.providerId ?? '',
-    searchLlmModel: () => resolveSearchLlm()?.model ?? resolvedSearchLlm?.model ?? '',
+    searchLlmProviderId: () =>
+      resolveSearchLlm({ agentConfigStore, providerConfigStore })?.providerId ??
+      resolvedSearchLlm?.providerId ??
+      '',
+    searchLlmModel: () =>
+      resolveSearchLlm({ agentConfigStore, providerConfigStore })?.model ??
+      resolvedSearchLlm?.model ??
+      '',
   })
 
   const searchSubagentDeps = {
