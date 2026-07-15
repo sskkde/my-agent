@@ -52,17 +52,36 @@ function planSearchQuery(input: SearchSubagentToolInput, intent: SearchIntent): 
       return appendMissingTerms(`${question}${localeTerm}`, RECENCY_TERMS)
     case 'general':
       return question
+    default:
+      return question
   }
+}
+
+const KNOWN_INTENTS = new Set<SearchIntent>(['weather', 'news', 'technical', 'product', 'local', 'general'])
+
+function normalizeIntent(intent: SearchSubagentToolInput['intent']): SearchIntent {
+  if (intent && KNOWN_INTENTS.has(intent as SearchIntent)) {
+    return intent as SearchIntent
+  }
+  // Models often emit free-form intents (e.g. "fact"); treat as general.
+  return 'general'
 }
 
 export class DefaultSearchQueryPlanner implements SearchQueryPlanner {
   plan(input: SearchSubagentToolInput): SearchQueryPlan {
-    const intent = input.intent ?? 'general'
-    const missingCriticalContext = intent === 'weather' || intent === 'local' ? missingLocationContext(input.originalQuestion, input.locale) : []
+    const intent = normalizeIntent(input.intent)
+    const originalQuestion = normalizeQuery(input.originalQuestion || '')
+    const missingCriticalContext =
+      intent === 'weather' || intent === 'local'
+        ? missingLocationContext(originalQuestion, input.locale)
+        : []
+
+    const planned = planSearchQuery({ ...input, originalQuestion, intent }, intent)
+    const searchQuery = normalizeQuery(planned || originalQuestion)
 
     return {
-      originalQuestion: input.originalQuestion,
-      searchQuery: planSearchQuery(input, intent),
+      originalQuestion,
+      searchQuery: searchQuery.length > 0 ? searchQuery : originalQuestion,
       intent,
       requiresFreshness: plannedFreshness(intent, input.freshnessRequired),
       locale: input.locale,

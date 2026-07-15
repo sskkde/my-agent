@@ -196,7 +196,7 @@ describe('SearchSubagent contract tests', () => {
       const llmCall = mockLlmAdapter.complete.mock.calls[0]
       const llmRequest = llmCall[0]
 
-      expect(llmRequest.toolChoice).toEqual('auto')
+      expect(llmRequest.toolChoice).toEqual({ type: 'function', function: { name: 'web_search' } })
     })
 
     it('uses dedicated search model from config', async () => {
@@ -363,10 +363,19 @@ describe('SearchSubagent contract tests', () => {
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
 
       const mockLlmAdapter = {
+        // Phase1 forced + auto both fail; phase2 answer generation may still be attempted after
+        // input-query web-search fallback. Never switches model id to mainLlmModel.
         complete: vi.fn().mockRejectedValue(new Error('Model unavailable')),
       }
 
-      const mockWebSearchExecutor = vi.fn()
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'test query',
+        results: [{ title: 'T', url: 'https://example.com', snippet: 'S' }],
+        total: 1,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
 
       const subagent = createSearchSubagent({
         llmAdapter: mockLlmAdapter,
@@ -385,12 +394,18 @@ describe('SearchSubagent contract tests', () => {
         sessionId: 'session-456',
       })
 
-      expect(result.success).toBe(false)
-      expect(mockLlmAdapter.complete).toHaveBeenCalledTimes(1)
-
-      const llmCall = mockLlmAdapter.complete.mock.calls[0]
-      const llmRequest = llmCall[0]
-      expect(llmRequest.model).toBe('gpt-4.1-mini')
+      // Resilient path: still executes web search with the dedicated search query/model config.
+      expect(mockWebSearchExecutor).toHaveBeenCalledWith({ query: 'test query' })
+      expect(mockLlmAdapter.complete.mock.calls.length).toBeGreaterThanOrEqual(1)
+      for (const call of mockLlmAdapter.complete.mock.calls) {
+        expect(call[0].model).toBe('gpt-4.1-mini')
+        expect(call[0].model).not.toBe('gpt-4')
+      }
+      // Answer generation also fails, so success payload may degrade but must not use main model.
+      if (result.success) {
+        expect(result.metadata.model).toBe('gpt-4.1-mini')
+        expect(result.metadata.providerId).toBe('provider-search')
+      }
     })
   })
 
@@ -1207,8 +1222,8 @@ describe('SearchSubagent contract tests', () => {
       const llmCall = mockLlmAdapter.complete.mock.calls[0]
       const llmRequest = llmCall[0]
 
-      // toolChoice is 'auto' to maintain compatibility with thinking models (e.g. DeepSeek)
-      expect(llmRequest.toolChoice).toEqual('auto')
+      // toolChoice forces web_search so models cannot skip tool emission (DeepSeek flash regression)
+      expect(llmRequest.toolChoice).toEqual({ type: 'function', function: { name: 'web_search' } })
     })
 
     it('execute() uses direct llmAdapter.complete() - no subagent_runtime', async () => {
@@ -1276,4 +1291,183 @@ describe('SearchSubagent contract tests', () => {
       // No subagent_runtime.launchSubagent() or similar delegation
     })
   })
+
+  describe('NO_TOOL_CALL resilient fallback', () => {
+    it('falls back to input query when model omits toolCalls', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi
+          .fn()
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-no-tool',
+              content: 'I will search for you without calling a tool.',
+              model: 'deepseek-v4-flash',
+              finishReason: 'stop',
+            },
+          })
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-answer',
+              content: 'Beijing is sunny.',
+              model: 'deepseek-v4-flash',
+              finishReason: 'stop',
+            },
+          }),
+      }
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'today Beijing weather',
+        results: [{ title: 'Weather', url: 'https://example.com', snippet: '27C' }],
+        total: 1,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'deepseek',
+        searchLlmProviderId: 'provider-deepseek',
+        searchLlmModel: 'deepseek-v4-flash',
+      })
+
+      const result = await subagent.execute({
+        query: 'today Beijing weather',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      })
+
+      expect(result.success).toBe(true)
+      expect(mockWebSearchExecutor).toHaveBeenCalledTimes(1)
+      expect(mockWebSearchExecutor).toHaveBeenCalledWith({ query: 'today Beijing weather' })
+      // forced phase1 + phase2 answer (no auto retry because forced succeeded without tools)
+      expect(mockLlmAdapter.complete).toHaveBeenCalledTimes(2)
+      if (result.success) {
+        expect(result.answer).toBe('Beijing is sunny.')
+      }
+    })
+
+    it('retries with auto then falls back when forced toolChoice request fails', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi
+          .fn()
+          // forced fails
+          .mockResolvedValueOnce({
+            success: false,
+            error: { code: 'ALL_PROVIDERS_FAILED', message: 'All providers failed after 1 attempts' },
+          })
+          // auto also no tools
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-auto',
+              content: 'no tools',
+              model: 'deepseek-v4-flash',
+              finishReason: 'stop',
+            },
+          })
+          // answer generation
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-answer',
+              content: 'Recovered answer',
+              model: 'deepseek-v4-flash',
+              finishReason: 'stop',
+            },
+          }),
+      }
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'beijing weather',
+        results: [{ title: 'W', url: 'https://x.com', snippet: 'ok' }],
+        total: 1,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'deepseek',
+        searchLlmProviderId: 'provider-deepseek',
+        searchLlmModel: 'deepseek-v4-flash',
+      })
+
+      const result = await subagent.execute({
+        query: 'beijing weather',
+        userId: 'u',
+        sessionId: 's',
+      })
+
+      expect(result.success).toBe(true)
+      expect(mockLlmAdapter.complete).toHaveBeenCalledTimes(3)
+      expect(mockLlmAdapter.complete.mock.calls[0][0].toolChoice).toEqual({
+        type: 'function',
+        function: { name: 'web_search' },
+      })
+      expect(mockLlmAdapter.complete.mock.calls[1][0].toolChoice).toEqual('auto')
+      expect(mockWebSearchExecutor).toHaveBeenCalledWith({ query: 'beijing weather' })
+      if (result.success) {
+        expect(result.answer).toBe('Recovered answer')
+      }
+    })
+
+    it('forces toolChoice to the web_search function on first attempt', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi.fn().mockResolvedValue({
+          success: true,
+          response: {
+            id: 'resp-123',
+            content: '',
+            model: 'deepseek-v4-flash',
+            toolCalls: [
+              {
+                id: 'tc-1',
+                type: 'function',
+                function: { name: 'web_search', arguments: '{"query":"q"}' },
+              },
+            ],
+            finishReason: 'tool_calls',
+          },
+        }),
+      }
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        success: true,
+        query: 'q',
+        results: [],
+        total: 0,
+        provider: 'searxng',
+        endpointHost: 'localhost:8888',
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'deepseek',
+        searchLlmProviderId: 'provider-deepseek',
+        searchLlmModel: 'deepseek-v4-flash',
+      })
+
+      await subagent.execute({ query: 'q', userId: 'u', sessionId: 's' })
+      const llmRequest = mockLlmAdapter.complete.mock.calls[0][0]
+      expect(llmRequest.toolChoice).toEqual({ type: 'function', function: { name: 'web_search' } })
+    })
+  })
+
+
 })

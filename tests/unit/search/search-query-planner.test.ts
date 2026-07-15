@@ -63,3 +63,24 @@ describe('DefaultSearchQueryPlanner', () => {
     expect(plan.missingCriticalContext).toContain('location')
   })
 })
+
+  it('normalizes unknown model intents (e.g. fact) to general with a real query', () => {
+    const planner = new DefaultSearchQueryPlanner()
+    const plan = planner.plan({
+      originalQuestion: '北京今天天气 2026年7月15日',
+      // free-form intent emitted by models; not in SearchIntent union at runtime
+      intent: 'fact' as unknown as 'general',
+    })
+    expect(plan.intent).toBe('general')
+    expect(plan.searchQuery).toContain('北京')
+    expect(plan.searchQuery).not.toBe('undefined')
+    expect(plan.searchQuery.length).toBeGreaterThan(0)
+  })
+
+  it('never returns undefined searchQuery for empty-ish planned intents', () => {
+    const planner = new DefaultSearchQueryPlanner()
+    const plan = planner.plan({ originalQuestion: 'hello world' })
+    expect(typeof plan.searchQuery).toBe('string')
+    expect(plan.searchQuery).toBe('hello world')
+  })
+
