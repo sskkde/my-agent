@@ -48,6 +48,15 @@ function isToolExecutionResult(value: unknown): value is ToolExecutionResult {
   return isRecord(value) && typeof value.success === 'boolean'
 }
 
+/**
+ * Per-tool dispatch timeout overrides (milliseconds).
+ * Tools not listed here use the dispatcher default (30s).
+ * search_subagent performs two serial LLM calls + web search, so it needs more time.
+ */
+const PER_TOOL_TIMEOUT_MS: Record<string, number> = {
+  search_subagent: 90_000,
+}
+
 export class AgentKernel {
   private config: KernelConfig
   private lastBuiltModelInput?: import('./model-input/model-input-types.js').BuiltModelInput
@@ -661,6 +670,7 @@ export class AgentKernel {
     }
 
     const effectiveRunId = input.runId ?? input.contextBundle.runId
+    const toolTimeoutMs = PER_TOOL_TIMEOUT_MS[toolRequest.toolName]
     const toolDispatchRequest = createToolDispatchRequest({
       runId: effectiveRunId,
       userId: input.userId,
@@ -681,6 +691,7 @@ export class AgentKernel {
         mode: 'ask_on_write',
         grants: [],
       },
+      ...(toolTimeoutMs ? { executionPolicy: { timeoutMs: toolTimeoutMs } } : {}),
       ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
       ...(input.workDirId ? { workDirId: input.workDirId } : {}),
     })

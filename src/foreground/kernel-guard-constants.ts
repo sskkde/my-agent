@@ -22,7 +22,7 @@ export const DEFAULT_FOREGROUND_MAX_ITERATIONS = 6
  * Default timeout in milliseconds for foreground kernel execution.
  * Limits total execution time to prevent long-running user-facing requests.
  */
-export const DEFAULT_FOREGROUND_TIMEOUT_MS = 60000
+export const DEFAULT_FOREGROUND_TIMEOUT_MS = 120000
 
 /**
  * Default token budget for foreground context bundles.

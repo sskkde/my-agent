@@ -119,7 +119,7 @@ import { createModelInputRedactor } from '../kernel/model-input/model-input-reda
 import { createCloakBrowserProvider, type CloakBrowserProvider } from '../search/browser/cloakbrowser-launcher.js'
 import { BrowserSessionManager, toBrowserSessionId } from '../search/browser/browser-session-manager.js'
 import { BrowserFrameStream } from '../search/browser/browser-frame-stream.js'
-import { createSearchSubagent, type SearchSubagent } from '../search/search-subagent.js'
+import { createSearchSubagent } from '../search/search-subagent.js'
 import { executeWebSearch } from '../tools/builtins/web-search.js'
 import {
   registerAllForegroundTools,
@@ -632,22 +632,18 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const skillRegistry = createSkillRegistry()
   registerBuiltinSkills(skillRegistry)
 
-  const globalAgentConfig = agentConfigStore.getGlobalDefault()
-
-  // Resolve search subagent LLM: searchLlm* > foreground agent providerId/model > first enabled provider.
-  // This ensures subagents inherit the foreground agent's model when not explicitly configured,
-  // and never fall back to an unreachable provider (e.g. a local Ollama in Docker).
   const resolveSearchLlm = (): { providerId: string; model: string; providerType: string } | undefined => {
+    const currentConfig = agentConfigStore.getGlobalDefault()
     // 1. Explicit search-specific config
-    if (globalAgentConfig?.searchLlmProviderId && globalAgentConfig?.searchLlmModel) {
-      const p = providerConfigStore.getById(globalAgentConfig.searchLlmProviderId)
+    if (currentConfig?.searchLlmProviderId && currentConfig?.searchLlmModel) {
+      const p = providerConfigStore.getById(currentConfig.searchLlmProviderId)
       if (p?.providerType) {
-        return { providerId: globalAgentConfig.searchLlmProviderId, model: globalAgentConfig.searchLlmModel, providerType: p.providerType }
+        return { providerId: currentConfig.searchLlmProviderId, model: currentConfig.searchLlmModel, providerType: p.providerType }
       }
     }
     // 2. Foreground agent config (providerId/model)
-    const fgProviderId = globalAgentConfig?.providerId
-    const fgModel = globalAgentConfig?.model
+    const fgProviderId = currentConfig?.providerId
+    const fgModel = currentConfig?.model
     if (fgProviderId && fgModel) {
       const fgProvider = providerConfigStore.getById(fgProviderId)
       if (fgProvider?.enabled && fgProvider.providerType !== 'ollama') {
@@ -666,33 +662,31 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   }
 
   const resolvedSearchLlm = resolveSearchLlm()
-  let searchSubagent: SearchSubagent | undefined
-  if (resolvedSearchLlm) {
-    const searchProviderFamily = resolveProviderFamily(resolvedSearchLlm.providerType, resolvedSearchLlm.model)
-    searchSubagent = createSearchSubagent({
-      llmAdapter,
-      webSearchExecutor: async (params) => {
-        const result = await executeWebSearch({ query: params.query })
-        return result
-      },
-      modelInputBuilder,
-      providerFamily: searchProviderFamily,
-      searchLlmProviderId: resolvedSearchLlm.providerId,
-      searchLlmModel: resolvedSearchLlm.model,
-    })
-  }
+  const fallbackFamily = resolvedSearchLlm
+    ? resolveProviderFamily(resolvedSearchLlm.providerType, resolvedSearchLlm.model)
+    : 'openai_compatible'
+  const searchSubagent = createSearchSubagent({
+    llmAdapter,
+    webSearchExecutor: async (params) => {
+      const result = await executeWebSearch({ query: params.query })
+      return result
+    },
+    modelInputBuilder,
+    providerFamily: () => {
+      const r = resolveSearchLlm()
+      return r ? resolveProviderFamily(r.providerType, r.model) : fallbackFamily
+    },
+    searchLlmProviderId: () => resolveSearchLlm()?.providerId ?? resolvedSearchLlm?.providerId ?? '',
+    searchLlmModel: () => resolveSearchLlm()?.model ?? resolvedSearchLlm?.model ?? '',
+  })
 
-  if (searchSubagent) {
-    const searchSubagentDeps = {
-      searchSubagent,
-      queryPlanner: new DefaultSearchQueryPlanner(),
-      resultNormalizer: new DefaultSearchResultNormalizer(),
-      scopeGuard: assertSearchScope,
-    }
-    registerAllForegroundTools(toolRegistry, searchSubagentDeps)
-  } else {
-    registerAllForegroundTools(toolRegistry)
+  const searchSubagentDeps = {
+    searchSubagent,
+    queryPlanner: new DefaultSearchQueryPlanner(),
+    resultNormalizer: new DefaultSearchResultNormalizer(),
+    scopeGuard: assertSearchScope,
   }
+  registerAllForegroundTools(toolRegistry, searchSubagentDeps)
 
   // Create foreground agent with tool registry for schema projection
   const foregroundAgent =

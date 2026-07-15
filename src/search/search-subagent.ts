@@ -48,14 +48,14 @@ export interface SearchSubagentConfig {
   /** ModelInputBuilder for constructing LLM messages */
   modelInputBuilder: ModelInputBuilder
 
-  /** Provider family for template resolution (e.g., 'openai', 'deepseek') */
-  providerFamily: string
+  /** Provider family for template resolution (static string or dynamic resolver for live config) */
+  providerFamily: string | (() => string)
 
-  /** Search model provider ID */
-  searchLlmProviderId: string
+  /** Search model provider ID (static string or dynamic resolver for live config) */
+  searchLlmProviderId: string | (() => string)
 
-  /** Search model name */
-  searchLlmModel: string
+  /** Search model name (static string or dynamic resolver for live config) */
+  searchLlmModel: string | (() => string)
 
   /** Optional main model provider ID (for reference only, not used) */
   mainLlmProviderId?: string
@@ -173,13 +173,18 @@ function buildToolResultContext(
  * Create a search subagent
  */
 export function createSearchSubagent(config: SearchSubagentConfig) {
-  const { llmAdapter, webSearchExecutor, modelInputBuilder, providerFamily, searchLlmProviderId, searchLlmModel } =
-    config
+  const { llmAdapter, webSearchExecutor, modelInputBuilder } = config
 
   let cachedSegmentAHash: string | undefined
 
   async function execute(input: SearchSubagentInput): Promise<SearchSubagentResult> {
     const startTime = Date.now()
+    const searchLlmProviderId =
+      typeof config.searchLlmProviderId === 'function' ? config.searchLlmProviderId() : config.searchLlmProviderId
+    const searchLlmModel =
+      typeof config.searchLlmModel === 'function' ? config.searchLlmModel() : config.searchLlmModel
+    const providerFamily =
+      typeof config.providerFamily === 'function' ? config.providerFamily() : config.providerFamily
 
     if (llmAdapter.getProviderCapabilities) {
       const capabilities = llmAdapter.getProviderCapabilities()

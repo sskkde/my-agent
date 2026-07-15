@@ -25,6 +25,7 @@ export function createKernelDispatcherAdapter(runtimeDispatcher: DispatcherRunti
 
       const toolDispatchRequest = request.action.targetAction?.toolDispatchRequest
       const firstToolUse = toolDispatchRequest?.toolUses[0]
+      const dispatchTimeoutMs = toolDispatchRequest?.executionPolicy?.timeoutMs
 
       const action = {
         actionId,
@@ -64,6 +65,7 @@ export function createKernelDispatcherAdapter(runtimeDispatcher: DispatcherRunti
         status: 'created' as const,
         createdAt: now,
         updatedAt: now,
+        ...(dispatchTimeoutMs ? { policy: { mode: 'sync' as const, priority: 'normal' as const, timeoutMs: dispatchTimeoutMs } } : {}),
       }
 
       const context = {
