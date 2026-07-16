@@ -13,6 +13,7 @@ import type {
   ConsoleTimelineEvent,
   ConsoleTimelineEventType,
   SetModelRequest,
+  SetReasoningDepthRequest,
 } from '../types.js'
 import type { CursorPaginatedResponse } from '../pagination/cursor-types.js'
 import { decodeCursor, applyCursorPagination } from '../pagination/cursor-pagination.js'
@@ -20,6 +21,11 @@ import type { Stores } from '../../gateway/types.js'
 import type { SessionStore, Session } from '../../storage/session-store.js'
 import type { ProviderConfigStore } from '../../storage/provider-config-store.js'
 import { isDomesticProvider } from '../../llm/catalog/domestic-providers.js'
+import {
+  DEFAULT_REASONING_DEPTH,
+  isReasoningDepth,
+  type ReasoningDepth,
+} from '../../llm/reasoning-depth.js'
 import type { ConsoleTimelineService, TimelineOptions } from '../console-timeline.js'
 import { createConsoleTimelineService } from '../console-timeline.js'
 import type { TimelineBroadcaster, TimelineConnection } from '../timeline-broadcaster.js'
@@ -81,6 +87,7 @@ function sessionToConsoleSessionInfo(session: Session): ConsoleSessionInfo {
     updatedAt: session.updatedAt,
     selectedModel: session.selectedModel,
     selectedProviderId: session.selectedProviderId,
+    reasoningDepth: session.reasoningDepth ?? DEFAULT_REASONING_DEPTH,
   }
 }
 
@@ -279,6 +286,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           activeBackgroundRunIds: hydratedState.sessionContext?.activeBackgroundRunIds || [],
           selectedModel: persistedSession.selectedModel,
           selectedProviderId: persistedSession.selectedProviderId,
+          reasoningDepth: persistedSession.reasoningDepth ?? DEFAULT_REASONING_DEPTH,
         }
 
         const response: SessionResponse = { session: sessionInfo }
@@ -294,6 +302,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         activeBackgroundRunIds: [],
         selectedModel: persistedSession?.selectedModel,
         selectedProviderId: persistedSession?.selectedProviderId,
+        reasoningDepth: persistedSession?.reasoningDepth ?? DEFAULT_REASONING_DEPTH,
       }
 
       const response: SessionResponse = { session: sessionInfo }
@@ -883,6 +892,72 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
 
       return reply.code(200).send(success(response, request.requestId))
+    },
+  )
+
+  server.patch<{ Params: { sessionId: string }; Body: SetReasoningDepthRequest }>(
+    '/api/v1/sessions/:sessionId/reasoning-depth',
+    {
+      schema: {
+        params: sessionIdParamsSchema,
+        body: {
+          type: 'object',
+          required: ['reasoningDepth'],
+          properties: {
+            reasoningDepth: { type: 'string', enum: ['off', 'low', 'medium', 'high'] },
+          },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{ Params: { sessionId: string }; Body: SetReasoningDepthRequest }>,
+      reply: FastifyReply,
+    ) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.update)) {
+        return reply
+      }
+      const { sessionId } = request.params
+      const { reasoningDepth } = request.body
+
+      const userId = request.user?.userId
+      if (!userId) {
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
+      }
+
+      const persistedSession = sessionStore?.getById(sessionId)
+      if (!persistedSession) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
+      }
+
+      if (persistedSession.userId !== userId) {
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Access denied to this session', request.requestId))
+      }
+
+      if (!isReasoningDepth(reasoningDepth)) {
+        return reply
+          .code(400)
+          .send(
+            envelopeError(
+              'INVALID_REASONING_DEPTH',
+              'reasoningDepth must be one of: off, low, medium, high',
+              request.requestId,
+            ),
+          )
+      }
+
+      const ok = sessionStore?.setReasoningDepth(sessionId, reasoningDepth as ReasoningDepth)
+      if (!ok) {
+        return reply
+          .code(500)
+          .send(envelopeError('INTERNAL_ERROR', 'Failed to set reasoning depth for session', request.requestId))
+      }
+
+      const updatedSession = sessionStore?.getById(sessionId)
+      if (!updatedSession) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found after update', request.requestId))
+      }
+
+      return reply.code(200).send(success({ session: sessionToConsoleSessionInfo(updatedSession) }, request.requestId))
     },
   )
 }

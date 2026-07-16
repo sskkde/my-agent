@@ -1,3 +1,4 @@
+import { DEFAULT_REASONING_DEPTH } from '../../llm/reasoning-depth.js'
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
@@ -130,6 +131,7 @@ export function registerModelsRoutes(server: FastifyInstance, context: ApiContex
         if (session && session.userId === userId) {
           response.selectedModel = session.selectedModel
           response.selectedProviderId = session.selectedProviderId
+          response.reasoningDepth = session.reasoningDepth ?? DEFAULT_REASONING_DEPTH
         }
       }
 

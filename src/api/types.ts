@@ -43,6 +43,12 @@ export interface HealthResponse {
   modules: Record<string, ModuleHealth>
 }
 
+export type ReasoningDepth = 'off' | 'low' | 'medium' | 'high'
+
+export interface SetReasoningDepthRequest {
+  reasoningDepth: ReasoningDepth
+}
+
 export interface SessionInfo {
   sessionId: string
   userId: string
@@ -52,6 +58,7 @@ export interface SessionInfo {
   activeBackgroundRunIds: string[]
   selectedModel?: string
   selectedProviderId?: string
+  reasoningDepth?: ReasoningDepth
 }
 
 export interface SessionResponse {
@@ -301,6 +308,7 @@ export interface ConsoleSessionInfo {
   updatedAt: string
   selectedModel?: string
   selectedProviderId?: string
+  reasoningDepth?: ReasoningDepth
 }
 
 export interface PaginationParams {
@@ -533,6 +541,7 @@ export interface ModelsResponse {
   providers: ProviderSummary[]
   selectedModel?: string
   selectedProviderId?: string
+  reasoningDepth?: ReasoningDepth
 }
 
 // =============================================================================
