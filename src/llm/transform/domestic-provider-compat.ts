@@ -1,3 +1,6 @@
+import type { ReasoningDepth } from '../reasoning-depth.js'
+import { applyReasoningDepthToBody } from '../reasoning-depth.js'
+
 /**
  * Domestic Provider Compatibility Layer
  *
@@ -25,8 +28,9 @@
 export function normalizeDomesticProviderRequest(
   providerType: string,
   body: Record<string, unknown>,
+  reasoningDepth?: ReasoningDepth,
 ): Record<string, unknown> {
-  const normalized = { ...body }
+  let normalized: Record<string, unknown> = { ...body }
 
   // Quirk 1: Strip empty tools array for all domestic providers
   // Some domestic providers reject requests with an empty tools array
@@ -37,14 +41,19 @@ export function normalizeDomesticProviderRequest(
   // Provider-specific quirks
   switch (providerType) {
     case 'moonshot':
-      return applyMoonshotQuirks(normalized)
+      normalized = applyMoonshotQuirks(normalized)
+      break
 
     case 'mimo':
-      return applyMimoQuirks(normalized)
+      normalized = applyMimoQuirks(normalized)
+      break
 
     default:
-      return normalized
+      break
   }
+
+  // Map session reasoning depth to each domestic provider's wire format.
+  return applyReasoningDepthToBody(providerType, normalized, reasoningDepth)
 }
 
 /**

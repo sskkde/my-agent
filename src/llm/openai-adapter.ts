@@ -1,4 +1,5 @@
 import type { LLMRequest, LLMResponse, LLMResult, ProviderConfig, ToolCall } from './types'
+import { applyReasoningDepthToBody } from './reasoning-depth.js'
 import type { LLMProvider, ProviderStats, ProviderHealthStatus } from './provider'
 import type { CircuitBreaker, CircuitBreakerConfig } from './circuit-breaker'
 import { createCircuitBreaker } from './circuit-breaker'
@@ -210,7 +211,7 @@ function buildRequestBody(request: LLMRequest): Record<string, unknown> {
     body.response_format = { type: request.responseFormat.type }
   }
 
-  return body
+  return applyReasoningDepthToBody('openai', body, request.reasoningDepth)
 }
 
 class BaseProvider implements LLMProvider {

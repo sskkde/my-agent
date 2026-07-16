@@ -130,6 +130,8 @@ export function buildOpenAIChatRequestBody(request: LLMRequest, stream = false):
   if (request.responseFormat !== undefined) {
     body.response_format = { type: request.responseFormat.type }
   }
+  // reasoningDepth is applied by provider-aware applyReasoningDepthToBody()
+  // after this base body is built (formats differ per provider).
 
   return body
 }

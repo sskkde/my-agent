@@ -18,6 +18,7 @@ import {
 import { createErrorFromResponse } from './transform/provider-errors.js'
 import { normalizeDomesticProviderRequest } from './transform/domestic-provider-compat.js'
 import { isDomesticProvider } from './catalog/domestic-providers.js'
+import { applyReasoningDepthToBody } from './reasoning-depth.js'
 
 interface ExtendedProviderConfig extends ProviderConfig {
   apiKey?: string
@@ -261,7 +262,9 @@ export class OpenAIAdapter extends BaseProvider {
 
     let body = buildRequestBody(request)
     if (this.config.providerType && isDomesticProvider(this.config.providerType)) {
-      body = normalizeDomesticProviderRequest(this.config.providerType, body)
+      body = normalizeDomesticProviderRequest(this.config.providerType, body, request.reasoningDepth)
+    } else {
+      body = applyReasoningDepthToBody(this.config.providerType ?? 'openai', body, request.reasoningDepth)
     }
 
     try {
@@ -338,7 +341,9 @@ export class OpenAIAdapter extends BaseProvider {
     let body = buildRequestBody(request)
     body = { ...body, stream: true }
     if (this.config.providerType && isDomesticProvider(this.config.providerType)) {
-      body = normalizeDomesticProviderRequest(this.config.providerType, body)
+      body = normalizeDomesticProviderRequest(this.config.providerType, body, request.reasoningDepth)
+    } else {
+      body = applyReasoningDepthToBody(this.config.providerType ?? 'openai', body, request.reasoningDepth)
     }
 
     const controller = new AbortController()
@@ -436,7 +441,8 @@ export class OpenRouterAdapter extends BaseProvider {
 
     logRequest(url, headers, this.config.enableLogging || false)
 
-    const body = buildRequestBody(request)
+    let body = buildRequestBody(request)
+    body = applyReasoningDepthToBody('openrouter', body, request.reasoningDepth)
 
     try {
       const controller = new AbortController()
@@ -511,7 +517,8 @@ export class OpenRouterAdapter extends BaseProvider {
       extraHeaders: this.config.headers,
     })
 
-    const body = { ...buildRequestBody(request), stream: true }
+    let body = { ...buildRequestBody(request), stream: true }
+    body = applyReasoningDepthToBody('openrouter', body, request.reasoningDepth)
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs)
