@@ -183,6 +183,19 @@ describe('ComposerDock', () => {
       expect(screen.getByTestId('session-message-input')).toBeDisabled()
     })
 
+    it('restores focus to the input when sending finishes', () => {
+      const { rerender } = render(
+        <ComposerDock value="Hello" onChange={mockOnChange} onSend={mockOnSend} sending={true} />,
+      )
+      const input = screen.getByTestId('session-message-input')
+      expect(input).toBeDisabled()
+
+      rerender(<ComposerDock value="" onChange={mockOnChange} onSend={mockOnSend} sending={false} />)
+
+      expect(input).not.toBeDisabled()
+      expect(input).toHaveFocus()
+    })
+
     it('disables send button when sending', () => {
       render(<ComposerDock value="Hello" onChange={mockOnChange} onSend={mockOnSend} sending={true} />)
 

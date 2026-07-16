@@ -74,6 +74,7 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
   const selectedModel = model
   const [isDragOver, setIsDragOver] = useState(false)
   const dragCounterRef = useRef(0)
+  const wasSendingRef = useRef(sending)
 
   // Auto-resize textarea to fit content
   useEffect(() => {
@@ -84,6 +85,15 @@ const ComposerDock: React.FC<ComposerDockProps> = ({
       textarea.style.height = `${newHeight}px`
     }
   }, [value])
+
+  // Restore focus after send: disabled textarea loses browser focus and never gets it back.
+  useEffect(() => {
+    const wasSending = wasSendingRef.current
+    wasSendingRef.current = sending
+    if (wasSending && !sending) {
+      textareaRef.current?.focus()
+    }
+  }, [sending])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter sends, Shift+Enter creates newline
