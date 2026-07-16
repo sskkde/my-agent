@@ -201,6 +201,9 @@ class MockSessionStore implements SessionStore {
   setModel() {
     return false
   }
+  setReasoningDepth(_sessionId: string, _depth: string): boolean {
+    return true
+  }
   getCount() {
     return 0
   }

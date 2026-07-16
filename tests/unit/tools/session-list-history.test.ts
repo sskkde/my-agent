@@ -51,6 +51,7 @@ function createMockSessionStore(): SessionStore {
     updateTitle: () => true,
     updateUserId: () => true,
     setModel: () => true,
+    setReasoningDepth: () => false,
     getCount: (options = {}) => {
       let filtered = [...sessions]
       if (options.userId) {

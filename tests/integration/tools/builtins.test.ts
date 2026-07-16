@@ -465,6 +465,9 @@ class MockSessionStore implements SessionStore {
     }
     return false
   }
+  setReasoningDepth(_sessionId: string, _depth: string): boolean {
+    return true
+  }
 
   getCount(options?: { userId?: string; status?: 'active' | 'archived' | 'closed' }): number {
     let result = Array.from(this.sessions.values())

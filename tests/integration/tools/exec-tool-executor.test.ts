@@ -591,6 +591,7 @@ function createMockSessionStore() {
     updateTitle: () => false,
     updateUserId: () => false,
     setModel: () => false,
+    setReasoningDepth: () => false,
     getCount: () => 0,
   }
 }

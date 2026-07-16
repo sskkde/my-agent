@@ -394,6 +394,9 @@ function createMockSessionStore(): SessionStore & { sessions: Session[] } {
     setModel(): boolean {
       return true
     },
+    setReasoningDepth(_sessionId: string, _depth: string): boolean {
+      return true
+    },
     getCount(): number {
       return 0
     },
