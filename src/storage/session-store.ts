@@ -1,5 +1,10 @@
 import type { ConnectionManager } from './connection.js'
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
+import {
+  DEFAULT_REASONING_DEPTH,
+  parseReasoningDepth,
+  type ReasoningDepth,
+} from '../llm/reasoning-depth.js'
 
 export interface Session {
   sessionId: string
@@ -13,6 +18,8 @@ export interface Session {
   metadata?: Record<string, unknown>
   selectedModel?: string
   selectedProviderId?: string
+  /** Model reasoning depth for this session */
+  reasoningDepth?: ReasoningDepth
 }
 
 export interface CreateSessionInput {
@@ -46,6 +53,7 @@ export interface SessionStore {
   updateTitle(sessionId: string, title: string, tenantId?: string): boolean
   updateUserId(sessionId: string, newUserId: string, tenantId?: string): boolean
   setModel(sessionId: string, selectedModel: string, selectedProviderId: string, tenantId?: string): boolean
+  setReasoningDepth(sessionId: string, reasoningDepth: ReasoningDepth, tenantId?: string): boolean
   getCount(options?: { userId?: string; status?: 'active' | 'archived' | 'closed' }, tenantId?: string): number
 }
 
@@ -61,6 +69,7 @@ interface SessionRow {
   metadata: string | null
   selected_model: string | null
   selected_provider_id: string | null
+  reasoning_depth: string | null
 }
 
 class SessionStoreImpl implements SessionStore {
@@ -291,6 +300,27 @@ class SessionStoreImpl implements SessionStore {
     }
   }
 
+  setReasoningDepth(
+    sessionId: string,
+    reasoningDepth: ReasoningDepth,
+    tenantId: string = DEFAULT_TENANT_ID,
+  ): boolean {
+    const sql = `
+      UPDATE sessions
+      SET reasoning_depth = ?, updated_at = ?
+      WHERE tenant_id = ? AND session_id = ?
+    `
+
+    const now = new Date().toISOString()
+
+    try {
+      this.connection.exec(sql, [reasoningDepth, now, tenantId, sessionId])
+      return true
+    } catch {
+      return false
+    }
+  }
+
   getCount(
     options: { userId?: string; status?: 'active' | 'archived' | 'closed' } = {},
     tenantId: string = DEFAULT_TENANT_ID,
@@ -331,6 +361,7 @@ class SessionStoreImpl implements SessionStore {
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
       selectedModel: row.selected_model ?? undefined,
       selectedProviderId: row.selected_provider_id ?? undefined,
+      reasoningDepth: parseReasoningDepth(row.reasoning_depth ?? DEFAULT_REASONING_DEPTH),
     }
   }
 }

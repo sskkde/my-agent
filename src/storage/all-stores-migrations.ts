@@ -2842,6 +2842,18 @@ export const mockProviderTypeMigration: Migration = {
   `,
 }
 
+
+export const sessionReasoningDepthMigration: Migration = {
+  version: 73,
+  name: 'add_session_reasoning_depth',
+  up: `
+    ALTER TABLE sessions ADD COLUMN reasoning_depth TEXT DEFAULT 'off'
+  `,
+  down: `
+    -- SQLite doesn't support dropping columns cleanly; no-op rollback
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -3002,6 +3014,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Mock provider type (add 'mock' to provider_configs CHECK constraint)
   mockProviderTypeMigration, // v72
+
+  // Session reasoning depth for model thinking effort
+  sessionReasoningDepthMigration, // v73
 ]
 
 /**

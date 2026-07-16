@@ -158,7 +158,13 @@ export function createOrchestrationProcessor(
     const sessionProviderSelection = deps.sessionStore
       ? (() => {
           const session = deps.sessionStore.getById(input.sessionId)
-          return session ? { selectedProviderId: session.selectedProviderId, selectedModel: session.selectedModel } : {}
+          return session
+            ? {
+                selectedProviderId: session.selectedProviderId,
+                selectedModel: session.selectedModel,
+                reasoningDepth: session.reasoningDepth,
+              }
+            : {}
         })()
       : (optionSessionProviderSelection ?? {})
 
@@ -223,6 +229,8 @@ export function createOrchestrationProcessor(
           const resolvedModelInner =
             providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined
 
+          const sessionReasoningDepth =
+            deps.sessionStore?.getById(input.sessionId)?.reasoningDepth
           const foregroundState = buildForegroundSessionState(
             hydratedSession,
             defaultPersonaId,
@@ -231,6 +239,7 @@ export function createOrchestrationProcessor(
             resolvedModelInner,
             agentConfig ?? undefined,
             buildConversationHistory(deps.transcriptStore, input.sessionId),
+            sessionReasoningDepth,
           )
 
           emitStatus(
@@ -449,6 +458,7 @@ function buildForegroundSessionState(
   resolvedModel?: string,
   agentConfig?: AgentConfig,
   conversationHistory?: ForegroundSessionState['conversationHistory'],
+  reasoningDepth?: import('../llm/reasoning-depth.js').ReasoningDepth,
 ): ForegroundSessionState {
   return {
     hydratedSession,
@@ -471,6 +481,7 @@ function buildForegroundSessionState(
     resolvedProvider,
     resolvedModel,
     conversationHistory,
+    reasoningDepth,
   }
 }
 
