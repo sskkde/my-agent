@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import type { ConsoleTimelineEvent } from '../../../api/types'
 import ChatWelcome from './ChatWelcome'
 import ChatMessage from './ChatMessage'
+import ToolCallCard from '../../../components/ToolCallCard'
+import { mergeToolEvents } from './mergeToolEvents'
 
 export interface ChatMessageListProps {
   events: ConsoleTimelineEvent[]
@@ -30,33 +32,54 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 }) => {
   const chatAreaRef = useRef<HTMLDivElement>(null)
 
-  const messageEvents = events.filter(
-    (e) => e.eventType === 'user_message' || e.eventType === 'assistant_message',
+  const streamItems = useMemo(() => mergeToolEvents(events), [events])
+
+  const textMessageEvents = useMemo(
+    () =>
+      streamItems
+        .filter((item) => item.kind === 'message')
+        .map((item) => item.event),
+    [streamItems],
   )
 
   useEffect(() => {
-    if (chatAreaRef.current && messageEvents.length > 0) {
+    if (chatAreaRef.current && streamItems.length > 0) {
       chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight
     }
-  }, [events, messageEvents.length])
+  }, [events, streamItems.length])
 
-  const showTypingIndicator = loading && messageEvents.length > 0 && !messageEvents.some(isStreamingDraft)
+  const showTypingIndicator =
+    loading && textMessageEvents.length > 0 && !textMessageEvents.some(isStreamingDraft)
 
   return (
     <div className="chat-area" ref={chatAreaRef} data-testid="chat-message-list">
       <div className="chat-column">
-        {messageEvents.length === 0 ? (
+        {streamItems.length === 0 ? (
           <ChatWelcome onPromptSelect={onPromptSelect} />
         ) : (
           <div className="chat-messages">
-            {messageEvents.map((event) => {
-              const streaming = isStreamingDraft(event)
-              const placeholder = isPlaceholder(event)
+            {streamItems.map((item) => {
+              if (item.kind === 'tool') {
+                return (
+                  <div key={item.key} className="chat-tool-event" data-testid="chat-tool-event">
+                    <ToolCallCard
+                      toolName={item.toolName}
+                      parameters={item.parameters}
+                      result={item.resultText}
+                      status={item.status}
+                      durationMs={item.durationMs}
+                    />
+                  </div>
+                )
+              }
+
+              const streaming = isStreamingDraft(item.event)
+              const placeholder = isPlaceholder(item.event)
               return (
-                <div key={event.eventId} className="chat-message-group">
+                <div key={item.key} className="chat-message-group">
                   <ChatMessage
-                    role={eventTypeToRole(event.eventType)}
-                    content={streaming ? (event.content || '') : (event.content || '')}
+                    role={eventTypeToRole(item.event.eventType)}
+                    content={item.event.content || ''}
                     isStreaming={streaming}
                     isPlaceholder={placeholder}
                   />
@@ -88,7 +111,9 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
         {error && (
           <div className="chat-error" role="alert" data-testid="chat-message-error">
             {error}
-            <button onClick={onRetryStream} className="chat-error__retry">重试</button>
+            <button onClick={onRetryStream} className="chat-error__retry">
+              重试
+            </button>
           </div>
         )}
       </div>
