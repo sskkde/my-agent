@@ -16,9 +16,13 @@ import {
   DEFAULT_FOREGROUND_TOKEN_BUDGET,
   mapKernelErrorToForegroundResult,
 } from './kernel-guard-constants.js'
-import type { ForegroundTurnInput, ForegroundTurnResult, ToolCallSummary } from './foreground-runner-types.js'
+import type { ForegroundTurnInput, ForegroundTurnResult } from './foreground-runner-types.js'
 import { buildForegroundToolProjection, toToolPlaneProjection } from './tool-projection-mapper.js'
-import { mapKernelResultToTranscript } from './tools/transcript-redaction-mapper.js'
+import {
+  mapKernelResultToTranscript,
+  mapKernelResultToVisibleMessages,
+  buildToolCallSummaries,
+} from './tools/transcript-redaction-mapper.js'
 
 export function isMemorySemanticPolicyEnabled(): boolean {
   return process.env.MEMORY_SEMANTIC_POLICY_ENABLED === 'true'
@@ -131,11 +135,18 @@ class ForegroundAgentImpl implements ForegroundAgent {
     }
 
     const kernelResult = await this.agentKernel.run(kernelInput)
-    return this.mapKernelResultToForegroundResult(kernelResult)
+    return this.mapKernelResultToForegroundResult(kernelResult, input.turnId)
   }
 
-  private mapKernelResultToForegroundResult(kernelResult: KernelRunResult): ForegroundTurnResult {
+  private mapKernelResultToForegroundResult(
+    kernelResult: KernelRunResult,
+    turnId: string,
+  ): ForegroundTurnResult {
     if (kernelResult.finalStatus === 'completed') {
+      const runtimeSummary = mapKernelResultToTranscript(kernelResult) ?? undefined
+      const visibleMessages = mapKernelResultToVisibleMessages(kernelResult, turnId)
+      const toolCallSummaries =
+        runtimeSummary?.toolCallSummaries ?? buildToolCallSummaries(kernelResult) ?? undefined
       return {
         status: 'completed',
         finalResponse: kernelResult.finalResponse ?? '',
@@ -145,8 +156,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
           reason: 'Kernel execution completed',
         },
         structuredTrace: kernelResult.structuredTrace,
-        runtimeSummary: mapKernelResultToTranscript(kernelResult) ?? undefined,
-        toolCallSummaries: this.extractToolCallSummaries(kernelResult),
+        runtimeSummary,
+        toolCallSummaries,
+        ...(visibleMessages.length > 0 ? { visibleMessages } : {}),
         kernelResult: {
           finalStatus: kernelResult.finalStatus,
           finalResponse: kernelResult.finalResponse,
@@ -158,14 +170,6 @@ class ForegroundAgentImpl implements ForegroundAgent {
     }
 
     return mapKernelErrorToForegroundResult(kernelResult)
-  }
-
-  private extractToolCallSummaries(kernelResult: KernelRunResult): ToolCallSummary[] {
-    return kernelResult.toolCalls.map((toolCall) => ({
-      toolCallId: toolCall.toolCallId,
-      toolName: toolCall.toolName,
-      status: 'completed',
-    }))
   }
 
   private async buildForegroundSkillProjection(

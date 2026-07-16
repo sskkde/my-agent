@@ -1229,3 +1229,52 @@ describe('Timeout Safe Failure', () => {
     expect(result.decisionTrace.reason).toContain('TIMEOUT')
   })
 })
+
+
+// ─── Ordered Visible Turn Parts Contract (Plan C) ────────────────────────────
+
+describe('Ordered visible turn parts contract', () => {
+  it('allows assistant messages without tool fields', () => {
+    const result: ForegroundTurnResult = {
+      status: 'completed',
+      finalResponse: 'hello',
+      decisionTrace: { route: 'answer_directly', requiresPlanner: false, reason: 'ok' },
+      visibleMessages: [
+        { messageId: 'm1', role: 'assistant', content: 'hello', turnSequence: 0 },
+      ],
+    }
+    expect(result.visibleMessages?.[0].toolCallId).toBeUndefined()
+    expect(result.visibleMessages?.[0].content).toBe('hello')
+  })
+
+  it('allows tool messages with correlation and ordering fields', () => {
+    const result: ForegroundTurnResult = {
+      status: 'completed',
+      finalResponse: 'done',
+      decisionTrace: { route: 'answer_directly', requiresPlanner: false, reason: 'ok' },
+      visibleMessages: [
+        {
+          messageId: 'm1',
+          role: 'tool',
+          content: 'Tool completed: search',
+          turnSequence: 1,
+          toolCallId: 'tc-1',
+          toolName: 'search',
+          toolStatus: 'completed',
+          timestamp: '2026-07-16T00:00:00.000Z',
+        },
+      ],
+      toolCallSummaries: [
+        {
+          toolCallId: 'tc-1',
+          toolName: 'search',
+          status: 'completed',
+          startedAt: '2026-07-16T00:00:00.000Z',
+          turnSequence: 1,
+        },
+      ],
+    }
+    expect(result.visibleMessages?.[0].toolCallId).toBe('tc-1')
+    expect(result.toolCallSummaries?.[0].startedAt).toBeDefined()
+  })
+})

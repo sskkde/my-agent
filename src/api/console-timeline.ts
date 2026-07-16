@@ -3,6 +3,12 @@ import type { EventStore, EventRecord } from '../storage/event-store.js'
 import type { FileUploadStore } from '../storage/file-upload-store.js'
 import type { ConsoleTimelineEvent, ConsoleTimelineEventType, PaginationParams } from './types.js'
 import { redactMcpConfig } from '../connectors/mcp/mcp-secret-redaction.js'
+import {
+  buildToolCallEventId,
+  buildToolResultEventId,
+  formatToolRunningContent,
+  formatToolTerminalContent,
+} from '../foreground/tools/transcript-redaction-mapper.js'
 
 export interface ConsoleTimelineStores {
   transcriptStore: TranscriptStore
@@ -199,8 +205,14 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
     })
   }
 
-  // Associate tool-role messages to toolCallSummaries only when deterministic.
+  // Interleave visible messages with matching tool_call summaries (Plan C).
   const toolCallSummaries = turn.runtimeSummary?.toolCallSummaries ?? []
+  const summariesById = new Map(
+    toolCallSummaries
+      .filter((s) => typeof s.toolCallId === 'string' && s.toolCallId.length > 0)
+      .map((s) => [s.toolCallId, s]),
+  )
+  const emittedSummaryIds = new Set<string>()
   const toolRoleMessages =
     turn.output.visibleMessages?.filter((msg) => msg.role === 'tool') ?? []
   const canAssociateByOrdinal =
@@ -209,20 +221,81 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
     toolCallSummaries.length === 1 && toolRoleMessages.length === 1
   let toolResultOrdinal = 0
 
-  // Assistant visible messages and thinking summaries
+  // Legacy path: no tool-role messages but toolCallSummaries exist (e.g. final answer only).
+  // Emit tools before assistant messages so history matches execution order.
+  const hasToolRoleMessages = toolRoleMessages.length > 0
+  const legacyToolsOnlyAsSummaries =
+    !hasToolRoleMessages && toolCallSummaries.length > 0
+
+  const emitOrphanToolSummary = (
+    summary: (typeof toolCallSummaries)[number],
+    index: number,
+  ): void => {
+    if (emittedSummaryIds.has(summary.toolCallId)) return
+    emittedSummaryIds.add(summary.toolCallId)
+    const status = summary.status === 'pending' ? 'completed' : summary.status
+    const ts = summary.startedAt ?? outputTimestamp
+    events.push({
+      eventId: buildToolCallEventId(turn.turnId, summary.toolCallId),
+      eventType: 'tool_call',
+      sessionId: turn.sessionId,
+      timestamp: ts,
+      content: formatToolRunningContent(summary.toolName),
+      metadata: {
+        ...baseMetadata,
+        toolCallIndex: summary.turnSequence ?? index,
+        toolCallId: summary.toolCallId,
+        toolName: summary.toolName,
+        status: 'running',
+        turnSequence: summary.turnSequence ?? index,
+      },
+      actor: 'system',
+    })
+    events.push({
+      eventId: buildToolResultEventId(turn.turnId, summary.toolCallId),
+      eventType: 'tool_result',
+      sessionId: turn.sessionId,
+      timestamp: ts,
+      content: formatToolTerminalContent(summary.toolName, status === 'failed'),
+      metadata: {
+        ...baseMetadata,
+        toolCallId: summary.toolCallId,
+        toolName: summary.toolName,
+        status,
+        result: formatToolTerminalContent(summary.toolName, status === 'failed'),
+        turnSequence: summary.turnSequence ?? index,
+      },
+      actor: 'system',
+    })
+  }
+
+  if (legacyToolsOnlyAsSummaries) {
+    toolCallSummaries.forEach((summary, index) => emitOrphanToolSummary(summary, index))
+  }
+
   if (turn.output.visibleMessages && turn.output.visibleMessages.length > 0) {
     turn.output.visibleMessages.forEach((msg, index) => {
+      const partTimestamp = msg.timestamp ?? outputTimestamp
+      // When legacy tool summaries were emitted first (no tool-role messages),
+      // force ALL assistants after every tool pair so multi-tool same-timestamp
+      // sorts cannot interleave assistants between tools, even if the persisted
+      // message carries its own turnSequence: 0.
+      const turnSequence = legacyToolsOnlyAsSummaries
+        ? toolCallSummaries.length + index
+        : (msg.turnSequence ?? index)
+
       if (msg.role === 'assistant') {
         events.push({
           eventId: `turn-${turn.turnId}-msg-${index}`,
           eventType: 'assistant_message',
           sessionId: turn.sessionId,
-          timestamp: outputTimestamp,
+          timestamp: partTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
             messageId: msg.messageId,
             messageIndex: index,
+            turnSequence,
           },
           actor: 'assistant',
         })
@@ -231,12 +304,13 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           eventId: `turn-${turn.turnId}-thinking-${index}`,
           eventType: 'thinking_summary',
           sessionId: turn.sessionId,
-          timestamp: outputTimestamp,
+          timestamp: partTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
             messageId: msg.messageId,
             messageIndex: index,
+            turnSequence,
           },
           actor: 'assistant',
         })
@@ -245,12 +319,13 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           eventId: `turn-${turn.turnId}-status-${index}`,
           eventType: 'system_status',
           sessionId: turn.sessionId,
-          timestamp: outputTimestamp,
+          timestamp: partTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
             messageId: msg.messageId,
             messageIndex: index,
+            turnSequence,
           },
           actor: 'system',
         })
@@ -259,50 +334,88 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           eventId: `turn-${turn.turnId}-approval-decision-${index}`,
           eventType: 'approval_decision',
           sessionId: turn.sessionId,
-          timestamp: outputTimestamp,
+          timestamp: partTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
             messageId: msg.messageId,
             messageIndex: index,
+            turnSequence,
           },
           actor: 'system',
         })
       } else if (msg.role === 'tool') {
-        const associatedSummary =
-          canAssociateByOrdinal || canAssociateSingle
-            ? toolCallSummaries[toolResultOrdinal]
+        const byId =
+          typeof msg.toolCallId === 'string' && msg.toolCallId.length > 0
+            ? summariesById.get(msg.toolCallId)
             : undefined
-        toolResultOrdinal += 1
+        const associatedSummary =
+          byId ??
+          ((canAssociateByOrdinal || canAssociateSingle)
+            ? toolCallSummaries[toolResultOrdinal]
+            : undefined)
+        if (!byId) toolResultOrdinal += 1
+
+        const toolCallId = msg.toolCallId ?? associatedSummary?.toolCallId
+        const toolName = msg.toolName ?? associatedSummary?.toolName ?? 'unknown'
+        const status =
+          msg.toolStatus ??
+          (associatedSummary?.status === 'pending' ? 'completed' : associatedSummary?.status) ??
+          'completed'
+
+        if (toolCallId) {
+          emittedSummaryIds.add(toolCallId)
+          events.push({
+            eventId: buildToolCallEventId(turn.turnId, toolCallId),
+            eventType: 'tool_call',
+            sessionId: turn.sessionId,
+            timestamp: associatedSummary?.startedAt ?? partTimestamp,
+            content: formatToolRunningContent(toolName),
+            metadata: {
+              ...baseMetadata,
+              toolCallId,
+              toolName,
+              status: 'running',
+              turnSequence,
+              toolCallIndex: associatedSummary?.turnSequence,
+            },
+            actor: 'system',
+          })
+        }
 
         const toolResultMetadata: Record<string, unknown> = {
           ...baseMetadata,
           messageId: msg.messageId,
           messageIndex: index,
-          status: associatedSummary?.status ?? 'completed',
+          status,
+          turnSequence,
         }
-        if (associatedSummary?.toolName) {
-          toolResultMetadata.toolName = associatedSummary.toolName
-        }
+        if (toolCallId) toolResultMetadata.toolCallId = toolCallId
+        if (toolName) toolResultMetadata.toolName = toolName
 
+        // Only attach generic redacted content as result for non-AMap tools.
+        // AMap allowlist may enrich structured metadata from content when applicable.
         if (amapToolNames.length > 0) {
           toolResultMetadata.amapToolNames = amapToolNames
           const amapResult = buildAMapResultMetadata(msg.content)
           if (amapResult) {
             toolResultMetadata.amapResult = amapResult
-            // Prefer redacted structured AMap result over raw content (may contain secrets).
             toolResultMetadata.result = JSON.stringify(amapResult)
+          } else {
+            toolResultMetadata.result = msg.content
           }
         } else {
           toolResultMetadata.result = msg.content
         }
 
         events.push({
-          eventId: `turn-${turn.turnId}-tool-result-${index}`,
+          eventId: toolCallId
+            ? buildToolResultEventId(turn.turnId, toolCallId)
+            : `turn-${turn.turnId}-tool-result-${index}`,
           eventType: 'tool_result',
           sessionId: turn.sessionId,
-          timestamp: outputTimestamp,
-          content: msg.content,
+          timestamp: partTimestamp,
+          content: msg.content || formatToolTerminalContent(toolName, status === 'failed'),
           metadata: toolResultMetadata,
           actor: 'system',
         })
@@ -311,12 +424,13 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           eventId: `turn-${turn.turnId}-error-${index}`,
           eventType: 'error',
           sessionId: turn.sessionId,
-          timestamp: outputTimestamp,
+          timestamp: partTimestamp,
           content: msg.content,
           metadata: {
             ...baseMetadata,
             messageId: msg.messageId,
             messageIndex: index,
+            turnSequence,
           },
           actor: 'system',
         })
@@ -324,25 +438,9 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
     })
   }
 
-  // Tool call summaries
-  if (toolCallSummaries.length > 0) {
-    toolCallSummaries.forEach((summary, index) => {
-      events.push({
-        eventId: `turn-${turn.turnId}-tool-${index}`,
-        eventType: 'tool_call',
-        sessionId: turn.sessionId,
-        timestamp: outputTimestamp,
-        content: `${summary.toolName}: ${summary.status}`,
-        metadata: {
-          ...baseMetadata,
-          toolCallIndex: index,
-          toolCallId: summary.toolCallId,
-          toolName: summary.toolName,
-          status: summary.status,
-        },
-        actor: 'system',
-      })
-    })
+  // Remaining orphan tool call summaries (matched path may leave some unmatched)
+  if (!legacyToolsOnlyAsSummaries && toolCallSummaries.length > 0) {
+    toolCallSummaries.forEach((summary, index) => emitOrphanToolSummary(summary, index))
   }
 
   // Approval summaries
@@ -502,6 +600,21 @@ class ConsoleTimelineServiceImpl implements ConsoleTimelineService {
       if (timeCompare !== 0) {
         return timeCompare
       }
+      const seqA = typeof a.metadata?.turnSequence === 'number' ? a.metadata.turnSequence : undefined
+      const seqB = typeof b.metadata?.turnSequence === 'number' ? b.metadata.turnSequence : undefined
+      if (seqA !== undefined && seqB !== undefined && seqA !== seqB) {
+        return seqA - seqB
+      }
+      // Prefer tool_call before tool_result before assistant when sequences tie
+      const rank = (e: ConsoleTimelineEvent): number => {
+        if (e.eventType === 'user_message') return 0
+        if (e.eventType === 'tool_call') return 1
+        if (e.eventType === 'tool_result') return 2
+        if (e.eventType === 'assistant_message') return 3
+        return 4
+      }
+      const rankCompare = rank(a) - rank(b)
+      if (rankCompare !== 0) return rankCompare
       return a.eventId.localeCompare(b.eventId)
     })
 

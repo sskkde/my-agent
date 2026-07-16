@@ -567,3 +567,243 @@ describe('ConsoleTimelineService', () => {
     })
   })
 })
+
+
+
+describe('Plan C interleaved tool order', () => {
+  it('emits tool_call before tool_result before later assistant text', () => {
+    const savedTranscripts: TurnTranscript[] = []
+    const mockTranscriptStore = {
+      saveTurn: vi.fn((transcript: TurnTranscript) => {
+        savedTranscripts.push(transcript)
+        return true
+      }),
+      getTurn: vi.fn().mockReturnValue(null),
+      findBySession: vi.fn((sessionId: string) => savedTranscripts.filter((t) => t.sessionId === sessionId)),
+      search: vi.fn().mockReturnValue([]),
+      findByArtifactRef: vi.fn().mockReturnValue([]),
+      findByPlannerRunId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn().mockReturnValue(0),
+    } as unknown as TranscriptStore
+
+    const mockEventStore = {
+      append: vi.fn(),
+      query: vi.fn().mockReturnValue([]),
+      findByCorrelationId: vi.fn().mockReturnValue([]),
+      findByCausationId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn(),
+    } as unknown as EventStore
+
+    const stores: ConsoleTimelineStores = {
+      transcriptStore: mockTranscriptStore,
+      eventStore: mockEventStore,
+    }
+
+    const sessionId = 'session-plan-c-001'
+    const turnId = 'turn-plan-c-001'
+    const transcript: TurnTranscript = {
+      turnId,
+      sessionId,
+      userId: 'user-1',
+      input: { userMessageSummary: 'check weather', inboundTimestamp: '2026-07-16T09:59:00.000Z' },
+      output: {
+        visibleMessages: [
+          {
+            messageId: 'm0',
+            role: 'assistant',
+            content: 'I will check.',
+            turnSequence: 0,
+            timestamp: '2026-07-16T10:00:00.000Z',
+          },
+          {
+            messageId: 'm1',
+            role: 'tool',
+            content: 'Tool completed: search',
+            turnSequence: 1,
+            toolCallId: 'tc-1',
+            toolName: 'search',
+            toolStatus: 'completed',
+            timestamp: '2026-07-16T10:00:01.000Z',
+          },
+          {
+            messageId: 'm2',
+            role: 'assistant',
+            content: 'Final answer.',
+            turnSequence: 2,
+            timestamp: '2026-07-16T10:00:02.000Z',
+          },
+        ],
+      },
+      runtimeSummary: {
+        toolCallSummaries: [
+          {
+            toolCallId: 'tc-1',
+            toolName: 'search',
+            status: 'completed',
+            startedAt: '2026-07-16T10:00:00.500Z',
+            turnSequence: 0,
+          },
+        ],
+      },
+      visibility: 'public',
+      createdAt: '2026-07-16T10:00:02.000Z',
+    }
+
+    mockTranscriptStore.saveTurn(transcript)
+    const service = createConsoleTimelineService(stores)
+    const result = service.getTimeline(sessionId)
+    const types = result.events.map((e) => e.eventType)
+    expect(types).toEqual([
+      'user_message',
+      'assistant_message',
+      'tool_call',
+      'tool_result',
+      'assistant_message',
+    ])
+    const toolCall = result.events.find((e) => e.eventType === 'tool_call')
+    const toolResult = result.events.find((e) => e.eventType === 'tool_result')
+    expect(toolCall?.metadata?.toolCallId).toBe('tc-1')
+    expect(toolResult?.metadata?.toolCallId).toBe('tc-1')
+    expect(toolCall?.eventId).toContain('tc-1')
+    expect(toolResult?.eventId).toContain('tc-1')
+  })
+})
+
+describe('Plan C legacy tool-before-final-answer', () => {
+  it('places tool_call/tool_result before final assistant when only summaries exist', () => {
+    const savedTranscripts: TurnTranscript[] = []
+    const mockTranscriptStore = {
+      saveTurn: vi.fn((transcript: TurnTranscript) => {
+        savedTranscripts.push(transcript)
+        return true
+      }),
+      getTurn: vi.fn().mockReturnValue(null),
+      findBySession: vi.fn((sessionId: string) => savedTranscripts.filter((x) => x.sessionId === sessionId)),
+      search: vi.fn().mockReturnValue([]),
+      findByArtifactRef: vi.fn().mockReturnValue([]),
+      findByPlannerRunId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn().mockReturnValue(0),
+    } as unknown as TranscriptStore
+    const mockEventStore = {
+      append: vi.fn(),
+      query: vi.fn().mockReturnValue([]),
+      findByCorrelationId: vi.fn().mockReturnValue([]),
+      findByCausationId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn(),
+    } as unknown as EventStore
+    const stores: ConsoleTimelineStores = {
+      transcriptStore: mockTranscriptStore,
+      eventStore: mockEventStore,
+    }
+
+    const sessionId = 'session-legacy-001'
+    mockTranscriptStore.saveTurn({
+      turnId: 'turn-legacy-1',
+      sessionId,
+      userId: 'u1',
+      input: {
+        userMessageSummary: '今天北京天气怎么样？',
+        inboundTimestamp: '2026-07-16T05:57:34.000Z',
+      },
+      output: {
+        visibleMessages: [
+          {
+            messageId: 'msg-final',
+            role: 'assistant',
+            content: '根据搜索结果，北京今天…',
+          },
+        ],
+      },
+      runtimeSummary: {
+        toolCallSummaries: [
+          {
+            toolCallId: 'call_00_uXf1KD3x087vCm39YWZn9190',
+            toolName: 'search_subagent',
+            status: 'completed',
+          },
+        ],
+      },
+      visibility: 'public',
+      createdAt: '2026-07-16T05:57:49.000Z',
+    })
+
+    const result = createConsoleTimelineService(stores).getTimeline(sessionId)
+    const types = result.events.map((e) => e.eventType)
+    expect(types).toEqual(['user_message', 'tool_call', 'tool_result', 'assistant_message'])
+  })
+})
+
+describe('Plan C multi-tool legacy summary-only order', () => {
+  it('places ALL tool pairs before final assistant when timestamps are identical', () => {
+    const savedTranscripts: TurnTranscript[] = []
+    const mockTranscriptStore = {
+      saveTurn: vi.fn((transcript: TurnTranscript) => {
+        savedTranscripts.push(transcript)
+        return true
+      }),
+      getTurn: vi.fn().mockReturnValue(null),
+      findBySession: vi.fn((sessionId: string) => savedTranscripts.filter((x) => x.sessionId === sessionId)),
+      search: vi.fn().mockReturnValue([]),
+      findByArtifactRef: vi.fn().mockReturnValue([]),
+      findByPlannerRunId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn().mockReturnValue(0),
+    } as unknown as TranscriptStore
+    const mockEventStore = {
+      append: vi.fn(),
+      query: vi.fn().mockReturnValue([]),
+      findByCorrelationId: vi.fn().mockReturnValue([]),
+      findByCausationId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn(),
+    } as unknown as EventStore
+    const stores: ConsoleTimelineStores = {
+      transcriptStore: mockTranscriptStore,
+      eventStore: mockEventStore,
+    }
+
+    const sessionId = 'session-legacy-multi-001'
+    const sameTs = '2026-07-16T12:00:00.000Z'
+    mockTranscriptStore.saveTurn({
+      turnId: 'turn-legacy-multi',
+      sessionId,
+      userId: 'u1',
+      input: {
+        userMessageSummary: 'do two tools',
+        inboundTimestamp: sameTs,
+      },
+      output: {
+        visibleMessages: [
+          {
+            messageId: 'msg-final',
+            role: 'assistant',
+            content: 'Final answer after two tools.',
+            // Legacy persisted message that DOES carry turnSequence: 0.
+            // Even so, legacy path must place assistant after all tool pairs.
+            turnSequence: 0,
+            timestamp: '2026-07-16T12:00:00.000Z',
+          },
+        ],
+      },
+      runtimeSummary: {
+        toolCallSummaries: [
+          { toolCallId: 'tc-a', toolName: 'search', status: 'completed' },
+          { toolCallId: 'tc-b', toolName: 'read', status: 'completed' },
+        ],
+      },
+      visibility: 'public',
+      createdAt: sameTs,
+    })
+
+    const result = createConsoleTimelineService(stores).getTimeline(sessionId)
+    const types = result.events.map((e) => e.eventType)
+    expect(types).toEqual([
+      'user_message',
+      'tool_call',
+      'tool_result',
+      'tool_call',
+      'tool_result',
+      'assistant_message',
+    ])
+    expect(result.events.filter((e) => e.eventType === 'tool_call')[0].metadata?.toolCallId).toBe('tc-a')
+    expect(result.events.filter((e) => e.eventType === 'tool_call')[1].metadata?.toolCallId).toBe('tc-b')
+  })
+})

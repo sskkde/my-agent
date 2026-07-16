@@ -64,9 +64,19 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const handleSelectSessionRef = useRef<((sessionId: string) => void) | null>(null)
   const fetchingModelsForSessionRef = useRef<string | null>(null)
 
-  const { sessions, sessionsLoading, sessionsError, fetchSessions, handleCreateSession } = useSessionList({
+  const {
+    sessions,
+    sessionsLoading,
+    sessionsError,
+    fetchSessions,
+    scheduleSessionRefresh,
+    handleCreateSession,
+  } = useSessionList({
     onSessionCreated: (sessionId: string) => handleSelectSessionRef.current?.(sessionId),
   })
+
+  /** Updated by useSSEStream effect; post-send poll reads this for SSE-first policy. */
+  const streamStatusRef = React.useRef<'connecting' | 'connected' | 'disconnected'>('disconnected')
 
   const {
     selectedSessionId,
@@ -387,6 +397,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       clearAssistantActivityForSession,
       fetchTimeline,
       fetchSessions,
+      getStreamStatus: () => streamStatusRef.current,
       createCommandContext,
       onSessionRequired: handleSessionRequired,
     },
@@ -408,7 +419,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         return [...prev, event]
       })
       if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
-        fetchSessions(true)
+        scheduleSessionRefresh()
       }
       if (['assistant_message', 'error'].includes(event.eventType)) {
         const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
@@ -453,6 +464,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       })
     },
   })
+
+  useEffect(() => {
+    streamStatusRef.current = streamStatus
+  }, [streamStatus])
 
   useEffect(() => {
     return () => {

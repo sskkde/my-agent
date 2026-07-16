@@ -85,6 +85,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
   const { pendingApproval, refresh: refreshPendingApproval } = useSessionPendingApproval(selectedSessionId)
 
   const mountedRef = useRef(true)
+  const streamStatusRef = useRef<'connecting' | 'connected' | 'disconnected'>('disconnected')
   const pendingAssistantPlaceholdersRef = useRef(pendingAssistantPlaceholders)
 
   const updatePendingAssistantPlaceholders = useCallback(
@@ -336,6 +337,10 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     onToken: handleSSEToken,
   })
 
+  useEffect(() => {
+    streamStatusRef.current = streamStatus
+  }, [streamStatus])
+
   const workdirState = useWorkdir(selectedSessionId)
 
   const {
@@ -366,6 +371,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       clearAssistantActivityForSession,
       fetchTimeline,
       fetchSessions,
+      getStreamStatus: () => streamStatusRef.current,
       createCommandContext,
     },
   })

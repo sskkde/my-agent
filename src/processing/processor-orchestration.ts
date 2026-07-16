@@ -370,6 +370,9 @@ export function createOrchestrationProcessor(
                   reason: turnResult.decisionTrace?.reason,
                   runtimeSummary: turnResult.runtimeSummary,
                   kernelResult: turnResult.kernelResult,
+                  ...(turnResult.visibleMessages
+                    ? { visibleMessages: turnResult.visibleMessages }
+                    : {}),
                 },
               })
             }
@@ -623,7 +626,31 @@ function persistTurnTranscript(
   const visibleMessages: VisibleMessage[] = []
 
   if (output.success && output.result) {
-    if (output.result.text) {
+    const projected = extractProjectedVisibleMessages(output.result.data)
+    if (projected && projected.length > 0) {
+      for (const msg of projected) {
+        visibleMessages.push(copyVisibleMessage(msg))
+      }
+      // Append finalResponse only if projection has no trailing assistant or differs.
+      const finalText = output.result.text?.trim()
+      if (finalText) {
+        const lastAssistant = [...visibleMessages].reverse().find((m) => m.role === 'assistant')
+        if (!lastAssistant || lastAssistant.content !== output.result.text) {
+          // If last part is not assistant with same content, append final when missing entirely
+          const hasSameFinal = visibleMessages.some(
+            (m) => m.role === 'assistant' && m.content === output.result!.text,
+          )
+          if (!hasSameFinal) {
+            visibleMessages.push({
+              messageId: `msg-${input.correlationId}-assistant-final`,
+              role: 'assistant',
+              content: output.result.text!,
+              turnSequence: visibleMessages.length,
+            })
+          }
+        }
+      }
+    } else if (output.result.text) {
       visibleMessages.push({
         messageId: `msg-${input.correlationId}-assistant`,
         role: 'assistant',
@@ -683,5 +710,35 @@ function persistTurnTranscript(
     return true
   } catch {
     return false
+  }
+}
+
+
+function extractProjectedVisibleMessages(data: unknown): VisibleMessage[] | undefined {
+  if (!data || typeof data !== 'object') return undefined
+  const raw = (data as Record<string, unknown>).visibleMessages
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  const messages: VisibleMessage[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const msg = item as Record<string, unknown>
+    if (typeof msg.messageId !== 'string' || typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+      continue
+    }
+    messages.push(copyVisibleMessage(msg as unknown as VisibleMessage))
+  }
+  return messages.length > 0 ? messages : undefined
+}
+
+function copyVisibleMessage(msg: VisibleMessage): VisibleMessage {
+  return {
+    messageId: msg.messageId,
+    role: msg.role,
+    content: msg.content,
+    ...(msg.timestamp ? { timestamp: msg.timestamp } : {}),
+    ...(msg.turnSequence !== undefined ? { turnSequence: msg.turnSequence } : {}),
+    ...(msg.toolCallId ? { toolCallId: msg.toolCallId } : {}),
+    ...(msg.toolName ? { toolName: msg.toolName } : {}),
+    ...(msg.toolStatus ? { toolStatus: msg.toolStatus } : {}),
   }
 }

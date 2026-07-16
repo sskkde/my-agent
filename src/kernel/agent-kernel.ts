@@ -20,6 +20,12 @@ import { isPromptMemoryP0Enabled, isToolLoopV2Enabled } from '../prompt/feature-
 import { getPromptMemoryP0Phase } from '../prompt/feature-flag-phase.js'
 import { ToolResultPairingGuard } from './tool-result-pairing-guard.js'
 import {
+  buildToolCallEventId,
+  buildToolResultEventId,
+  formatToolRunningContent,
+  formatToolTerminalContent,
+} from '../foreground/tools/transcript-redaction-mapper.js'
+import {
   createToolDispatchRequest,
   createToolDispatchResult,
   type ToolExecutionMappedResult,
@@ -84,7 +90,7 @@ export class AgentKernel {
         state.currentIteration = iteration + 1
 
         if (Date.now() - startTime > timeoutMs) {
-          this.flushPairingGuard(pairingGuard, state, 'timeout')
+          this.flushPairingGuard(pairingGuard, state, 'timeout', input)
           state.status = 'failed'
           return this.buildResult(state, 'timeout', undefined, undefined, undefined, input, aggregatedUsage)
         }
@@ -120,7 +126,7 @@ export class AgentKernel {
           if (streamSuccess && streamResponse) {
             llmResult = { success: true, response: streamResponse.response, providerId: streamResponse.providerId }
           } else if (streamTimedOut) {
-            this.flushPairingGuard(pairingGuard, state, 'timeout')
+            this.flushPairingGuard(pairingGuard, state, 'timeout', input)
             state.status = 'failed'
             return this.buildResult(state, 'failed', { code: 'KERNEL_ERROR', message: 'LLM stream timeout' }, undefined, undefined, input, aggregatedUsage)
           } else {
@@ -140,7 +146,7 @@ export class AgentKernel {
         }
 
         if (!llmResult.success) {
-          this.flushPairingGuard(pairingGuard, state, 'llm_error')
+          this.flushPairingGuard(pairingGuard, state, 'llm_error', input)
           state.status = 'failed'
           this.commitTranscript(state, 'error', {
             code: llmResult.error.code,
@@ -188,8 +194,9 @@ export class AgentKernel {
           let shouldStop = false
           let stopStructuredResult: unknown
 
-          for (const toolRequest of toolUseRequests) {
+          for (const [toolCallIndex, toolRequest] of toolUseRequests.entries()) {
             this.commitTranscript(state, 'tool_call', toolRequest)
+            this.broadcastToolCallRunning(input, toolRequest, toolCallIndex)
             let toolResult: ToolUseResult
 
             const internalHandler = this.resolveInternalToolHandler(toolRequest.toolName, input)
@@ -230,16 +237,17 @@ export class AgentKernel {
 
             pairingGuard.acceptToolResult(toolResult)
             this.commitTranscript(state, 'tool_result', toolResult)
+            this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
             this.mergeToolResult(state, toolRequest, toolResult)
 
             if (shouldStop) {
-              this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop')
+              this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop', input)
               state.status = 'completed'
               return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult, input, aggregatedUsage)
             }
           }
 
-          this.flushPairingGuard(pairingGuard, state, 'iteration_end')
+          this.flushPairingGuard(pairingGuard, state, 'iteration_end', input)
 
           const compactResult = this.checkCompactTrigger(input.contextBundle, state)
           let executionResult: CompactExecutorResult | undefined
@@ -294,11 +302,11 @@ export class AgentKernel {
         }
       }
 
-      this.flushPairingGuard(pairingGuard, state, 'max_iterations')
+      this.flushPairingGuard(pairingGuard, state, 'max_iterations', input)
       state.status = 'failed'
       return this.buildResult(state, 'max_iterations_reached', undefined, undefined, undefined, input, aggregatedUsage)
     } catch (error) {
-      this.flushPairingGuard(pairingGuard, state, 'kernel_error')
+      this.flushPairingGuard(pairingGuard, state, 'kernel_error', input)
       state.status = 'failed'
       const errorMessage = error instanceof Error ? error.message : String(error)
       const streamingErrorMatch = errorMessage.match(/^STREAMING_ERROR: (.+)$/)
@@ -852,16 +860,25 @@ export class AgentKernel {
     state.contextItems.push(item)
   }
 
-  private flushPairingGuard(guard: ToolResultPairingGuard, state: KernelRunState, reason: string): void {
+  private flushPairingGuard(
+    guard: ToolResultPairingGuard,
+    state: KernelRunState,
+    reason: string,
+    input?: KernelRunInput,
+  ): void {
     if (!guard.hasPendingCalls()) return
 
     const missingResults = guard.flushMissingResults(reason)
     for (const syntheticResult of missingResults) {
       this.commitTranscript(state, 'tool_result', syntheticResult)
+      const known = state.toolCalls.find((tc) => tc.toolCallId === syntheticResult.toolCallId)
       const syntheticRequest: ToolUseRequest = {
         toolCallId: syntheticResult.toolCallId,
-        toolName: 'unknown',
+        toolName: known?.toolName ?? 'unknown',
         params: {},
+      }
+      if (input) {
+        this.broadcastToolResultTerminal(input, syntheticRequest, syntheticResult)
       }
       this.mergeToolResult(state, syntheticRequest, syntheticResult)
     }
@@ -935,6 +952,62 @@ export class AgentKernel {
     } catch {
       return { status: 'skipped', reason: 'executor error' }
     }
+  }
+
+
+  private broadcastToolCallRunning(
+    input: KernelRunInput,
+    toolRequest: ToolUseRequest,
+    toolCallIndex?: number,
+  ): void {
+    const broadcaster = this.config.timelineBroadcaster
+    const sessionId = input.sessionId
+    if (!broadcaster?.broadcast || !sessionId) return
+    const turnId = input.runId
+    broadcaster.broadcast(sessionId, {
+      eventId: buildToolCallEventId(turnId, toolRequest.toolCallId),
+      eventType: 'tool_call',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      content: formatToolRunningContent(toolRequest.toolName),
+      metadata: {
+        turnId,
+        toolCallId: toolRequest.toolCallId,
+        toolName: toolRequest.toolName,
+        status: 'running',
+        ...(toolCallIndex !== undefined ? { toolCallIndex } : {}),
+      },
+      actor: 'system',
+    })
+  }
+
+  private broadcastToolResultTerminal(
+    input: KernelRunInput,
+    toolRequest: ToolUseRequest,
+    toolResult: ToolUseResult,
+    toolCallIndex?: number,
+  ): void {
+    const broadcaster = this.config.timelineBroadcaster
+    const sessionId = input.sessionId
+    if (!broadcaster?.broadcast || !sessionId) return
+    const turnId = input.runId
+    const failed = Boolean(toolResult.error)
+    broadcaster.broadcast(sessionId, {
+      eventId: buildToolResultEventId(turnId, toolRequest.toolCallId),
+      eventType: 'tool_result',
+      sessionId,
+      timestamp: new Date().toISOString(),
+      content: formatToolTerminalContent(toolRequest.toolName, failed),
+      metadata: {
+        turnId,
+        toolCallId: toolRequest.toolCallId,
+        toolName: toolRequest.toolName,
+        status: failed ? 'failed' : 'completed',
+        result: formatToolTerminalContent(toolRequest.toolName, failed),
+        ...(toolCallIndex !== undefined ? { toolCallIndex } : {}),
+      },
+      actor: 'system',
+    })
   }
 
   private commitTranscript(state: KernelRunState, type: KernelTranscriptEntry['type'], content: unknown): void {

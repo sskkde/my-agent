@@ -15,7 +15,7 @@ import type { HydratedSessionState } from '../gateway/types.js'
 import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js'
 import type { StructuredDecisionTrace } from '../kernel/decision-trace-types.js'
-import type { TurnTranscript } from '../storage/transcript-store.js'
+import type { TurnTranscript, VisibleMessage } from '../storage/transcript-store.js'
 
 /**
  * Status of a foreground turn execution
@@ -42,8 +42,10 @@ export interface RedactedKernelResult {
 export interface ToolCallSummary {
   toolCallId: string
   toolName: string
-  status: 'completed' | 'failed' | 'skipped'
+  status: 'completed' | 'failed' | 'pending' | 'skipped'
   summary?: string
+  startedAt?: string
+  turnSequence?: number
 }
 
 /**
@@ -124,6 +126,11 @@ export interface ForegroundTurnResult {
    * at the top level for convenience.
    */
   toolCallSummaries?: ToolCallSummary[]
+  /**
+   * Ordered redacted visible messages for this turn (assistant text interleaved with tools).
+   * When present, processors should prefer this over a single finalResponse bubble.
+   */
+  visibleMessages?: VisibleMessage[]
   /** Structured decision trace for this turn. */
   structuredTrace?: StructuredDecisionTrace
   /** Error details if failed */

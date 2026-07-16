@@ -228,6 +228,11 @@ export interface RuntimeDispatcher {
  */
 export interface TokenStreamBroadcaster {
   broadcastTokenStream(sessionId: string, token: TokenStreamPayload): void
+  /**
+   * Optional: broadcast a console timeline event mid-run (e.g. live tool_call / tool_result).
+   * Implementations that only support token streaming may omit this method.
+   */
+  broadcast?(sessionId: string, event: import('../api/types.js').ConsoleTimelineEvent): void
 }
 
 export interface KernelConfig {

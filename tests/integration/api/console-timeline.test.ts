@@ -121,15 +121,22 @@ describe('Console Timeline Service', () => {
       apiContext.stores.transcriptStore.saveTurn(turn)
     })
 
-    it('should emit tool_call events for each tool call summary', () => {
+    it('should emit tool_call and tool_result pairs for each tool call summary', () => {
       const result = timelineService.getTimeline(sessionWithTools)
-      const toolEvents = result.events.filter((e) => e.eventType === 'tool_call')
+      const toolCalls = result.events.filter((e) => e.eventType === 'tool_call')
+      const toolResults = result.events.filter((e) => e.eventType === 'tool_result')
 
-      expect(toolEvents).toHaveLength(2)
-      expect(toolEvents[0].content).toBe('analyze_data: completed')
-      expect(toolEvents[0].eventId).toBe('turn-turn-tool-001-tool-0')
-      expect(toolEvents[1].content).toBe('generate_report: completed')
-      expect(toolEvents[1].eventId).toBe('turn-turn-tool-001-tool-1')
+      expect(toolCalls).toHaveLength(2)
+      expect(toolResults).toHaveLength(2)
+      expect(toolCalls[0].content).toBe('Tool running: analyze_data')
+      expect(toolCalls[0].metadata?.toolCallId).toBe('tc-1')
+      expect(toolCalls[1].content).toBe('Tool running: generate_report')
+      expect(toolCalls[1].metadata?.toolCallId).toBe('tc-2')
+      expect(toolResults[0].content).toBe('Tool completed: analyze_data')
+      expect(toolResults[1].content).toBe('Tool completed: generate_report')
+      // call then result for each tool
+      const types = result.events.map((e) => e.eventType)
+      expect(types).toEqual(['user_message', 'tool_call', 'tool_result', 'tool_call', 'tool_result'])
     })
 
     it('should include metadata with tool call index', () => {
@@ -566,17 +573,24 @@ describe('Console Timeline Service', () => {
     it('should correctly interleave transcript and event store events', () => {
       const result = timelineService.getTimeline(complexSession)
 
-      expect(result.total).toBe(6)
+      // Plan C: tool summaries without tool-role messages emit call+result before final assistant
+      expect(result.total).toBe(7)
 
       const eventTypes = result.events.map((e) => e.eventType)
-      expect(eventTypes).toEqual([
-        'user_message',
-        'assistant_message',
-        'user_message',
-        'assistant_message',
-        'tool_call',
-        'run_started',
-      ])
+      expect(eventTypes.filter((t) => t === 'user_message')).toHaveLength(2)
+      expect(eventTypes.filter((t) => t === 'assistant_message')).toHaveLength(2)
+      expect(eventTypes.filter((t) => t === 'tool_call')).toHaveLength(1)
+      expect(eventTypes.filter((t) => t === 'tool_result')).toHaveLength(1)
+      expect(eventTypes.filter((t) => t === 'run_started')).toHaveLength(1)
+
+      // Within the second turn, tools appear before the final assistant message
+      const secondUserIdx = eventTypes.indexOf('user_message', 1)
+      const secondAsstIdx = eventTypes.lastIndexOf('assistant_message')
+      const toolCallIdx = eventTypes.indexOf('tool_call')
+      const toolResultIdx = eventTypes.indexOf('tool_result')
+      expect(toolCallIdx).toBeGreaterThan(secondUserIdx)
+      expect(toolResultIdx).toBeGreaterThan(toolCallIdx)
+      expect(secondAsstIdx).toBeGreaterThan(toolResultIdx)
     })
 
     it('should maintain chronological order across sources', () => {

@@ -7,6 +7,10 @@ export interface ToolCallSummary {
   summary?: string
   transcriptSummary?: string
   resultRef?: string
+  /** ISO timestamp when the tool call started (from kernel transcript). */
+  startedAt?: string
+  /** Zero-based sequence among projected visible turn parts / tool calls. */
+  turnSequence?: number
 }
 
 // MVP Allowed Endpoints:
@@ -58,6 +62,14 @@ export interface VisibleMessage {
   messageId: string
   role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error'
   content: string
+  /** Originating kernel transcript timestamp (ISO). */
+  timestamp?: string
+  /** Zero-based sequence among projected visible turn parts. */
+  turnSequence?: number
+  /** Present when role is tool. */
+  toolCallId?: string
+  toolName?: string
+  toolStatus?: 'completed' | 'failed' | 'skipped'
 }
 
 export interface TranscriptTurn {

@@ -13,7 +13,7 @@ export interface SystemSettingsStore {
 }
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
-  rateLimitPerMinute: 60,
+  rateLimitPerMinute: 180,
   rateLimitPerHour: 1000,
   sessionTokenTtlHours: 24,
 }

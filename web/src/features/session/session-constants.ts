@@ -46,14 +46,33 @@ export const SSE_RECONNECT_MAX_DELAY_MS = 30000
 
 /**
  * Maximum number of polling attempts after sending a message.
- * Used to verify message delivery and assistant response.
+ * Prefer SSE for live updates; polling is a fallback only.
+ * With SSE connected, fewer/slower polls are used (see POST_SEND_POLL_*_SSE).
  */
-export const POST_SEND_POLL_MAX_ATTEMPTS = 30
+export const POST_SEND_POLL_MAX_ATTEMPTS = 12
 
 /**
- * Interval (in milliseconds) between post-send polling attempts.
+ * Interval (in milliseconds) between post-send polling attempts when SSE is
+ * disconnected / unavailable (fallback path).
  */
-export const POST_SEND_POLL_INTERVAL_MS = 1000
+export const POST_SEND_POLL_INTERVAL_MS = 2500
+
+/**
+ * First poll delay when SSE is connected — give the stream time to deliver
+ * the user message / assistant events before hitting REST.
+ */
+export const POST_SEND_POLL_INITIAL_DELAY_SSE_MS = 4000
+
+/**
+ * Interval between fallback polls while SSE remains connected.
+ * Much slower than the disconnected path to avoid double-fetch with SSE.
+ */
+export const POST_SEND_POLL_INTERVAL_SSE_MS = 8000
+
+/**
+ * Max poll attempts while SSE is connected (safety net only).
+ */
+export const POST_SEND_POLL_MAX_ATTEMPTS_SSE = 4
 
 // ============================================================================
 // Date Formatting Constants

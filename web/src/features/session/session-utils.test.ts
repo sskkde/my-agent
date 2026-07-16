@@ -21,6 +21,9 @@ import {
   SSE_RECONNECT_MAX_DELAY_MS,
   POST_SEND_POLL_MAX_ATTEMPTS,
   POST_SEND_POLL_INTERVAL_MS,
+  POST_SEND_POLL_INITIAL_DELAY_SSE_MS,
+  POST_SEND_POLL_INTERVAL_SSE_MS,
+  POST_SEND_POLL_MAX_ATTEMPTS_SSE,
   DATE_FORMAT_LOCALE,
 } from './session-constants'
 
@@ -54,12 +57,19 @@ describe('session-constants', () => {
   })
 
   describe('post-send polling constants', () => {
-    it('should have correct max attempts', () => {
-      expect(POST_SEND_POLL_MAX_ATTEMPTS).toBe(30)
+    it('should use a modest max attempts for disconnected fallback', () => {
+      expect(POST_SEND_POLL_MAX_ATTEMPTS).toBe(12)
     })
 
-    it('should have correct interval', () => {
-      expect(POST_SEND_POLL_INTERVAL_MS).toBe(1000)
+    it('should use a slower fallback interval than 1s to reduce REST load', () => {
+      expect(POST_SEND_POLL_INTERVAL_MS).toBe(2500)
+    })
+
+    it('should prefer sparse SSE-first polling when stream is live', () => {
+      expect(POST_SEND_POLL_INITIAL_DELAY_SSE_MS).toBe(4000)
+      expect(POST_SEND_POLL_INTERVAL_SSE_MS).toBe(8000)
+      expect(POST_SEND_POLL_MAX_ATTEMPTS_SSE).toBe(4)
+      expect(POST_SEND_POLL_INTERVAL_SSE_MS).toBeGreaterThan(POST_SEND_POLL_INTERVAL_MS)
     })
   })
 

@@ -5,7 +5,14 @@ import type { CommandContext } from '../../../commands/types'
 import { isCommand, parseInput } from '../../../commands/parser'
 import { executeCommand } from '../../../commands/executor'
 import { createCommandEvent } from '../../../commands/formatters'
-import { POST_SEND_POLL_MAX_ATTEMPTS, POST_SEND_POLL_INTERVAL_MS } from '../session-constants'
+import {
+  POST_SEND_POLL_MAX_ATTEMPTS,
+  POST_SEND_POLL_INTERVAL_MS,
+  POST_SEND_POLL_INITIAL_DELAY_SSE_MS,
+  POST_SEND_POLL_INTERVAL_SSE_MS,
+  POST_SEND_POLL_MAX_ATTEMPTS_SSE,
+} from '../session-constants'
+
 import {
   createLocalUserMessageEvent,
   countServerUserMessagesByContent,
@@ -37,6 +44,11 @@ export interface UseComposerSubmissionCallbacks {
   clearAssistantActivityForSession: (sessionId: string) => void
   fetchTimeline: (sessionId: string) => Promise<ConsoleTimelineEvent[] | null>
   fetchSessions: (isRefresh?: boolean) => Promise<void>
+  /**
+   * Optional: current SSE stream status for the selected session.
+   * When connected, post-send polling is deferred/slowed (SSE-first).
+   */
+  getStreamStatus?: () => 'connecting' | 'connected' | 'disconnected'
   createCommandContext: () => CommandContext
   /** Called when a send is attempted without a selected session. Should create/select a session and return its ID. */
   onSessionRequired?: () => Promise<string | undefined>
@@ -210,18 +222,55 @@ export function useComposerSubmission(options: {
       clearPostSendPollTimeout()
       postSendPollAttemptsRef.current = 0
 
+      /**
+       * SSE-first strategy:
+       * - When stream is connected/connecting: wait longer before first REST poll,
+       *   poll rarely, and only fetch timeline (sessions list is refreshed by SSE handlers).
+       * - When stream is disconnected: fall back to denser polling (still slower than before)
+       *   and refresh sessions only every few attempts.
+       */
+      const getPolicy = () => {
+        const status = callbacksRef.current.getStreamStatus?.() ?? 'disconnected'
+        const sseLive = status === 'connected' || status === 'connecting'
+        return {
+          sseLive,
+          maxAttempts: sseLive ? POST_SEND_POLL_MAX_ATTEMPTS_SSE : POST_SEND_POLL_MAX_ATTEMPTS,
+          intervalMs: sseLive ? POST_SEND_POLL_INTERVAL_SSE_MS : POST_SEND_POLL_INTERVAL_MS,
+          // Refresh session list at most every Nth poll in fallback mode
+          sessionsEveryN: sseLive ? 0 : 3,
+        }
+      }
+
       const poll = async () => {
+        if (!mountedRef.current || selectedSessionIdRef.current !== sessionId) {
+          return
+        }
+
+        const policy = getPolicy()
+        if (postSendPollAttemptsRef.current >= policy.maxAttempts) {
+          return
+        }
+
+        // Cheap local check first: events already merged from SSE may already satisfy completion.
+        const localEvents = eventsRef.current
         if (
-          !mountedRef.current ||
-          selectedSessionIdRef.current !== sessionId ||
-          postSendPollAttemptsRef.current >= POST_SEND_POLL_MAX_ATTEMPTS
+          isLocalMessageConfirmed(localEvents, localEvent) &&
+          hasAssistantOrErrorReplyAfter(localEvents, localEvent)
         ) {
+          callbacksRef.current.clearAssistantActivityForSession(sessionId)
           return
         }
 
         postSendPollAttemptsRef.current += 1
+        const attempt = postSendPollAttemptsRef.current
+
+        // REST fallback: timeline only when SSE is not live, or as rare safety net.
         const serverEvents = await callbacksRef.current.fetchTimeline(sessionId)
-        await callbacksRef.current.fetchSessions(true)
+
+        // Sessions list: never every poll. Only on disconnected fallback every N attempts.
+        if (policy.sessionsEveryN > 0 && attempt % policy.sessionsEveryN === 0) {
+          await callbacksRef.current.fetchSessions(true)
+        }
 
         if (
           serverEvents &&
@@ -235,11 +284,18 @@ export function useComposerSubmission(options: {
         }
 
         if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
-          postSendPollTimeoutRef.current = window.setTimeout(poll, POST_SEND_POLL_INTERVAL_MS)
+          const nextPolicy = getPolicy()
+          if (attempt < nextPolicy.maxAttempts) {
+            postSendPollTimeoutRef.current = window.setTimeout(poll, nextPolicy.intervalMs)
+          }
         }
       }
 
-      postSendPollTimeoutRef.current = window.setTimeout(poll, POST_SEND_POLL_INTERVAL_MS)
+      const initial = getPolicy()
+      const initialDelay = initial.sseLive
+        ? POST_SEND_POLL_INITIAL_DELAY_SSE_MS
+        : POST_SEND_POLL_INTERVAL_MS
+      postSendPollTimeoutRef.current = window.setTimeout(poll, initialDelay)
     },
     [clearPostSendPollTimeout, mountedRef, selectedSessionIdRef],
   )

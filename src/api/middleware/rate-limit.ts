@@ -76,7 +76,7 @@ function getClientIp(request: FastifyRequest): string {
 /**
  * Register rate limiting middleware on a Fastify instance.
  *
- * Global limit: 100 requests/minute per IP.
+ * Global limit: systemSettings.rateLimitPerMinute (default 180) per IP, window 1 minute.
  * Auth login endpoint: 5 requests/minute per IP.
  * SSE endpoints (/api/sessions/* /timeline/stream, /api/runs/stream): exempt.
  *

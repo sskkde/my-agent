@@ -9,6 +9,14 @@ export interface VisibleMessage {
   messageId: string
   role: 'user' | 'assistant' | 'tool' | 'thinking' | 'system_status' | 'approval' | 'artifact' | 'error'
   content: string
+  /** Originating kernel transcript timestamp (ISO). */
+  timestamp?: string
+  /** Zero-based sequence among projected visible turn parts. */
+  turnSequence?: number
+  /** Present when role is tool. */
+  toolCallId?: string
+  toolName?: string
+  toolStatus?: 'completed' | 'failed' | 'skipped'
 }
 
 export interface TurnTranscript {
