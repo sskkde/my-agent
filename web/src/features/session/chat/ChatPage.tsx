@@ -116,6 +116,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const [modelsError, setModelsError] = useState<string | null>(null)
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   const [selectedSessionModel, setSelectedSessionModel] = useState<string | undefined>(undefined)
+  const [reasoningDepth, setReasoningDepth] = useState<import('../../../api/types').ReasoningDepth>('off')
+  const [reasoningDepthOpen, setReasoningDepthOpen] = useState(false)
+  const [switchingReasoningDepth, setSwitchingReasoningDepth] = useState(false)
   const [switchingModel, setSwitchingModel] = useState(false)
 
   const handleToggleArchiveView = useCallback(async () => {
@@ -177,23 +180,30 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
 
   useEffect(() => {
     setModelSelectorOpen(false)
+    setReasoningDepthOpen(false)
     setModelsError(null)
     setSelectedSessionModel(undefined)
+    setReasoningDepth('off')
   }, [selectedSessionId])
 
+  // Load session model + reasoning depth when session is selected or model picker opens.
   useEffect(() => {
-    if (!modelSelectorOpen || !selectedSessionId) return
+    if (!selectedSessionId) return
 
     const cached = modelsCache[selectedSessionId]
     if (cached) {
       setSelectedSessionModel(cached.selectedModel ?? undefined)
+      setReasoningDepth(cached.reasoningDepth ?? 'off')
+      // Still allow re-fetch when opening picker with no providers cached? keep cache hit return
       return
     }
     if (fetchingModelsForSessionRef.current === selectedSessionId) return
 
     fetchingModelsForSessionRef.current = selectedSessionId
-    setModelsLoading(true)
-    setModelsError(null)
+    if (modelSelectorOpen) {
+      setModelsLoading(true)
+      setModelsError(null)
+    }
 
     let cancelled = false
     const load = async () => {
@@ -202,10 +212,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         if (cancelled) return
         setModelsCache((prev) => ({ ...prev, [selectedSessionId]: data }))
         setSelectedSessionModel(data.selectedModel ?? undefined)
+        setReasoningDepth(data.reasoningDepth ?? 'off')
       } catch (err) {
         if (cancelled) return
         const message = err instanceof api.ApiClientError ? err.message : '加载模型列表失败'
-        setModelsError(message)
+        if (modelSelectorOpen) setModelsError(message)
       } finally {
         if (!cancelled) setModelsLoading(false)
         if (fetchingModelsForSessionRef.current === selectedSessionId) {
@@ -244,6 +255,32 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         showToast(message)
       } finally {
         setSwitchingModel(false)
+      }
+    },
+    [selectedSessionId],
+  )
+
+  const handleReasoningDepthSelect = useCallback(
+    async (depth: import('../../../api/types').ReasoningDepth) => {
+      if (!selectedSessionId) return
+      setSwitchingReasoningDepth(true)
+      try {
+        await api.setSessionReasoningDepth(selectedSessionId, { reasoningDepth: depth })
+        setReasoningDepth(depth)
+        setModelsCache((prev) => {
+          const existing = prev[selectedSessionId]
+          if (!existing) return prev
+          return {
+            ...prev,
+            [selectedSessionId]: { ...existing, reasoningDepth: depth },
+          }
+        })
+        setReasoningDepthOpen(false)
+      } catch (err) {
+        const message = err instanceof api.ApiClientError ? err.message : '切换推理深度失败'
+        showToast(message)
+      } finally {
+        setSwitchingReasoningDepth(false)
       }
     },
     [selectedSessionId],
@@ -673,9 +710,21 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           modelsLoading={modelsLoading}
           modelsError={modelsError}
           selectedSessionModel={selectedSessionModel}
-          onModelSelectorOpen={() => setModelSelectorOpen(true)}
+          onModelSelectorOpen={() => {
+            setReasoningDepthOpen(false)
+            setModelSelectorOpen(true)
+          }}
           onModelSelectorClose={() => setModelSelectorOpen(false)}
           onModelSelect={handleModelSelect}
+          reasoningDepth={reasoningDepth}
+          reasoningDepthOpen={reasoningDepthOpen}
+          reasoningDepthDisabled={modelSelectorDisabled || switchingReasoningDepth}
+          onReasoningDepthOpen={() => {
+            setModelSelectorOpen(false)
+            setReasoningDepthOpen(true)
+          }}
+          onReasoningDepthClose={() => setReasoningDepthOpen(false)}
+          onReasoningDepthSelect={handleReasoningDepthSelect}
         />
       </ChatShell>
       <ChatToast />

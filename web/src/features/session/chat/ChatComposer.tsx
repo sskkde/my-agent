@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react'
 import { showToast } from './ChatToast'
 import { CLIENT_ACCEPT_STRING } from '../../../config/upload-constants'
 import ModelSelector from './ModelSelector'
-import type { ModelsResponse } from '../../../api/types'
+import ReasoningDepthSelector from './ReasoningDepthSelector'
+import type { ModelsResponse, ReasoningDepth } from '../../../api/types'
 
 export type ChatComposerStatus = 'idle' | 'thinking' | 'tool' | 'generating'
 
@@ -35,6 +36,12 @@ export interface ChatComposerProps {
   onModelSelectorOpen?: () => void
   onModelSelectorClose?: () => void
   onModelSelect?: (providerId: string, model: string) => void
+  reasoningDepth?: ReasoningDepth
+  reasoningDepthOpen?: boolean
+  reasoningDepthDisabled?: boolean
+  onReasoningDepthOpen?: () => void
+  onReasoningDepthClose?: () => void
+  onReasoningDepthSelect?: (depth: ReasoningDepth) => void
 }
 
 const STATUS_LABELS: Record<ChatComposerStatus, string> = {
@@ -68,6 +75,12 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
   onModelSelectorOpen,
   onModelSelectorClose,
   onModelSelect,
+  reasoningDepth = 'off',
+  reasoningDepthOpen = false,
+  reasoningDepthDisabled = false,
+  onReasoningDepthOpen,
+  onReasoningDepthClose,
+  onReasoningDepthSelect,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -230,6 +243,15 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
               onClose={onModelSelectorClose ?? (() => {})}
               onSelect={onModelSelect ?? (() => {})}
               isOpen={modelSelectorOpen}
+            />
+            <ReasoningDepthSelector
+              value={reasoningDepth}
+              sessionId={sessionId}
+              disabled={reasoningDepthDisabled}
+              isOpen={reasoningDepthOpen}
+              onOpen={onReasoningDepthOpen ?? (() => {})}
+              onClose={onReasoningDepthClose ?? (() => {})}
+              onSelect={onReasoningDepthSelect ?? (() => {})}
             />
             <div className="chat-status-segment chat-status-segment--stage" title="工作阶段">
               <span className="chat-status-sub">{displayStatusLabel}</span>

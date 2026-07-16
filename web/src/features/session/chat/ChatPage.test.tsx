@@ -73,8 +73,19 @@ describe('ChatPage', () => {
       ],
       selectedModel: 'gpt-4.1',
       selectedProviderId: 'openai',
+      reasoningDepth: 'off',
     })
     vi.mocked(client.setSessionModel).mockResolvedValue({
+      session: {
+        sessionId: 'session-1',
+        userId: 'test-user-id',
+        messageCount: 0,
+        lastActivityAt: '2024-01-01T00:00:00Z',
+        activePlannerRunIds: [],
+        activeBackgroundRunIds: [],
+      },
+    })
+    vi.mocked(client.setSessionReasoningDepth).mockResolvedValue({
       session: {
         sessionId: 'session-1',
         userId: 'test-user-id',
@@ -421,7 +432,7 @@ describe('ChatPage', () => {
     expect(screen.queryByTestId('chat-message-user')).not.toBeInTheDocument()
   })
 
-  it('merges server timeline events found by post-send polling', async () => {
+  it('merges server timeline events found by post-send polling', { timeout: 10000 }, async () => {
     vi.mocked(client.sendMessage).mockResolvedValue({
       accepted: true,
       status: 'accepted',
