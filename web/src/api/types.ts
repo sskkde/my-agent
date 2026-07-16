@@ -223,6 +223,12 @@ export interface ProcessingToolStatus {
   label?: string
 }
 
+export type ReasoningDepth = 'off' | 'low' | 'medium' | 'high'
+
+export interface SetReasoningDepthRequest {
+  reasoningDepth: ReasoningDepth
+}
+
 /** Exact token counts only. No estimated or approximate fields. */
 export interface ExactContextUsage {
   inputTokens: number
@@ -239,6 +245,7 @@ export interface ProcessingStatusPayload {
   stageLabel: string
   providerId?: string
   model?: string
+  reasoningDepth?: ReasoningDepth
   contextUsage?: ExactContextUsage | null
   activeTools: ProcessingToolStatus[]
   timestamp: string
@@ -562,6 +569,7 @@ export interface ModelsResponse {
   providers: ProviderSummary[]
   selectedModel?: string
   selectedProviderId?: string
+  reasoningDepth?: ReasoningDepth
 }
 
 // =============================================================================

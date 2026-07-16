@@ -32,6 +32,7 @@ import type {
   ProviderSummary,
   ModelsResponse,
   SetModelRequest,
+  SetReasoningDepthRequest,
   CreateProviderRequest,
   UpdateProviderRequest,
   AgentConfig,
@@ -566,6 +567,19 @@ export async function getModels(sessionId?: string): Promise<ModelsResponse> {
 
 export async function setSessionModel(sessionId: string, request: SetModelRequest): Promise<SessionResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/model`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  return parseResponse<SessionResponse>(response)
+}
+
+export async function setSessionReasoningDepth(
+  sessionId: string,
+  request: SetReasoningDepthRequest,
+): Promise<SessionResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/reasoning-depth`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
