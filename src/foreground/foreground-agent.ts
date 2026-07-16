@@ -128,6 +128,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
       toolProjection,
       ...(skillProjection ? { skillProjection } : {}),
       model: resolvedModel,
+      ...(input.foregroundState.reasoningDepth
+        ? { reasoningDepth: input.foregroundState.reasoningDepth }
+        : {}),
       maxIterations: input.maxIterations ?? this.maxIterations,
       timeoutMs: input.timeoutMs ?? this.timeoutMs,
       ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),

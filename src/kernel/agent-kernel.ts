@@ -453,6 +453,9 @@ export class AgentKernel {
     if (input.toolChoice !== undefined) {
       llmRequest.toolChoice = input.toolChoice
     }
+    if (input.reasoningDepth !== undefined) {
+      llmRequest.reasoningDepth = input.reasoningDepth
+    }
 
     return llmRequest
   }

@@ -99,6 +99,8 @@ export interface KernelRunInput {
   toolChoice?: LLMRequest['toolChoice']
   /** Per-run model override for the LLM request. */
   model?: string
+  /** Per-run reasoning depth (thinking effort). */
+  reasoningDepth?: import('../llm/reasoning-depth.js').ReasoningDepth
 }
 
 export type KernelRunStatus = 'completed' | 'max_iterations_reached' | 'timeout' | 'failed'

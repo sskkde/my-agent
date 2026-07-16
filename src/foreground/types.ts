@@ -264,6 +264,8 @@ export interface ForegroundSessionState {
   resolvedProvider?: string
   /** Resolved LLM model from provider resolution */
   resolvedModel?: string
+  /** Session reasoning depth for model thinking effort */
+  reasoningDepth?: import('../llm/reasoning-depth.js').ReasoningDepth
   /** Conversation history for context */
   conversationHistory?: Array<{
     turnId: string
