@@ -71,6 +71,7 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const wasSendingRef = useRef(sending)
 
   useEffect(() => {
     const textarea = textareaRef.current
@@ -79,6 +80,15 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
     const newHeight = Math.min(textarea.scrollHeight, 200)
     textarea.style.height = `${newHeight}px`
   }, [value])
+
+  // Restore focus after send: disabled textarea loses browser focus and never gets it back.
+  useEffect(() => {
+    const wasSending = wasSendingRef.current
+    wasSendingRef.current = sending
+    if (wasSending && !sending) {
+      textareaRef.current?.focus()
+    }
+  }, [sending])
 
   const isSendDisabled = (!value.trim() && selectedFiles.length === 0) || sending || isUploading
 

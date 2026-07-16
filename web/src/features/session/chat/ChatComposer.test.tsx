@@ -62,4 +62,23 @@ describe('ChatComposer', () => {
     fireEvent.click(screen.getByLabelText('移除 notes.txt'))
     expect(onRemoveFile).toHaveBeenCalledWith(0)
   })
+
+  it('restores focus to the input when sending finishes', () => {
+    const { rerender } = render(
+      <ChatComposer value="hello" onChange={() => {}} onSend={() => {}} sending={true} />,
+    )
+    const input = screen.getByTestId('chat-input')
+    expect(input).toBeDisabled()
+
+    rerender(<ChatComposer value="" onChange={() => {}} onSend={() => {}} sending={false} />)
+
+    expect(input).not.toBeDisabled()
+    expect(input).toHaveFocus()
+  })
+
+  it('does not steal focus on initial mount when not sending', () => {
+    render(<ChatComposer value="" onChange={() => {}} onSend={() => {}} sending={false} />)
+    expect(screen.getByTestId('chat-input')).not.toHaveFocus()
+  })
+
 })
