@@ -50,6 +50,8 @@ export interface LLMRequest {
   tools?: ToolDefinition[]
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
   responseFormat?: { type: 'json_object' | 'text' }
+  /** Session/user reasoning depth; mapped to provider reasoning_effort when supported. */
+  reasoningDepth?: import('./reasoning-depth.js').ReasoningDepth
 }
 
 /**
