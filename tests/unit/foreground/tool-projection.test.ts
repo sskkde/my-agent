@@ -3,6 +3,7 @@ import {
   buildForegroundToolProjection,
   toToolPlaneProjection,
   applyEnvelopeToProjection,
+  MOCK_OR_FAKE_DEFAULT_EXCLUDED,
 } from '../../../src/foreground/tool-projection-mapper.js'
 import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js'
 import type { ToolCategory, ToolSensitivity } from '../../../src/tools/types.js'
@@ -396,13 +397,13 @@ describe('buildForegroundToolProjection', () => {
 
       const result = buildForegroundToolProjection(createMockInput(), allTools)
 
-      expect(result.allowedToolIds).toHaveLength(6)
+      expect(result.allowedToolIds).toHaveLength(5)
       expect(result.allowedToolIds).toContain('web_search')
       expect(result.allowedToolIds).toContain('file_glob')
       expect(result.allowedToolIds).toContain('file_read')
       expect(result.allowedToolIds).toContain('status_query')
       expect(result.allowedToolIds).toContain('ask_user')
-      expect(result.allowedToolIds).toContain('docs_search')
+      expect(result.allowedToolIds).not.toContain('docs_search')
     })
   })
 
@@ -609,6 +610,80 @@ describe('buildForegroundToolProjection', () => {
 
       const readCount = result.allowedToolIds.filter((id) => id === 'file_read').length
       expect(readCount).toBe(1)
+    })
+  })
+
+  describe('mock and docs_search exclusion from default projection', () => {
+    it('MOCK_OR_FAKE_DEFAULT_EXCLUDED is exported with the 7 fake-availability tool names', () => {
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED).toBeInstanceOf(Set)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.size).toBe(7)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.has('email_search')).toBe(true)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.has('email_send_draft')).toBe(true)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.has('calendar_list')).toBe(true)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.has('calendar_create_event')).toBe(true)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.has('contacts_search')).toBe(true)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.has('docs_read')).toBe(true)
+      expect(MOCK_OR_FAKE_DEFAULT_EXCLUDED.has('docs_search')).toBe(true)
+    })
+
+    it('excludes docs_search and email_search from default projection (safe path)', () => {
+      const allTools = [
+        createTool('docs_search', 'search', 'low'),
+        createTool('email_search', 'search', 'medium'),
+        createTool('file_read', 'read', 'low'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).not.toContain('docs_search')
+      expect(result.allowedToolIds).not.toContain('email_search')
+    })
+
+    it('excludes all 6 mock connector tools + docs_search even when safe category/sensitivity', () => {
+      const allTools = [
+        createTool('email_search', 'search', 'low'),
+        createTool('email_send_draft', 'write', 'medium'),
+        createTool('calendar_list', 'search', 'low'),
+        createTool('calendar_create_event', 'write', 'medium'),
+        createTool('contacts_search', 'search', 'low'),
+        createTool('docs_read', 'search', 'low'),
+        createTool('docs_search', 'search', 'low'),
+        createTool('file_read', 'read', 'low'),
+      ]
+
+      const result = buildForegroundToolProjection(createMockInput(), allTools)
+
+      expect(result.allowedToolIds).toEqual(['file_read'])
+      expect(result.allowedToolIds).not.toContain('email_search')
+      expect(result.allowedToolIds).not.toContain('email_send_draft')
+      expect(result.allowedToolIds).not.toContain('calendar_list')
+      expect(result.allowedToolIds).not.toContain('calendar_create_event')
+      expect(result.allowedToolIds).not.toContain('contacts_search')
+      expect(result.allowedToolIds).not.toContain('docs_read')
+      expect(result.allowedToolIds).not.toContain('docs_search')
+    })
+
+    it('excludes docs_search and email_search even when workDirRoot is set (workdir path)', () => {
+      const allTools = [
+        createTool('docs_search', 'search', 'low'),
+        createTool('email_search', 'search', 'medium'),
+        createTool('file_read', 'read', 'low'),
+        createTool('file_write', 'write', 'high'),
+      ]
+
+      const workdirInput: ForegroundTurnInput = {
+        ...createMockInput(),
+        workDirRoot: '/data/workdirs',
+        workDirId: 'test-workdir',
+      }
+
+      const result = buildForegroundToolProjection(workdirInput, allTools)
+
+      expect(result.allowedToolIds).toContain('file_read')
+      expect(result.allowedToolIds).toContain('file_write')
+      expect(result.allowedToolIds).not.toContain('docs_search')
+      expect(result.allowedToolIds).not.toContain('email_search')
     })
   })
 })
