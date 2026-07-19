@@ -551,7 +551,7 @@ describe('web-search-providers contract tests', () => {
       }
     })
 
-    it('MODEL_UNAVAILABLE is returned when model request fails', async () => {
+    it('MODEL_UNAVAILABLE is returned when model request fails and no fallback query is available', async () => {
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
 
       const mockLlmAdapter = {
@@ -570,7 +570,7 @@ describe('web-search-providers contract tests', () => {
       })
 
       const result = await subagent.execute({
-        query: 'test query',
+        query: '   ',
         userId: 'user-123',
         sessionId: 'session-456',
       })
@@ -581,7 +581,7 @@ describe('web-search-providers contract tests', () => {
       }
     })
 
-    it('NO_TOOL_CALL is returned when model does not call tools', async () => {
+    it('NO_TOOL_CALL is returned when model does not call tools and no fallback query is available', async () => {
       const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
 
       const mockLlmAdapter = {
@@ -609,7 +609,7 @@ describe('web-search-providers contract tests', () => {
       })
 
       const result = await subagent.execute({
-        query: 'test query',
+        query: '',
         userId: 'user-123',
         sessionId: 'session-456',
       })
@@ -618,6 +618,57 @@ describe('web-search-providers contract tests', () => {
       if (!result.success) {
         expect(result.errorCode).toBe('NO_TOOL_CALL')
       }
+    })
+
+    it('falls back to input query when model produces no tool call but input query is non-empty', async () => {
+      const { createSearchSubagent } = await import('../../../src/search/search-subagent.js')
+
+      const mockLlmAdapter = {
+        complete: vi
+          .fn()
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-1',
+              content: '',
+              model: 'gpt-4.1-mini',
+              toolCalls: undefined,
+              finishReason: 'stop',
+            },
+          })
+          .mockResolvedValueOnce({
+            success: true,
+            response: {
+              id: 'resp-2',
+              content: 'Answer based on fallback query',
+              model: 'gpt-4.1-mini',
+              toolCalls: undefined,
+              finishReason: 'stop',
+            },
+          }),
+      }
+
+      const mockWebSearchExecutor = vi.fn().mockResolvedValue({
+        results: [{ title: 'Result', url: 'https://example.com', snippet: 'snippet' }],
+      })
+
+      const subagent = createSearchSubagent({
+        llmAdapter: mockLlmAdapter,
+        webSearchExecutor: mockWebSearchExecutor,
+        modelInputBuilder: createMockModelInputBuilder(),
+        providerFamily: 'openai',
+        searchLlmProviderId: 'provider-search',
+        searchLlmModel: 'gpt-4.1-mini',
+      })
+
+      const result = await subagent.execute({
+        query: 'non-empty fallback query',
+        userId: 'user-123',
+        sessionId: 'session-456',
+      })
+
+      expect(mockWebSearchExecutor).toHaveBeenCalledWith({ query: 'non-empty fallback query' })
+      expect(result.success).toBe(true)
     })
 
     it('INVALID_TOOL_CALL is returned when model calls wrong tool', async () => {
