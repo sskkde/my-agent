@@ -31,6 +31,18 @@ export function getWorkdirFileToolIds(): ReadonlySet<string> {
   return WORKDIR_FILE_TOOL_IDS
 }
 
+/**
+ * Workdir write tool IDs that are exceptions for the MAIN envelope.
+ * These are the write-oriented workdir tools (not read/search) that MAIN
+ * may access via categoryExceptionToolIds, while still denying the broader
+ * 'write' category (artifact_create, etc.).
+ */
+const MAIN_WORKDIR_WRITE_EXCEPTION_TOOL_IDS: ReadonlySet<string> = new Set([
+  'file_write',
+  'file_edit',
+  'file_apply_patch',
+])
+
 // ---------------------------------------------------------------------------
 // Envelope definition
 // ---------------------------------------------------------------------------
@@ -146,7 +158,8 @@ const MAIN_ENVELOPE: AgentTypeToolEnvelope = {
   agentType: 'main',
   allowedCategories: SAFE_CATEGORIES,
   deniedToolIds: new Set<string>(),
-  reason: 'Main agent: read/search/internal only — no side effects in interactive mode',
+  categoryExceptionToolIds: MAIN_WORKDIR_WRITE_EXCEPTION_TOOL_IDS,
+  reason: 'Main agent: read/search/internal only — no side effects in interactive mode, except workdir file write/edit/patch tools',
 }
 
 /**

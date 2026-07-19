@@ -55,11 +55,33 @@ describe('AgentTypeToolEnvelopeRegistry', () => {
       expect(registry.isToolAllowedByEnvelope('main', 'status_query', 'internal')).toBe(true)
     })
 
-    it('main: denies write/delete/execute/admin categories', () => {
-      expect(registry.isToolAllowedByEnvelope('main', 'file_write', 'write')).toBe(false)
+    it('main: denies delete/execute/admin categories; allows workdir write tools via exception', () => {
+      expect(registry.isToolAllowedByEnvelope('main', 'file_write', 'write')).toBe(true)
       expect(registry.isToolAllowedByEnvelope('main', 'file_delete', 'delete')).toBe(false)
       expect(registry.isToolAllowedByEnvelope('main', 'exec', 'execute')).toBe(false)
       expect(registry.isToolAllowedByEnvelope('main', 'admin_config', 'admin')).toBe(false)
+    })
+
+    it('main: allows file_edit via category exception', () => {
+      expect(registry.isToolAllowedByEnvelope('main', 'file_edit', 'write')).toBe(true)
+    })
+
+    it('main: allows file_apply_patch via category exception', () => {
+      expect(registry.isToolAllowedByEnvelope('main', 'file_apply_patch', 'write')).toBe(true)
+    })
+
+    it('main: denies artifact_create (write category, not in exception list)', () => {
+      expect(registry.isToolAllowedByEnvelope('main', 'artifact_create', 'write')).toBe(false)
+    })
+
+    it('main: envelope has categoryExceptionToolIds containing the write trio', () => {
+      const envelope = registry.getEnvelope('main')
+      expect(envelope).toBeDefined()
+      expect(envelope!.categoryExceptionToolIds).toBeDefined()
+      expect(envelope!.categoryExceptionToolIds!.has('file_write')).toBe(true)
+      expect(envelope!.categoryExceptionToolIds!.has('file_edit')).toBe(true)
+      expect(envelope!.categoryExceptionToolIds!.has('file_apply_patch')).toBe(true)
+      expect(envelope!.categoryExceptionToolIds!.size).toBe(3)
     })
 
     it('subagent: allows read/search/internal/write categories', () => {
@@ -130,13 +152,19 @@ describe('AgentTypeToolEnvelopeRegistry', () => {
       { id: 'artifact_create', category: 'write' as ToolCategory },
       { id: 'exec', category: 'execute' as ToolCategory },
       { id: 'admin_config', category: 'admin' as ToolCategory },
+      { id: 'file_write', category: 'write' as ToolCategory },
+      { id: 'file_edit', category: 'write' as ToolCategory },
+      { id: 'file_apply_patch', category: 'write' as ToolCategory },
     ]
 
-    it('main: returns only read/search/internal tools', () => {
+    it('main: returns read/search/internal plus workdir write exceptions', () => {
       const allowed = registry.getAllowedToolIds('main', catalog)
       expect(allowed).toContain('file_read')
       expect(allowed).toContain('web_search')
       expect(allowed).toContain('status_query')
+      expect(allowed).toContain('file_write')
+      expect(allowed).toContain('file_edit')
+      expect(allowed).toContain('file_apply_patch')
       expect(allowed).not.toContain('artifact_create')
       expect(allowed).not.toContain('exec')
       expect(allowed).not.toContain('admin_config')
