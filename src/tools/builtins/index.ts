@@ -14,7 +14,7 @@ import type { BrowserSessionManager } from '../../search/browser/browser-session
 
 import { createArtifactCreateTool } from './artifact-create.js'
 import { createArtifactUpdateTool } from './artifact-update.js'
-import { createAskUserTool } from './ask-user.js'
+import { createAskUserTool, type AskUserApprovalInput, type AskUserApprovalOutput } from './ask-user.js'
 import { createStatusQueryTool } from './status-query.js'
 import { createMemoryRetrieveTool } from './memory-retrieve.js'
 import { createTranscriptSearchTool } from './transcript-search.js'
@@ -49,6 +49,7 @@ export interface BuiltInToolsConfig {
   todoStore?: TodoStore
   enableRuntimeTools?: boolean // default: true
   enableMockConnectorTools?: boolean // default: false; opt-in mock connector tools (email_search, calendar_list, etc.) - production paths must not enable
+  askUserApprovalCreator?: (input: AskUserApprovalInput) => AskUserApprovalOutput | void // optional approval-store adapter for ask_user; failures degrade silently to event-only
   webSearchBrowser?: Browser
   webSearchBrowserProvider?: () => Promise<Browser | undefined>
   browserSessionManager?: BrowserSessionManager
@@ -68,6 +69,7 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
     processSessionStore,
     enableRuntimeTools = true,
     enableMockConnectorTools = false,
+    askUserApprovalCreator,
     webSearchBrowser,
     webSearchBrowserProvider,
     browserSessionManager,
@@ -76,7 +78,7 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
 
   registry.register(createArtifactCreateTool(artifactStore))
   registry.register(createArtifactUpdateTool(artifactStore))
-  registry.register(createAskUserTool())
+  registry.register(createAskUserTool({ createUserQuestionApproval: askUserApprovalCreator }))
   registry.register(createStatusQueryTool())
   registry.register(createMemoryRetrieveTool(summaryStore, longTermMemoryStore, toolResultStore))
   registry.register(createTranscriptSearchTool(transcriptStore, toolResultStore))

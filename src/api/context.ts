@@ -5,7 +5,7 @@ import { createEventStore, type EventStore, type EventRecord } from '../storage/
 import { createRuntimeActionStore, type RuntimeActionStore } from '../storage/runtime-action-store.js'
 import { createTranscriptStore, type TranscriptStore } from '../storage/transcript-store.js'
 import { createSummaryStore, type SummaryStore } from '../storage/summary-store.js'
-import { createApprovalStore, type ApprovalStore } from '../storage/approval-store.js'
+import { createApprovalStore, APPROVAL_STATES, type ApprovalStore } from '../storage/approval-store.js'
 import { createPermissionGrantStore, type PermissionGrantStore } from '../storage/permission-grant-store.js'
 import { createToolExecutionStore, type ToolExecutionStore } from '../storage/tool-execution-store.js'
 import { createToolResultStore, type ToolResultStore } from '../storage/tool-result-store.js'
@@ -712,6 +712,22 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     browserSessionManager,
     browserSessionIdResolver: (chatSessionId: string) =>
       toBrowserSessionId(chatSessionId),
+    askUserApprovalCreator: ({ userId, sessionId, question, context, requestId }) => {
+      const now = new Date().toISOString()
+      approvalStore.create({
+        id: requestId,
+        userId,
+        sessionId: sessionId ?? '',
+        status: APPROVAL_STATES.PENDING,
+        actionType: 'ask_user',
+        resource: 'user_question',
+        justification: question,
+        requestedBy: userId,
+        requestedAt: now,
+        metadata: JSON.stringify({ question, context, requestId, source: 'ask_user' }),
+      })
+      return { requestId }
+    },
   })
 
   // Register AMap MCP tools (opt-in via AMAP_MCP_ENABLED + AMAP_MAPS_API_KEY)
