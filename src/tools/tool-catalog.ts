@@ -293,7 +293,7 @@ export function getFallbackToolCatalog(): CanonicalToolCatalogEntry[] {
     },
     {
       name: 'process',
-      description: 'Manage background process sessions: list, poll, log, write stdin, kill, clear',
+      description: 'Manage background process sessions: list, poll, kill, clear',
       category: 'execute',
       sensitivity: 'high',
     },
