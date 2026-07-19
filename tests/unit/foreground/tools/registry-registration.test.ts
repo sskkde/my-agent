@@ -75,7 +75,7 @@ describe('Foreground Tool Registry Registration', () => {
 
       const tool = registry.getTool(SPAWN_PLANNER_TOOL_ID)
       expect(tool).not.toBeNull()
-      expect(tool?.category).toBe('write')
+      expect(tool?.category).toBe('internal')
       expect(tool?.sensitivity).toBe('medium')
       expect(tool?.requiresPermission).toBe(true)
       expect(tool?.metadata?.requiresApproval).toBe(true)
@@ -86,7 +86,7 @@ describe('Foreground Tool Registry Registration', () => {
 
       const tool = registry.getTool(RESUME_PLANNER_TOOL_ID)
       expect(tool).not.toBeNull()
-      expect(tool?.category).toBe('write')
+      expect(tool?.category).toBe('internal')
       expect(tool?.sensitivity).toBe('medium')
       expect(tool?.requiresPermission).toBe(true)
       expect(tool?.metadata?.requiresApproval).toBe(true)
@@ -97,7 +97,7 @@ describe('Foreground Tool Registry Registration', () => {
 
       const tool = registry.getTool(LAUNCH_SUBAGENT_TOOL_ID)
       expect(tool).not.toBeNull()
-      expect(tool?.category).toBe('execute')
+      expect(tool?.category).toBe('internal')
       expect(tool?.sensitivity).toBe('medium')
       expect(tool?.requiresPermission).toBe(true)
       expect(tool?.metadata?.requiresApproval).toBe(true)
@@ -108,7 +108,7 @@ describe('Foreground Tool Registry Registration', () => {
 
       const tool = registry.getTool(CANCEL_MODIFY_TOOL_ID)
       expect(tool).not.toBeNull()
-      expect(tool?.category).toBe('execute')
+      expect(tool?.category).toBe('internal')
       expect(tool?.sensitivity).toBe('high')
       expect(tool?.requiresPermission).toBe(true)
       expect(tool?.metadata?.requiresApproval).toBe(true)
@@ -208,15 +208,15 @@ describe('Foreground Tool Registry Registration', () => {
       expect(projection.allowedToolIds).not.toContain(SEARCH_SUBAGENT_TOOL_ID)
     })
 
-    it('should NOT include high-risk tools in default projection', () => {
+    it('should include orch tools (except cancel) in default projection', () => {
       registerAllForegroundTools(registry)
       const allTools = registry.listTools()
 
       const projection = buildForegroundToolProjection({} as any, allTools)
 
-      expect(projection.allowedToolIds).not.toContain(SPAWN_PLANNER_TOOL_ID)
-      expect(projection.allowedToolIds).not.toContain(RESUME_PLANNER_TOOL_ID)
-      expect(projection.allowedToolIds).not.toContain(LAUNCH_SUBAGENT_TOOL_ID)
+      expect(projection.allowedToolIds).toContain(SPAWN_PLANNER_TOOL_ID)
+      expect(projection.allowedToolIds).toContain(RESUME_PLANNER_TOOL_ID)
+      expect(projection.allowedToolIds).toContain(LAUNCH_SUBAGENT_TOOL_ID)
       expect(projection.allowedToolIds).not.toContain(CANCEL_MODIFY_TOOL_ID)
     })
 
@@ -226,6 +226,10 @@ describe('Foreground Tool Registry Registration', () => {
       expect(defaultIds).toContain(SEARCH_SUBAGENT_TOOL_ID)
       expect(defaultIds).toContain(STATUS_QUERY_TOOL_ID)
       expect(defaultIds).toContain(APPROVAL_REQUEST_TOOL_ID)
+      expect(defaultIds).toContain(SPAWN_PLANNER_TOOL_ID)
+      expect(defaultIds).toContain(RESUME_PLANNER_TOOL_ID)
+      expect(defaultIds).toContain(LAUNCH_SUBAGENT_TOOL_ID)
+      expect(defaultIds).not.toContain(CANCEL_MODIFY_TOOL_ID)
     })
 
     it('should return correct requires-approval tool IDs', () => {

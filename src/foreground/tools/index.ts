@@ -169,7 +169,7 @@ export function createForegroundStatusQueryToolDefinition(): ToolDefinition {
 /**
  * Create the foreground_spawn_planner tool definition.
  * - sensitivity: 'medium'
- * - category: 'write'
+ * - category: 'internal'
  * - requiresApproval: true
  */
 export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
@@ -177,7 +177,7 @@ export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
     name: SPAWN_PLANNER_TOOL_ID,
     description:
       'Create a new planner run to work on a task. The planner will generate a plan and begin executing it in the background. Use this for complex, multi-step tasks.',
-    category: 'write',
+    category: 'internal',
     sensitivity: 'medium',
     requiresPermission: true,
     schema: {
@@ -213,7 +213,7 @@ export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
 /**
  * Create the foreground_resume_planner tool definition.
  * - sensitivity: 'medium'
- * - category: 'write'
+ * - category: 'internal'
  * - requiresApproval: true
  */
 export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
@@ -221,7 +221,7 @@ export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
     name: RESUME_PLANNER_TOOL_ID,
     description:
       'Resume an existing planner run that was paused or is waiting for input. Provide a message to continue the planning process.',
-    category: 'write',
+    category: 'internal',
     sensitivity: 'medium',
     requiresPermission: true,
     schema: {
@@ -253,7 +253,7 @@ export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
 /**
  * Create the foreground_launch_subagent tool definition.
  * - sensitivity: 'medium'
- * - category: 'execute'
+ * - category: 'internal'
  * - requiresApproval: true
  */
 export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
@@ -261,7 +261,7 @@ export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
     name: LAUNCH_SUBAGENT_TOOL_ID,
     description:
       'Launch a background subagent to perform a specific task. Subagents run asynchronously and can be monitored via status queries.',
-    category: 'execute',
+    category: 'internal',
     sensitivity: 'medium',
     requiresPermission: true,
     schema: {
@@ -293,7 +293,7 @@ export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
 /**
  * Create the foreground_cancel_or_modify_task tool definition.
  * - sensitivity: 'high'
- * - category: 'execute'
+ * - category: 'internal'
  * - requiresApproval: true
  */
 export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefinition {
@@ -301,7 +301,7 @@ export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefiniti
     name: CANCEL_MODIFY_TOOL_ID,
     description:
       'Cancel, pause, resume, or modify an active task (planner run or subagent). This is a high-risk operation that can interrupt ongoing work.',
-    category: 'execute',
+    category: 'internal',
     sensitivity: 'high',
     requiresPermission: true,
     schema: {
@@ -474,12 +474,18 @@ export function getForegroundToolIds(): string[] {
 /**
  * Get foreground tools that should be in the default projection.
  * These are safe tools (low/medium sensitivity, read/search/internal category).
+ * Orchestration tools (spawn/resume/launch) are included because they are
+ * internal + medium (safe for main). Cancel remains excluded due to high sensitivity.
  */
 export function getDefaultProjectionForegroundToolIds(): string[] {
   return [
     SEARCH_SUBAGENT_TOOL_ID, // search, medium
     STATUS_QUERY_TOOL_ID, // read, low
     APPROVAL_REQUEST_TOOL_ID, // internal, low
+    SPAWN_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
+    RESUME_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
+    LAUNCH_SUBAGENT_TOOL_ID, // internal, medium — orchestration, safe for main
+    // CANCEL_MODIFY_TOOL_ID intentionally excluded — high sensitivity, risky
   ]
 }
 
