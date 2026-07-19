@@ -190,25 +190,25 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
   {
     name: 'foreground_spawn_planner',
     description: 'Create a new planner run to work on a task',
-    category: 'write',
+    category: 'internal',
     sensitivity: 'medium',
   },
   {
     name: 'foreground_resume_planner',
     description: 'Resume an existing planner run',
-    category: 'write',
+    category: 'internal',
     sensitivity: 'medium',
   },
   {
     name: 'foreground_launch_subagent',
     description: 'Launch a background subagent to perform a task',
-    category: 'execute',
+    category: 'internal',
     sensitivity: 'medium',
   },
   {
     name: 'foreground_cancel_or_modify_task',
     description: 'Cancel, pause, resume, or modify an active task',
-    category: 'execute',
+    category: 'internal',
     sensitivity: 'high',
   },
   {
