@@ -15,8 +15,8 @@ describe('kernel-guard-constants', () => {
       expect(DEFAULT_FOREGROUND_MAX_ITERATIONS).toBe(6)
     })
 
-    it('defines DEFAULT_FOREGROUND_TIMEOUT_MS as 60000', () => {
-      expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(60000)
+    it('defines DEFAULT_FOREGROUND_TIMEOUT_MS as 120000', () => {
+      expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(120000)
     })
 
     it('defines MAX_ITERATION_EXCEEDED_USER_MESSAGE with safe message', () => {

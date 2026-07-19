@@ -735,6 +735,13 @@ describe('buildForegroundToolProjection', () => {
     category,
     sensitivity,
     description,
+    schema: {
+      type: 'object' as const,
+      properties: {
+        input: { type: 'string', description: 'Test input' },
+      },
+      required: [] as string[],
+    },
   })
 
   describe('Safe defaults', () => {
@@ -761,7 +768,7 @@ describe('buildForegroundToolProjection', () => {
       const result = buildForegroundToolProjection(createMockInput(), tools)
 
       expect(result.allowedToolIds).toContain('web_search')
-      expect(result.allowedToolIds).toContain('docs_search')
+      expect(result.allowedToolIds).not.toContain('docs_search')
     })
 
     it('should include internal category tools with low sensitivity', () => {
@@ -850,7 +857,13 @@ describe('buildForegroundToolProjection', () => {
         function: {
           name: 'web_search',
           description: 'Search the web',
-          parameters: { type: 'object', properties: {} },
+          parameters: {
+            type: 'object',
+            properties: {
+              input: { type: 'string', description: 'Test input' },
+            },
+            required: [],
+          },
         },
       })
     })
@@ -1035,8 +1048,8 @@ describe('Kernel Guard Constants', () => {
     expect(DEFAULT_FOREGROUND_MAX_ITERATIONS).toBe(6)
   })
 
-  it('should define DEFAULT_FOREGROUND_TIMEOUT_MS as 60000', () => {
-    expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(60000)
+  it('should define DEFAULT_FOREGROUND_TIMEOUT_MS as 120000', () => {
+    expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(120000)
   })
 
   it('should have safe MAX_ITERATION_EXCEEDED_USER_MESSAGE', () => {
