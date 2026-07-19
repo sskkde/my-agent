@@ -48,6 +48,7 @@ export interface BuiltInToolsConfig {
   processSessionStore?: ProcessSessionStore
   todoStore?: TodoStore
   enableRuntimeTools?: boolean // default: true
+  enableMockConnectorTools?: boolean // default: false; opt-in mock connector tools (email_search, calendar_list, etc.) - production paths must not enable
   webSearchBrowser?: Browser
   webSearchBrowserProvider?: () => Promise<Browser | undefined>
   browserSessionManager?: BrowserSessionManager
@@ -66,6 +67,7 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
     sessionStore,
     processSessionStore,
     enableRuntimeTools = true,
+    enableMockConnectorTools = false,
     webSearchBrowser,
     webSearchBrowserProvider,
     browserSessionManager,
@@ -112,15 +114,17 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
     registry.register(createCodeExecutionTool(processSessionStore))
   }
 
-  const mockConnectorTools = createMockConnectorTools().map((tool) => ({
-    ...tool,
-    metadata: {
-      ...tool.metadata,
-      mock: true,
-      executionPlane: 'mock_connector',
-      availability: 'mock',
-    },
-  }))
+  const mockConnectorTools = enableMockConnectorTools
+    ? createMockConnectorTools().map((tool) => ({
+        ...tool,
+        metadata: {
+          ...tool.metadata,
+          mock: true,
+          executionPlane: 'mock_connector',
+          availability: 'mock',
+        },
+      }))
+    : []
   mockConnectorTools.forEach((tool) => registry.register(tool))
 }
 

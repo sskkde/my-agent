@@ -203,7 +203,7 @@ describe('Tools and Models API Integration', () => {
       }
     })
 
-    it('should mark mock connector tools correctly in metadata', async () => {
+    it('should not register mock connector tools in production path', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/v1/tools',
@@ -212,13 +212,22 @@ describe('Tools and Models API Integration', () => {
       expect(response.statusCode).toBe(200)
       const body = JSON.parse(response.body)
       const toolNames = body.data.tools.map((t: { name: string }) => t.name)
-      const emailSearchIndex = toolNames.indexOf('email_search')
 
-      expect(emailSearchIndex).toBeGreaterThanOrEqual(0)
-      const emailSearchMeta = body.data.metadata[emailSearchIndex]
-      expect(emailSearchMeta.isMock).toBe(true)
-      expect(emailSearchMeta.executionPlane).toBe('mock_connector')
-      expect(emailSearchMeta.source).toBe('mock')
+      const mockConnectorToolNames = [
+        'email_search',
+        'email_send_draft',
+        'calendar_list',
+        'calendar_create_event',
+        'contacts_search',
+        'docs_read',
+      ]
+      for (const mockToolName of mockConnectorToolNames) {
+        expect(toolNames).not.toContain(mockToolName)
+      }
+
+      for (const meta of body.data.metadata) {
+        expect(meta.isMock).toBe(false)
+      }
     })
 
     it('should mark builtin tools with correct source', async () => {

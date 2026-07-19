@@ -210,4 +210,61 @@ describe('runtime-tools-registration', () => {
     const todowriteTool = registry.getTool('todowrite')
     expect(todowriteTool?.category).toBe('write')
   })
+
+  it('registers mock connector tools when enableMockConnectorTools is true', () => {
+    registerBuiltInTools(registry, {
+      artifactStore: {} as any,
+      summaryStore: {} as any,
+      transcriptStore: {} as any,
+      planStore: {} as any,
+      longTermMemoryStore: {} as any,
+      sessionStore: {} as any,
+      enableMockConnectorTools: true,
+    })
+
+    expect(registry.hasTool('email_search')).toBe(true)
+    expect(registry.hasTool('email_send_draft')).toBe(true)
+    expect(registry.hasTool('calendar_list')).toBe(true)
+    expect(registry.hasTool('calendar_create_event')).toBe(true)
+    expect(registry.hasTool('contacts_search')).toBe(true)
+    expect(registry.hasTool('docs_read')).toBe(true)
+
+    const emailSearch = registry.getTool('email_search')
+    expect(emailSearch?.metadata?.mock).toBe(true)
+    expect(emailSearch?.metadata?.executionPlane).toBe('mock_connector')
+    expect(emailSearch?.metadata?.availability).toBe('mock')
+  })
+
+  it('does not register mock connector tools by default', () => {
+    registerBuiltInTools(registry, {
+      artifactStore: {} as any,
+      summaryStore: {} as any,
+      transcriptStore: {} as any,
+      planStore: {} as any,
+      longTermMemoryStore: {} as any,
+      sessionStore: {} as any,
+    })
+
+    expect(registry.hasTool('email_search')).toBe(false)
+    expect(registry.hasTool('email_send_draft')).toBe(false)
+    expect(registry.hasTool('calendar_list')).toBe(false)
+    expect(registry.hasTool('calendar_create_event')).toBe(false)
+    expect(registry.hasTool('contacts_search')).toBe(false)
+    expect(registry.hasTool('docs_read')).toBe(false)
+  })
+
+  it('does not register mock connector tools when enableMockConnectorTools is false', () => {
+    registerBuiltInTools(registry, {
+      artifactStore: {} as any,
+      summaryStore: {} as any,
+      transcriptStore: {} as any,
+      planStore: {} as any,
+      longTermMemoryStore: {} as any,
+      sessionStore: {} as any,
+      enableMockConnectorTools: false,
+    })
+
+    expect(registry.hasTool('email_search')).toBe(false)
+    expect(registry.hasTool('docs_read')).toBe(false)
+  })
 })
