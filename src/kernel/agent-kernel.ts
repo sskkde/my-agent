@@ -33,6 +33,9 @@ import {
 import type { RuntimeContextDelta } from '../context/types.js'
 import type { ToolExecutionResult } from '../tools/types.js'
 import type { TokenStreamPayload } from '../api/types.js'
+import type { LLMStreamChunk } from '../llm/types.js'
+import { StreamResponseAggregator } from '../llm/stream-aggregator.js'
+import { supportsStructuredToolStreaming } from '../llm/stream-capabilities.js'
 import { validateOutputContractContent } from '../contracts/output-contract-validator.js'
 import { buildDecisionTrace } from './decision-trace-builder.js'
 
@@ -539,10 +542,14 @@ export class AgentKernel {
   }
 
   private shouldUseStreaming(request: LLMRequest): boolean {
-    if (!this.config.timelineBroadcaster) return false
-    // Tool-capable turns must use complete() so structured tool_calls are preserved.
-    // Streaming currently only accumulates text deltas and drops tool_calls.
-    if (request.tools !== undefined && request.tools.length > 0) return false
+    // Structured stream supports text + tool_calls for trusted provider families.
+    // P1: fall back to complete() when tools are projected but the family cannot
+    // reliably emit streaming tool_calls (e.g. ollama/anthropic/gemini/bedrock).
+    if (request.tools !== undefined && request.tools.length > 0) {
+      if (!supportsStructuredToolStreaming(this.config.providerFamily)) {
+        return false
+      }
+    }
     return true
   }
 
@@ -555,35 +562,74 @@ export class AgentKernel {
       throw new Error('LLM request timeout before dispatch')
     }
 
-    const broadcaster = this.config.timelineBroadcaster!
+    const broadcaster = this.config.timelineBroadcaster
     const sessionId = input.sessionId
     const attemptId = input.runId
-    const accumulated: string[] = []
+    const aggregator = new StreamResponseAggregator()
     let sequence = 0
     let providerId = 'unknown'
-    let previousDelta: { delta: string; providerId: string; model?: string } | undefined
+    // P2: emit early tool_call running when name is first known (args may still be streaming)
+    const earlyToolAnnounced = new Set<number>()
+    const earlyToolPartial = new Map<number, { id?: string; name?: string }>()
+
+    const broadcastTextDelta = (delta: string, isFinal: boolean): void => {
+      if (!broadcaster || !sessionId || delta.length === 0) return
+      const payload: TokenStreamPayload = {
+        sessionId,
+        attemptId,
+        sequence,
+        delta,
+        accumulated: aggregator.content,
+        isFinal,
+        timestamp: new Date().toISOString(),
+      }
+      broadcaster.broadcastTokenStream(sessionId, payload)
+      sequence++
+    }
+
+    const maybeAnnounceEarlyTool = (
+      chunk: Extract<LLMStreamChunk, { kind: 'tool_call_delta' }>,
+    ): void => {
+      if (!broadcaster?.broadcast || !sessionId) return
+      const prev = earlyToolPartial.get(chunk.index) ?? {}
+      if (chunk.id) prev.id = chunk.id
+      if (chunk.name) prev.name = chunk.name
+      earlyToolPartial.set(chunk.index, prev)
+      if (earlyToolAnnounced.has(chunk.index)) return
+      if (!prev.name) return
+      earlyToolAnnounced.add(chunk.index)
+      const toolCallId = prev.id ?? `pending-tool-${attemptId}-${chunk.index}`
+      broadcaster.broadcast(sessionId, {
+        eventId: `early-tool-call-${attemptId}-${chunk.index}`,
+        eventType: 'tool_call',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        content: formatToolRunningContent(prev.name),
+        metadata: {
+          turnId: attemptId,
+          toolCallId,
+          toolName: prev.name,
+          status: 'running',
+          early: true,
+          toolCallIndex: chunk.index,
+        },
+        actor: 'system',
+      })
+    }
 
     try {
       const streamGenerator = this.config.llmAdapter.stream(request)
 
       const streamLoop = async (): Promise<void> => {
         for await (const chunk of streamGenerator) {
-          if (previousDelta && sessionId) {
-            const payload: TokenStreamPayload = {
-              sessionId,
-              attemptId,
-              sequence,
-              delta: previousDelta.delta,
-              accumulated: accumulated.join(''),
-              isFinal: false,
-              timestamp: new Date().toISOString(),
-            }
-            broadcaster.broadcastTokenStream(sessionId, payload)
-            sequence++
-          }
-          accumulated.push(chunk.delta)
           providerId = chunk.providerId
-          previousDelta = chunk
+          aggregator.apply(chunk)
+
+          if (chunk.kind === 'text') {
+            broadcastTextDelta(chunk.delta, false)
+          } else if (chunk.kind === 'tool_call_delta') {
+            maybeAnnounceEarlyTool(chunk)
+          }
         }
       }
 
@@ -593,44 +639,39 @@ export class AgentKernel {
 
       await Promise.race([streamLoop(), timeoutPromise])
 
-      if (accumulated.length === 0) {
+      if (aggregator.isEmpty) {
         return { success: false }
       }
 
-      if (previousDelta && sessionId) {
+      // Mark stream complete for UI (empty final marker when last text already sent)
+      if (broadcaster && sessionId && aggregator.hasContent) {
         const payload: TokenStreamPayload = {
           sessionId,
           attemptId,
           sequence,
-          delta: previousDelta.delta,
-          accumulated: accumulated.join(''),
+          delta: '',
+          accumulated: aggregator.content,
           isFinal: true,
           timestamp: new Date().toISOString(),
         }
         broadcaster.broadcastTokenStream(sessionId, payload)
       }
 
-      const fullContent = accumulated.join('')
+      const response = aggregator.toResponse(request.model)
       return {
         success: true,
-        response: {
-          id: `stream-${Date.now()}`,
-          model: request.model,
-          content: fullContent,
-          role: 'assistant',
-          finishReason: 'stop',
-          createdAt: new Date().toISOString(),
-        },
-        providerId,
+        response,
+        providerId: aggregator.lastProviderId || providerId,
       }
     } catch (error) {
-      if (previousDelta && sessionId) {
+      // Best-effort flush of partial text already accumulated
+      if (broadcaster && sessionId && aggregator.hasContent) {
         const payload: TokenStreamPayload = {
           sessionId,
           attemptId,
           sequence,
-          delta: previousDelta.delta,
-          accumulated: accumulated.join(''),
+          delta: '',
+          accumulated: aggregator.content,
           isFinal: false,
           timestamp: new Date().toISOString(),
         }
