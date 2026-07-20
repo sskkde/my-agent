@@ -2,8 +2,7 @@
 /**
  * Token Baseline Measurement Script
  *
- * Measures estimated token counts for 3 LLM paths:
- * - routing_json (Foreground routing)
+ * Measures estimated token counts for 2 LLM paths:
  * - structured_json (Memory extraction)
  * - function_calling (Kernel/Search function calling)
  *
@@ -32,47 +31,6 @@ function createBuilder(): ModelInputBuilder {
   const registry = new PromptTemplateRegistry(undefined, templatesPath);
   const loader = new TemplateLoader(templatesPath);
   return new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader });
-}
-
-// Typical tool projection for routing_json (Foreground)
-function makeRoutingToolProjection(): ToolPlaneProjection {
-  return {
-    toolIds: [
-      'artifact_create',
-      'artifact_update',
-      'ask_user',
-      'status_query',
-      'memory_retrieve',
-      'transcript_search',
-      'plan_patch',
-      'docs_search',
-      'file_read',
-      'file_glob',
-      'file_grep',
-      'session_list',
-      'session_history',
-      'web_fetch',
-      'web_search',
-    ],
-    toolSummaries: `
-Tool Summaries:
-- artifact_create: Create a new artifact (file, document, etc.)
-- artifact_update: Update an existing artifact
-- ask_user: Ask the user for clarification or input
-- status_query: Query status of running tasks
-- memory_retrieve: Retrieve relevant memories
-- transcript_search: Search conversation transcript
-- plan_patch: Modify the execution plan
-- docs_search: Search documentation
-- file_read: Read file contents
-- file_glob: Find files by pattern
-- file_grep: Search file contents
-- session_list: List available sessions
-- session_history: Get session history
-- web_fetch: Fetch web content
-- web_search: Search the web
-`.trim(),
-  };
 }
 
 // Typical tool projection for function_calling (Kernel/Search)
@@ -164,36 +122,6 @@ function makeStructuredJsonToolProjection(): ToolPlaneProjection {
   };
 }
 
-// Build input for routing_json mode (Foreground)
-function makeRoutingJsonInput(): ModelInputBuildInput {
-  return {
-    mode: 'routing_json',
-    agentType: 'main',
-    agentProfile: 'foreground',
-    agentKind: 'foreground',
-    providerFamily: 'openai',
-    systemPrompt: 'You are a helpful AI assistant specialized in software development tasks. You have access to various tools for reading files, searching the web, and managing artifacts.',
-    routingPrompt: 'Route user messages based on their intent. Use dispatch_tool for simple operations, spawn_planner for complex multi-step tasks, and answer_directly for simple questions.',
-    toolProjection: makeRoutingToolProjection(),
-    currentUserMessage: 'I need to refactor the authentication module to use OAuth2 instead of the current custom implementation. Can you help me plan this?',
-    currentDate: '2026-05-24T10:30:00Z',
-    sessionId: 'session_abc123def456',
-    runId: 'run_xyz789',
-    messageId: 'msg_001',
-    requestId: 'req_002',
-    contextBundle: {
-      pinnedItems: [
-        { itemId: 'p1', content: 'Project uses TypeScript with ESM modules', isPinned: true },
-        { itemId: 'p2', content: 'Database: SQLite with WAL mode', isPinned: true },
-      ],
-      orderedItems: [
-        { itemId: 'o1', content: 'Current auth: custom JWT implementation in src/auth/' },
-        { itemId: 'o2', content: 'Target: OAuth2 with provider abstraction' },
-      ],
-    },
-  };
-}
-
 // Build input for structured_json mode (Memory)
 function makeStructuredJsonInput(): ModelInputBuildInput {
   return {
@@ -272,16 +200,6 @@ async function main() {
 
   const builder = createBuilder();
   const reports: TokenReport[] = [];
-
-  // Measure routing_json (Foreground)
-  console.log('Measuring routing_json (Foreground routing)...');
-  const routingReport = await measureMode(builder, makeRoutingJsonInput());
-  reports.push(routingReport);
-  console.log(`  Segment A: ${routingReport.segmentA} tokens`);
-  console.log(`  Segment B: ${routingReport.segmentB} tokens`);
-  console.log(`  Segment C: ${routingReport.segmentC} tokens`);
-  console.log(`  Segment D: ${routingReport.segmentD} tokens`);
-  console.log(`  Total: ${routingReport.total} tokens\n`);
 
   // Measure structured_json (Memory)
   console.log('Measuring structured_json (Memory extraction)...');
