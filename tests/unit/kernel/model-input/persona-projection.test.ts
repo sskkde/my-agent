@@ -219,7 +219,7 @@ describe('PersonaProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         personaProjection: projection,
@@ -240,7 +240,7 @@ describe('PersonaProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         personaProjection: projection,
@@ -261,7 +261,7 @@ describe('PersonaProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         personaProjection: projection,
@@ -283,7 +283,7 @@ describe('PersonaProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         personaProjection: projection,
@@ -300,13 +300,13 @@ describe('PersonaProjection', () => {
       const builder = makeBuilder()
 
       const input1: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
       }
 
       const input2: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         systemPrompt: 'Custom system prompt',
@@ -329,7 +329,7 @@ describe('PersonaProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         systemPrompt: 'Custom system prompt',
