@@ -1,4 +1,4 @@
-import type { LLMRequest, LLMResult } from './types.js'
+import type { LLMRequest, LLMResult, ProviderStreamEvent } from './types.js'
 import type { ProviderConfig } from './types.js'
 import type { LLMProvider, ProviderStats, ProviderHealthStatus } from './provider.js'
 import type { CircuitBreaker } from './circuit-breaker.js'
@@ -87,31 +87,43 @@ export class MockProvider implements LLMProvider {
     return result
   }
 
-  async *stream(request: LLMRequest): AsyncGenerator<string> {
+  async *stream(request: LLMRequest): AsyncGenerator<ProviderStreamEvent> {
     const startTime = Date.now()
     this._stats.totalRequests++
 
     const registry = getMockProviderRegistry()
-    const peeked = registry.peekNextResponse(request)
-
-    if (!peeked.content || peeked.content.length === 0) {
-      return
-    }
-
     const responseConfig = registry.consumeNextResponse(request)
 
     if (responseConfig.delayMs && responseConfig.delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, responseConfig.delayMs))
     }
 
-    const content = responseConfig.content
+    const content = responseConfig.content ?? ''
     const tokens = content.split(/(\s+)/)
-
     for (const token of tokens) {
       if (token.length > 0) {
-        yield token
+        yield { kind: 'text', delta: token }
       }
     }
+
+    if (responseConfig.toolCalls && responseConfig.toolCalls.length > 0) {
+      for (let index = 0; index < responseConfig.toolCalls.length; index++) {
+        const tc = responseConfig.toolCalls[index]
+        if (!tc) continue
+        yield {
+          kind: 'tool_call_delta',
+          index,
+          id: `call_${index}`,
+          name: tc.name,
+          argumentsDelta: tc.arguments,
+        }
+      }
+    }
+
+    const finishReason =
+      responseConfig.finishReason ??
+      (responseConfig.toolCalls && responseConfig.toolCalls.length > 0 ? 'tool_calls' : 'stop')
+    yield { kind: 'finish', finishReason }
 
     const durationMs = Date.now() - startTime
     registry.recordInteraction(request, responseConfig, durationMs)

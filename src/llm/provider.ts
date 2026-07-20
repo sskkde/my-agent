@@ -3,7 +3,7 @@
  * Abstract interface for LLM provider implementations
  */
 
-import type { LLMRequest, LLMResult, ProviderConfig } from './types'
+import type { LLMRequest, LLMResult, ProviderConfig, ProviderStreamEvent } from './types.js'
 import type { CircuitBreaker } from './circuit-breaker'
 
 /**
@@ -58,7 +58,7 @@ export interface LLMProvider {
    * @param request The LLM request
    * @returns AsyncGenerator yielding response chunks
    */
-  stream?(request: LLMRequest): AsyncGenerator<string>
+  stream?(request: LLMRequest): AsyncGenerator<ProviderStreamEvent>
 
   /**
    * Check if the provider is healthy and can accept requests

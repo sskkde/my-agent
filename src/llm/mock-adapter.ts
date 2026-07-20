@@ -6,8 +6,7 @@
 import type { LLMAdapter, LLMAdapterConfig } from './adapter.js'
 import type { LLMProvider, ProviderHealthStatus, ProviderStats } from './provider.js'
 import type { CircuitBreaker, CircuitBreakerState, CircuitBreakerStats } from './circuit-breaker.js'
-import type { LLMRequest, LLMResult, LLMResponse, ProviderConfig, ProviderCapabilities } from './types.js'
-import type { ExactContextUsage } from '../api/types.js'
+import type { LLMRequest, LLMResult, LLMResponse, ProviderConfig, ProviderCapabilities, LLMStreamChunk } from './types.js'
 
 /**
  * Mock circuit breaker - always closed, all methods no-ops
@@ -272,26 +271,47 @@ export function createMockLLMAdapter(): LLMAdapter {
     return provider.complete(request)
   }
 
-  async function* stream(
-    request: LLMRequest,
-  ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }> {
+  async function* stream(request: LLMRequest): AsyncGenerator<LLMStreamChunk> {
     const result = await complete(request)
     if (!result.success) {
       return
     }
 
-    const content = result.response.content
+    const response = result.response
     const providerId = result.providerId
-    const model = result.response.model
+    const model = response.model
 
-    // Split into small chunks to simulate real LLM streaming so the frontend
-    // can render text progressively. A 25ms pause between chunks makes the
-    // effect observable without slowing tests excessively.
+    // Split text into small chunks to simulate real LLM streaming.
+    const content = response.content
     const chunkSize = 4
     for (let i = 0; i < content.length; i += chunkSize) {
       const chunk = content.slice(i, i + chunkSize)
-      yield { delta: chunk, providerId, model }
+      yield { kind: 'text', delta: chunk, providerId, model }
       await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+
+    // Emit tool_calls after text (if any) so kernel can dispatch tools.
+    if (response.toolCalls) {
+      for (let index = 0; index < response.toolCalls.length; index++) {
+        const tc = response.toolCalls[index]
+        if (!tc) continue
+        yield {
+          kind: 'tool_call_delta',
+          index,
+          id: tc.id,
+          name: tc.function.name,
+          argumentsDelta: tc.function.arguments,
+          providerId,
+          model,
+        }
+      }
+    }
+
+    yield {
+      kind: 'finish',
+      finishReason: response.finishReason,
+      providerId,
+      model,
     }
   }
 

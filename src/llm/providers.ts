@@ -1,4 +1,4 @@
-import type { LLMRequest, LLMResponse, LLMResult, ProviderConfig } from './types'
+import type { LLMRequest, LLMResponse, LLMResult, ProviderConfig, ProviderStreamEvent } from './types.js'
 import type { LLMProvider, ProviderStats, ProviderHealthStatus } from './provider'
 import type { CircuitBreaker, CircuitBreakerConfig } from './circuit-breaker'
 import { createCircuitBreaker } from './circuit-breaker'
@@ -8,7 +8,7 @@ import {
   mapOpenAIChatResponse,
   buildOpenAICompatibleHeaders,
   safeMergeHeaders,
-  parseOpenAIStreamLine,
+  parseOpenAIStreamEvents,
 } from './transform/openai-chat-transformer.js'
 import {
   buildOllamaChatRequestBody,
@@ -200,12 +200,21 @@ export class BaseProvider implements LLMProvider {
 
 async function* readStreamLines(
   body: ReadableStream<Uint8Array>,
-  parseLine: (line: string) => string | null,
+  parseLine: (line: string) => ProviderStreamEvent | null | ProviderStreamEvent[],
   signal: AbortSignal,
-): AsyncGenerator<string> {
+): AsyncGenerator<ProviderStreamEvent> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+
+  const emit = function* (parsed: ProviderStreamEvent | null | ProviderStreamEvent[]): Generator<ProviderStreamEvent> {
+    if (parsed === null || parsed === undefined) return
+    if (Array.isArray(parsed)) {
+      for (const event of parsed) yield event
+      return
+    }
+    yield parsed
+  }
 
   try {
     for (;;) {
@@ -216,14 +225,12 @@ async function* readStreamLines(
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
       for (const line of lines) {
-        const delta = parseLine(line)
-        if (delta !== null) yield delta
+        yield* emit(parseLine(line))
       }
     }
     const remaining = buffer.trim()
     if (remaining.length > 0) {
-      const delta = parseLine(remaining)
-      if (delta !== null) yield delta
+      yield* emit(parseLine(remaining))
     }
   } finally {
     reader.releaseLock()
@@ -324,7 +331,7 @@ export class OpenAIAdapter extends BaseProvider {
     }
   }
 
-  async *stream(request: LLMRequest): AsyncGenerator<string> {
+  async *stream(request: LLMRequest): AsyncGenerator<ProviderStreamEvent> {
     const source: ErrorSource = { module: 'openai_adapter', runId: request.model }
 
     if (!this.circuitBreaker.canExecute()) {
@@ -370,9 +377,9 @@ export class OpenAIAdapter extends BaseProvider {
       const startTime = Date.now()
       let yielded = false
 
-      for await (const delta of readStreamLines(response.body, parseOpenAIStreamLine, controller.signal)) {
+      for await (const event of readStreamLines(response.body, parseOpenAIStreamEvents, controller.signal)) {
         yielded = true
-        yield delta
+        yield event
       }
 
       this.updateStats(true, Date.now() - startTime)
@@ -501,7 +508,7 @@ export class OpenRouterAdapter extends BaseProvider {
     }
   }
 
-  async *stream(request: LLMRequest): AsyncGenerator<string> {
+  async *stream(request: LLMRequest): AsyncGenerator<ProviderStreamEvent> {
     const source: ErrorSource = { module: 'openrouter_adapter', runId: request.model }
 
     if (!this.circuitBreaker.canExecute()) {
@@ -517,7 +524,7 @@ export class OpenRouterAdapter extends BaseProvider {
       extraHeaders: this.config.headers,
     })
 
-    let body = { ...buildRequestBody(request), stream: true }
+    let body: Record<string, unknown> = { ...buildRequestBody(request), stream: true }
     body = applyReasoningDepthToBody('openrouter', body, request.reasoningDepth)
 
     const controller = new AbortController()
@@ -544,9 +551,9 @@ export class OpenRouterAdapter extends BaseProvider {
       const startTime = Date.now()
       let yielded = false
 
-      for await (const delta of readStreamLines(response.body, parseOpenAIStreamLine, controller.signal)) {
+      for await (const event of readStreamLines(response.body, parseOpenAIStreamEvents, controller.signal)) {
         yielded = true
-        yield delta
+        yield event
       }
 
       this.updateStats(true, Date.now() - startTime)
@@ -662,7 +669,7 @@ export class OllamaAdapter extends BaseProvider {
     }
   }
 
-  async *stream(request: LLMRequest): AsyncGenerator<string> {
+  async *stream(request: LLMRequest): AsyncGenerator<ProviderStreamEvent> {
     const source: ErrorSource = { module: 'ollama_adapter', runId: request.model }
 
     if (!this.circuitBreaker.canExecute()) {
@@ -701,9 +708,9 @@ export class OllamaAdapter extends BaseProvider {
       const startTime = Date.now()
       let yielded = false
 
-      for await (const delta of readStreamLines(response.body, parseOllamaStreamLine, controller.signal)) {
+      for await (const event of readStreamLines(response.body, parseOllamaStreamLine, controller.signal)) {
         yielded = true
-        yield delta
+        yield event
       }
 
       this.updateStats(true, Date.now() - startTime)

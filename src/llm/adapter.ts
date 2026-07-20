@@ -4,8 +4,8 @@
  */
 
 import type { LLMProvider } from './provider'
-import type { LLMRequest, LLMResult, ProviderConfig, AllProvidersFailedError } from './types'
-import type { ExactContextUsage } from '../api/types'
+import type { LLMRequest, LLMResult, ProviderConfig, AllProvidersFailedError, LLMStreamChunk } from './types.js'
+import { toLLMStreamChunk } from './types.js'
 import type { CircuitBreakerConfig } from './circuit-breaker'
 import type { RuntimeError, ErrorSource } from '../shared/errors'
 import type { RetryPolicy } from '../shared/retry'
@@ -64,7 +64,7 @@ export interface LLMAdapter {
    */
   stream(
     request: LLMRequest,
-  ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }>
+  ): AsyncGenerator<LLMStreamChunk>
 
   /**
    * Add a provider to the adapter
@@ -187,9 +187,7 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
     }
   }
 
-  async function* stream(
-    request: LLMRequest,
-  ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }> {
+  async function* stream(request: LLMRequest): AsyncGenerator<LLMStreamChunk> {
     const healthyProviders = getHealthyProviders()
 
     if (healthyProviders.length === 0) {
@@ -199,8 +197,8 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
     for (const provider of healthyProviders) {
       if (provider.stream) {
         try {
-          for await (const chunk of provider.stream(request)) {
-            yield { delta: chunk, providerId: provider.id, model: request.model }
+          for await (const event of provider.stream(request)) {
+            yield toLLMStreamChunk(event, provider.id, request.model)
           }
           return
         } catch {
@@ -209,13 +207,41 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
       }
     }
 
+    // Fallback: complete() then emit structured chunks (text and/or tool_calls)
     const fallbackResult = await complete(request)
-    if (fallbackResult.success && fallbackResult.response.content) {
+    if (!fallbackResult.success) {
+      return
+    }
+    const response = fallbackResult.response
+    const providerId = fallbackResult.providerId
+    if (response.content) {
       yield {
-        delta: fallbackResult.response.content,
-        providerId: fallbackResult.providerId,
+        kind: 'text',
+        delta: response.content,
+        providerId,
         model: request.model,
       }
+    }
+    if (response.toolCalls) {
+      for (let index = 0; index < response.toolCalls.length; index++) {
+        const tc = response.toolCalls[index]
+        if (!tc) continue
+        yield {
+          kind: 'tool_call_delta',
+          index,
+          id: tc.id,
+          name: tc.function.name,
+          argumentsDelta: tc.function.arguments,
+          providerId,
+          model: request.model,
+        }
+      }
+    }
+    yield {
+      kind: 'finish',
+      finishReason: response.finishReason,
+      providerId,
+      model: request.model,
     }
   }
 
