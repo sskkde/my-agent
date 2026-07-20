@@ -3,82 +3,46 @@
  *
  * Converts ToolPlaneProjection to textual representation for the LLM prompt.
  *
+ * function_calling: empty prompt plane (schemas live in LLMRequest.tools only).
+ * structured_json: prompt-side Available Tool IDs allowlist (no request.tools).
+ *
  * @module kernel/model-input/tool-plane-projection-renderer
  */
 
 import type { ToolPlaneProjection } from './model-input-types.js'
-import type { ToolDefinition } from '../../llm/types.js'
 
 export interface RenderToolPlaneOptions {
-  includeSummaries?: boolean
-  includeSchemas?: boolean
+  includeIds?: boolean
 }
 
+/**
+ * Render the prompt-side tool plane.
+ *
+ * @param mode - `function_calling` returns '' (tools only in request.tools).
+ *               `structured_json` returns the ID allowlist when non-empty.
+ */
 export function renderToolPlane(
   toolProjection: ToolPlaneProjection,
-  mode: 'routing_json' | 'function_calling' | 'structured_json' = 'function_calling',
-  options: RenderToolPlaneOptions = {},
+  mode: 'function_calling' | 'structured_json' = 'function_calling',
+  _options: RenderToolPlaneOptions = {},
 ): string {
-  if (toolProjection.toolIds.length === 0) {
+  if (mode === 'function_calling') {
     return ''
   }
-
-  const { includeSummaries = true, includeSchemas = false } = options
-
-  const parts: string[] = []
-
-  parts.push(`Available Tool IDs: ${toolProjection.toolIds.join(', ')}`)
-
-  if (mode === 'routing_json' && includeSummaries && toolProjection.toolSummaries) {
-    parts.push(toolProjection.toolSummaries)
-  }
-
-  if (mode === 'function_calling' && includeSchemas && toolProjection.tools) {
-    const schemaParts = renderToolSchemas(toolProjection.tools)
-    if (schemaParts) {
-      parts.push(schemaParts)
-    }
-  }
-
-  return parts.join('\n\n')
+  return renderStructuredJsonToolPlane(toolProjection)
 }
 
-function renderToolSchemas(tools: ToolDefinition[]): string {
-  const parts: string[] = []
-
-  for (const tool of tools) {
-    const schemaStr = renderSingleToolSchema(tool)
-    parts.push(schemaStr)
-  }
-
-  return parts.join('\n\n')
+/** @deprecated Prefer renderToolPlane(..., 'function_calling') — kept for call-site clarity. */
+export function renderExecutionToolPlane(_projection: ToolPlaneProjection): string {
+  return ''
 }
 
-function renderSingleToolSchema(tool: ToolDefinition): string {
-  const lines: string[] = []
-
-  lines.push(`Tool: ${tool.function.name}`)
-  lines.push(`Description: ${tool.function.description}`)
-
-  if (tool.function.parameters) {
-    lines.push('Parameters:')
-    const paramsJson = JSON.stringify(tool.function.parameters, null, 2)
-    lines.push(paramsJson)
-  }
-
-  return lines.join('\n')
-}
-
-export function renderRoutingToolPlane(projection: ToolPlaneProjection): string {
-  return renderToolPlane(projection, 'routing_json', { includeSummaries: true })
-}
-
-export function renderExecutionToolPlane(projection: ToolPlaneProjection): string {
-  // Match ModelInputBuilder function_calling: prompt is IDs only; schemas go in request.tools.
-  return renderMinimalToolPlane(projection)
-}
-
+/** Prompt-side ID allowlist for structured_json (no request.tools). */
 export function renderMinimalToolPlane(projection: ToolPlaneProjection): string {
+  return renderStructuredJsonToolPlane(projection)
+}
+
+function renderStructuredJsonToolPlane(projection: ToolPlaneProjection): string {
   if (projection.toolIds.length === 0) {
     return ''
   }
