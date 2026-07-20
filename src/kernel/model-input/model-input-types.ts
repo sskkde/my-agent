@@ -22,12 +22,10 @@ import type { MemoryProvenance } from '../../memory/types.js'
 /**
  * The mode determines how the LLM should be invoked.
  *
- * - `routing_json`: ForegroundAgent - structured JSON routing, no tools in request
- * - `routing_tool_call`: Routing mode with tool summaries plus full schemas for native function calling
  * - `structured_json`: MemoryExtractor - structured JSON extraction, no tools
  * - `function_calling`: AgentKernel/SearchSubagent - full function calling with tools
  */
-export type ModelInputMode = 'routing_json' | 'routing_tool_call' | 'structured_json' | 'function_calling'
+export type ModelInputMode = 'structured_json' | 'function_calling'
 
 export type ProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini' | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot' | 'minimax' | 'mimo' | 'iflytek-spark' | 'stepfun' | 'hunyuan' | 'siliconflow'
 
@@ -36,15 +34,13 @@ export type ProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'g
 /**
  * Tool plane projection data.
  *
- * For `routing_json` mode: only toolIds and optional summary.
- * For `function_calling` mode: full tool schemas for LLM request.
+ * For `function_calling` mode: toolIds plus full schemas for LLMRequest.tools.
+ * For `structured_json` mode: toolIds only (prompt allowlist; no request.tools).
  */
 export interface ToolPlaneProjection {
   /** Tool IDs available for this request */
   toolIds: string[]
-  /** Optional human-readable summary of available tools */
-  toolSummaries?: string
-  /** Full tool schemas for function_calling mode */
+  /** Full tool schemas for function_calling mode (LLMRequest.tools) */
   tools?: ToolDefinition[]
 }
 
