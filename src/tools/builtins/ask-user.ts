@@ -1,4 +1,4 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js'
+import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
 
 export interface AskUserParams {
   question: string
@@ -14,29 +14,8 @@ export interface AskUserResult {
   [key: string]: unknown
 }
 
-export interface AskUserApprovalInput {
-  userId: string
-  sessionId?: string
-  question: string
-  context?: string
-  requestId: string
-}
-
-export interface AskUserApprovalOutput {
-  requestId: string
-}
-
-export interface AskUserToolDeps {
-  createUserQuestionApproval?: (input: AskUserApprovalInput) => AskUserApprovalOutput | void
-}
-
-export function createAskUserTool(deps?: AskUserToolDeps): ToolDefinition {
-  const approvalCreator = deps?.createUserQuestionApproval
-
-  const handler: ToolHandler = async (
-    params: unknown,
-    context?: ToolExecutionContext,
-  ): Promise<ToolExecutionResult> => {
+export function createAskUserTool(): ToolDefinition {
+  const handler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
     const typedParams = params as AskUserParams
 
     if (!typedParams.question) {
@@ -51,20 +30,6 @@ export function createAskUserTool(deps?: AskUserToolDeps): ToolDefinition {
     }
 
     const requestId = `ask_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-
-    if (approvalCreator) {
-      try {
-        approvalCreator({
-          userId: context?.userId ?? '',
-          sessionId: context?.sessionId,
-          question: typedParams.question,
-          context: typedParams.context,
-          requestId,
-        })
-      } catch {
-        // Degrade to event-only on callback error; still return pending_approval.
-      }
-    }
 
     const result: AskUserResult = {
       status: 'pending_approval',
