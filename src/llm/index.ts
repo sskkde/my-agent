@@ -16,7 +16,14 @@ export type {
   ProviderCapabilities,
   ProviderConfig,
   AllProvidersFailedError,
+  ProviderStreamEvent,
+  LLMStreamChunk,
+  LLMFinishReason,
 } from './types'
+
+export { mapFinishReason, toLLMStreamChunk } from './types'
+export { StreamResponseAggregator } from './stream-aggregator.js'
+export { supportsStructuredToolStreaming } from './stream-capabilities.js'
 
 // Circuit Breaker
 export type {

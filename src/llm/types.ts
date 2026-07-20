@@ -324,3 +324,92 @@ export function computeCacheHitRate(usage: TokenUsage): number {
   const total = hit + miss
   return total > 0 ? hit / total : 0
 }
+
+
+// =============================================================================
+// Streaming chunk types (text + tool_calls)
+// =============================================================================
+
+/**
+ * Finish reason values shared by complete() and stream() paths.
+ */
+export type LLMFinishReason = LLMResponse['finishReason']
+
+/**
+ * Raw provider stream event (provider layer, no providerId).
+ * OpenAI-compatible tool_calls arrive as incremental tool_call_delta fragments
+ * keyed by `index`; arguments are string fragments to concatenate.
+ */
+export type ProviderStreamEvent =
+  | { readonly kind: 'text'; readonly delta: string }
+  | {
+      readonly kind: 'tool_call_delta'
+      readonly index: number
+      readonly id?: string
+      readonly name?: string
+      readonly argumentsDelta?: string
+    }
+  | { readonly kind: 'finish'; readonly finishReason: LLMFinishReason }
+
+/**
+ * Adapter-level stream chunk with provider identity.
+ * Kernel consumes this shape to broadcast text tokens and aggregate tool calls.
+ */
+export type LLMStreamChunk =
+  | {
+      readonly kind: 'text'
+      readonly delta: string
+      readonly providerId: string
+      readonly model?: string
+    }
+  | {
+      readonly kind: 'tool_call_delta'
+      readonly index: number
+      readonly id?: string
+      readonly name?: string
+      readonly argumentsDelta?: string
+      readonly providerId: string
+      readonly model?: string
+    }
+  | {
+      readonly kind: 'finish'
+      readonly finishReason: LLMFinishReason
+      readonly providerId: string
+      readonly model?: string
+    }
+
+/** Map provider finish_reason string to LLMFinishReason (unknown → stop). */
+export function mapFinishReason(value: string | null | undefined): LLMFinishReason {
+  if (value === 'stop' || value === 'length' || value === 'tool_calls' || value === 'content_filter') {
+    return value
+  }
+  return 'stop'
+}
+
+/** Lift a provider event into an adapter chunk. */
+export function toLLMStreamChunk(
+  event: ProviderStreamEvent,
+  providerId: string,
+  model?: string,
+): LLMStreamChunk {
+  switch (event.kind) {
+    case 'text':
+      return { kind: 'text', delta: event.delta, providerId, model }
+    case 'tool_call_delta':
+      return {
+        kind: 'tool_call_delta',
+        index: event.index,
+        id: event.id,
+        name: event.name,
+        argumentsDelta: event.argumentsDelta,
+        providerId,
+        model,
+      }
+    case 'finish':
+      return { kind: 'finish', finishReason: event.finishReason, providerId, model }
+    default: {
+      const _exhaustive: never = event
+      return _exhaustive
+    }
+  }
+}

@@ -3,7 +3,8 @@
  * Transforms LLMRequest to OpenAI API format and maps responses back
  */
 
-import type { LLMRequest, LLMResponse, ToolCall } from '../types'
+import type { LLMRequest, LLMResponse, ToolCall, ProviderStreamEvent } from '../types.js'
+import { mapFinishReason } from '../types.js'
 
 /**
  * List of protected HTTP headers that cannot be overridden by user configuration.
@@ -136,23 +137,124 @@ export function buildOpenAIChatRequestBody(request: LLMRequest, stream = false):
   return body
 }
 
+export interface OpenAIStreamToolCallDelta {
+  readonly index?: number
+  readonly id?: string
+  readonly type?: string
+  readonly function?: {
+    readonly name?: string
+    readonly arguments?: string
+  }
+}
+
 export interface OpenAIStreamChunk {
   readonly choices: ReadonlyArray<{
-    readonly delta?: { readonly content?: string }
+    readonly delta?: {
+      readonly content?: string | null
+      readonly tool_calls?: ReadonlyArray<OpenAIStreamToolCallDelta>
+      readonly role?: string
+    }
     readonly finish_reason?: string | null
   }>
 }
 
-export function parseOpenAIStreamLine(line: string): string | null {
+/**
+ * Parse one OpenAI-compatible SSE data line into a structured stream event.
+ * Returns null for heartbeats, [DONE], empty role-only chunks, or malformed JSON.
+ */
+export function parseOpenAIStreamLine(line: string): ProviderStreamEvent | null {
   if (!line.startsWith('data: ')) return null
   const data = line.slice(6).trim()
   if (data === '[DONE]') return null
   try {
     const parsed = JSON.parse(data) as OpenAIStreamChunk
-    const delta = parsed.choices?.[0]?.delta?.content
-    return typeof delta === 'string' && delta.length > 0 ? delta : null
+    const choice = parsed.choices?.[0]
+    if (!choice) return null
+
+    if (choice.finish_reason) {
+      return { kind: 'finish', finishReason: mapFinishReason(choice.finish_reason) }
+    }
+
+    const delta = choice.delta
+    if (!delta) return null
+
+    const toolCalls = delta.tool_calls
+    if (toolCalls && toolCalls.length > 0) {
+      // Emit one event per tool_call fragment; callers may receive multiple per line.
+      // Prefer the first fragment for single-event return; multi-fragment lines use parseOpenAIStreamEvents.
+      const tc = toolCalls[0]
+      if (!tc) return null
+      return {
+        kind: 'tool_call_delta',
+        index: typeof tc.index === 'number' ? tc.index : 0,
+        id: typeof tc.id === 'string' && tc.id.length > 0 ? tc.id : undefined,
+        name:
+          typeof tc.function?.name === 'string' && tc.function.name.length > 0
+            ? tc.function.name
+            : undefined,
+        argumentsDelta:
+          typeof tc.function?.arguments === 'string' && tc.function.arguments.length > 0
+            ? tc.function.arguments
+            : undefined,
+      }
+    }
+
+    const content = delta.content
+    if (typeof content === 'string' && content.length > 0) {
+      return { kind: 'text', delta: content }
+    }
+
+    return null
   } catch {
     return null
+  }
+}
+
+/**
+ * Parse one SSE line into zero or more stream events.
+ * Handles multi tool_call fragments in a single chunk (parallel tool calls).
+ */
+export function parseOpenAIStreamEvents(line: string): ProviderStreamEvent[] {
+  if (!line.startsWith('data: ')) return []
+  const data = line.slice(6).trim()
+  if (data === '[DONE]') return []
+  try {
+    const parsed = JSON.parse(data) as OpenAIStreamChunk
+    const choice = parsed.choices?.[0]
+    if (!choice) return []
+
+    const events: ProviderStreamEvent[] = []
+    const delta = choice.delta
+    if (delta) {
+      const content = delta.content
+      if (typeof content === 'string' && content.length > 0) {
+        events.push({ kind: 'text', delta: content })
+      }
+      const toolCalls = delta.tool_calls
+      if (toolCalls) {
+        for (const tc of toolCalls) {
+          events.push({
+            kind: 'tool_call_delta',
+            index: typeof tc.index === 'number' ? tc.index : 0,
+            id: typeof tc.id === 'string' && tc.id.length > 0 ? tc.id : undefined,
+            name:
+              typeof tc.function?.name === 'string' && tc.function.name.length > 0
+                ? tc.function.name
+                : undefined,
+            argumentsDelta:
+              typeof tc.function?.arguments === 'string' && tc.function.arguments.length > 0
+                ? tc.function.arguments
+                : undefined,
+          })
+        }
+      }
+    }
+    if (choice.finish_reason) {
+      events.push({ kind: 'finish', finishReason: mapFinishReason(choice.finish_reason) })
+    }
+    return events
+  } catch {
+    return []
   }
 }
 
