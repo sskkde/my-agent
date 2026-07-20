@@ -35,7 +35,6 @@ describe('Tool Catalog Consistency', () => {
       planStore,
       longTermMemoryStore,
       sessionStore,
-      enableMockConnectorTools: true,
     })
   })
 
