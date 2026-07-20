@@ -200,8 +200,8 @@ private buildSegmentC(input: ModelInputBuildInput) {
 
   if (projection) {
     // Mode-dependent tool plane rendering
-    if (mode === 'routing_json') {
-      parts.push(this.renderRoutingToolPlane(projection));
+    if (mode === 'function_calling') {
+      parts.push(this.renderFunctionCallingToolPlane(projection));
     } else if (mode === 'function_calling') {
       parts.push(this.renderFunctionCallingToolPlane(projection));
     }
@@ -417,7 +417,7 @@ export function renderSummaryLayers(projection: SummaryLayerProjection): string 
 
 ### ForegroundAgent
 
-- Mode: `routing_json`
+- Mode: `function_calling`
 - Uses: `personaProjection`, `toolSelectionPolicy`
 - Segment B/C affected by projections
 

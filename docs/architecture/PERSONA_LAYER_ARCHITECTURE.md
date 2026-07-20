@@ -354,7 +354,7 @@ const personaProjection: PersonaProjection = {
 
 ```typescript
 const built = await builder.build({
-  mode: 'routing_tool_call',
+  mode: 'function_calling',
   agentType: 'main',
   agentProfile: 'foreground',
   providerFamily: 'deepseek',

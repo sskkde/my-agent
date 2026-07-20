@@ -16,7 +16,7 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 1. **Seven Layers (T1-T7), Four Segments**: Content organized into taxonomy layers for clarity, grouped into segments for caching
 2. **Segment A Stability**: The static prefix (T1-T4) never changes for the same agentType+agentProfile+providerFamily combination
 3. **Cache-Aware Design**: Segments A+B+C form the cache key; Segment D is always dynamic
-4. **Four Modes**: Different LLM invocation patterns supported via mode selection (`routing_json`, `routing_tool_call`, `function_calling`, `structured_json`)
+4. **Two Modes**: Different LLM invocation patterns supported via mode selection (`function_calling`, `structured_json`)
 5. **agentType + agentProfile Taxonomy**: Runtime agent class and capability profile replace legacy `agentKind` strings
 6. **Strategy/Data Separation**: Policy projections (`personaProjection`, `toolSelectionPolicy`, `memoryPolicyProjection`, `summaryLayers`) are top-level `ModelInputBuildInput` fields, never embedded in data containers
 
@@ -63,7 +63,7 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 |  +-- Segment C (Cache Key Part 3) ----------------------------+   |
 |  |                                                            |   |
 |  |  Layer 6: Tool Plane                                       |   |
-|  |  - Tool IDs and summaries (routing_json mode)              |   |
+|  |  - Empty for function_calling (schemas in request.tools)  |   |
 |  |  - Full tool schemas (function_calling mode)               |   |
 |  |  - Hidden/denied tools excluded                            |   |
 |  |  - ToolSelectionPolicyProjection (P10, top-level):         |   |
@@ -194,8 +194,6 @@ The ModelInputBuilder is a kernel-owned shared component that constructs LLM req
 
 **Mode-Dependent Rendering**:
 
-- `routing_json`: Tool IDs + capability summaries only (text in Segment C)
-- `routing_tool_call`: Tool summaries in Segment C prompt + full schemas in `LLMRequest.tools` for native function calling
 - `function_calling`: Full schemas in `LLMRequest.tools` + policy text in Segment C
 - `structured_json`: Tool IDs only (text in Segment C)
 
@@ -299,9 +297,9 @@ Phase 10 introduces four strategy projections that separate policy configuration
 
 ---
 
-## Four Modes
+## Two Modes
 
-### routing_json
+### function_calling
 
 **Use Case**: ForegroundAgent message routing
 
@@ -321,7 +319,7 @@ Phase 10 introduces four strategy projections that separate policy configuration
 }
 ```
 
-### routing_tool_call
+### function_calling
 
 **Use Case**: ForegroundAgent with decide (tool summaries + full schemas for native function calling)
 
@@ -437,7 +435,7 @@ interface TokenUsage {
 
 **Integration**: Direct ModelInputBuilder usage
 
-- Mode: `routing_tool_call` (with fallback to `routing_json`)
+- Mode: `function_calling` 
 - Uses taxonomy dimensions: `agentType` + `agentProfile`
 
 ### AgentKernel
@@ -688,15 +686,14 @@ const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoad
 
 // Build for routing
 const built = await builder.build({
-  mode: 'routing_tool_call',
+  mode: 'function_calling',
   agentType: 'main',
   agentProfile: 'foreground',
   providerFamily: 'deepseek',
   systemPrompt: 'You are a helpful assistant.',
   toolProjection: {
     toolIds: ['web.search', 'memory.retrieve'],
-    toolSummaries: 'Available tools for search and retrieval.',
-  },
+      },
   contextBundle: {
     pinnedItems: [{ itemId: '1', content: 'User prefers dark mode', isPinned: true }],
     orderedItems: [],
