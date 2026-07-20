@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type { LLMResult, LLMRequest } from '../../../src/llm/types.js'
 import type { ContextBundle } from '../../../src/context/types.js'
 import type {
-  KernelRunInput,
   KernelConfig,
   ToolExecutor,
   ContextManager,
@@ -63,8 +62,36 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  async *stream() {
-    yield { delta: 'x', providerId: 'fake' }
+  async *stream(
+    request: LLMRequest,
+  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+    const result = await this.complete(request)
+    if (!result.success) return
+    const response = result.response
+    if (response.content) {
+      yield { kind: 'text', delta: response.content, providerId: result.providerId, model: request.model }
+    }
+    if (response.toolCalls) {
+      for (let index = 0; index < response.toolCalls.length; index++) {
+        const tc = response.toolCalls[index]
+        if (!tc) continue
+        yield {
+          kind: 'tool_call_delta',
+          index,
+          id: tc.id,
+          name: tc.function.name,
+          argumentsDelta: tc.function.arguments,
+          providerId: result.providerId,
+          model: request.model,
+        }
+      }
+    }
+    yield {
+      kind: 'finish',
+      finishReason: response.finishReason,
+      providerId: result.providerId,
+      model: request.model,
+    }
   }
 
   addProvider(): void {}

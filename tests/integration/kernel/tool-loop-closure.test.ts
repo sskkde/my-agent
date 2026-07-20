@@ -52,12 +52,37 @@ class FakeLLMAdapter implements LLMAdapter {
     return this.capturedRequests
   }
 
-  async *stream(): AsyncGenerator<{
-    delta: string
-    providerId: string
-    model?: string
-    usage?: import('../../../src/api/types.js').ExactContextUsage
-  }> {}
+  async *stream(
+    request: import('../../../src/llm/types.js').LLMRequest,
+  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+    const result = await this.complete(request as never)
+    if (!result.success) return
+    const response = result.response
+    if (response.content) {
+      yield { kind: 'text', delta: response.content, providerId: result.providerId, model: request.model }
+    }
+    if (response.toolCalls) {
+      for (let index = 0; index < response.toolCalls.length; index++) {
+        const tc = response.toolCalls[index]
+        if (!tc) continue
+        yield {
+          kind: 'tool_call_delta',
+          index,
+          id: tc.id,
+          name: tc.function.name,
+          argumentsDelta: tc.function.arguments,
+          providerId: result.providerId,
+          model: request.model,
+        }
+      }
+    }
+    yield {
+      kind: 'finish',
+      finishReason: response.finishReason,
+      providerId: result.providerId,
+      model: request.model,
+    }
+  }
 
   addProvider(provider: LLMProvider): void {
     this.providers.push(provider)

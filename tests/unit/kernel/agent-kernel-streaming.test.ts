@@ -71,7 +71,7 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
 
   async *stream(
     request: LLMRequest,
-  ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: any }> {
+  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     this.lastRequest = request
     this.streamCallCount++
 
@@ -81,10 +81,17 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
       }
 
       yield {
-        delta: this.deltas[i],
+        kind: 'text',
+        delta: this.deltas[i]!,
         providerId: 'fake-streaming',
         model: request.model,
       }
+    }
+    yield {
+      kind: 'finish',
+      finishReason: 'stop',
+      providerId: 'fake-streaming',
+      model: request.model,
     }
   }
 
@@ -116,17 +123,27 @@ interface BroadcastCall {
 
 class FakeTimelineBroadcaster {
   private broadcasts: BroadcastCall[] = []
+  private timelineEvents: Array<{ sessionId: string; event: import('../../../src/api/types.js').ConsoleTimelineEvent }> = []
 
   broadcastTokenStream(sessionId: string, token: TokenStreamPayload): void {
     this.broadcasts.push({ sessionId, token })
+  }
+
+  broadcast(sessionId: string, event: import('../../../src/api/types.js').ConsoleTimelineEvent): void {
+    this.timelineEvents.push({ sessionId, event })
   }
 
   getBroadcasts(): BroadcastCall[] {
     return this.broadcasts
   }
 
+  getTimelineEvents() {
+    return this.timelineEvents
+  }
+
   clear(): void {
     this.broadcasts = []
+    this.timelineEvents = []
   }
 }
 
@@ -280,15 +297,17 @@ describe('AgentKernel streaming behavior', () => {
       await kernel.run(makeRunInput())
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
+      const textBroadcasts = broadcasts.filter((b) => b.token.delta.length > 0)
 
-      // Should emit one broadcast per delta
-      expect(broadcasts.length).toBe(deltas.length)
+      // Should emit one broadcast per text delta (+ optional final marker)
+      expect(textBroadcasts.length).toBe(deltas.length)
 
-      // Each broadcast should have increasing sequence
-      for (let i = 0; i < broadcasts.length; i++) {
-        expect(broadcasts[i].token.sequence).toBe(i)
-        expect(broadcasts[i].token.delta).toBe(deltas[i])
+      // Each text broadcast should have increasing sequence and matching delta
+      for (let i = 0; i < textBroadcasts.length; i++) {
+        expect(textBroadcasts[i].token.sequence).toBe(i)
+        expect(textBroadcasts[i].token.delta).toBe(deltas[i])
       }
+      expect(broadcasts.some((b) => b.token.isFinal === true)).toBe(true)
     })
 
     it('includes sessionId and attemptId in TokenStreamPayload', async () => {
@@ -324,11 +343,12 @@ describe('AgentKernel streaming behavior', () => {
       await kernel.run(makeRunInput())
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
+      const textBroadcasts = broadcasts.filter((b) => b.token.delta.length > 0)
 
-      expect(broadcasts.length).toBe(3)
-      expect(broadcasts[0].token.isFinal).toBe(false)
-      expect(broadcasts[1].token.isFinal).toBe(false)
-      expect(broadcasts[2].token.isFinal).toBe(true)
+      expect(textBroadcasts.length).toBe(3)
+      expect(textBroadcasts.every((b) => b.token.isFinal === false)).toBe(true)
+      expect(broadcasts[broadcasts.length - 1].token.isFinal).toBe(true)
+      expect(broadcasts[broadcasts.length - 1].token.delta).toBe('')
     })
 
     it('includes timestamp in each TokenStreamPayload', async () => {
@@ -392,8 +412,10 @@ describe('AgentKernel streaming behavior', () => {
       expect(result.finalResponse).toBe('Single response')
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      expect(broadcasts.length).toBe(1)
-      expect(broadcasts[0].token.isFinal).toBe(true)
+      const textBroadcasts = broadcasts.filter((b) => b.token.delta.length > 0)
+      expect(textBroadcasts.length).toBe(1)
+      expect(textBroadcasts[0].token.delta).toBe('Single response')
+      expect(broadcasts.some((b) => b.token.isFinal === true)).toBe(true)
     })
   })
 
@@ -445,9 +467,11 @@ describe('AgentKernel streaming behavior', () => {
       expect(result.finalStatus).toBe('completed')
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      // Only the partial 'A' was broadcast before streaming failure
-      expect(broadcasts.length).toBe(1)
-      expect(broadcasts[0].token.isFinal).toBe(false)
+      // Only the partial 'A' was broadcast before streaming failure (+ optional empty flush)
+      const textBroadcasts = broadcasts.filter((b) => b.token.delta.length > 0)
+      expect(textBroadcasts.length).toBe(1)
+      expect(textBroadcasts[0].token.delta).toBe('A')
+      expect(textBroadcasts[0].token.isFinal).toBe(false)
     })
 
     it('preserves partial deltas before streaming failure', async () => {
@@ -461,34 +485,80 @@ describe('AgentKernel streaming behavior', () => {
 
       const broadcasts = fakeBroadcaster.getBroadcasts()
 
-      // Should have broadcasts for 'Part1' and ' '
-      expect(broadcasts.length).toBe(2)
-      expect(broadcasts[0].token.delta).toBe('Part1')
-      expect(broadcasts[1].token.delta).toBe(' ')
+      // Should have broadcasts for 'Part1' and ' ' (plus optional empty flush)
+      const textBroadcasts = broadcasts.filter((b) => b.token.delta.length > 0)
+      expect(textBroadcasts.length).toBe(2)
+      expect(textBroadcasts[0].token.delta).toBe('Part1')
+      expect(textBroadcasts[1].token.delta).toBe(' ')
     })
   })
 
   describe('Streaming with tool calls', () => {
-    it('falls back to complete() when streaming yields no content (tool_calls only)', async () => {
-      class ToolCallStreamingAdapter extends FakeStreamingLLMAdapter {
-        async *stream(): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: any }> {
-          yield* []
+    it('handles tool_calls-only stream without text (no token broadcast, still dispatches)', async () => {
+      class ToolOnlyStreamAdapter extends FakeStreamingLLMAdapter {
+        private doneTool = false
+
+        async *stream(
+          request: LLMRequest,
+        ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+          this.lastRequest = request
+          this.streamCallCount++
+          if (!this.doneTool) {
+            this.doneTool = true
+            yield {
+              kind: 'tool_call_delta',
+              index: 0,
+              id: 'call-x',
+              name: 'get_weather',
+              argumentsDelta: '{}',
+              providerId: 'fake-streaming',
+              model: request.model,
+            }
+            yield {
+              kind: 'finish',
+              finishReason: 'tool_calls',
+              providerId: 'fake-streaming',
+              model: request.model,
+            }
+            return
+          }
+          yield {
+            kind: 'text',
+            delta: 'done',
+            providerId: 'fake-streaming',
+            model: request.model,
+          }
+          yield {
+            kind: 'finish',
+            finishReason: 'stop',
+            providerId: 'fake-streaming',
+            model: request.model,
+          }
         }
       }
 
-      const toolCallAdapter = new ToolCallStreamingAdapter()
-      toolCallAdapter.setDeltas(['Tool', ' ', 'result'])
+      const toolCallAdapter = new ToolOnlyStreamAdapter()
+      const toolProjection = {
+        toolIds: ['get_weather'],
+        tools: [
+          {
+            type: 'function' as const,
+            function: {
+              name: 'get_weather',
+              description: 'weather',
+              parameters: { type: 'object', properties: {} },
+            },
+          },
+        ],
+      }
       const config = makeBaseConfig({ llmAdapter: toolCallAdapter })
       const kernel = new AgentKernel(config)
 
-      const result = await kernel.run(makeRunInput())
+      const result = await kernel.run({ ...makeRunInput(), toolProjection, maxIterations: 3 })
 
-      // Stream produced no content -> fallback to complete() -> complete returns text -> completed
       expect(result.finalStatus).toBe('completed')
-
-      // No token stream broadcasts since stream yielded nothing
-      const broadcasts = fakeBroadcaster.getBroadcasts()
-      expect(broadcasts.length).toBe(0)
+      expect(result.finalResponse).toBe('done')
+      expect(result.toolCalls.length).toBe(1)
     })
   })
 
@@ -507,55 +577,30 @@ describe('AgentKernel streaming behavior', () => {
       expect(result.finalStatus).toBe('completed')
       expect(result.finalResponse).toBe('x'.repeat(1000))
 
-      // Each delta should be broadcast individually
+      // Each text delta broadcast + final empty isFinal marker
       const broadcasts = fakeBroadcaster.getBroadcasts()
-      expect(broadcasts.length).toBe(1000)
+      expect(broadcasts.filter((b) => b.token.delta.length > 0).length).toBe(1000)
+      expect(broadcasts.some((b) => b.token.isFinal === true)).toBe(true)
     })
   })
 })
 
 
-describe('AgentKernel streaming suppressed for tool-capable turns (Option A)', () => {
-  it('uses complete() not stream() when tools are projected; dispatches tool_calls once', async () => {
-    class ToolCapableAdapter extends FakeStreamingLLMAdapter {
+describe('AgentKernel structured streaming with tool-capable turns (P0-P2)', () => {
+  it('streams tool_calls when tools are projected; dispatches tool_calls once', async () => {
+    class ToolCapableStreamAdapter extends FakeStreamingLLMAdapter {
       private toolCallReturned = false
 
       async complete(request: LLMRequest): Promise<LLMResult> {
         this.lastRequest = request
         this.completeCallCount++
-
-        if (!this.toolCallReturned) {
-          this.toolCallReturned = true
-          return {
-            success: true,
-            response: {
-              id: 'resp-toolcall',
-              model: request.model,
-              content: '',
-              role: 'assistant',
-              toolCalls: [
-                {
-                  id: 'call-1',
-                  type: 'function',
-                  function: {
-                    name: 'get_weather',
-                    arguments: '{"city":"SF"}',
-                  },
-                },
-              ],
-              finishReason: 'tool_calls',
-              createdAt: new Date().toISOString(),
-            },
-            providerId: 'fake-streaming',
-          }
-        }
-
+        // Should not be needed for the tool-call iteration when stream works.
         return {
           success: true,
           response: {
-            id: 'resp-final',
+            id: 'resp-fallback',
             model: request.model,
-            content: 'The weather in SF is sunny.',
+            content: 'fallback',
             role: 'assistant',
             finishReason: 'stop',
             createdAt: new Date().toISOString(),
@@ -566,14 +611,61 @@ describe('AgentKernel streaming suppressed for tool-capable turns (Option A)', (
 
       async *stream(
         request: LLMRequest,
-      ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: any }> {
+      ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
         this.lastRequest = request
         this.streamCallCount++
-        // Intentionally empty — if streaming is selected, tool_calls would be lost.
+
+        if (!this.toolCallReturned) {
+          this.toolCallReturned = true
+          // P0: text + tool_calls in one stream
+          yield {
+            kind: 'text',
+            delta: 'Checking weather…',
+            providerId: 'fake-streaming',
+            model: request.model,
+          }
+          yield {
+            kind: 'tool_call_delta',
+            index: 0,
+            id: 'call-1',
+            name: 'get_weather',
+            argumentsDelta: '{"city":',
+            providerId: 'fake-streaming',
+            model: request.model,
+          }
+          yield {
+            kind: 'tool_call_delta',
+            index: 0,
+            argumentsDelta: '"SF"}',
+            providerId: 'fake-streaming',
+            model: request.model,
+          }
+          yield {
+            kind: 'finish',
+            finishReason: 'tool_calls',
+            providerId: 'fake-streaming',
+            model: request.model,
+          }
+          return
+        }
+
+        // Second iteration: final natural language answer
+        yield {
+          kind: 'text',
+          delta: 'The weather in SF is sunny.',
+          providerId: 'fake-streaming',
+          model: request.model,
+        }
+        yield {
+          kind: 'finish',
+          finishReason: 'stop',
+          providerId: 'fake-streaming',
+          model: request.model,
+        }
       }
     }
 
-    const toolCallAdapter = new ToolCapableAdapter()
+    const toolCallAdapter = new ToolCapableStreamAdapter()
     const countingDispatcher = new FakeDispatcher()
     const toolProjection = {
       toolIds: ['get_weather'],
@@ -593,6 +685,7 @@ describe('AgentKernel streaming suppressed for tool-capable turns (Option A)', (
       ],
     }
 
+    defaultBroadcaster.clear()
     const config = makeBaseConfig({
       llmAdapter: toolCallAdapter,
       dispatcher: countingDispatcher,
@@ -605,13 +698,26 @@ describe('AgentKernel streaming suppressed for tool-capable turns (Option A)', (
       maxIterations: 3,
     })
 
-    expect(toolCallAdapter.streamCallCount).toBe(0)
-    expect(toolCallAdapter.completeCallCount).toBeGreaterThanOrEqual(2)
+    expect(toolCallAdapter.streamCallCount).toBeGreaterThanOrEqual(2)
     expect(countingDispatcher.dispatchCallCount).toBe(1)
     expect(result.finalStatus).toBe('completed')
     expect(result.finalResponse).toBe('The weather in SF is sunny.')
     expect(result.toolCalls.length).toBe(1)
     expect(result.toolCalls[0]?.toolName).toBe('get_weather')
+
+    // Text tokens were streamed for the first iteration
+    const textDeltas = defaultBroadcaster
+      .getBroadcasts()
+      .map((b) => b.token.delta)
+      .filter((d) => d.length > 0)
+    expect(textDeltas).toContain('Checking weather…')
+
+    // P2: early tool_call timeline event when name is known
+    const earlyTools = defaultBroadcaster
+      .getTimelineEvents()
+      .filter((e) => e.event.eventType === 'tool_call' && e.event.metadata?.early === true)
+    expect(earlyTools.length).toBeGreaterThanOrEqual(1)
+    expect(earlyTools[0]?.event.metadata?.toolName).toBe('get_weather')
   })
 
   it('still streams when no tools are projected', async () => {
@@ -626,7 +732,101 @@ describe('AgentKernel streaming suppressed for tool-capable turns (Option A)', (
     expect(adapter.streamCallCount).toBe(1)
     expect(result.finalStatus).toBe('completed')
     expect(result.finalResponse).toBe('Hello world')
-    expect(defaultBroadcaster.getBroadcasts().length).toBe(deltas.length)
+    // N text deltas + 1 final empty isFinal marker
+    const broadcasts = defaultBroadcaster.getBroadcasts()
+    expect(broadcasts.filter((b) => b.token.delta.length > 0).length).toBe(deltas.length)
+    expect(broadcasts.some((b) => b.token.isFinal === true)).toBe(true)
+  })
+})
+
+
+describe('AgentKernel P1 provider-family stream gate', () => {
+  it('falls back to complete when family lacks structured tool stream', async () => {
+    class TrackingAdapter extends FakeStreamingLLMAdapter {
+      private toolCallReturned = false
+
+      async complete(request: LLMRequest): Promise<LLMResult> {
+        this.lastRequest = request
+        this.completeCallCount++
+        if (!this.toolCallReturned) {
+          this.toolCallReturned = true
+          return {
+            success: true,
+            response: {
+              id: 'resp-toolcall',
+              model: request.model,
+              content: '',
+              role: 'assistant',
+              toolCalls: [
+                {
+                  id: 'call-1',
+                  type: 'function',
+                  function: { name: 'get_weather', arguments: '{}' },
+                },
+              ],
+              finishReason: 'tool_calls',
+              createdAt: new Date().toISOString(),
+            },
+            providerId: 'fake-streaming',
+          }
+        }
+        return {
+          success: true,
+          response: {
+            id: 'resp-final',
+            model: request.model,
+            content: 'ok',
+            role: 'assistant',
+            finishReason: 'stop',
+            createdAt: new Date().toISOString(),
+          },
+          providerId: 'fake-streaming',
+        }
+      }
+
+      async *stream(
+        request: LLMRequest,
+      ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+        this.lastRequest = request
+        this.streamCallCount++
+        // If this is called for tool turn, tool_calls would be lost — must not happen for ollama.
+        yield {
+          kind: 'text',
+          delta: 'should-not-stream-tools',
+          providerId: 'fake-streaming',
+          model: request.model,
+        }
+        yield { kind: 'finish', finishReason: 'stop', providerId: 'fake-streaming', model: request.model }
+      }
+    }
+
+    const adapter = new TrackingAdapter()
+    const toolProjection = {
+      toolIds: ['get_weather'],
+      tools: [
+        {
+          type: 'function' as const,
+          function: {
+            name: 'get_weather',
+            description: 'weather',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+      ],
+    }
+
+    const config = makeBaseConfig({
+      llmAdapter: adapter,
+      providerFamily: 'ollama',
+    })
+    const kernel = new AgentKernel(config)
+    const result = await kernel.run({ ...makeRunInput(), toolProjection, maxIterations: 3 })
+
+    expect(adapter.streamCallCount).toBe(0)
+    expect(adapter.completeCallCount).toBeGreaterThanOrEqual(2)
+    expect(result.finalStatus).toBe('completed')
+    expect(result.finalResponse).toBe('ok')
+    expect(result.toolCalls[0]?.toolName).toBe('get_weather')
   })
 })
 
@@ -653,10 +853,10 @@ describe('AgentKernel streaming integration', () => {
 
     class SlowStreamingAdapter extends FakeStreamingLLMAdapter {
       async *stream(request: LLMRequest) {
-        yield { delta: 'Slow', providerId: 'slow', model: request.model }
+        yield { kind: 'text' as const, delta: 'Slow', providerId: 'slow', model: request.model }
         // Simulate slow streaming
         await new Promise((resolve) => setTimeout(resolve, 10000))
-        yield { delta: 'End', providerId: 'slow', model: request.model }
+        yield { kind: 'text' as const, delta: 'End', providerId: 'slow', model: request.model }
       }
     }
 

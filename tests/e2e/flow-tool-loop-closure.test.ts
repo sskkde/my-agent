@@ -10,7 +10,7 @@ import { PromptTemplateRegistry } from '../../src/prompt/prompt-template-registr
 import { TemplateLoader } from '../../src/prompt/template-loader.js'
 import type { LLMAdapter, LLMAdapterConfig } from '../../src/llm/adapter.js'
 import type { LLMProvider } from '../../src/llm/provider.js'
-import type { LLMResult, LLMResponse, ToolCall } from '../../src/llm/types.js'
+import type { LLMResult, LLMResponse, ToolCall, LLMRequest, LLMStreamChunk } from '../../src/llm/types.js'
 import type { PermissionContext } from '../../src/permissions/types.js'
 import type { DispatchRequest } from '../../src/dispatcher/types.js'
 import type { ContextItem } from '../../src/context/types.js'
@@ -24,7 +24,7 @@ class FakeToolLoopLLMAdapter implements LLMAdapter {
     this.config = { providers: [], defaultTimeoutMs: 60000, enableCircuitBreaker: false }
   }
 
-  async complete(): Promise<LLMResult> {
+  async complete(_request?: unknown): Promise<LLMResult> {
     const response = this.responses[this.index]
     if (this.index < this.responses.length - 1) {
       this.index++
@@ -32,7 +32,32 @@ class FakeToolLoopLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'mock-provider' }
   }
 
-  async *stream(): AsyncGenerator<{ delta: string; providerId: string; model?: string }> {}
+  async *stream(
+    request: LLMRequest,
+  ): AsyncGenerator<LLMStreamChunk> {
+    const result = await this.complete(request)
+    if (!result.success) return
+    const response = result.response
+    if (response.content) {
+      yield { kind: 'text', delta: response.content, providerId: result.providerId, model: request.model }
+    }
+    if (response.toolCalls) {
+      for (let index = 0; index < response.toolCalls.length; index++) {
+        const tc = response.toolCalls[index]
+        if (!tc) continue
+        yield {
+          kind: 'tool_call_delta',
+          index,
+          id: tc.id,
+          name: tc.function.name,
+          argumentsDelta: tc.function.arguments,
+          providerId: result.providerId,
+          model: request.model,
+        }
+      }
+    }
+    yield { kind: 'finish', finishReason: response.finishReason, providerId: result.providerId, model: request.model }
+  }
 
   addProvider(provider: LLMProvider): void {
     this.providers.push(provider)

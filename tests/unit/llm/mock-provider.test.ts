@@ -106,8 +106,8 @@ describe('MockProvider', () => {
       getMockProviderRegistry().setResponseQueue([mockConfig])
 
       const tokens: string[] = []
-      for await (const token of provider.stream(buildRequest())) {
-        tokens.push(token)
+      for await (const event of provider.stream(buildRequest())) {
+        if (event.kind === 'text') tokens.push(event.delta)
       }
 
       expect(tokens.join('')).toBe('Mocked response content')

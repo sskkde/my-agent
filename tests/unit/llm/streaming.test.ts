@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { createLLMAdapter, createCircuitBreaker } from '../../../src/llm'
 import type { LLMProvider, LLMRequest, LLMResponse, LLMResult, ProviderConfig, ProviderCapabilities } from '../../../src/llm'
 import type { RuntimeError } from '../../../src/shared/errors'
-import { parseOpenAIStreamLine } from '../../../src/llm/transform/openai-chat-transformer'
+import { parseOpenAIStreamLine, parseOpenAIStreamEvents } from '../../../src/llm/transform/openai-chat-transformer'
+import { StreamResponseAggregator } from '../../../src/llm/stream-aggregator'
 import { parseOllamaStreamLine } from '../../../src/llm/transform/ollama-transformer'
 import { buildOllamaChatRequestBody } from '../../../src/llm/transform/ollama-transformer'
 import { buildOpenAIChatRequestBody } from '../../../src/llm/transform/openai-chat-transformer'
@@ -14,7 +15,7 @@ class StreamingFakeProvider implements LLMProvider {
   private readonly streamDeltas: string[]
   private completeResponse: LLMResponse | null
   private completeError: RuntimeError | null
-  readonly stream?: (request: LLMRequest) => AsyncGenerator<string>
+  readonly stream?: (request: LLMRequest) => AsyncGenerator<import('../../../src/llm/types.js').ProviderStreamEvent>
 
   constructor(
     id: string,
@@ -34,10 +35,11 @@ class StreamingFakeProvider implements LLMProvider {
 
     const deltas = this.streamDeltas
     if (options.supportsStream ?? true) {
-      this.stream = async function* (_request: LLMRequest): AsyncGenerator<string> {
+      this.stream = async function* (_request: LLMRequest) {
         for (const delta of deltas) {
-          yield delta
+          yield { kind: 'text' as const, delta }
         }
+        yield { kind: 'finish' as const, finishReason: 'stop' as const }
       }
     }
   }
@@ -118,9 +120,9 @@ function createTestRequest(): LLMRequest {
 
 describe('LLM Streaming', () => {
   describe('parseOpenAIStreamLine', () => {
-    it('extracts delta content from valid SSE data lines', () => {
+    it('extracts text event from valid SSE data lines', () => {
       const line = 'data: {"choices":[{"delta":{"content":"Hello"}}]}'
-      expect(parseOpenAIStreamLine(line)).toBe('Hello')
+      expect(parseOpenAIStreamLine(line)).toEqual({ kind: 'text', delta: 'Hello' })
     })
 
     it('returns null for [DONE] sentinel', () => {
@@ -145,12 +147,46 @@ describe('LLM Streaming', () => {
     it('returns null for malformed JSON', () => {
       expect(parseOpenAIStreamLine('data: {invalid}')).toBeNull()
     })
+
+    it('parses tool_call_delta fragments', () => {
+      const payload = {
+        choices: [
+          {
+            delta: {
+              tool_calls: [
+                {
+                  index: 0,
+                  id: 'call_1',
+                  function: { name: 'get_weather', arguments: '{"c' },
+                },
+              ],
+            },
+          },
+        ],
+      }
+      const line = `data: ${JSON.stringify(payload)}`
+      expect(parseOpenAIStreamLine(line)).toEqual({
+        kind: 'tool_call_delta',
+        index: 0,
+        id: 'call_1',
+        name: 'get_weather',
+        argumentsDelta: '{"c',
+      })
+    })
+
+    it('parses finish_reason tool_calls', () => {
+      const line = 'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}'
+      expect(parseOpenAIStreamLine(line)).toEqual({
+        kind: 'finish',
+        finishReason: 'tool_calls',
+      })
+    })
   })
 
   describe('parseOllamaStreamLine', () => {
-    it('extracts message content from valid NDJSON lines', () => {
+    it('extracts text event from valid NDJSON lines', () => {
       const line = '{"message":{"content":"Hello"},"done":false}'
-      expect(parseOllamaStreamLine(line)).toBe('Hello')
+      expect(parseOllamaStreamLine(line)).toEqual({ kind: 'text', delta: 'Hello' })
     })
 
     it('returns null for empty lines', () => {
@@ -158,9 +194,9 @@ describe('LLM Streaming', () => {
       expect(parseOllamaStreamLine('   ')).toBeNull()
     })
 
-    it('returns null for done=true final chunks with no content', () => {
+    it('returns finish event for done=true final chunks with no content', () => {
       const line = '{"message":{},"done":true}'
-      expect(parseOllamaStreamLine(line)).toBeNull()
+      expect(parseOllamaStreamLine(line)).toEqual({ kind: 'finish', finishReason: 'stop' })
     })
 
     it('returns null for malformed JSON', () => {
@@ -207,7 +243,7 @@ describe('LLM Streaming', () => {
 
       const chunks: string[] = []
       for await (const chunk of adapter.stream(createTestRequest())) {
-        chunks.push(chunk.delta)
+        if (chunk.kind === 'text') chunks.push(chunk.delta)
       }
 
       expect(chunks).toEqual(['Hello', ' ', 'world'])
@@ -235,7 +271,7 @@ describe('LLM Streaming', () => {
 
       const chunks: string[] = []
       for await (const chunk of adapter.stream(createTestRequest())) {
-        chunks.push(chunk.delta)
+        if (chunk.kind === 'text') chunks.push(chunk.delta)
       }
 
       expect(chunks).toEqual(['Fallback from complete'])
@@ -261,7 +297,7 @@ describe('LLM Streaming', () => {
 
       const chunks: string[] = []
       for await (const chunk of adapter.stream(createTestRequest())) {
-        chunks.push(chunk.delta)
+        if (chunk.kind === 'text') chunks.push(chunk.delta)
       }
 
       expect(chunks).toEqual(['Recovered'])
@@ -276,10 +312,121 @@ describe('LLM Streaming', () => {
 
       const chunks: string[] = []
       for await (const chunk of adapter.stream(createTestRequest())) {
-        chunks.push(chunk.delta)
+        if (chunk.kind === 'text') chunks.push(chunk.delta)
       }
 
       expect(chunks).toEqual([])
     })
+  })
+})
+
+
+describe('StreamResponseAggregator', () => {
+  it('aggregates text deltas into content', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'text', delta: 'Hello', providerId: 'p1' })
+    agg.apply({ kind: 'text', delta: ' world', providerId: 'p1' })
+    agg.apply({ kind: 'finish', finishReason: 'stop', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    expect(response.content).toBe('Hello world')
+    expect(response.finishReason).toBe('stop')
+    expect(response.toolCalls).toBeUndefined()
+  })
+
+  it('aggregates fragmented tool_call arguments by index', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({
+      kind: 'tool_call_delta',
+      index: 0,
+      id: 'call_1',
+      name: 'get_weather',
+      argumentsDelta: '{"city":',
+      providerId: 'p1',
+    })
+    agg.apply({
+      kind: 'tool_call_delta',
+      index: 0,
+      argumentsDelta: '"SF"}',
+      providerId: 'p1',
+    })
+    agg.apply({ kind: 'finish', finishReason: 'tool_calls', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    expect(response.toolCalls).toEqual([
+      {
+        id: 'call_1',
+        type: 'function',
+        function: { name: 'get_weather', arguments: '{"city":"SF"}' },
+      },
+    ])
+    expect(response.finishReason).toBe('tool_calls')
+  })
+
+  it('promotes finishReason to tool_calls when tools present without finish event', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({
+      kind: 'tool_call_delta',
+      index: 0,
+      id: 'call_2',
+      name: 'search',
+      argumentsDelta: '{}',
+      providerId: 'p1',
+    })
+    const response = agg.toResponse('gpt-4')
+    expect(response.finishReason).toBe('tool_calls')
+  })
+
+  it('keeps text and tool_calls together', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'text', delta: 'Let me check.', providerId: 'p1' })
+    agg.apply({
+      kind: 'tool_call_delta',
+      index: 0,
+      id: 'call_3',
+      name: 'web_search',
+      argumentsDelta: '{"q":"x"}',
+      providerId: 'p1',
+    })
+    agg.apply({ kind: 'finish', finishReason: 'tool_calls', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    expect(response.content).toBe('Let me check.')
+    expect(response.toolCalls?.[0]?.function.name).toBe('web_search')
+  })
+})
+
+describe('parseOpenAIStreamEvents multi tool_calls', () => {
+  it('emits one event per tool_call fragment in a single SSE line', () => {
+    const payload = {
+      choices: [
+        {
+          delta: {
+            tool_calls: [
+              { index: 0, id: 'c0', function: { name: 'a', arguments: '{' } },
+              { index: 1, id: 'c1', function: { name: 'b', arguments: '{' } },
+            ],
+          },
+        },
+      ],
+    }
+    const events = parseOpenAIStreamEvents(`data: ${JSON.stringify(payload)}`)
+    expect(events).toHaveLength(2)
+    expect(events[0]).toMatchObject({ kind: 'tool_call_delta', index: 0, id: 'c0', name: 'a' })
+    expect(events[1]).toMatchObject({ kind: 'tool_call_delta', index: 1, id: 'c1', name: 'b' })
+  })
+})
+
+describe('supportsStructuredToolStreaming (P1)', () => {
+  it('allows openai-compatible families', async () => {
+    const { supportsStructuredToolStreaming } = await import('../../../src/llm/stream-capabilities.js')
+    expect(supportsStructuredToolStreaming('openai')).toBe(true)
+    expect(supportsStructuredToolStreaming('deepseek')).toBe(true)
+    expect(supportsStructuredToolStreaming('moonshot')).toBe(true)
+  })
+
+  it('denies families without structured tool stream support', async () => {
+    const { supportsStructuredToolStreaming } = await import('../../../src/llm/stream-capabilities.js')
+    expect(supportsStructuredToolStreaming('ollama')).toBe(false)
+    expect(supportsStructuredToolStreaming('anthropic')).toBe(false)
+    expect(supportsStructuredToolStreaming('gemini')).toBe(false)
+    expect(supportsStructuredToolStreaming('bedrock')).toBe(false)
   })
 })

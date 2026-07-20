@@ -9,7 +9,6 @@ import type {
 import type { LLMAdapter, LLMAdapterConfig } from '../../src/llm/adapter.js'
 import type { LLMProvider } from '../../src/llm/provider.js'
 import type { LLMResult, LLMRequest } from '../../src/llm/types.js'
-import type { ExactContextUsage } from '../../src/api/types.js'
 import { ModelInputBuilder } from '../../src/kernel/model-input/model-input-builder.js'
 import { PromptTemplateRegistry } from '../../src/prompt/prompt-template-registry.js'
 import { TemplateLoader } from '../../src/prompt/template-loader.js'
@@ -55,8 +54,8 @@ export class FakeLLMAdapter implements LLMAdapter {
 
   async *stream(
     _request: LLMRequest,
-  ): AsyncGenerator<{ delta: string; providerId: string; model?: string; usage?: ExactContextUsage }> {
-    yield { delta: '', providerId: 'fake' }
+  ): AsyncGenerator<import('../../src/llm/types.js').LLMStreamChunk> {
+    // no-op structured stream
   }
 
   addProvider(): void {}
