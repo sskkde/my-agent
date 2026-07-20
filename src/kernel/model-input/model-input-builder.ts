@@ -501,37 +501,16 @@ export class ModelInputBuilder {
   }
 
   private renderRoutingToolCallPlane(projection: ToolPlaneProjection): string {
-    const parts: string[] = []
-
-    parts.push(`Available Tool IDs: ${projection.toolIds.join(', ')}`)
-
-    if (projection.toolSummaries) {
-      parts.push(projection.toolSummaries)
-    }
-
-    if (projection.tools && projection.tools.length > 0) {
-      for (const tool of projection.tools) {
-        parts.push(`Tool: ${tool.function.name}\nDescription: ${tool.function.description}`)
-      }
-    }
-
-    return parts.join('\n\n')
+    // Prompt carries only the allowlist. Full name/description/parameters live in
+    // LLMRequest.tools via extractToolsForRequest (native function calling).
+    // toolSummaries are omitted here to avoid duplicating request.tools descriptions.
+    return `Available Tool IDs: ${projection.toolIds.join(', ')}`
   }
 
   private renderFunctionCallingToolPlane(projection: ToolPlaneProjection): string {
-    if (!projection.tools || projection.tools.length === 0) {
-      return `Available Tool IDs: ${projection.toolIds.join(', ')}`
-    }
-
-    const parts: string[] = []
-
-    parts.push(`Available Tool IDs: ${projection.toolIds.join(', ')}`)
-
-    for (const tool of projection.tools) {
-      parts.push(`Tool: ${tool.function.name}\nDescription: ${tool.function.description}`)
-    }
-
-    return parts.join('\n\n')
+    // IDs only in the prompt. Descriptions + schemas are injected solely via
+    // LLMRequest.tools (extractToolsForRequest) — no prompt/tools dual-write.
+    return `Available Tool IDs: ${projection.toolIds.join(', ')}`
   }
 
   private renderStructuredJsonToolPlane(projection: ToolPlaneProjection): string {

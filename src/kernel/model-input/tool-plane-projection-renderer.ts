@@ -74,7 +74,8 @@ export function renderRoutingToolPlane(projection: ToolPlaneProjection): string 
 }
 
 export function renderExecutionToolPlane(projection: ToolPlaneProjection): string {
-  return renderToolPlane(projection, 'function_calling', { includeSchemas: true })
+  // Match ModelInputBuilder function_calling: prompt is IDs only; schemas go in request.tools.
+  return renderMinimalToolPlane(projection)
 }
 
 export function renderMinimalToolPlane(projection: ToolPlaneProjection): string {
