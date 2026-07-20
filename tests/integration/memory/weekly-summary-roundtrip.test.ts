@@ -340,7 +340,7 @@ describe('Weekly Summary Roundtrip Integration', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -358,7 +358,7 @@ describe('Weekly Summary Roundtrip Integration', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -377,7 +377,7 @@ describe('Weekly Summary Roundtrip Integration', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
