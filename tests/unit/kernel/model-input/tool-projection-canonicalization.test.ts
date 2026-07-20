@@ -409,9 +409,11 @@ describe('Tool Projection Canonicalization', () => {
         }),
       )
 
-      expect(resultWithSkill.segments.toolPlane).toContain('Tool: file_read')
-      expect(resultWithSkill.segments.toolPlane).toContain('Read a file from disk')
-      expect(resultWithoutSkill.segments.toolPlane).toContain('Tool: file_read')
+      expect(resultWithSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(resultWithoutSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(resultWithoutSkill.segments.toolPlane).not.toContain('Tool: file_read')
     })
 
     it('skill plane heading is separate from tool plane heading', async () => {

@@ -302,7 +302,7 @@ describe('ModelInputBuilder', () => {
       expect(result.segments.toolPlane).toContain('memory_retrieve')
     })
 
-    it('function_calling mode includes full tool descriptions', async () => {
+    it('function_calling mode prompt lists tool IDs only (descriptions live in request.tools)', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -325,8 +325,11 @@ describe('ModelInputBuilder', () => {
         }),
       )
 
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
+      // Descriptions remain available for LLMRequest.tools, not the prompt segment.
       expect(result.segments.toolPlane).toContain('file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
     })
 
     it('empty toolProjection produces empty Segment C', async () => {
@@ -1097,13 +1100,14 @@ describe('Skill Plane Projection', () => {
         }),
       )
 
-      // Tool plane content should differ (skill added) but tool schema text is preserved
-      expect(resultWithSkill.segments.toolPlane).toContain('Tool: file_read')
-      expect(resultWithSkill.segments.toolPlane).toContain('Read a file from disk')
+      // Prompt lists IDs only; skill plane may add content but must not re-inject tool descriptions.
       expect(resultWithSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Read a file from disk')
 
-      expect(resultWithoutSkill.segments.toolPlane).toContain('Tool: file_read')
-      expect(resultWithoutSkill.segments.toolPlane).toContain('Read a file from disk')
+      expect(resultWithoutSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(resultWithoutSkill.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(resultWithoutSkill.segments.toolPlane).not.toContain('Read a file from disk')
     })
 
     it('extractToolsForRequest returns tool schemas, not skill docs', () => {
