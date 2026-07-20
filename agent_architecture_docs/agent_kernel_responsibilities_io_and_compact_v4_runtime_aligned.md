@@ -98,7 +98,7 @@ CacheKey = SHA-256(SegmentA_Hash | SegmentB_Hash | SegmentC_Hash)
 ```
 
 **三种模式**：
-- `routing_json`: ForegroundAgent 使用，不传 tools，只传工具摘要
+- `function_calling`: ForegroundAgent 使用，不传 tools，只传工具摘要
 - `function_calling`: AgentKernel/SearchSubagent 使用，传完整工具 schema
 - `structured_json`: MemoryExtractor 使用，JSON 输出模式
 
