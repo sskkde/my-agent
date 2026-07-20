@@ -17,7 +17,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         layer: 1,
         taxonomyLayer: 'platform',
         content:
-          'You are a foreground routing agent. Your task is to classify the user message and decide the appropriate route.',
+          'You are a helpful AI assistant with access to tools.',
         description: 'Test platform base',
       },
     ],
@@ -74,13 +74,18 @@ export function createRealModelInputBuilder(): ModelInputBuilder {
   return new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
 }
 
-export function createMockModelInputBuilder(modeOverride?: 'routing_json' | 'routing_tool_call'): ModelInputBuilder {
-  const mode = modeOverride ?? 'routing_json'
+export function createMockModelInputBuilder(modeOverride?: 'function_calling' | 'structured_json'): ModelInputBuilder {
+  const mode = modeOverride ?? 'function_calling'
 
   const build = vi.fn(async (input: ModelInputBuildInput): Promise<BuiltModelInput> => {
     const toolIds = input.toolProjection?.toolIds ?? []
+    // Match production: function_calling has empty prompt tool plane; structured_json keeps IDs.
     const toolPlaneContent =
-      toolIds.length > 0 ? `Available Tool IDs: ${toolIds.join(', ')}` : 'Available Tool IDs: none'
+      mode === 'structured_json' && toolIds.length > 0
+        ? `Available Tool IDs: ${toolIds.join(', ')}`
+        : mode === 'structured_json'
+          ? 'Available Tool IDs: none'
+          : ''
 
     const contextBundleParts: string[] = []
     if (input.currentUserMessage) {
@@ -97,7 +102,7 @@ export function createMockModelInputBuilder(modeOverride?: 'routing_json' | 'rou
       {
         role: 'system' as const,
         content:
-          'You are a foreground routing agent. Your task is to classify the user message and decide the appropriate route.',
+          'You are a helpful AI assistant with access to tools.',
       },
       { role: 'user' as const, content: `${toolPlaneContent}\n\n${contextBundleParts.join('\n')}` },
     ]

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   generateToolPlaneProjection,
-  generateRoutingToolProjection,
   generateExecutionToolProjection,
 } from '../../../src/tools/tool-plane-prompt-projection.js'
 import type { ToolDefinition, ToolCategory, ToolSensitivity } from '../../../src/tools/types.js'
@@ -29,7 +28,7 @@ describe('generateToolPlaneProjection', () => {
 
     const projection = generateToolPlaneProjection({
       tools,
-      mode: 'routing_json',
+      mode: 'function_calling',
     })
 
     expect(projection.toolIds).toEqual(['read_file', 'write_file'])
@@ -40,7 +39,7 @@ describe('generateToolPlaneProjection', () => {
 
     const projection = generateToolPlaneProjection({
       tools,
-      mode: 'routing_json',
+      mode: 'function_calling',
       deniedToolIds: ['delete_file'],
     })
 
@@ -57,26 +56,14 @@ describe('generateToolPlaneProjection', () => {
 
     const projection = generateToolPlaneProjection({
       tools,
-      mode: 'routing_json',
+      mode: 'function_calling',
       allowedToolIds: ['read_file', 'search_docs'],
     })
 
     expect(projection.toolIds).toEqual(['read_file', 'search_docs'])
   })
 
-  it('routing mode should have toolSummaries but no tools array', () => {
-    const tools = [createMockTool('read_file', 'read', 'low')]
-
-    const projection = generateToolPlaneProjection({
-      tools,
-      mode: 'routing_json',
-    })
-
-    expect(projection.toolSummaries).toBeDefined()
-    expect(projection.tools).toBeUndefined()
-  })
-
-  it('execution mode should have tools array with full schemas', () => {
+  it('function_calling mode includes tools array with full schemas (no toolSummaries)', () => {
     const tools = [createMockTool('read_file', 'read', 'low')]
 
     const projection = generateToolPlaneProjection({
@@ -99,6 +86,8 @@ describe('generateToolPlaneProjection', () => {
         },
       },
     })
+    // toolSummaries field removed from ToolPlaneProjection
+    expect('toolSummaries' in projection).toBe(false)
   })
 
   it('should sort tools by stable key (category, then name)', () => {
@@ -110,7 +99,7 @@ describe('generateToolPlaneProjection', () => {
 
     const projection = generateToolPlaneProjection({
       tools,
-      mode: 'routing_json',
+      mode: 'function_calling',
     })
 
     expect(projection.toolIds).toEqual(['alpha_read', 'read_file', 'write_file'])
@@ -119,7 +108,7 @@ describe('generateToolPlaneProjection', () => {
   it('should handle empty tool list', () => {
     const projection = generateToolPlaneProjection({
       tools: [],
-      mode: 'routing_json',
+      mode: 'function_calling',
     })
 
     expect(projection.toolIds).toEqual([])
@@ -132,22 +121,11 @@ describe('generateToolPlaneProjection', () => {
 
     const projection = generateToolPlaneProjection({
       tools,
-      mode: 'routing_json',
+      mode: 'function_calling',
       exposurePlans: customPlans,
     })
 
     expect(projection.toolIds).toContain('admin_tool')
-  })
-})
-
-describe('generateRoutingToolProjection', () => {
-  it('should generate routing mode projection', () => {
-    const tools = [createMockTool('test', 'read', 'low')]
-
-    const projection = generateRoutingToolProjection(tools)
-
-    expect(projection.toolSummaries).toBeDefined()
-    expect(projection.tools).toBeUndefined()
   })
 })
 
@@ -177,7 +155,7 @@ describe('hidden tools', () => {
 
     const projection = generateToolPlaneProjection({
       tools: [deniedTool, visibleTool],
-      mode: 'routing_json',
+      mode: 'function_calling',
       deniedToolIds: ['denied_tool'],
     })
 
@@ -217,7 +195,7 @@ describe('hidden tools', () => {
 
     const projection = generateToolPlaneProjection({
       tools: [hiddenTool, visibleTool],
-      mode: 'routing_json',
+      mode: 'function_calling',
       exposurePlans: customPlans,
     })
 
