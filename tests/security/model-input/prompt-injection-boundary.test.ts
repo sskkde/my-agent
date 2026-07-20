@@ -535,8 +535,9 @@ describe('Prompt Injection Boundary Security Tests', () => {
         }),
       )
 
-      expect(result.segments.toolPlane).toContain('Tool: file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
       expect(result.segments.toolPlane).toContain('BYPASS')
     })
   })

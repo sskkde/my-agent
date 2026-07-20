@@ -382,8 +382,9 @@ describe('Skill Boundary Security Tests', () => {
       )
 
       // Tool plane has real tool
-      expect(result.segments.toolPlane).toContain('Tool: file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
       // Skill content appears but does NOT add a tool definition
       expect(result.segments.toolPlane).toContain('Schema Skill')
     })

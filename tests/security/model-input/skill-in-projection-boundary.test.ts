@@ -432,10 +432,11 @@ describe('Skill-in-Projection Boundary Security Tests', () => {
         }),
       )
 
-      // Tool plane section has the real tool
+      // Tool plane section has the real tool allowlist only (no prompt-side descriptions)
       expect(result.segments.toolPlane).toContain('--- Tool Plane (callable tools) ---')
-      expect(result.segments.toolPlane).toContain('Tool: file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
 
       // Skill plane section has the spoofed content
       expect(result.segments.toolPlane).toContain('--- Skill Plane (documentation only) ---')

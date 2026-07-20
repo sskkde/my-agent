@@ -270,7 +270,7 @@ describe('Tool Escalation Security Tests', () => {
       expect(result.segments.toolPlane).toContain('memory_retrieve')
     })
 
-    it('tool with full schema in function_calling mode appears with description', async () => {
+    it('tool with full schema in function_calling mode appears in request.tools, not prompt descriptions', async () => {
       const builder = makeBuilder()
 
       const result = await builder.build(
@@ -291,8 +291,9 @@ describe('Tool Escalation Security Tests', () => {
         }),
       )
 
-      expect(result.segments.toolPlane).toContain('file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
     })
   })
 
@@ -375,9 +376,13 @@ describe('Tool Escalation Security Tests', () => {
         toolProjection: { toolIds: ['file_read', 'web_search'] },
       })
 
-      expect(resultFull.segments.toolPlane).toContain('Read a file from disk')
-      expect(resultFull.segments.toolPlane).toContain('Search the web')
+      // function_calling prompt is IDs-only; descriptions live in request.tools only.
+      expect(resultFull.segments.toolPlane).toContain('Available Tool IDs: file_read, web_search')
+      expect(resultFull.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(resultFull.segments.toolPlane).not.toContain('Search the web')
+      expect(resultFull.segments.toolPlane).not.toContain('Tool: ')
 
+      // routing_json without toolSummaries is also IDs-only (no schemas/descriptions).
       expect(resultRouting.segments.toolPlane).toContain('file_read')
       expect(resultRouting.segments.toolPlane).toContain('web_search')
       expect(resultRouting.segments.toolPlane).not.toContain('Read a file from disk')
