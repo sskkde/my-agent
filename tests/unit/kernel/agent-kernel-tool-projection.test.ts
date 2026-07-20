@@ -585,7 +585,7 @@ describe('AgentKernel internal tool handling', () => {
     await kernel.run({
       ...makeRunInput(),
       modelInputOverride: {
-        mode: 'routing_tool_call',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: sampleToolProjection,

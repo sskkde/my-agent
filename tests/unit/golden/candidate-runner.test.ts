@@ -114,7 +114,7 @@ describe('runCandidate', () => {
     })
 
     const buildInput = {
-      mode: 'routing_json' as const,
+      mode: 'function_calling' as const,
       agentType: 'main' as const,
       agentProfile: 'test-profile',
       providerFamily: 'openai',

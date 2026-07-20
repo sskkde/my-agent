@@ -601,7 +601,7 @@ describe('SearchSubagent Evidence Tests', () => {
     it('non-foreground agent (planner) with search_subagent in projection CAN call it', async () => {
       const plannerProjection: ToolPlaneProjection = {
         toolIds: ['search_subagent', 'memory_retrieve', 'context_read'],
-        toolSummaries: 'Search, memory, and context tools for planning',
+
       }
 
       expect(plannerProjection.toolIds).toContain('search_subagent')
@@ -640,7 +640,7 @@ describe('SearchSubagent Evidence Tests', () => {
     it('projection can grant search_subagent to background agents', async () => {
       const backgroundAgentProjection: ToolPlaneProjection = {
         toolIds: ['search_subagent', 'memory_retrieve'],
-        toolSummaries: 'Tools for autonomous background research',
+
       }
 
       expect(backgroundAgentProjection.toolIds).toContain('search_subagent')

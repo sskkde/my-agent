@@ -71,7 +71,7 @@ function createMockModelInputBuilder(): ModelInputBuilder {
           segmentD: 'd'.repeat(64),
         },
         metadata: {
-          mode: input.mode as 'routing_json' | 'structured_json' | 'function_calling',
+          mode: input.mode as 'structured_json' | 'function_calling',
           agentKind: input.agentKind ?? 'kernel',
           agentType: input.agentType ?? 'main',
           agentProfile: input.agentProfile ?? input.agentKind ?? 'default',
