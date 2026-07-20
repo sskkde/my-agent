@@ -212,7 +212,7 @@ describe('ToolSelectionPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolSelectionPolicy: policy,
@@ -232,7 +232,7 @@ describe('ToolSelectionPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolSelectionPolicy: policy,
@@ -251,7 +251,7 @@ describe('ToolSelectionPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolSelectionPolicy: policy,
@@ -270,7 +270,7 @@ describe('ToolSelectionPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolSelectionPolicy: policy,
@@ -291,7 +291,7 @@ describe('ToolSelectionPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['tool1', 'tool2'] },
@@ -308,14 +308,14 @@ describe('ToolSelectionPolicyProjection', () => {
       const builder = makeBuilder()
 
       const input1: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['tool1'] },
       }
 
       const input2: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['tool1'] },
@@ -336,7 +336,7 @@ describe('ToolSelectionPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'structured_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['search', 'read'] },

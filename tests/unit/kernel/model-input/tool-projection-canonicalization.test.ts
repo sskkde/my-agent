@@ -185,16 +185,17 @@ describe('Tool Projection Canonicalization', () => {
     it('different tool ordering → different segmentC hash (order-sensitive)', async () => {
       const builder = makeBuilder()
 
+      // structured_json emits Available Tool IDs in projection order, so order affects segmentC
       const result1 = await builder.build(
         makeMinimalInput({
-          mode: 'routing_json',
+          mode: 'structured_json',
           toolProjection: { toolIds: ['file_read', 'web_search', 'memory_retrieve'] },
         }),
       )
 
       const result2 = await builder.build(
         makeMinimalInput({
-          mode: 'routing_json',
+          mode: 'structured_json',
           toolProjection: { toolIds: ['memory_retrieve', 'file_read', 'web_search'] },
         }),
       )
@@ -208,13 +209,13 @@ describe('Tool Projection Canonicalization', () => {
       const results = await Promise.all([
         builder.build(
           makeMinimalInput({
-            mode: 'routing_json',
+            mode: 'function_calling',
             toolProjection: { toolIds: ['file_read', 'web_search'] },
           }),
         ),
         builder.build(
           makeMinimalInput({
-            mode: 'routing_json',
+            mode: 'function_calling',
             toolProjection: { toolIds: ['file_read', 'web_search'] },
           }),
         ),
@@ -409,10 +410,10 @@ describe('Tool Projection Canonicalization', () => {
         }),
       )
 
-      expect(resultWithSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Available Tool IDs:')
       expect(resultWithSkill.segments.toolPlane).not.toContain('Tool: file_read')
       expect(resultWithSkill.segments.toolPlane).not.toContain('Read a file from disk')
-      expect(resultWithoutSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      expect(resultWithoutSkill.segments.toolPlane).not.toContain('Available Tool IDs:')
       expect(resultWithoutSkill.segments.toolPlane).not.toContain('Tool: file_read')
     })
 
@@ -421,6 +422,7 @@ describe('Tool Projection Canonicalization', () => {
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['file_read'] },
           skillProjection: {
             skillIds: ['code-review'],

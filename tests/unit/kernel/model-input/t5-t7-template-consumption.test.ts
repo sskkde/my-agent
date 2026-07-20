@@ -123,7 +123,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'routing_json',
+    mode: 'function_calling',
     agentType: 'main',
     agentProfile: 'foreground',
     providerFamily: 'openai',
@@ -254,25 +254,49 @@ describe('T5/T6/T7 Template Consumption', () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
-          toolProjection: { toolIds: ['file_read'] },
+          toolProjection: {
+            toolIds: ['file_read'],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'file_read',
+                  description: 'Read a file',
+                  parameters: { type: 'object' as const, properties: {} },
+                },
+              },
+            ],
+          },
         }),
       )
 
       expect(result.segments.toolPlane).not.toContain('Tool usage heuristics')
       expect(result.segments.toolPlane).not.toContain('prefer read-only tools first')
-      expect(result.segments.toolPlane).toContain('file_read')
+      // function_calling prompt has no tool ID dual-write when T6 is off
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs:')
     })
 
     it('T6 content appears when flag env is undefined (default ON)', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
-          toolProjection: { toolIds: ['web_search'] },
+          toolProjection: {
+            toolIds: ['web_search'],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'web_search',
+                  description: 'Search the web',
+                  parameters: { type: 'object' as const, properties: {} },
+                },
+              },
+            ],
+          },
         }),
       )
 
       expect(result.segments.toolPlane).toContain('Tool usage heuristics')
-      expect(result.segments.toolPlane).toContain('web_search')
     })
   })
 
@@ -282,12 +306,23 @@ describe('T5/T6/T7 Template Consumption', () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
-          toolProjection: { toolIds: ['file_read'] },
+          toolProjection: {
+            toolIds: ['file_read'],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'file_read',
+                  description: 'Read a file',
+                  parameters: { type: 'object' as const, properties: {} },
+                },
+              },
+            ],
+          },
         }),
       )
 
       expect(result.segments.toolPlane).toContain('Tool usage heuristics')
-      expect(result.segments.toolPlane).toContain('file_read')
     })
 
     it('T6 content is absent from Segment A', async () => {
@@ -392,13 +427,25 @@ describe('T5/T6/T7 Template Consumption', () => {
 
       const result = await builder.build(
         makeMinimalInput({
-          toolProjection: { toolIds: ['file_read'] },
+          toolProjection: {
+            toolIds: ['file_read'],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'file_read',
+                  description: 'Read a file',
+                  parameters: { type: 'object' as const, properties: {} },
+                },
+              },
+            ],
+          },
         }),
       )
 
-      // Should not crash
-      expect(result.segments.toolPlane).toContain('file_read')
+      // Should not crash; function_calling has no prompt-side tool listing without T6 content
       expect(result.segments.toolPlane).not.toContain('undefined')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs:')
     })
 
     it('does not crash when T7 template is missing', async () => {
@@ -419,7 +466,7 @@ describe('T5/T6/T7 Template Consumption', () => {
   })
 
   describe('Per-mode T5/T6/T7 consumption matrix', () => {
-    it('routing_json mode: T5 in B, T6 text in C, T7 in D', async () => {
+    it('function_calling mode (T6 text path): T5 in B, T6 text in C, T7 in D', async () => {
       setFlag('PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED', true)
       setFlag('PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED', true)
       setFlag('PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED', true)
@@ -427,8 +474,20 @@ describe('T5/T6/T7 Template Consumption', () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
-          mode: 'routing_json',
-          toolProjection: { toolIds: ['file_read'] },
+          mode: 'function_calling',
+          toolProjection: {
+            toolIds: ['file_read'],
+            tools: [
+              {
+                type: 'function' as const,
+                function: {
+                  name: 'file_read',
+                  description: 'Read a file',
+                  parameters: { type: 'object' as const, properties: {} },
+                },
+              },
+            ],
+          },
           currentUserMessage: 'Test',
         }),
       )
@@ -486,7 +545,8 @@ describe('T5/T6/T7 Template Consumption', () => {
       )
 
       expect(result.segments.tenantProject).toContain('Foreground agent profile instructions')
-      expect(result.segments.toolPlane).toContain('Tool usage heuristics')
+      // structured_json without tools array: ID allowlist only (T6 requires tools[] to inject)
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: memory_retrieve')
       expect(result.segments.contextBundle).toContain('Runtime context rules')
     })
   })
