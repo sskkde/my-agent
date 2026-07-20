@@ -3,7 +3,7 @@
 > Created: 2026-05-23
 > Author: Sisyphus
 > Version: v0.9.0-model-input
-> Note (2026-06-19): This report documents the P9 baseline. The prompt migration added `routing_tool_call` as a fourth mode, B1/B2/B3 sub-sections, T5/T6/T7 taxonomy template consumption, top-level `summaryLayers`, and Segment D provenance. See `docs/architecture/MODEL_INPUT_ARCHITECTURE.md` for the current state.
+> Note (2026-06-19): This report documents the P9 baseline. The prompt migration added `function_calling` as a fourth mode, B1/B2/B3 sub-sections, T5/T6/T7 taxonomy template consumption, top-level `summaryLayers`, and Segment D provenance. See `docs/architecture/MODEL_INPUT_ARCHITECTURE.md` for the current state.
 
 ---
 
@@ -81,7 +81,7 @@ P9 delivered 17 tasks across 6 waves:
 - **T6**: ModelInputBuilder core implementation
   - 7-layer architecture: Platform, Provider, Agent, Output, Instruction, Tool, Context
   - 4-segment caching: A (static), B (instructions), C (tools), D (dynamic)
-  - 3 modes: routing_json, function_calling, structured_json
+  - 3 modes: function_calling, function_calling, structured_json
   - Segment A hash stable across user messages
 - **T7**: ToolPlaneProjection implementation
   - `tool-plane-prompt-projection.ts`: Generates model-visible projections
@@ -305,7 +305,7 @@ All 17 tasks across 6 waves have been executed successfully:
 
 - 4 LLM request paths now use ModelInputBuilder (ForegroundAgent, AgentKernel, SearchSubagent, MemoryExtractor)
 - 7-layer architecture with 4 cache segments implemented
-- 3 modes supported (routing_json, function_calling, structured_json)
+- 3 modes supported (function_calling, function_calling, structured_json)
 - Segment A hash stable across user message changes
 - DeepSeek cache metrics tracked via TokenUsage extension
 - Snapshots automatically redacted before storage

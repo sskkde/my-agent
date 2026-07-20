@@ -55,7 +55,7 @@
 
 | Mode             | Use Case                   | Tools in Request    | Status   |
 | ---------------- | -------------------------- | ------------------- | -------- |
-| routing_json     | ForegroundAgent            | No (summaries only) | Verified |
+| function_calling     | ForegroundAgent            | No (summaries only) | Verified |
 | function_calling | AgentKernel/SearchSubagent | Yes (full schemas)  | Verified |
 | structured_json  | MemoryExtractor            | No                  | Verified |
 
