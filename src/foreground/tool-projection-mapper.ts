@@ -62,25 +62,6 @@ const SAFE_TOOL_CATEGORIES: Set<ToolCategory> = new Set(['read', 'search', 'inte
 export const HIGH_RISK_TOOL_CATEGORIES: Set<ToolCategory> = new Set(['write', 'delete', 'send', 'execute', 'admin'])
 
 /**
- * Tool names excluded from default foreground projection.
- *
- * Includes the six mock connector tools (fake availability — no real
- * email/calendar/contacts backends) and `docs_search` (mock implementation;
- * real docs search is future work / MCP). These tools may still be registered
- * in the ToolRegistry for smoke tests and subagent allowlists, but they must
- * never appear in the default main-agent projection.
- */
-export const MOCK_OR_FAKE_DEFAULT_EXCLUDED: ReadonlySet<string> = new Set([
-  'email_search',
-  'email_send_draft',
-  'calendar_list',
-  'calendar_create_event',
-  'contacts_search',
-  'docs_read',
-  'docs_search',
-])
-
-/**
  * Check if a tool is safe for default projection.
  * A tool is safe if it belongs to a safe category AND has low/medium sensitivity.
  */
@@ -175,10 +156,6 @@ export function buildForegroundToolProjection(
   // Apply preference: hide web_search when search_subagent is available
   const hasSearchSubagent = projectedTools.some((tool) => tool.name === 'search_subagent')
   projectedTools = hasSearchSubagent ? projectedTools.filter((tool) => tool.name !== 'web_search') : projectedTools
-
-  // Defense-in-depth: never project fake-availability tools (mocks + docs_search)
-  // even if they slip past the category/sensitivity gate. See MOCK_OR_FAKE_DEFAULT_EXCLUDED.
-  projectedTools = projectedTools.filter((tool) => !MOCK_OR_FAKE_DEFAULT_EXCLUDED.has(tool.name))
 
   const allowedToolIds = projectedTools.map((tool) => tool.name)
 
