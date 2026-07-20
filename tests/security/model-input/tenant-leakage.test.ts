@@ -134,7 +134,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeTenantInput(tenantId: string, overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'routing_json',
+    mode: 'structured_json',
     agentKind: 'foreground',
     providerFamily: 'openai',
     systemPrompt: `Instructions for ${tenantId}: Follow ${tenantId} policies strictly.`,
@@ -205,7 +205,7 @@ describe('Tenant Leakage Security Tests', () => {
         makeTenantInput(TENANT_A, {
           toolProjection: {
             toolIds: ['file_read', 'web_search'],
-            toolSummaries: `${TENANT_A} tools: read files, search web`,
+
           },
         }),
       )
@@ -214,7 +214,7 @@ describe('Tenant Leakage Security Tests', () => {
         makeTenantInput(TENANT_B, {
           toolProjection: {
             toolIds: ['memory_retrieve', 'status_query'],
-            toolSummaries: `${TENANT_B} tools: retrieve memory, query status`,
+
           },
         }),
       )

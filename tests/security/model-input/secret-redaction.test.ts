@@ -29,7 +29,7 @@ function makeBuiltInput(overrides: Record<string, unknown> = {}): BuiltModelInpu
       segmentD: 'd'.repeat(64),
     },
     metadata: {
-      mode: 'routing_json',
+      mode: 'function_calling',
       agentKind: 'foreground',
       providerFamily: 'openai',
       messageCount: 1,
@@ -48,7 +48,7 @@ describe('Secret Redaction Security Tests', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput({
           segments: {
             staticPrefix: 'System prefix',
@@ -97,7 +97,7 @@ describe('Secret Redaction Security Tests', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         response: { accessToken: SENTINEL_OAUTH_TOKEN, userId: 'u1' },
       })
@@ -159,7 +159,7 @@ describe('Secret Redaction Security Tests', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         response: { certBlock: SENTINEL_PEM_KEY, name: 'test' },
       })
@@ -191,7 +191,7 @@ describe('Secret Redaction Security Tests', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         response: { authorization: SENTINEL_AUTH_HEADER, endpoint: '/api' },
       })
@@ -218,7 +218,7 @@ describe('Secret Redaction Security Tests', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         response: { webhookSecret: SENTINEL_WEBHOOK_SECRET, url: '/hook' },
       })
@@ -279,7 +279,7 @@ describe('Secret Redaction Security Tests', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         response: {
           apiKey: SENTINEL_API_KEY,
@@ -312,7 +312,7 @@ describe('Secret Redaction Security Tests', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput({
           segments: {
             staticPrefix: 'api_key: "sk-secret123"',
