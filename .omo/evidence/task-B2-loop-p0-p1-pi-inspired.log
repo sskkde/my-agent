@@ -1,0 +1,739 @@
+
+> agent-platform@0.8.0-ga-candidate test
+> vitest run tests/unit/kernel/agent-kernel-internal-handler-order.test.ts tests/unit/kernel/agent-kernel-batch-dispatch.test.ts tests/integration/kernel/tool-loop-closure.test.ts tests/unit/kernel/agent-kernel-truncation-guard.test.ts tests/unit/kernel/agent-kernel-invalid-args.test.ts --maxWorkers=1 --reporter=verbose
+
+
+ RUN  v4.1.8 /home/ubuntu/workspace/my agent
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete single-turn tool loop (tool to result to LLM text response)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete single-turn tool loop (tool to result to LLM text response)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete multi-turn tool loop (multiple tool rounds before text)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete multi-turn tool loop (multiple tool rounds before text)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete multi-turn tool loop (multiple tool rounds before text)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 8,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 8,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should return max_iterations_reached when LLM always returns tool_calls
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should return max_iterations_reached when LLM always returns tool_calls
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should handle empty tool_calls array without stalling (EC-1)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce tool_result with error when tool fails and loop completes
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce tool_result with error when tool fails and loop completes
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should include Error: content in tool role message sent to LLM after failure
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should include Error: content in tool role message sent to LLM after failure
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete loop with finalResponse when LLM recovers after tool failure
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete loop with finalResponse when LLM recovers after tool failure
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete loop with finalResponse when LLM recovers after tool failure
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 8,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 8,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce paired results for all tools when some succeed and some fail
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce paired results for all tools when some succeed and some fail
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce tool_result with DISPATCH_ERROR when tool dispatch throws
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce tool_result with DISPATCH_ERROR when tool dispatch throws
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce error tool_result when tool is not projected as callable
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce error tool_result when tool is not projected as callable
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should pair and execute both tools when two tool_calls appear in one assistant message (multi-tool happy path)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should pair and execute both tools when two tool_calls appear in one assistant message (multi-tool happy path)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should maintain valid tool-result pairing when maxIterations is reached (pairing flush at loop limit)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should fail unprojected tool closed without invoking dispatcher (projected + unprojected mixed)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should fail unprojected tool closed without invoking dispatcher (projected + unprojected mixed)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce valid pairing when transcript includes both successful and failed tool calls
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce valid pairing when transcript includes both successful and failed tool calls
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce valid pairing when transcript includes both successful and failed tool calls
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 9,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 10,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete single-turn tool loop (tool to result to LLM text response) 11ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete multi-turn tool loop (multiple tool rounds before text) 3ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should return max_iterations_reached when LLM always returns tool_calls 2ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should handle empty tool_calls array without stalling (EC-1) 1ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce tool_result with error when tool fails and loop completes 6ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should include Error: content in tool role message sent to LLM after failure 2ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should complete loop with finalResponse when LLM recovers after tool failure 4ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce paired results for all tools when some succeed and some fail 3ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce tool_result with DISPATCH_ERROR when tool dispatch throws 2ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce error tool_result when tool is not projected as callable 1ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should pair and execute both tools when two tool_calls appear in one assistant message (multi-tool happy path) 4ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should maintain valid tool-result pairing when maxIterations is reached (pairing flush at loop limit) 2ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should fail unprojected tool closed without invoking dispatcher (projected + unprojected mixed) 3ms
+ ✓ tests/integration/kernel/tool-loop-closure.test.ts > Kernel Tool Loop Closure > should produce valid pairing when transcript includes both successful and failed tool calls 3ms
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should dispatch two external tools as a single batch (RED: fails on serial dispatch count)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should dispatch two external tools as a single batch (RED: fails on serial dispatch count)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should produce distinct tool results per toolCallId
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should produce distinct tool results per toolCallId
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should map results by toolCallId even when dispatch returns in reverse order
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should map results by toolCallId even when dispatch returns in reverse order
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should pair unprojected error with projected batch result
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should pair unprojected error with projected batch result
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should maintain valid tool-result pairing after batch dispatch
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should maintain valid tool-result pairing after batch dispatch
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should dispatch a single external tool as a batch of 1
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should dispatch a single external tool as a batch of 1
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+ ✓ tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should dispatch two external tools as a single batch (RED: fails on serial dispatch count) 14ms
+ ✓ tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should produce distinct tool results per toolCallId 5ms
+ ✓ tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should map results by toolCallId even when dispatch returns in reverse order 4ms
+ ✓ tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should pair unprojected error with projected batch result 3ms
+ ✓ tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should maintain valid tool-result pairing after batch dispatch 4ms
+ ✓ tests/unit/kernel/agent-kernel-batch-dispatch.test.ts > Batch dispatch (external tools flushed as one batch) > should dispatch a single external tool as a batch of 1 4ms
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > RED PHASE: should reject invalid JSON tool arguments and emit INVALID_TOOL_ARGUMENTS (fails before guard)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > RED PHASE: should reject invalid JSON tool arguments and emit INVALID_TOOL_ARGUMENTS (fails before guard)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should still dispatch tools with valid JSON arguments
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should still dispatch tools with valid JSON arguments
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should handle mixed valid and invalid tool calls in one assistant message
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should handle mixed valid and invalid tool calls in one assistant message
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should reject multiple invalid JSON variants (malformed input probe)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should reject multiple invalid JSON variants (malformed input probe)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 9,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 10,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+ ✓ tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > RED PHASE: should reject invalid JSON tool arguments and emit INVALID_TOOL_ARGUMENTS (fails before guard) 13ms
+ ✓ tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should still dispatch tools with valid JSON arguments 4ms
+ ✓ tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should handle mixed valid and invalid tool calls in one assistant message 3ms
+ ✓ tests/unit/kernel/agent-kernel-invalid-args.test.ts > Invalid tool argument JSON guard > should reject multiple invalid JSON variants (malformed input probe) 4ms
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should stop before external tool when internal handler sets stop=true
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should flush external batch before running internal handler that stops
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should buffer external tools before and after a non-stopping internal handler
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should buffer external tools before and after a non-stopping internal handler
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 8,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 8,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should produce INTERNAL_HANDLER_ERROR when internal handler throws, then continue
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should produce INTERNAL_HANDLER_ERROR when internal handler throws, then continue
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should run multiple internal handlers in order without any dispatch
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should run multiple internal handlers in order without any dispatch
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+ ✓ tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should stop before external tool when internal handler sets stop=true 16ms
+ ✓ tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should flush external batch before running internal handler that stops 9ms
+ ✓ tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should buffer external tools before and after a non-stopping internal handler 4ms
+ ✓ tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should produce INTERNAL_HANDLER_ERROR when internal handler throws, then continue 3ms
+ ✓ tests/unit/kernel/agent-kernel-internal-handler-order.test.ts > Internal handler ordering (flush-buffer before internal; stop short-circuits) > should run multiple internal handlers in order without any dispatch 3ms
+stdout | tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > RED PHASE: should NOT dispatch tools when finishReason is length (fails before guard)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > RED PHASE: should NOT dispatch tools when finishReason is length (fails before guard)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > should still process content normally when finishReason is length without tool_calls
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > should handle length + tool_calls with valid pairing when maxIterations is 1
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > should NOT block tool execution when finishReason is tool_calls (normal path)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > should NOT block tool execution when finishReason is tool_calls (normal path)
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 6,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 4,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+ ✓ tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > RED PHASE: should NOT dispatch tools when finishReason is length (fails before guard) 15ms
+ ✓ tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > should still process content normally when finishReason is length without tool_calls 2ms
+ ✓ tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > should handle length + tool_calls with valid pairing when maxIterations is 1 2ms
+ ✓ tests/unit/kernel/agent-kernel-truncation-guard.test.ts > Truncation guard (finishReason = length) > should NOT block tool execution when finishReason is tool_calls (normal path) 7ms
+
+ Test Files  5 passed (5)
+      Tests  33 passed (33)
+   Start at  01:04:25
+   Duration  1.96s (transform 435ms, setup 0ms, import 738ms, tests 181ms, environment 1ms)
+
