@@ -94,8 +94,6 @@ describe('Tool Catalog Consistency', () => {
     const fallbackCatalog = getFallbackToolCatalog()
 
     const mockConnectorToolNames = [
-      'email_search',
-      'email_send_draft',
       'calendar_list',
       'calendar_create_event',
       'contacts_search',

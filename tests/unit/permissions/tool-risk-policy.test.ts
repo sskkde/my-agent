@@ -51,7 +51,7 @@ describe('getToolRiskPolicy', () => {
 })
 
 describe('write tool risk levels', () => {
-  const writeTools = ['artifact_create', 'artifact_update', 'plan_patch', 'email_send_draft', 'calendar_create_event']
+  const writeTools = ['artifact_create', 'artifact_update', 'plan_patch', 'calendar_create_event']
 
   it.each(writeTools)('%s has riskLevel >= medium', (toolName) => {
     const policy = getToolRiskPolicy(toolName)
@@ -73,12 +73,6 @@ describe('write tool risk levels', () => {
     expect(policy!.auditLevel).toBe('high')
   })
 
-  it('email_send_draft has high risk level (high sensitivity)', () => {
-    const policy = getToolRiskPolicy('email_send_draft')
-    expect(policy).toBeDefined()
-    expect(policy!.riskLevel).toBe('high')
-    expect(policy!.auditLevel).toBe('high')
-  })
 })
 
 describe('read tool risk levels', () => {
@@ -139,7 +133,6 @@ describe('individual tool requiresApproval correctness', () => {
     expectApproval('artifact_create', true)
     expectApproval('artifact_update', true)
     expectApproval('plan_patch', true)
-    expectApproval('email_send_draft', true)
     expectApproval('calendar_create_event', true)
   })
 
@@ -156,7 +149,6 @@ describe('individual tool requiresApproval correctness', () => {
     expectApproval('session_history', false)
     expectApproval('web_fetch', false)
     expectApproval('web_search', false)
-    expectApproval('email_search', false)
     expectApproval('calendar_list', false)
     expectApproval('contacts_search', false)
     expectApproval('docs_read', false)
@@ -238,7 +230,6 @@ describe('canAutoGrant correctness', () => {
 
   it('high sensitivity tools cannot auto-grant', () => {
     expect(getToolRiskPolicy('plan_patch')!.canAutoGrant).toBe(false)
-    expect(getToolRiskPolicy('email_send_draft')!.canAutoGrant).toBe(false)
   })
 })
 
@@ -255,6 +246,5 @@ describe('auditLevel correctness', () => {
 
   it('high sensitivity → auditLevel high', () => {
     expect(getToolRiskPolicy('plan_patch')!.auditLevel).toBe('high')
-    expect(getToolRiskPolicy('email_send_draft')!.auditLevel).toBe('high')
   })
 })

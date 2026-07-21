@@ -68,8 +68,6 @@ function inferToolSource(tool: ToolDefinition): ToolSource {
   }
 
   const mockConnectorToolNames = new Set([
-    'email_search',
-    'email_send_draft',
     'calendar_list',
     'calendar_create_event',
     'contacts_search',
@@ -78,6 +76,10 @@ function inferToolSource(tool: ToolDefinition): ToolSource {
 
   if (mockConnectorToolNames.has(tool.name)) {
     return 'mock'
+  }
+
+  if (tool.name.startsWith('connector_') || tool.metadata?.connectorId) {
+    return 'connector'
   }
 
   const connectorToolPatterns = ['github_', 'google_', 'notion_', 'slack_']
@@ -141,18 +143,6 @@ export function buildRuntimeToolCatalog(
 }
 
 const MOCK_CONNECTOR_TOOLS: ToolSummary[] = [
-  {
-    name: 'email_search',
-    description: 'Search emails matching a query (mock implementation)',
-    category: 'search',
-    sensitivity: 'medium',
-  },
-  {
-    name: 'email_send_draft',
-    description: 'Create an email draft (mock implementation)',
-    category: 'write',
-    sensitivity: 'high',
-  },
   {
     name: 'calendar_list',
     description: 'List calendar events (mock implementation)',

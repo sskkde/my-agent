@@ -1,42 +1,5 @@
 import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
 
-// Email Search Tool
-export interface EmailSearchParams {
-  query: string
-  limit?: number
-}
-
-export interface EmailSearchResultItem {
-  id: string
-  subject: string
-  sender: string
-  snippet: string
-  date: string
-}
-
-export interface EmailSearchResult {
-  results: EmailSearchResultItem[]
-  total: number
-  query: string
-  [key: string]: unknown
-}
-
-// Email Send Draft Tool
-export interface EmailSendDraftParams {
-  to: string
-  subject: string
-  body: string
-  cc?: string[]
-  bcc?: string[]
-}
-
-export interface EmailSendDraftResult {
-  draftId: string
-  status: 'drafted'
-  message: string
-  [key: string]: unknown
-}
-
 // Calendar List Tool
 export interface CalendarListParams {
   startDate?: string
@@ -111,73 +74,6 @@ export interface DocsReadResult {
 }
 
 export function createMockConnectorTools(): ToolDefinition[] {
-  // Email Search Handler
-  const emailSearchHandler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
-    const typedParams = params as EmailSearchParams
-
-    if (!typedParams.query) {
-      return {
-        success: false,
-        error: {
-          code: 'MISSING_REQUIRED_FIELD',
-          message: 'Missing required field: query',
-          recoverable: true,
-        },
-      }
-    }
-
-    const limit = typedParams.limit ?? 10
-    const results: EmailSearchResultItem[] = Array.from({ length: Math.min(limit, 5) }, (_, i) => ({
-      id: `email_${i + 1}`,
-      subject: `Re: ${typedParams.query} discussion`,
-      sender: `sender${i + 1}@example.com`,
-      snippet: `This is a mock email about ${typedParams.query}...`,
-      date: new Date(Date.now() - i * 86400000).toISOString(),
-    }))
-
-    const result: EmailSearchResult = {
-      results,
-      total: results.length,
-      query: typedParams.query,
-    }
-
-    return {
-      success: true,
-      data: result,
-      resultPreview: `Found ${results.length} emails matching "${typedParams.query}"`,
-      structuredContent: result,
-    }
-  }
-
-  // Email Send Draft Handler
-  const emailSendDraftHandler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
-    const typedParams = params as EmailSendDraftParams
-
-    if (!typedParams.to || !typedParams.subject || !typedParams.body) {
-      return {
-        success: false,
-        error: {
-          code: 'MISSING_REQUIRED_FIELD',
-          message: 'Missing required fields: to, subject, body',
-          recoverable: true,
-        },
-      }
-    }
-
-    const result: EmailSendDraftResult = {
-      draftId: `draft_${Date.now()}`,
-      status: 'drafted',
-      message: `Draft created for ${typedParams.to}`,
-    }
-
-    return {
-      success: true,
-      data: result,
-      resultPreview: `Draft created: ${typedParams.subject}`,
-      structuredContent: result,
-    }
-  }
-
   // Calendar List Handler
   const calendarListHandler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
     const typedParams = params as CalendarListParams
@@ -310,39 +206,6 @@ export function createMockConnectorTools(): ToolDefinition[] {
   }
 
   return [
-    {
-      name: 'email_search',
-      description: 'Search emails matching a query (mock implementation)',
-      category: 'search',
-      sensitivity: 'medium',
-      schema: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Search query for emails' },
-          limit: { type: 'number', description: 'Maximum number of results to return' },
-        },
-        required: ['query'],
-      },
-      handler: emailSearchHandler,
-    },
-    {
-      name: 'email_send_draft',
-      description: 'Create an email draft (mock implementation)',
-      category: 'write',
-      sensitivity: 'high',
-      schema: {
-        type: 'object',
-        properties: {
-          to: { type: 'string', description: 'Recipient email address' },
-          subject: { type: 'string', description: 'Email subject' },
-          body: { type: 'string', description: 'Email body content' },
-          cc: { type: 'array', items: { type: 'string' }, description: 'CC recipients' },
-          bcc: { type: 'array', items: { type: 'string' }, description: 'BCC recipients' },
-        },
-        required: ['to', 'subject', 'body'],
-      },
-      handler: emailSendDraftHandler,
-    },
     {
       name: 'calendar_list',
       description: 'List calendar events (mock implementation)',

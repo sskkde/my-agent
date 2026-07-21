@@ -212,13 +212,13 @@ describe('Tools and Models API Integration', () => {
       expect(response.statusCode).toBe(200)
       const body = JSON.parse(response.body)
       const toolNames = body.data.tools.map((t: { name: string }) => t.name)
-      const emailSearchIndex = toolNames.indexOf('email_search')
+      const calendarListIndex = toolNames.indexOf('calendar_list')
 
-      expect(emailSearchIndex).toBeGreaterThanOrEqual(0)
-      const emailSearchMeta = body.data.metadata[emailSearchIndex]
-      expect(emailSearchMeta.isMock).toBe(true)
-      expect(emailSearchMeta.executionPlane).toBe('mock_connector')
-      expect(emailSearchMeta.source).toBe('mock')
+      expect(calendarListIndex).toBeGreaterThanOrEqual(0)
+      const calendarListMeta = body.data.metadata[calendarListIndex]
+      expect(calendarListMeta.isMock).toBe(true)
+      expect(calendarListMeta.executionPlane).toBe('mock_connector')
+      expect(calendarListMeta.source).toBe('mock')
     })
 
     it('should mark builtin tools with correct source', async () => {

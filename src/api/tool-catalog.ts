@@ -139,18 +139,6 @@ export const BUILT_IN_TOOLS: ToolSummary[] = [
     sensitivity: 'high',
   },
   {
-    name: 'email_search',
-    description: 'Search emails matching a query (mock implementation)',
-    category: 'search',
-    sensitivity: 'medium',
-  },
-  {
-    name: 'email_send_draft',
-    description: 'Create an email draft (mock implementation)',
-    category: 'write',
-    sensitivity: 'high',
-  },
-  {
     name: 'calendar_list',
     description: 'List calendar events (mock implementation)',
     category: 'read',
