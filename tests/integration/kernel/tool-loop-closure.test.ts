@@ -843,6 +843,148 @@ describe('Kernel Tool Loop Closure', () => {
     expect(result.finalStatus).toBe('completed')
   })
 
+  it('should pair and execute both tools when two tool_calls appear in one assistant message (multi-tool happy path)', async () => {
+    fakeToolExecutor.registerTool('tool-alpha', async () => ({
+      success: true,
+      data: { result: 'alpha-output' },
+      resultPreview: 'alpha-output',
+    }))
+    fakeToolExecutor.registerTool('tool-beta', async () => ({
+      success: true,
+      data: { result: 'beta-output' },
+      resultPreview: 'beta-output',
+    }))
+
+    const toolCalls: ToolCall[] = [
+      { id: 'call-alpha', type: 'function', function: { name: 'tool-alpha', arguments: '{}' } },
+      { id: 'call-beta', type: 'function', function: { name: 'tool-beta', arguments: '{}' } },
+    ]
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Both done.')])
+    const kernel = new AgentKernel(createConfig(adapter))
+
+    const dispatchedToolCallIds: string[] = []
+    const origDispatch = fakeDispatcher.dispatch.bind(fakeDispatcher)
+    fakeDispatcher.dispatch = async (req) => {
+      const ta = req.action.targetAction as { toolCallId?: string } | undefined
+      if (ta?.toolCallId) dispatchedToolCallIds.push(ta.toolCallId)
+      return origDispatch(req)
+    }
+
+    const result: KernelRunResult = await kernel.run(
+      createInput({ toolProjection: toolProjectionFor('tool-alpha', 'tool-beta') }),
+    )
+
+    expect(result.finalStatus).toBe('completed')
+    expect(result.finalResponse).toBe('Both done.')
+    expect(result.toolCalls).toHaveLength(2)
+    expect(result.toolCalls[0].toolCallId).toBe('call-alpha')
+    expect(result.toolCalls[1].toolCallId).toBe('call-beta')
+    expect(dispatchedToolCallIds).toContain('call-alpha')
+    expect(dispatchedToolCallIds).toContain('call-beta')
+
+    const toolCallEntries = result.transcript.filter((e) => e.type === 'tool_call')
+    const toolResultEntries = result.transcript.filter((e) => e.type === 'tool_result')
+    expect(toolCallEntries).toHaveLength(2)
+    expect(toolResultEntries).toHaveLength(2)
+
+    const alphaResult = toolResultEntries.find(
+      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-alpha',
+    )!.content as { result: unknown; error?: unknown }
+    expect(alphaResult.result).toEqual({ result: 'alpha-output' })
+    expect(alphaResult.error).toBeUndefined()
+
+    const betaResult = toolResultEntries.find(
+      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-beta',
+    )!.content as { result: unknown; error?: unknown }
+    expect(betaResult.result).toEqual({ result: 'beta-output' })
+    expect(betaResult.error).toBeUndefined()
+
+    const { validateToolResultPairing: validate1 } = await import('../../../src/kernel/tool-result-pairing-guard.js')
+    expect(validate1(result.transcript).valid).toBe(true)
+  })
+
+  it('should maintain valid tool-result pairing when maxIterations is reached (pairing flush at loop limit)', async () => {
+    const toolCalls: ToolCall[] = [
+      { id: 'call-limit-a', type: 'function', function: { name: 'test-tool', arguments: JSON.stringify({ seq: 1 }) } },
+      { id: 'call-limit-b', type: 'function', function: { name: 'test-tool', arguments: JSON.stringify({ seq: 2 }) } },
+    ]
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createToolUseResponse(toolCalls)])
+    const maxIterations = 1
+    const kernel = new AgentKernel(createConfig(adapter, maxIterations))
+    const result: KernelRunResult = await kernel.run(
+      createInput({ maxIterations, toolProjection: toolProjectionFor('test-tool') }),
+    )
+
+    expect(result.finalStatus).toBe('max_iterations_reached')
+
+    const toolCallEntries = result.transcript.filter((e) => e.type === 'tool_call')
+    const toolResultEntries = result.transcript.filter((e) => e.type === 'tool_result')
+    expect(toolCallEntries).toHaveLength(2)
+    expect(toolResultEntries).toHaveLength(2)
+
+    const callIds = toolCallEntries.map((e) => (e.content as { toolCallId: string }).toolCallId)
+    const resultIds = toolResultEntries.map((e) => (e.content as { toolCallId: string }).toolCallId)
+    expect(resultIds.sort()).toEqual(callIds.sort())
+
+    const { validateToolResultPairing: validate2 } = await import('../../../src/kernel/tool-result-pairing-guard.js')
+    expect(validate2(result.transcript).valid).toBe(true)
+  })
+
+  it('should fail unprojected tool closed without invoking dispatcher (projected + unprojected mixed)', async () => {
+    fakeToolExecutor.registerTool('allowlisted-tool', async () => ({
+      success: true,
+      data: { ok: true },
+      resultPreview: 'ok',
+    }))
+
+    const dispatchedToolCallIds: string[] = []
+    const origDispatch = fakeDispatcher.dispatch.bind(fakeDispatcher)
+    fakeDispatcher.dispatch = async (req) => {
+      const ta = req.action.targetAction as { toolCallId?: string } | undefined
+      if (ta?.toolCallId) dispatchedToolCallIds.push(ta.toolCallId)
+      return origDispatch(req)
+    }
+
+    const toolCalls: ToolCall[] = [
+      { id: 'call-allowed', type: 'function', function: { name: 'allowlisted-tool', arguments: '{}' } },
+      { id: 'call-sneaky', type: 'function', function: { name: 'sneaky-unprojected-tool', arguments: '{}' } },
+    ]
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Mixed results.')])
+    const kernel = new AgentKernel(createConfig(adapter))
+    const result: KernelRunResult = await kernel.run(
+      createInput({ toolProjection: toolProjectionFor('allowlisted-tool') }),
+    )
+
+    expect(result.finalStatus).toBe('completed')
+    expect(result.finalResponse).toBe('Mixed results.')
+
+    const toolResultEntries = result.transcript.filter((e) => e.type === 'tool_result')
+    expect(toolResultEntries).toHaveLength(2)
+
+    const allowedResult = toolResultEntries.find(
+      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-allowed',
+    )!.content as { result: unknown; error?: { code: string } }
+    expect(allowedResult.result).toEqual({ ok: true })
+    expect(allowedResult.error).toBeUndefined()
+
+    const sneakyResult = toolResultEntries.find(
+      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-sneaky',
+    )!.content as { result: unknown; error: { code: string; recoverable: boolean } }
+    expect(sneakyResult.result).toBeNull()
+    expect(sneakyResult.error!.code).toBe('UNPROJECTED_TOOL_CALL')
+    expect(sneakyResult.error!.recoverable).toBe(false)
+
+    expect(dispatchedToolCallIds).toHaveLength(1)
+    expect(dispatchedToolCallIds[0]).toBe('call-allowed')
+    expect(dispatchedToolCallIds).not.toContain('call-sneaky')
+
+    const { validateToolResultPairing: validate3 } = await import('../../../src/kernel/tool-result-pairing-guard.js')
+    expect(validate3(result.transcript).valid).toBe(true)
+  })
+
   it('should produce valid pairing when transcript includes both successful and failed tool calls', async () => {
     fakeToolExecutor.registerTool('tool-a', async function () {
       return { success: true, data: { ok: true } }
