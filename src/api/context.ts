@@ -68,7 +68,7 @@ import { createScheduleTriggerStore, type ScheduleTriggerStore } from '../storag
 import { createConnectorStore, type ConnectorStore } from '../storage/connector-store.js'
 import { createSessionChannelMapStore, type SessionChannelMapStore } from '../storage/session-channel-map-store.js'
 import { registerMessagingDefinitions } from '../connectors/messaging/definitions.js'
-import { registerAgentlyMailDefinition } from '../connectors/agently-mail/definitions.js'
+import { registerAgentlyMailTools } from '../connectors/agently-mail/register-agently-mail-tools.js'
 import { createEventTriggerRuntime, type EventTriggerRuntime } from '../triggers/event-trigger-runtime.js'
 import { createPermissionEngine, type PermissionEngine } from '../permissions/permission-engine.js'
 import { createAgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
@@ -563,7 +563,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 	  })
 
 	  registerMessagingDefinitions(connectorStore)
-	  registerAgentlyMailDefinition(connectorStore)
 
 	  const stores: Stores = {
     eventStore: {
@@ -716,6 +715,10 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 
   // Register AMap MCP tools (opt-in via AMAP_MCP_ENABLED + AMAP_MAPS_API_KEY)
   registerAMapMcpTools({ connection, toolRegistry })
+
+  // AgentlyMail connector tools (opt-in via AGENTLY_MAIL_ENABLED=true)
+  // Replaces legacy mock email_* builtins when enabled.
+  registerAgentlyMailTools({ connectorStore, toolRegistry })
 
   // Create skill registry and register built-in skills (active + deprecated aliases)
   const skillRegistry = createSkillRegistry()
