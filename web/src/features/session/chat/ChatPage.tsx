@@ -16,6 +16,8 @@ import type { ConsoleSessionInfo, ConsoleTimelineEvent, ModelsResponse, Processi
 import {
   getBaselineServerMessageCount,
   clearStreamingActivityMaps,
+  upsertTimelineEvent,
+  mergeTimelineEvents,
   type AssistantPlaceholder,
   type StreamingDraft,
 } from '../session-utils'
@@ -379,12 +381,11 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         const timelineResponse = await api.getSessionTimeline(sessionId)
         if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
           setEvents((prev) => {
-            const existingIds = new Set(prev.map((e) => e.eventId))
-            const newEvents = timelineResponse.events.filter((e) => !existingIds.has(e.eventId))
-            if (newEvents.length === 0) return prev
-            const merged = [...prev, ...newEvents]
-            merged.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-            return merged
+            const merged = mergeTimelineEvents(prev, timelineResponse.events)
+            if (merged === prev) return prev
+            const sorted = [...merged]
+            sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+            return sorted
           })
         }
         return timelineResponse.events
@@ -460,10 +461,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     mountedRef,
     selectedSessionIdRef,
     onEvent: (event: ConsoleTimelineEvent) => {
-      setEvents((prev) => {
-        if (prev.some((e) => e.eventId === event.eventId)) return prev
-        return [...prev, event]
-      })
+      setEvents((prev) => upsertTimelineEvent(prev, event))
       if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
         scheduleSessionRefresh()
       }
