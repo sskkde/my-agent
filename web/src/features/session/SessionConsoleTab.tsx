@@ -25,6 +25,10 @@ import {
   clearStreamingActivityMaps,
   upsertTimelineEvent,
   mergeTimelineEvents,
+  clearStreamingDraftsByAttemptIds,
+  compareTimelineEventsForChat,
+  sealStreamingDraftsForTool,
+  appendStreamingToken,
   type AssistantPlaceholder,
   type StreamingDraft,
 } from './session-utils'
@@ -141,12 +145,14 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         }),
       )
 
-      setStreamingDrafts((prev) =>
-        clearStreamingActivityMaps(prev, attemptIds, {
+      setStreamingDrafts((prev) => {
+        const byId = clearStreamingDraftsByAttemptIds(prev, attemptIds)
+        if (byId !== prev) return byId
+        return clearStreamingActivityMaps(prev, attemptIds, {
           clearOldestIfUnmatched,
           sessionId,
-        }),
-      )
+        })
+      })
     },
     [updatePendingAssistantPlaceholders, selectedSessionIdRef],
   )
@@ -260,10 +266,24 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         refreshPendingApproval()
       }
 
+      if (event.eventType === 'tool_call') {
+        const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
+        const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+        setStreamingDrafts((prev) =>
+          sealStreamingDraftsForTool(prev, {
+            sessionId: event.sessionId,
+            attemptId,
+            turnId,
+          }),
+        )
+      }
+
       if (['assistant_message', 'error'].includes(event.eventType)) {
         const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
         const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
-        clearAssistantActivity([attemptId, turnId], true)
+        if (event.metadata?.streamingDraft !== true && event.metadata?.assistantPlaceholder !== true) {
+          clearAssistantActivity([attemptId, turnId], true)
+        }
       }
     },
     [scheduleSessionRefresh, refreshPendingApproval, clearAssistantActivity],
@@ -287,20 +307,18 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         return next
       })
 
-      setStreamingDrafts((prev) => {
-        const next = new Map(prev)
-        const existing = next.get(token.attemptId)
-
-        if (!existing || token.sequence > existing.sequence) {
-          next.set(token.attemptId, {
+      setStreamingDrafts((prev) =>
+        appendStreamingToken(
+          prev,
+          {
+            attemptId: token.attemptId,
             sessionId,
-            content: (existing?.content || '') + token.delta,
             sequence: token.sequence,
-            timestamp: existing?.timestamp ?? placeholderTimestamp ?? Date.now(),
-          })
-        }
-        return next
-      })
+            delta: token.delta,
+          },
+          placeholderTimestamp,
+        ),
+      )
     },
     [updatePendingAssistantPlaceholders],
   )
@@ -702,17 +720,20 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         })
       })
 
-      streamingDrafts.forEach((draft, attemptId) => {
+      streamingDrafts.forEach((draft, draftKey) => {
         if (draft.sessionId !== selectedSessionId) return
+        if (draft.content.length === 0 && draft.sealed) return
         syntheticEvents.push({
-          eventId: `synthetic-draft-${attemptId}`,
+          eventId: `synthetic-draft-${draftKey}`,
           eventType: 'assistant_message',
           sessionId: selectedSessionId,
           timestamp: new Date(draft.timestamp).toISOString(),
           content: draft.content,
           metadata: {
             streamingDraft: true,
-            attemptId,
+            attemptId: draft.attemptId,
+            draftSegment: draft.segment,
+            sealed: draft.sealed,
           },
           actor: 'assistant',
         })
@@ -724,7 +745,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       (event, index) => allEvents.findIndex((candidate) => candidate.eventId === event.eventId) === index,
     )
 
-    dedupedEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    dedupedEvents.sort(compareTimelineEventsForChat)
 
     if (!preferences.reasoningVisible) {
       return dedupedEvents.filter((event) => event.eventType !== 'thinking_summary')

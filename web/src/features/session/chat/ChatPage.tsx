@@ -18,6 +18,10 @@ import {
   clearStreamingActivityMaps,
   upsertTimelineEvent,
   mergeTimelineEvents,
+  clearStreamingDraftsByAttemptIds,
+  compareTimelineEventsForChat,
+  sealStreamingDraftsForTool,
+  appendStreamingToken,
   type AssistantPlaceholder,
   type StreamingDraft,
 } from '../session-utils'
@@ -352,12 +356,15 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           sessionId,
         }),
       )
-      setStreamingDrafts((prev) =>
-        clearStreamingActivityMaps(prev, attemptIds, {
+      setStreamingDrafts((prev) => {
+        const byId = clearStreamingDraftsByAttemptIds(prev, attemptIds)
+        if (byId !== prev) return byId
+        // Fallback: clear oldest unsealed/sealed draft for session when ids missing
+        return clearStreamingActivityMaps(prev, attemptIds, {
           clearOldestIfUnmatched,
           sessionId,
-        }),
-      )
+        })
+      })
     },
     [updatePendingAssistantPlaceholders, selectedSessionIdRef],
   )
@@ -465,10 +472,24 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
         scheduleSessionRefresh()
       }
+      if (event.eventType === 'tool_call') {
+        const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
+        const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+        setStreamingDrafts((prev) =>
+          sealStreamingDraftsForTool(prev, {
+            sessionId: event.sessionId,
+            attemptId,
+            turnId,
+          }),
+        )
+      }
       if (['assistant_message', 'error'].includes(event.eventType)) {
         const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
         const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
-        clearAssistantActivity([attemptId, turnId], true)
+        // Final messages clear live drafts only when not a synthetic streaming card
+        if (event.metadata?.streamingDraft !== true && event.metadata?.assistantPlaceholder !== true) {
+          clearAssistantActivity([attemptId, turnId], true)
+        }
       }
     },
     onToken: (token: TokenStreamPayload) => {
@@ -494,18 +515,18 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         })
       }
 
-      setStreamingDrafts((prev) => {
-        const existing = prev.get(token.attemptId)
-        if (existing && token.sequence <= existing.sequence) return prev
-        const next = new Map(prev)
-        next.set(token.attemptId, {
-          sessionId: token.sessionId,
-          content: (existing?.content || '') + token.delta,
-          sequence: token.sequence,
-          timestamp: existing?.timestamp ?? placeholderTimestamp ?? Date.now(),
-        })
-        return next
-      })
+      setStreamingDrafts((prev) =>
+        appendStreamingToken(
+          prev,
+          {
+            attemptId: token.attemptId,
+            sessionId: token.sessionId,
+            sequence: token.sequence,
+            delta: token.delta,
+          },
+          placeholderTimestamp,
+        ),
+      )
     },
   })
 
@@ -616,15 +637,21 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         })
       })
 
-      streamingDrafts.forEach((draft, attemptId) => {
+      streamingDrafts.forEach((draft, draftKey) => {
         if (draft.sessionId !== selectedSessionId) return
+        if (draft.content.length === 0 && draft.sealed) return
         syntheticEvents.push({
-          eventId: `synthetic-draft-${attemptId}`,
+          eventId: `synthetic-draft-${draftKey}`,
           eventType: 'assistant_message',
           sessionId: selectedSessionId,
           timestamp: new Date(draft.timestamp).toISOString(),
           content: draft.content,
-          metadata: { streamingDraft: true, attemptId },
+          metadata: {
+            streamingDraft: true,
+            attemptId: draft.attemptId,
+            draftSegment: draft.segment,
+            sealed: draft.sealed,
+          },
           actor: 'assistant',
         })
       })
@@ -634,7 +661,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     const dedupedEvents = allEvents.filter(
       (event, index) => allEvents.findIndex((candidate) => candidate.eventId === event.eventId) === index,
     )
-    dedupedEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    dedupedEvents.sort(compareTimelineEventsForChat)
 
     return dedupedEvents
   }, [events, localMessageEvents, selectedSessionId, pendingAssistantPlaceholders, streamingDrafts])
