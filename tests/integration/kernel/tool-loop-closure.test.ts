@@ -349,9 +349,40 @@ describe('Kernel Tool Loop Closure', () => {
     }))
 
     fakeDispatcher.registerHandler('execute_tool', async (request) => {
-      const payload = request.action.targetAction as
-        | { toolCallId?: string; toolName?: string; params?: unknown }
+      const targetAction = request.action.targetAction as
+        | { toolCallId?: string; toolName?: string; params?: unknown; toolDispatchRequest?: { toolUses?: Array<{ toolCallId: string; toolName: string; input: Record<string, unknown> }> } }
         | undefined
+
+      // Batch dispatch: execute each tool in toolUses array
+      const batchUses = targetAction?.toolDispatchRequest?.toolUses
+      if (batchUses && batchUses.length > 1) {
+        const batchResults = await Promise.all(
+          batchUses.map(async (tu) => {
+            const tr = await fakeToolExecutor.execute({
+              toolCallId: tu.toolCallId,
+              toolName: tu.toolName,
+              params: tu.input,
+              userId: request.context.userId || 'test-user',
+              sessionId: request.context.sessionId,
+              permissionContext: { userId: request.context.userId || 'test-user', permissions: ['tool:execute'] },
+            })
+            return tr
+          }),
+        )
+        const allSuccess = batchResults.every((r) => r.success)
+        return {
+          requestId: request.requestId,
+          actionId: request.action.actionId,
+          status: allSuccess ? 'completed' : 'partial',
+          targetRuntime: 'tool_plane',
+          result: batchResults,
+          createdAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+        }
+      }
+
+      // Single dispatch (legacy path)
+      const payload = targetAction
       const toolResult = await fakeToolExecutor.execute({
         toolCallId: payload?.toolCallId || 'test-call-id',
         toolName: payload?.toolName || 'unknown',
@@ -866,8 +897,16 @@ describe('Kernel Tool Loop Closure', () => {
     const dispatchedToolCallIds: string[] = []
     const origDispatch = fakeDispatcher.dispatch.bind(fakeDispatcher)
     fakeDispatcher.dispatch = async (req) => {
-      const ta = req.action.targetAction as { toolCallId?: string } | undefined
-      if (ta?.toolCallId) dispatchedToolCallIds.push(ta.toolCallId)
+      const ta = req.action.targetAction as
+        | { toolCallId?: string; toolDispatchRequest?: { toolUses?: Array<{ toolCallId: string }> } }
+        | undefined
+      if (ta?.toolDispatchRequest?.toolUses) {
+        for (const tu of ta.toolDispatchRequest.toolUses) {
+          dispatchedToolCallIds.push(tu.toolCallId)
+        }
+      } else if (ta?.toolCallId) {
+        dispatchedToolCallIds.push(ta.toolCallId)
+      }
       return origDispatch(req)
     }
 
@@ -942,8 +981,16 @@ describe('Kernel Tool Loop Closure', () => {
     const dispatchedToolCallIds: string[] = []
     const origDispatch = fakeDispatcher.dispatch.bind(fakeDispatcher)
     fakeDispatcher.dispatch = async (req) => {
-      const ta = req.action.targetAction as { toolCallId?: string } | undefined
-      if (ta?.toolCallId) dispatchedToolCallIds.push(ta.toolCallId)
+      const ta = req.action.targetAction as
+        | { toolCallId?: string; toolDispatchRequest?: { toolUses?: Array<{ toolCallId: string }> } }
+        | undefined
+      if (ta?.toolDispatchRequest?.toolUses) {
+        for (const tu of ta.toolDispatchRequest.toolUses) {
+          dispatchedToolCallIds.push(tu.toolCallId)
+        }
+      } else if (ta?.toolCallId) {
+        dispatchedToolCallIds.push(ta.toolCallId)
+      }
       return origDispatch(req)
     }
 

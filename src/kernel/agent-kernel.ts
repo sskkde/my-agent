@@ -229,11 +229,11 @@ export class AgentKernel {
 
           let shouldStop = false
           let stopStructuredResult: unknown
+          const externalBatch: Array<{ toolRequest: ToolUseRequest; toolCallIndex: number }> = []
 
           for (const [toolCallIndex, toolRequest] of toolUseRequests.entries()) {
             this.commitTranscript(state, 'tool_call', toolRequest)
             this.broadcastToolCallRunning(input, toolRequest, toolCallIndex)
-            let toolResult: ToolUseResult
 
             // INVALID TOOL ARGUMENTS GUARD: if safeParseParams could not parse the
             // tool call's arguments JSON string, synthesize an error result instead
@@ -242,7 +242,7 @@ export class AgentKernel {
             // failures (unparseable strings, not schema violations).
             const parseError = invalidArgs.get(toolRequest.toolCallId)
             if (parseError !== undefined) {
-              toolResult = {
+              const toolResult: ToolUseResult = {
                 toolCallId: toolRequest.toolCallId,
                 result: null,
                 error: {
@@ -258,17 +258,35 @@ export class AgentKernel {
               continue
             }
 
+            // INTERNAL HANDLER: flush accumulated external batch first, then handle inline
             const internalHandler = this.resolveInternalToolHandler(toolRequest.toolName, input)
             if (internalHandler) {
+              // Flush buffered external tools BEFORE running internal handler
+              // to preserve ordering and pairing in transcript
+              if (externalBatch.length > 0) {
+                await this.dispatchExternalBatch(externalBatch, state, pairingGuard, input)
+                externalBatch.length = 0
+              }
+
               try {
                 const handlerResult = await internalHandler(toolRequest)
-                toolResult = handlerResult.toolResult
+                const toolResult = handlerResult.toolResult
                 if (handlerResult.stop) {
                   shouldStop = true
                   stopStructuredResult = handlerResult.structuredResult
                 }
+                pairingGuard.acceptToolResult(toolResult)
+                this.commitTranscript(state, 'tool_result', toolResult)
+                this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
+                this.mergeToolResult(state, toolRequest, toolResult)
+
+                if (shouldStop) {
+                  this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop', input)
+                  state.status = 'completed'
+                  return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult, input, aggregatedUsage)
+                }
               } catch (handlerError) {
-                toolResult = {
+                const toolResult: ToolUseResult = {
                   toolCallId: toolRequest.toolCallId,
                   result: null,
                   error: {
@@ -277,33 +295,38 @@ export class AgentKernel {
                     recoverable: true,
                   },
                 }
+                pairingGuard.acceptToolResult(toolResult)
+                this.commitTranscript(state, 'tool_result', toolResult)
+                this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
+                this.mergeToolResult(state, toolRequest, toolResult)
               }
             } else {
-              try {
-                toolResult = await this.dispatchTool(toolRequest, input)
-              } catch (dispatchError) {
-                toolResult = {
+              // UNPROJECTED TOOL GUARD: tool not in projection → synth error, skip dispatch
+              if (!this.isCallableProjectedTool(toolRequest.toolName, input)) {
+                const toolResult: ToolUseResult = {
                   toolCallId: toolRequest.toolCallId,
                   result: null,
                   error: {
-                    code: 'DISPATCH_ERROR',
-                    message: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
-                    recoverable: true,
+                    code: 'UNPROJECTED_TOOL_CALL',
+                    message: `Tool ${toolRequest.toolName} was not projected as callable for this kernel run`,
+                    recoverable: false,
                   },
                 }
+                pairingGuard.acceptToolResult(toolResult)
+                this.commitTranscript(state, 'tool_result', toolResult)
+                this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
+                this.mergeToolResult(state, toolRequest, toolResult)
+                continue
               }
-            }
 
-            pairingGuard.acceptToolResult(toolResult)
-            this.commitTranscript(state, 'tool_result', toolResult)
-            this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
-            this.mergeToolResult(state, toolRequest, toolResult)
-
-            if (shouldStop) {
-              this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop', input)
-              state.status = 'completed'
-              return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult, input, aggregatedUsage)
+              // EXTERNAL PROJECTED TOOL: buffer for batch dispatch
+              externalBatch.push({ toolRequest, toolCallIndex })
             }
+          }
+
+          // After for loop: flush remaining external tools as ONE batch
+          if (externalBatch.length > 0) {
+            await this.dispatchExternalBatch(externalBatch, state, pairingGuard, input)
           }
 
           this.flushPairingGuard(pairingGuard, state, 'iteration_end', input)
@@ -968,6 +991,161 @@ export class AgentKernel {
         },
       }
     }
+  }
+
+  private async dispatchExternalBatch(
+    batch: Array<{ toolRequest: ToolUseRequest; toolCallIndex: number }>,
+    state: KernelRunState,
+    pairingGuard: ToolResultPairingGuard,
+    input: KernelRunInput,
+  ): Promise<void> {
+    if (batch.length === 0) return
+
+    const effectiveRunId = input.runId ?? input.contextBundle.runId
+    const firstTool = batch[0].toolRequest
+
+    const toolUses: import('../tools/runtime/tool-dispatch-contract.js').ToolUseDispatchInput[] = batch.map(
+      ({ toolRequest }) => ({
+        toolCallId: toolRequest.toolCallId,
+        toolName: toolRequest.toolName,
+        input: toolRequest.params,
+      }),
+    )
+
+    const toolDispatchRequest = createToolDispatchRequest({
+      runId: effectiveRunId,
+      userId: input.userId,
+      ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+      agentId: input.agentId,
+      agentType: input.agentType,
+      assistantMessageId: `assistant-${stateSafeId(firstTool.toolCallId)}`,
+      toolUses,
+      permissionContext: {
+        userId: input.userId,
+        sessionId: input.sessionId ?? '',
+        mode: 'ask_on_write',
+        grants: [],
+      },
+      executionPolicy: {
+        maxConcurrency: 5,
+        allowParallelReadOnly: true,
+      },
+      ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
+      ...(input.workDirId ? { workDirId: input.workDirId } : {}),
+    })
+
+    let dispatchResult: Awaited<ReturnType<KernelConfig['dispatcher']['dispatch']>>
+    try {
+      dispatchResult = await this.config.dispatcher.dispatch({
+        requestId: `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        action: {
+          actionId: `action-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          actionType: 'execute_tool',
+          targetRuntime: 'tool_plane',
+          targetAction: {
+            toolName: firstTool.toolName,
+            params: firstTool.params,
+            toolCallId: firstTool.toolCallId,
+            toolDispatchRequest,
+          },
+          source: {
+            sourceModule: 'agent_kernel',
+            sourceAction: 'run',
+          },
+          userId: input.userId,
+          createdAt: new Date().toISOString(),
+          status: 'pending',
+        },
+        context: {
+          callerModule: 'agent_kernel',
+          userId: input.userId,
+          sessionId: input.sessionId,
+          kernelRunId: effectiveRunId,
+          agentId: input.agentId,
+          agentType: input.agentType,
+        },
+      })
+    } catch (dispatchError) {
+      // Dispatch threw before producing any result — mark all batch tools as DISPATCH_ERROR
+      for (const { toolRequest, toolCallIndex } of batch) {
+        const toolResult: ToolUseResult = {
+          toolCallId: toolRequest.toolCallId,
+          result: null,
+          error: {
+            code: 'DISPATCH_ERROR',
+            message: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
+            recoverable: true,
+          },
+        }
+        pairingGuard.acceptToolResult(toolResult)
+        this.commitTranscript(state, 'tool_result', toolResult)
+        this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
+        this.mergeToolResult(state, toolRequest, toolResult)
+      }
+      return
+    }
+
+    // Extract contextDeltas from the aggregate dispatch result
+    const contextDeltas = this.extractContextDeltas(dispatchResult.result)
+    if (contextDeltas) {
+      for (const delta of contextDeltas) {
+        this.config.contextManager.applyDelta(delta)
+      }
+    }
+
+    // Normalize results to array and build Map<toolCallId, ToolExecutionResult>
+    const rawResults = Array.isArray(dispatchResult.result) ? dispatchResult.result : [dispatchResult.result]
+    const execResultMap = new Map<string, ToolExecutionResult>()
+    for (let i = 0; i < batch.length; i++) {
+      const raw = rawResults[i]
+      if (raw && isToolExecutionResult(raw)) {
+        // Extract toolCallId from result data for robust mapping (handles out-of-order results).
+        // Fall back to positional mapping when data doesn't carry toolCallId.
+        const resultPayload = raw.data as Record<string, unknown> | undefined
+        const resultToolCallId =
+          typeof resultPayload?.toolCallId === 'string'
+            ? (resultPayload.toolCallId as string)
+            : batch[i].toolRequest.toolCallId
+        execResultMap.set(resultToolCallId, raw)
+      }
+    }
+
+    // For each tool in original order: build ToolUseResult, pair, broadcast, merge
+    for (const { toolRequest, toolCallIndex } of batch) {
+      const execResult = execResultMap.get(toolRequest.toolCallId)
+
+      let toolResult: ToolUseResult
+      if (execResult) {
+        toolResult = {
+          toolCallId: toolRequest.toolCallId,
+          result: execResult.success ? execResult.data : null,
+          ...(execResult.error ? { error: execResult.error } : {}),
+        }
+      } else if (dispatchResult.status === 'completed' && !dispatchResult.error) {
+        toolResult = {
+          toolCallId: toolRequest.toolCallId,
+          result: dispatchResult.result,
+        }
+      } else {
+        toolResult = {
+          toolCallId: toolRequest.toolCallId,
+          result: null,
+          error: dispatchResult.error || {
+            code: 'DISPATCH_FAILED',
+            message: 'Tool dispatch failed',
+            recoverable: false,
+          },
+        }
+      }
+
+      pairingGuard.acceptToolResult(toolResult)
+      this.commitTranscript(state, 'tool_result', toolResult)
+      this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
+      this.mergeToolResult(state, toolRequest, toolResult)
+    }
+
+    // dispatchTool retained for backward compatibility
+    void this.dispatchTool
   }
 
   private isCallableProjectedTool(toolName: string, input: KernelRunInput): boolean {
