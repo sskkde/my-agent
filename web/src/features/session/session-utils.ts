@@ -187,3 +187,71 @@ export function clearStreamingActivityMaps<T extends { sessionId: string }>(
   return next.size === map.size ? map : next
 }
 
+/**
+ * Upsert a timeline event for scheme-1 tool_call identity:
+ * - Same eventId → replace in place
+ * - Formal tool_call may replace an early tool_call for the same turn + toolCallIndex
+ * - Formal tool_call may drop early card referenced by metadata.replacesEarlyEventId
+ */
+export function upsertTimelineEvent(
+  prev: ConsoleTimelineEvent[],
+  event: ConsoleTimelineEvent,
+): ConsoleTimelineEvent[] {
+  const byId = prev.findIndex((e) => e.eventId === event.eventId)
+  if (byId >= 0) {
+    const next = [...prev]
+    next[byId] = event
+    return next
+  }
+
+  if (event.eventType === 'tool_call') {
+    const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+    const toolCallIndex =
+      typeof event.metadata?.toolCallIndex === 'number' ? event.metadata.toolCallIndex : undefined
+    const replacesEarlyEventId =
+      typeof event.metadata?.replacesEarlyEventId === 'string'
+        ? event.metadata.replacesEarlyEventId
+        : undefined
+    const isEarly = event.metadata?.early === true
+
+    let next = prev
+    if (replacesEarlyEventId) {
+      next = next.filter((e) => e.eventId !== replacesEarlyEventId)
+    }
+
+    if (!isEarly && turnId !== undefined && toolCallIndex !== undefined) {
+      const earlyIdx = next.findIndex(
+        (e) =>
+          e.eventType === 'tool_call' &&
+          e.metadata?.early === true &&
+          e.metadata?.turnId === turnId &&
+          e.metadata?.toolCallIndex === toolCallIndex,
+      )
+      if (earlyIdx >= 0) {
+        const replaced = [...next]
+        replaced[earlyIdx] = event
+        return replaced
+      }
+    }
+
+    return [...next, event]
+  }
+
+  return [...prev, event]
+}
+
+/**
+ * Merge server timeline events into local state, applying scheme-1 upserts so
+ * formal tool_call events replace provisional early cards.
+ */
+export function mergeTimelineEvents(
+  prev: ConsoleTimelineEvent[],
+  incoming: ConsoleTimelineEvent[],
+): ConsoleTimelineEvent[] {
+  let next = prev
+  for (const event of incoming) {
+    next = upsertTimelineEvent(next, event)
+  }
+  return next
+}
+
