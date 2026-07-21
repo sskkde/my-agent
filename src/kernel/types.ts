@@ -109,9 +109,15 @@ export interface KernelRunInput {
   model?: string
   /** Per-run reasoning depth (thinking effort). */
   reasoningDepth?: import('../llm/reasoning-depth.js').ReasoningDepth
+  /**
+   * AbortSignal for cancelling this kernel run externally.
+   * Checked at iteration start, before LLM call, after LLM response,
+   * and after internal tool handlers.
+   */
+  signal?: AbortSignal
 }
 
-export type KernelRunStatus = 'completed' | 'max_iterations_reached' | 'timeout' | 'failed'
+export type KernelRunStatus = 'completed' | 'max_iterations_reached' | 'timeout' | 'failed' | 'cancelled'
 
 export interface KernelRunResult {
   finalStatus: KernelRunStatus
@@ -140,7 +146,7 @@ export interface KernelTranscriptEntry {
 
 export interface KernelRunState {
   currentIteration: number
-  status: 'running' | 'waiting' | 'completed' | 'failed'
+  status: 'running' | 'waiting' | 'completed' | 'failed' | 'cancelled'
   contextItems: ContextItem[]
   startTime: number
   toolCalls: ToolUseRequest[]

@@ -94,6 +94,12 @@ export interface ForegroundTurnInput {
   workDirId?: string
   /** Managed workdir display name — threaded from session state */
   workDirName?: string
+  /**
+   * AbortSignal for cancelling the kernel run from external callers.
+   * When aborted, the kernel checks at iteration boundaries, before LLM calls,
+   * after LLM responses, and after internal tool handlers.
+   */
+  signal?: AbortSignal
 }
 
 /**

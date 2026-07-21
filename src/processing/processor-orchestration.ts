@@ -43,6 +43,7 @@ import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.
 import type { KernelRunStore } from '../storage/kernel-run-store.js'
 import type { TraceStore } from '../observability/types.js'
 import { KERNEL_RUN_STATES } from '../shared/states.js'
+import { registerRunAbort, unregisterRunAbort } from '../kernel/run-abort-registry.js'
 
 const CONVERSATION_HISTORY_TURN_LIMIT = 20
 
@@ -252,22 +253,27 @@ export function createOrchestrationProcessor(
             buildStatusPayload(input.sessionId, input.correlationId, 'model_call', resolvedProviderId, resolvedModel),
           )
 
+          const abortController = new AbortController()
+          registerRunAbort(input.correlationId, abortController)
+
           const turnInput: ForegroundTurnInput = {
             userId: input.userId,
             sessionId: input.sessionId,
             turnId: input.correlationId,
             message: input.text,
             timestamp: input.timestamp,
-	            hydratedState: hydratedSession,
-	            foregroundState,
-	            agentConfig: agentConfig ?? undefined,
-	            attachmentIds: input.attachmentIds,
-	            workDirRoot: hydratedSession.activeWorkdir?.workDirRoot,
-	            workDirId: hydratedSession.activeWorkdir?.workDirId,
-	            workDirName: hydratedSession.activeWorkdir?.workDirName,
-	          }
+ 	            hydratedState: hydratedSession,
+ 	            foregroundState,
+ 	            agentConfig: agentConfig ?? undefined,
+ 	            attachmentIds: input.attachmentIds,
+ 	            workDirRoot: hydratedSession.activeWorkdir?.workDirRoot,
+ 	            workDirId: hydratedSession.activeWorkdir?.workDirId,
+ 	            workDirName: hydratedSession.activeWorkdir?.workDirName,
+ 	            signal: abortController.signal,
+ 	          }
 
           if (!deps.foregroundAgent?.runTurn) {
+            unregisterRunAbort(input.correlationId)
             output = createErrorOutput(
               input.correlationId,
               'PROCESSING_ERROR',
@@ -331,7 +337,12 @@ export function createOrchestrationProcessor(
               }
             }
 
-            const turnResult = await deps.foregroundAgent.runTurn(turnInput)
+            let turnResult: import('../foreground/foreground-runner-types.js').ForegroundTurnResult
+            try {
+              turnResult = await deps.foregroundAgent.runTurn(turnInput)
+            } finally {
+              unregisterRunAbort(input.correlationId)
+            }
 
             const turnSucceeded = turnResult.status === 'completed'
             const turnError = turnResult.error?.message

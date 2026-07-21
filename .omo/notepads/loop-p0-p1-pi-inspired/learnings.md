@@ -222,3 +222,40 @@
   - This produces an `orphan_result` warning in `validateToolResultPairing` — expected behavior
 - **Edge case verified**: When internal handler throws, catch block produces `INTERNAL_HANDLER_ERROR` result with `recoverable: true`, pairing valid, loop continues.
 - **Test results**: 33 tests pass across 5 suites (5 internal-handler-order, 6 batch, 14 integration, 4 truncation, 4 invalid-args).
+
+## 2026-07-22 Task: C1
+
+### Abort registry
+
+- **Module**: `src/kernel/run-abort-registry.ts` — module-level `Map<string, {controller, registeredAt}>`.
+- **Functions**: `registerRunAbort`, `abortRun`, `unregisterRunAbort`, `isRunRegistered`.
+- **Identity decision**: turnId/correlationId is the single public run id for cancel. Store kr-... id is internal only.
+- **Memory safety**: always unregister in finally block to prevent memory leaks.
+
+### Signal checks in kernel run loop
+
+1. **Iteration start** (before currentIteration increment): if `input.signal?.aborted` → flushPairingGuard('cancelled'), state.status='cancelled', return buildResult('cancelled').
+2. **Before LLM call**: same pattern, right before streaming/complete call.
+3. **After LLM response, before tool dispatch**: same pattern, after commitTranscript of llm_response.
+4. **After each internal tool handler**: same pattern, after internal handler try/catch block completes.
+
+### Wiring in processor-orchestration.ts
+
+- Create `AbortController` and `registerRunAbort(correlationId, controller)` before turnInput.
+- Pass `abortController.signal` through `ForegroundTurnInput.signal` → `KernelRunInput.signal`.
+- Unregister in finally block after runTurn completes.
+- Also unregister in the error path when `!deps.foregroundAgent?.runTurn`.
+
+### Type changes
+
+- `KernelRunStatus`: added `'cancelled'` to union.
+- `KernelRunState.status`: added `'cancelled'` to union.
+- `KernelRunInput`: added `signal?: AbortSignal`.
+- `ForegroundTurnInput`: added `signal?: AbortSignal`.
+
+### Tests
+
+- **New file 1**: `tests/unit/kernel/run-abort-registry.test.ts` (5 tests: register+abort, register+unregister, abort unknown, double register, isRunRegistered).
+- **New file 2**: `tests/unit/kernel/agent-kernel-signal.test.ts` (3 tests: pre-aborted signal returns cancelled immediately with 0 iterations, abort during iteration via blocking internal handler, no signal runs normally).
+- **Commit**: `feat(kernel): abort registry and aligned run identity with signal`
+- **Test results**: 51 tests pass across 9 suites (5 registry + 3 signal + 4 terminate + 6 dispatch + 5 internal-handler + 6 broadcast + 4 truncation + 4 invalid-args + 14 integration). Typecheck clean (only pre-existing src/search errors).

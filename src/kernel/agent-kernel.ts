@@ -94,6 +94,13 @@ export class AgentKernel {
 
     try {
       for (let iteration = 0; iteration < maxIterations; iteration++) {
+        // SIGNAL CHECK 1: iteration start (before increment so pre-aborted returns 0 iterations)
+        if (input.signal?.aborted) {
+          this.flushPairingGuard(pairingGuard, state, 'cancelled', input)
+          state.status = 'cancelled'
+          return this.buildResult(state, 'cancelled', undefined, undefined, undefined, input, aggregatedUsage)
+        }
+
         state.currentIteration = iteration + 1
 
         if (Date.now() - startTime > timeoutMs) {
@@ -110,6 +117,13 @@ export class AgentKernel {
 
         const remainingTimeout = timeoutMs - (Date.now() - startTime)
         const useStreaming = this.shouldUseStreaming(llmRequest)
+
+        // SIGNAL CHECK 2: before LLM call
+        if (input.signal?.aborted) {
+          this.flushPairingGuard(pairingGuard, state, 'cancelled', input)
+          state.status = 'cancelled'
+          return this.buildResult(state, 'cancelled', undefined, undefined, undefined, input, aggregatedUsage)
+        }
 
         let llmResult: Awaited<ReturnType<typeof this.callLLMWithTimeout>>
 
@@ -196,6 +210,13 @@ export class AgentKernel {
           toolCalls: llmResponse.toolCalls,
           finishReason: llmResponse.finishReason,
         })
+
+        // SIGNAL CHECK 3: after LLM response, before tool dispatch
+        if (input.signal?.aborted) {
+          this.flushPairingGuard(pairingGuard, state, 'cancelled', input)
+          state.status = 'cancelled'
+          return this.buildResult(state, 'cancelled', undefined, undefined, undefined, input, aggregatedUsage)
+        }
 
         if (this.hasToolCalls(llmResponse)) {
           const { requests: toolUseRequests, invalidArgs } = this.parseToolUseRequests(llmResponse)
@@ -299,6 +320,13 @@ export class AgentKernel {
                 this.commitTranscript(state, 'tool_result', toolResult)
                 this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
                 this.mergeToolResult(state, toolRequest, toolResult)
+              }
+
+              // SIGNAL CHECK 4: after each internal tool handler
+              if (input.signal?.aborted) {
+                this.flushPairingGuard(pairingGuard, state, 'cancelled', input)
+                state.status = 'cancelled'
+                return this.buildResult(state, 'cancelled', undefined, undefined, undefined, input, aggregatedUsage)
               }
             } else {
               // UNPROJECTED TOOL GUARD: tool not in projection → synth error, skip dispatch
