@@ -202,6 +202,31 @@ export class AgentKernel {
           state.toolCalls.push(...toolUseRequests)
           pairingGuard.trackAssistantToolCalls(toolUseRequests)
 
+          // TRUNCATION GUARD: when finishReason is 'length', the model response hit
+          // its token length limit. Synthesize error results for every tool call
+          // instead of executing potentially truncated/incomplete arguments.
+          if (llmResponse.finishReason === 'length') {
+            for (const [toolCallIndex, toolRequest] of toolUseRequests.entries()) {
+              this.commitTranscript(state, 'tool_call', toolRequest)
+              this.broadcastToolCallRunning(input, toolRequest, toolCallIndex)
+              const toolResult: ToolUseResult = {
+                toolCallId: toolRequest.toolCallId,
+                result: null,
+                error: {
+                  code: 'TRUNCATED_TOOL_CALL',
+                  message: `Tool call '${toolRequest.toolName}' arguments may be truncated because the model response reached the token length limit. Please re-issue the tool call with complete arguments.`,
+                  recoverable: true,
+                },
+              }
+              pairingGuard.acceptToolResult(toolResult)
+              this.commitTranscript(state, 'tool_result', toolResult)
+              this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
+              this.mergeToolResult(state, toolRequest, toolResult)
+            }
+            this.flushPairingGuard(pairingGuard, state, 'iteration_end', input)
+            continue
+          }
+
           let shouldStop = false
           let stopStructuredResult: unknown
 
