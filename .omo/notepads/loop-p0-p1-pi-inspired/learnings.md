@@ -151,6 +151,38 @@
   - setUp handler updated to handle batch dispatch (iterates toolUses, returns array of results)
 - **Test results**: 28 tests pass across 4 suites (6 batch, 14 integration, 4 truncation, 4 invalid-args).
 
+## 2026-07-22 Task: B3
+
+### Timeline broadcast + pairing under batch (tests)
+
+- **New test file**: `tests/unit/kernel/agent-kernel-batch-broadcast.test.ts` with 6 tests:
+  1. **N tools N terminals**: batch of 3 → 3 broadcastToolCallRunning events (one per toolCallId, all before dispatch) + 3 broadcastToolResultTerminal events (one per toolCallId, after dispatch in order)
+  2. **Pairing validation**: validateToolResultPairing passes on full transcript after batch
+  3. **Transcript order**: tool_call and tool_result entries follow assistant order even when dispatch returns reversed results (relies on execResultMap by toolCallId)
+  4. **flushPairingGuard**: after batch + iteration_end, tool_call count = tool_result count, no pending calls
+  5. **Early tool live map**: broadcastToolCallRunning carries toolCallIndex metadata (Scheme-1 contract)
+  6. **Dispatch error broadcast**: dispatch throw → still fires running events (before dispatch) + terminal events (DISPATCH_ERROR) for all tools
+
+- **Streaming interaction**: When `providerFamily` supports structured tool streaming (undefined defaults to true), the streaming path emits early tool_call events via `broadcastEarlyTool`, doubling `eventType === 'tool_call'` events. Tests set `providerFamily: 'test-non-streaming'` to disable streaming and get clean event counts.
+
+- **Result mapping for out-of-order**: `dispatchExternalBatch` maps by `toolCallId` from `data.toolCallId`. If data lacks this field, it falls back to positional (`batch[i]`). The reverse-order test must include `toolCallId` in result data for correct mapping.
+
+- **No implementation changes needed**: B1 already handles broadcast correctly (broadcastToolCallRunning in the for loop before buffering, broadcastToolResultTerminal in dispatchExternalBatch after dispatch). B3 locks this with tests.
+
+- **Test commands**:
+  - `npm test -- tests/unit/kernel/agent-kernel-batch-broadcast.test.ts --maxWorkers=1` → 6 passed
+  - `npm test -- tests/unit/kernel/agent-kernel-batch-dispatch.test.ts --maxWorkers=1` → 6 passed (no regression)
+  - `npm test -- tests/unit/kernel/agent-kernel-internal-handler-order.test.ts --maxWorkers=1` → 5 passed (no regression)
+  - `npm test -- tests/integration/kernel/tool-loop-closure.test.ts --maxWorkers=1` → 14 passed (no regression)
+  - `npm test -- tests/unit/kernel/agent-kernel-truncation-guard.test.ts --maxWorkers=1` → 4 passed (no regression)
+  - `npm test -- tests/unit/kernel/agent-kernel-invalid-args.test.ts --maxWorkers=1` → 4 passed (no regression)
+  - Total: 39 tests pass across 7 suites
+
+### Commit
+
+- `test(kernel): cover tool broadcast and pairing under batch dispatch`
+- Staged: `tests/unit/kernel/agent-kernel-batch-broadcast.test.ts`, `.omo/evidence/task-B3-loop-p0-p1-pi-inspired.log`, `.omo/notepads/loop-p0-p1-pi-inspired/learnings.md`
+
 ## 2026-07-22 Task: B2
 
 ### Internal handler ordering (characterization tests)

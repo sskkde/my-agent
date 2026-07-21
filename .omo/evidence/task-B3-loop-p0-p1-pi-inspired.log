@@ -1,0 +1,151 @@
+
+> agent-platform@0.8.0-ga-candidate test
+> vitest run tests/unit/kernel/agent-kernel-batch-broadcast.test.ts --maxWorkers=1 --reporter=verbose
+
+
+ RUN  v4.1.8 /home/ubuntu/workspace/my agent
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > fires N broadcastToolCallRunning and N broadcastToolResultTerminal events for batch of N
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > fires N broadcastToolCallRunning and N broadcastToolResultTerminal events for batch of N
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 8,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 8,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > passes validateToolResultPairing after batch of 3 external tools
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > passes validateToolResultPairing after batch of 3 external tools
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 8,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 8,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > preserves assistant tool call order in transcript despite reversed dispatch results
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > preserves assistant tool call order in transcript despite reversed dispatch results
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 8,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 8,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > leaves no pending calls after batch flush and iteration_end
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > leaves no pending calls after batch flush and iteration_end
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 8,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 8,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > includes toolCallIndex in broadcast events for Scheme-1 early event upsert
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > includes toolCallIndex in broadcast events for Scheme-1 early event upsert
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > handles dispatch error broadcast for all tools in batch
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 4,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 0,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+stdout | tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > handles dispatch error broadcast for all tools in batch
+[AgentKernel] buildLLMRequest via ModelInputBuilder: {
+  messageCount: 7,
+  mode: 'function_calling',
+  agentKind: 'default_main',
+  providerFamily: 'openai',
+  transcriptEntries: 6,
+  bundleTokenEstimate: 100,
+  shouldCompactSoon: false
+}
+
+ ✓ tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > fires N broadcastToolCallRunning and N broadcastToolResultTerminal events for batch of N 15ms
+ ✓ tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > passes validateToolResultPairing after batch of 3 external tools 4ms
+ ✓ tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > preserves assistant tool call order in transcript despite reversed dispatch results 4ms
+ ✓ tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > leaves no pending calls after batch flush and iteration_end 2ms
+ ✓ tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > includes toolCallIndex in broadcast events for Scheme-1 early event upsert 4ms
+ ✓ tests/unit/kernel/agent-kernel-batch-broadcast.test.ts > Batch dispatch — timeline broadcast and pairing > handles dispatch error broadcast for all tools in batch 2ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  01:14:04
+   Duration  593ms (transform 311ms, setup 0ms, import 376ms, tests 35ms, environment 0ms)
+
