@@ -67,6 +67,10 @@ const PER_TOOL_TIMEOUT_MS: Record<string, number> = {
 }
 
 export class AgentKernel {
+  /** Early tool_call live map from the latest streaming LLM call (scheme 1). */
+  private pendingEarlyToolLive?:
+    Map<number, { eventId: string; provisionalToolCallId: string; name: string }>
+
   private config: KernelConfig
   private lastBuiltModelInput?: import('./model-input/model-input-types.js').BuiltModelInput
 
@@ -118,8 +122,12 @@ export class AgentKernel {
             if (streamResult.success) {
               streamSuccess = true
               streamResponse = { response: streamResult.response, providerId: streamResult.providerId }
+              this.pendingEarlyToolLive = streamResult.earlyToolLive
+            } else {
+              this.pendingEarlyToolLive = undefined
             }
           } catch (streamError) {
+            this.pendingEarlyToolLive = undefined
             const errMsg = streamError instanceof Error ? streamError.message : String(streamError)
             if (errMsg.includes('timeout')) {
               streamTimedOut = true
@@ -557,7 +565,15 @@ export class AgentKernel {
     request: LLMRequest,
     timeoutMs: number,
     input: KernelRunInput,
-  ): Promise<{ success: true; response: LLMResponse; providerId: string } | { success: false }> {
+  ): Promise<
+    | {
+        success: true
+        response: LLMResponse
+        providerId: string
+        earlyToolLive: Map<number, { eventId: string; provisionalToolCallId: string; name: string }>
+      }
+    | { success: false }
+  > {
     if (timeoutMs <= 0) {
       throw new Error('LLM request timeout before dispatch')
     }
@@ -568,9 +584,14 @@ export class AgentKernel {
     const aggregator = new StreamResponseAggregator()
     let sequence = 0
     let providerId = 'unknown'
-    // P2: emit early tool_call running when name is first known (args may still be streaming)
-    const earlyToolAnnounced = new Set<number>()
+    // P2: emit early tool_call when name is first known (args may still be streaming).
+    // Scheme 1: reuse a stable eventId for early + formal broadcasts so the UI upserts
+    // one card instead of appending a second tool_call.
     const earlyToolPartial = new Map<number, { id?: string; name?: string }>()
+    const earlyToolLive = new Map<
+      number,
+      { eventId: string; provisionalToolCallId: string; name: string }
+    >()
 
     const broadcastTextDelta = (delta: string, isFinal: boolean): void => {
       if (!broadcaster || !sessionId || delta.length === 0) return
@@ -587,6 +608,32 @@ export class AgentKernel {
       sequence++
     }
 
+    const broadcastEarlyTool = (
+      toolCallIndex: number,
+      name: string,
+      toolCallId: string,
+      eventId: string,
+      early: boolean,
+    ): void => {
+      if (!broadcaster?.broadcast || !sessionId) return
+      broadcaster.broadcast(sessionId, {
+        eventId,
+        eventType: 'tool_call',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        content: formatToolRunningContent(name),
+        metadata: {
+          turnId: attemptId,
+          toolCallId,
+          toolName: name,
+          status: 'running',
+          ...(early ? { early: true } : {}),
+          toolCallIndex,
+        },
+        actor: 'system',
+      })
+    }
+
     const maybeAnnounceEarlyTool = (
       chunk: Extract<LLMStreamChunk, { kind: 'tool_call_delta' }>,
     ): void => {
@@ -595,26 +642,51 @@ export class AgentKernel {
       if (chunk.id) prev.id = chunk.id
       if (chunk.name) prev.name = chunk.name
       earlyToolPartial.set(chunk.index, prev)
-      if (earlyToolAnnounced.has(chunk.index)) return
       if (!prev.name) return
-      earlyToolAnnounced.add(chunk.index)
-      const toolCallId = prev.id ?? `pending-tool-${attemptId}-${chunk.index}`
-      broadcaster.broadcast(sessionId, {
-        eventId: `early-tool-call-${attemptId}-${chunk.index}`,
-        eventType: 'tool_call',
-        sessionId,
-        timestamp: new Date().toISOString(),
-        content: formatToolRunningContent(prev.name),
-        metadata: {
-          turnId: attemptId,
-          toolCallId,
-          toolName: prev.name,
-          status: 'running',
-          early: true,
-          toolCallIndex: chunk.index,
-        },
-        actor: 'system',
-      })
+
+      const provisionalToolCallId = prev.id ?? `pending-tool-${attemptId}-${chunk.index}`
+      const existing = earlyToolLive.get(chunk.index)
+
+      if (!existing) {
+        // First announcement: eventId derived from best-known toolCallId.
+        const eventId = buildToolCallEventId(attemptId, provisionalToolCallId)
+        earlyToolLive.set(chunk.index, {
+          eventId,
+          provisionalToolCallId,
+          name: prev.name,
+        })
+        broadcastEarlyTool(chunk.index, prev.name, provisionalToolCallId, eventId, true)
+        return
+      }
+
+      // Already announced: if stream later reveals a real toolCallId, re-key to the formal
+      // eventId and mark the previous provisional event as replaced (client upsert).
+      if (prev.id && existing.provisionalToolCallId !== prev.id) {
+        const eventId = buildToolCallEventId(attemptId, prev.id)
+        earlyToolLive.set(chunk.index, {
+          eventId,
+          provisionalToolCallId: prev.id,
+          name: prev.name,
+        })
+        if (!broadcaster?.broadcast || !sessionId) return
+        broadcaster.broadcast(sessionId, {
+          eventId,
+          eventType: 'tool_call',
+          sessionId,
+          timestamp: new Date().toISOString(),
+          content: formatToolRunningContent(prev.name),
+          metadata: {
+            turnId: attemptId,
+            toolCallId: prev.id,
+            toolName: prev.name,
+            status: 'running',
+            early: true,
+            toolCallIndex: chunk.index,
+            replacesEarlyEventId: existing.eventId,
+          },
+          actor: 'system',
+        })
+      }
     }
 
     try {
@@ -662,6 +734,7 @@ export class AgentKernel {
         success: true,
         response,
         providerId: aggregator.lastProviderId || providerId,
+        earlyToolLive,
       }
     } catch (error) {
       // Best-effort flush of partial text already accumulated
@@ -1008,8 +1081,20 @@ export class AgentKernel {
     const sessionId = input.sessionId
     if (!broadcaster?.broadcast || !sessionId) return
     const turnId = input.runId
+    // Scheme 1: prefer reusing the early announcement eventId when it already locked the
+    // real toolCallId (or any provisional id). Clients upsert by eventId; when early used a
+    // provisional id, frontend also merges by (turnId, toolCallIndex).
+    const early =
+      toolCallIndex !== undefined ? this.pendingEarlyToolLive?.get(toolCallIndex) : undefined
+    const formalEventId = buildToolCallEventId(turnId, toolRequest.toolCallId)
+    // Reuse early eventId only when it already equals formal (real id known during stream).
+    // Otherwise broadcast formal id and let the client replace the early card by toolCallIndex.
+    const eventId =
+      early && early.provisionalToolCallId === toolRequest.toolCallId
+        ? early.eventId
+        : formalEventId
     broadcaster.broadcast(sessionId, {
-      eventId: buildToolCallEventId(turnId, toolRequest.toolCallId),
+      eventId,
       eventType: 'tool_call',
       sessionId,
       timestamp: new Date().toISOString(),
@@ -1020,6 +1105,9 @@ export class AgentKernel {
         toolName: toolRequest.toolName,
         status: 'running',
         ...(toolCallIndex !== undefined ? { toolCallIndex } : {}),
+        ...(early && early.provisionalToolCallId !== toolRequest.toolCallId
+          ? { replacesEarlyEventId: early.eventId }
+          : {}),
       },
       actor: 'system',
     })

@@ -712,12 +712,23 @@ describe('AgentKernel structured streaming with tool-capable turns (P0-P2)', () 
       .filter((d) => d.length > 0)
     expect(textDeltas).toContain('Checking weather…')
 
-    // P2: early tool_call timeline event when name is known
+    // P2/scheme 1: early tool_call uses stable buildToolCallEventId (not early-tool-call-*)
     const earlyTools = defaultBroadcaster
       .getTimelineEvents()
       .filter((e) => e.event.eventType === 'tool_call' && e.event.metadata?.early === true)
     expect(earlyTools.length).toBeGreaterThanOrEqual(1)
     expect(earlyTools[0]?.event.metadata?.toolName).toBe('get_weather')
+    expect(earlyTools[0]?.event.eventId.startsWith('turn-')).toBe(true)
+    expect(earlyTools[0]?.event.eventId.includes('early-tool-call')).toBe(false)
+
+    // Formal tool_call must not introduce a second distinct card identity when real id was known early
+    const toolCalls = defaultBroadcaster
+      .getTimelineEvents()
+      .filter((e) => e.event.eventType === 'tool_call')
+      .map((e) => e.event.eventId)
+    // All tool_call eventIds for this run should be unique set size <= number of tools (1)
+    // plus possible re-key once real id arrives; at most 2 ids if provisional→real rekey happened
+    expect(new Set(toolCalls).size).toBeLessThanOrEqual(2)
   })
 
   it('still streams when no tools are projected', async () => {
