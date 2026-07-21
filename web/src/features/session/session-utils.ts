@@ -30,12 +30,23 @@ export interface AssistantPlaceholder {
 
 /**
  * Represents a streaming draft being accumulated from token-by-token SSE events.
+ *
+ * A single assistant turn may produce multiple draft segments when tools run mid-stream:
+ * seal the current segment on tool_call, then open a new segment for post-tool tokens so
+ * the live UI keeps tools interleaved (OpenCode-style) instead of pinning tools under the
+ * growing bubble.
  */
 export interface StreamingDraft {
   sessionId: string
   content: string
   sequence: number
   timestamp: number
+  /** Segment index within an attempt (0 = first text block before any tool). */
+  segment: number
+  /** When true, further tokens open a new segment instead of appending. */
+  sealed: boolean
+  /** Kernel attempt / turn id this draft belongs to. */
+  attemptId: string
 }
 
 // ============================================================================
@@ -187,6 +198,154 @@ export function clearStreamingActivityMaps<T extends { sessionId: string }>(
   return next.size === map.size ? map : next
 }
 
+
+
+// ============================================================================
+// Streaming draft segments (tool interleaving)
+// ============================================================================
+
+/** Map key for a draft segment: attemptId#segment */
+export function streamingDraftKey(attemptId: string, segment: number): string {
+  return `${attemptId}#${segment}`
+}
+
+export function parseStreamingDraftKey(key: string): { attemptId: string; segment: number } | null {
+  const idx = key.lastIndexOf('#')
+  if (idx <= 0) {
+    // Legacy key = bare attemptId → segment 0
+    return { attemptId: key, segment: 0 }
+  }
+  const attemptId = key.slice(0, idx)
+  const segment = Number(key.slice(idx + 1))
+  if (!attemptId || !Number.isFinite(segment)) return null
+  return { attemptId, segment }
+}
+
+function listDraftEntriesForAttempt(
+  drafts: Map<string, StreamingDraft>,
+  attemptId: string,
+): Array<[string, StreamingDraft]> {
+  const matches: Array<[string, StreamingDraft]> = []
+  for (const [key, draft] of drafts) {
+    if (draft.attemptId === attemptId || key === attemptId || key.startsWith(`${attemptId}#`)) {
+      matches.push([key, draft])
+    }
+  }
+  matches.sort((a, b) => a[1].segment - b[1].segment)
+  return matches
+}
+
+/**
+ * Append a token delta to the active (unsealed) draft segment for this attempt.
+ * If the latest segment is sealed, open a new segment timestamped now so it sorts
+ * after intervening tool_call events.
+ */
+export function appendStreamingToken(
+  prev: Map<string, StreamingDraft>,
+  token: {
+    attemptId: string
+    sessionId: string
+    sequence: number
+    delta: string
+  },
+  placeholderTimestamp?: number,
+): Map<string, StreamingDraft> {
+  const entries = listDraftEntriesForAttempt(prev, token.attemptId)
+  const latest = entries.length > 0 ? entries[entries.length - 1] : undefined
+
+  if (latest) {
+    const [key, draft] = latest
+    if (!draft.sealed) {
+      if (token.sequence <= draft.sequence) return prev
+      const next = new Map(prev)
+      next.set(key, {
+        ...draft,
+        content: draft.content + token.delta,
+        sequence: token.sequence,
+      })
+      return next
+    }
+  }
+
+  // No active segment (or latest sealed) → open a new segment after tools.
+  const segment = latest ? latest[1].segment + 1 : 0
+  const key = streamingDraftKey(token.attemptId, segment)
+  const next = new Map(prev)
+  // Drop legacy bare-attempt key if present
+  next.delete(token.attemptId)
+  const now = Date.now()
+  // Ensure post-tool segments sort after the sealed pre-tool bubble (and typical tool events).
+  const minTs = latest ? latest[1].timestamp + 2 : now
+  next.set(key, {
+    sessionId: token.sessionId,
+    attemptId: token.attemptId,
+    content: token.delta,
+    sequence: token.sequence,
+    timestamp: segment === 0 ? (placeholderTimestamp ?? now) : Math.max(now, minTs),
+    segment,
+    sealed: false,
+  })
+  return next
+}
+
+/**
+ * Seal active streaming drafts for a turn when a tool_call arrives so subsequent
+ * tokens form a new segment below the tool card.
+ */
+export function sealStreamingDraftsForTool(
+  prev: Map<string, StreamingDraft>,
+  options: { sessionId: string; attemptId?: string; turnId?: string },
+): Map<string, StreamingDraft> {
+  const targetIds = [options.attemptId, options.turnId].filter(
+    (id): id is string => typeof id === 'string' && id.length > 0,
+  )
+
+  let changed = false
+  const next = new Map(prev)
+
+  // Always seal matching attempt/turn drafts first.
+  for (const id of targetIds) {
+    for (const [key, draft] of listDraftEntriesForAttempt(prev, id)) {
+      if (!draft.sealed) {
+        next.set(key, { ...draft, sealed: true })
+        changed = true
+      }
+    }
+  }
+
+  // Also seal every unsealed draft in this session. Live UI only has one active
+  // turn; id mismatches (placeholder vs runId) must not leave a growing bubble
+  // that sorts above tools forever.
+  for (const [key, draft] of next) {
+    if (draft.sessionId === options.sessionId && !draft.sealed) {
+      next.set(key, { ...draft, sealed: true })
+      changed = true
+    }
+  }
+
+  return changed ? next : prev
+}
+
+/**
+ * Clear all draft segments belonging to any of the given attempt/turn ids.
+ */
+export function clearStreamingDraftsByAttemptIds(
+  prev: Map<string, StreamingDraft>,
+  attemptIds: Array<string | undefined>,
+): Map<string, StreamingDraft> {
+  const ids = new Set(attemptIds.filter((id): id is string => Boolean(id)))
+  if (ids.size === 0) return prev
+  let changed = false
+  const next = new Map(prev)
+  for (const [key, draft] of prev) {
+    if (ids.has(draft.attemptId) || ids.has(key) || [...ids].some((id) => key.startsWith(`${id}#`))) {
+      next.delete(key)
+      changed = true
+    }
+  }
+  return changed ? next : prev
+}
+
 /**
  * Upsert a timeline event for scheme-1 tool_call identity:
  * - Same eventId → replace in place
@@ -255,3 +414,39 @@ export function mergeTimelineEvents(
   return next
 }
 
+/**
+ * Sort comparator for live chat: keep tool cards between sealed pre-tool drafts
+ * and unsealed post-tool drafts even when timestamps are close/equal.
+ */
+export function compareTimelineEventsForChat(a: ConsoleTimelineEvent, b: ConsoleTimelineEvent): number {
+  const ta = new Date(a.timestamp).getTime()
+  const tb = new Date(b.timestamp).getTime()
+  if (ta !== tb) return ta - tb
+
+  const rank = (e: ConsoleTimelineEvent): number => {
+    if (e.eventType === 'user_message') return 0
+    if (e.metadata?.assistantPlaceholder === true) return 1
+    if (e.metadata?.streamingDraft === true) {
+      // Sealed pre-tool draft before tools; open draft after tools.
+      return e.metadata?.sealed === true ? 2 : 5
+    }
+    if (e.eventType === 'tool_call') return 3
+    if (e.eventType === 'tool_result') return 4
+    if (e.eventType === 'assistant_message') return 6
+    return 7
+  }
+
+  const ra = rank(a)
+  const rb = rank(b)
+  if (ra !== rb) return ra - rb
+
+  const segA = typeof a.metadata?.draftSegment === 'number' ? a.metadata.draftSegment : 0
+  const segB = typeof b.metadata?.draftSegment === 'number' ? b.metadata.draftSegment : 0
+  if (segA !== segB) return segA - segB
+
+  const seqA = typeof a.metadata?.turnSequence === 'number' ? a.metadata.turnSequence : undefined
+  const seqB = typeof b.metadata?.turnSequence === 'number' ? b.metadata.turnSequence : undefined
+  if (seqA !== undefined && seqB !== undefined && seqA !== seqB) return seqA - seqB
+
+  return a.eventId.localeCompare(b.eventId)
+}
