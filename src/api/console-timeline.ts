@@ -162,6 +162,9 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
   const events: ConsoleTimelineEvent[] = []
   const baseMetadata: Record<string, unknown> = {
     turnId: turn.turnId,
+    // Align with kernel token stream attemptId (= runId = turnId) so the UI
+    // can clear streaming drafts when the final assistant_message arrives.
+    attemptId: turn.turnId,
     userId: turn.userId,
   }
 
