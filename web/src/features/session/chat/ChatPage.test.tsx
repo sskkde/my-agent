@@ -5,7 +5,7 @@ import ChatPage from './ChatPage'
 import { AuthProvider } from '../../../context/AuthContext'
 import * as client from '../../../api/client'
 import { SELECTED_SESSION_KEY } from '../session-constants'
-import type { ProcessingStatusPayload } from '../../../api/types'
+import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../../api/types'
 
 vi.mock('../../../api/client')
 
@@ -612,3 +612,62 @@ describe('ChatPage', () => {
     })
   })
 })
+
+describe('ChatPage streaming draft finalization', () => {
+  it('clears streaming draft when final assistant_message lacks attemptId', async () => {
+    let onEvent: ((event: ConsoleTimelineEvent) => void) | undefined
+    let onToken: ((token: TokenStreamPayload) => void) | undefined
+
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, eventCb, _onError, _onStatus, tokenCb, onOpen) => {
+        onEvent = eventCb
+        onToken = tokenCb
+        onOpen?.()
+        return () => {}
+      },
+    )
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalled())
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-1',
+        sequence: 1,
+        delta: 'First answer',
+        timestamp: '2024-01-01T00:00:01Z',
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('First answer')).toBeInTheDocument()
+    })
+
+    act(() => {
+      onEvent?.({
+        eventId: 'final-1',
+        eventType: 'assistant_message',
+        sessionId: 'session-1',
+        timestamp: '2024-01-01T00:00:02Z',
+        content: 'First answer complete',
+        // intentionally no attemptId — regression for ChatPage clearOldestIfUnmatched
+        metadata: { turnId: 'run-1' },
+        actor: 'assistant',
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('First answer complete')).toBeInTheDocument()
+      expect(screen.queryByText('First answer')).not.toBeInTheDocument()
+    })
+  })
+})
+

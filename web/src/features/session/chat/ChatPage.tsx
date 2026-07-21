@@ -13,7 +13,12 @@ import { useComposerSubmission } from '../hooks/useComposerSubmission'
 import { useSSEStream } from '../hooks/useSSEStream'
 import * as api from '../../../api/client'
 import type { ConsoleSessionInfo, ConsoleTimelineEvent, ModelsResponse, ProcessingStatusPayload, TokenStreamPayload } from '../../../api/types'
-import { getBaselineServerMessageCount, type AssistantPlaceholder, type StreamingDraft } from '../session-utils'
+import {
+  getBaselineServerMessageCount,
+  clearStreamingActivityMaps,
+  type AssistantPlaceholder,
+  type StreamingDraft,
+} from '../session-utils'
 import type { CommandContext } from '../../../commands/types'
 import { safeRemoveLocalStorage } from '../session-migration'
 import { SELECTED_SESSION_KEY } from '../session-constants'
@@ -334,21 +339,25 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   )
 
   const clearAssistantActivity = useCallback(
-    (attemptIds: Array<string | undefined>, _clearOldestIfUnmatched?: boolean, _sessionId?: string) => {
-      const ids = attemptIds.filter((id): id is string => Boolean(id))
-      if (ids.length === 0) return
-      updatePendingAssistantPlaceholders((prev) => {
-        const next = new Map(prev)
-        for (const id of ids) next.delete(id)
-        return next.size === prev.size ? prev : next
-      })
-      setStreamingDrafts((prev) => {
-        const next = new Map(prev)
-        for (const id of ids) next.delete(id)
-        return next.size === prev.size ? prev : next
-      })
+    (
+      attemptIds: Array<string | undefined>,
+      clearOldestIfUnmatched = false,
+      sessionId: string | null | undefined = selectedSessionIdRef.current,
+    ) => {
+      updatePendingAssistantPlaceholders((prev) =>
+        clearStreamingActivityMaps(prev, attemptIds, {
+          clearOldestIfUnmatched,
+          sessionId,
+        }),
+      )
+      setStreamingDrafts((prev) =>
+        clearStreamingActivityMaps(prev, attemptIds, {
+          clearOldestIfUnmatched,
+          sessionId,
+        }),
+      )
     },
-    [updatePendingAssistantPlaceholders],
+    [updatePendingAssistantPlaceholders, selectedSessionIdRef],
   )
 
   const clearAssistantActivityForSession = useCallback(
