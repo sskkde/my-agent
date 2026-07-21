@@ -27,6 +27,14 @@ export interface ToolUseResult {
     message: string
     recoverable: boolean
   }
+  /**
+   * When true, signals the kernel that this tool's execution is terminal.
+   * If ALL tools in a batch have terminate=true, the kernel stops the loop
+   * without another LLM call (similar to InternalToolHandler.stop but for
+   * external tools). Mixed terminate (some true, some false) continues
+   * the loop normally.
+   */
+  terminate?: boolean
 }
 
 /**

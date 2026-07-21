@@ -325,11 +325,20 @@ export class AgentKernel {
           }
 
           // After for loop: flush remaining external tools as ONE batch
+          let allTerminated = false
           if (externalBatch.length > 0) {
-            await this.dispatchExternalBatch(externalBatch, state, pairingGuard, input)
+            allTerminated = await this.dispatchExternalBatch(externalBatch, state, pairingGuard, input)
           }
 
           this.flushPairingGuard(pairingGuard, state, 'iteration_end', input)
+
+          // TERMINATE CHECK: if ALL external tools returned terminate=true,
+          // stop the loop without another LLM call (similar to internal handler stop).
+          // Mixed terminate (some true, some false) continues normally.
+          if (allTerminated) {
+            state.status = 'completed'
+            return this.buildResult(state, 'completed', undefined, undefined, undefined, input, aggregatedUsage)
+          }
 
           const compactResult = this.checkCompactTrigger(input.contextBundle, state)
           let executionResult: CompactExecutorResult | undefined
@@ -998,8 +1007,8 @@ export class AgentKernel {
     state: KernelRunState,
     pairingGuard: ToolResultPairingGuard,
     input: KernelRunInput,
-  ): Promise<void> {
-    if (batch.length === 0) return
+  ): Promise<boolean> {
+    if (batch.length === 0) return false
 
     const effectiveRunId = input.runId ?? input.contextBundle.runId
     const firstTool = batch[0].toolRequest
@@ -1082,7 +1091,7 @@ export class AgentKernel {
         this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
         this.mergeToolResult(state, toolRequest, toolResult)
       }
-      return
+      return false
     }
 
     // Extract contextDeltas from the aggregate dispatch result
@@ -1110,7 +1119,10 @@ export class AgentKernel {
       }
     }
 
-    // For each tool in original order: build ToolUseResult, pair, broadcast, merge
+    // For each tool in original order: build ToolUseResult, pair, broadcast, merge.
+    // Track whether ALL tools in this batch requested termination.
+    let allTerminated = batch.length > 0
+
     for (const { toolRequest, toolCallIndex } of batch) {
       const execResult = execResultMap.get(toolRequest.toolCallId)
 
@@ -1120,6 +1132,12 @@ export class AgentKernel {
           toolCallId: toolRequest.toolCallId,
           result: execResult.success ? execResult.data : null,
           ...(execResult.error ? { error: execResult.error } : {}),
+        }
+        // Extract terminate flag from execution result data.
+        // Tools can signal terminal completion by including terminate: true in their data.
+        const execData = execResult.data as Record<string, unknown> | undefined
+        if (execData?.terminate === true) {
+          toolResult.terminate = true
         }
       } else if (dispatchResult.status === 'completed' && !dispatchResult.error) {
         toolResult = {
@@ -1138,6 +1156,10 @@ export class AgentKernel {
         }
       }
 
+      if (!toolResult.terminate) {
+        allTerminated = false
+      }
+
       pairingGuard.acceptToolResult(toolResult)
       this.commitTranscript(state, 'tool_result', toolResult)
       this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
@@ -1146,6 +1168,8 @@ export class AgentKernel {
 
     // dispatchTool retained for backward compatibility
     void this.dispatchTool
+
+    return allTerminated
   }
 
   private isCallableProjectedTool(toolName: string, input: KernelRunInput): boolean {

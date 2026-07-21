@@ -183,6 +183,33 @@
 - `test(kernel): cover tool broadcast and pairing under batch dispatch`
 - Staged: `tests/unit/kernel/agent-kernel-batch-broadcast.test.ts`, `.omo/evidence/task-B3-loop-p0-p1-pi-inspired.log`, `.omo/notepads/loop-p0-p1-pi-inspired/learnings.md`
 
+## 2026-07-22 Task: D1
+
+### Batch terminate-all semantics
+
+- **ToolUseResult.terminate**: New `terminate?: boolean` field on `ToolUseResult` (types.ts). When `true`, signals the kernel that a tool execution is terminal.
+- **dispatchExternalBatch return type**: Changed from `Promise<void>` to `Promise<boolean>`. Returns `true` when ALL tools in the batch had `terminate=true`, `false` otherwise (including dispatch error path).
+- **Terminate flag extraction**: In `dispatchExternalBatch`, the terminate flag is extracted from `execResult.data` — if `data.terminate === true`, sets `toolResult.terminate = true`. This keeps the flag separate from the `result` field sent to the LLM.
+- **Loop check**: After `dispatchExternalBatch` returns (line 329), and after `flushPairingGuard('iteration_end')`, checks `allTerminated`. If true, sets `state.status = 'completed'` and returns via `buildResult` without compact check or another LLM iteration.
+- **Mixed terminate**: If ANY tool in the batch does NOT have `terminate=true`, `allTerminated` is false and the loop continues normally to the next LLM iteration.
+- **No structuredResult**: Unlike `InternalToolHandler.stop`, batch terminate does not carry `structuredResult` — external tools don't produce one. The `buildResult` call passes `undefined` for structuredResult.
+- **Similar to internal stop**: The behavior mirrors `InternalToolHandlerResult.stop` — the loop stops immediately without another LLM call. But the implementation path is different (post-batch-flush check vs. inline handler stop).
+- **Red phase**: Tests 1 and 4 failed (expected 1 dispatch call, got 10 due to loop continuing to maxIterations). Tests 2 and 3 passed (existing behavior).
+- **Green phase**: All 43 tests pass across 7 suites (4 terminate + 6 dispatch + 5 internal-handler + 6 broadcast + 4 truncation + 4 invalid-args + 14 integration). Typecheck: only pre-existing src/search errors.
+- **Caveat**: The `terminate` flag in `execResult.data` is passed through as-is to `toolResult.result` (no stripping). Callers must ensure `terminate` is meaningful when present.
+
+### Test file
+
+- New file: `tests/unit/kernel/agent-kernel-batch-terminate.test.ts`.
+- 4 tests: all terminate (stop), partial terminate (continue), no terminate (continue), single tool terminate (stop).
+- FakeBatchDispatcher supports `toolResults` map with per-toolCallId result overrides. Setting `{ success: true, data: { terminate: true } }` triggers terminate.
+- `capturedRequests.length` assertion verifies LLM call count: 1 for stop, 2 for continue.
+
+### Commit
+
+- `feat(kernel): stop loop when all batch tools set terminate`
+- Staged: `src/kernel/agent-kernel.ts`, `src/kernel/types.ts`, `tests/unit/kernel/agent-kernel-batch-terminate.test.ts`, `.omo/evidence/task-D1-loop-p0-p1-pi-inspired.log`, `.omo/notepads/loop-p0-p1-pi-inspired/learnings.md`
+
 ## 2026-07-22 Task: B2
 
 ### Internal handler ordering (characterization tests)

@@ -1,0 +1,79 @@
+    333|     expect(adapter.capturedRequests).toHaveLength(1)
+    334|     expect(result.finalStatus).toBe('completed')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/unit/kernel/agent-kernel-batch-terminate.test.ts > Batch terminate-all semantics for external tools > should stop the loop when a single external tool returns terminate=true
+AssertionError: expected [ { …(3) }, { …(3) }, { …(3) }, …(7) ] to have a length of 1 but got 10
+
+- Expected
++ Received
+
+- 1
++ 10
+
+ ❯ tests/unit/kernel/agent-kernel-batch-terminate.test.ts:407:42
+    405|
+    406|     // RED FAIL: loop currently continues regardless of terminate
+    407|     expect(fakeDispatcher.dispatchCalls).toHaveLength(1)
+       |                                          ^
+    408|     expect(adapter.capturedRequests).toHaveLength(1)
+    409|     expect(result.finalStatus).toBe('completed')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  01:18:46
+   Duration  563ms (transform 253ms, setup 0ms, import 320ms, tests 41ms, environment 0ms)
+
+
+=== RED PHASE 2026-07-22T01:18:50+08:00 ===
+
+=== GREEN PHASE 2026-07-22T01:20:29+08:00 ===
+--- batch-terminate.test.ts (4 passed) ---
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  01:20:30
+   Duration  592ms (transform 319ms, setup 0ms, import 381ms, tests 21ms, environment 0ms)
+
+--- batch-dispatch.test.ts (6 passed) ---
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  01:20:31
+   Duration  533ms (transform 247ms, setup 0ms, import 309ms, tests 28ms, environment 0ms)
+
+--- internal-handler-order.test.ts (5 passed) ---
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  01:20:32
+   Duration  565ms (transform 262ms, setup 0ms, import 316ms, tests 30ms, environment 0ms)
+
+--- batch-broadcast.test.ts (6 passed) ---
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  01:20:33
+   Duration  563ms (transform 283ms, setup 0ms, import 352ms, tests 30ms, environment 0ms)
+
+--- truncation-guard.test.ts (4 passed) ---
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  01:20:34
+   Duration  559ms (transform 290ms, setup 0ms, import 346ms, tests 20ms, environment 0ms)
+
+--- invalid-args.test.ts (4 passed) ---
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  01:20:36
+   Duration  546ms (transform 270ms, setup 0ms, import 325ms, tests 23ms, environment 0ms)
+
+--- tool-loop-closure.test.ts (14 passed) ---
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  01:20:37
+   Duration  657ms (transform 341ms, setup 0ms, import 402ms, tests 45ms, environment 0ms)
+
+--- typecheck ---
+src/search/search-subagent.ts(213,9): error TS7034: Variable 'phase1Built' implicitly has type 'any' in some locations where its type cannot be determined.
+src/search/search-subagent.ts(252,19): error TS7005: Variable 'phase1Built' implicitly has an 'any' type.
