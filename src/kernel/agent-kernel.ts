@@ -145,6 +145,8 @@ export class AgentKernel {
             const errMsg = streamError instanceof Error ? streamError.message : String(streamError)
             if (errMsg.includes('timeout')) {
               streamTimedOut = true
+            } else if (errMsg.startsWith('ABORTED:')) {
+              throw streamError
             }
             // Non-timeout streaming failures fall through to non-streaming complete().
           }
@@ -155,7 +157,7 @@ export class AgentKernel {
             state.status = 'failed'
             return this.buildResult(state, 'failed', { code: 'KERNEL_ERROR', message: 'LLM stream timeout' }, undefined, undefined, input, aggregatedUsage)
           } else {
-            const fallbackResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout)
+            const fallbackResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout, input.signal)
             if (
               fallbackResult.success &&
               !fallbackResult.response.content &&
@@ -167,7 +169,7 @@ export class AgentKernel {
             llmResult = fallbackResult
           }
         } else {
-          llmResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout)
+          llmResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout, input.signal)
         }
 
         if (!llmResult.success) {
@@ -425,9 +427,17 @@ export class AgentKernel {
       state.status = 'failed'
       return this.buildResult(state, 'max_iterations_reached', undefined, undefined, undefined, input, aggregatedUsage)
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      // Abort detection: when LLM call was cancelled via signal, return cancelled
+      if (errorMessage.startsWith('ABORTED:')) {
+        this.flushPairingGuard(pairingGuard, state, 'cancelled', input)
+        state.status = 'cancelled'
+        return this.buildResult(state, 'cancelled', undefined, undefined, undefined, input, aggregatedUsage)
+      }
+
       this.flushPairingGuard(pairingGuard, state, 'kernel_error', input)
       state.status = 'failed'
-      const errorMessage = error instanceof Error ? error.message : String(error)
       const streamingErrorMatch = errorMessage.match(/^STREAMING_ERROR: (.+)$/)
       this.commitTranscript(state, 'error', { message: errorMessage })
       return this.buildResult(state, 'failed', {
@@ -645,7 +655,7 @@ export class AgentKernel {
     return response.toolCalls !== undefined && response.toolCalls.length > 0
   }
 
-  private async callLLMWithTimeout(request: LLMRequest, timeoutMs: number) {
+  private async callLLMWithTimeout(request: LLMRequest, timeoutMs: number, signal?: AbortSignal) {
     if (timeoutMs <= 0) {
       throw new Error('LLM request timeout before dispatch')
     }
@@ -654,7 +664,31 @@ export class AgentKernel {
       setTimeout(() => reject(new Error(`LLM request timeout after ${timeoutMs}ms`)), timeoutMs)
     })
 
-    return Promise.race([this.config.llmAdapter.complete(request), timeoutPromise])
+    if (!signal) {
+      return Promise.race([this.config.llmAdapter.complete(request), timeoutPromise])
+    }
+
+    let abortListener: (() => void) | undefined
+    const abortPromise = new Promise<never>((_, reject) => {
+      if (signal.aborted) {
+        reject(new Error('ABORTED: LLM call aborted'))
+        return
+      }
+      abortListener = () => reject(new Error('ABORTED: LLM call aborted'))
+      signal.addEventListener('abort', abortListener, { once: true })
+    })
+
+    try {
+      return await Promise.race([
+        this.config.llmAdapter.complete(request),
+        timeoutPromise,
+        abortPromise,
+      ])
+    } finally {
+      if (abortListener) {
+        signal.removeEventListener('abort', abortListener)
+      }
+    }
   }
 
   private shouldUseStreaming(request: LLMRequest): boolean {
@@ -799,9 +833,14 @@ export class AgentKernel {
 
     try {
       const streamGenerator = this.config.llmAdapter.stream(request)
+      const signal = input.signal
 
       const streamLoop = async (): Promise<void> => {
         for await (const chunk of streamGenerator) {
+          // Check signal during active streaming for responsive abort
+          if (signal?.aborted) {
+            throw new Error('ABORTED: LLM stream aborted')
+          }
           providerId = chunk.providerId
           aggregator.apply(chunk)
 
@@ -817,7 +856,26 @@ export class AgentKernel {
         setTimeout(() => reject(new Error(`LLM stream timeout after ${timeoutMs}ms`)), timeoutMs)
       })
 
-      await Promise.race([streamLoop(), timeoutPromise])
+      if (signal) {
+        let abortListener: (() => void) | undefined
+        const abortPromise = new Promise<never>((_, reject) => {
+          if (signal.aborted) {
+            reject(new Error('ABORTED: LLM stream aborted'))
+            return
+          }
+          abortListener = () => reject(new Error('ABORTED: LLM stream aborted'))
+          signal.addEventListener('abort', abortListener, { once: true })
+        })
+        try {
+          await Promise.race([streamLoop(), timeoutPromise, abortPromise])
+        } finally {
+          if (abortListener) {
+            signal.removeEventListener('abort', abortListener)
+          }
+        }
+      } else {
+        await Promise.race([streamLoop(), timeoutPromise])
+      }
 
       if (aggregator.isEmpty) {
         return { success: false }
@@ -862,6 +920,10 @@ export class AgentKernel {
       const errorMessage = error instanceof Error ? error.message : String(error)
       const isTimeout = errorMessage.includes('timeout')
       if (isTimeout) {
+        throw error
+      }
+      // Abort re-raises as-is for the caller to detect
+      if (errorMessage.startsWith('ABORTED:')) {
         throw error
       }
       throw new Error(`STREAMING_ERROR: ${errorMessage}`)

@@ -229,7 +229,7 @@ describe('Kernel abort signal', () => {
     })
   })
 
-  function createConfig(llmAdapter: FakeLLMAdapter, maxIterations = 10): KernelConfig {
+  function createConfig(llmAdapter: FakeLLMAdapter, maxIterations = 10, overrides?: Partial<KernelConfig>): KernelConfig {
     return {
       llmAdapter,
       toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
@@ -238,7 +238,16 @@ describe('Kernel abort signal', () => {
       modelInputBuilder,
       maxIterations,
       timeoutMs: 60000,
+      ...overrides,
     }
+  }
+
+  function toolProjectionFor(...toolNames: string[]): ToolPlaneProjection {
+    const tools: ToolDefinition[] = toolNames.map((name) => ({
+      type: 'function',
+      function: { name, description: 'Test tool: ' + name, parameters: { type: 'object', properties: {} } },
+    }))
+    return { toolIds: toolNames, tools }
   }
 
   function createInput(overrides?: Partial<KernelRunInput>): KernelRunInput {
@@ -361,4 +370,41 @@ describe('Kernel abort signal', () => {
     expect(adapter.capturedRequests).toHaveLength(1)
     expect(result.iterationsUsed).toBe(1)
   })
+
+  it('should abort hanging LLM complete() when signal fires (RED - fails without C2)', async () => {
+    const controller = new AbortController()
+
+    // Fake LLM that hangs forever on complete() — never resolves
+    const adapter = new FakeLLMAdapter([])
+    adapter.complete = async (_request: LLMRequest): Promise<LLMResult> => {
+      // Hang forever
+      await new Promise(() => {}) // never resolves
+      throw new Error('unreachable')
+    }
+
+    const kernel = new AgentKernel(
+      createConfig(adapter, 10, { providerFamily: 'test-non-streaming' }),
+    )
+
+    const resultPromise = kernel.run(
+      createInput({
+        signal: controller.signal,
+        toolProjection: toolProjectionFor('test-tool'),
+      }),
+    )
+
+    // Give kernel time to pass signal check 2 and enter the LLM call
+    await new Promise((r) => setTimeout(r, 50))
+
+    // Abort — should cancel the hanging LLM call immediately
+    controller.abort()
+
+    // Should resolve quickly (NOT wait for full 60s timeout)
+    const result = await resultPromise
+
+    // Status must be cancelled or failed (NOT timeout)
+    expect(['cancelled', 'failed']).toContain(result.finalStatus)
+    // LLM call was started (1 iteration used with tool projection)
+    expect(result.iterationsUsed).toBe(1)
+  }, 5000) // 5s vitest timeout — fails without C2 (would take 60s)
 })
