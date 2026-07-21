@@ -20,8 +20,12 @@ import { useSelectedSession } from './hooks/useSelectedSession'
 import { useSSEStream } from './hooks/useSSEStream'
 import { useWorkdir } from './hooks/useWorkdir'
 import { useComposerSubmission } from './hooks/useComposerSubmission'
-import { getBaselineServerMessageCount } from './session-utils'
-import type { AssistantPlaceholder, StreamingDraft } from './session-utils'
+import {
+  getBaselineServerMessageCount,
+  clearStreamingActivityMaps,
+  type AssistantPlaceholder,
+  type StreamingDraft,
+} from './session-utils'
 import { SessionSidebar } from './components/SessionSidebar'
 import { TimelinePanel } from './components/TimelinePanel'
 import { SessionEmptyState } from './components/SessionEmptyState'
@@ -128,36 +132,19 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       clearOldestIfUnmatched = false,
       sessionId = selectedSessionIdRef.current,
     ): void => {
-      const ids = attemptIds.filter((id): id is string => Boolean(id))
-      if (ids.length === 0 && !clearOldestIfUnmatched) return
+      updatePendingAssistantPlaceholders((prev) =>
+        clearStreamingActivityMaps(prev, attemptIds, {
+          clearOldestIfUnmatched,
+          sessionId,
+        }),
+      )
 
-      updatePendingAssistantPlaceholders((prev) => {
-        const next = new Map(prev)
-        const sizeBefore = next.size
-        for (const id of ids) next.delete(id)
-        const matchedAny = next.size < sizeBefore
-        if (!matchedAny && clearOldestIfUnmatched) {
-          const oldestId = Array.from(next.entries()).find(
-            ([, placeholder]) => !sessionId || placeholder.sessionId === sessionId,
-          )?.[0]
-          if (oldestId) next.delete(oldestId)
-        }
-        return next.size === prev.size ? prev : next
-      })
-
-      setStreamingDrafts((prev) => {
-        const next = new Map(prev)
-        const sizeBefore = next.size
-        for (const id of ids) next.delete(id)
-        const matchedAny = next.size < sizeBefore
-        if (!matchedAny && clearOldestIfUnmatched) {
-          const oldestId = Array.from(next.entries()).find(
-            ([, draft]) => !sessionId || draft.sessionId === sessionId,
-          )?.[0]
-          if (oldestId) next.delete(oldestId)
-        }
-        return next.size === prev.size ? prev : next
-      })
+      setStreamingDrafts((prev) =>
+        clearStreamingActivityMaps(prev, attemptIds, {
+          clearOldestIfUnmatched,
+          sessionId,
+        }),
+      )
     },
     [updatePendingAssistantPlaceholders, selectedSessionIdRef],
   )

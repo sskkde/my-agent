@@ -148,3 +148,42 @@ export const formatDate = (dateString: string): string => {
   const date = new Date(dateString)
   return date.toLocaleDateString(DATE_FORMAT_LOCALE, DATE_FORMAT_OPTIONS)
 }
+
+// ============================================================================
+// Streaming draft / placeholder cleanup
+// ============================================================================
+
+/**
+ * Clear pending assistant placeholders and streaming drafts by attempt ids.
+ * When no id matches and clearOldestIfUnmatched is true, drop the oldest
+ * entry for the given session so final assistant_message events without
+ * attemptId still replace the live draft (avoids "previous message reappears").
+ */
+export function clearStreamingActivityMaps<T extends { sessionId: string }>(
+  map: Map<string, T>,
+  attemptIds: Array<string | undefined>,
+  options: { clearOldestIfUnmatched?: boolean; sessionId?: string | null } = {},
+): Map<string, T> {
+  const ids = attemptIds.filter((id): id is string => Boolean(id))
+  const clearOldestIfUnmatched = options.clearOldestIfUnmatched === true
+  const sessionId = options.sessionId ?? null
+
+  if (ids.length === 0 && !clearOldestIfUnmatched) {
+    return map
+  }
+
+  const next = new Map(map)
+  const sizeBefore = next.size
+  for (const id of ids) next.delete(id)
+  const matchedAny = next.size < sizeBefore
+
+  if (!matchedAny && clearOldestIfUnmatched) {
+    const oldestId = Array.from(next.entries()).find(
+      ([, entry]) => !sessionId || entry.sessionId === sessionId,
+    )?.[0]
+    if (oldestId) next.delete(oldestId)
+  }
+
+  return next.size === map.size ? map : next
+}
+
