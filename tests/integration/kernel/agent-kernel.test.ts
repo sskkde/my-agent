@@ -787,7 +787,7 @@ describe('Agent Kernel Single-Loop Runtime', () => {
           input: { a: 2, b: 3, operation: 'multiply' },
         },
       ])
-      expect(targetAction.toolDispatchRequest?.executionPolicy.maxConcurrency).toBe(1)
+      expect(targetAction.toolDispatchRequest?.executionPolicy.maxConcurrency).toBe(5)
       expect(targetAction.toolDispatchRequest?.executionPolicy.allowParallelReadOnly).toBe(true)
       expect(targetAction.toolDispatchRequest?.executionPolicy.allowWriteConcurrency).toBe(false)
     })
