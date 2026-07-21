@@ -198,7 +198,7 @@ export class AgentKernel {
         })
 
         if (this.hasToolCalls(llmResponse)) {
-          const toolUseRequests = this.parseToolUseRequests(llmResponse)
+          const { requests: toolUseRequests, invalidArgs } = this.parseToolUseRequests(llmResponse)
           state.toolCalls.push(...toolUseRequests)
           pairingGuard.trackAssistantToolCalls(toolUseRequests)
 
@@ -234,6 +234,29 @@ export class AgentKernel {
             this.commitTranscript(state, 'tool_call', toolRequest)
             this.broadcastToolCallRunning(input, toolRequest, toolCallIndex)
             let toolResult: ToolUseResult
+
+            // INVALID TOOL ARGUMENTS GUARD: if safeParseParams could not parse the
+            // tool call's arguments JSON string, synthesize an error result instead
+            // of dispatching. Schema validation (SCHEMA_VALIDATION_FAILED) remains
+            // in tool-executor and is NOT done here — this catches only JSON syntax
+            // failures (unparseable strings, not schema violations).
+            const parseError = invalidArgs.get(toolRequest.toolCallId)
+            if (parseError !== undefined) {
+              toolResult = {
+                toolCallId: toolRequest.toolCallId,
+                result: null,
+                error: {
+                  code: 'INVALID_TOOL_ARGUMENTS',
+                  message: `Tool call '${toolRequest.toolName}' has invalid JSON arguments: ${parseError}`,
+                  recoverable: true,
+                },
+              }
+              pairingGuard.acceptToolResult(toolResult)
+              this.commitTranscript(state, 'tool_result', toolResult)
+              this.broadcastToolResultTerminal(input, toolRequest, toolResult, toolCallIndex)
+              this.mergeToolResult(state, toolRequest, toolResult)
+              continue
+            }
 
             const internalHandler = this.resolveInternalToolHandler(toolRequest.toolName, input)
             if (internalHandler) {
@@ -785,23 +808,49 @@ export class AgentKernel {
     }
   }
 
-  private parseToolUseRequests(response: LLMResponse): ToolUseRequest[] {
+  private parseToolUseRequests(response: LLMResponse): {
+    requests: ToolUseRequest[]
+    invalidArgs: Map<string, string>
+  } {
     if (!response.toolCalls) {
-      return []
+      return { requests: [], invalidArgs: new Map() }
     }
 
-    return response.toolCalls.map((toolCall) => ({
-      toolCallId: toolCall.id,
-      toolName: toolCall.function.name,
-      params: this.safeParseParams(toolCall.function.arguments),
-    }))
+    const requests: ToolUseRequest[] = []
+    const invalidArgs = new Map<string, string>()
+
+    for (const toolCall of response.toolCalls) {
+      const parseResult = this.safeParseParams(toolCall.function.arguments)
+      if (parseResult.success) {
+        requests.push({
+          toolCallId: toolCall.id,
+          toolName: toolCall.function.name,
+          params: parseResult.value,
+        })
+      } else {
+        invalidArgs.set(toolCall.id, parseResult.error)
+        // Still push a placeholder request so it gets tracked in state.toolCalls
+        // and pairingGuard. The dispatch loop will detect the invalid arg via
+        // the invalidArgs map and synthesize an error result.
+        requests.push({
+          toolCallId: toolCall.id,
+          toolName: toolCall.function.name,
+          params: {},
+        })
+      }
+    }
+
+    return { requests, invalidArgs }
   }
 
-  private safeParseParams(args: string): Record<string, unknown> {
+  private safeParseParams(args: string):
+    { success: true; value: Record<string, unknown> } | { success: false; error: string }
+  {
     try {
-      return JSON.parse(args) as Record<string, unknown>
-    } catch {
-      return {}
+      const parsed = JSON.parse(args)
+      return { success: true, value: parsed as Record<string, unknown> }
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
