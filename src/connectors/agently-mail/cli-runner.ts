@@ -90,9 +90,11 @@ function parseEnvelope(stdout: string): AgentlyMailCliEnvelope | null {
 
 export class AgentlyCliRunner {
   private readonly execFileFn: ExecFileFn
+  private readonly defaults: AgentlyCliRunnerOptions
 
-  constructor(execFileFn?: ExecFileFn) {
+  constructor(execFileFn?: ExecFileFn, defaults: AgentlyCliRunnerOptions = {}) {
     this.execFileFn = (execFileFn ?? execFile) as unknown as ExecFileFn
+    this.defaults = defaults
   }
 
   async run(
@@ -100,11 +102,11 @@ export class AgentlyCliRunner {
     argv: readonly string[],
     options?: AgentlyCliRunnerOptions,
   ): Promise<AgentlyCliRunResult> {
-    const cliPath = options?.cliPath ?? DEFAULT_CLI_PATH
-    const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
+    const cliPath = options?.cliPath ?? this.defaults.cliPath ?? DEFAULT_CLI_PATH
+    const timeoutMs = options?.timeoutMs ?? this.defaults.timeoutMs ?? DEFAULT_TIMEOUT_MS
     void operation
     const args = [...argv]
-    const signal = options?.abortSignal
+    const signal = options?.abortSignal ?? this.defaults.abortSignal
 
     return new Promise<AgentlyCliRunResult>((resolve, reject) => {
       // Fast path: already aborted
@@ -118,14 +120,14 @@ export class AgentlyCliRunner {
       // even when the mock fires synchronously.
       let abortHandler: (() => void) | undefined
 
-      const env = options?.env ?? process.env
+      const env = options?.env ?? this.defaults.env ?? process.env
 
       const child = this.execFileFn(
         cliPath,
         args,
         {
           timeout: timeoutMs,
-          cwd: options?.cwd,
+          cwd: options?.cwd ?? this.defaults.cwd,
           env,
           shell: false,
           maxBuffer: MAX_BUFFER_BYTES,

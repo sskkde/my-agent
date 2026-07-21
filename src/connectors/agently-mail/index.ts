@@ -70,6 +70,10 @@ export interface AgentlyMailConnectorAdapterOptions {
    * When omitted, the runner uses `node:child_process.execFile`.
    */
   readonly execFileFn?: ExecFileFn
+  /** Default path to the agently-cli binary (overrides PATH lookup). */
+  readonly cliPath?: string
+  /** Default subprocess timeout in milliseconds. */
+  readonly timeoutMs?: number
 }
 
 /**
@@ -85,7 +89,11 @@ export interface AgentlyMailConnectorAdapterOptions {
 export function createAgentlyMailConnectorAdapter(
   options?: AgentlyMailConnectorAdapterOptions,
 ): ConnectorAdapter {
-  const runner = new AgentlyCliRunner(options?.execFileFn)
+  const runnerDefaults = {
+    ...(options?.cliPath !== undefined ? { cliPath: options.cliPath } : {}),
+    ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+  }
+  const runner = new AgentlyCliRunner(options?.execFileFn, runnerDefaults)
   return new AgentlyMailAdapter(runner)
 }
 
