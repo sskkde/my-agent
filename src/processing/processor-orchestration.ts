@@ -254,6 +254,9 @@ export function createOrchestrationProcessor(
           )
 
           const abortController = new AbortController()
+          // Run identity: correlationId (turnId) is the single public run id for cancel.
+          // The abort registry, kernel run, and cancel API all use this id.
+          // The store's internal kr-... id is separate and not used for live abort.
           registerRunAbort(input.correlationId, abortController)
 
           const turnInput: ForegroundTurnInput = {
