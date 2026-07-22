@@ -895,6 +895,49 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
     },
   )
 
+  server.post<{ Params: { sessionId: string } }>(
+    '/api/v1/sessions/:sessionId/cancel-active-run',
+    async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.execute)) {
+        return reply
+      }
+      const { sessionId } = request.params
+
+      const persistedSession = sessionStore?.getById(sessionId)
+      if (!persistedSession) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
+      }
+      if (!canAccessSession(request, persistedSession)) {
+        return sendSessionAccessDenied(request, reply)
+      }
+
+      const cancellationCoordinator = 'cancellationCoordinator' in context ? context.cancellationCoordinator : undefined
+      if (!cancellationCoordinator) {
+        return reply
+          .code(500)
+          .send(envelopeError('INTERNAL_ERROR', 'Cancellation coordinator not available', request.requestId))
+      }
+
+      const kernelRunStore = context.stores.kernelRunStore
+      const sessionRuns = kernelRunStore.getBySession(sessionId)
+      const terminalStatuses = ['completed', 'failed', 'cancelled', 'archived', 'expired', 'timeout', 'denied', 'rejected']
+      const activeRun = sessionRuns.find((r) => !terminalStatuses.includes(r.status))
+
+      if (!activeRun) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'No active run found for this session', request.requestId))
+      }
+
+      const result = await cancellationCoordinator.cancelKernelRun(activeRun.runId)
+
+      return reply.code(200).send(
+        success(
+          { status: 'cancelled', runId: activeRun.runId, coordinatorStatus: result.status },
+          request.requestId,
+        ),
+      )
+    },
+  )
+
   server.patch<{ Params: { sessionId: string }; Body: SetReasoningDepthRequest }>(
     '/api/v1/sessions/:sessionId/reasoning-depth',
     {

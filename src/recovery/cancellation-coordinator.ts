@@ -6,6 +6,7 @@ import type {
   SyntheticResult,
 } from './types.js'
 import { CANCELLATION_TARGET_TYPES, CANCELLATION_STATUSES } from '../shared/cancellation.js'
+import { abortRun } from '../kernel/run-abort-registry.js'
 
 class CancellationCoordinatorImpl implements CancellationCoordinator {
   private config: CancellationCoordinatorConfig
@@ -218,6 +219,9 @@ class CancellationCoordinatorImpl implements CancellationCoordinator {
     }
 
     this.config.kernelRunStore.updateStatus(kernelRunId, 'cancelled')
+
+    // Signal live abort controller; no-op if run already completed/unregistered
+    abortRun(kernelRunId)
 
     this.emitCancellationEvent('kernel_run_cancelled', kernelRunId, undefined, undefined)
 

@@ -259,3 +259,68 @@
 - **New file 2**: `tests/unit/kernel/agent-kernel-signal.test.ts` (3 tests: pre-aborted signal returns cancelled immediately with 0 iterations, abort during iteration via blocking internal handler, no signal runs normally).
 - **Commit**: `feat(kernel): abort registry and aligned run identity with signal`
 - **Test results**: 51 tests pass across 9 suites (5 registry + 3 signal + 4 terminate + 6 dispatch + 5 internal-handler + 6 broadcast + 4 truncation + 4 invalid-args + 14 integration). Typecheck clean (only pre-existing src/search errors).
+
+## 2026-07-22 Task: C2
+
+### Signal-aware LLM calls
+
+- **callLLMWithTimeout**: Added `signal?: AbortSignal` parameter. When signal is present, creates an abort promise (`new Error('ABORTED: ...')`) that races against the LLM complete() call and the timeout promise. Cleans up the abort listener via `removeEventListener` in a `finally` block to prevent memory leaks. If no signal, the existing path (complete vs timeout) is preserved without change.
+- **callLLMWithStreaming**: Uses `input.signal`. Creates abort promise and includes it in `Promise.race([streamLoop(), timeoutPromise, abortPromise])`. Also checks `signal?.aborted` inside the stream loop's `for await` for responsive abort when chunks are flowing. Cleans up listener on settle. The catch block re-throws ABORTED errors as-is for the caller to detect.
+- **Abort propagation**: When the streaming catch in the run loop catches an error with message starting with `'ABORTED:'`, it re-throws to the outer catch. The outer catch detects `'ABORTED:'` and returns `cancelled` status (instead of `failed`).
+- **Error convention**: Using `new Error('ABORTED: <description>')` with a string prefix for easy detection - avoids DOMException which has inconsistent Node.js support. The `'ABORTED:'` prefix is checked at three levels: streaming catch (re-throw), outer catch (return cancelled), and callLLMWithStreaming catch (re-throw as-is).
+
+### Test
+
+- **Extended**: `tests/unit/kernel/agent-kernel-signal.test.ts` — added 4th test `should abort hanging LLM complete() when signal fires`.
+- **Red phase**: Hanging `FakeLLMAdapter.complete()` never resolves. Signal fires after 50ms. Without C2, kernel waits 60s — test times out at 5s vitest timeout.
+- **Green phase**: Same test completes in ~52ms. Abort promise wins the race immediately.
+- **New helper**: `toolProjectionFor()` extracted as shared helper (was local in the abort-during-iteration test). `createConfig()` now accepts `overrides?: Partial<KernelConfig>` for passing `providerFamily: 'test-non-streaming'`.
+- **Config trick**: `providerFamily: 'test-non-streaming'` is not in `STRUCTURED_TOOL_STREAM_FAMILIES` → `supportsStructuredToolStreaming` returns false → tools projected → `shouldUseStreaming` returns false → uses `complete()` path instead of streaming. This ensures the test exercises `callLLMWithTimeout`.
+- **Test results**: 59 tests pass across 10 suites (4 signal + 5 registry + 4 terminate + 6 dispatch + 5 internal-handler + 6 broadcast + 4 truncation + 4 invalid-args + 14 tool-loop-closure + 7 agent-kernel integration). Typecheck: only pre-existing src/search errors.
+
+### Commit
+
+- `feat(kernel): honor AbortSignal in LLM complete and stream`
+- Staged: `src/kernel/agent-kernel.ts`, `tests/unit/kernel/agent-kernel-signal.test.ts`, `.omo/evidence/task-C2-loop-p0-p1-pi-inspired.log` (gitignored), `.omo/notepads/loop-p0-p1-pi-inspired/learnings.md`
+
+## 2026-07-22 Task: C3
+
+### Cancel coordinator abort wiring
+
+- `src/recovery/cancellation-coordinator.ts` now imports `abortRun` from `../kernel/run-abort-registry.js` and calls it in `cancelKernelRun` after `updateStatus`.
+- The call is idempotent: terminal run check happens before `abortRun`, and `abortRun` returns false (no-op) if the runId is not registered.
+- No throw if `abortRun` returns false — the run may have already completed and unregistered.
+
+### CancellationCoordinator in ApiContext
+
+- Added `cancellationCoordinator: CancellationCoordinator` to `ApiContext` interface.
+- Created via `createCancellationCoordinator` in `createApiContext` using stores from context.
+- `CancellationCoordinatorConfig` type mismatch: stores use concrete state enums (`ToolExecutionState`, `BackgroundSubagentState`) while recovery types use `string`. Uses `as any` cast, consistent with other adapter patterns in context.ts.
+
+### Cancel API route
+
+- `POST /api/v1/sessions/:sessionId/cancel-active-run` added to `registerSessionsRoutes`.
+- Auth via `requirePermission(ResourceType.sessions, Action.execute)`.
+- Finds session, verifies ownership via `canAccessSession`.
+- Finds active kernel run via `kernelRunStore.getBySession(sessionId)`, filters out terminal statuses (`completed`, `failed`, `cancelled`, `archived`, `expired`, `timeout`, `denied`, `rejected`).
+- Returns 404 if no active run or no session found.
+- Returns 200 `{ ok, data: { status: 'cancelled', runId, coordinatorStatus } }` on success.
+
+### Tests
+
+- **New file 1**: `tests/unit/recovery/cancellation-coordinator-abort.test.ts` — 3 tests:
+  1. abortRun called with correct runId
+  2. No abortRun call for terminal run (idempotent)
+  3. No throw when abortRun returns false
+- **New file 2**: `tests/integration/api/cancel-active-run.test.ts` — 4 tests:
+  1. 401 without auth
+  2. 404 for non-existent session
+  3. 404 when no active run exists
+  4. 200 with active run, second cancel returns 404 (idempotent)
+- Total: 51 tests pass across 9 suites (3 abort + 4 cancel + 4 signal + 5 registry + 4 truncation + 4 invalid-args + 6 dispatch + 14 integration + 7 agent-kernel).
+- Typecheck: only pre-existing src/search errors.
+
+### Commit
+
+- `feat(api): cancel active session run with live abort`
+- Staged: `src/recovery/cancellation-coordinator.ts`, `src/api/context.ts`, `src/api/routes/sessions.ts`, `tests/unit/recovery/cancellation-coordinator-abort.test.ts`, `tests/integration/api/cancel-active-run.test.ts`, `.omo/evidence/task-C3-loop-p0-p1-pi-inspired.log`, `.omo/notepads/loop-p0-p1-pi-inspired/learnings.md`

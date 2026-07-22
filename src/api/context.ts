@@ -99,6 +99,8 @@ import { createSkillRegistry } from '../skills/skill-registry.js'
 import { registerBuiltinSkills } from '../skills/builtin/manifest.js'
 import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead-letter-store.js'
 import type { DatabaseAdapter } from '../storage/database-adapter.js'
+import { createCancellationCoordinator } from '../recovery/cancellation-coordinator.js'
+import type { CancellationCoordinator } from '../recovery/types.js'
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js'
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js'
 import { createTodoStore, type TodoStore } from '../todo/store.js'
@@ -146,6 +148,7 @@ export interface ApiContext {
   toolRegistry: ToolRegistry
   toolExecutor: ToolExecutor
   skillRegistry: SkillRegistry
+  cancellationCoordinator: CancellationCoordinator
   stores: {
     eventStore: EventStore
     runtimeActionStore: RuntimeActionStore
@@ -998,6 +1001,14 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const auditStore = createAuditStore(connection)
   const auditRecorder = createAuditRecorder({ auditStore })
 
+  const cancellationCoordinator = createCancellationCoordinator({
+    toolExecutionStore: toolExecutionStore as any,
+    plannerRunStore: plannerRunStore as any,
+    backgroundRunStore: backgroundRunStore as any,
+    kernelRunStore: kernelRunStore as any,
+    eventStore: eventStore as any,
+  })
+
   const uploadFileService = createUploadFileService()
   const uploadPreviewExtractor = createUploadPreviewExtractor()
 
@@ -1018,6 +1029,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     toolRegistry,
     toolExecutor,
     skillRegistry,
+    cancellationCoordinator,
     stores: {
       eventStore,
       runtimeActionStore,
