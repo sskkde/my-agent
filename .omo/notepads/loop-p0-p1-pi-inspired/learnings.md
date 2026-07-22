@@ -324,3 +324,18 @@
 
 - `feat(api): cancel active session run with live abort`
 - Staged: `src/recovery/cancellation-coordinator.ts`, `src/api/context.ts`, `src/api/routes/sessions.ts`, `tests/unit/recovery/cancellation-coordinator-abort.test.ts`, `tests/integration/api/cancel-active-run.test.ts`, `.omo/evidence/task-C3-loop-p0-p1-pi-inspired.log`, `.omo/notepads/loop-p0-p1-pi-inspired/learnings.md`
+
+## 2026-07-22 Task: C4
+
+### WebUI Stop button end-to-end
+
+- **API client**: Added `cancelActiveSessionRun(sessionId)` in `web/src/api/client.ts` calling `POST /api/v1/sessions/${sessionId}/cancel-active-run`. Added `CancelActiveSessionRunResponse` type in `web/src/api/types.ts`.
+- **ChatComposer**: New optional props `onStop` and `stopping`. Stop button (data-testid="chat-stop-button") is shown only when `sending` is true or `status !== 'idle'`. Uses a local `stopRequestedRef` plus the `stopping` prop to make rapid clicks idempotent. Styled as `.chat-stop-btn` in `chat-theme.css` using the Warm-Paper danger token (`#8b2c1f`).
+- **ChatPage**: Added `stopping` state and `handleStop` callback that calls `api.cancelActiveSessionRun(selectedSessionIdRef.current)`, shows toast on error, and resets `stopping` in `finally`. Passes `stopping` and `onStop` to `ChatComposer`.
+- **Tests (TDD)**: Red phase had 4 ChatComposer stop-button failures; green phase passes 28 tests across `ChatComposer.test.tsx` and `ChatPage.test.tsx`. Frontend typecheck (`cd web && npx tsc --noEmit`) passes.
+- **Regression note**: Full `npm run test:web` has pre-existing failures in `App.test.tsx`, `AgentShell.test.tsx`, `ChatShell.test.tsx`, `SessionsTab.test.tsx`, and `commands/__tests__/catalog.test.ts` unrelated to this change.
+
+### Commit
+
+- `feat(web): add chat Stop control for active turn cancel`
+- Staged: `web/src/api/client.ts`, `web/src/api/types.ts`, `web/src/features/session/chat/ChatComposer.tsx`, `web/src/features/session/chat/ChatPage.tsx`, `web/src/features/session/chat/chat-theme.css`, `web/src/features/session/chat/ChatComposer.test.tsx`, `web/src/features/session/chat/ChatPage.test.tsx`, `.omo/evidence/task-C4-loop-p0-p1-pi-inspired.log`, `.omo/notepads/loop-p0-p1-pi-inspired/learnings.md`

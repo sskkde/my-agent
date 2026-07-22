@@ -17,6 +17,7 @@ export interface ChatComposerProps {
   onChange: (value: string) => void
   onSend: () => void
   sending?: boolean
+  stopping?: boolean
   model?: string
   status?: ChatComposerStatus
   statusLabel?: string
@@ -42,6 +43,7 @@ export interface ChatComposerProps {
   onReasoningDepthOpen?: () => void
   onReasoningDepthClose?: () => void
   onReasoningDepthSelect?: (depth: ReasoningDepth) => void
+  onStop?: () => void
 }
 
 const STATUS_LABELS: Record<ChatComposerStatus, string> = {
@@ -56,6 +58,7 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
   onChange,
   onSend,
   sending = false,
+  stopping = false,
   model = '无',
   status = 'idle',
   statusLabel,
@@ -81,10 +84,12 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
   onReasoningDepthOpen,
   onReasoningDepthClose,
   onReasoningDepthSelect,
+  onStop,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const wasSendingRef = useRef(sending)
+  const stopRequestedRef = useRef(false)
 
   useEffect(() => {
     const textarea = textareaRef.current
@@ -99,11 +104,13 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
     const wasSending = wasSendingRef.current
     wasSendingRef.current = sending
     if (wasSending && !sending) {
+      stopRequestedRef.current = false
       textareaRef.current?.focus()
     }
   }, [sending])
 
   const isSendDisabled = (!value.trim() && selectedFiles.length === 0) || sending || isUploading
+  const isStopVisible = sending || status !== 'idle'
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -269,6 +276,27 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
             </div>
           </div>
 
+          {isStopVisible && (
+            <button
+              type="button"
+              className="chat-stop-btn"
+              data-testid="chat-stop-button"
+              aria-label="停止生成"
+              title="停止生成"
+              onClick={() => {
+                if (stopping || stopRequestedRef.current || !onStop) {
+                  return
+                }
+                stopRequestedRef.current = true
+                onStop()
+              }}
+              disabled={stopping || stopRequestedRef.current}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="1" />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
             className="chat-send-btn"

@@ -1,0 +1,24 @@
+
+ RUN  v1.6.1 /home/ubuntu/workspace/my agent/web
+
+stderr | src/features/session/chat/ChatPage.test.tsx > ChatPage > renders chat shell
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/features/session/chat/ChatPage.test.tsx  (16 tests) 7116ms
+ ✓ src/features/session/chat/ChatComposer.test.tsx  (12 tests) 165ms
+
+ Test Files  2 passed (2)
+      Tests  28 passed (28)
+   Start at  08:16:27
+   Duration  10.73s (transform 1.01s, setup 512ms, collect 1.26s, tests 7.28s, environment 1.02s, prepare 228ms)
+
+
+
+=== Frontend typecheck ===
+PASS
+
+
+=== Red phase (ChatComposer before implementation) ===
+4 failed | 8 passed
+Failures: stop button not found because component had no Stop control yet.

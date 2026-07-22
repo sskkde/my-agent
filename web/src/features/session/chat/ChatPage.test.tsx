@@ -95,6 +95,11 @@ describe('ChatPage', () => {
         activeBackgroundRunIds: [],
       },
     })
+    vi.mocked(client.cancelActiveSessionRun).mockResolvedValue({
+      status: 'cancelled',
+      runId: 'run-1',
+      coordinatorStatus: 'cancelled',
+    })
     vi.mocked(client.getAgentConfig).mockResolvedValue({
       agentId: 'foreground.default',
       global: {
@@ -182,6 +187,63 @@ describe('ChatPage', () => {
       expect(screen.getByTestId('chat-status-bar')).toHaveTextContent('gpt-4.1')
       expect(screen.getByTestId('chat-status-bar')).toHaveTextContent('模型调用')
       expect(screen.getByTestId('chat-ctx-pct')).toHaveTextContent('30/100')
+    })
+  })
+
+  it('calls cancelActiveSessionRun when the stop button is clicked during an active turn', async () => {
+    let statusCallback: ((status: ProcessingStatusPayload) => void) | undefined
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation((_sessionId, _onEvent, _onError, onStatus, _onToken, onOpen) => {
+      statusCallback = onStatus
+      onOpen?.()
+      return () => {}
+    })
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalledWith(
+      'session-1',
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function),
+    ))
+
+    const status: ProcessingStatusPayload = {
+      sessionId: 'session-1',
+      attemptId: 'attempt-1',
+      stage: 'model_call',
+      stageLabel: '模型调用',
+      providerId: 'openai',
+      model: 'gpt-4.1',
+      contextUsage: {
+        inputTokens: 20,
+        outputTokens: 10,
+        totalTokens: 30,
+        maxContextTokens: 100,
+      },
+      activeTools: [],
+      timestamp: '2024-01-01T00:00:00Z',
+    }
+
+    act(() => {
+      statusCallback?.(status)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('chat-stop-button'))
+
+    await waitFor(() => {
+      expect(client.cancelActiveSessionRun).toHaveBeenCalledWith('session-1')
     })
   })
 

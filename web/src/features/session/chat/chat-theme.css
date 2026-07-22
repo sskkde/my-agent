@@ -1307,6 +1307,36 @@
   stroke-width: 2;
 }
 
+.chat-stop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: var(--warm-paper-danger, #8b2c1f);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.chat-stop-btn:hover {
+  background: #6d2318;
+}
+
+.chat-stop-btn:disabled {
+  background: var(--chat-text-faint);
+  cursor: not-allowed;
+}
+
+.chat-stop-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
 .chat-toast {
   position: fixed;
   bottom: 120px;

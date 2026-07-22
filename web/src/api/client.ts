@@ -7,6 +7,7 @@ import type {
   TranscriptsResponse,
   SendMessageRequest,
   SendMessageResponse,
+  CancelActiveSessionRunResponse,
   RunsResponse,
   ApprovalsResponse,
   ApprovalDetailResponse,
@@ -211,6 +212,18 @@ export async function sendMessage(
     body: JSON.stringify(payload),
   })
   return parseResponse<SendMessageResponse>(response)
+}
+
+export async function cancelActiveSessionRun(
+  sessionId: string,
+): Promise<CancelActiveSessionRunResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/cancel-active-run`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+  return parseResponse<CancelActiveSessionRunResponse>(response)
 }
 
 export async function getRuns(): Promise<RunsResponse> {

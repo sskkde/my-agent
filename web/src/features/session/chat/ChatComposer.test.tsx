@@ -81,4 +81,58 @@ describe('ChatComposer', () => {
     expect(screen.getByTestId('chat-input')).not.toHaveFocus()
   })
 
+  describe('stop button', () => {
+    it('renders stop button when sending', () => {
+      render(<ChatComposer value="hello" onChange={() => {}} onSend={() => {}} sending={true} />)
+      expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
+    })
+
+    it('renders stop button when status is generating or tool', () => {
+      const { rerender } = render(
+        <ChatComposer value="hello" onChange={() => {}} onSend={() => {}} status="generating" />,
+      )
+      expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
+
+      rerender(<ChatComposer value="hello" onChange={() => {}} onSend={() => {}} status="tool" />)
+      expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
+    })
+
+    it('does not render stop button when idle', () => {
+      render(<ChatComposer value="hello" onChange={() => {}} onSend={() => {}} sending={false} status="idle" />)
+      expect(screen.queryByTestId('chat-stop-button')).not.toBeInTheDocument()
+    })
+
+    it('calls onStop when stop button is clicked', () => {
+      const onStop = vi.fn()
+      render(
+        <ChatComposer value="hello" onChange={() => {}} onSend={() => {}} sending={true} onStop={onStop} />,
+      )
+      fireEvent.click(screen.getByTestId('chat-stop-button'))
+      expect(onStop).toHaveBeenCalledTimes(1)
+    })
+
+    it('is idempotent on double click and while cancelling', () => {
+      const onStop = vi.fn()
+      const { rerender } = render(
+        <ChatComposer value="hello" onChange={() => {}} onSend={() => {}} sending={true} onStop={onStop} />,
+      )
+      const stopButton = screen.getByTestId('chat-stop-button')
+      fireEvent.click(stopButton)
+      fireEvent.click(stopButton)
+      expect(onStop).toHaveBeenCalledTimes(1)
+
+      rerender(
+        <ChatComposer
+          value="hello"
+          onChange={() => {}}
+          onSend={() => {}}
+          sending={true}
+          onStop={onStop}
+          stopping={true}
+        />,
+      )
+      fireEvent.click(screen.getByTestId('chat-stop-button'))
+      expect(onStop).toHaveBeenCalledTimes(1)
+    })
+  })
 })

@@ -131,6 +131,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const [reasoningDepthOpen, setReasoningDepthOpen] = useState(false)
   const [switchingReasoningDepth, setSwitchingReasoningDepth] = useState(false)
   const [switchingModel, setSwitchingModel] = useState(false)
+  const [stopping, setStopping] = useState(false)
 
   const handleToggleArchiveView = useCallback(async () => {
     if (!archiveView) {
@@ -690,6 +691,20 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     setSelectedFiles((files) => files.filter((_, i) => i !== index))
   }, [setSelectedFiles])
 
+  const handleStop = useCallback(async () => {
+    const sessionId = selectedSessionIdRef.current
+    if (!sessionId || stopping) return
+    setStopping(true)
+    try {
+      await api.cancelActiveSessionRun(sessionId)
+    } catch (err) {
+      const message = err instanceof api.ApiClientError ? err.message : '停止生成失败'
+      showToast(message)
+    } finally {
+      setStopping(false)
+    }
+  }, [stopping])
+
   return (
     <>
       <ChatShell
@@ -728,6 +743,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           onChange={setDraft}
           onSend={handleSend}
           sending={sending}
+          stopping={stopping}
           model={model}
           status={status}
           statusLabel={currentProcessingStatus?.stageLabel}
@@ -759,6 +775,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           }}
           onReasoningDepthClose={() => setReasoningDepthOpen(false)}
           onReasoningDepthSelect={handleReasoningDepthSelect}
+          onStop={handleStop}
         />
       </ChatShell>
       <ChatToast />

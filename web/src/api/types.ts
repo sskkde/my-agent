@@ -88,6 +88,12 @@ export interface SendMessageResponse {
   envelopeId: string
 }
 
+export interface CancelActiveSessionRunResponse {
+  status: string
+  runId: string
+  coordinatorStatus: string
+}
+
 export interface RunInfo {
   runId: string
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
