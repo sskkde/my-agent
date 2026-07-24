@@ -11,12 +11,12 @@ import type { KernelRunResult } from '../../../src/kernel/types.js'
 
 describe('kernel-guard-constants', () => {
   describe('Constants', () => {
-    it('defines DEFAULT_FOREGROUND_MAX_ITERATIONS as 6', () => {
-      expect(DEFAULT_FOREGROUND_MAX_ITERATIONS).toBe(6)
+    it('defines DEFAULT_FOREGROUND_MAX_ITERATIONS as 20', () => {
+      expect(DEFAULT_FOREGROUND_MAX_ITERATIONS).toBe(20)
     })
 
-    it('defines DEFAULT_FOREGROUND_TIMEOUT_MS as 120000', () => {
-      expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(120000)
+    it('defines DEFAULT_FOREGROUND_TIMEOUT_MS as 360000', () => {
+      expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(360000)
     })
 
     it('defines MAX_ITERATION_EXCEEDED_USER_MESSAGE with safe message', () => {

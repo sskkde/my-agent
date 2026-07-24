@@ -1031,12 +1031,12 @@ describe('SEARCH_CATEGORY_TOOL_IDS', () => {
 // ─── Kernel Guard Constants Tests ──────────────────────────────────────────────
 
 describe('Kernel Guard Constants', () => {
-  it('should define DEFAULT_FOREGROUND_MAX_ITERATIONS as 6', () => {
-    expect(DEFAULT_FOREGROUND_MAX_ITERATIONS).toBe(6)
+  it('should define DEFAULT_FOREGROUND_MAX_ITERATIONS as 20', () => {
+    expect(DEFAULT_FOREGROUND_MAX_ITERATIONS).toBe(20)
   })
 
-  it('should define DEFAULT_FOREGROUND_TIMEOUT_MS as 120000', () => {
-    expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(120000)
+  it('should define DEFAULT_FOREGROUND_TIMEOUT_MS as 360000', () => {
+    expect(DEFAULT_FOREGROUND_TIMEOUT_MS).toBe(360000)
   })
 
   it('should have safe MAX_ITERATION_EXCEEDED_USER_MESSAGE', () => {

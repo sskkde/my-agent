@@ -16,13 +16,13 @@ import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js'
  * Default maximum iterations for foreground kernel execution.
  * This limit prevents runaway tool loops in user-facing interactions.
  */
-export const DEFAULT_FOREGROUND_MAX_ITERATIONS = 6
+export const DEFAULT_FOREGROUND_MAX_ITERATIONS = 20
 
 /**
  * Default timeout in milliseconds for foreground kernel execution.
  * Limits total execution time to prevent long-running user-facing requests.
  */
-export const DEFAULT_FOREGROUND_TIMEOUT_MS = 120000
+export const DEFAULT_FOREGROUND_TIMEOUT_MS = 360000
 
 /**
  * Default token budget for foreground context bundles.
