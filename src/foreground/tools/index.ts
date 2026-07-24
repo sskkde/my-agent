@@ -9,14 +9,36 @@
  * @module foreground/tools/index
  */
 
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../../tools/types.js'
-import { STATUS_QUERY_TOOL_ID, type StatusQueryData } from './status-query-tool.js'
-import { SPAWN_PLANNER_TOOL_ID, type SpawnPlannerInput, type SpawnPlannerData } from './planner-spawn-tool.js'
-import { RESUME_PLANNER_TOOL_ID, type ResumePlannerInput, type ResumePlannerData } from './planner-resume-tool.js'
-import { LAUNCH_SUBAGENT_TOOL_ID, type LaunchSubagentInput, type LaunchSubagentData } from './subagent-launch-tool.js'
-import { CANCEL_MODIFY_TOOL_ID, type CancelModifyInput, type CancelModifyData } from './cancel-modify-task-tool.js'
+import type { ToolDefinition, ToolHandler, ToolExecutionContext, ToolExecutionResult } from '../../tools/types.js'
+import { STATUS_QUERY_TOOL_ID, handleStatusQuery, type StatusQueryData } from './status-query-tool.js'
+import {
+  SPAWN_PLANNER_TOOL_ID,
+  handleSpawnPlanner,
+  type SpawnPlannerInput,
+  type SpawnPlannerData,
+} from './planner-spawn-tool.js'
+import {
+  RESUME_PLANNER_TOOL_ID,
+  handleResumePlanner,
+  type ResumePlannerInput,
+  type ResumePlannerData,
+} from './planner-resume-tool.js'
+import {
+  LAUNCH_SUBAGENT_TOOL_ID,
+  handleLaunchSubagent,
+  type LaunchSubagentInput,
+  type LaunchSubagentData,
+} from './subagent-launch-tool.js'
+import {
+  CANCEL_MODIFY_TOOL_ID,
+  handleCancelOrModifyTask,
+  type CancelModifyInput,
+  type CancelModifyData,
+} from './cancel-modify-task-tool.js'
 import {
   APPROVAL_REQUEST_TOOL_ID,
+  handleApprovalRequest,
+  handleApprovalResponse,
   type ApprovalRequestInput,
   type ApprovalRequestData,
   type ApprovalResponseInput,
@@ -24,6 +46,11 @@ import {
 } from './approval-request-tool.js'
 import { SEARCH_SUBAGENT_TOOL_ID, type SearchSubagentToolInput } from '../../search/search-subagent-tool.js'
 import type { ToolRegistry } from '../../tools/types.js'
+import {
+  mapForegroundToolResult,
+  resolveTurnIdentity,
+  type ForegroundToolRuntimeDeps,
+} from './foreground-tool-runtime.js'
 
 // Re-export tool IDs
 export {
@@ -146,7 +173,7 @@ export function createSearchSubagentToolDefinition(
  * - category: 'read'
  * - requiresApproval: false
  */
-export function createForegroundStatusQueryToolDefinition(): ToolDefinition {
+export function createForegroundStatusQueryToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
   return {
     name: STATUS_QUERY_TOOL_ID,
     description:
@@ -159,7 +186,23 @@ export function createForegroundStatusQueryToolDefinition(): ToolDefinition {
       properties: {},
       required: [],
     },
-    handler: foregroundToolPlaceholderHandler,
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const userMessage = (params as { userMessage?: string } | undefined)?.userMessage
+          const result = await handleStatusQuery(
+            {
+              runtimeDispatcher: runtimeDeps.runtimeDispatcher,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+              turnId: identity.turnId,
+            },
+            userMessage,
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
     metadata: {
       requiresApproval: false,
     },
@@ -172,7 +215,7 @@ export function createForegroundStatusQueryToolDefinition(): ToolDefinition {
  * - category: 'internal'
  * - requiresApproval: true
  */
-export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
+export function createForegroundSpawnPlannerToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
   return {
     name: SPAWN_PLANNER_TOOL_ID,
     description:
@@ -203,7 +246,21 @@ export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
       },
       required: ['objective'],
     },
-    handler: foregroundToolPlaceholderHandler,
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const result = await handleSpawnPlanner(
+            {
+              plannerRuntime: runtimeDeps.plannerRuntime,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+            },
+            params as SpawnPlannerInput,
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
     metadata: {
       requiresApproval: true,
     },
@@ -216,7 +273,7 @@ export function createForegroundSpawnPlannerToolDefinition(): ToolDefinition {
  * - category: 'internal'
  * - requiresApproval: true
  */
-export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
+export function createForegroundResumePlannerToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
   return {
     name: RESUME_PLANNER_TOOL_ID,
     description:
@@ -243,7 +300,23 @@ export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
       },
       required: ['plannerRunId', 'userMessage', 'timestamp'],
     },
-    handler: foregroundToolPlaceholderHandler,
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const input = params as ResumePlannerInput
+          const result = await handleResumePlanner(
+            {
+              plannerRuntime: runtimeDeps.plannerRuntime,
+              plannerRunStore: runtimeDeps.plannerRunStore,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+            },
+            { ...input, timestamp: input.timestamp ?? new Date().toISOString() },
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
     metadata: {
       requiresApproval: true,
     },
@@ -256,7 +329,7 @@ export function createForegroundResumePlannerToolDefinition(): ToolDefinition {
  * - category: 'internal'
  * - requiresApproval: true
  */
-export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
+export function createForegroundLaunchSubagentToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
   return {
     name: LAUNCH_SUBAGENT_TOOL_ID,
     description:
@@ -283,7 +356,23 @@ export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
       },
       required: ['objective'],
     },
-    handler: foregroundToolPlaceholderHandler,
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const result = await handleLaunchSubagent(
+            {
+              runtimeDispatcher: runtimeDeps.runtimeDispatcher,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+              turnId: identity.turnId,
+              profileRegistry: runtimeDeps.profileRegistry,
+            },
+            params as LaunchSubagentInput,
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
     metadata: {
       requiresApproval: true,
     },
@@ -296,7 +385,9 @@ export function createForegroundLaunchSubagentToolDefinition(): ToolDefinition {
  * - category: 'internal'
  * - requiresApproval: true
  */
-export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefinition {
+export function createForegroundCancelOrModifyTaskToolDefinition(
+  runtimeDeps?: ForegroundToolRuntimeDeps,
+): ToolDefinition {
   return {
     name: CANCEL_MODIFY_TOOL_ID,
     description:
@@ -327,7 +418,24 @@ export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefiniti
       },
       required: ['reason', 'interruptType'],
     },
-    handler: foregroundToolPlaceholderHandler,
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const result = await handleCancelOrModifyTask(
+            {
+              runtimeDispatcher: runtimeDeps.runtimeDispatcher,
+              plannerRunStore: runtimeDeps.plannerRunStore,
+              subagentRunStore: runtimeDeps.subagentRunStore,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+              turnId: identity.turnId,
+            },
+            params as CancelModifyInput,
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
     metadata: {
       requiresApproval: true,
     },
@@ -340,7 +448,7 @@ export function createForegroundCancelOrModifyTaskToolDefinition(): ToolDefiniti
  * - category: 'internal'
  * - requiresApproval: false
  */
-export function createForegroundHandleApprovalToolDefinition(): ToolDefinition {
+export function createForegroundHandleApprovalToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
   return {
     name: APPROVAL_REQUEST_TOOL_ID,
     description:
@@ -390,7 +498,54 @@ export function createForegroundHandleApprovalToolDefinition(): ToolDefinition {
       },
       required: [],
     },
-    handler: foregroundToolPlaceholderHandler,
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const p = params as {
+            approvalId?: string
+            decision?: 'approved' | 'denied'
+            operation?: string
+            operationArgs?: Record<string, unknown>
+            requiresApproval?: boolean
+            correlationId?: string
+            riskLevel?: string
+            responseReason?: string
+          } | null
+          // Response mode: both approvalId and decision present
+          if (typeof p?.approvalId === 'string' && (p.decision === 'approved' || p.decision === 'denied')) {
+            const result = await handleApprovalResponse(
+              {
+                approvalStore: runtimeDeps.approvalStore,
+                userId: identity.userId,
+                sessionId: identity.sessionId,
+                turnId: identity.turnId,
+              },
+              { approvalId: p.approvalId, decision: p.decision, responseReason: p.responseReason },
+            )
+            return mapForegroundToolResult(result)
+          }
+          // Request mode: default requiresApproval=true when operation present and flag omitted
+          const requestInput = p ?? {}
+          const requiresApproval = requestInput.requiresApproval ?? requestInput.operation !== undefined
+          const result = await handleApprovalRequest(
+            {
+              approvalStore: runtimeDeps.approvalStore,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+              turnId: identity.turnId,
+            },
+            {
+              operation: requestInput.operation ?? '',
+              operationArgs: requestInput.operationArgs ?? {},
+              requiresApproval,
+              correlationId: requestInput.correlationId,
+              riskLevel: requestInput.riskLevel,
+            },
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
     metadata: {
       requiresApproval: false,
     },
@@ -402,12 +557,33 @@ export function createForegroundHandleApprovalToolDefinition(): ToolDefinition {
  * The search_subagent tool requires production dependencies.
  *
  * @param registry - The tool registry to register tools with
- * @param searchSubagentDeps - Dependencies for the search_subagent tool (optional, uses placeholder if not provided)
+ * @param optionsOrLegacyDeps - Either a SearchSubagentToolDeps (legacy positional
+ *   form, recognized by its `searchSubagent` property) or an options object
+ *   `{ searchSubagentDeps?, runtimeDeps? }`. When `runtimeDeps` is provided,
+ *   the six foreground orchestration tools are wired with real handlers;
+ *   otherwise they fall back to the placeholder handler.
  */
 export function registerAllForegroundTools(
   registry: ToolRegistry,
-  searchSubagentDeps?: import('../../search/search-subagent-tool.js').SearchSubagentToolDeps,
+  optionsOrLegacyDeps?:
+    | {
+        searchSubagentDeps?: import('../../search/search-subagent-tool.js').SearchSubagentToolDeps
+        runtimeDeps?: ForegroundToolRuntimeDeps
+      }
+    | import('../../search/search-subagent-tool.js').SearchSubagentToolDeps,
 ): void {
+  // Normalize: legacy positional form has `searchSubagent` property; options object does not
+  let searchSubagentDeps: import('../../search/search-subagent-tool.js').SearchSubagentToolDeps | undefined
+  let runtimeDeps: ForegroundToolRuntimeDeps | undefined
+  if (optionsOrLegacyDeps) {
+    if ('searchSubagent' in optionsOrLegacyDeps) {
+      searchSubagentDeps = optionsOrLegacyDeps
+    } else {
+      searchSubagentDeps = optionsOrLegacyDeps.searchSubagentDeps
+      runtimeDeps = optionsOrLegacyDeps.runtimeDeps
+    }
+  }
+
   if (searchSubagentDeps) {
     registry.register(createSearchSubagentToolDefinition(searchSubagentDeps))
   } else {
@@ -447,12 +623,12 @@ export function registerAllForegroundTools(
       },
     })
   }
-  registry.register(createForegroundStatusQueryToolDefinition())
-  registry.register(createForegroundSpawnPlannerToolDefinition())
-  registry.register(createForegroundResumePlannerToolDefinition())
-  registry.register(createForegroundLaunchSubagentToolDefinition())
-  registry.register(createForegroundCancelOrModifyTaskToolDefinition())
-  registry.register(createForegroundHandleApprovalToolDefinition())
+  registry.register(createForegroundStatusQueryToolDefinition(runtimeDeps))
+  registry.register(createForegroundSpawnPlannerToolDefinition(runtimeDeps))
+  registry.register(createForegroundResumePlannerToolDefinition(runtimeDeps))
+  registry.register(createForegroundLaunchSubagentToolDefinition(runtimeDeps))
+  registry.register(createForegroundCancelOrModifyTaskToolDefinition(runtimeDeps))
+  registry.register(createForegroundHandleApprovalToolDefinition(runtimeDeps))
 }
 
 /**

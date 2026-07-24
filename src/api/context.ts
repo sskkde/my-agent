@@ -133,6 +133,8 @@ import {
   DefaultSearchResultNormalizer,
 } from '../foreground/tools/index.js'
 import { assertSearchScope } from '../search/search-subagent-types.js'
+import { createAgentProfileRegistry, registerSystemProfiles } from '../taxonomy/agent-profile-registry.js'
+import type { ForegroundToolRuntimeDeps } from '../foreground/tools/foreground-tool-runtime.js'
 
 export interface ApiContext {
   gateway: Gateway
@@ -758,7 +760,19 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     resultNormalizer: new DefaultSearchResultNormalizer(),
     scopeGuard: assertSearchScope,
   }
-  registerAllForegroundTools(toolRegistry, searchSubagentDeps)
+
+  const agentProfileRegistry = createAgentProfileRegistry()
+  registerSystemProfiles(agentProfileRegistry)
+
+  const foregroundToolRuntimeDeps: ForegroundToolRuntimeDeps = {
+    runtimeDispatcher,
+    plannerRuntime,
+    plannerRunStore,
+    subagentRunStore,
+    approvalStore,
+    profileRegistry: agentProfileRegistry,
+  }
+  registerAllForegroundTools(toolRegistry, { searchSubagentDeps, runtimeDeps: foregroundToolRuntimeDeps })
 
   // Create foreground agent with tool registry for schema projection
   const foregroundAgent =
@@ -766,6 +780,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     createForegroundAgent({
       agentConfig: agentConfigStore.getByUser('default') ?? undefined,
       toolRegistry,
+      agentProfileRegistry,
     })
 
   const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
