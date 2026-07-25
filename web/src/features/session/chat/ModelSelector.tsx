@@ -26,6 +26,31 @@ const isProviderSelectable = (provider: ModelsResponse['providers'][number]): bo
   return Boolean(provider.enabled && provider.configured)
 }
 
+const extractModelId = (entry: unknown): string | null => {
+  if (typeof entry === 'string') {
+    return entry
+  }
+  if (typeof entry === 'object' && entry !== null && 'modelId' in entry) {
+    const value = (entry as Record<string, unknown>).modelId
+    if (typeof value === 'string') {
+      return value
+    }
+  }
+  return null
+}
+
+const getProviderModelList = (provider: ModelsResponse['providers'][number]): string[] => {
+  const models = provider.models
+  if (Array.isArray(models) && models.length > 0) {
+    const ids = models.map(extractModelId).filter((id): id is string => id !== null)
+    if (ids.length > 0) {
+      return ids
+    }
+  }
+  const fallback = getCandidateModel(provider)
+  return fallback !== null ? [fallback] : []
+}
+
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   model,
   status,
@@ -90,11 +115,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   }, [isOpen])
 
-  const triggerTitle = !sessionId
-    ? '未选择会话'
-    : disabled
-      ? '处理中无法切换模型'
-      : '点击切换模型'
+  const triggerTitle = !sessionId ? '未选择会话' : disabled ? '处理中无法切换模型' : '点击切换模型'
 
   const selectedProviderId = modelsData?.selectedProviderId
   const selectedModel = selectedSessionModel ?? modelsData?.selectedModel
@@ -137,12 +158,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           {!modelsLoading && modelsError && (
             <div className="chat-model-state chat-model-state--error" data-testid="chat-model-error">
               <span>{modelsError}</span>
-              <button
-                type="button"
-                className="chat-model-state__retry"
-                onClick={onOpen}
-                data-testid="chat-model-retry"
-              >
+              <button type="button" className="chat-model-state__retry" onClick={onOpen} data-testid="chat-model-retry">
                 重试
               </button>
             </div>
@@ -157,15 +173,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           {!modelsLoading && !modelsError && hasProviders && (
             <div className="chat-model-provider-list" data-testid="chat-model-provider-list">
               {providers.map((provider) => {
-                const candidate = getCandidateModel(provider)
-                const selectable = isProviderSelectable(provider) && candidate !== null
-                const isSelected =
-                  candidate !== null &&
-                  candidate === selectedModel &&
-                  (selectedProviderId === undefined || provider.providerId === selectedProviderId)
+                const modelList = getProviderModelList(provider)
+                const providerSelectable = isProviderSelectable(provider)
 
                 return (
-                  <div key={provider.providerId} className="chat-model-provider" data-testid={`chat-model-provider-${provider.providerId}`}>
+                  <div
+                    key={provider.providerId}
+                    className="chat-model-provider"
+                    data-testid={`chat-model-provider-${provider.providerId}`}
+                  >
                     <div className="chat-model-provider-header">
                       <span className="chat-model-provider-name">{provider.displayName}</span>
                       <span className="chat-model-provider-meta">
@@ -174,25 +190,37 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                         {provider.enabled && !provider.configured && ' · 未配置'}
                       </span>
                     </div>
-                    {candidate ? (
-                      <button
-                        type="button"
-                        className={`chat-model-option ${isSelected ? 'chat-model-option--selected' : ''}`}
-                        role="option"
-                        aria-selected={isSelected}
-                        disabled={!selectable}
-                        onClick={() => {
-                          if (selectable && candidate) {
-                            onSelect(provider.providerId, candidate)
-                          }
-                        }}
+                    {modelList.length > 0 ? (
+                      modelList.map((modelId, index) => {
+                        const isSelected =
+                          modelId === selectedModel &&
+                          (selectedProviderId === undefined || provider.providerId === selectedProviderId)
+
+                        return (
+                          <button
+                            key={`${provider.providerId}-${modelId}`}
+                            type="button"
+                            className={`chat-model-option ${isSelected ? 'chat-model-option--selected' : ''}`}
+                            role="option"
+                            aria-selected={isSelected}
+                            disabled={!providerSelectable}
+                            onClick={() => {
+                              if (providerSelectable) {
+                                onSelect(provider.providerId, modelId)
+                              }
+                            }}
+                            data-testid={`chat-model-option-${provider.providerId}-${index}`}
+                          >
+                            <span className="chat-model-option-label">{modelId}</span>
+                            {isSelected && <span className="chat-model-option-check">✓</span>}
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <div
+                        className="chat-model-option chat-model-option--disabled"
                         data-testid={`chat-model-option-${provider.providerId}`}
                       >
-                        <span className="chat-model-option-label">{candidate}</span>
-                        {isSelected && <span className="chat-model-option-check">✓</span>}
-                      </button>
-                    ) : (
-                      <div className="chat-model-option chat-model-option--disabled" data-testid={`chat-model-option-${provider.providerId}`}>
                         <span className="chat-model-option-label">未配置模型</span>
                       </div>
                     )}

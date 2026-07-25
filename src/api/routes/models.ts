@@ -21,6 +21,14 @@ function sanitizeProviderForResponse(provider: ProviderConfigSanitized): Provide
     lastTestedAt: provider.lastTestedAt,
     createdAt: provider.createdAt,
     updatedAt: provider.updatedAt,
+    family: provider.family,
+    protocol: provider.protocol,
+    priority: provider.priority,
+    defaultModel: provider.defaultModel,
+    capabilities: provider.capabilities,
+    models: provider.models,
+    options: provider.options,
+    headersConfigured: provider.headersConfigured,
   }
 }
 

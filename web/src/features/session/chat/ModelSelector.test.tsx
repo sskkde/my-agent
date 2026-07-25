@@ -95,26 +95,26 @@ describe('ModelSelector', () => {
     expect(screen.getByTestId('chat-model-provider-openai')).toBeInTheDocument()
     expect(screen.getByTestId('chat-model-provider-ollama')).toBeInTheDocument()
     expect(screen.getByTestId('chat-model-provider-deepseek')).toBeInTheDocument()
-    expect(screen.getByTestId('chat-model-option-openai')).toHaveTextContent('gpt-4.1')
-    expect(screen.getByTestId('chat-model-option-ollama')).toHaveTextContent('llama2')
+    expect(screen.getByTestId('chat-model-option-openai-0')).toHaveTextContent('gpt-4.1')
+    expect(screen.getByTestId('chat-model-option-ollama-0')).toHaveTextContent('llama2')
   })
 
   it('marks the current selection as aria-selected', () => {
     render(<ModelSelector {...baseProps} isOpen modelsData={mockModelsData} />)
-    expect(screen.getByTestId('chat-model-option-openai')).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByTestId('chat-model-option-ollama')).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByTestId('chat-model-option-openai-0')).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('chat-model-option-ollama-0')).toHaveAttribute('aria-selected', 'false')
   })
 
   it('calls onSelect when a selectable option is clicked', () => {
     render(<ModelSelector {...baseProps} isOpen modelsData={mockModelsData} />)
-    fireEvent.click(screen.getByTestId('chat-model-option-openai'))
+    fireEvent.click(screen.getByTestId('chat-model-option-openai-0'))
     expect(baseProps.onSelect).toHaveBeenCalledWith('openai', 'gpt-4.1')
   })
 
   it('disables options for providers that are not configured or not enabled', () => {
     render(<ModelSelector {...baseProps} isOpen modelsData={mockModelsData} />)
-    expect(screen.getByTestId('chat-model-option-ollama')).toBeDisabled()
-    expect(screen.getByTestId('chat-model-option-deepseek')).toBeDisabled()
+    expect(screen.getByTestId('chat-model-option-ollama-0')).toBeDisabled()
+    expect(screen.getByTestId('chat-model-option-deepseek-0')).toBeDisabled()
   })
 
   it('disables the trigger when no session is selected', () => {
@@ -158,5 +158,111 @@ describe('ModelSelector', () => {
     )
     fireEvent.mouseDown(screen.getByTestId('outside'))
     expect(baseProps.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders one option per provider.models entry when models is a non-empty array', () => {
+    const modelsData: ModelsResponse = {
+      providers: [
+        {
+          providerId: 'multi',
+          providerType: 'openrouter',
+          displayName: 'Multi',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: null,
+          baseUrl: null,
+          selectedModel: 'm1',
+          source: 'user',
+          lastTestStatus: null,
+          lastTestedAt: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          models: [{ modelId: 'm1' }, { modelId: 'm2' }],
+        },
+      ],
+    }
+
+    render(<ModelSelector {...baseProps} isOpen modelsData={modelsData} />)
+    expect(screen.getByTestId('chat-model-option-multi-0')).toHaveTextContent('m1')
+    expect(screen.getByTestId('chat-model-option-multi-1')).toHaveTextContent('m2')
+  })
+
+  it('calls onSelect with the second provider.models entry when clicked', () => {
+    const modelsData: ModelsResponse = {
+      providers: [
+        {
+          providerId: 'multi',
+          providerType: 'openrouter',
+          displayName: 'Multi',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: null,
+          baseUrl: null,
+          selectedModel: 'm1',
+          source: 'user',
+          lastTestStatus: null,
+          lastTestedAt: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          models: [{ modelId: 'm1' }, { modelId: 'm2' }],
+        },
+      ],
+    }
+
+    render(<ModelSelector {...baseProps} isOpen modelsData={modelsData} />)
+    fireEvent.click(screen.getByTestId('chat-model-option-multi-1'))
+    expect(baseProps.onSelect).toHaveBeenCalledWith('multi', 'm2')
+  })
+
+  it('falls back to a single candidate when provider.models is empty', () => {
+    const modelsData: ModelsResponse = {
+      providers: [
+        {
+          providerId: 'empty',
+          providerType: 'openai',
+          displayName: 'Empty',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: null,
+          baseUrl: null,
+          selectedModel: 'fallback-model',
+          source: 'user',
+          lastTestStatus: null,
+          lastTestedAt: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          models: [],
+        },
+      ],
+    }
+
+    render(<ModelSelector {...baseProps} isOpen modelsData={modelsData} />)
+    expect(screen.getByTestId('chat-model-option-empty-0')).toHaveTextContent('fallback-model')
+  })
+
+  it('falls back to a single candidate when provider.models is null', () => {
+    const modelsData: ModelsResponse = {
+      providers: [
+        {
+          providerId: 'null',
+          providerType: 'openai',
+          displayName: 'Null',
+          enabled: true,
+          configured: true,
+          apiKeyLast4: null,
+          baseUrl: null,
+          selectedModel: 'fallback-model',
+          source: 'user',
+          lastTestStatus: null,
+          lastTestedAt: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          models: null,
+        },
+      ],
+    }
+
+    render(<ModelSelector {...baseProps} isOpen modelsData={modelsData} />)
+    expect(screen.getByTestId('chat-model-option-null-0')).toHaveTextContent('fallback-model')
   })
 })

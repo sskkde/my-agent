@@ -47,10 +47,12 @@ describe('ChatPage', () => {
       },
     })
     vi.mocked(client.getSessionTimeline).mockResolvedValue({ events: [], total: 0 })
-    vi.mocked(client.subscribeSessionTimeline).mockImplementation((_sessionId, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
-      onOpen?.()
-      return () => {}
-    })
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
+        onOpen?.()
+        return () => {}
+      },
+    )
     vi.mocked(client.listTodos).mockResolvedValue({ todos: [], total: 0 })
     vi.mocked(client.getSessionWorkdir).mockResolvedValue({ workdir: null })
     vi.mocked(client.getModels).mockResolvedValue({
@@ -139,11 +141,13 @@ describe('ChatPage', () => {
 
   it('renders processing status from the session SSE stream', async () => {
     let statusCallback: ((status: ProcessingStatusPayload) => void) | undefined
-    vi.mocked(client.subscribeSessionTimeline).mockImplementation((_sessionId, _onEvent, _onError, onStatus, _onToken, onOpen) => {
-      statusCallback = onStatus
-      onOpen?.()
-      return () => {}
-    })
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, _onEvent, _onError, onStatus, _onToken, onOpen) => {
+        statusCallback = onStatus
+        onOpen?.()
+        return () => {}
+      },
+    )
 
     render(
       <MemoryRouter>
@@ -153,14 +157,16 @@ describe('ChatPage', () => {
       </MemoryRouter>,
     )
 
-    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalledWith(
-      'session-1',
-      expect.any(Function),
-      expect.any(Function),
-      expect.any(Function),
-      expect.any(Function),
-      expect.any(Function),
-    ))
+    await waitFor(() =>
+      expect(client.subscribeSessionTimeline).toHaveBeenCalledWith(
+        'session-1',
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+      ),
+    )
 
     const status: ProcessingStatusPayload = {
       sessionId: 'session-1',
@@ -192,11 +198,13 @@ describe('ChatPage', () => {
 
   it('calls cancelActiveSessionRun when the stop button is clicked during an active turn', async () => {
     let statusCallback: ((status: ProcessingStatusPayload) => void) | undefined
-    vi.mocked(client.subscribeSessionTimeline).mockImplementation((_sessionId, _onEvent, _onError, onStatus, _onToken, onOpen) => {
-      statusCallback = onStatus
-      onOpen?.()
-      return () => {}
-    })
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, _onEvent, _onError, onStatus, _onToken, onOpen) => {
+        statusCallback = onStatus
+        onOpen?.()
+        return () => {}
+      },
+    )
 
     render(
       <MemoryRouter>
@@ -206,14 +214,16 @@ describe('ChatPage', () => {
       </MemoryRouter>,
     )
 
-    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalledWith(
-      'session-1',
-      expect.any(Function),
-      expect.any(Function),
-      expect.any(Function),
-      expect.any(Function),
-      expect.any(Function),
-    ))
+    await waitFor(() =>
+      expect(client.subscribeSessionTimeline).toHaveBeenCalledWith(
+        'session-1',
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+      ),
+    )
 
     const status: ProcessingStatusPayload = {
       sessionId: 'session-1',
@@ -577,7 +587,7 @@ describe('ChatPage', () => {
       expect(client.getModels).toHaveBeenCalledWith('session-1')
     })
     expect(screen.getByTestId('chat-model-provider-openai')).toBeInTheDocument()
-    expect(screen.getByTestId('chat-model-option-openai')).toHaveTextContent('gpt-4.1')
+    expect(screen.getByTestId('chat-model-option-openai-0')).toHaveTextContent('gpt-4.1')
   })
 
   it('switches the session model when an option is selected', async () => {
@@ -629,9 +639,9 @@ describe('ChatPage', () => {
     await screen.findByTestId('chat-shell')
     await waitFor(() => expect(screen.getByTestId('chat-model-selector-trigger')).not.toBeDisabled())
     fireEvent.click(screen.getByTestId('chat-model-selector-trigger'))
-    await waitFor(() => expect(screen.getByTestId('chat-model-option-ollama')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('chat-model-option-ollama-0')).toBeInTheDocument())
 
-    fireEvent.click(screen.getByTestId('chat-model-option-ollama'))
+    fireEvent.click(screen.getByTestId('chat-model-option-ollama-0'))
 
     await waitFor(() => {
       expect(client.setSessionModel).toHaveBeenCalledWith('session-1', { providerId: 'ollama', model: 'llama2' })
@@ -732,4 +742,3 @@ describe('ChatPage streaming draft finalization', () => {
     })
   })
 })
-
