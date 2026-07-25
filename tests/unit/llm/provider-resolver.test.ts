@@ -5,9 +5,10 @@ import {
   type EnvProviderDescriptor,
 } from '../../../src/llm/routing/provider-resolver.js'
 import type { ProviderConfigWithSecret } from '../../../src/storage/provider-config-store.js'
-import type { ModelInfo } from '../../../src/llm/types.js'
+import type { ModelInfo, RequestRequirements } from '../../../src/llm/types.js'
 import { getProviderCatalogEntry } from '../../../src/llm/catalog/provider-catalog.js'
 import { DOMESTIC_PROVIDERS, getDomesticProvider } from '../../../src/llm/catalog/domestic-providers.js'
+import { canServeRequest } from '../../../src/llm/routing/request-requirements.js'
 
 function createMockProvider(overrides: Partial<ProviderConfigWithSecret> = {}): ProviderConfigWithSecret {
   return {
@@ -988,6 +989,112 @@ describe('provider-resolver', () => {
       expect(candidates).toHaveLength(1)
       expect(candidates[0].config.apiKey).toBe('sk-db-dashscope')
       expect(candidates[0].priority).toBeLessThan(100)
+    })
+
+    describe('models_json capabilities enable functionCalling for unknown custom models', () => {
+      const toolsRequirement: RequestRequirements = {
+        requiresTools: true,
+        requiresJsonMode: false,
+        requiresStreaming: false,
+        requiresVision: false,
+        requiresAudio: false,
+        requiresPdf: false,
+      }
+
+      it('applies models_json capabilities override enabling functionCalling for unknown custom model', () => {
+        const provider = createMockProvider({
+          providerId: 'glm-cloud',
+          providerType: 'custom',
+          apiKey: 'sk-glm',
+          baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+          selectedModel: 'glm-5.2:cloud',
+          models: [
+            {
+              modelId: 'glm-5.2:cloud',
+              capabilities: {
+                functionCalling: true,
+                streaming: true,
+              },
+            },
+          ],
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        const model = candidates[0].model
+
+        // Assertion 1: resolved candidate's capabilities.functionCalling === true
+        expect(model.modelId).toBe('glm-5.2:cloud')
+        expect(model.capabilities.functionCalling).toBe(true)
+        expect(model.capabilities.streaming).toBe(true)
+
+        // Assertion 2: canServeRequest({ requiresTools: true }) returns true
+        expect(canServeRequest(toolsRequirement, model)).toBe(true)
+      })
+
+      it('negative control: without matching models_json entry, functionCalling stays at default (false)', () => {
+        const provider = createMockProvider({
+          providerId: 'glm-cloud-no-override',
+          providerType: 'custom',
+          apiKey: 'sk-glm',
+          baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+          selectedModel: 'glm-5.2:cloud',
+          models: [
+            {
+              modelId: 'some-other-model',
+              capabilities: {
+                functionCalling: true,
+                streaming: true,
+              },
+            },
+          ],
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        const model = candidates[0].model
+
+        // Negative control: functionCalling stays at default (false)
+        expect(model.modelId).toBe('glm-5.2:cloud')
+        expect(model.capabilities.functionCalling).toBe(false)
+
+        // canServeRequest({ requiresTools: true }) returns false
+        expect(canServeRequest(toolsRequirement, model)).toBe(false)
+      })
+
+      it('negative control: empty models_json leaves functionCalling at default (false)', () => {
+        const provider = createMockProvider({
+          providerId: 'glm-cloud-empty-models',
+          providerType: 'custom',
+          apiKey: 'sk-glm',
+          baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+          selectedModel: 'glm-5.2:cloud',
+          models: [],
+        })
+
+        const candidates = resolveProviderCandidates({
+          dbProviders: [provider],
+          envProviders: [],
+          nodeEnv: 'development',
+        })
+
+        expect(candidates).toHaveLength(1)
+        const model = candidates[0].model
+
+        expect(model.modelId).toBe('glm-5.2:cloud')
+        expect(model.capabilities.functionCalling).toBe(false)
+        expect(canServeRequest(toolsRequirement, model)).toBe(false)
+      })
     })
   })
 })
