@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   getProviders,
   createProvider,
   updateProvider,
   deleteProvider,
   testProvider,
+  probeProviderModels,
+  refreshProviderModels,
   ApiClientError,
 } from '../../api/client'
 import type {
@@ -65,6 +67,12 @@ const initialFormData: ProviderFormData = {
 const requiresApiKey = (providerType: ProviderType): boolean => providerType !== 'ollama'
 const requiresBaseUrl = (providerType: ProviderType): boolean => providerType === 'ollama' || providerType === 'custom'
 
+const hasValidCredentialsForProbe = (data: ProviderFormData): boolean => {
+  const apiKeyValid = !requiresApiKey(data.providerType) || data.apiKey.trim().length > 0
+  const baseUrlValid = !requiresBaseUrl(data.providerType) || data.baseUrl.trim().length > 0
+  return apiKeyValid && baseUrlValid
+}
+
 /** Domestic providers have built-in base URLs and only need an API key. */
 const isDomesticProvider = (providerType: ProviderType): boolean =>
   !['openai', 'openrouter', 'ollama', 'custom'].includes(providerType)
@@ -84,6 +92,12 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
   } | null>(null)
   const [deletingProviderId, setDeletingProviderId] = useState<string | null>(null)
   const [togglingProviderId, setTogglingProviderId] = useState<string | null>(null)
+  const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [modelsLoading, setModelsLoading] = useState(false)
+  const [modelsError, setModelsError] = useState<string | null>(null)
+  const probeSequenceRef = useRef(0)
+  const formDataRef = useRef(formData)
+  formDataRef.current = formData
 
   const fetchProviders = useCallback(async () => {
     if (!isAuthenticated) return
@@ -104,15 +118,67 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
     fetchProviders()
   }, [fetchProviders])
 
+  useEffect(() => {
+    if (!isModalOpen) return
+    if (editingProvider) return
+
+    const data = formDataRef.current
+    if (!hasValidCredentialsForProbe(data)) {
+      setModelsError(null)
+      return
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setModelsLoading(true)
+      setModelsError(null)
+      const sequence = ++probeSequenceRef.current
+
+      try {
+        const result = await probeProviderModels({
+          providerType: data.providerType,
+          apiKey: data.apiKey || undefined,
+          baseUrl: data.baseUrl || undefined,
+        })
+        if (sequence !== probeSequenceRef.current) return
+
+        if (result.success) {
+          setAvailableModels(result.models ?? [])
+          setModelsError(null)
+          if (!data.selectedModel && result.models && result.models.length > 0) {
+            setFormData((prev) => ({ ...prev, selectedModel: result.models![0] }))
+          }
+        } else {
+          setAvailableModels([])
+          setModelsError(result.error || '加载模型列表失败')
+        }
+      } catch (err) {
+        if (sequence !== probeSequenceRef.current) return
+        setAvailableModels([])
+        setModelsError(err instanceof Error ? err.message : '加载模型列表失败')
+      } finally {
+        if (sequence === probeSequenceRef.current) {
+          setModelsLoading(false)
+        }
+      }
+    }, 500)
+
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [isModalOpen, editingProvider, formData.providerType, formData.apiKey, formData.baseUrl])
+
   const handleOpenAddModal = () => {
     setEditingProvider(null)
     setFormData(initialFormData)
     setFormErrors({})
     setTestResult(null)
+    setAvailableModels([])
+    setModelsLoading(false)
+    setModelsError(null)
     setIsModalOpen(true)
   }
 
-  const handleOpenEditModal = (provider: ProviderSummary) => {
+  const handleOpenEditModal = async (provider: ProviderSummary) => {
     setEditingProvider(provider)
     setFormData({
       providerType: provider.providerType,
@@ -123,7 +189,32 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
     })
     setFormErrors({})
     setTestResult(null)
+    setModelsError(null)
     setIsModalOpen(true)
+
+    const cachedModels = provider.models
+    if (cachedModels && cachedModels.length > 0) {
+      const modelIds = cachedModels.map((m) => (typeof m === 'string' ? m : (m.modelId as string) || '')).filter(Boolean)
+      setAvailableModels(modelIds)
+      return
+    }
+
+    setModelsLoading(true)
+    try {
+      const result = await refreshProviderModels(provider.providerId)
+      if (result.success) {
+        setAvailableModels(result.models ?? [])
+        setModelsError(null)
+      } else {
+        setAvailableModels([])
+        setModelsError(result.error || '加载模型列表失败')
+      }
+    } catch (err) {
+      setAvailableModels([])
+      setModelsError(err instanceof Error ? err.message : '加载模型列表失败')
+    } finally {
+      setModelsLoading(false)
+    }
   }
 
   const handleCloseModal = () => {
@@ -132,6 +223,9 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
     setFormData(initialFormData)
     setFormErrors({})
     setTestResult(null)
+    setAvailableModels([])
+    setModelsLoading(false)
+    setModelsError(null)
   }
 
   const validateForm = (): boolean => {
@@ -205,6 +299,13 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
     try {
       const result = await testProvider(providerId)
       setTestResult({ providerId, result })
+      if (result.success) {
+        setAvailableModels(result.models ?? [])
+        setModelsError(null)
+        if (!formData.selectedModel && result.models && result.models.length > 0) {
+          setFormData((prev) => ({ ...prev, selectedModel: result.models![0] }))
+        }
+      }
     } catch (err) {
       const message = err instanceof ApiClientError ? err.message : '测试连接失败'
       setTestResult({
@@ -648,16 +749,83 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
 
               <div className="form-group">
                 <label htmlFor="selectedModel">默认模型</label>
-                <input
-                  id="selectedModel"
-                  type="text"
-                  value={formData.selectedModel}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, selectedModel: e.target.value }))}
-                  placeholder="例如: gpt-4, claude-3-opus, qwen-plus"
-                  className="input-field"
-                  data-testid="provider-model"
-                />
-                <span className="form-hint">可选，留空则使用提供商默认模型</span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <select
+                    id="selectedModel"
+                    value={formData.selectedModel}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, selectedModel: e.target.value }))}
+                    className={`input-field ${modelsError ? 'input-error' : ''}`}
+                    data-testid="provider-model"
+                    disabled={modelsLoading}
+                    style={{ flex: 1 }}
+                  >
+                    {(() => {
+                      const options = availableModels.includes(formData.selectedModel)
+                        ? availableModels
+                        : formData.selectedModel
+                          ? [...availableModels, formData.selectedModel]
+                          : availableModels
+
+                      if (options.length === 0) {
+                        const placeholder = hasValidCredentialsForProbe(formData)
+                          ? '未获取到模型'
+                          : '输入凭据以加载模型…'
+                        return (
+                          <option value="" disabled>
+                            {modelsLoading ? '加载中…' : placeholder}
+                          </option>
+                        )
+                      }
+
+                      return (
+                        <>
+                          <option value="" disabled>
+                            {modelsLoading ? '加载中…' : '选择模型…'}
+                          </option>
+                          {options.map((model) => (
+                            <option key={model} value={model}>
+                              {model}
+                            </option>
+                          ))}
+                        </>
+                      )
+                    })()}
+                  </select>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={async () => {
+                      if (editingProvider) {
+                        setModelsLoading(true)
+                        setModelsError(null)
+                        try {
+                          const result = await refreshProviderModels(editingProvider.providerId)
+                          if (result.success) {
+                            setAvailableModels(result.models ?? [])
+                            setModelsError(null)
+                            if (!formData.selectedModel && result.models && result.models.length > 0) {
+                              setFormData((prev) => ({ ...prev, selectedModel: result.models![0] }))
+                            }
+                          } else {
+                            setModelsError(result.error || '加载模型列表失败')
+                          }
+                        } catch (err) {
+                          setModelsError(err instanceof Error ? err.message : '加载模型列表失败')
+                        } finally {
+                          setModelsLoading(false)
+                        }
+                      }
+                    }}
+                    disabled={modelsLoading || !editingProvider}
+                    data-testid="provider-models-refresh"
+                  >
+                    {modelsLoading ? '刷新中…' : '刷新模型列表'}
+                  </button>
+                </div>
+                {modelsError && <span className="form-error">{modelsError}</span>}
+                {!modelsError && (
+                  <span className="form-hint">可选，留空则使用提供商默认模型</span>
+                )}
               </div>
 
               {formErrors.submit && <div className="form-submit-error">{formErrors.submit}</div>}

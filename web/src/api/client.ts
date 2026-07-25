@@ -645,6 +645,28 @@ export async function testProvider(providerId: string): Promise<TestProviderResp
   return parseResponse<TestProviderResponse>(response)
 }
 
+export async function probeProviderModels(body: {
+  providerType: string
+  apiKey?: string
+  baseUrl?: string
+}): Promise<TestProviderResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/providers/probe-models`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return parseResponse<TestProviderResponse>(response)
+}
+
+export async function refreshProviderModels(providerId: string): Promise<TestProviderResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/providers/${providerId}/models/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  return parseResponse<TestProviderResponse>(response)
+}
+
 export async function getTools(): Promise<ToolsResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/tools`, { credentials: 'include' })
   return parseResponse<ToolsResponse>(response)

@@ -563,6 +563,7 @@ export interface TestProviderResponse {
   success: boolean
   latencyMs: number
   modelCount?: number
+  models?: string[]
   error?: string
 }
 
