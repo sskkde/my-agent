@@ -1183,4 +1183,229 @@ describe('Provider API Integration', () => {
       expect(responseBody).not.toContain('secretapikey')
     })
   })
+
+  describe('POST /api/providers/:providerId/test — models discovery (mock provider)', () => {
+    it('should return non-empty models array when mock provider type returns mock-model', async () => {
+      const provider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId,
+        providerType: 'mock',
+        displayName: 'Mock Provider',
+        enabled: true,
+      })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: `/api/v1/providers/${provider.providerId}/test`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(true)
+      expect(Array.isArray(body.data.models)).toBe(true)
+      expect(body.data.models).toEqual(['mock-model'])
+    })
+
+    it('should persist models_json with capabilities and auto-select first model when selectedModel is null', async () => {
+      const provider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId,
+        providerType: 'mock',
+        displayName: 'Mock Provider Auto-Select',
+        enabled: true,
+        // selectedModel intentionally omitted (null)
+      })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: `/api/v1/providers/${provider.providerId}/test`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(true)
+      expect(body.data.models).toEqual(['mock-model'])
+
+      const persisted = context.providerConfigStore.getById(provider.providerId)
+      expect(persisted).not.toBeNull()
+      expect(persisted?.models).toEqual([
+        { modelId: 'mock-model', capabilities: { functionCalling: true, streaming: true } },
+      ])
+      expect(persisted?.selectedModel).toBe('mock-model')
+    })
+
+    it('should NOT clobber existing selectedModel when set but missing from refresh list', async () => {
+      const provider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId,
+        providerType: 'mock',
+        displayName: 'Mock Provider Keep Model',
+        enabled: true,
+        selectedModel: 'my-previously-selected-model',
+      })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: `/api/v1/providers/${provider.providerId}/test`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(true)
+      // mock returns ['mock-model'], but selectedModel 'my-previously-selected-model' is not in list
+      expect(body.data.models).toEqual(['mock-model'])
+
+      const persisted = context.providerConfigStore.getById(provider.providerId)
+      expect(persisted).not.toBeNull()
+      // selectedModel should be preserved (not clobbered)
+      expect(persisted?.selectedModel).toBe('my-previously-selected-model')
+    })
+  })
+
+  describe('POST /api/providers/probe-models', () => {
+    it('should return 401 without authentication', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers/probe-models',
+        payload: { providerType: 'mock' },
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('should return models for mock providerType without network', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers/probe-models',
+        payload: { providerType: 'mock' },
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(true)
+      expect(body.data.models).toEqual(['mock-model'])
+      expect(body.data.modelCount).toBe(1)
+    })
+
+    it('should NOT create or update any provider row (no DB write)', async () => {
+      const providersBefore = context.providerConfigStore.listByUser(userId)
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers/probe-models',
+        payload: { providerType: 'mock' },
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const providersAfter = context.providerConfigStore.listByUser(userId)
+      expect(providersAfter.length).toBe(providersBefore.length)
+    })
+
+    it('should return 400 for missing providerType', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers/probe-models',
+        payload: {},
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+  })
+
+  describe('POST /api/providers/:providerId/models/refresh', () => {
+    it('should return 401 without authentication', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers/test-id/models/refresh',
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('should refresh and persist models for mock provider', async () => {
+      const provider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId,
+        providerType: 'mock',
+        displayName: 'Mock Refresh',
+        enabled: true,
+      })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: `/api/v1/providers/${provider.providerId}/models/refresh`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.data.success).toBe(true)
+      expect(body.data.models).toEqual(['mock-model'])
+
+      const persisted = context.providerConfigStore.getById(provider.providerId)
+      expect(persisted).not.toBeNull()
+      expect(persisted?.models).toEqual([
+        { modelId: 'mock-model', capabilities: { functionCalling: true, streaming: true } },
+      ])
+    })
+
+    it('should return 404 for non-existent provider', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers/non-existent-id/models/refresh',
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('should return 403 when refreshing other user provider', async () => {
+      const otherUserId = randomUUID()
+      context.stores.userStore.create({
+        userId: otherUserId,
+        username: 'otheruser-refresh',
+        passwordHash: await hashPassword('password'),
+      })
+
+      const otherProvider = context.providerConfigStore.create({
+        providerId: randomUUID(),
+        userId: otherUserId,
+        providerType: 'mock',
+        displayName: 'Other Mock',
+        enabled: true,
+      })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: `/api/v1/providers/${otherProvider.providerId}/models/refresh`,
+        headers: {
+          cookie: `agent-platform-session=${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+  })
 })
