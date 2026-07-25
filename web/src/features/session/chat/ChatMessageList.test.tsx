@@ -311,4 +311,41 @@ describe('ChatMessageList', () => {
     expect(screen.getByTestId('chat-welcome')).toBeInTheDocument()
     expect(screen.queryByTestId('tool-call-card')).not.toBeInTheDocument()
   })
+
+  it('renders error event as a system error bubble with Chinese prefix', () => {
+    const events: ConsoleTimelineEvent[] = [
+      makeEvent({
+        eventId: 'err-1',
+        eventType: 'error',
+        content: '[PROCESSING_ERROR] pipeline timeout',
+      }),
+    ]
+
+    renderList(events)
+
+    const errorBubble = screen.getByTestId('chat-message-error')
+    expect(errorBubble).toBeInTheDocument()
+    expect(errorBubble.textContent).toContain('系统')
+    expect(errorBubble.textContent).toContain('处理出错：')
+    expect(errorBubble.textContent).toContain('[PROCESSING_ERROR] pipeline timeout')
+  })
+
+  it('does not render thinking_summary in chat stream', () => {
+    const events: ConsoleTimelineEvent[] = [
+      makeEvent({
+        eventId: 'th-1',
+        eventType: 'thinking_summary',
+        content: 'internal reasoning',
+      }),
+      makeEvent({
+        eventId: 'u-1',
+        eventType: 'user_message',
+        content: 'hi',
+      }),
+    ]
+
+    renderList(events)
+    expect(screen.getByText('hi')).toBeInTheDocument()
+    expect(screen.queryByText('internal reasoning')).not.toBeInTheDocument()
+  })
 })

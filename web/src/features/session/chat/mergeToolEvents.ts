@@ -100,7 +100,11 @@ export function mergeToolEvents(events: readonly ConsoleTimelineEvent[]): ChatSt
   const results: IndexedEvent[] = []
 
   events.forEach((event, index) => {
-    if (event.eventType === 'user_message' || event.eventType === 'assistant_message') {
+    if (
+      event.eventType === 'user_message' ||
+      event.eventType === 'assistant_message' ||
+      event.eventType === 'error'
+    ) {
       messageIndexes.set(index, event)
       return
     }

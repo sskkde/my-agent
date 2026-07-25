@@ -505,20 +505,39 @@ describe('mergeToolEvents', () => {
       eventType: 'thinking_summary',
       content: 'thinking...',
     })
-    const error = makeEvent({
-      eventId: 'err',
-      eventType: 'error',
-      content: 'boom',
-    })
     const user = makeEvent({
       eventId: 'u',
       eventType: 'user_message',
       content: 'hi',
     })
 
-    const items = mergeToolEvents([thinking, error, user])
+    const items = mergeToolEvents([thinking, user])
     expect(items).toHaveLength(1)
     expect(items[0].kind).toBe('message')
     expect(items[0].key).toBe('u')
+  })
+
+  it('treats error events as message items', () => {
+    const user = makeEvent({
+      eventId: 'u',
+      eventType: 'user_message',
+      content: 'hi',
+      actor: 'user',
+    })
+    const error = makeEvent({
+      eventId: 'err',
+      eventType: 'error',
+      content: '[PROCESSING_ERROR] something went wrong',
+    })
+
+    const items = mergeToolEvents([user, error])
+
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatchObject({ kind: 'message', key: 'u' })
+    expect(items[1]).toMatchObject({ kind: 'message', key: 'err' })
+    if (items[1].kind === 'message') {
+      expect(items[1].event.eventType).toBe('error')
+      expect(items[1].event.content).toBe('[PROCESSING_ERROR] something went wrong')
+    }
   })
 })

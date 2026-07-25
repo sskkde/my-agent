@@ -3,7 +3,7 @@ import { MarkdownContent } from '../../../components/message/MarkdownContent'
 import { StreamingMarkdownContent } from '../../../components/message/StreamingMarkdownContent'
 
 export interface ChatMessageProps {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'error'
   content: string
   isStreaming?: boolean
   isPlaceholder?: boolean
@@ -17,8 +17,16 @@ const copyToClipboard = async (text: string): Promise<void> => {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, isStreaming = false, isPlaceholder = false }) => {
   const isAssistant = role === 'assistant'
-  const roleLabel = isAssistant ? 'Hana' : '你'
-  const avatar = isAssistant ? (
+  const isError = role === 'error'
+  const roleLabel = isError ? '系统' : isAssistant ? 'Hana' : '你'
+  const displayContent = isError ? `处理出错：${content}` : content
+  const avatar = isError ? (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ) : isAssistant ? (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
       <path d="M8 14s1.5 2 4 2 4-2 4-2" />
@@ -49,9 +57,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, isStreaming = 
               <span className="chat-typing__dot" />
             </div>
           ) : isStreaming ? (
-            <StreamingMarkdownContent text={content} isStreaming />
+            <StreamingMarkdownContent text={displayContent} isStreaming />
+          ) : isError ? (
+            <span className="chat-message__error-text">{displayContent}</span>
           ) : (
-            <MarkdownContent text={content} fullMarkdown />
+            <MarkdownContent text={displayContent} fullMarkdown />
           )}
         </div>
         {showActions && (

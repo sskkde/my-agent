@@ -13,8 +13,10 @@ export interface ChatMessageListProps {
   onRetryStream: () => void
 }
 
-const eventTypeToRole = (eventType?: string): 'user' | 'assistant' => {
-  return eventType === 'user_message' ? 'user' : 'assistant'
+const eventTypeToRole = (eventType?: string): 'user' | 'assistant' | 'error' => {
+  if (eventType === 'user_message') return 'user'
+  if (eventType === 'error') return 'error'
+  return 'assistant'
 }
 
 const isStreamingDraft = (event: ConsoleTimelineEvent): boolean =>
