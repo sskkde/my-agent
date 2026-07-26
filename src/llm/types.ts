@@ -79,6 +79,12 @@ export interface LLMResponse {
   usage?: TokenUsage
   finishReason: 'stop' | 'length' | 'tool_calls' | 'content_filter'
   createdAt: string
+  /**
+   * Provider reasoning text (e.g. DeepSeek `reasoning_content`), captured separately from `content`.
+   * SAFETY: MUST NOT be merged into `content` or any `channel: 'assistant'` payload.
+   * Display is opt-in only (user-facing `reasoningVisible` preference, default false).
+   */
+  reasoningContent?: string
 }
 
 /**
@@ -339,9 +345,14 @@ export type LLMFinishReason = LLMResponse['finishReason']
  * Raw provider stream event (provider layer, no providerId).
  * OpenAI-compatible tool_calls arrive as incremental tool_call_delta fragments
  * keyed by `index`; arguments are string fragments to concatenate.
+ *
+ * `kind: 'reasoning'` carries provider reasoning text (e.g. DeepSeek `reasoning_content`)
+ * separately from assistant `text`. SAFETY: reasoning MUST NOT be broadcast on the
+ * assistant channel or merged into assistant `content`.
  */
 export type ProviderStreamEvent =
   | { readonly kind: 'text'; readonly delta: string }
+  | { readonly kind: 'reasoning'; readonly delta: string }
   | {
       readonly kind: 'tool_call_delta'
       readonly index: number
@@ -354,10 +365,19 @@ export type ProviderStreamEvent =
 /**
  * Adapter-level stream chunk with provider identity.
  * Kernel consumes this shape to broadcast text tokens and aggregate tool calls.
+ *
+ * `kind: 'reasoning'` is broadcast on `channel: 'reasoning'` (opt-in UI only);
+ * it MUST NOT be aggregated into assistant `content`.
  */
 export type LLMStreamChunk =
   | {
       readonly kind: 'text'
+      readonly delta: string
+      readonly providerId: string
+      readonly model?: string
+    }
+  | {
+      readonly kind: 'reasoning'
       readonly delta: string
       readonly providerId: string
       readonly model?: string
@@ -395,6 +415,8 @@ export function toLLMStreamChunk(
   switch (event.kind) {
     case 'text':
       return { kind: 'text', delta: event.delta, providerId, model }
+    case 'reasoning':
+      return { kind: 'reasoning', delta: event.delta, providerId, model }
     case 'tool_call_delta':
       return {
         kind: 'tool_call_delta',

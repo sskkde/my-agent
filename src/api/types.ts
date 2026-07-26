@@ -200,7 +200,16 @@ export interface ApprovalDecisionResponse {
 // Console Timeline Types - Canonical API Contracts
 // =============================================================================
 
-/** SAFETY: thinking_summary contains ONLY summarized/public-safe content. Raw chain-of-thought MUST NOT be included. */
+/**
+ * SAFETY: `thinking_summary` carries provider reasoning text (e.g. DeepSeek
+ * `reasoning_content`) surfaced for opt-in display only. Allowed content:
+ *   - provider reasoning text when the user has enabled `reasoningVisible` (default false).
+ * Forbidden content (always):
+ *   - internal `decisionTrace` reasoning / route reasons,
+ *   - raw prompts / system messages,
+ *   - secrets, API keys, stack traces.
+ * Reasoning MUST NOT be mixed into `assistant_message` content.
+ */
 export type ConsoleTimelineEventType =
   | 'user_message'
   | 'assistant_message'
@@ -285,13 +294,23 @@ export interface ProcessingStatusPayload {
   error?: string
 }
 
-/** SAFETY: delta contains assistant-visible text only. Raw chain-of-thought MUST NOT be included. */
+/**
+ * SAFETY: `delta` content depends on `channel`:
+ *   - `channel === 'assistant' | undefined` (default): assistant-visible text only.
+ *     Raw chain-of-thought MUST NOT be included on this channel.
+ *   - `channel === 'reasoning'`: carries provider reasoning text (e.g. DeepSeek
+ *     `reasoning_content`) for opt-in UI display only. Consumers MUST gate display
+ *     behind `reasoningVisible` (default false) and MUST NOT merge this text into
+ *     `assistant_message` content or any `channel: 'assistant'` payload.
+ * Missing `channel` MUST be treated as `'assistant'` by consumers (back-compat).
+ */
 export interface TokenStreamPayload {
   sessionId: string
   attemptId: string
   messageId?: string
   sequence: number
   delta: string
+  channel?: 'assistant' | 'reasoning'
   accumulated?: string
   isFinal?: boolean
   timestamp: string

@@ -34,6 +34,10 @@ export class StreamResponseAggregator {
           this.contentParts.push(chunk.delta)
         }
         return
+      case 'reasoning':
+        // T3 will accumulate reasoning into a separate field + expose via toResponse.
+        // Until then, reasoning MUST NOT be merged into contentParts (assistant isolation).
+        return
       case 'tool_call_delta':
         this.applyToolCallDelta(chunk)
         return

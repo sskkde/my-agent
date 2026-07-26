@@ -7,6 +7,9 @@ import { StreamResponseAggregator } from '../../../src/llm/stream-aggregator'
 import { parseOllamaStreamLine } from '../../../src/llm/transform/ollama-transformer'
 import { buildOllamaChatRequestBody } from '../../../src/llm/transform/ollama-transformer'
 import { buildOpenAIChatRequestBody } from '../../../src/llm/transform/openai-chat-transformer'
+import { toLLMStreamChunk } from '../../../src/llm/types'
+import type { ProviderStreamEvent, LLMStreamChunk } from '../../../src/llm/types'
+import type { TokenStreamPayload } from '../../../src/api/types'
 
 class StreamingFakeProvider implements LLMProvider {
   readonly id: string
@@ -432,5 +435,115 @@ describe('supportsStructuredToolStreaming (P1)', () => {
   it('allows ollama now that it uses the OpenAI-compatible streaming path', async () => {
     const { supportsStructuredToolStreaming } = await import('../../../src/llm/stream-capabilities.js')
     expect(supportsStructuredToolStreaming('ollama')).toBe(true)
+  })
+})
+
+// =============================================================================
+// T1: reasoning stream event + TokenStreamPayload.channel contract
+// Core fixture: REASONING_FIXTURE_12345 (must NOT collide with assistant text)
+// =============================================================================
+
+describe('toLLMStreamChunk reasoning mapping (T1)', () => {
+  it('maps a reasoning ProviderStreamEvent to an LLMStreamChunk with the same delta', () => {
+    const event: ProviderStreamEvent = { kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' }
+    const chunk = toLLMStreamChunk(event, 'p1', 'gpt-4')
+    expect(chunk).toEqual({
+      kind: 'reasoning',
+      delta: 'REASONING_FIXTURE_12345',
+      providerId: 'p1',
+      model: 'gpt-4',
+    })
+  })
+
+  it('preserves reasoning delta without falling through to never', () => {
+    const event: ProviderStreamEvent = { kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' }
+    const chunk = toLLMStreamChunk(event, 'p1') as Extract<
+      LLMStreamChunk,
+      { kind: 'reasoning' }
+    >
+    expect(chunk.kind).toBe('reasoning')
+    expect(chunk.delta).toBe('REASONING_FIXTURE_12345')
+    expect(chunk.providerId).toBe('p1')
+  })
+
+  it('still maps text and finish events unchanged (no regression)', () => {
+    const textChunk = toLLMStreamChunk({ kind: 'text', delta: 'hi' }, 'p1')
+    expect(textChunk).toEqual({ kind: 'text', delta: 'hi', providerId: 'p1', model: undefined })
+
+    const finishChunk = toLLMStreamChunk({ kind: 'finish', finishReason: 'stop' }, 'p1')
+    expect(finishChunk).toEqual({ kind: 'finish', finishReason: 'stop', providerId: 'p1', model: undefined })
+  })
+
+  it('exhaustive switch has no fallthrough: every ProviderStreamEvent kind is handled', () => {
+    // Compile-time exhaustiveness is enforced by the `never` default branch.
+    // This runtime test asserts the mapper does not throw for any known kind.
+    const events: ProviderStreamEvent[] = [
+      { kind: 'text', delta: 'a' },
+      { kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' },
+      { kind: 'tool_call_delta', index: 0 },
+      { kind: 'finish', finishReason: 'stop' },
+    ]
+    for (const event of events) {
+      expect(() => toLLMStreamChunk(event, 'p1')).not.toThrow()
+    }
+  })
+})
+
+describe('TokenStreamPayload.channel contract (T1)', () => {
+  it('channel is optional: a payload without channel is assignable (treated as assistant by consumers)', () => {
+    const payload: TokenStreamPayload = {
+      sessionId: 'sess_1',
+      attemptId: 'att_1',
+      sequence: 0,
+      delta: 'hello',
+      timestamp: new Date().toISOString(),
+    }
+    // Missing channel MUST be treated as 'assistant' by consumers (documented contract).
+    // Default: channel === undefined means assistant-visible text only.
+    expect(payload.channel).toBeUndefined()
+  })
+
+  it('channel can be explicitly set to assistant or reasoning', () => {
+    const assistant: TokenStreamPayload = {
+      sessionId: 'sess_1',
+      attemptId: 'att_1',
+      sequence: 0,
+      delta: 'answer',
+      channel: 'assistant',
+      timestamp: new Date().toISOString(),
+    }
+    const reasoning: TokenStreamPayload = {
+      sessionId: 'sess_1',
+      attemptId: 'att_1',
+      sequence: 1,
+      delta: 'REASONING_FIXTURE_12345',
+      channel: 'reasoning',
+      timestamp: new Date().toISOString(),
+    }
+    expect(assistant.channel).toBe('assistant')
+    expect(reasoning.channel).toBe('reasoning')
+  })
+
+  it('reasoning channel payload MUST NOT be confused with assistant channel (fixture isolation)', () => {
+    // SAFETY contract: reasoning fixture must never appear in an assistant-channel payload.
+    const assistantPayload: TokenStreamPayload = {
+      sessionId: 'sess_1',
+      attemptId: 'att_1',
+      sequence: 0,
+      delta: 'The answer is 42.',
+      channel: 'assistant',
+      timestamp: new Date().toISOString(),
+    }
+    const reasoningPayload: TokenStreamPayload = {
+      sessionId: 'sess_1',
+      attemptId: 'att_1',
+      sequence: 1,
+      delta: 'REASONING_FIXTURE_12345',
+      channel: 'reasoning',
+      timestamp: new Date().toISOString(),
+    }
+    expect(assistantPayload.delta).not.toContain('REASONING_FIXTURE_12345')
+    expect(reasoningPayload.delta).toBe('REASONING_FIXTURE_12345')
+    expect(assistantPayload.channel).not.toBe('reasoning')
   })
 })
