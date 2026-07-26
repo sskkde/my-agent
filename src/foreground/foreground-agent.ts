@@ -128,9 +128,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       toolProjection,
       ...(skillProjection ? { skillProjection } : {}),
       model: resolvedModel,
-      ...(input.foregroundState.reasoningDepth
-        ? { reasoningDepth: input.foregroundState.reasoningDepth }
-        : {}),
+      ...(input.foregroundState.reasoningDepth ? { reasoningDepth: input.foregroundState.reasoningDepth } : {}),
       maxIterations: input.maxIterations ?? this.maxIterations,
       timeoutMs: input.timeoutMs ?? this.timeoutMs,
       ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
@@ -142,15 +140,11 @@ class ForegroundAgentImpl implements ForegroundAgent {
     return this.mapKernelResultToForegroundResult(kernelResult, input.turnId)
   }
 
-  private mapKernelResultToForegroundResult(
-    kernelResult: KernelRunResult,
-    turnId: string,
-  ): ForegroundTurnResult {
+  private mapKernelResultToForegroundResult(kernelResult: KernelRunResult, turnId: string): ForegroundTurnResult {
     if (kernelResult.finalStatus === 'completed') {
       const runtimeSummary = mapKernelResultToTranscript(kernelResult) ?? undefined
       const visibleMessages = mapKernelResultToVisibleMessages(kernelResult, turnId)
-      const toolCallSummaries =
-        runtimeSummary?.toolCallSummaries ?? buildToolCallSummaries(kernelResult) ?? undefined
+      const toolCallSummaries = runtimeSummary?.toolCallSummaries ?? buildToolCallSummaries(kernelResult) ?? undefined
       return {
         status: 'completed',
         finalResponse: kernelResult.finalResponse ?? '',
@@ -173,7 +167,15 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
     }
 
-    return mapKernelErrorToForegroundResult(kernelResult)
+    // Project partial visible messages from the kernel transcript so the
+    // persisted transcript includes streamed text/tools that ran before the
+    // hang/timeout. The error message is appended by persistTurnTranscript.
+    const failedResult = mapKernelErrorToForegroundResult(kernelResult)
+    const partialVisibleMessages = mapKernelResultToVisibleMessages(kernelResult, turnId)
+    if (partialVisibleMessages.length > 0) {
+      return { ...failedResult, visibleMessages: partialVisibleMessages }
+    }
+    return failedResult
   }
 
   private async buildForegroundSkillProjection(

@@ -36,7 +36,12 @@ import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-stor
 import type { SessionStore } from '../storage/session-store.js'
 import type { LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js'
 import type { SummaryManager } from '../memory/types.js'
-import type { ProcessingStatusPayload, TokenStreamPayload, ProcessingToolStatus, ExactContextUsage } from '../api/types.js'
+import type {
+  ProcessingStatusPayload,
+  TokenStreamPayload,
+  ProcessingToolStatus,
+  ExactContextUsage,
+} from '../api/types.js'
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js'
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js'
 import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js'
@@ -220,7 +225,7 @@ export function createOrchestrationProcessor(
             input.userId,
             input.sessionId,
             deps.stores,
-            (input.metadata?.tenantId as string | undefined),
+            input.metadata?.tenantId as string | undefined,
           )
 
           const agentConfig = deps.agentConfigStore?.getByUser(input.userId)
@@ -230,8 +235,7 @@ export function createOrchestrationProcessor(
           const resolvedModelInner =
             providerResolution?.type === 'success' ? (providerResolution.selectedModel ?? undefined) : undefined
 
-          const sessionReasoningDepth =
-            deps.sessionStore?.getById(input.sessionId)?.reasoningDepth
+          const sessionReasoningDepth = deps.sessionStore?.getById(input.sessionId)?.reasoningDepth
           const foregroundState = buildForegroundSessionState(
             hydratedSession,
             defaultPersonaId,
@@ -265,15 +269,15 @@ export function createOrchestrationProcessor(
             turnId: input.correlationId,
             message: input.text,
             timestamp: input.timestamp,
- 	            hydratedState: hydratedSession,
- 	            foregroundState,
- 	            agentConfig: agentConfig ?? undefined,
- 	            attachmentIds: input.attachmentIds,
- 	            workDirRoot: hydratedSession.activeWorkdir?.workDirRoot,
- 	            workDirId: hydratedSession.activeWorkdir?.workDirId,
- 	            workDirName: hydratedSession.activeWorkdir?.workDirName,
- 	            signal: abortController.signal,
- 	          }
+            hydratedState: hydratedSession,
+            foregroundState,
+            agentConfig: agentConfig ?? undefined,
+            attachmentIds: input.attachmentIds,
+            workDirRoot: hydratedSession.activeWorkdir?.workDirRoot,
+            workDirId: hydratedSession.activeWorkdir?.workDirId,
+            workDirName: hydratedSession.activeWorkdir?.workDirName,
+            signal: abortController.signal,
+          }
 
           if (!deps.foregroundAgent?.runTurn) {
             unregisterRunAbort(input.correlationId)
@@ -369,10 +373,7 @@ export function createOrchestrationProcessor(
               try {
                 deps.traceStore.endSpan(kernelSpanId, turnSucceeded ? 'completed' : 'failed', turnError)
                 deps.traceStore.endSpan(rootSpanId, turnSucceeded ? 'completed' : 'failed', turnError)
-                deps.traceStore.updateTraceStatus(
-                  input.correlationId,
-                  turnSucceeded ? 'completed' : 'failed',
-                )
+                deps.traceStore.updateTraceStatus(input.correlationId, turnSucceeded ? 'completed' : 'failed')
               } catch {
                 // best-effort: observability must not break message processing
               }
@@ -383,7 +384,12 @@ export function createOrchestrationProcessor(
                 input.correlationId,
                 'PROCESSING_ERROR',
                 turnResult.error?.message ?? 'Foreground turn failed',
-                turnResult.error?.code ? { foregroundErrorCode: turnResult.error.code } : undefined,
+                {
+                  foregroundErrorCode: turnResult.error?.code,
+                  ...(turnResult.visibleMessages && turnResult.visibleMessages.length > 0
+                    ? { visibleMessages: turnResult.visibleMessages }
+                    : {}),
+                },
               )
             } else {
               output = createSuccessOutput(input.correlationId, {
@@ -393,9 +399,7 @@ export function createOrchestrationProcessor(
                   reason: turnResult.decisionTrace?.reason,
                   runtimeSummary: turnResult.runtimeSummary,
                   kernelResult: turnResult.kernelResult,
-                  ...(turnResult.visibleMessages
-                    ? { visibleMessages: turnResult.visibleMessages }
-                    : {}),
+                  ...(turnResult.visibleMessages ? { visibleMessages: turnResult.visibleMessages } : {}),
                 },
               })
             }
@@ -423,7 +427,11 @@ export function createOrchestrationProcessor(
       }
 
       const kernelTokenUsage = output.success
-        ? (output.result?.data?.kernelResult as { tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number } } | undefined)?.tokenUsage
+        ? (
+            output.result?.data?.kernelResult as
+              | { tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number } }
+              | undefined
+          )?.tokenUsage
         : undefined
       const contextUsage: ExactContextUsage | null = kernelTokenUsage
         ? {
@@ -435,7 +443,16 @@ export function createOrchestrationProcessor(
 
       emitStatus(
         deps,
-        buildStatusPayload(input.sessionId, input.correlationId, 'persisting', resolvedProviderId, resolvedModel, [], undefined, contextUsage),
+        buildStatusPayload(
+          input.sessionId,
+          input.correlationId,
+          'persisting',
+          resolvedProviderId,
+          resolvedModel,
+          [],
+          undefined,
+          contextUsage,
+        ),
       )
 
       const persisted = persistTurnTranscript(input, output, deps.transcriptStore)
@@ -450,7 +467,16 @@ export function createOrchestrationProcessor(
 
       emitStatus(
         deps,
-        buildStatusPayload(input.sessionId, input.correlationId, 'completed', resolvedProviderId, resolvedModel, [], undefined, contextUsage),
+        buildStatusPayload(
+          input.sessionId,
+          input.correlationId,
+          'completed',
+          resolvedProviderId,
+          resolvedModel,
+          [],
+          undefined,
+          contextUsage,
+        ),
       )
 
       return output
@@ -666,9 +692,7 @@ function persistTurnTranscript(
         const lastAssistant = [...visibleMessages].reverse().find((m) => m.role === 'assistant')
         if (!lastAssistant || lastAssistant.content !== output.result.text) {
           // If last part is not assistant with same content, append final when missing entirely
-          const hasSameFinal = visibleMessages.some(
-            (m) => m.role === 'assistant' && m.content === output.result!.text,
-          )
+          const hasSameFinal = visibleMessages.some((m) => m.role === 'assistant' && m.content === output.result!.text)
           if (!hasSameFinal) {
             visibleMessages.push({
               messageId: `msg-${input.correlationId}-assistant-final`,
@@ -698,10 +722,21 @@ function persistTurnTranscript(
       })
     }
   } else if (!output.success && output.error) {
+    // Project partial visible messages from the kernel transcript (e.g.
+    // streamed assistant text + tool calls that ran before the hang/timeout)
+    // before appending the error message. The partials are stashed by the
+    // orchestration catch path in output.error.details.visibleMessages.
+    const partials = extractPartialVisibleMessages(output.error.details)
+    if (partials && partials.length > 0) {
+      for (const msg of partials) {
+        visibleMessages.push(copyVisibleMessage(msg))
+      }
+    }
+    const safeMessage = output.error.message?.trim() || 'Processing failed'
     visibleMessages.push({
       messageId: `msg-${input.correlationId}-error`,
       role: 'error',
-      content: `[${output.error.code}] ${output.error.message}`,
+      content: `[${output.error.code}] ${safeMessage}`,
     })
   }
 
@@ -712,9 +747,7 @@ function persistTurnTranscript(
       ? (output.result.data.runtimeSummary as TurnTranscript['runtimeSummary'])
       : undefined
 
-  const contentRefs = input.attachmentIds?.length
-    ? input.attachmentIds.map((id) => `attachment:${id}`)
-    : undefined
+  const contentRefs = input.attachmentIds?.length ? input.attachmentIds.map((id) => `attachment:${id}`) : undefined
 
   const transcript: TurnTranscript = {
     turnId: input.correlationId,
@@ -742,10 +775,25 @@ function persistTurnTranscript(
   }
 }
 
-
 function extractProjectedVisibleMessages(data: unknown): VisibleMessage[] | undefined {
   if (!data || typeof data !== 'object') return undefined
   const raw = (data as Record<string, unknown>).visibleMessages
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  const messages: VisibleMessage[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const msg = item as Record<string, unknown>
+    if (typeof msg.messageId !== 'string' || typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+      continue
+    }
+    messages.push(copyVisibleMessage(msg as unknown as VisibleMessage))
+  }
+  return messages.length > 0 ? messages : undefined
+}
+
+function extractPartialVisibleMessages(details: Record<string, unknown> | undefined): VisibleMessage[] | undefined {
+  if (!details) return undefined
+  const raw = details.visibleMessages
   if (!Array.isArray(raw) || raw.length === 0) return undefined
   const messages: VisibleMessage[] = []
   for (const item of raw) {

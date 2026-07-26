@@ -960,6 +960,146 @@ describe('ProcessorOrchestration', () => {
       expect(savedTranscript.output.visibleMessages[0].content).toContain('Foreground runner crashed')
     })
 
+    it('T4: persists partial visible messages + error when kernel hangs (timeout)', async () => {
+      const correlationId = 'corr-transcript-timeout-partial-001'
+      const partialAssistantText = 'Let me search for that...'
+      const partialToolContent = 'Tool completed: web_search'
+
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
+        status: 'failed',
+        finalResponse: 'The request took too long to process. Please try a simpler request.',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'Kernel execution failed: TIMEOUT',
+        },
+        error: {
+          code: 'TIMEOUT',
+          message: 'Kernel execution timed out',
+        },
+        visibleMessages: [
+          {
+            messageId: `msg-${correlationId}-seq-0`,
+            role: 'assistant',
+            content: partialAssistantText,
+            turnSequence: 0,
+          },
+          {
+            messageId: `msg-${correlationId}-tool-tc-1-result`,
+            role: 'tool',
+            content: partialToolContent,
+            turnSequence: 1,
+            toolCallId: 'tc-1',
+            toolName: 'web_search',
+            toolStatus: 'completed',
+          },
+        ],
+      } as ForegroundTurnResult)
+
+      const processor = createOrchestrationProcessor({ deps })
+      const input: MessageProcessorInput = {
+        correlationId,
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Search the web for something complex',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      }
+
+      const result = await processor(input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PROCESSING_ERROR')
+      expect(result.error?.message).toBe('Kernel execution timed out')
+      expect(result.error?.details).toHaveProperty('visibleMessages')
+      expect(result.error?.details?.foregroundErrorCode).toBe('TIMEOUT')
+
+      expect(mockTranscriptStore.saveTurn).toHaveBeenCalledTimes(1)
+      const savedTranscript = savedTranscripts[0]
+
+      // Partial visible messages projected BEFORE the error message.
+      expect(savedTranscript.output.visibleMessages.length).toBeGreaterThanOrEqual(3)
+      expect(savedTranscript.output.visibleMessages[0].role).toBe('assistant')
+      expect(savedTranscript.output.visibleMessages[0].content).toBe(partialAssistantText)
+      expect(savedTranscript.output.visibleMessages[1].role).toBe('tool')
+      expect(savedTranscript.output.visibleMessages[1].content).toBe(partialToolContent)
+
+      const errorMessages = savedTranscript.output.visibleMessages.filter((m) => m.role === 'error')
+      expect(errorMessages).toHaveLength(1)
+      expect(errorMessages[0].content).toContain('PROCESSING_ERROR')
+      expect(errorMessages[0].content).toContain('Kernel execution timed out')
+      expect(errorMessages[0].content.length).toBeGreaterThan(0)
+    })
+
+    it('T4: error message defaults to "Processing failed" when error.message is empty', async () => {
+      const correlationId = 'corr-transcript-empty-error-001'
+
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
+        status: 'failed',
+        finalResponse: '',
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'Empty error',
+        },
+        error: {
+          code: 'GENERIC_ERROR',
+          message: '',
+        },
+      } as ForegroundTurnResult)
+
+      const processor = createOrchestrationProcessor({ deps })
+      const input: MessageProcessorInput = {
+        correlationId,
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Trigger empty error',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      }
+
+      await processor(input)
+
+      const savedTranscript = savedTranscripts[0]
+      const errorMessages = savedTranscript.output.visibleMessages.filter((m) => m.role === 'error')
+      expect(errorMessages).toHaveLength(1)
+      expect(errorMessages[0].content).toBe('[PROCESSING_ERROR] Processing failed')
+      expect(errorMessages[0].content.length).toBeGreaterThan(0)
+    })
+
+    it('T4: TIMEOUT output from messageProcessor still persists non-empty error transcript', async () => {
+      const correlationId = 'corr-transcript-timeout-mp-001'
+
+      // Simulate the messageProcessor's timeout path: runTurn never resolves,
+      // the timeout promise wins the race. We model this by rejecting runTurn
+      // with the timeout message shape the message-processor would produce.
+      vi.mocked(mockForegroundAgent.runTurn!).mockRejectedValue(new Error('Processing timed out after 130 seconds'))
+
+      const processor = createOrchestrationProcessor({ deps })
+      const input: MessageProcessorInput = {
+        correlationId,
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Hang the kernel',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      }
+
+      const result = await processor(input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('PROCESSING_ERROR')
+      expect(result.error?.message).toBe('Processing timed out after 130 seconds')
+
+      expect(mockTranscriptStore.saveTurn).toHaveBeenCalledTimes(1)
+      const savedTranscript = savedTranscripts[0]
+      const errorMessages = savedTranscript.output.visibleMessages.filter((m) => m.role === 'error')
+      expect(errorMessages).toHaveLength(1)
+      expect(errorMessages[0].content.length).toBeGreaterThan(0)
+      expect(errorMessages[0].content).toContain('PROCESSING_ERROR')
+      expect(errorMessages[0].content).toContain('Processing timed out after 130 seconds')
+    })
+
     it('should persist transcript with system_status for non-answer_directly routes', async () => {
       const correlationId = 'corr-transcript-status-001'
 
