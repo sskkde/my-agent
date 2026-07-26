@@ -96,6 +96,53 @@ describe('Subagent Launch Tool', () => {
       expect(result.error?.recoverable).toBe(false)
     })
 
+    it('Subagent launch payload includes minimal parentContext', async () => {
+      const mockDispatchResult: DispatchResult = {
+        requestId: 'turn-1',
+        actionId: 'action-123',
+        status: 'completed',
+        targetRuntime: 'subagent_runtime',
+        createdAt: '2024-01-01T00:00:00Z',
+      }
+
+      const mockRuntimeDispatcher = {
+        dispatch: vi.fn().mockResolvedValue(mockDispatchResult),
+      } as unknown as RuntimeDispatcher
+
+      const deps: LaunchSubagentDeps = {
+        runtimeDispatcher: mockRuntimeDispatcher,
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
+        profileRegistry,
+      }
+
+      const input: LaunchSubagentInput = {
+        objective: 'Process the PDF document',
+        agentType: 'document_processor',
+      }
+
+      await handleLaunchSubagent(deps, input)
+
+      expect(mockRuntimeDispatcher.dispatch).toHaveBeenCalledTimes(1)
+      const dispatchArg = (mockRuntimeDispatcher.dispatch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const action = dispatchArg.action as { payload: Record<string, unknown> }
+      const payload = action.payload
+
+      expect(payload.parentContext).toBeDefined()
+      expect(payload.parentContext).toEqual(
+        expect.objectContaining({
+          bundleId: expect.stringContaining('bundle-turn-1'),
+          runId: 'turn-1',
+          userId: 'user-1',
+          agentType: 'main',
+          pinnedItems: [],
+          orderedItems: [],
+          tokenEstimate: 0,
+        }),
+      )
+    })
+
     it('Infers agent type when not provided', async () => {
       const mockDispatchResult: DispatchResult = {
         requestId: 'turn-1',

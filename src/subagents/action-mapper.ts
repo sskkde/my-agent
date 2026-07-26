@@ -113,6 +113,7 @@ export function buildLaunchSubagentAction(input: {
   taskSpec: SubagentTaskSpec
   userId: string
   sessionId?: string
+  parentContext?: unknown
   sourceRef?: SourceRef
 }): RuntimeAction {
   const actionId = generateId(ACTION_ID_PREFIX)
@@ -122,6 +123,7 @@ export function buildLaunchSubagentAction(input: {
     agentType: input.agentType,
     agentProfile: input.agentProfile,
     taskSpec: input.taskSpec,
+    parentContext: input.parentContext,
     sourceRef: input.sourceRef,
   }
 

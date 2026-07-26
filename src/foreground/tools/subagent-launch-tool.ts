@@ -9,6 +9,7 @@ import { createSuccessResult, createErrorResult } from './foreground-tool-result
 import { buildLaunchSubagentAction, inferSubagentType } from '../../subagents/action-mapper.js'
 import { normalizeAgentLabel, isKnownAgentLabel } from '../../taxonomy/agent-label-normalizer.js'
 import type { AgentProfileRegistry } from '../../taxonomy/agent-profile-registry.js'
+import type { ContextBundle } from '../../context/types.js'
 
 export const LAUNCH_SUBAGENT_TOOL_ID = 'foreground_launch_subagent'
 
@@ -69,6 +70,18 @@ export async function handleLaunchSubagent(
       agentType = inferred.agentType
     }
 
+    const parentContext: ContextBundle = {
+      bundleId: `bundle-${deps.turnId}`,
+      runId: deps.turnId,
+      agentId: 'foreground',
+      agentType: 'main',
+      userId: deps.userId,
+      invocationSource: 'gateway_intent',
+      pinnedItems: [],
+      orderedItems: [],
+      tokenEstimate: 0,
+    }
+
     const runtimeAction = buildLaunchSubagentAction({
       agentType,
       agentProfile,
@@ -79,6 +92,7 @@ export async function handleLaunchSubagent(
       },
       userId: deps.userId,
       sessionId: deps.sessionId,
+      parentContext,
       sourceRef: {
         sourceType: 'foreground_turn',
         turnId: deps.turnId,
