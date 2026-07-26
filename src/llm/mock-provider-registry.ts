@@ -7,6 +7,12 @@ export interface MockToolCallConfig {
 
 export interface MockResponseConfig {
   content: string
+  /**
+   * Optional provider reasoning text. When set, the mock stream emits
+   * `kind: 'reasoning'` chunks BEFORE text chunks. SAFETY: reasoning MUST
+   * never be merged into `content` / `kind: 'text'` (assistant isolation).
+   */
+  reasoningContent?: string
   toolCalls?: MockToolCallConfig[]
   finishReason?: 'stop' | 'length' | 'tool_calls' | 'content_filter'
   delayMs?: number

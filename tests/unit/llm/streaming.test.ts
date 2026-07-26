@@ -741,3 +741,95 @@ describe('mapOpenAIChatResponse reasoning_content (T2)', () => {
     expect(response.reasoningContent).toBeUndefined()
   })
 })
+
+// =============================================================================
+// T3: StreamResponseAggregator accumulates reasoning separately + exposes via toResponse
+// Core fixture: REASONING_FIXTURE_12345 (must NOT collide with assistant text)
+// SAFETY: reasoning MUST go only into reasoningContent — never content/contentParts
+// =============================================================================
+
+describe('StreamResponseAggregator reasoning accumulation (T3)', () => {
+  it('accumulates reasoning chunks into reasoningContent, separate from content', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345', providerId: 'p1' })
+    agg.apply({ kind: 'text', delta: 'The answer is 42.', providerId: 'p1' })
+    agg.apply({ kind: 'finish', finishReason: 'stop', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    // SAFETY: content is answer-only, never contains the reasoning fixture
+    expect(response.content).toBe('The answer is 42.')
+    expect(response.content).not.toContain('REASONING_FIXTURE_12345')
+    // reasoning is exposed via reasoningContent, separate field
+    expect(response.reasoningContent).toBe('REASONING_FIXTURE_12345')
+  })
+
+  it('accumulates fragmented reasoning deltas into a single reasoningContent string', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'reasoning', delta: 'REASONING_', providerId: 'p1' })
+    agg.apply({ kind: 'reasoning', delta: 'FIXTURE_', providerId: 'p1' })
+    agg.apply({ kind: 'reasoning', delta: '12345', providerId: 'p1' })
+    agg.apply({ kind: 'text', delta: 'Answer.', providerId: 'p1' })
+    agg.apply({ kind: 'finish', finishReason: 'stop', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    expect(response.reasoningContent).toBe('REASONING_FIXTURE_12345')
+    expect(response.content).toBe('Answer.')
+  })
+
+  it('leaves reasoningContent undefined when no reasoning chunks arrive (finish without reasoning)', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'text', delta: 'Just an answer.', providerId: 'p1' })
+    agg.apply({ kind: 'finish', finishReason: 'stop', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    expect(response.reasoningContent).toBeUndefined()
+    expect(response.content).toBe('Just an answer.')
+  })
+
+  it('exposes reasoningContent getter on the aggregator (separate from content getter)', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345', providerId: 'p1' })
+    agg.apply({ kind: 'text', delta: 'answer', providerId: 'p1' })
+    expect(agg.reasoningContent).toBe('REASONING_FIXTURE_12345')
+    expect(agg.content).toBe('answer')
+  })
+
+  it('reasoningContent is undefined on the aggregator when no reasoning chunks applied', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'text', delta: 'answer', providerId: 'p1' })
+    expect(agg.reasoningContent).toBeUndefined()
+  })
+
+  it('preserves tool_call aggregation alongside reasoning (no regression)', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345', providerId: 'p1' })
+    agg.apply({
+      kind: 'tool_call_delta',
+      index: 0,
+      id: 'call_1',
+      name: 'search',
+      argumentsDelta: '{"q":"x"}',
+      providerId: 'p1',
+    })
+    agg.apply({ kind: 'finish', finishReason: 'tool_calls', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    expect(response.reasoningContent).toBe('REASONING_FIXTURE_12345')
+    expect(response.toolCalls).toEqual([
+      {
+        id: 'call_1',
+        type: 'function',
+        function: { name: 'search', arguments: '{"q":"x"}' },
+      },
+    ])
+    expect(response.finishReason).toBe('tool_calls')
+  })
+
+  it('reasoning emitted before text in stream still separates correctly (order independence)', () => {
+    const agg = new StreamResponseAggregator()
+    // Reasoning first, then text — typical provider order
+    agg.apply({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345', providerId: 'p1' })
+    agg.apply({ kind: 'text', delta: 'Final answer.', providerId: 'p1' })
+    agg.apply({ kind: 'finish', finishReason: 'stop', providerId: 'p1' })
+    const response = agg.toResponse('gpt-4')
+    expect(response.reasoningContent).toBe('REASONING_FIXTURE_12345')
+    expect(response.content).toBe('Final answer.')
+    expect(response.content).not.toContain('REASONING_FIXTURE_12345')
+  })
+})

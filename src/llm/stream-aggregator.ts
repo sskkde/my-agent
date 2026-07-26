@@ -17,6 +17,7 @@ interface PartialToolCall {
  */
 export class StreamResponseAggregator {
   private readonly contentParts: string[] = []
+  private readonly reasoningParts: string[] = []
   private readonly toolCallsByIndex = new Map<number, PartialToolCall>()
   private finishReason: LLMFinishReason = 'stop'
   private providerId = 'unknown'
@@ -35,8 +36,11 @@ export class StreamResponseAggregator {
         }
         return
       case 'reasoning':
-        // T3 will accumulate reasoning into a separate field + expose via toResponse.
-        // Until then, reasoning MUST NOT be merged into contentParts (assistant isolation).
+        // SAFETY: reasoning is accumulated into a SEPARATE field — never contentParts.
+        // content/contentParts must remain strictly assistant-answer-only.
+        if (chunk.delta.length > 0) {
+          this.reasoningParts.push(chunk.delta)
+        }
         return
       case 'tool_call_delta':
         this.applyToolCallDelta(chunk)
@@ -69,6 +73,16 @@ export class StreamResponseAggregator {
 
   get content(): string {
     return this.contentParts.join('')
+  }
+
+  /**
+   * Accumulated provider reasoning text. SAFETY: kept strictly separate from
+   * `content` — reasoning MUST never merge into the assistant answer.
+   * Returns `undefined` when no reasoning chunks were applied (matches
+   * `LLMResponse.reasoningContent` semantics).
+   */
+  get reasoningContent(): string | undefined {
+    return this.reasoningParts.length > 0 ? this.reasoningParts.join('') : undefined
   }
 
   get hasContent(): boolean {
@@ -130,11 +144,14 @@ export class StreamResponseAggregator {
       finishReason = 'tool_calls'
     }
 
+    const reasoningContent = this.reasoningContent
+
     return {
       id: `stream-${Date.now()}`,
       model: this.model ?? requestModel,
       content: this.content,
       role: 'assistant',
+      ...(reasoningContent !== undefined ? { reasoningContent } : {}),
       ...(toolCalls ? { toolCalls } : {}),
       finishReason,
       createdAt: new Date().toISOString(),

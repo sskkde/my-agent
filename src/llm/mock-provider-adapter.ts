@@ -99,6 +99,16 @@ export class MockProvider implements LLMProvider {
     }
 
     const content = responseConfig.content ?? ''
+    const reasoningContent = responseConfig.reasoningContent
+    if (reasoningContent && reasoningContent.length > 0) {
+      const reasoningTokens = reasoningContent.split(/(\s+)/)
+      for (const token of reasoningTokens) {
+        if (token.length > 0) {
+          yield { kind: 'reasoning', delta: token }
+        }
+      }
+    }
+
     const tokens = content.split(/(\s+)/)
     for (const token of tokens) {
       if (token.length > 0) {

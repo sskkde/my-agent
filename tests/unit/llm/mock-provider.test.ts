@@ -313,3 +313,103 @@ describe('MockProviderRegistry clear/reset', () => {
     expect(stats.responseMode).toBe('queue')
   })
 })
+
+// =============================================================================
+// T3: MockProvider emits kind:'reasoning' chunks before text when configured
+// Core fixture: REASONING_FIXTURE_12345 (must NOT collide with assistant text)
+// SAFETY: reasoning chunks MUST be kind:'reasoning', never kind:'text'
+// =============================================================================
+
+describe('MockProvider reasoning stream (T3)', () => {
+  let provider: MockProvider
+
+  beforeEach(() => {
+    getMockProviderRegistry().reset()
+    provider = new MockProvider(buildProviderConfig('mock-reasoning'))
+  })
+
+  it('yields kind:reasoning chunks before kind:text when reasoningContent is configured', async () => {
+    const config: MockResponseConfig = {
+      content: 'The answer is 42.',
+      reasoningContent: 'REASONING_FIXTURE_12345',
+      finishReason: 'stop',
+    }
+    getMockProviderRegistry().setResponseQueue([config])
+
+    const kinds: string[] = []
+    const reasoningTokens: string[] = []
+    const textTokens: string[] = []
+    for await (const event of provider.stream(buildRequest())) {
+      kinds.push(event.kind)
+      if (event.kind === 'reasoning') reasoningTokens.push(event.delta)
+      else if (event.kind === 'text') textTokens.push(event.delta)
+    }
+
+    // Reasoning chunks must appear before any text chunk
+    const firstTextIdx = kinds.indexOf('text')
+    const lastReasoningIdx = kinds.lastIndexOf('reasoning')
+    expect(firstTextIdx).toBeGreaterThan(-1)
+    expect(lastReasoningIdx).toBeGreaterThan(-1)
+    expect(lastReasoningIdx).toBeLessThan(firstTextIdx)
+
+    // Reasoning reassembles to the fixture; text reassembles to the answer
+    expect(reasoningTokens.join('')).toBe('REASONING_FIXTURE_12345')
+    expect(textTokens.join('')).toBe('The answer is 42.')
+  })
+
+  it('yields no reasoning chunks when reasoningContent is not configured', async () => {
+    const config: MockResponseConfig = {
+      content: 'Just an answer.',
+      finishReason: 'stop',
+    }
+    getMockProviderRegistry().setResponseQueue([config])
+
+    const kinds: string[] = []
+    for await (const event of provider.stream(buildRequest())) {
+      kinds.push(event.kind)
+    }
+
+    expect(kinds).not.toContain('reasoning')
+    expect(kinds).toContain('text')
+    expect(kinds[kinds.length - 1]).toBe('finish')
+  })
+
+  it('reasoning chunks are kind:reasoning, never kind:text (fixture isolation)', async () => {
+    const config: MockResponseConfig = {
+      content: 'Answer.',
+      reasoningContent: 'REASONING_FIXTURE_12345',
+      finishReason: 'stop',
+    }
+    getMockProviderRegistry().setResponseQueue([config])
+
+    const textTokens: string[] = []
+    for await (const event of provider.stream(buildRequest())) {
+      if (event.kind === 'text') textTokens.push(event.delta)
+    }
+
+    // SAFETY: the reasoning fixture must never appear in a text chunk
+    expect(textTokens.join('')).toBe('Answer.')
+    expect(textTokens.join('')).not.toContain('REASONING_FIXTURE_12345')
+  })
+
+  it('preserves tool_call_delta emission alongside reasoning (no regression)', async () => {
+    const config: MockResponseConfig = {
+      content: '',
+      reasoningContent: 'REASONING_FIXTURE_12345',
+      toolCalls: [{ name: 'search', arguments: '{"q":"x"}' }],
+      finishReason: 'tool_calls',
+    }
+    getMockProviderRegistry().setResponseQueue([config])
+
+    const kinds: string[] = []
+    for await (const event of provider.stream(buildRequest())) {
+      kinds.push(event.kind)
+    }
+
+    expect(kinds).toContain('reasoning')
+    expect(kinds).toContain('tool_call_delta')
+    expect(kinds).toContain('finish')
+    // Reasoning must come before tool_call_delta
+    expect(kinds.indexOf('reasoning')).toBeLessThan(kinds.indexOf('tool_call_delta'))
+  })
+})
