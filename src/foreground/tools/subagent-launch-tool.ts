@@ -109,6 +109,17 @@ export async function handleLaunchSubagent(
       },
     })
 
+    if (dispatchResult.status !== 'completed') {
+      const errorMsg = dispatchResult.error?.message || 'Dispatch failed'
+      return createErrorResult(
+        dispatchResult.error?.code || 'DISPATCH_SUBAGENT_FAILED',
+        errorMsg,
+        true,
+        `Subagent dispatch failed: ${errorMsg}`,
+        { runtimeActionIds: [runtimeAction.actionId] },
+      )
+    }
+
     return createSuccessResult(
       {
         runtimeActionId: runtimeAction.actionId,

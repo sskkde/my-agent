@@ -175,6 +175,79 @@ describe('Subagent Launch Tool', () => {
       expect(result.data?.agentType).toBe('subagent')
       expect(result.data?.agentProfile).toBe('document_processor')
     })
+
+    it('Returns error result when dispatch status is failed — no "launched successfully"', async () => {
+      const mockDispatchResult: DispatchResult = {
+        requestId: 'turn-1',
+        actionId: 'action-123',
+        status: 'failed',
+        targetRuntime: 'subagent_runtime',
+        createdAt: '2024-01-01T00:00:00Z',
+        error: {
+          code: 'TARGET_RUNTIME_UNAVAILABLE',
+          message: 'Subagent runtime is not available',
+          recoverable: true,
+        },
+      }
+
+      const mockRuntimeDispatcher = {
+        dispatch: vi.fn().mockResolvedValue(mockDispatchResult),
+      } as unknown as RuntimeDispatcher
+
+      const deps: LaunchSubagentDeps = {
+        runtimeDispatcher: mockRuntimeDispatcher,
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
+        profileRegistry,
+      }
+
+      const input: LaunchSubagentInput = {
+        objective: 'Process the PDF document',
+        agentType: 'document_processor',
+      }
+
+      const result = await handleLaunchSubagent(deps, input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('TARGET_RUNTIME_UNAVAILABLE')
+      expect(result.error?.message).toBe('Subagent runtime is not available')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.userVisibleSummary).not.toContain('launched successfully')
+      expect(result.runtimeSummary?.runtimeActionIds).toHaveLength(1)
+    })
+
+    it('Returns success result when dispatch status is completed — summary mentions launch', async () => {
+      const mockDispatchResult: DispatchResult = {
+        requestId: 'turn-1',
+        actionId: 'action-123',
+        status: 'completed',
+        targetRuntime: 'subagent_runtime',
+        createdAt: '2024-01-01T00:00:00Z',
+      }
+
+      const mockRuntimeDispatcher = {
+        dispatch: vi.fn().mockResolvedValue(mockDispatchResult),
+      } as unknown as RuntimeDispatcher
+
+      const deps: LaunchSubagentDeps = {
+        runtimeDispatcher: mockRuntimeDispatcher,
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
+        profileRegistry,
+      }
+
+      const input: LaunchSubagentInput = {
+        objective: 'Process the PDF document',
+        agentType: 'document_processor',
+      }
+
+      const result = await handleLaunchSubagent(deps, input)
+
+      expect(result.success).toBe(true)
+      expect(result.userVisibleSummary).toContain('launched successfully')
+    })
   })
 })
 
