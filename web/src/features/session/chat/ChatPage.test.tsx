@@ -690,7 +690,7 @@ describe('ChatPage', () => {
 
 describe('ChatPage streaming draft finalization', () => {
   it('clears streaming draft when final assistant_message lacks attemptId', async () => {
-    let onEvent: ((event: ConsoleTimelineEvent) => void) | undefined
+    let onEvent: ((event: ConsoleTimelineEvent, source?: 'live' | 'historical') => void) | undefined
     let onToken: ((token: TokenStreamPayload) => void) | undefined
 
     vi.mocked(client.subscribeSessionTimeline).mockImplementation(
@@ -742,6 +742,120 @@ describe('ChatPage streaming draft finalization', () => {
     await waitFor(() => {
       expect(screen.getByText('First answer complete')).toBeInTheDocument()
       expect(screen.queryByText('First answer')).not.toBeInTheDocument()
+    })
+  })
+
+  it('does not clear streaming draft when historical snapshot replays without matching metadata', async () => {
+    let onEvent: ((event: ConsoleTimelineEvent, source?: 'live' | 'historical') => void) | undefined
+    let onToken: ((token: TokenStreamPayload) => void) | undefined
+
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, eventCb, _onError, _onStatus, tokenCb, onOpen) => {
+        onEvent = eventCb
+        onToken = tokenCb
+        onOpen?.()
+        return () => {}
+      },
+    )
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalled())
+    await waitFor(() => expect(onToken).toBeDefined())
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-historical-test',
+        sequence: 1,
+        delta: 'Streaming answer',
+        timestamp: '2024-01-01T00:00:01Z',
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Streaming answer')).toBeInTheDocument()
+    })
+
+    act(() => {
+      onEvent?.(
+        {
+          eventId: 'snapshot-final-1',
+          eventType: 'assistant_message',
+          sessionId: 'session-1',
+          timestamp: '2024-01-01T00:00:02Z',
+          content: 'Snapshot answer',
+          metadata: {},
+          actor: 'assistant',
+        },
+        'historical',
+      )
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Streaming answer')).toBeInTheDocument()
+    })
+  })
+
+  it('clears streaming draft when live final assistant_message matches the attemptId', async () => {
+    let onEvent: ((event: ConsoleTimelineEvent, source?: 'live' | 'historical') => void) | undefined
+    let onToken: ((token: TokenStreamPayload) => void) | undefined
+
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, eventCb, _onError, _onStatus, tokenCb, onOpen) => {
+        onEvent = eventCb
+        onToken = tokenCb
+        onOpen?.()
+        return () => {}
+      },
+    )
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalled())
+    await waitFor(() => expect(onToken).toBeDefined())
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-live-test',
+        sequence: 1,
+        delta: 'Streaming answer',
+        timestamp: '2024-01-01T00:00:01Z',
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Streaming answer')).toBeInTheDocument()
+    })
+
+    act(() => {
+      onEvent?.({
+        eventId: 'live-final-1',
+        eventType: 'assistant_message',
+        sessionId: 'session-1',
+        timestamp: '2024-01-01T00:00:02Z',
+        content: 'Final answer',
+        metadata: { attemptId: 'run-live-test' },
+        actor: 'assistant',
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Final answer')).toBeInTheDocument()
+      expect(screen.queryByText('Streaming answer')).not.toBeInTheDocument()
     })
   })
 })

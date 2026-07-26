@@ -23,6 +23,8 @@ import {
   sealStreamingDraftsForTool,
   appendStreamingToken,
   appendStreamingReasoningToken,
+  shouldClearDraftOnServerEvent,
+  clearDraftsForTerminalEvent,
   type AssistantPlaceholder,
   type StreamingDraft,
 } from '../session-utils'
@@ -384,6 +386,20 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         }
         return next.size === prev.size ? prev : next
       })
+      setStreamingDrafts((prev) => {
+        const next = new Map(prev)
+        for (const [id, draft] of next.entries()) {
+          if (draft.sessionId === sessionId) next.delete(id)
+        }
+        return next.size === prev.size ? prev : next
+      })
+      setStreamingReasoningDrafts((prev) => {
+        const next = new Map(prev)
+        for (const [id, draft] of next.entries()) {
+          if (draft.sessionId === sessionId) next.delete(id)
+        }
+        return next.size === prev.size ? prev : next
+      })
     },
     [updatePendingAssistantPlaceholders],
   )
@@ -473,7 +489,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   } = useSSEStream({
     mountedRef,
     selectedSessionIdRef,
-    onEvent: (event: ConsoleTimelineEvent) => {
+    onEvent: (event: ConsoleTimelineEvent, source: 'live' | 'historical' = 'live') => {
       setEvents((prev) => upsertTimelineEvent(prev, event))
       if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
         scheduleSessionRefresh()
@@ -490,11 +506,32 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         )
       }
       if (['assistant_message', 'error'].includes(event.eventType)) {
-        const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
-        const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
         // Final messages clear live drafts only when not a synthetic streaming card
         if (event.metadata?.streamingDraft !== true && event.metadata?.assistantPlaceholder !== true) {
-          clearAssistantActivity([attemptId, turnId], true)
+          if (shouldClearDraftOnServerEvent(event, source)) {
+            const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
+            const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+            updatePendingAssistantPlaceholders((prev) =>
+              clearStreamingActivityMaps(prev, [attemptId, turnId], {
+                clearOldestIfUnmatched: source === 'live',
+                sessionId: selectedSessionIdRef.current,
+              }),
+            )
+            setStreamingDrafts((prev) =>
+              clearDraftsForTerminalEvent(prev, event, {
+                allowOldestFallback: source === 'live',
+                sessionId: selectedSessionIdRef.current,
+                source,
+              }),
+            )
+            setStreamingReasoningDrafts((prev) =>
+              clearDraftsForTerminalEvent(prev, event, {
+                allowOldestFallback: source === 'live',
+                sessionId: selectedSessionIdRef.current,
+                source,
+              }),
+            )
+          }
         }
       }
     },

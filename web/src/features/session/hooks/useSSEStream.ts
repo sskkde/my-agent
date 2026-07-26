@@ -23,7 +23,7 @@ export interface UseSSEStreamReturn {
 export function useSSEStream(options: {
   mountedRef: React.MutableRefObject<boolean>
   selectedSessionIdRef: React.MutableRefObject<string | null>
-  onEvent: (event: ConsoleTimelineEvent) => void
+  onEvent: (event: ConsoleTimelineEvent, source?: 'live' | 'historical') => void
   onToken: (token: TokenStreamPayload) => void
 }): UseSSEStreamReturn {
   const { mountedRef, selectedSessionIdRef } = options
@@ -63,12 +63,12 @@ export function useSSEStream(options: {
 
       unsubscribeRef.current = api.subscribeSessionTimeline(
         sessionId,
-        (event) => {
+        (event, source) => {
           if (!mountedRef.current) return
           if (selectedSessionIdRef.current !== sessionId) return
 
           sseReconnectAttemptsRef.current = 0
-          onEventRef.current(event)
+          onEventRef.current(event, source ?? 'live')
         },
         () => {
           if (!mountedRef.current) return

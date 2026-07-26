@@ -432,7 +432,7 @@ export async function updateSettings(request: UpdateSettingsRequest): Promise<Se
   return parseResponse<SettingsResponse>(response)
 }
 
-export type SessionTimelineEventCallback = (event: ConsoleTimelineEvent) => void
+export type SessionTimelineEventCallback = (event: ConsoleTimelineEvent, source?: 'live' | 'historical') => void
 export type SessionTimelineErrorCallback = (error: Error) => void
 export type SessionTimelineStatusCallback = (status: ProcessingStatusPayload) => void
 export type SessionTimelineTokenCallback = (token: TokenStreamPayload) => void
@@ -475,11 +475,11 @@ export function subscribeSessionTimeline(
         switch (envelope.type) {
           case 'snapshot':
             for (const e of envelope.events) {
-              onEvent(e)
+              onEvent(e, 'historical')
             }
             break
           case 'timeline_event':
-            onEvent(envelope.event)
+            onEvent(envelope.event, 'live')
             break
           case 'processing_status':
             onStatus?.(envelope.status)

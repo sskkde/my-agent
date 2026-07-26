@@ -29,6 +29,8 @@ import {
   compareTimelineEventsForChat,
   sealStreamingDraftsForTool,
   appendStreamingToken,
+  shouldClearDraftOnServerEvent,
+  clearDraftsForTerminalEvent,
   type AssistantPlaceholder,
   type StreamingDraft,
 } from './session-utils'
@@ -251,7 +253,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
   }, [selectedSessionId, setSelectedSessionId, setActiveTab, auth, refreshSessions, refreshProviders])
 
   const handleSSEEvent = useCallback(
-    (event: ConsoleTimelineEvent) => {
+    (event: ConsoleTimelineEvent, source: 'live' | 'historical' = 'live') => {
       setEvents((prev) => upsertTimelineEvent(prev, event))
 
       if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
@@ -279,14 +281,28 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       }
 
       if (['assistant_message', 'error'].includes(event.eventType)) {
-        const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
-        const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
         if (event.metadata?.streamingDraft !== true && event.metadata?.assistantPlaceholder !== true) {
-          clearAssistantActivity([attemptId, turnId], true)
+          if (shouldClearDraftOnServerEvent(event, source)) {
+            const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
+            const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+            updatePendingAssistantPlaceholders((prev) =>
+              clearStreamingActivityMaps(prev, [attemptId, turnId], {
+                clearOldestIfUnmatched: source === 'live',
+                sessionId: selectedSessionIdRef.current,
+              }),
+            )
+            setStreamingDrafts((prev) =>
+              clearDraftsForTerminalEvent(prev, event, {
+                allowOldestFallback: source === 'live',
+                sessionId: selectedSessionIdRef.current,
+                source,
+              }),
+            )
+          }
         }
       }
     },
-    [scheduleSessionRefresh, refreshPendingApproval, clearAssistantActivity],
+    [scheduleSessionRefresh, refreshPendingApproval, selectedSessionIdRef, updatePendingAssistantPlaceholders],
   )
 
   const handleSSEToken = useCallback(

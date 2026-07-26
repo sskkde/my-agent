@@ -133,7 +133,7 @@ describe('useSSEStream', () => {
       eventCallback?.(event)
     })
 
-    expect(onEvent).toHaveBeenCalledWith(event)
+    expect(onEvent).toHaveBeenCalledWith(event, 'live')
   })
 
   it('calls onToken callback when token arrives', () => {
@@ -438,7 +438,7 @@ describe('useSSEStream', () => {
         eventCallback?.(event1)
       })
 
-      expect(onEvent).toHaveBeenCalledWith(event1)
+      expect(onEvent).toHaveBeenCalledWith(event1, 'live')
 
       act(() => {
         errorCallback?.(new Error('SSE disconnected'))
