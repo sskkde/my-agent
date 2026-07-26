@@ -252,6 +252,18 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
 
     if (!validateForm()) return
 
+    const modelsPayload =
+      availableModels.length > 0
+        ? availableModels.map((modelId) => ({
+            modelId,
+            capabilities: {
+              functionCalling: true,
+              streaming: true,
+              jsonMode: true,
+            },
+          }))
+        : undefined
+
     try {
       if (editingProvider) {
         // Update existing provider
@@ -260,6 +272,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
           baseUrl: formData.baseUrl || undefined,
           selectedModel: formData.selectedModel || undefined,
           enabled: editingProvider.enabled,
+          models: modelsPayload,
         }
 
         // Only include API key if user entered a new one
@@ -275,6 +288,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
           displayName: formData.displayName,
           baseUrl: formData.baseUrl || undefined,
           selectedModel: formData.selectedModel || undefined,
+          models: modelsPayload,
         }
 
         if (formData.apiKey.trim()) {
@@ -709,7 +723,9 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
                 />
                 {formErrors.apiKey && <span className="form-error">{formErrors.apiKey}</span>}
                 {editingProvider && <span className="form-hint">留空以保持当前密钥不变</span>}
-                {formData.providerType === 'ollama' && <span className="form-hint">Ollama 本地部署不需要 API Key</span>}
+                {formData.providerType === 'ollama' && (
+                  <span className="form-hint">本地 Ollama 无需 API Key；ollama.com 云端需要填写 API Key</span>
+                )}
                 {formData.providerType === 'custom' && (
                   <span className="form-hint">用于访问自定义 OpenAI 兼容接口的 Bearer API Key</span>
                 )}

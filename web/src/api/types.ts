@@ -543,12 +543,18 @@ export interface ProviderSummary {
   models?: Record<string, unknown>[] | null
 }
 
+export interface ProviderModelInput {
+  modelId: string
+  capabilities?: Record<string, boolean>
+}
+
 export interface CreateProviderRequest {
   providerType: ProviderType
   displayName?: string
   apiKey?: string
   baseUrl?: string
   selectedModel?: string
+  models?: Array<ProviderModelInput | string>
 }
 
 export interface UpdateProviderRequest {
@@ -557,6 +563,7 @@ export interface UpdateProviderRequest {
   baseUrl?: string
   selectedModel?: string
   enabled?: boolean
+  models?: Array<ProviderModelInput | string>
 }
 
 export interface TestProviderResponse {

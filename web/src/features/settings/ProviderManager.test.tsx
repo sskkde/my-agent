@@ -73,6 +73,16 @@ const typeApiKey = (value: string) => {
   fireEvent.change(input, { target: { value } })
 }
 
+const typeDisplayName = (value: string) => {
+  const input = screen.getByTestId('provider-display-name')
+  fireEvent.change(input, { target: { value } })
+}
+
+const submitForm = () => {
+  const submitBtn = screen.getByTestId('modal-submit')
+  fireEvent.click(submitBtn)
+}
+
 const advanceTimer = async (ms: number) => {
   await act(async () => {
     vi.advanceTimersByTime(ms)
@@ -244,5 +254,88 @@ describe('ProviderManager model dropdown', () => {
 
     const optionValues = Array.from(select.querySelectorAll('option')).map((o) => o.value)
     expect(optionValues).not.toContain('stale')
+  })
+
+  it('sends probed models in create payload', async () => {
+    mockProbeProviderModels.mockResolvedValue({
+      success: true,
+      latencyMs: 100,
+      models: ['m1', 'm2'],
+    })
+
+    renderWithAuth(<ProviderManager isAuthenticated />)
+    await openAddModal()
+
+    typeDisplayName('Probed Provider')
+    typeApiKey('sk-test')
+
+    await advanceTimer(500)
+
+    const select = screen.getByTestId('provider-model') as HTMLSelectElement
+    await waitFor(() => {
+      expect(select).toHaveValue('m1')
+    })
+
+    submitForm()
+
+    await waitFor(() => {
+      expect(mockCreateProvider).toHaveBeenCalledTimes(1)
+    })
+
+    expect(mockCreateProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerType: 'openai',
+        displayName: 'Probed Provider',
+        apiKey: 'sk-test',
+        selectedModel: 'm1',
+        models: [
+          { modelId: 'm1', capabilities: { functionCalling: true, streaming: true, jsonMode: true } },
+          { modelId: 'm2', capabilities: { functionCalling: true, streaming: true, jsonMode: true } },
+        ],
+      })
+    )
+  })
+
+  it('allows creating Ollama provider without API Key when baseUrl is set', async () => {
+    mockProbeProviderModels.mockResolvedValue({
+      success: true,
+      latencyMs: 100,
+      models: ['llama3'],
+    })
+
+    renderWithAuth(<ProviderManager isAuthenticated />)
+    await openAddModal()
+
+    const typeSelect = screen.getByTestId('provider-type-select')
+    fireEvent.change(typeSelect, { target: { value: 'ollama' } })
+
+    typeDisplayName('Local Ollama')
+
+    const baseUrlInput = screen.getByTestId('provider-base-url')
+    fireEvent.change(baseUrlInput, { target: { value: 'http://localhost:11434' } })
+
+    await advanceTimer(500)
+
+    const select = screen.getByTestId('provider-model') as HTMLSelectElement
+    await waitFor(() => {
+      expect(select).toHaveValue('llama3')
+    })
+
+    submitForm()
+
+    await waitFor(() => {
+      expect(mockCreateProvider).toHaveBeenCalledTimes(1)
+    })
+
+    expect(mockCreateProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerType: 'ollama',
+        displayName: 'Local Ollama',
+        baseUrl: 'http://localhost:11434',
+        selectedModel: 'llama3',
+        models: [{ modelId: 'llama3', capabilities: { functionCalling: true, streaming: true, jsonMode: true } }],
+      })
+    )
+    expect(mockCreateProvider).toHaveBeenCalledWith(expect.not.objectContaining({ apiKey: expect.anything() }))
   })
 })
