@@ -7,6 +7,9 @@ import * as client from '../../../api/client'
 import { SELECTED_SESSION_KEY } from '../session-constants'
 import type { ConsoleTimelineEvent, ProcessingStatusPayload, TokenStreamPayload } from '../../../api/types'
 
+const REASONING_FIXTURE_12345 = 'REASONING_FIXTURE_12345'
+const PREFS_KEY = 'agent-platform.console.commandPrefs'
+
 vi.mock('../../../api/client')
 
 describe('ChatPage', () => {
@@ -740,5 +743,172 @@ describe('ChatPage streaming draft finalization', () => {
       expect(screen.getByText('First answer complete')).toBeInTheDocument()
       expect(screen.queryByText('First answer')).not.toBeInTheDocument()
     })
+  })
+})
+
+describe('ChatPage reasoning visibility (T9)', () => {
+  const thinkingSummaryEvent: ConsoleTimelineEvent = {
+    eventId: 'thinking-1',
+    eventType: 'thinking_summary',
+    sessionId: 'session-1',
+    timestamp: '2024-01-01T00:00:02Z',
+    content: REASONING_FIXTURE_12345,
+    actor: 'assistant',
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+    vi.mocked(client.getSessionTimeline).mockResolvedValue({ events: [thinkingSummaryEvent], total: 1 })
+  })
+
+  it('hides persisted thinking_summary when reasoningVisible is false', async () => {
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-message-list')
+
+    expect(screen.queryByTestId('chat-reasoning-block')).not.toBeInTheDocument()
+    expect(screen.queryByText(REASONING_FIXTURE_12345)).not.toBeInTheDocument()
+  })
+
+  it('shows persisted thinking_summary when reasoningVisible is true', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ reasoningVisible: true }))
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await screen.findByTestId('chat-reasoning-block')
+    expect(screen.getByTestId('chat-reasoning-block')).toBeInTheDocument()
+  })
+
+  it('does not merge reasoning channel tokens into assistant draft content', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ reasoningVisible: true }))
+    vi.mocked(client.getSessionTimeline).mockResolvedValue({ events: [], total: 0 })
+    let onToken: ((token: TokenStreamPayload) => void) | undefined
+
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, _eventCb, _onError, _onStatus, tokenCb, onOpen) => {
+        onToken = tokenCb
+        onOpen?.()
+        return () => {}
+      },
+    )
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalled())
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-1',
+        sequence: 1,
+        delta: 'Hello ',
+        channel: 'assistant',
+        timestamp: '2024-01-01T00:00:01Z',
+      })
+    })
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-1',
+        sequence: 2,
+        delta: REASONING_FIXTURE_12345,
+        channel: 'reasoning',
+        timestamp: '2024-01-01T00:00:02Z',
+      })
+    })
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-1',
+        sequence: 3,
+        delta: 'world',
+        channel: 'assistant',
+        timestamp: '2024-01-01T00:00:03Z',
+      })
+    })
+
+    await waitFor(() => {
+      const assistantMessage = screen.getByTestId('chat-message-assistant')
+      expect(assistantMessage.textContent).toContain('Hello world')
+      expect(assistantMessage.textContent).not.toContain(REASONING_FIXTURE_12345)
+    })
+
+    const reasoningBlock = screen.getByTestId('chat-reasoning-block')
+    expect(reasoningBlock).toBeInTheDocument()
+    fireEvent.click(reasoningBlock.querySelector('button')!)
+    await waitFor(() => {
+      expect(screen.getByText(REASONING_FIXTURE_12345)).toBeInTheDocument()
+    })
+  })
+
+  it('treats missing channel as assistant and ignores reasoning channel when reasoningVisible is false', async () => {
+    let onToken: ((token: TokenStreamPayload) => void) | undefined
+
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, _eventCb, _onError, _onStatus, tokenCb, onOpen) => {
+        onToken = tokenCb
+        onOpen?.()
+        return () => {}
+      },
+    )
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalled())
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-1',
+        sequence: 1,
+        delta: 'assistant text',
+        timestamp: '2024-01-01T00:00:01Z',
+      })
+    })
+
+    act(() => {
+      onToken?.({
+        sessionId: 'session-1',
+        attemptId: 'run-1',
+        sequence: 2,
+        delta: REASONING_FIXTURE_12345,
+        channel: 'reasoning',
+        timestamp: '2024-01-01T00:00:02Z',
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('assistant text')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId('chat-reasoning-block')).not.toBeInTheDocument()
+    expect(screen.queryByText(REASONING_FIXTURE_12345)).not.toBeInTheDocument()
   })
 })

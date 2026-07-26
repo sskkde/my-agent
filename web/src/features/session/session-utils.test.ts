@@ -13,6 +13,9 @@ import {
   isLocalMessageConfirmed,
   hasAssistantOrErrorReplyAfter,
   formatDate,
+  appendStreamingToken,
+  appendStreamingReasoningToken,
+  clearStreamingDraftsByAttemptIds,
 } from './session-utils'
 import {
   LOCAL_USER_MESSAGE_PREFIX,
@@ -460,5 +463,99 @@ describe('formatDate', () => {
 
     expect(typeof formatted).toBe('string')
     expect(formatted.length).toBeGreaterThan(0)
+  })
+})
+
+const REASONING_FIXTURE_12345 = 'REASONING_FIXTURE_12345'
+
+describe('appendStreamingToken', () => {
+  it('ignores tokens on the reasoning channel', () => {
+    const prev = new Map()
+    const next = appendStreamingToken(
+      prev,
+      {
+        attemptId: 'run-1',
+        sessionId: 'ses-1',
+        sequence: 1,
+        delta: REASONING_FIXTURE_12345,
+        channel: 'reasoning',
+      },
+      Date.now(),
+    )
+
+    expect(next).toBe(prev)
+    expect(next.size).toBe(0)
+  })
+
+  it('appends tokens with missing channel as assistant content', () => {
+    const next = appendStreamingToken(
+      new Map(),
+      {
+        attemptId: 'run-1',
+        sessionId: 'ses-1',
+        sequence: 1,
+        delta: 'hello',
+      },
+      Date.now(),
+    )
+
+    expect(next.size).toBe(1)
+    const draft = next.get('run-1#0')
+    expect(draft).toBeDefined()
+    expect(draft?.content).toBe('hello')
+  })
+})
+
+describe('appendStreamingReasoningToken', () => {
+  it('accumulates reasoning deltas under attemptId#reasoning', () => {
+    let drafts = new Map()
+    drafts = appendStreamingReasoningToken(
+      drafts,
+      { attemptId: 'run-1', sessionId: 'ses-1', sequence: 1, delta: 'step 1 ' },
+      Date.now(),
+    )
+    drafts = appendStreamingReasoningToken(
+      drafts,
+      { attemptId: 'run-1', sessionId: 'ses-1', sequence: 2, delta: 'step 2' },
+      Date.now(),
+    )
+
+    expect(drafts.size).toBe(1)
+    const draft = drafts.get('run-1#reasoning')
+    expect(draft).toBeDefined()
+    expect(draft?.content).toBe('step 1 step 2')
+    expect(draft?.attemptId).toBe('run-1')
+    expect(draft?.sessionId).toBe('ses-1')
+    expect(draft?.sealed).toBe(false)
+  })
+
+  it('keeps separate drafts per attempt', () => {
+    let drafts = new Map()
+    drafts = appendStreamingReasoningToken(
+      drafts,
+      { attemptId: 'run-1', sessionId: 'ses-1', sequence: 1, delta: 'a' },
+      Date.now(),
+    )
+    drafts = appendStreamingReasoningToken(
+      drafts,
+      { attemptId: 'run-2', sessionId: 'ses-1', sequence: 1, delta: 'b' },
+      Date.now(),
+    )
+
+    expect(drafts.get('run-1#reasoning')?.content).toBe('a')
+    expect(drafts.get('run-2#reasoning')?.content).toBe('b')
+  })
+})
+
+describe('clearStreamingDraftsByAttemptIds', () => {
+  it('clears reasoning drafts keyed by attemptId#reasoning', () => {
+    let drafts = appendStreamingReasoningToken(
+      new Map(),
+      { attemptId: 'run-1', sessionId: 'ses-1', sequence: 1, delta: REASONING_FIXTURE_12345 },
+      Date.now(),
+    )
+    drafts = clearStreamingDraftsByAttemptIds(drafts, ['run-1'])
+
+    expect(drafts.size).toBe(0)
   })
 })

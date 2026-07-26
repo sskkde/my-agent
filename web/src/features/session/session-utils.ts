@@ -247,9 +247,14 @@ export function appendStreamingToken(
     sessionId: string
     sequence: number
     delta: string
+    channel?: 'assistant' | 'reasoning'
   },
   placeholderTimestamp?: number,
 ): Map<string, StreamingDraft> {
+  if (token.channel === 'reasoning') {
+    return prev
+  }
+
   const entries = listDraftEntriesForAttempt(prev, token.attemptId)
   const latest = entries.length > 0 ? entries[entries.length - 1] : undefined
 
@@ -283,6 +288,38 @@ export function appendStreamingToken(
     sequence: token.sequence,
     timestamp: segment === 0 ? (placeholderTimestamp ?? now) : Math.max(now, minTs),
     segment,
+    sealed: false,
+  })
+  return next
+}
+
+/**
+ * Append a reasoning-channel token delta to a dedicated reasoning draft for this attempt.
+ * Reasoning drafts are keyed by `attemptId#reasoning` and never interleave with assistant
+ * draft segments.
+ */
+export function appendStreamingReasoningToken(
+  prev: Map<string, StreamingDraft>,
+  token: {
+    attemptId: string
+    sessionId: string
+    sequence: number
+    delta: string
+  },
+  placeholderTimestamp?: number,
+): Map<string, StreamingDraft> {
+  const key = `${token.attemptId}#reasoning`
+  const existing = prev.get(key)
+  const timestamp = existing?.timestamp ?? placeholderTimestamp ?? Date.now()
+  const content = (existing?.content ?? '') + token.delta
+  const next = new Map(prev)
+  next.set(key, {
+    sessionId: token.sessionId,
+    attemptId: token.attemptId,
+    content,
+    sequence: token.sequence,
+    timestamp,
+    segment: 0,
     sealed: false,
   })
   return next
