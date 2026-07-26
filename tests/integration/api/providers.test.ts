@@ -263,8 +263,8 @@ describe('Provider API Integration', () => {
       const body = JSON.parse(response.body)
       expect(body.data.providerType).toBe('ollama')
       expect(body.data.baseUrl).toBe('http://localhost:11434')
-      expect(body.data.family).toBe('ollama')
-      expect(body.data.protocol).toBe('ollama_chat')
+      expect(body.data.family).toBe('openai_compatible')
+      expect(body.data.protocol).toBe('openai_chat')
     })
 
     it('should create provider with runtime metadata without leaking header values', async () => {
@@ -683,6 +683,77 @@ describe('Provider API Integration', () => {
       expect(response.statusCode).toBe(400)
       const body = JSON.parse(response.body)
       expect(body.error.code).toBe('BASE_URL_REQUIRED')
+    })
+
+    it('should best-effort discover models at create time for mock provider (jsonMode:true)', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: { providerType: 'mock', displayName: 'Mock Discover On Create' },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(Array.isArray(body.data.models)).toBe(true)
+      expect(body.data.models.length).toBeGreaterThan(0)
+      expect(body.data.models[0]).toMatchObject({
+        modelId: 'mock-model',
+        capabilities: { functionCalling: true, streaming: true, jsonMode: true },
+      })
+
+      const getResponse = await server.inject({
+        method: 'GET',
+        url: `/api/v1/providers/${body.data.providerId}`,
+        headers: { cookie: `agent-platform-session=${authToken}` },
+      })
+      const getBody = JSON.parse(getResponse.body)
+      expect(getBody.data.models).toEqual([
+        { modelId: 'mock-model', capabilities: { functionCalling: true, streaming: true, jsonMode: true } },
+      ])
+    })
+
+    it('should still return 201 with empty models when remote probe fails (unreachable host)', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: {
+          providerType: 'ollama',
+          displayName: 'Unreachable Ollama',
+          baseUrl: 'http://127.0.0.1:1',
+        },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      expect(body.data.providerType).toBe('ollama')
+      expect(body.data.models ?? []).toEqual([])
+    })
+
+    it('should prefer client-provided models over remote discovery', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/providers',
+        headers: { cookie: `agent-platform-session=${authToken}` },
+        payload: {
+          providerType: 'mock',
+          displayName: 'Mock Client Models',
+          models: ['custom-a', 'custom-b'],
+        },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = JSON.parse(response.body)
+      const modelIds = body.data.models.map((m: { modelId: string }) => m.modelId)
+      expect(modelIds).toEqual(['custom-a', 'custom-b'])
+      // Should NOT contain the discovered mock-model
+      expect(modelIds).not.toContain('mock-model')
+      // Normalized entries should carry default capabilities including jsonMode
+      expect(body.data.models[0]).toMatchObject({
+        modelId: 'custom-a',
+        capabilities: { functionCalling: true, streaming: true, jsonMode: true },
+      })
     })
   })
 
@@ -1235,7 +1306,7 @@ describe('Provider API Integration', () => {
       const persisted = context.providerConfigStore.getById(provider.providerId)
       expect(persisted).not.toBeNull()
       expect(persisted?.models).toEqual([
-        { modelId: 'mock-model', capabilities: { functionCalling: true, streaming: true } },
+        { modelId: 'mock-model', capabilities: { functionCalling: true, streaming: true, jsonMode: true } },
       ])
       expect(persisted?.selectedModel).toBe('mock-model')
     })
@@ -1365,7 +1436,7 @@ describe('Provider API Integration', () => {
       const persisted = context.providerConfigStore.getById(provider.providerId)
       expect(persisted).not.toBeNull()
       expect(persisted?.models).toEqual([
-        { modelId: 'mock-model', capabilities: { functionCalling: true, streaming: true } },
+        { modelId: 'mock-model', capabilities: { functionCalling: true, streaming: true, jsonMode: true } },
       ])
     })
 

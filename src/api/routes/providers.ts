@@ -96,8 +96,50 @@ async function testProviderConnection(
 function buildDiscoveredModels(models: string[]): Record<string, unknown>[] {
   return models.map((modelId) => ({
     modelId,
-    capabilities: { functionCalling: true, streaming: true },
+    capabilities: { functionCalling: true, streaming: true, jsonMode: true },
   }))
+}
+
+const DEFAULT_DISCOVERED_CAPABILITIES = {
+  functionCalling: true,
+  streaming: true,
+  jsonMode: true,
+} as const
+
+/**
+ * Normalize client-provided `models` entries from the POST body.
+ *
+ * Accepts either:
+ *   - a string → `{ modelId: <string>, capabilities: { ...DEFAULT_DISCOVERED_CAPABILITIES } }`
+ *   - an object with `modelId` → keep, merge default capabilities when missing
+ *
+ * Entries without a usable `modelId` are dropped.
+ */
+function normalizeClientModels(models: unknown[]): Record<string, unknown>[] {
+  const normalized: Record<string, unknown>[] = []
+  for (const entry of models) {
+    if (typeof entry === 'string') {
+      const trimmed = entry.trim()
+      if (trimmed.length === 0) continue
+      normalized.push({
+        modelId: trimmed,
+        capabilities: { ...DEFAULT_DISCOVERED_CAPABILITIES },
+      })
+      continue
+    }
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      const obj = entry as Record<string, unknown>
+      const modelId = obj.modelId
+      if (typeof modelId !== 'string' || modelId.trim().length === 0) continue
+      const existingCaps = obj.capabilities
+      const capabilities =
+        existingCaps && typeof existingCaps === 'object' && !Array.isArray(existingCaps)
+          ? { ...DEFAULT_DISCOVERED_CAPABILITIES, ...(existingCaps as Record<string, unknown>) }
+          : { ...DEFAULT_DISCOVERED_CAPABILITIES }
+      normalized.push({ ...obj, modelId: modelId.trim(), capabilities })
+    }
+  }
+  return normalized
 }
 
 function persistDiscoveredModels(
@@ -341,7 +383,42 @@ export function registerProviderRoutes(server: FastifyInstance, context: ApiCont
         })
         context.refreshProvidersForUser(userId)
 
-        const summary = sanitizeProviderForResponse(provider)
+        // Best-effort model discovery at create time.
+        // - If the client supplied a non-empty `models` array, normalize and
+        //   persist it as-is (client list preferred over discovery).
+        // - Otherwise, probe the remote endpoint; on success persist the
+        //   discovered models. On any failure, leave models empty and still
+        //   return 201.
+        let modelsDiscovered = false
+        const clientModels = Array.isArray(models) && models.length > 0 ? normalizeClientModels(models) : []
+        if (clientModels.length > 0) {
+          providerConfigStore.update(providerId, { models: clientModels })
+          modelsDiscovered = true
+        } else {
+          try {
+            const result = await fetchRemoteProviderModels({
+              providerType,
+              apiKey: apiKey ?? null,
+              baseUrl: finalBaseUrl ?? null,
+            })
+            if (result.success && result.models.length > 0) {
+              const existing = providerConfigStore.getById(providerId)
+              if (existing) {
+                persistDiscoveredModels(providerConfigStore, providerId, existing, result.models)
+                modelsDiscovered = true
+              }
+            }
+          } catch {
+            // Best-effort: ignore probe errors; create still succeeds.
+          }
+        }
+
+        if (modelsDiscovered) {
+          context.refreshProvidersForUser(userId)
+        }
+
+        const finalProvider = modelsDiscovered ? providerConfigStore.getById(providerId) : provider
+        const summary = sanitizeProviderForResponse(finalProvider ?? provider)
         return reply.code(201).send(success(summary, request.requestId))
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to create provider'
