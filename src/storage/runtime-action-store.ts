@@ -72,6 +72,13 @@ export interface RuntimeActionStore {
     statusMessage?: string,
     result?: Record<string, unknown>,
   ): void
+  /**
+   * List actions in a given status whose `updated_at` is older than the
+   * supplied threshold timestamp. Used by the stale-run recovery helper to
+   * find actions stuck in `dispatching` (or other in-flight states) past
+   * their expected timeout window.
+   */
+  listStaleByStatus(status: RuntimeActionState, olderThanIso: string): RuntimeAction[]
 }
 
 interface RuntimeActionRow {
@@ -285,6 +292,12 @@ class RuntimeActionStoreImpl implements RuntimeActionStore {
     if (checkResult[0]?.count === 0) {
       throw new Error('Action not found')
     }
+  }
+
+  listStaleByStatus(status: RuntimeActionState, olderThanIso: string): RuntimeAction[] {
+    const sql = 'SELECT * FROM runtime_actions WHERE status = ? AND updated_at < ? ORDER BY updated_at ASC'
+    const rows = this.connection.query<RuntimeActionRow>(sql, [status, olderThanIso])
+    return rows.map((row) => rowToRuntimeAction(row))
   }
 }
 

@@ -31,6 +31,7 @@ function createMockRuntimeActionStore(): RuntimeActionStore {
       }
     },
     query: () => [],
+    listStaleByStatus: () => [],
   }
 }
 

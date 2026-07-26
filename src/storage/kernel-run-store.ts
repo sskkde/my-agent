@@ -1,5 +1,5 @@
 import type { ConnectionManager } from './connection.js'
-import type { KernelRunState } from '../shared/states.js'
+import { KERNEL_RUN_STATES, type KernelRunState } from '../shared/states.js'
 
 export interface KernelRun {
   runId: string
@@ -30,6 +30,18 @@ export interface KernelRunStore {
   getByParentRunId(parentRunId: string): KernelRun[]
   getByRootRunId(rootRunId: string): KernelRun[]
   getByInvocationSource(source: string): KernelRun[]
+  /**
+   * List runs in any of the supplied non-terminal states whose `updated_at`
+   * is older than the supplied threshold timestamp. Used by the stale-run
+   * recovery helper to find kernel runs stuck in `initializing` (or other
+   * non-terminal states) past the message processor timeout window.
+   */
+  listStaleInStates(states: KernelRunState[], olderThanIso: string): KernelRun[]
+  /**
+   * Atomically set a run's status to FAILED and persist a final result note.
+   * Used by the stale-run recovery helper to mark stuck runs.
+   */
+  markFailedWithResult(runId: string, finalResult: unknown): void
 }
 
 class KernelRunStoreImpl implements KernelRunStore {
@@ -238,6 +250,41 @@ class KernelRunStoreImpl implements KernelRunStore {
     }>(`SELECT * FROM kernel_runs WHERE invocation_source = ? ORDER BY created_at DESC`, [source])
 
     return results.map((r) => this.mapRowToKernelRun(r))
+  }
+
+  listStaleInStates(states: KernelRunState[], olderThanIso: string): KernelRun[] {
+    if (states.length === 0) return []
+    const placeholders = states.map(() => '?').join(', ')
+    const sql = `SELECT * FROM kernel_runs WHERE status IN (${placeholders}) AND updated_at < ? ORDER BY updated_at ASC`
+    const params: (string | null)[] = [...states, olderThanIso]
+    const results = this.connection.query<{
+      run_id: string
+      session_id: string | null
+      agent_id: string
+      invocation_source: string
+      status: string
+      checkpoint_data: string | null
+      final_result: string | null
+      metrics: string | null
+      event_start: number | null
+      event_end: number | null
+      parent_run_id: string | null
+      root_run_id: string | null
+      created_at: string
+      updated_at: string
+    }>(sql, params)
+
+    return results.map((r) => this.mapRowToKernelRun(r))
+  }
+
+  markFailedWithResult(runId: string, finalResult: unknown): void {
+    const now = new Date().toISOString()
+    this.connection.exec(`UPDATE kernel_runs SET status = ?, final_result = ?, updated_at = ? WHERE run_id = ?`, [
+      KERNEL_RUN_STATES.FAILED,
+      JSON.stringify(finalResult),
+      now,
+      runId,
+    ])
   }
 
   private mapRowToKernelRun(row: {

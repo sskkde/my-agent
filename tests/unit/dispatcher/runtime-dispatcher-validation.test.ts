@@ -12,6 +12,7 @@ function createMockRuntimeActionStore(): RuntimeActionStore {
     findById: vi.fn((id) => actions.get(id) ?? null),
     findByIdempotencyKey: vi.fn(() => null),
     query: vi.fn(() => []),
+    listStaleByStatus: vi.fn(() => []),
     updateStatus: vi.fn((actionId, status, statusMessage, result) => {
       const action = actions.get(actionId)
       if (action) {
