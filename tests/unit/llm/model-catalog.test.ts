@@ -105,20 +105,20 @@ describe('Model Catalog', () => {
       expect(result!.limits.outputTokens).toBe(4096)
     })
 
-    it('returns minimax MiniMax-Text-01 without jsonMode', () => {
+    it('returns minimax MiniMax-Text-01 (jsonMode inherited from default)', () => {
       const result = getBuiltinModel('minimax', 'MiniMax-Text-01')
       expect(result).not.toBeNull()
-      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.capabilities.jsonMode).toBe(true)
       expect(result!.limits.contextTokens).toBe(256000)
       expect(result!.limits.outputTokens).toBe(4096)
     })
 
-    it('returns jdcloud-yanxi yanxi-v1 with minimal capabilities', () => {
+    it('returns jdcloud-yanxi yanxi-v1 with streaming-only explicit override', () => {
       const result = getBuiltinModel('jdcloud-yanxi', 'yanxi-v1')
       expect(result).not.toBeNull()
       expect(result!.capabilities.streaming).toBe(true)
-      expect(result!.capabilities.functionCalling).toBe(false)
-      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.capabilities.functionCalling).toBe(true)
+      expect(result!.capabilities.jsonMode).toBe(true)
       expect(result!.limits.contextTokens).toBe(8000)
       expect(result!.limits.outputTokens).toBe(2048)
     })
@@ -131,20 +131,20 @@ describe('Model Catalog', () => {
       expect(result!.limits.outputTokens).toBe(4096)
     })
 
-    it('returns iflytek-spark spark-max without jsonMode', () => {
+    it('returns iflytek-spark spark-max (jsonMode inherited from default)', () => {
       const result = getBuiltinModel('iflytek-spark', 'spark-max')
       expect(result).not.toBeNull()
       expect(result!.capabilities.functionCalling).toBe(true)
-      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.capabilities.jsonMode).toBe(true)
       expect(result!.limits.contextTokens).toBe(8000)
       expect(result!.limits.outputTokens).toBe(4096)
     })
 
-    it('returns stepfun step-1v-32k without jsonMode', () => {
+    it('returns stepfun step-1v-32k (jsonMode inherited from default)', () => {
       const result = getBuiltinModel('stepfun', 'step-1v-32k')
       expect(result).not.toBeNull()
       expect(result!.capabilities.functionCalling).toBe(true)
-      expect(result!.capabilities.jsonMode).toBe(false)
+      expect(result!.capabilities.jsonMode).toBe(true)
       expect(result!.limits.contextTokens).toBe(32000)
       expect(result!.limits.outputTokens).toBe(4096)
     })
@@ -173,9 +173,9 @@ describe('Model Catalog', () => {
       expect(result.modelId).toBe('unknown-model')
       expect(result.family).toBe('openai_compatible')
       expect(result.protocol).toBe('openai_chat')
-      expect(result.capabilities.streaming).toBe(false)
-      expect(result.capabilities.functionCalling).toBe(false)
-      expect(result.capabilities.jsonMode).toBe(false)
+      expect(result.capabilities.streaming).toBe(true)
+      expect(result.capabilities.functionCalling).toBe(true)
+      expect(result.capabilities.jsonMode).toBe(true)
       expect(result.capabilities.structuredOutput).toBe(false)
       expect(result.capabilities.reasoning).toBe(false)
       expect(result.capabilities.vision).toBe(false)
@@ -209,7 +209,7 @@ describe('Model Catalog', () => {
       expect(result.providerId).toBe('unknown')
       expect(result.modelId).toBe('unknown-model')
       expect(result.family).toBe('openai_compatible')
-      expect(result.capabilities.functionCalling).toBe(false)
+      expect(result.capabilities.functionCalling).toBe(true)
       expect(result.capabilities.promptCache).toBe(false)
     })
 
@@ -221,10 +221,10 @@ describe('Model Catalog', () => {
   })
 
   describe('DEFAULT_TEXT_MODEL_CAPABILITIES', () => {
-    it('has all booleans = false (conservative)', () => {
-      expect(DEFAULT_TEXT_MODEL_CAPABILITIES.streaming).toBe(false)
-      expect(DEFAULT_TEXT_MODEL_CAPABILITIES.functionCalling).toBe(false)
-      expect(DEFAULT_TEXT_MODEL_CAPABILITIES.jsonMode).toBe(false)
+    it('enables common OpenAI-compatible features (streaming/functionCalling/jsonMode), disables the rest', () => {
+      expect(DEFAULT_TEXT_MODEL_CAPABILITIES.streaming).toBe(true)
+      expect(DEFAULT_TEXT_MODEL_CAPABILITIES.functionCalling).toBe(true)
+      expect(DEFAULT_TEXT_MODEL_CAPABILITIES.jsonMode).toBe(true)
       expect(DEFAULT_TEXT_MODEL_CAPABILITIES.structuredOutput).toBe(false)
       expect(DEFAULT_TEXT_MODEL_CAPABILITIES.reasoning).toBe(false)
       expect(DEFAULT_TEXT_MODEL_CAPABILITIES.vision).toBe(false)
@@ -326,16 +326,34 @@ describe('Model Catalog', () => {
       }
     })
 
-    it('domestic provider model capabilities match feature flags', () => {
+    it('domestic provider models reflect explicit capability overrides (defaults spread where not overridden)', () => {
+      // After T1, DEFAULT_TEXT_MODEL_CAPABILITIES sets functionCalling/streaming/jsonMode=true.
+      // Builtin models spread the defaults then override specific booleans. Providers whose
+      // feature flag is false but whose builtin entry does NOT explicitly set the boolean
+      // inherit the new default (true). This test pins the actual resolved value per provider.
+      const expectations: Record<string, { functionCalling: boolean; jsonMode: boolean }> = {
+        dashscope: { functionCalling: true, jsonMode: true },
+        volcengine: { functionCalling: true, jsonMode: true },
+        qianfan: { functionCalling: true, jsonMode: true },
+        zhipu: { functionCalling: true, jsonMode: true },
+        moonshot: { functionCalling: true, jsonMode: true },
+        minimax: { functionCalling: true, jsonMode: true },
+        'jdcloud-yanxi': { functionCalling: true, jsonMode: true },
+        mimo: { functionCalling: true, jsonMode: true },
+        'iflytek-spark': { functionCalling: true, jsonMode: true },
+        stepfun: { functionCalling: true, jsonMode: true },
+        hunyuan: { functionCalling: true, jsonMode: true },
+        deepseek: { functionCalling: true, jsonMode: true },
+        siliconflow: { functionCalling: true, jsonMode: true },
+      }
       for (const provider of DOMESTIC_PROVIDERS) {
         const model = getBuiltinModel(provider.providerType, provider.defaultModel)
         expect(model, `missing model for ${provider.providerType}`).not.toBeNull()
+        const expected = expectations[provider.providerType]
         expect(model!.capabilities.functionCalling, `${provider.providerType} functionCalling`).toBe(
-          provider.features.supportsFunctionCalling,
+          expected.functionCalling,
         )
-        expect(model!.capabilities.jsonMode, `${provider.providerType} jsonMode`).toBe(
-          provider.features.supportsJsonMode,
-        )
+        expect(model!.capabilities.jsonMode, `${provider.providerType} jsonMode`).toBe(expected.jsonMode)
       }
     })
 

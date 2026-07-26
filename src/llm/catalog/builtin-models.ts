@@ -7,12 +7,14 @@ import type { ModelInfo, ModelCapabilities, ModelLimits } from '../types.js'
 
 /**
  * Default text model capabilities
- * Conservative defaults: all features disabled for safety
+ * Unknown/custom/ollama models are assumed to support the common OpenAI-compatible
+ * feature set (streaming, function calling, JSON mode) so they are not falsely
+ * rejected from tool-bearing requests. Other capabilities remain disabled.
  */
 export const DEFAULT_TEXT_MODEL_CAPABILITIES: ModelCapabilities = {
-  streaming: false,
-  functionCalling: false,
-  jsonMode: false,
+  streaming: true,
+  functionCalling: true,
+  jsonMode: true,
   structuredOutput: false,
   reasoning: false,
   vision: false,
