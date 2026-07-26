@@ -775,6 +775,47 @@
   stroke-width: 1.5;
 }
 
+.chat-reasoning-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(680px, 100%);
+}
+
+.chat-reasoning-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--chat-text-muted);
+  padding: 0;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.chat-reasoning-toggle:hover {
+  color: var(--chat-accent);
+}
+
+.chat-reasoning-icon {
+  font-size: 10px;
+  color: var(--chat-accent);
+  transition: transform 150ms;
+}
+
+.chat-reasoning-content {
+  padding: 12px;
+  background: rgba(83, 125, 150, 0.06);
+  border: 0.5px solid rgba(83, 125, 150, 0.15);
+  border-radius: var(--radius-md, 3px);
+  font-size: 0.85rem;
+  color: var(--chat-text);
+  line-height: 1.7;
+}
+
 .chat-typing {
   display: flex;
   gap: 4px;

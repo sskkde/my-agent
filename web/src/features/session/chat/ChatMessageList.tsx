@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import type { ConsoleTimelineEvent } from '../../../api/types'
 import ChatWelcome from './ChatWelcome'
 import ChatMessage from './ChatMessage'
+import ReasoningBlock from './ReasoningBlock'
 import ToolCallCard from '../../../components/ToolCallCard'
 import { mergeToolEvents } from './mergeToolEvents'
 
@@ -71,6 +72,14 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                       status={item.status}
                       durationMs={item.durationMs}
                     />
+                  </div>
+                )
+              }
+
+              if (item.event.eventType === 'thinking_summary') {
+                return (
+                  <div key={item.key} className="chat-message-group">
+                    <ReasoningBlock content={item.event.content || ''} />
                   </div>
                 )
               }

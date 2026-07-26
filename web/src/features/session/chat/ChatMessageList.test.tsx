@@ -298,7 +298,7 @@ describe('ChatMessageList', () => {
     expect(screen.getByLabelText('正在输入')).toBeInTheDocument()
   })
 
-  it('renders thinking_summary as a first-class message when present (T6 opt-in contract)', () => {
+  it('renders thinking_summary as a collapsible block collapsed by default (T8)', () => {
     const events: ConsoleTimelineEvent[] = [
       makeEvent({
         eventId: 'th-1',
@@ -313,9 +313,9 @@ describe('ChatMessageList', () => {
     ]
 
     renderList(events)
-    // Opt-in: thinking_summary content renders when present in the event list.
-    expect(screen.getByText('REASONING_FIXTURE_12345')).toBeInTheDocument()
+    expect(screen.queryByText('REASONING_FIXTURE_12345')).not.toBeInTheDocument()
     expect(screen.getByText('hi')).toBeInTheDocument()
+    expect(screen.getByText('推理摘要')).toBeInTheDocument()
   })
 
   it('renders error event as a system error bubble with Chinese prefix', () => {
@@ -336,7 +336,8 @@ describe('ChatMessageList', () => {
     expect(errorBubble.textContent).toContain('[PROCESSING_ERROR] pipeline timeout')
   })
 
-  it('renders thinking_summary content when present as a message item (T6 opt-in)', () => {
+  it('expands thinking_summary to show reasoning fixture (T8)', async () => {
+    const user = userEvent.setup()
     const events: ConsoleTimelineEvent[] = [
       makeEvent({
         eventId: 'th-1',
@@ -351,8 +352,53 @@ describe('ChatMessageList', () => {
     ]
 
     renderList(events)
-    // Opt-in contract: thinking_summary renders when present in the event list.
-    expect(screen.getByText('hi')).toBeInTheDocument()
+    const toggle = screen.getByRole('button', { name: /推理摘要/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('REASONING_FIXTURE_12345')).toBeInTheDocument()
+    expect(screen.getByText('hi')).toBeInTheDocument()
+  })
+
+  it('renders assistant message normally when thinking_summary is absent (T8)', () => {
+    const events: ConsoleTimelineEvent[] = [
+      makeEvent({
+        eventId: 'u-1',
+        eventType: 'user_message',
+        content: 'hi',
+      }),
+      makeEvent({
+        eventId: 'asst-1',
+        eventType: 'assistant_message',
+        content: 'This is the assistant answer without reasoning.',
+        actor: 'assistant',
+      }),
+    ]
+
+    renderList(events)
+    expect(screen.getByText('hi')).toBeInTheDocument()
+    expect(screen.getByText('This is the assistant answer without reasoning.')).toBeInTheDocument()
+    expect(screen.queryByText('推理摘要')).not.toBeInTheDocument()
+  })
+
+  it('collapses thinking_summary again after expanding (T8)', async () => {
+    const user = userEvent.setup()
+    const events: ConsoleTimelineEvent[] = [
+      makeEvent({
+        eventId: 'th-1',
+        eventType: 'thinking_summary',
+        content: 'REASONING_FIXTURE_12345',
+      }),
+    ]
+
+    renderList(events)
+    const toggle = screen.getByRole('button', { name: /推理摘要/ })
+    await user.click(toggle)
+    expect(screen.getByText('REASONING_FIXTURE_12345')).toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(screen.queryByText('REASONING_FIXTURE_12345')).not.toBeInTheDocument()
   })
 })
