@@ -315,6 +315,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
             sessionId,
             sequence: token.sequence,
             delta: token.delta,
+            channel: token.channel,
           },
           placeholderTimestamp,
         ),
