@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { createLLMAdapter, createCircuitBreaker } from '../../../src/llm'
 import type { LLMProvider, LLMRequest, LLMResponse, LLMResult, ProviderConfig, ProviderCapabilities } from '../../../src/llm'
 import type { RuntimeError } from '../../../src/shared/errors'
-import { parseOpenAIStreamLine, parseOpenAIStreamEvents } from '../../../src/llm/transform/openai-chat-transformer'
+import { parseOpenAIStreamLine, parseOpenAIStreamEvents, mapOpenAIChatResponse } from '../../../src/llm/transform/openai-chat-transformer'
 import { StreamResponseAggregator } from '../../../src/llm/stream-aggregator'
 import { parseOllamaStreamLine } from '../../../src/llm/transform/ollama-transformer'
 import { buildOllamaChatRequestBody } from '../../../src/llm/transform/ollama-transformer'
@@ -545,5 +545,199 @@ describe('TokenStreamPayload.channel contract (T1)', () => {
     expect(assistantPayload.delta).not.toContain('REASONING_FIXTURE_12345')
     expect(reasoningPayload.delta).toBe('REASONING_FIXTURE_12345')
     expect(assistantPayload.channel).not.toBe('reasoning')
+  })
+})
+
+// =============================================================================
+// T2: parse OpenAI-compatible reasoning_content in stream + complete paths
+// Core fixture: REASONING_FIXTURE_12345 (must NOT collide with assistant text)
+// SAFETY: reasoning MUST go only into kind:'reasoning' / reasoningContent — never content
+// =============================================================================
+
+describe('parseOpenAIStreamLine reasoning_content (T2)', () => {
+  it('emits a reasoning event when delta.reasoning_content is present', () => {
+    const payload = {
+      choices: [{ delta: { reasoning_content: 'REASONING_FIXTURE_12345' } }],
+    }
+    const line = `data: ${JSON.stringify(payload)}`
+    expect(parseOpenAIStreamLine(line)).toEqual({
+      kind: 'reasoning',
+      delta: 'REASONING_FIXTURE_12345',
+    })
+  })
+
+  it('still emits text only for delta.content (content semantics unchanged)', () => {
+    const payload = { choices: [{ delta: { content: 'The answer is 42.' } }] }
+    const line = `data: ${JSON.stringify(payload)}`
+    expect(parseOpenAIStreamLine(line)).toEqual({ kind: 'text', delta: 'The answer is 42.' })
+  })
+
+  it('emits reasoning event when both reasoning_content and content are present (reasoning first, content second)', () => {
+    // parseOpenAIStreamLine returns the FIRST non-empty event it finds.
+    // Reasoning is checked before content so reasoning is never lost.
+    const payload = {
+      choices: [
+        {
+          delta: {
+            reasoning_content: 'REASONING_FIXTURE_12345',
+            content: 'The answer is 42.',
+          },
+        },
+      ],
+    }
+    const line = `data: ${JSON.stringify(payload)}`
+    const event = parseOpenAIStreamLine(line)
+    expect(event).toEqual({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' })
+    // SAFETY: reasoning fixture must NOT appear in a text event
+    expect(event?.kind).not.toBe('text')
+  })
+
+  it('returns null for empty reasoning_content string', () => {
+    const payload = { choices: [{ delta: { reasoning_content: '' } }] }
+    const line = `data: ${JSON.stringify(payload)}`
+    expect(parseOpenAIStreamLine(line)).toBeNull()
+  })
+
+  it('returns null for malformed JSON (no throw)', () => {
+    expect(parseOpenAIStreamLine('data: {invalid reasoning}')).toBeNull()
+  })
+})
+
+describe('parseOpenAIStreamEvents reasoning_content (T2)', () => {
+  it('emits BOTH reasoning and text events when both are present in one chunk', () => {
+    const payload = {
+      choices: [
+        {
+          delta: {
+            reasoning_content: 'REASONING_FIXTURE_12345',
+            content: 'The answer is 42.',
+          },
+        },
+      ],
+    }
+    const events = parseOpenAIStreamEvents(`data: ${JSON.stringify(payload)}`)
+    expect(events).toHaveLength(2)
+    // Reasoning emitted before text (order: reasoning, then content)
+    expect(events[0]).toEqual({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' })
+    expect(events[1]).toEqual({ kind: 'text', delta: 'The answer is 42.' })
+  })
+
+  it('emits only a reasoning event when only reasoning_content is present', () => {
+    const payload = { choices: [{ delta: { reasoning_content: 'REASONING_FIXTURE_12345' } }] }
+    const events = parseOpenAIStreamEvents(`data: ${JSON.stringify(payload)}`)
+    expect(events).toEqual([{ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' }])
+  })
+
+  it('still emits tool_call_delta events alongside reasoning (no regression on tool parsing)', () => {
+    const payload = {
+      choices: [
+        {
+          delta: {
+            reasoning_content: 'REASONING_FIXTURE_12345',
+            tool_calls: [{ index: 0, id: 'c0', function: { name: 'a', arguments: '{' } }],
+          },
+        },
+      ],
+    }
+    const events = parseOpenAIStreamEvents(`data: ${JSON.stringify(payload)}`)
+    expect(events).toHaveLength(2)
+    expect(events[0]).toEqual({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' })
+    expect(events[1]).toMatchObject({ kind: 'tool_call_delta', index: 0, id: 'c0', name: 'a' })
+  })
+
+  it('returns [] for malformed JSON (no throw)', () => {
+    expect(parseOpenAIStreamEvents('data: {invalid reasoning}')).toEqual([])
+  })
+
+  it('preserves finish_reason handling alongside reasoning (no regression)', () => {
+    const payload = {
+      choices: [{ delta: { reasoning_content: 'REASONING_FIXTURE_12345' }, finish_reason: 'stop' }],
+    }
+    const events = parseOpenAIStreamEvents(`data: ${JSON.stringify(payload)}`)
+    expect(events).toHaveLength(2)
+    expect(events[0]).toEqual({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' })
+    expect(events[1]).toEqual({ kind: 'finish', finishReason: 'stop' })
+  })
+})
+
+describe('mapOpenAIChatResponse reasoning_content (T2)', () => {
+  it('captures message.reasoning_content onto LLMResponse.reasoningContent', () => {
+    const data = {
+      id: 'resp_1',
+      model: 'deepseek-v4',
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: 'The answer is 42.',
+            reasoning_content: 'REASONING_FIXTURE_12345',
+          },
+          finish_reason: 'stop',
+        },
+      ],
+    }
+    const response = mapOpenAIChatResponse(data)
+    expect(response.reasoningContent).toBe('REASONING_FIXTURE_12345')
+    // SAFETY: content must contain ONLY the answer text, never the reasoning fixture
+    expect(response.content).toBe('The answer is 42.')
+    expect(response.content).not.toContain('REASONING_FIXTURE_12345')
+  })
+
+  it('leaves reasoningContent undefined when message.reasoning_content is absent', () => {
+    const data = {
+      id: 'resp_2',
+      model: 'gpt-4',
+      choices: [{ message: { content: 'Just an answer.' }, finish_reason: 'stop' }],
+    }
+    const response = mapOpenAIChatResponse(data)
+    expect(response.reasoningContent).toBeUndefined()
+    expect(response.content).toBe('Just an answer.')
+  })
+
+  it('leaves reasoningContent undefined when message.reasoning_content is empty string', () => {
+    const data = {
+      id: 'resp_3',
+      model: 'gpt-4',
+      choices: [{ message: { content: 'Answer.', reasoning_content: '' }, finish_reason: 'stop' }],
+    }
+    const response = mapOpenAIChatResponse(data)
+    expect(response.reasoningContent).toBeUndefined()
+    expect(response.content).toBe('Answer.')
+  })
+
+  it('preserves tool_calls mapping when reasoning_content is present (no regression)', () => {
+    const data = {
+      id: 'resp_4',
+      model: 'deepseek-v4',
+      choices: [
+        {
+          message: {
+            content: '',
+            reasoning_content: 'REASONING_FIXTURE_12345',
+            tool_calls: [
+              { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"q":"x"}' } },
+            ],
+          },
+          finish_reason: 'tool_calls',
+        },
+      ],
+    }
+    const response = mapOpenAIChatResponse(data)
+    expect(response.reasoningContent).toBe('REASONING_FIXTURE_12345')
+    expect(response.toolCalls).toEqual([
+      {
+        id: 'call_1',
+        type: 'function',
+        function: { name: 'search', arguments: '{"q":"x"}' },
+      },
+    ])
+    expect(response.finishReason).toBe('tool_calls')
+  })
+
+  it('returns null/empty for malformed input without throwing', () => {
+    // Empty choices — should not throw, content defaults to ''
+    const response = mapOpenAIChatResponse({ id: 'x', model: 'm' })
+    expect(response.content).toBe('')
+    expect(response.reasoningContent).toBeUndefined()
   })
 })

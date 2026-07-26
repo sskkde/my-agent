@@ -151,6 +151,7 @@ export interface OpenAIStreamChunk {
   readonly choices: ReadonlyArray<{
     readonly delta?: {
       readonly content?: string | null
+      readonly reasoning_content?: string | null
       readonly tool_calls?: ReadonlyArray<OpenAIStreamToolCallDelta>
       readonly role?: string
     }
@@ -199,6 +200,13 @@ export function parseOpenAIStreamLine(line: string): ProviderStreamEvent | null 
       }
     }
 
+    // Reasoning is checked before content so reasoning is never lost when both arrive together.
+    // SAFETY: reasoning goes ONLY into kind:'reasoning' — never into content/text.
+    const reasoningContent = delta.reasoning_content
+    if (typeof reasoningContent === 'string' && reasoningContent.length > 0) {
+      return { kind: 'reasoning', delta: reasoningContent }
+    }
+
     const content = delta.content
     if (typeof content === 'string' && content.length > 0) {
       return { kind: 'text', delta: content }
@@ -226,6 +234,12 @@ export function parseOpenAIStreamEvents(line: string): ProviderStreamEvent[] {
     const events: ProviderStreamEvent[] = []
     const delta = choice.delta
     if (delta) {
+      // Reasoning emitted before content so reasoning is never lost when both arrive together.
+      // SAFETY: reasoning goes ONLY into kind:'reasoning' — never into content/text.
+      const reasoningContent = delta.reasoning_content
+      if (typeof reasoningContent === 'string' && reasoningContent.length > 0) {
+        events.push({ kind: 'reasoning', delta: reasoningContent })
+      }
       const content = delta.content
       if (typeof content === 'string' && content.length > 0) {
         events.push({ kind: 'text', delta: content })
@@ -324,6 +338,11 @@ export function mapOpenAIChatResponse(data: Record<string, unknown>): LLMRespons
     id: (data.id as string) || `resp_${Date.now()}`,
     model: (data.model as string) || 'unknown',
     content: (message?.content as string) || '',
+    // SAFETY: reasoning_content is captured separately — never merged into content.
+    reasoningContent:
+      typeof message?.reasoning_content === 'string' && message.reasoning_content.length > 0
+        ? (message.reasoning_content as string)
+        : undefined,
     role: 'assistant',
     toolCalls: mappedToolCalls,
     usage: usage
