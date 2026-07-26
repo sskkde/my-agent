@@ -710,3 +710,91 @@ describe('clearDraftsForTerminalEvent', () => {
     expect(next.size).toBe(0)
   })
 })
+
+// ============================================================================
+// T7 regression: streaming draft present + tool timeout error event with
+// matching attemptId → draft cleared and error visible.
+// Chains T1 (match-only clear) with T3 (tool timeout emits error event
+// carrying the run's attemptId) and T4 (error content is non-empty).
+// ============================================================================
+describe('T7 regression: streaming draft + tool timeout error → draft cleared + error visible', () => {
+  it('clears the streaming draft and surfaces a non-empty error when a tool timeout error event arrives with matching attemptId', () => {
+    // Given: a live streaming draft exists for attemptId 'run-timeout-1',
+    // with multiple segments (simulating streamed assistant text).
+    let drafts = new Map<string, import('./session-utils').StreamingDraft>()
+    drafts.set('run-timeout-1#0', createDraft('run-timeout-1', 'ses-1', { content: 'partial assistant text' }))
+    drafts.set('run-timeout-1#1', createDraft('run-timeout-1', 'ses-1', { segment: 1, content: ' more text' }))
+    expect(drafts.size).toBe(2)
+
+    // When: a tool timeout error event arrives (T3 produces an `error` timeline
+    // event whose metadata.attemptId matches the hung run) with non-empty
+    // content (T4 guarantees a non-empty error message).
+    const toolTimeoutErrorEvent: ConsoleTimelineEvent = {
+      eventId: 'evt-timeout-1',
+      eventType: 'error',
+      sessionId: 'ses-1',
+      timestamp: new Date().toISOString(),
+      content: 'Tool execution timed out after 120000ms',
+      metadata: {
+        attemptId: 'run-timeout-1',
+        turnId: 'run-timeout-1',
+        kind: 'tool_timeout',
+        timeoutMs: 120000,
+      },
+    }
+
+    // Guard: the event should be eligible to clear (T1 shouldClearDraftOnServerEvent).
+    expect(shouldClearDraftOnServerEvent(toolTimeoutErrorEvent, 'live')).toBe(true)
+
+    // And: the error content must be visible / non-empty (T4 contract).
+    expect(typeof toolTimeoutErrorEvent.content).toBe('string')
+    expect((toolTimeoutErrorEvent.content ?? '').trim().length).toBeGreaterThan(0)
+
+    // Then: clearDraftsForTerminalEvent removes every segment for the matching
+    // attemptId, leaving no zombie draft behind.
+    const next = clearDraftsForTerminalEvent(drafts, toolTimeoutErrorEvent, {
+      allowOldestFallback: true,
+      sessionId: 'ses-1',
+      source: 'live',
+    })
+
+    expect(next.size).toBe(0)
+    expect(next.has('run-timeout-1#0')).toBe(false)
+    expect(next.has('run-timeout-1#1')).toBe(false)
+  })
+
+  it('does NOT clear an unrelated streaming draft when the tool timeout error event carries a different attemptId (historical replay safety)', () => {
+    // Given: a live streaming draft for attemptId 'run-live-now'.
+    let drafts = new Map<string, import('./session-utils').StreamingDraft>()
+    drafts.set('run-live-now#0', createDraft('run-live-now', 'ses-1', { content: 'streaming now' }))
+
+    // When: a HISTORICAL tool timeout error event arrives for a DIFFERENT
+    // attemptId (e.g. replayed from a previous turn's timeline).
+    const historicalTimeoutError: ConsoleTimelineEvent = {
+      eventId: 'evt-old-timeout',
+      eventType: 'error',
+      sessionId: 'ses-1',
+      timestamp: new Date().toISOString(),
+      content: 'Tool execution timed out after 120000ms',
+      metadata: {
+        attemptId: 'run-old-finished',
+        turnId: 'run-old-finished',
+        kind: 'tool_timeout',
+      },
+    }
+
+    // Then: the historical event is eligible to clear (it has metadata) but
+    // must NOT touch the live draft because the attemptId does not match.
+    expect(shouldClearDraftOnServerEvent(historicalTimeoutError, 'historical')).toBe(true)
+
+    const next = clearDraftsForTerminalEvent(drafts, historicalTimeoutError, {
+      allowOldestFallback: true,
+      sessionId: 'ses-1',
+      source: 'historical',
+    })
+
+    expect(next).toBe(drafts)
+    expect(next.has('run-live-now#0')).toBe(true)
+    expect(next.size).toBe(1)
+  })
+})
