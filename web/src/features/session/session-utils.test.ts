@@ -16,6 +16,8 @@ import {
   appendStreamingToken,
   appendStreamingReasoningToken,
   clearStreamingDraftsByAttemptIds,
+  shouldClearDraftOnServerEvent,
+  clearDraftsForTerminalEvent,
 } from './session-utils'
 import {
   LOCAL_USER_MESSAGE_PREFIX,
@@ -344,11 +346,7 @@ describe('isLocalMessageConfirmed', () => {
 // ============================================================================
 
 describe('hasAssistantOrErrorReplyAfter', () => {
-  const createEvent = (
-    type: string,
-    timestamp: string,
-    content = 'Test',
-  ): ConsoleTimelineEvent => ({
+  const createEvent = (type: string, timestamp: string, content = 'Test'): ConsoleTimelineEvent => ({
     eventId: `evt-${Math.random()}`,
     eventType: type as any,
     sessionId: 'ses_test',
@@ -557,5 +555,158 @@ describe('clearStreamingDraftsByAttemptIds', () => {
     drafts = clearStreamingDraftsByAttemptIds(drafts, ['run-1'])
 
     expect(drafts.size).toBe(0)
+  })
+})
+
+const createDraft = (
+  attemptId: string,
+  sessionId: string,
+  overrides?: Partial<import('./session-utils').StreamingDraft>,
+): import('./session-utils').StreamingDraft => ({
+  sessionId,
+  attemptId,
+  content: 'draft',
+  sequence: 1,
+  timestamp: Date.now(),
+  segment: 0,
+  sealed: false,
+  ...overrides,
+})
+
+const createTerminalEvent = (
+  eventType: 'assistant_message' | 'error',
+  sessionId: string,
+  metadata?: Record<string, unknown>,
+): ConsoleTimelineEvent => ({
+  eventId: `evt-${Math.random().toString(36).slice(2)}`,
+  eventType,
+  sessionId,
+  timestamp: new Date().toISOString(),
+  content: 'final',
+  metadata,
+})
+
+describe('shouldClearDraftOnServerEvent', () => {
+  it('returns false for historical events without attemptId or turnId', () => {
+    const event = createTerminalEvent('assistant_message', 'ses-1', {})
+    expect(shouldClearDraftOnServerEvent(event, 'historical')).toBe(false)
+  })
+
+  it('returns true for historical events with matching metadata', () => {
+    const event = createTerminalEvent('assistant_message', 'ses-1', { attemptId: 'run-1' })
+    expect(shouldClearDraftOnServerEvent(event, 'historical')).toBe(true)
+  })
+
+  it('returns true for live events even when metadata is missing', () => {
+    const event = createTerminalEvent('assistant_message', 'ses-1', {})
+    expect(shouldClearDraftOnServerEvent(event, 'live')).toBe(true)
+  })
+})
+
+describe('clearDraftsForTerminalEvent', () => {
+  it('matching attemptId clears only that draft (live)', () => {
+    let drafts = new Map<string, import('./session-utils').StreamingDraft>()
+    drafts.set('run-a#0', createDraft('run-a', 'ses-1'))
+    drafts.set('run-b#0', createDraft('run-b', 'ses-1'))
+
+    const event = createTerminalEvent('assistant_message', 'ses-1', { attemptId: 'run-a' })
+    const next = clearDraftsForTerminalEvent(drafts, event, {
+      allowOldestFallback: true,
+      sessionId: 'ses-1',
+      source: 'live',
+    })
+
+    expect(next.size).toBe(1)
+    expect(next.has('run-b#0')).toBe(true)
+  })
+
+  it('historical assistant_message with other turns attemptId does NOT clear current draft', () => {
+    let drafts = new Map<string, import('./session-utils').StreamingDraft>()
+    drafts.set('run-a#0', createDraft('run-a', 'ses-1'))
+
+    const event = createTerminalEvent('assistant_message', 'ses-1', { attemptId: 'run-b' })
+    const next = clearDraftsForTerminalEvent(drafts, event, {
+      allowOldestFallback: true,
+      sessionId: 'ses-1',
+      source: 'historical',
+    })
+
+    expect(next).toBe(drafts)
+    expect(next.has('run-a#0')).toBe(true)
+  })
+
+  it('missing metadata + historical never clearOldest', () => {
+    let drafts = new Map<string, import('./session-utils').StreamingDraft>()
+    drafts.set('run-a#0', createDraft('run-a', 'ses-1'))
+
+    const event = createTerminalEvent('assistant_message', 'ses-1', {})
+    const next = clearDraftsForTerminalEvent(drafts, event, {
+      allowOldestFallback: true,
+      sessionId: 'ses-1',
+      source: 'historical',
+    })
+
+    expect(next).toBe(drafts)
+    expect(next.has('run-a#0')).toBe(true)
+  })
+
+  it('live missing metadata only clears when exactly one active draft in session', () => {
+    let single = new Map<string, import('./session-utils').StreamingDraft>()
+    single.set('run-a#0', createDraft('run-a', 'ses-1'))
+    const event = createTerminalEvent('assistant_message', 'ses-1', {})
+
+    const cleared = clearDraftsForTerminalEvent(single, event, {
+      allowOldestFallback: true,
+      sessionId: 'ses-1',
+      source: 'live',
+    })
+    expect(cleared.size).toBe(0)
+
+    let multiple = new Map<string, import('./session-utils').StreamingDraft>()
+    multiple.set('run-a#0', createDraft('run-a', 'ses-1'))
+    multiple.set('run-b#0', createDraft('run-b', 'ses-1'))
+    const retained = clearDraftsForTerminalEvent(multiple, event, {
+      allowOldestFallback: true,
+      sessionId: 'ses-1',
+      source: 'live',
+    })
+    expect(retained.size).toBe(2)
+
+    const notAllowed = clearDraftsForTerminalEvent(single, event, {
+      allowOldestFallback: false,
+      sessionId: 'ses-1',
+      source: 'live',
+    })
+    expect(notAllowed.size).toBe(1)
+  })
+
+  it('sealed draft with no matching final is retained', () => {
+    let drafts = new Map<string, import('./session-utils').StreamingDraft>()
+    drafts.set('run-a#0', createDraft('run-a', 'ses-1', { sealed: true }))
+
+    const event = createTerminalEvent('error', 'ses-1', { attemptId: 'run-b' })
+    const next = clearDraftsForTerminalEvent(drafts, event, {
+      allowOldestFallback: false,
+      sessionId: 'ses-1',
+      source: 'live',
+    })
+
+    expect(next).toBe(drafts)
+    expect(next.has('run-a#0')).toBe(true)
+  })
+
+  it('matching turnId clears draft segments keyed by attemptId', () => {
+    let drafts = new Map<string, import('./session-utils').StreamingDraft>()
+    drafts.set('run-a#0', createDraft('run-a', 'ses-1'))
+    drafts.set('run-a#1', createDraft('run-a', 'ses-1', { segment: 1 }))
+
+    const event = createTerminalEvent('assistant_message', 'ses-1', { turnId: 'run-a' })
+    const next = clearDraftsForTerminalEvent(drafts, event, {
+      allowOldestFallback: false,
+      sessionId: 'ses-1',
+      source: 'live',
+    })
+
+    expect(next.size).toBe(0)
   })
 })

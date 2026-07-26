@@ -9,11 +9,7 @@
  */
 
 import type { ConsoleTimelineEvent } from '../../api/types'
-import {
-  LOCAL_USER_MESSAGE_PREFIX,
-  DATE_FORMAT_LOCALE,
-  DATE_FORMAT_OPTIONS,
-} from './session-constants'
+import { LOCAL_USER_MESSAGE_PREFIX, DATE_FORMAT_LOCALE, DATE_FORMAT_OPTIONS } from './session-constants'
 
 // ============================================================================
 // Shared Types
@@ -120,7 +116,10 @@ export const getBaselineServerMessageCount = (event: ConsoleTimelineEvent): numb
  * @param localEvent - The local message event to check
  * @returns true if the local message is confirmed, false otherwise
  */
-export const isLocalMessageConfirmed = (serverEvents: ConsoleTimelineEvent[], localEvent: ConsoleTimelineEvent): boolean => {
+export const isLocalMessageConfirmed = (
+  serverEvents: ConsoleTimelineEvent[],
+  localEvent: ConsoleTimelineEvent,
+): boolean => {
   if (!localEvent.content) return false
   return countServerUserMessagesByContent(serverEvents, localEvent.content) > getBaselineServerMessageCount(localEvent)
 }
@@ -189,16 +188,86 @@ export function clearStreamingActivityMaps<T extends { sessionId: string }>(
   const matchedAny = next.size < sizeBefore
 
   if (!matchedAny && clearOldestIfUnmatched) {
-    const oldestId = Array.from(next.entries()).find(
-      ([, entry]) => !sessionId || entry.sessionId === sessionId,
-    )?.[0]
+    const oldestId = Array.from(next.entries()).find(([, entry]) => !sessionId || entry.sessionId === sessionId)?.[0]
     if (oldestId) next.delete(oldestId)
   }
 
   return next.size === map.size ? map : next
 }
 
+function activeDraftsInSession(
+  drafts: Map<string, StreamingDraft>,
+  sessionId: string | null,
+): Array<[string, StreamingDraft]> {
+  return Array.from(drafts.entries()).filter(([, draft]) => !sessionId || draft.sessionId === sessionId)
+}
 
+/**
+ * Decide whether a server terminal event (assistant_message / error) should be
+ * allowed to clear streaming drafts at all.
+ *
+ * - Historical events (SSE snapshot, REST fetchTimeline) must carry metadata
+ *   that identifies the turn. Without attemptId/turnId they cannot be safely
+ *   linked to a live draft, so we never fall back to clearing the oldest draft.
+ * - Live events are always candidates for clearing; the precise match vs.
+ *   fallback decision lives in clearDraftsForTerminalEvent.
+ */
+export function shouldClearDraftOnServerEvent(event: ConsoleTimelineEvent, source: 'live' | 'historical'): boolean {
+  const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
+  const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+  if (source === 'historical') {
+    // Historical events must carry matching metadata to clear anything.
+    return Boolean(attemptId || turnId)
+  }
+  return true
+}
+
+/**
+ * Clear streaming drafts in response to a terminal server event.
+ *
+ * Rules:
+ * 1. If the event metadata contains attemptId or turnId, clear every draft
+ *    segment and reasoning draft belonging to that id.
+ * 2. For historical events the oldest fallback is never used, even if requested.
+ * 3. For live events with no matching ids, the oldest fallback is used only when
+ *    explicitly allowed AND the session has exactly one active draft. This is the
+ *    documented branch for "terminal reply for the only active draft in the
+ *    session"; it preserves drafts when multiple turns are in flight while
+ *    avoiding a zombie draft when a lone turn finalizes without metadata.
+ */
+export function clearDraftsForTerminalEvent(
+  drafts: Map<string, StreamingDraft>,
+  event: ConsoleTimelineEvent,
+  options: {
+    allowOldestFallback: boolean
+    sessionId?: string | null
+    source?: 'live' | 'historical'
+  },
+): Map<string, StreamingDraft> {
+  const attemptId = typeof event.metadata?.attemptId === 'string' ? event.metadata.attemptId : undefined
+  const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
+  const sessionId = options.sessionId ?? null
+  const source = options.source ?? 'live'
+  const allowOldestFallback = source === 'historical' ? false : options.allowOldestFallback === true
+
+  const ids = [attemptId, turnId].filter((id): id is string => Boolean(id))
+  const clearedById = clearStreamingDraftsByAttemptIds(drafts, ids)
+  if (clearedById !== drafts) return clearedById
+
+  // Live-only single-active-draft fallback: only clear the oldest (and only)
+  // draft when this terminal event is clearly the reply for the lone active
+  // turn in the session. Never used for historical events.
+  if (allowOldestFallback) {
+    const active = activeDraftsInSession(drafts, sessionId)
+    if (active.length === 1) {
+      const next = new Map(drafts)
+      next.delete(active[0][0])
+      return next
+    }
+  }
+
+  return drafts
+}
 
 // ============================================================================
 // Streaming draft segments (tool interleaving)
@@ -389,10 +458,7 @@ export function clearStreamingDraftsByAttemptIds(
  * - Formal tool_call may replace an early tool_call for the same turn + toolCallIndex
  * - Formal tool_call may drop early card referenced by metadata.replacesEarlyEventId
  */
-export function upsertTimelineEvent(
-  prev: ConsoleTimelineEvent[],
-  event: ConsoleTimelineEvent,
-): ConsoleTimelineEvent[] {
+export function upsertTimelineEvent(prev: ConsoleTimelineEvent[], event: ConsoleTimelineEvent): ConsoleTimelineEvent[] {
   const byId = prev.findIndex((e) => e.eventId === event.eventId)
   if (byId >= 0) {
     const next = [...prev]
@@ -402,12 +468,9 @@ export function upsertTimelineEvent(
 
   if (event.eventType === 'tool_call') {
     const turnId = typeof event.metadata?.turnId === 'string' ? event.metadata.turnId : undefined
-    const toolCallIndex =
-      typeof event.metadata?.toolCallIndex === 'number' ? event.metadata.toolCallIndex : undefined
+    const toolCallIndex = typeof event.metadata?.toolCallIndex === 'number' ? event.metadata.toolCallIndex : undefined
     const replacesEarlyEventId =
-      typeof event.metadata?.replacesEarlyEventId === 'string'
-        ? event.metadata.replacesEarlyEventId
-        : undefined
+      typeof event.metadata?.replacesEarlyEventId === 'string' ? event.metadata.replacesEarlyEventId : undefined
     const isEarly = event.metadata?.early === true
 
     let next = prev
