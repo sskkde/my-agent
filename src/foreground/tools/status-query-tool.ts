@@ -71,15 +71,24 @@ export async function handleStatusQuery(
       },
     })
 
-    // Extract status text from dispatch result
+    // Handle failed dispatch gracefully — do not hard-fail the tool loop
+    if (dispatchResult.status === 'failed') {
+      const errorMsg = dispatchResult.error?.message || 'Unknown dispatch error'
+      return createErrorResult<StatusQueryData>(
+        dispatchResult.error?.code || 'STATUS_QUERY_FAILED',
+        errorMsg,
+        true, // recoverable — kernel continues
+        `Status check unavailable: ${errorMsg}`,
+        { runtimeActionIds: [runtimeAction.actionId] },
+      )
+    }
+
     const statusText =
       dispatchResult.status === 'completed'
         ? dispatchResult.result
           ? `Status: ${typeof dispatchResult.result === 'string' ? dispatchResult.result : JSON.stringify(dispatchResult.result)}`
           : 'Status check completed.'
-        : dispatchResult.status === 'failed'
-          ? `Status check failed: ${dispatchResult.error?.message || 'Unknown error'}`
-          : 'Status check is pending.'
+        : 'Status check is pending.'
 
     return createSuccessResult<StatusQueryData>(
       {
@@ -96,7 +105,7 @@ export async function handleStatusQuery(
     return createErrorResult<StatusQueryData>(
       'STATUS_QUERY_FAILED',
       errorMessage,
-      false,
+      true,
       'Status check failed due to an error.',
     )
   }

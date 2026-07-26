@@ -77,7 +77,7 @@ describe('status-query-tool', () => {
       expect(result.error).toBeDefined()
       expect(result.error?.code).toBe('STATUS_QUERY_FAILED')
       expect(result.error?.message).toBe('Dispatch failed')
-      expect(result.error?.recoverable).toBe(false)
+      expect(result.error?.recoverable).toBe(true)
       expect(result.userVisibleSummary).toBe('Status check failed due to an error.')
       expect(result.data).toBeUndefined()
 
@@ -112,9 +112,49 @@ describe('status-query-tool', () => {
 
       const result = await handleStatusQuery(deps)
 
-      expect(result.success).toBe(true)
-      expect(result.data?.statusText).toContain('Status check failed')
-      expect(result.data?.statusText).toContain('Gateway unavailable')
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+      expect(result.error?.code).toBe('TARGET_RUNTIME_ERROR')
+      expect(result.error?.message).toBe('Gateway unavailable')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.userVisibleSummary).toContain('Status check unavailable')
+      expect(result.userVisibleSummary).toContain('Gateway unavailable')
+    })
+
+    it('should handle target_runtime_unavailable with recoverable error', async () => {
+      const mockDispatch = vi.fn().mockResolvedValue({
+        requestId: 'turn-001',
+        actionId: 'action-test-456',
+        status: 'failed',
+        targetRuntime: 'gateway',
+        error: {
+          code: 'target_runtime_unavailable',
+          message: 'No adapter registered for runtime: gateway',
+          recoverable: false,
+        },
+        createdAt: '2024-01-15T10:00:00.000Z',
+      } as DispatchResult)
+
+      const mockRuntimeDispatcher = {
+        dispatch: mockDispatch,
+      } as RuntimeDispatcher
+
+      const deps = {
+        runtimeDispatcher: mockRuntimeDispatcher,
+        userId: 'user-123',
+        sessionId: 'session-456',
+        turnId: 'turn-001',
+      }
+
+      const result = await handleStatusQuery(deps)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+      expect(result.error?.code).toBe('target_runtime_unavailable')
+      expect(result.error?.message).toBe('No adapter registered for runtime: gateway')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.userVisibleSummary).toContain('Status check unavailable')
+      expect(result.runtimeSummary?.runtimeActionIds).toHaveLength(1)
     })
 
     it('should handle pending dispatch status', async () => {
