@@ -499,11 +499,11 @@ describe('mergeToolEvents', () => {
     }
   })
 
-  it('omits out-of-scope event types including thinking_summary', () => {
+  it('includes thinking_summary as a first-class message item', () => {
     const thinking = makeEvent({
       eventId: 'th',
       eventType: 'thinking_summary',
-      content: 'thinking...',
+      content: 'REASONING_FIXTURE_12345',
     })
     const user = makeEvent({
       eventId: 'u',
@@ -512,6 +512,82 @@ describe('mergeToolEvents', () => {
     })
 
     const items = mergeToolEvents([thinking, user])
+
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatchObject({ kind: 'message', key: 'th' })
+    expect(items[1]).toMatchObject({ kind: 'message', key: 'u' })
+    if (items[0].kind === 'message') {
+      expect(items[0].event.eventType).toBe('thinking_summary')
+      expect(items[0].event.content).toBe('REASONING_FIXTURE_12345')
+    }
+  })
+
+  it('preserves order when tools are interleaved around thinking_summary', () => {
+    const user = makeEvent({
+      eventId: 'u',
+      eventType: 'user_message',
+      content: 'do it',
+    })
+    const call = makeEvent({
+      eventId: 'call-1',
+      eventType: 'tool_call',
+      content: 'web_search: running',
+      metadata: {
+        toolCallId: 'tc-1',
+        toolName: 'web_search',
+        status: 'running',
+        parameters: { query: 'agent platforms' },
+      },
+    })
+    const result = makeEvent({
+      eventId: 'result-1',
+      eventType: 'tool_result',
+      content: 'search hits',
+      metadata: {
+        toolCallId: 'tc-1',
+        toolName: 'web_search',
+        status: 'completed',
+        result: 'search hits',
+      },
+    })
+    const thinking = makeEvent({
+      eventId: 'th',
+      eventType: 'thinking_summary',
+      content: 'REASONING_FIXTURE_12345',
+    })
+    const assistant = makeEvent({
+      eventId: 'asst',
+      eventType: 'assistant_message',
+      content: 'here you go',
+    })
+
+    const items = mergeToolEvents([user, call, result, thinking, assistant])
+
+    expect(items).toHaveLength(4)
+    expect(items.map((item) => item.kind)).toEqual(['message', 'tool', 'message', 'message'])
+    expect(items[0].key).toBe('u')
+    expect(items[1].key).toBe('call-1')
+    expect(items[2].key).toBe('th')
+    expect(items[3].key).toBe('asst')
+    if (items[2].kind === 'message') {
+      expect(items[2].event.eventType).toBe('thinking_summary')
+      expect(items[2].event.content).toBe('REASONING_FIXTURE_12345')
+    }
+  })
+
+  it('still drops unknown event types such as token_stream', () => {
+    const tokenStream = makeEvent({
+      eventId: 'tok',
+      eventType: 'token_stream',
+      content: 'a delta',
+    })
+    const user = makeEvent({
+      eventId: 'u',
+      eventType: 'user_message',
+      content: 'hi',
+    })
+
+    const items = mergeToolEvents([tokenStream, user])
     expect(items).toHaveLength(1)
     expect(items[0].kind).toBe('message')
     expect(items[0].key).toBe('u')

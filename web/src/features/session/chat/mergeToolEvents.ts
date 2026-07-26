@@ -103,6 +103,7 @@ export function mergeToolEvents(events: readonly ConsoleTimelineEvent[]): ChatSt
     if (
       event.eventType === 'user_message' ||
       event.eventType === 'assistant_message' ||
+      event.eventType === 'thinking_summary' ||
       event.eventType === 'error'
     ) {
       messageIndexes.set(index, event)
