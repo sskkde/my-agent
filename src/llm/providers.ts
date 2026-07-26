@@ -10,15 +10,11 @@ import {
   safeMergeHeaders,
   parseOpenAIStreamEvents,
 } from './transform/openai-chat-transformer.js'
-import {
-  buildOllamaChatRequestBody,
-  mapOllamaChatResponse,
-  parseOllamaStreamLine,
-} from './transform/ollama-transformer.js'
 import { createErrorFromResponse } from './transform/provider-errors.js'
 import { normalizeDomesticProviderRequest } from './transform/domestic-provider-compat.js'
 import { isDomesticProvider } from './catalog/domestic-providers.js'
 import { applyReasoningDepthToBody } from './reasoning-depth.js'
+import { normalizeOpenAICompatibleBaseUrl } from './url-normalize.js'
 
 interface ExtendedProviderConfig extends ProviderConfig {
   apiKey?: string
@@ -72,10 +68,6 @@ function logResponse(providerId: string, success: boolean, latencyMs: number, en
 
 function mapOpenAIResponse(data: Record<string, unknown>): LLMResponse {
   return mapOpenAIChatResponse(data)
-}
-
-function mapOllamaResponse(data: Record<string, unknown>): LLMResponse {
-  return mapOllamaChatResponse(data)
 }
 
 function buildRequestBody(request: LLMRequest): Record<string, unknown> {
@@ -587,10 +579,19 @@ export class OpenRouterAdapter extends BaseProvider {
 
 export class OllamaAdapter extends BaseProvider {
   private baseUrl: string
+  private apiKey: string
 
   constructor(config: ExtendedProviderConfig) {
     super(config)
-    this.baseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
+    // Ollama exposes an OpenAI-compatible /v1/chat/completions endpoint.
+    // Normalize the stored base URL so the chat path can be appended as
+    // `${base}/chat/completions` without producing /v1/v1 or double slashes.
+    const rawBaseUrl = config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
+    this.baseUrl = normalizeOpenAICompatibleBaseUrl(rawBaseUrl)
+    // Always send an Authorization header. Local Ollama ignores the value;
+    // cloud (ollama.com) requires a real key. Use a placeholder when none is
+    // configured so the Bearer header is always present.
+    this.apiKey = config.apiKey || 'ollama'
   }
 
   async complete(request: LLMRequest): Promise<LLMResult> {
@@ -602,15 +603,17 @@ export class OllamaAdapter extends BaseProvider {
     }
 
     const startTime = Date.now()
-    const url = `${this.baseUrl}/api/chat`
+    const url = `${this.baseUrl}/chat/completions`
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.apiKey}`,
     }
     const headers = safeMergeHeaders(baseHeaders, this.config.headers)
 
     logRequest(url, headers, this.config.enableLogging || false)
 
-    const body = buildOllamaChatRequestBody(request)
+    let body = buildRequestBody(request)
+    body = applyReasoningDepthToBody('ollama', body, request.reasoningDepth)
 
     try {
       const controller = new AbortController()
@@ -635,7 +638,7 @@ export class OllamaAdapter extends BaseProvider {
       }
 
       const data = (await response.json()) as Record<string, unknown>
-      const mappedResponse = mapOllamaResponse(data)
+      const mappedResponse = mapOpenAIResponse(data)
 
       this.updateStats(true, latencyMs)
       logResponse(this.id, true, latencyMs, this.config.enableLogging || false)
@@ -676,13 +679,16 @@ export class OllamaAdapter extends BaseProvider {
       throw this.createCircuitBreakerError(source)
     }
 
-    const url = `${this.baseUrl}/api/chat`
+    const url = `${this.baseUrl}/chat/completions`
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${this.apiKey}`,
     }
     const headers = safeMergeHeaders(baseHeaders, this.config.headers)
 
-    const body = buildOllamaChatRequestBody(request, true)
+    let body = buildRequestBody(request)
+    body = { ...body, stream: true }
+    body = applyReasoningDepthToBody('ollama', body, request.reasoningDepth)
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs)
@@ -708,7 +714,7 @@ export class OllamaAdapter extends BaseProvider {
       const startTime = Date.now()
       let yielded = false
 
-      for await (const event of readStreamLines(response.body, parseOllamaStreamLine, controller.signal)) {
+      for await (const event of readStreamLines(response.body, parseOpenAIStreamEvents, controller.signal)) {
         yielded = true
         yield event
       }

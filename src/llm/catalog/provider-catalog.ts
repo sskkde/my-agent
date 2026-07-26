@@ -57,9 +57,9 @@ const NON_DOMESTIC_CATALOG_ENTRIES: ProviderCatalogEntry[] = [
   {
     providerType: 'ollama',
     displayName: 'Ollama',
-    family: 'ollama',
-    protocol: 'ollama_chat',
-    promptFamily: 'ollama',
+    family: 'openai_compatible',
+    protocol: 'openai_chat',
+    promptFamily: 'openai',
     requiresApiKey: false,
     requiresBaseUrl: true,
     defaultBaseUrl: 'http://localhost:11434',
