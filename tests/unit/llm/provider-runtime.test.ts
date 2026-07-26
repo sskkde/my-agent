@@ -264,7 +264,7 @@ describe('provider-runtime', () => {
     delete process.env.DEEPSEEK_API_KEY
   })
 
-  it('assigns supportsJsonMode false for custom and ollama providers', async () => {
+  it('assigns supportsJsonMode false for custom and ollama providers with explicit jsonMode=false override', async () => {
     providerConfigStore.create({
       providerId: 'custom-provider',
       userId: 'user-1',
@@ -272,6 +272,7 @@ describe('provider-runtime', () => {
       displayName: 'Custom Provider',
       apiKey: 'sk-custom',
       baseUrl: 'https://api.siliconflow.cn/v1',
+      capabilities: { jsonMode: false },
     })
 
     providerConfigStore.create({
@@ -280,6 +281,7 @@ describe('provider-runtime', () => {
       providerType: 'ollama',
       displayName: 'Ollama',
       baseUrl: 'http://localhost:11434',
+      capabilities: { jsonMode: false },
     })
 
     const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
@@ -348,7 +350,7 @@ describe('provider-runtime', () => {
       })
     })
 
-    it('custom provider has jsonMode=false by default', async () => {
+    it('custom provider reflects explicit jsonMode=false override', async () => {
       providerConfigStore.create({
         providerId: 'custom',
         userId: 'user-1',
@@ -357,6 +359,7 @@ describe('provider-runtime', () => {
         apiKey: 'sk-custom',
         baseUrl: 'https://api.custom.com/v1',
         selectedModel: 'custom-model',
+        capabilities: { jsonMode: false },
       })
 
       const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
@@ -403,6 +406,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama No Function Calling',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
@@ -451,6 +455,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama No JSON Mode',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { jsonMode: false },
       })
 
       providerConfigStore.create({
@@ -490,6 +495,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama Preferred',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
@@ -552,6 +558,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama 1',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
@@ -561,6 +568,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama 2',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama3',
+        capabilities: { functionCalling: false },
       })
 
       const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
@@ -602,6 +610,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama No Function Calling',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { functionCalling: false },
       })
 
       const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
@@ -764,6 +773,7 @@ describe('provider-runtime', () => {
         displayName: 'Ollama',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
@@ -805,6 +815,162 @@ describe('provider-runtime', () => {
           streamChunks.push(chunk)
         }
         expect(streamChunks).toHaveLength(0)
+      })
+    })
+  })
+
+  describe('multi-model same-provider routing (T5)', () => {
+    it('routes tools request to provider when request.model is in models_json even if selectedModel differs', async () => {
+      providerConfigStore.create({
+        providerId: 'multi-model-provider',
+        userId: 'user-1',
+        providerType: 'custom',
+        displayName: 'Multi Model Provider',
+        apiKey: 'sk-multi',
+        baseUrl: 'https://api.example.com/v1',
+        selectedModel: 'a',
+        models: [
+          { modelId: 'a', capabilities: { functionCalling: false } },
+          { modelId: 'b', capabilities: { functionCalling: true } },
+        ],
+      })
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const request = {
+          model: 'b',
+          messages: [{ role: 'user' as const, content: 'Use tools' }],
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'test_fn',
+                description: 'Test function',
+                parameters: { type: 'object' as const, properties: {} },
+              },
+            },
+          ],
+        }
+
+        const result = await adapter.complete(request)
+
+        // The provider owns model `b` (in models_json with FC=true), so the
+        // candidate is eligible. The request fails at the network layer
+        // (CONNECTION_ERROR), but the provider WAS attempted — proving it
+        // passed the capability + modelId filter. The distinguishing assertion
+        // vs. the "not eligible" case is that attempts includes the provider.
+        expect(result.success).toBe(false)
+        if (!result.success) {
+          const attemptedIds = result.error.attempts?.map((a) => a.providerId) ?? []
+          expect(attemptedIds).toContain('multi-model-provider')
+          expect(result.error.attempts?.length).toBeGreaterThan(0)
+        }
+      })
+    })
+
+    it('request.model not in provider models or selectedModel is not eligible for that provider', async () => {
+      providerConfigStore.create({
+        providerId: 'multi-model-provider',
+        userId: 'user-1',
+        providerType: 'custom',
+        displayName: 'Multi Model Provider',
+        apiKey: 'sk-multi',
+        baseUrl: 'https://api.example.com/v1',
+        selectedModel: 'a',
+        models: [
+          { modelId: 'a', capabilities: { functionCalling: true } },
+          { modelId: 'b', capabilities: { functionCalling: true } },
+        ],
+      })
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const request = {
+          model: 'c',
+          messages: [{ role: 'user' as const, content: 'Use tools' }],
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'test_fn',
+                description: 'Test function',
+                parameters: { type: 'object' as const, properties: {} },
+              },
+            },
+          ],
+        }
+
+        const result = await adapter.complete(request)
+
+        // Model `c` is not owned by the provider → not eligible →
+        // ALL_PROVIDERS_FAILED with empty attempts (no provider tried).
+        expect(result.success).toBe(false)
+        if (!result.success) {
+          expect(result.error.code).toBe('ALL_PROVIDERS_FAILED')
+          const attemptedIds = result.error.attempts?.map((a) => a.providerId) ?? []
+          expect(attemptedIds).not.toContain('multi-model-provider')
+          expect(result.error.attempts?.length ?? 0).toBe(0)
+        }
+      })
+    })
+
+    it('stream() routes multi-model request like complete()', async () => {
+      providerConfigStore.create({
+        providerId: 'multi-model-provider',
+        userId: 'user-1',
+        providerType: 'custom',
+        displayName: 'Multi Model Provider',
+        apiKey: 'sk-multi',
+        baseUrl: 'https://api.example.com/v1',
+        selectedModel: 'a',
+        models: [
+          { modelId: 'a', capabilities: { functionCalling: false } },
+          { modelId: 'b', capabilities: { functionCalling: true } },
+        ],
+      })
+
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
+
+      await adapter.runWithUserProviders('user-1', async () => {
+        const request = {
+          model: 'b',
+          messages: [{ role: 'user' as const, content: 'Use tools' }],
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'test_fn',
+                description: 'Test function',
+                parameters: { type: 'object' as const, properties: {} },
+              },
+            },
+          ],
+        }
+
+        // Model `b` is owned by the provider with FC=true → eligible.
+        // The adapter's stream() swallows network errors and may yield empty,
+        // so we cannot distinguish eligible-network-failure from filtered-out
+        // by chunk count alone. Instead, verify the complete() path proves
+        // eligibility (attempts include the provider), and that stream() does
+        // not throw (it would only throw on a programming error).
+        const completeResult = await adapter.complete(request)
+        expect(completeResult.success).toBe(false)
+        if (!completeResult.success) {
+          const attemptedIds = completeResult.error.attempts?.map((a) => a.providerId) ?? []
+          expect(attemptedIds).toContain('multi-model-provider')
+        }
+
+        let streamThrew = false
+        try {
+          for await (const _chunk of adapter.stream(request)) {
+            // discard
+          }
+        } catch {
+          streamThrew = true
+        }
+        expect(streamThrew).toBe(false)
       })
     })
   })

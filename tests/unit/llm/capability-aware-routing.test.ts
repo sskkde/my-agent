@@ -64,6 +64,7 @@ describe('capability-aware routing', () => {
         displayName: 'No Function Calling',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'basic-model',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
@@ -112,6 +113,7 @@ describe('capability-aware routing', () => {
         displayName: 'Ollama Basic',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
@@ -162,6 +164,7 @@ describe('capability-aware routing', () => {
         displayName: 'No JSON Mode',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { jsonMode: false },
       })
 
       providerConfigStore.create({
@@ -202,6 +205,7 @@ describe('capability-aware routing', () => {
         apiKey: 'sk-custom',
         baseUrl: 'https://custom.api.com/v1',
         selectedModel: 'custom-model',
+        capabilities: { jsonMode: false },
       })
 
       providerConfigStore.create({
@@ -243,6 +247,7 @@ describe('capability-aware routing', () => {
         displayName: 'Ollama 1',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'basic-model-1',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
@@ -252,6 +257,7 @@ describe('capability-aware routing', () => {
         displayName: 'Ollama 2',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'basic-model-2',
+        capabilities: { functionCalling: false },
       })
 
       const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
@@ -291,6 +297,7 @@ describe('capability-aware routing', () => {
         displayName: 'Ollama',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { jsonMode: false },
       })
 
       providerConfigStore.create({
@@ -301,6 +308,7 @@ describe('capability-aware routing', () => {
         apiKey: 'sk-custom',
         baseUrl: 'https://custom.api.com/v1',
         selectedModel: 'custom-model',
+        capabilities: { jsonMode: false },
       })
 
       const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
@@ -372,6 +380,7 @@ describe('capability-aware routing', () => {
         displayName: 'User1 Ollama',
         baseUrl: 'http://localhost:11434',
         selectedModel: 'llama2',
+        capabilities: { functionCalling: false },
       })
 
       providerConfigStore.create({
