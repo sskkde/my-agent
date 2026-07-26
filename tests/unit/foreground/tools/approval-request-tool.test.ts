@@ -208,6 +208,57 @@ describe('ApprovalRequestTool', () => {
       expect(result.error?.code).toBe('APPROVAL_STORE_ERROR')
       expect(result.error?.recoverable).toBe(true)
     })
+
+    it('should reject empty operation string', async () => {
+      const deps = createMockDeps()
+      const input: ApprovalRequestInput = {
+        operation: '',
+        operationArgs: {},
+        requiresApproval: true,
+      }
+
+      const result = await handleApprovalRequest(deps, input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('INVALID_APPROVAL_OPERATION')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.userVisibleSummary).toContain('Operation is required')
+      expect(deps.approvalStore.create).not.toHaveBeenCalled()
+    })
+
+    it('should reject whitespace-only operation', async () => {
+      const deps = createMockDeps()
+      const input: ApprovalRequestInput = {
+        operation: '   ',
+        operationArgs: {},
+        requiresApproval: true,
+      }
+
+      const result = await handleApprovalRequest(deps, input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('INVALID_APPROVAL_OPERATION')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.userVisibleSummary).toContain('Operation is required')
+      expect(deps.approvalStore.create).not.toHaveBeenCalled()
+    })
+
+    it('should reject undefined operation', async () => {
+      const deps = createMockDeps()
+      const input = {
+        operation: undefined as unknown as string,
+        operationArgs: {},
+        requiresApproval: true,
+      }
+
+      const result = await handleApprovalRequest(deps, input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('INVALID_APPROVAL_OPERATION')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.userVisibleSummary).toContain('Operation is required')
+      expect(deps.approvalStore.create).not.toHaveBeenCalled()
+    })
   })
 
   describe('handleApprovalResponse', () => {

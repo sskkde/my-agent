@@ -99,6 +99,16 @@ export async function handleApprovalRequest(
   const { operation, operationArgs, requiresApproval, correlationId, riskLevel } = input
 
   try {
+    // Reject empty/whitespace operation — no empty actionType approval rows
+    if (!operation || !operation.trim()) {
+      return createErrorResult<ApprovalRequestData>(
+        'INVALID_APPROVAL_OPERATION',
+        'operation is required for approval request mode',
+        true,
+        'Operation is required to create an approval request.',
+      )
+    }
+
     // If approval is not required and operation is safe, auto-approve
     if (!requiresApproval && isSafeOperation(operation)) {
       return createSuccessResult<ApprovalRequestData>(

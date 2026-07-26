@@ -452,7 +452,7 @@ export function createForegroundHandleApprovalToolDefinition(runtimeDeps?: Foreg
   return {
     name: APPROVAL_REQUEST_TOOL_ID,
     description:
-      'Handle approval requests and responses for high-risk foreground operations. Use this to approve or deny pending approval requests.',
+      'Handle approval requests and responses for high-risk foreground operations. Use this to approve or deny pending approval requests (response mode needs approvalId+decision), or create a new approval request for an operation (request mode requires "operation" field).',
     category: 'internal',
     sensitivity: 'low',
     requiresPermission: false,
