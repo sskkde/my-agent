@@ -742,8 +742,33 @@ export class AgentKernel {
         attemptId,
         sequence,
         delta,
+        // SAFETY: assistant text channel is explicit. Missing channel is treated
+        // as 'assistant' by consumers (back-compat); setting it explicitly here
+        // keeps the assistant/reasoning split unambiguous at the source.
+        channel: 'assistant',
         accumulated: aggregator.content,
         isFinal,
+        timestamp: new Date().toISOString(),
+      }
+      broadcaster.broadcastTokenStream(sessionId, payload)
+      sequence++
+    }
+
+    // SAFETY: reasoning is broadcast on a SEPARATE channel ('reasoning') and MUST
+    // never merge into assistant `content` / `channel: 'assistant'` payloads.
+    // `accumulated` reflects reasoning-so-far (aggregator.reasoningContent), not
+    // assistant content. Only non-empty deltas are broadcast so no empty reasoning
+    // UI blocks are emitted when no reasoning existed.
+    const broadcastReasoningDelta = (delta: string): void => {
+      if (!broadcaster || !sessionId || delta.length === 0) return
+      const payload: TokenStreamPayload = {
+        sessionId,
+        attemptId,
+        sequence,
+        delta,
+        channel: 'reasoning',
+        accumulated: aggregator.reasoningContent ?? '',
+        isFinal: false,
         timestamp: new Date().toISOString(),
       }
       broadcaster.broadcastTokenStream(sessionId, payload)
@@ -846,6 +871,9 @@ export class AgentKernel {
 
           if (chunk.kind === 'text') {
             broadcastTextDelta(chunk.delta, false)
+          } else if (chunk.kind === 'reasoning') {
+            // SAFETY: route reasoning to its own channel; never the assistant path.
+            broadcastReasoningDelta(chunk.delta)
           } else if (chunk.kind === 'tool_call_delta') {
             maybeAnnounceEarlyTool(chunk)
           }
