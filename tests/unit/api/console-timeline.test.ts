@@ -395,8 +395,11 @@ describe('ConsoleTimelineService', () => {
       expect(errorEvents[0].actor).toBe('system')
     })
 
-    it('no raw chain-of-thought is persisted as thinking_summary', () => {
+    it('T6: thinking_summary CAN appear from role=thinking with public fixture; internal CoT strings NEVER appear', () => {
       const sessionId = 'session-task7-safety'
+      const REASONING_FIXTURE = 'REASONING_FIXTURE_12345'
+      const ANSWER_TEXT = 'Public safe response'
+      const INTERNAL_COT = 'Internal chain-of-thought that must not leak'
 
       const transcript: TurnTranscript = {
         turnId: 'turn-task7-safety',
@@ -408,9 +411,14 @@ describe('ConsoleTimelineService', () => {
         output: {
           visibleMessages: [
             {
+              messageId: 'msg-thinking',
+              role: 'thinking',
+              content: REASONING_FIXTURE,
+            },
+            {
               messageId: 'msg-safe',
               role: 'assistant',
-              content: 'Public safe response',
+              content: ANSWER_TEXT,
             },
           ],
         },
@@ -423,12 +431,59 @@ describe('ConsoleTimelineService', () => {
       const timelineService = createConsoleTimelineService(stores)
       const result = timelineService.getTimeline(sessionId)
 
+      // Opt-in: provider reasoning projected as role=thinking → one thinking_summary event.
+      const thinkingEvents = result.events.filter((e) => e.eventType === 'thinking_summary')
+      expect(thinkingEvents).toHaveLength(1)
+      expect(thinkingEvents[0].content).toBe(REASONING_FIXTURE)
+
+      const assistantEvents = result.events.filter((e) => e.eventType === 'assistant_message')
+      expect(assistantEvents).toHaveLength(1)
+      expect(assistantEvents[0].content).toBe(ANSWER_TEXT)
+
+      // SAFETY: reasoning fixture must NEVER appear in assistant_message content.
+      expect(assistantEvents[0].content).not.toContain(REASONING_FIXTURE)
+
+      // SAFETY: internal CoT strings must NEVER appear in any timeline event.
+      const hasInternalCoT = result.events.some((e) => (e.content ?? '').includes(INTERNAL_COT))
+      expect(hasInternalCoT).toBe(false)
+    })
+
+    it('T6: default path without role=thinking has zero thinking_summary events', () => {
+      const sessionId = 'session-task7-default'
+      const ANSWER_TEXT = 'Public safe response with no reasoning'
+
+      const transcript: TurnTranscript = {
+        turnId: 'turn-task7-default',
+        sessionId,
+        userId: 'user-task7',
+        input: {
+          userMessageSummary: 'Test default',
+        },
+        output: {
+          visibleMessages: [
+            {
+              messageId: 'msg-safe',
+              role: 'assistant',
+              content: ANSWER_TEXT,
+            },
+          ],
+        },
+        visibility: 'public',
+        createdAt: '2024-01-15T10:03:00.000Z',
+      }
+
+      mockTranscriptStore.saveTurn(transcript)
+
+      const timelineService = createConsoleTimelineService(stores)
+      const result = timelineService.getTimeline(sessionId)
+
+      // Default path (no role=thinking message) → zero thinking_summary events.
       const thinkingEvents = result.events.filter((e) => e.eventType === 'thinking_summary')
       expect(thinkingEvents).toHaveLength(0)
 
       const assistantEvents = result.events.filter((e) => e.eventType === 'assistant_message')
       expect(assistantEvents).toHaveLength(1)
-      expect(assistantEvents[0].content).toBe('Public safe response')
+      expect(assistantEvents[0].content).toBe(ANSWER_TEXT)
     })
   })
 

@@ -996,7 +996,7 @@ describe('ProcessorOrchestration', () => {
       expect(savedTranscript.output.visibleMessages[1].content).toContain('spawn_planner')
     })
 
-    it('should not include raw internal reasoning in thinking_summary', async () => {
+    it('T6: decisionTrace internal reason never appears in visibleMessages; default path has zero thinking', async () => {
       const correlationId = 'corr-transcript-safe-001'
 
       vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
@@ -1023,9 +1023,11 @@ describe('ProcessorOrchestration', () => {
 
       const savedTranscript = savedTranscripts[0]
 
+      // Default path (no provider reasoning) → zero thinking messages.
       const thinkingMessages = savedTranscript.output.visibleMessages.filter((m) => m.role === 'thinking')
       expect(thinkingMessages).toHaveLength(0)
 
+      // SAFETY: decisionTrace internal reason must NEVER appear in any visible message.
       const hasInternalReasoning = savedTranscript.output.visibleMessages.some((m) =>
         m.content.includes('Internal chain-of-thought'),
       )
@@ -1033,6 +1035,60 @@ describe('ProcessorOrchestration', () => {
 
       expect(savedTranscript.output.visibleMessages[0].role).toBe('assistant')
       expect(savedTranscript.output.visibleMessages[0].content).toBe('Here is my public response.')
+    })
+
+    it('T6: provider reasoning projected as role=thinking is allowed under opt-in contract; assistant stays clean', async () => {
+      const correlationId = 'corr-transcript-safe-002'
+      const REASONING_FIXTURE = 'REASONING_FIXTURE_12345'
+      const ANSWER_TEXT = 'Public answer with provider reasoning.'
+
+      // Foreground mapper is the sole producer of role=thinking; simulate its
+      // projection by returning visibleMessages that include a thinking message
+      // sourced from provider reasoningContent (NOT from decisionTrace).
+      vi.mocked(mockForegroundAgent.runTurn!).mockResolvedValue({
+        status: 'completed',
+        finalResponse: ANSWER_TEXT,
+        decisionTrace: {
+          route: 'answer_directly',
+          requiresPlanner: false,
+          reason: 'Internal reason that must not leak',
+        },
+        visibleMessages: [
+          { messageId: 'msg-thinking', role: 'thinking', content: REASONING_FIXTURE },
+          { messageId: 'msg-assistant', role: 'assistant', content: ANSWER_TEXT },
+        ],
+      } as ForegroundTurnResult)
+
+      const processor = createOrchestrationProcessor({ deps })
+      const input: MessageProcessorInput = {
+        correlationId,
+        userId: 'user-123',
+        sessionId: 'session-456',
+        text: 'Explain your reasoning.',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        metadata: {},
+      }
+
+      await processor(input)
+
+      const savedTranscript = savedTranscripts[0]
+
+      // Opt-in: provider reasoning → exactly one thinking message with the fixture.
+      const thinkingMessages = savedTranscript.output.visibleMessages.filter((m) => m.role === 'thinking')
+      expect(thinkingMessages).toHaveLength(1)
+      expect(thinkingMessages[0].content).toBe(REASONING_FIXTURE)
+
+      // SAFETY: reasoning fixture must NEVER appear in assistant content.
+      const assistantMessages = savedTranscript.output.visibleMessages.filter((m) => m.role === 'assistant')
+      expect(assistantMessages).toHaveLength(1)
+      expect(assistantMessages[0].content).toBe(ANSWER_TEXT)
+      expect(assistantMessages[0].content).not.toContain(REASONING_FIXTURE)
+
+      // SAFETY: decisionTrace internal reason must NEVER appear in any visible message.
+      const hasInternalReasoning = savedTranscript.output.visibleMessages.some((m) =>
+        m.content.includes('Internal reason that must not leak'),
+      )
+      expect(hasInternalReasoning).toBe(false)
     })
 
     it('should continue processing even if transcript persistence fails', async () => {

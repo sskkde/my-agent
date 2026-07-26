@@ -87,7 +87,7 @@ describe('Transcript Redaction Mapper', () => {
   })
 
   describe('Hidden prompt not persisted', () => {
-    it('kernel result with private reasoning does not leak', () => {
+    it('T6: kernel result with private reasoning does not leak; provider reasoning may appear as thinking only', () => {
       const kernelResult: KernelRunResult = {
         finalStatus: 'completed',
         iterationsUsed: 1,
@@ -126,6 +126,46 @@ describe('Transcript Redaction Mapper', () => {
 
       // SAFETY: hasHiddenPromptContent check returns false (we don't leak by design)
       expect(hasHiddenPromptContent(kernelResult)).toBe(false)
+
+      // Opt-in contract: provider reasoningContent MAY appear as role=thinking only.
+      const REASONING_FIXTURE = 'REASONING_FIXTURE_12345'
+      const ANSWER_TEXT = 'This is the public response'
+      const kernelResultWithReasoning: KernelRunResult = {
+        finalStatus: 'completed',
+        iterationsUsed: 1,
+        toolCalls: [],
+        transcript: [
+          {
+            iteration: 1,
+            timestamp: '2024-01-01T00:00:00Z',
+            type: 'llm_response',
+            content: {
+              content: ANSWER_TEXT,
+              hiddenPrompt: 'This is private chain-of-thought reasoning',
+            },
+          },
+        ],
+        reasoningContent: REASONING_FIXTURE,
+      }
+
+      const messages = mapKernelResultToVisibleMessages(kernelResultWithReasoning, 'turn-t6')
+
+      const thinkingMessages = messages.filter((m) => m.role === 'thinking')
+      expect(thinkingMessages).toHaveLength(1)
+      expect(thinkingMessages[0].content).toBe(REASONING_FIXTURE)
+
+      const assistantMessages = messages.filter((m) => m.role === 'assistant')
+      expect(assistantMessages).toHaveLength(1)
+      expect(assistantMessages[0].content).toBe(ANSWER_TEXT)
+
+      // SAFETY: reasoning fixture must NEVER appear in assistant content.
+      expect(assistantMessages[0].content).not.toContain(REASONING_FIXTURE)
+
+      // SAFETY: hiddenPrompt / internal fields must NEVER appear in any visible message.
+      const hasHiddenPrompt = messages.some((m) =>
+        m.content.includes('This is private chain-of-thought reasoning'),
+      )
+      expect(hasHiddenPrompt).toBe(false)
     })
   })
 

@@ -298,18 +298,24 @@ describe('ChatMessageList', () => {
     expect(screen.getByLabelText('正在输入')).toBeInTheDocument()
   })
 
-  it('shows welcome when only ignored event types are present', () => {
+  it('renders thinking_summary as a first-class message when present (T6 opt-in contract)', () => {
     const events: ConsoleTimelineEvent[] = [
       makeEvent({
         eventId: 'th-1',
         eventType: 'thinking_summary',
-        content: 'thinking',
+        content: 'REASONING_FIXTURE_12345',
+      }),
+      makeEvent({
+        eventId: 'u-1',
+        eventType: 'user_message',
+        content: 'hi',
       }),
     ]
 
     renderList(events)
-    expect(screen.getByTestId('chat-welcome')).toBeInTheDocument()
-    expect(screen.queryByTestId('tool-call-card')).not.toBeInTheDocument()
+    // Opt-in: thinking_summary content renders when present in the event list.
+    expect(screen.getByText('REASONING_FIXTURE_12345')).toBeInTheDocument()
+    expect(screen.getByText('hi')).toBeInTheDocument()
   })
 
   it('renders error event as a system error bubble with Chinese prefix', () => {
@@ -330,12 +336,12 @@ describe('ChatMessageList', () => {
     expect(errorBubble.textContent).toContain('[PROCESSING_ERROR] pipeline timeout')
   })
 
-  it('does not render thinking_summary in chat stream', () => {
+  it('renders thinking_summary content when present as a message item (T6 opt-in)', () => {
     const events: ConsoleTimelineEvent[] = [
       makeEvent({
         eventId: 'th-1',
         eventType: 'thinking_summary',
-        content: 'internal reasoning',
+        content: 'REASONING_FIXTURE_12345',
       }),
       makeEvent({
         eventId: 'u-1',
@@ -345,7 +351,8 @@ describe('ChatMessageList', () => {
     ]
 
     renderList(events)
+    // Opt-in contract: thinking_summary renders when present in the event list.
     expect(screen.getByText('hi')).toBeInTheDocument()
-    expect(screen.queryByText('internal reasoning')).not.toBeInTheDocument()
+    expect(screen.getByText('REASONING_FIXTURE_12345')).toBeInTheDocument()
   })
 })

@@ -593,6 +593,33 @@ describe('mergeToolEvents', () => {
     expect(items[0].key).toBe('u')
   })
 
+  it('T6: thinking_summary content never leaks into assistant_message items', () => {
+    const thinking = makeEvent({
+      eventId: 'th',
+      eventType: 'thinking_summary',
+      content: 'REASONING_FIXTURE_12345',
+    })
+    const assistant = makeEvent({
+      eventId: 'asst',
+      eventType: 'assistant_message',
+      content: 'public answer',
+    })
+
+    const items = mergeToolEvents([thinking, assistant])
+
+    expect(items).toHaveLength(2)
+    // SAFETY: reasoning fixture appears only in the thinking_summary item.
+    const thinkingItem = items.find((i) => i.kind === 'message' && i.key === 'th')
+    const assistantItem = items.find((i) => i.kind === 'message' && i.key === 'asst')
+    expect(thinkingItem).toBeDefined()
+    expect(assistantItem).toBeDefined()
+    if (thinkingItem?.kind === 'message' && assistantItem?.kind === 'message') {
+      expect(thinkingItem.event.content).toBe('REASONING_FIXTURE_12345')
+      expect(assistantItem.event.content).toBe('public answer')
+      expect(assistantItem.event.content).not.toContain('REASONING_FIXTURE_12345')
+    }
+  })
+
   it('treats error events as message items', () => {
     const user = makeEvent({
       eventId: 'u',
