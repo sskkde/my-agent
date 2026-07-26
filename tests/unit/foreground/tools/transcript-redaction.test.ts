@@ -3,7 +3,7 @@
  * Redaction coverage tests for transcript persistence
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   mapKernelResultToTranscript,
   mapKernelResultToVisibleMessages,
@@ -13,6 +13,9 @@ import {
   buildToolResultEventId,
 } from '../../../../src/foreground/tools/transcript-redaction-mapper.js'
 import type { KernelRunResult, KernelTranscriptEntry } from '../../../../src/kernel/types.js'
+import { createConsoleTimelineService, type ConsoleTimelineStores } from '../../../../src/api/console-timeline.js'
+import type { TranscriptStore, TurnTranscript } from '../../../../src/storage/transcript-store.js'
+import type { EventStore } from '../../../../src/storage/event-store.js'
 
 describe('Transcript Redaction Mapper', () => {
   describe('Sensitive tool args redacted', () => {
@@ -480,5 +483,124 @@ describe('Plan C ordered projection', () => {
     const messages = mapKernelResultToVisibleMessages(kernelResult, 'turn-fb')
     expect(messages.map((m) => m.role)).toEqual(['tool', 'assistant'])
     expect(messages[1].content).toBe('Only final.')
+  })
+})
+
+// ─── T5: provider reasoning → role=thinking visible message (opt-in) ──────────
+
+const REASONING_FIXTURE = 'REASONING_FIXTURE_12345'
+const ANSWER_TEXT = 'The answer is 42.'
+
+function makeReasoningKernelResult(reasoningContent?: string): KernelRunResult {
+  return {
+    finalStatus: 'completed',
+    finalResponse: ANSWER_TEXT,
+    iterationsUsed: 1,
+    toolCalls: [],
+    transcript: [entry('llm_response', { content: ANSWER_TEXT })],
+    ...(reasoningContent !== undefined ? { reasoningContent } : {}),
+  }
+}
+
+describe('T5: provider reasoning → role=thinking visible message (opt-in)', () => {
+  it('a) kernel result with reasoningContent fixture → thinking + clean assistant', () => {
+    const kernelResult = makeReasoningKernelResult(REASONING_FIXTURE)
+    const messages = mapKernelResultToVisibleMessages(kernelResult, 'turn-t5a')
+
+    // Expect a thinking message BEFORE the final assistant message.
+    const thinkingMessages = messages.filter((m) => m.role === 'thinking')
+    expect(thinkingMessages).toHaveLength(1)
+    expect(thinkingMessages[0].content).toBe(REASONING_FIXTURE)
+
+    const assistantMessages = messages.filter((m) => m.role === 'assistant')
+    expect(assistantMessages).toHaveLength(1)
+    expect(assistantMessages[0].content).toBe(ANSWER_TEXT)
+
+    // SAFETY: reasoning fixture must NOT appear in assistant content.
+    expect(assistantMessages[0].content).not.toContain(REASONING_FIXTURE)
+
+    // Order: thinking comes before assistant.
+    const thinkingIdx = messages.findIndex((m) => m.role === 'thinking')
+    const assistantIdx = messages.findIndex((m) => m.role === 'assistant')
+    expect(thinkingIdx).toBeLessThan(assistantIdx)
+    expect(thinkingIdx).toBeGreaterThanOrEqual(0)
+  })
+
+  it('b) blank/whitespace reasoning → no thinking message', () => {
+    const kernelResult = makeReasoningKernelResult('   \n\t  ')
+    const messages = mapKernelResultToVisibleMessages(kernelResult, 'turn-t5b')
+
+    const thinkingMessages = messages.filter((m) => m.role === 'thinking')
+    expect(thinkingMessages).toHaveLength(0)
+
+    const assistantMessages = messages.filter((m) => m.role === 'assistant')
+    expect(assistantMessages).toHaveLength(1)
+    expect(assistantMessages[0].content).toBe(ANSWER_TEXT)
+  })
+
+  it('b2) undefined reasoningContent → no thinking message', () => {
+    const kernelResult = makeReasoningKernelResult(undefined)
+    const messages = mapKernelResultToVisibleMessages(kernelResult, 'turn-t5b2')
+
+    const thinkingMessages = messages.filter((m) => m.role === 'thinking')
+    expect(thinkingMessages).toHaveLength(0)
+
+    const assistantMessages = messages.filter((m) => m.role === 'assistant')
+    expect(assistantMessages).toHaveLength(1)
+  })
+
+  it('c) timeline service maps that turn to one thinking_summary event with fixture', () => {
+    const sessionId = 'session-t5c'
+    const turnId = 'turn-t5c'
+
+    // Build visibleMessages via the mapper (production path).
+    const kernelResult = makeReasoningKernelResult(REASONING_FIXTURE)
+    const visibleMessages = mapKernelResultToVisibleMessages(kernelResult, turnId)
+
+    const transcript: TurnTranscript = {
+      turnId,
+      sessionId,
+      userId: 'user-t5c',
+      input: { userMessageSummary: 'What is the answer?' },
+      output: { visibleMessages },
+      visibility: 'public',
+      createdAt: '2026-07-26T00:00:00.000Z',
+    }
+
+    const mockTranscriptStore = {
+      saveTurn: vi.fn((_t: TurnTranscript) => true),
+      getTurn: vi.fn().mockReturnValue(null),
+      findBySession: vi.fn(() => [transcript]),
+      search: vi.fn().mockReturnValue([]),
+      findByArtifactRef: vi.fn().mockReturnValue([]),
+      findByPlannerRunId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn().mockReturnValue(0),
+    } as unknown as TranscriptStore
+
+    const mockEventStore = {
+      append: vi.fn(),
+      query: vi.fn().mockReturnValue([]),
+      findByCorrelationId: vi.fn().mockReturnValue([]),
+      findByCausationId: vi.fn().mockReturnValue([]),
+      updateUserIdForSession: vi.fn(),
+    } as unknown as EventStore
+
+    const stores: ConsoleTimelineStores = {
+      transcriptStore: mockTranscriptStore,
+      eventStore: mockEventStore,
+    }
+
+    const timelineService = createConsoleTimelineService(stores)
+    const result = timelineService.getTimeline(sessionId)
+
+    const thinkingEvents = result.events.filter((e) => e.eventType === 'thinking_summary')
+    expect(thinkingEvents).toHaveLength(1)
+    expect(thinkingEvents[0].content).toBe(REASONING_FIXTURE)
+
+    const assistantEvents = result.events.filter((e) => e.eventType === 'assistant_message')
+    expect(assistantEvents).toHaveLength(1)
+    expect(assistantEvents[0].content).toBe(ANSWER_TEXT)
+    // SAFETY: reasoning fixture never in assistant event content.
+    expect(assistantEvents[0].content).not.toContain(REASONING_FIXTURE)
   })
 })

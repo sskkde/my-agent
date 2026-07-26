@@ -411,7 +411,7 @@ export class AgentKernel {
           }
 
           state.status = 'completed'
-          return this.buildResult(
+          const completedResult = this.buildResult(
             state,
             'completed',
             undefined,
@@ -420,6 +420,10 @@ export class AgentKernel {
             input,
             aggregatedUsage,
           )
+          if (llmResponse.reasoningContent) {
+            completedResult.reasoningContent = llmResponse.reasoningContent
+          }
+          return completedResult
         }
       }
 

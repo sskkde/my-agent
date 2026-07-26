@@ -135,6 +135,15 @@ export interface KernelRunResult {
   structuredTrace?: StructuredDecisionTrace
   /** Aggregated token usage from all LLM calls in this run. */
   tokenUsage?: TokenUsage
+  /**
+   * Provider reasoning content (e.g. DeepSeek `reasoning_content`) accumulated
+   * across the final LLM call of this run. SAFETY: this is opt-in provider
+   * reasoning for display as `role: 'thinking'`; it must NEVER be merged into
+   * `finalResponse` / `content` / `channel: 'assistant'`. Internal
+   * `structuredTrace.reasoningSummary` is a separate field and must not be
+   * used as the source of thinking messages.
+   */
+  reasoningContent?: string
 }
 
 export interface KernelTranscriptEntry {

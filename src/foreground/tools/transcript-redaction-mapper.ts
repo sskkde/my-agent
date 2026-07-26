@@ -118,6 +118,27 @@ export function mapKernelResultToVisibleMessages(
     }
   }
 
+  // Provider reasoning → role: 'thinking' visible message (opt-in display).
+  // SAFETY: source is provider `reasoningContent` only — never internal
+  // `structuredTrace.reasoningSummary` / decisionTrace. Empty/whitespace
+  // reasoning produces no thinking message (no empty UI shells). The thinking
+  // message is placed BEFORE the final assistant message so timeline ordering
+  // keeps reasoning preceding the answer.
+  const reasoningText = typeof kernelResult.reasoningContent === 'string' ? kernelResult.reasoningContent.trim() : ''
+  if (reasoningText.length > 0) {
+    const thinkingMessage: VisibleMessage = {
+      messageId: `msg-${turnId}-thinking`,
+      role: 'thinking',
+      content: kernelResult.reasoningContent!,
+    }
+    const lastAssistantIdx = findLastIndex(messages, (m) => m.role === 'assistant')
+    if (lastAssistantIdx >= 0) {
+      messages.splice(lastAssistantIdx, 0, thinkingMessage)
+    } else {
+      messages.push(thinkingMessage)
+    }
+  }
+
   // Fallback: if transcript has no assistant parts but finalResponse exists, emit it.
   if (
     messages.every((m) => m.role !== 'assistant') &&
@@ -133,6 +154,13 @@ export function mapKernelResultToVisibleMessages(
   }
 
   return messages
+}
+
+function findLastIndex<T>(arr: T[], predicate: (item: T) => boolean): number {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (predicate(arr[i])) return i
+  }
+  return -1
 }
 
 /**

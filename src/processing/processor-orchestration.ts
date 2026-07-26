@@ -641,7 +641,11 @@ function logProviderFallbackEvent(
 /**
  * Persists a turn transcript from the processing input and output.
  * Creates visible messages for assistant responses and errors.
- * SAFETY: Never persists raw internal reasoning as thinking_summary.
+ * SAFETY: Never persists raw internal reasoning (decisionTrace / structuredTrace
+ * reason) as thinking_summary. Provider `reasoningContent` projected by the
+ * foreground mapper as `role: 'thinking'` IS passed through under the opt-in
+ * provider thinking contract — it is provider-originated text, not internal
+ * CoT, and the foreground mapper is the sole producer of role=thinking.
  */
 function persistTurnTranscript(
   input: MessageProcessorInput,
