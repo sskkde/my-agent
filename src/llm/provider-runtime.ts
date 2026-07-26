@@ -145,7 +145,7 @@ export function createProviderScopedLLMAdapter(
 ): ProviderScopedLLMAdapter {
   const providerScope = new AsyncLocalStorage<ScopeContext>()
 
-  const buildCapabilityCandidates = (): ProviderCandidate[] => {
+  const buildCapabilityCandidates = (requestModel?: string): ProviderCandidate[] => {
     const ctx = providerScope.getStore()
 
     let dbProviders: ProviderConfigWithSecret[] = []
@@ -162,6 +162,7 @@ export function createProviderScopedLLMAdapter(
       envProviders: buildEnvProviderDescriptors(),
       preferredProviderId: ctx?.preferredProviderId,
       nodeEnv: process.env.NODE_ENV,
+      requestModel,
     })
 
     return candidates
@@ -179,7 +180,7 @@ export function createProviderScopedLLMAdapter(
       enableLogging: false,
     })
 
-    const candidates = buildCapabilityCandidates()
+    const candidates = buildCapabilityCandidates(request.model)
 
     const requirements = deriveRequestRequirements(request)
     const eligible = candidates.filter(
@@ -215,7 +216,7 @@ export function createProviderScopedLLMAdapter(
       enableLogging: false,
     })
 
-    const candidates = buildCapabilityCandidates()
+    const candidates = buildCapabilityCandidates(request.model)
 
     const requirements = deriveRequestRequirements(request)
     const eligible = candidates.filter(

@@ -53,6 +53,17 @@ export interface ResolveProviderCandidatesOptions {
   ) => ModelInfo
   /** Node environment (for test mode detection) */
   nodeEnv?: string
+  /**
+   * The model id requested by the current LLM request (request.model).
+   * When provided, each DB candidate's model is resolved from this id when
+   * the provider owns it (present in models_json, or equal to
+   * selectedModel/defaultModel/catalog default). This fixes multi-model
+   * same-provider routing: a session selecting model `b` on a provider whose
+   * selectedModel is `a` no longer fails the `modelId === request.model`
+   * filter. When the provider does not own requestModel, the candidate keeps
+   * its default resolved model (selectedModel path).
+   */
+  requestModel?: string
 }
 
 /**
@@ -76,7 +87,7 @@ const DEFAULT_CAPABILITIES: ProviderCapabilities = {
  * @param providerCapabilities - Provider capability overrides (from capabilities_json)
  * @returns Merged model capabilities
  */
-function mergeCapabilityOverrides(
+export function mergeCapabilityOverrides(
   modelCapabilities: ModelInfo['capabilities'],
   providerCapabilities: Record<string, unknown> | null | undefined,
 ): ModelInfo['capabilities'] {
@@ -118,7 +129,7 @@ function mergeCapabilityOverrides(
  * @param providerModels - Provider models array (from models_json)
  * @returns Model info with overrides applied
  */
-function applyModelOverrides(
+export function applyModelOverrides(
   model: ModelInfo,
   providerModels: Record<string, unknown>[] | null | undefined,
 ): ModelInfo {
@@ -158,6 +169,130 @@ function applyModelOverrides(
   }
 
   return overridden
+}
+
+/**
+ * Checks whether a provider owns a given model id.
+ *
+ * A provider "owns" requestModel when any of the following holds:
+ *   - requestModel appears in the provider's models_json entries (by modelId), OR
+ *   - requestModel equals the provider's selectedModel, OR
+ *   - requestModel equals the provider's defaultModel, OR
+ *   - requestModel equals the catalog default model for the provider type, OR
+ *   - the provider's models_json is empty/null AND requestModel equals the
+ *     selectedModel/defaultModel/catalog default (fallback path for providers
+ *     that carry no per-model manifest).
+ *
+ * @param provider - DB provider config with secret
+ * @param requestModel - The model id requested by the LLM request
+ * @param catalog - Provider catalog entry (or null)
+ * @returns true if the provider owns requestModel
+ */
+function providerOwnsModel(
+  provider: ProviderConfigWithSecret,
+  requestModel: string,
+  catalog: ProviderCatalogEntry | null,
+): boolean {
+  const models = provider.models
+  if (models && models.length > 0) {
+    if (models.some((entry) => entry.modelId === requestModel)) {
+      return true
+    }
+  }
+
+  const selectedModel = provider.selectedModel
+  if (selectedModel !== null && selectedModel === requestModel) {
+    return true
+  }
+
+  const defaultModel = provider.defaultModel
+  if (defaultModel !== null && defaultModel !== undefined && defaultModel === requestModel) {
+    return true
+  }
+
+  const catalogDefault = catalog?.defaultModel
+  if (catalogDefault !== undefined && catalogDefault === requestModel) {
+    return true
+  }
+
+  // Fallback path: provider carries no models manifest and requestModel equals
+  // the provider's selected/default/catalog default. This is the path that
+  // makes unknown models served by a provider with empty models_json still
+  // route correctly when the session selected that provider's default.
+  if ((!models || models.length === 0) && (selectedModel === null || selectedModel === requestModel)) {
+    // When models_json is empty and selectedModel is null, the resolver falls
+    // back to catalog default or 'gpt-4o-mini'. Treat requestModel as owned
+    // only when it matches the effective fallback id.
+    const effectiveDefault = selectedModel ?? catalogDefault ?? 'gpt-4o-mini'
+    if (requestModel === effectiveDefault) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Resolves the ModelInfo for a request model id on a specific provider,
+ * applying models_json overrides and provider-level capability overrides.
+ *
+ * This is the per-candidate model resolution used by the runtime to rebuild
+ * each candidate's `model` from `request.model` (rather than from
+ * `provider.selectedModel`), fixing multi-model same-provider routing.
+ *
+ * @param provider - DB provider config with secret
+ * @param requestModel - The model id requested by the LLM request
+ * @param catalog - Provider catalog entry (or null if unknown type)
+ * @param modelResolver - Optional custom model resolver (defaults to resolveModelInfo)
+ * @returns The resolved ModelInfo if the provider owns requestModel, null otherwise
+ */
+export function resolveCandidateModelForRequest(
+  provider: ProviderConfigWithSecret,
+  requestModel: string,
+  catalog: ProviderCatalogEntry | null,
+  modelResolver?: (
+    providerId: string,
+    modelId: string,
+    family?: ProviderFamily,
+    protocol?: ProviderProtocol,
+  ) => ModelInfo,
+): ModelInfo | null {
+  if (!providerOwnsModel(provider, requestModel, catalog)) {
+    return null
+  }
+
+  const resolve = modelResolver ?? resolveModelInfo
+  const family = (provider.family as ProviderFamily | null | undefined) ?? catalog?.family ?? 'openai_compatible'
+  const protocol = (provider.protocol as ProviderProtocol | null | undefined) ?? catalog?.protocol ?? 'openai_chat'
+
+  let model = resolve(provider.providerType, requestModel, family, protocol)
+
+  // Domestic provider compat transform (mirrors resolveProviderCandidates)
+  if (!getBuiltinModel(provider.providerType, requestModel)) {
+    const domesticDef = getDomesticProvider(provider.providerType)
+    if (domesticDef) {
+      model = {
+        ...model,
+        capabilities: {
+          ...model.capabilities,
+          streaming: model.capabilities.streaming || domesticDef.features.supportsStreaming,
+          functionCalling: model.capabilities.functionCalling || domesticDef.features.supportsFunctionCalling,
+          jsonMode: model.capabilities.jsonMode || domesticDef.features.supportsJsonMode,
+        },
+      }
+    }
+  }
+
+  // Apply models_json entry overrides for this specific modelId
+  model = applyModelOverrides(model, provider.models)
+
+  // Apply provider-level capabilities_json overrides (boolean merge)
+  model = {
+    ...model,
+    capabilities: mergeCapabilityOverrides(model.capabilities, provider.capabilities),
+  }
+
+  return model
 }
 
 /**
@@ -281,7 +416,7 @@ export function buildProviderRuntimeConfig(
  * ```
  */
 export function resolveProviderCandidates(options: ResolveProviderCandidatesOptions): ProviderCandidate[] {
-  const { dbProviders, envProviders, preferredProviderId, modelResolver, nodeEnv } = options
+  const { dbProviders, envProviders, preferredProviderId, modelResolver, nodeEnv, requestModel } = options
 
   const resolve = modelResolver ?? resolveModelInfo
   const candidates: ProviderCandidate[] = []
@@ -304,28 +439,71 @@ export function resolveProviderCandidates(options: ResolveProviderCandidatesOpti
     const priority = isPreferred ? 1 : (provider.priority ?? dbPriority)
 
     const catalog = getProviderCatalogEntry(provider.providerType)
-    const modelId = provider.selectedModel ?? catalog?.defaultModel ?? 'gpt-4o-mini'
-    let model = resolve(provider.providerType, modelId, catalog?.family, catalog?.protocol)
 
-    if (!getBuiltinModel(provider.providerType, modelId)) {
-      const domesticDef = getDomesticProvider(provider.providerType)
-      if (domesticDef) {
+    // T5: when requestModel is provided and the provider owns it, resolve the
+    // candidate's model from requestModel (not selectedModel). This fixes
+    // multi-model same-provider routing — a session selecting model `b` on a
+    // provider whose selectedModel is `a` no longer fails the
+    // `modelId === request.model` filter.
+    let model: ModelInfo
+    let modelId: string
+    if (requestModel) {
+      const requestResolved = resolveCandidateModelForRequest(provider, requestModel, catalog, modelResolver)
+      if (requestResolved) {
+        model = requestResolved
+        modelId = requestModel
+      } else {
+        // Provider does not own requestModel — fall back to selectedModel path
+        // so the candidate is still built (it will be filtered out by the
+        // `modelId === request.model` check in provider-runtime).
+        modelId = provider.selectedModel ?? catalog?.defaultModel ?? 'gpt-4o-mini'
+        model = resolve(provider.providerType, modelId, catalog?.family, catalog?.protocol)
+
+        if (!getBuiltinModel(provider.providerType, modelId)) {
+          const domesticDef = getDomesticProvider(provider.providerType)
+          if (domesticDef) {
+            model = {
+              ...model,
+              capabilities: {
+                ...model.capabilities,
+                streaming: model.capabilities.streaming || domesticDef.features.supportsStreaming,
+                functionCalling: model.capabilities.functionCalling || domesticDef.features.supportsFunctionCalling,
+                jsonMode: model.capabilities.jsonMode || domesticDef.features.supportsJsonMode,
+              },
+            }
+          }
+        }
+
+        model = applyModelOverrides(model, provider.models)
         model = {
           ...model,
-          capabilities: {
-            ...model.capabilities,
-            streaming: model.capabilities.streaming || domesticDef.features.supportsStreaming,
-            functionCalling: model.capabilities.functionCalling || domesticDef.features.supportsFunctionCalling,
-            jsonMode: model.capabilities.jsonMode || domesticDef.features.supportsJsonMode,
-          },
+          capabilities: mergeCapabilityOverrides(model.capabilities, provider.capabilities),
         }
       }
-    }
+    } else {
+      modelId = provider.selectedModel ?? catalog?.defaultModel ?? 'gpt-4o-mini'
+      model = resolve(provider.providerType, modelId, catalog?.family, catalog?.protocol)
 
-    model = applyModelOverrides(model, provider.models)
-    model = {
-      ...model,
-      capabilities: mergeCapabilityOverrides(model.capabilities, provider.capabilities),
+      if (!getBuiltinModel(provider.providerType, modelId)) {
+        const domesticDef = getDomesticProvider(provider.providerType)
+        if (domesticDef) {
+          model = {
+            ...model,
+            capabilities: {
+              ...model.capabilities,
+              streaming: model.capabilities.streaming || domesticDef.features.supportsStreaming,
+              functionCalling: model.capabilities.functionCalling || domesticDef.features.supportsFunctionCalling,
+              jsonMode: model.capabilities.jsonMode || domesticDef.features.supportsJsonMode,
+            },
+          }
+        }
+      }
+
+      model = applyModelOverrides(model, provider.models)
+      model = {
+        ...model,
+        capabilities: mergeCapabilityOverrides(model.capabilities, provider.capabilities),
+      }
     }
 
     const config = buildProviderRuntimeConfig(provider, catalog, model)
