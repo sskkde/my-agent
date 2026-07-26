@@ -424,9 +424,13 @@ describe('supportsStructuredToolStreaming (P1)', () => {
 
   it('denies families without structured tool stream support', async () => {
     const { supportsStructuredToolStreaming } = await import('../../../src/llm/stream-capabilities.js')
-    expect(supportsStructuredToolStreaming('ollama')).toBe(false)
     expect(supportsStructuredToolStreaming('anthropic')).toBe(false)
     expect(supportsStructuredToolStreaming('gemini')).toBe(false)
     expect(supportsStructuredToolStreaming('bedrock')).toBe(false)
+  })
+
+  it('allows ollama now that it uses the OpenAI-compatible streaming path', async () => {
+    const { supportsStructuredToolStreaming } = await import('../../../src/llm/stream-capabilities.js')
+    expect(supportsStructuredToolStreaming('ollama')).toBe(true)
   })
 })

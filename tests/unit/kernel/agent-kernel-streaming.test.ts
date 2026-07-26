@@ -800,7 +800,7 @@ describe('AgentKernel P1 provider-family stream gate', () => {
       ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
         this.lastRequest = request
         this.streamCallCount++
-        // If this is called for tool turn, tool_calls would be lost — must not happen for ollama.
+        // If this is called for tool turn, tool_calls would be lost — must not happen for anthropic.
         yield {
           kind: 'text',
           delta: 'should-not-stream-tools',
@@ -826,9 +826,12 @@ describe('AgentKernel P1 provider-family stream gate', () => {
       ],
     }
 
+    // anthropic is not in STRUCTURED_TOOL_STREAM_FAMILIES, so the kernel must
+    // fall back to complete() for tool turns. (ollama now uses the OpenAI path
+    // and is in the trusted set, so it can no longer exercise this gate.)
     const config = makeBaseConfig({
       llmAdapter: adapter,
-      providerFamily: 'ollama',
+      providerFamily: 'anthropic',
     })
     const kernel = new AgentKernel(config)
     const result = await kernel.run({ ...makeRunInput(), toolProjection, maxIterations: 3 })

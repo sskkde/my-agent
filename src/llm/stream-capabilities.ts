@@ -18,12 +18,15 @@ const STRUCTURED_TOOL_STREAM_FAMILIES = new Set([
   'stepfun',
   'hunyuan',
   'siliconflow',
+  'ollama',
 ])
 
 /**
  * Whether this provider family is trusted to emit OpenAI-compatible
- * streaming tool_calls deltas. Ollama/Anthropic/Gemini/Bedrock use different
+ * streaming tool_calls deltas. Anthropic/Gemini/Bedrock use different
  * or incomplete stream tool protocols in this codebase — fall back to complete().
+ * Ollama is included because it now serves the OpenAI-compatible
+ * /v1/chat/completions streaming path.
  */
 export function supportsStructuredToolStreaming(providerFamily: string | undefined): boolean {
   if (!providerFamily) {

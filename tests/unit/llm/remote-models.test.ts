@@ -148,6 +148,33 @@ describe('remote-models', () => {
       expect(capturedPath).toBe('/api/tags')
     })
 
+    it('strips /v1 suffix from base URL when building the /api/tags target', async () => {
+      const req = createFakeRequest()
+      let capturedPath = ''
+      let capturedHostname = ''
+      let capturedPort: string | number = ''
+      httpRequestMock.mockImplementation((opts, cb) => {
+        const o = opts as { path: string; hostname: string; port: string | number }
+        capturedPath = o.path
+        capturedHostname = o.hostname
+        capturedPort = o.port
+        cb(createFakeResponse(200, JSON.stringify({ models: [{ name: 'llama3' }] })))
+        return req
+      })
+
+      const result = await fetchRemoteProviderModels({
+        providerType: 'ollama',
+        apiKey: null,
+        baseUrl: 'http://localhost:11434/v1',
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.models).toEqual(['llama3'])
+      expect(capturedPath).toBe('/api/tags')
+      expect(capturedHostname).toBe('localhost')
+      expect(String(capturedPort)).toBe('11434')
+    })
+
     it('returns mock-model without network for mock providerType', async () => {
       const result = await fetchRemoteProviderModels({
         providerType: 'mock',

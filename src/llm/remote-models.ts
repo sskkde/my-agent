@@ -2,6 +2,7 @@ import { request as httpRequest } from 'http'
 import { request as httpsRequest } from 'https'
 import type { ProviderType } from '../storage/provider-config-store.js'
 import { getProviderCatalogEntry } from './catalog/provider-catalog.js'
+import { stripVersionSegment } from './url-normalize.js'
 
 export const TEST_TIMEOUT_MS = 10000
 
@@ -183,9 +184,14 @@ function fetchOpenAICompatible(apiKey: string, baseUrl: string): Promise<RemoteM
 }
 
 function fetchOllamaTags(baseUrl: string): Promise<RemoteModelsResult> {
+  // Ollama canonical tags endpoint is /api/tags on the origin (NOT /v1/api/tags).
+  // Strip any trailing /vN version segment from the stored base URL before
+  // building the tags URL so a base configured as http://host:11434/v1 still
+  // hits http://host:11434/api/tags.
+  const origin = stripVersionSegment(baseUrl)
   let url: URL
   try {
-    url = new URL(baseUrl)
+    url = new URL(origin)
   } catch {
     return Promise.resolve({
       success: false,
@@ -195,7 +201,6 @@ function fetchOllamaTags(baseUrl: string): Promise<RemoteModelsResult> {
     })
   }
 
-  // Ollama canonical tags endpoint is /api/tags (NOT /api/v1/tags).
   const path = '/api/tags'
   const target = `${url.origin}${path}`
   const headers: Record<string, string> = {
@@ -235,7 +240,10 @@ export async function fetchRemoteProviderModels(input: FetchRemoteModelsInput): 
 
   const effectiveBaseUrl = baseUrl ?? catalogEntry.defaultBaseUrl ?? null
 
-  if (catalogEntry.family === 'ollama') {
+  // Ollama model discovery uses the canonical /api/tags endpoint on the
+  // origin. Dispatch by providerType (not catalog family) so this still
+  // fires after the catalog family was changed to 'openai_compatible'.
+  if (providerType === 'ollama') {
     if (!effectiveBaseUrl) {
       return { success: false, latencyMs: 0, models: [], error: 'Base URL is required for Ollama' }
     }

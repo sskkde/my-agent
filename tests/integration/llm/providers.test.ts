@@ -624,24 +624,23 @@ describe('Multi-Provider LLM Adapter Integration', () => {
 
     beforeEach(() => {
       vi.restoreAllMocks()
+      // OllamaAdapter now uses the OpenAI-compatible /v1/chat/completions path,
+      // so the mock response is OpenAI-shaped (choices[].message).
       mockFetch = createMockFetch({
+        id: 'chatcmpl-ollama',
         model: 'llama2',
-        created_at: new Date().toISOString(),
-        message: {
-          role: 'assistant',
-          content: 'Hello from Ollama!',
-        },
-        done: true,
-        total_duration: 1234567890,
-        load_duration: 123456789,
-        prompt_eval_count: 10,
-        eval_count: 5,
-        eval_duration: 500000000,
+        choices: [
+          {
+            message: { role: 'assistant', content: 'Hello from Ollama!' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
       })
       global.fetch = mockFetch
     })
 
-    it('should use Ollama-specific endpoint and request format', async () => {
+    it('should use the OpenAI-compatible /v1/chat/completions endpoint', async () => {
       const adapter = new OllamaAdapter({
         ...createTestProviderConfig('ollama', 1),
         baseUrl: 'http://localhost:11434',
@@ -651,18 +650,19 @@ describe('Multi-Provider LLM Adapter Integration', () => {
 
       expect(result.success).toBe(true)
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:11434/api/chat',
+        'http://localhost:11434/v1/chat/completions',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
+            Authorization: 'Bearer ollama',
           }),
           body: expect.any(String),
         }),
       )
     })
 
-    it('should map Ollama response format correctly', async () => {
+    it('should map OpenAI-shaped response format correctly', async () => {
       const adapter = new OllamaAdapter({
         ...createTestProviderConfig('ollama', 1),
       })
@@ -686,7 +686,10 @@ describe('Multi-Provider LLM Adapter Integration', () => {
 
       await adapter.complete(createTestRequest())
 
-      expect(mockFetch).toHaveBeenCalledWith('http://custom-ollama:11434/api/chat', expect.any(Object))
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://custom-ollama:11434/v1/chat/completions',
+        expect.any(Object),
+      )
 
       delete process.env.OLLAMA_BASE_URL
     })
