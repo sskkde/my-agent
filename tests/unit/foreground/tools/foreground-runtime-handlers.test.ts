@@ -79,7 +79,7 @@ function buildRuntimeDeps(overrides?: Partial<ForegroundToolRuntimeDeps>): Foreg
   const mockPlannerResult: PlannerRunResult = {
     plannerRunId: 'pl_run_1',
     planId: 'plan_1',
-    status: 'initializing',
+    status: 'planning',
     actions: [],
   }
 
@@ -297,7 +297,7 @@ describe('Foreground Runtime Handlers - wired via registerAllForegroundTools', (
     const expectedPlannerResult: PlannerRunResult = {
       plannerRunId: 'pl_run_42',
       planId: 'plan_42',
-      status: 'initializing',
+      status: 'planning',
       actions: [],
     }
 

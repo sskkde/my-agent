@@ -165,17 +165,36 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       to: PLANNER_STATES.INITIALIZING,
     })
 
+    // Bootstrap: the planner run owns the kernel-driven turn itself, so the
+    // emitted start_agent_run action is an audit-trail record only — it is
+    // never dispatched to a nested agentKernel.run (that would re-enter the
+    // tool loop the planner already drives). Terminalize it immediately and
+    // transition the run to PLANNING using the existing INITIALIZING→PLANNING
+    // edge so resumePlannerRun can be invoked right after create.
+    const bootstrapResult = { bootstrapWithoutKernel: true, planId, plannerRunId }
+    this.runtimeActionStore.updateStatus(
+      action.actionId,
+      RUNTIME_ACTION_STATES.COMPLETED,
+      'Bootstrap: planner run owns the kernel turn; no nested dispatch',
+      bootstrapResult,
+    )
+
+    this.transitionState(plannerRunId, PLANNER_STATES.PLANNING, {
+      bootstrapped: true,
+      bootstrapMode: 'without_kernel',
+    })
+
     return {
       plannerRunId,
       planId,
-      status: PLANNER_STATES.INITIALIZING,
+      status: PLANNER_STATES.PLANNING,
       actions: [
         {
           actionId: action.actionId,
           targetRuntime: action.targetRuntime,
           targetAction: action.targetAction,
           payload: action.payload,
-          status: action.status,
+          status: RUNTIME_ACTION_STATES.COMPLETED,
         },
       ],
     }
@@ -183,6 +202,35 @@ class PlannerRuntimeImpl implements PlannerRuntime {
 
   resumePlannerRun(plannerRunId: string, event: PlannerResumeEvent): PlannerRunResult {
     const run = this.getPlannerRun(plannerRunId)
+
+    if (TERMINAL_STATES.includes(run.status) || run.status === PLANNER_STATES.INITIALIZING) {
+      throw new Error(`Cannot resume from state: ${run.status}`)
+    }
+
+    if (run.status === PLANNER_STATES.PLANNING) {
+      this.appendEvent({
+        eventType: 'planner_resumed',
+        sourceModule: 'planner',
+        userId: run.userId,
+        sessionId: run.sessionId,
+        relatedRefs: {
+          plannerRunId,
+          planId: run.planId,
+        },
+        payload: {
+          eventType: event.eventType,
+          eventPayload: event.payload,
+          resumedFromPlanning: true,
+        },
+      })
+
+      return {
+        plannerRunId,
+        planId: run.planId,
+        status: PLANNER_STATES.PLANNING,
+        actions: [],
+      }
+    }
 
     if (!WAITING_STATES.includes(run.status)) {
       throw new Error(`Cannot resume from state: ${run.status}`)

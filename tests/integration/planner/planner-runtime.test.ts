@@ -237,14 +237,14 @@ describe('Planner Runtime Integration', () => {
       // Verify result structure
       expect(result.plannerRunId).toBeDefined()
       expect(result.planId).toBeDefined()
-      expect(result.status).toBe(PLANNER_STATES.INITIALIZING)
+      expect(result.status).toBe(PLANNER_STATES.PLANNING)
       expect(result.actions).toBeInstanceOf(Array)
       expect(result.error).toBeUndefined()
 
-      // Verify PlannerRun was created in store
+      // Verify PlannerRun was created in store (bootstrapped to PLANNING)
       const plannerRun = plannerRunStore.findActive(input.userId).find((r) => r.plannerRunId === result.plannerRunId)
       expect(plannerRun).toBeDefined()
-      expect(plannerRun?.status).toBe(PLANNER_STATES.INITIALIZING)
+      expect(plannerRun?.status).toBe(PLANNER_STATES.PLANNING)
       expect(plannerRun?.planId).toBe(result.planId)
 
       // Verify ExecutionPlan was created in store
@@ -270,7 +270,7 @@ describe('Planner Runtime Integration', () => {
       expect(result.actions[0]?.targetRuntime).toBe('agent_kernel')
       expect(result.actions[0]?.targetAction).toBe('start_agent_run')
       expect(result.actions[0]?.payload.planId).toBe(result.planId)
-      expect(result.actions[0]?.status).toBe(RUNTIME_ACTION_STATES.CREATED)
+      expect(result.actions[0]?.status).toBe(RUNTIME_ACTION_STATES.COMPLETED)
     })
 
     it('should persist checkpoint with initial state', () => {
@@ -301,11 +301,12 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      // Initial state
+      // createPlannerRun bootstraps to PLANNING
       let run = plannerRunStore.findActive(input.userId).find((r) => r.plannerRunId === plannerRunId)
-      expect(run?.status).toBe(PLANNER_STATES.INITIALIZING)
+      expect(run?.status).toBe(PLANNER_STATES.PLANNING)
 
-      // Transition to planning
+      // Explicit INITIALIZING -> PLANNING transition still works when set up directly
+      plannerRunStore.updateStatus(plannerRunId, PLANNER_STATES.INITIALIZING, run?.checkpoint)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
 
       run = plannerRunStore.findActive(input.userId).find((r) => r.plannerRunId === plannerRunId)
@@ -321,7 +322,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_EXECUTION_RESULT)
 
       const run = plannerRunStore.findActive(input.userId).find((r) => r.plannerRunId === plannerRunId)
@@ -337,7 +337,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.COMPLETED)
 
       const run = plannerRunStore.getById(plannerRunId)
@@ -353,7 +352,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.FAILED)
 
       const run = plannerRunStore.getById(plannerRunId)
@@ -369,7 +367,9 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      // Cannot go from initializing directly to completed
+      // Force back to INITIALIZING to test the INITIALIZING -> COMPLETED invalid edge
+      plannerRunStore.updateStatus(plannerRunId, PLANNER_STATES.INITIALIZING, undefined)
+
       expect(() => {
         plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.COMPLETED)
       }).toThrow('Invalid state transition')
@@ -384,7 +384,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_APPROVAL)
 
       // Rejection should trigger replanning
@@ -403,7 +402,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.REPLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
 
@@ -422,7 +420,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_APPROVAL)
 
       // User rejects
@@ -447,7 +444,6 @@ describe('Planner Runtime Integration', () => {
       const plannerRunId = result.plannerRunId
       const planId = result.planId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.REPLANNING)
 
       // Apply a patch during replanning
@@ -475,8 +471,6 @@ describe('Planner Runtime Integration', () => {
 
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
-
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
 
       // Add some active execution refs
       plannerRuntime.addActiveExecutionRef(plannerRunId, {
@@ -516,8 +510,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
-
       // Add active refs
       plannerRuntime.addActiveExecutionRef(plannerRunId, {
         refId: 'bg_run_002',
@@ -551,10 +543,10 @@ describe('Planner Runtime Integration', () => {
       const action = result.actions[0]
       expect(action?.actionId).toBeDefined()
 
-      // Verify action is persisted in store
+      // Verify action is persisted in store (terminalized by bootstrap)
       const storedAction = runtimeActionStore.findById(action!.actionId)
       expect(storedAction).not.toBeNull()
-      expect(storedAction?.status).toBe(RUNTIME_ACTION_STATES.CREATED)
+      expect(storedAction?.status).toBe(RUNTIME_ACTION_STATES.COMPLETED)
     })
 
     it('should emit multiple actions during plan execution', () => {
@@ -595,7 +587,8 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING, {
+      // createPlannerRun bootstraps to PLANNING; set checkpoint data directly
+      plannerRuntime.saveCheckpoint(plannerRunId, {
         planningStep: 'analyzing_requirements',
         iterations: 1,
       })
@@ -653,12 +646,34 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_USER)
 
       const resumeEvent: PlannerResumeEvent = {
         eventType: 'user_response',
         payload: { response: 'Continue with option A' },
+      }
+
+      const resumeResult = plannerRuntime.resumePlannerRun(plannerRunId, resumeEvent)
+
+      expect(resumeResult.status).toBe(PLANNER_STATES.PLANNING)
+
+      const run = plannerRunStore.findActive(input.userId).find((r) => r.plannerRunId === plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.PLANNING)
+    })
+
+    it('should resume from planning state right after create', () => {
+      const input: PlannerRunInput = {
+        objective: 'Resume from planning test',
+        userId: 'user_019b',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      // createPlannerRun bootstraps to PLANNING; resume must not throw
+      const resumeEvent: PlannerResumeEvent = {
+        eventType: 'user_response',
+        payload: { response: 'Begin execution' },
       }
 
       const resumeResult = plannerRuntime.resumePlannerRun(plannerRunId, resumeEvent)
@@ -678,7 +693,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_EXECUTION_RESULT)
 
       const resumeEvent: PlannerResumeEvent = {
@@ -689,6 +703,40 @@ describe('Planner Runtime Integration', () => {
       const resumeResult = plannerRuntime.resumePlannerRun(plannerRunId, resumeEvent)
 
       expect(resumeResult.status).not.toBe(PLANNER_STATES.WAITING_FOR_EXECUTION_RESULT)
+    })
+
+    it('should reject resume from terminal and initializing states', () => {
+      const input: PlannerRunInput = {
+        objective: 'Resume rejection test',
+        userId: 'user_020b',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.COMPLETED)
+
+      const resumeEvent: PlannerResumeEvent = {
+        eventType: 'user_response',
+        payload: { response: 'try' },
+      }
+
+      expect(() => plannerRuntime.resumePlannerRun(plannerRunId, resumeEvent)).toThrow(
+        'Cannot resume from state: completed',
+      )
+
+      // INITIALIZING is also rejected (defensive — should not occur post-bootstrap)
+      const input2: PlannerRunInput = {
+        objective: 'Resume rejection initializing',
+        userId: 'user_020c',
+      }
+      const result2 = plannerRuntime.createPlannerRun(input2)
+      const plannerRunId2 = result2.plannerRunId
+      plannerRunStore.updateStatus(plannerRunId2, PLANNER_STATES.INITIALIZING, undefined)
+
+      expect(() => plannerRuntime.resumePlannerRun(plannerRunId2, resumeEvent)).toThrow(
+        'Cannot resume from state: initializing',
+      )
     })
   })
 
@@ -702,7 +750,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.COMPLETED)
 
       plannerRuntime.archivePlannerRun(plannerRunId)
@@ -720,7 +767,6 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
       plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.FAILED)
 
       plannerRuntime.archivePlannerRun(plannerRunId)
@@ -754,8 +800,9 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      // Transition should emit patch
-      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.PLANNING)
+      // createPlannerRun bootstraps INITIALIZING -> PLANNING and emits a patch.
+      // An additional transition emits another patch.
+      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_USER)
 
       // Check for state patch event
       const events = eventStore.query({

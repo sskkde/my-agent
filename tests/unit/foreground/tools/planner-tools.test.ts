@@ -27,7 +27,7 @@ describe('Planner Tools', () => {
         createPlannerRun: vi.fn().mockReturnValue({
           plannerRunId: 'pl_run_123',
           planId: 'plan_456',
-          status: 'initializing',
+          status: 'planning',
           actions: [],
         }),
       } as unknown as PlannerRuntime
