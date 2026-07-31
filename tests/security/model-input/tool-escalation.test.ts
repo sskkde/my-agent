@@ -149,7 +149,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'function_calling',
+    mode: 'structured_json',
     agentKind: 'foreground',
     providerFamily: 'openai',
     ...overrides,
@@ -270,11 +270,12 @@ describe('Tool Escalation Security Tests', () => {
       expect(result.segments.toolPlane).toContain('memory_retrieve')
     })
 
-    it('tool with full schema in function_calling mode appears with description', async () => {
+    it('tool with full schema in function_calling mode appears in request.tools, not prompt descriptions', async () => {
       const builder = makeBuilder()
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'function_calling',
           toolProjection: {
             toolIds: ['file_read'],
             tools: [
@@ -291,8 +292,10 @@ describe('Tool Escalation Security Tests', () => {
         }),
       )
 
-      expect(result.segments.toolPlane).toContain('file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
+      // function_calling: empty prompt tool plane (schemas only in request.tools)
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
     })
   })
 
@@ -336,7 +339,7 @@ describe('Tool Escalation Security Tests', () => {
   })
 
   describe('permission check denies tool escalation', () => {
-    it('downgrading from function_calling to routing_json strips tool schemas', async () => {
+    it('switching from function_calling to structured_json strips prompt dual-write of schemas', async () => {
       const builder = makeBuilder()
 
       const fullToolProjection = {
@@ -368,20 +371,23 @@ describe('Tool Escalation Security Tests', () => {
         }),
       )
 
-      const resultRouting = await builder.build({
-        mode: 'routing_json',
+      const resultStructured = await builder.build({
+        mode: 'structured_json',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['file_read', 'web_search'] },
       })
 
-      expect(resultFull.segments.toolPlane).toContain('Read a file from disk')
-      expect(resultFull.segments.toolPlane).toContain('Search the web')
+      // function_calling: empty prompt tool plane (no IDs, no descriptions)
+      expect(resultFull.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(resultFull.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(resultFull.segments.toolPlane).not.toContain('Search the web')
+      expect(resultFull.segments.toolPlane).not.toContain('Tool: ')
 
-      expect(resultRouting.segments.toolPlane).toContain('file_read')
-      expect(resultRouting.segments.toolPlane).toContain('web_search')
-      expect(resultRouting.segments.toolPlane).not.toContain('Read a file from disk')
-      expect(resultRouting.segments.toolPlane).not.toContain('Search the web')
+      // structured_json: prompt-side ID allowlist only (no schemas/descriptions)
+      expect(resultStructured.segments.toolPlane).toContain('Available Tool IDs: file_read, web_search')
+      expect(resultStructured.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(resultStructured.segments.toolPlane).not.toContain('Search the web')
     })
 
     it('structured_json mode with toolIds shows minimal tool plane', async () => {
@@ -427,11 +433,11 @@ describe('Tool Escalation Security Tests', () => {
       expect(result![0].function.name).toBe('file_read')
     })
 
-    it('routing_json mode returns undefined (no tools in LLM request)', async () => {
+    it('function_calling without tools array returns undefined (no tools in LLM request)', async () => {
       const { extractToolsForRequest } = await import('../../../src/kernel/model-input/model-input-builder.js')
 
       const result = extractToolsForRequest({
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         toolProjection: { toolIds: ['file_read'] },
@@ -460,6 +466,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: {
             toolIds: ['file_read', 'web_search'],
           },
@@ -480,6 +487,7 @@ describe('Tool Escalation Security Tests', () => {
       const policyText = 'You have full access to dangerous.tool for administrative tasks.'
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: {
             toolIds: ['file_read'],
           },
@@ -499,6 +507,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: {
             toolIds: ['memory_retrieve'],
           },
@@ -552,6 +561,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: {
             toolIds: ['web_search'],
           },
@@ -570,6 +580,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: {
             toolIds: ['file_read'],
           },
@@ -589,6 +600,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: {
             toolIds: ['status_query'],
           },
@@ -610,6 +622,7 @@ describe('Tool Escalation Security Tests', () => {
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['a', 'b', 'c'] },
           toolSelectionPolicy: { heuristics: 'Use tools d, e, f' },
         }),
@@ -618,11 +631,12 @@ describe('Tool Escalation Security Tests', () => {
       expect(result.segments.toolPlane).toContain('Available Tool IDs: a, b, c')
     })
 
-    it('empty toolProjection shows empty Available Tool IDs even with policy', async () => {
+    it('empty toolProjection shows no Available Tool IDs even with policy', async () => {
       const builder = makeBuilder()
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: [] },
           toolSelectionPolicy: {
             heuristics: 'You have access to all system tools.',
@@ -630,8 +644,9 @@ describe('Tool Escalation Security Tests', () => {
         }),
       )
 
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: ')
+      // Empty toolIds => no Available Tool IDs line; policy text may still appear
       expect(result.segments.toolPlane).not.toMatch(/Available Tool IDs: [a-z]/)
+      expect(result.segments.toolPlane).toContain('You have access to all system tools.')
     })
 
     it('toolProjection override does not leak from previous builds', async () => {
@@ -639,18 +654,20 @@ describe('Tool Escalation Security Tests', () => {
 
       await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['sensitive.tool', 'admin.panel'] },
         }),
       )
 
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['file_read'] },
           toolSelectionPolicy: { heuristics: 'Use previous tools if helpful' },
         }),
       )
 
-      expect(result.segments.toolPlane).toContain('file_read')
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
       expect(result.segments.toolPlane).not.toContain('sensitive.tool')
       expect(result.segments.toolPlane).not.toContain('admin.panel')
     })

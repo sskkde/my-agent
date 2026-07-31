@@ -44,7 +44,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'routing_json',
+    mode: 'function_calling',
     agentType: 'main',
     agentProfile: 'foreground',
     providerFamily: 'openai',
@@ -60,7 +60,7 @@ describe('Top-Level summaryLayers Strategy Projection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'foreground',
         providerFamily: 'openai',
@@ -83,7 +83,7 @@ describe('Top-Level summaryLayers Strategy Projection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'foreground',
         providerFamily: 'openai',
@@ -103,7 +103,7 @@ describe('Top-Level summaryLayers Strategy Projection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'foreground',
         providerFamily: 'openai',
@@ -122,7 +122,7 @@ describe('Top-Level summaryLayers Strategy Projection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'foreground',
         providerFamily: 'openai',
@@ -141,7 +141,7 @@ describe('Top-Level summaryLayers Strategy Projection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'foreground',
         providerFamily: 'openai',
@@ -163,7 +163,7 @@ describe('Top-Level summaryLayers Strategy Projection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'foreground',
         providerFamily: 'openai',
@@ -185,7 +185,7 @@ describe('Top-Level summaryLayers Strategy Projection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentType: 'main',
         agentProfile: 'foreground',
         providerFamily: 'openai',

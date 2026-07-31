@@ -145,7 +145,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'routing_json',
+    mode: 'function_calling',
     agentKind: 'foreground',
     providerFamily: 'openai',
     ...overrides,
@@ -535,8 +535,9 @@ describe('Prompt Injection Boundary Security Tests', () => {
         }),
       )
 
-      expect(result.segments.toolPlane).toContain('Tool: file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
       expect(result.segments.toolPlane).toContain('BYPASS')
     })
   })

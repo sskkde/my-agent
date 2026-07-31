@@ -225,7 +225,7 @@ describe('MemoryPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: policy,
@@ -245,7 +245,7 @@ describe('MemoryPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: policy,
@@ -264,7 +264,7 @@ describe('MemoryPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: policy,
@@ -283,7 +283,7 @@ describe('MemoryPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: policy,
@@ -303,7 +303,7 @@ describe('MemoryPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: policy,
@@ -319,14 +319,14 @@ describe('MemoryPolicyProjection', () => {
       const builder = makeBuilder()
 
       const input1: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         currentUserMessage: 'Help me',
       }
 
       const input2: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         currentUserMessage: 'Help me',
@@ -347,7 +347,7 @@ describe('MemoryPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: policy,
@@ -371,7 +371,7 @@ describe('MemoryPolicyProjection', () => {
       }
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: policy,

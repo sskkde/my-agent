@@ -101,7 +101,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'function_calling',
+    mode: 'structured_json',
     agentKind: 'foreground',
     providerFamily: 'openai',
     ...overrides,
@@ -301,6 +301,7 @@ describe('Skill Boundary Security Tests', () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['file_read', 'web_search'] },
           skillProjection: {
             skillIds: ['tool-mention-skill'],
@@ -316,9 +317,7 @@ describe('Skill Boundary Security Tests', () => {
         }),
       )
 
-      // The tool plane section has a "Available Tool IDs:" line with only the real tools.
-      // The skill document section also has "Available Tool IDs:" text but that's in the
-      // skill document content, not the tool plane list. Verify the tool plane line is correct.
+      // Real allowlist line is first; skill doc may also contain the string.
       const toolPlaneLines = result.segments.toolPlane.split('\n')
       const toolIdLine = toolPlaneLines.find(
         (line) => line.startsWith('Available Tool IDs:') && !line.includes('exec'),
@@ -331,6 +330,7 @@ describe('Skill Boundary Security Tests', () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['file_read'] },
           skillProjection: {
             skillIds: ['escalation-skill'],
@@ -346,7 +346,6 @@ describe('Skill Boundary Security Tests', () => {
         }),
       )
 
-      // Available Tool IDs only lists the projection tool
       expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read')
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: exec')
       expect(result.segments.toolPlane).not.toContain('Available Tool IDs: shell_exec')
@@ -381,10 +380,10 @@ describe('Skill Boundary Security Tests', () => {
         }),
       )
 
-      // Tool plane has real tool
-      expect(result.segments.toolPlane).toContain('Tool: file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
-      // Skill content appears but does NOT add a tool definition
+      // function_calling: no prompt-side tool listing; skill content is documentation only
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
       expect(result.segments.toolPlane).toContain('Schema Skill')
     })
   })

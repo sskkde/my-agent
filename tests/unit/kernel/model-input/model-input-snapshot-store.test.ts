@@ -20,7 +20,7 @@ function makeBuiltInput(overrides: Partial<BuiltModelInput> = {}): BuiltModelInp
       segmentD: 'hash-d-abc',
     },
     metadata: {
-      mode: 'routing_json',
+      mode: 'function_calling',
       agentKind: 'foreground',
       agentType: 'main',
       agentProfile: 'foreground',
@@ -46,7 +46,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
 
@@ -60,7 +60,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
       const after = new Date().toISOString()
@@ -84,7 +84,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput,
       })
 
@@ -103,7 +103,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput,
       })
 
@@ -116,7 +116,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         response: {
           content: 'Here is the token: bearer-abc-123',
@@ -143,7 +143,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         tokenUsage,
       })
@@ -161,7 +161,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         provider: 'openrouter',
         model: 'deepseek/deepseek-chat',
@@ -178,7 +178,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
 
@@ -199,7 +199,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
       store.record({
@@ -232,7 +232,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
 
@@ -242,7 +242,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
 
@@ -258,7 +258,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
 
@@ -275,7 +275,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
       expect(store.count()).toBe(1)
@@ -297,7 +297,7 @@ describe('ModelInputSnapshotStore', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
       })
       store.record({

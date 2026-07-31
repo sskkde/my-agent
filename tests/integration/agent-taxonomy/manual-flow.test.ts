@@ -373,7 +373,7 @@ describe('Agent Taxonomy Manual Flow', () => {
       const builder = new ModelInputBuilder({ templateRegistry, templateLoader: loader })
 
       const result = await builder.build({
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         systemPrompt: 'You are a helpful assistant.',
@@ -422,13 +422,9 @@ describe('Agent Taxonomy Manual Flow', () => {
         },
       })
 
-      // Authorized tools appear in tool plane
-      expect(result.segments.toolPlane).toContain('file_read')
-      expect(result.segments.toolPlane).toContain('Available Tool IDs: file_read, web_search')
-
-      // Unauthorized tools must NOT appear
-      expect(result.segments.toolPlane).not.toContain('exec')
-      expect(result.segments.toolPlane).not.toContain('admin_config')
+      // function_calling: no prompt-side tool listing; authorization is request.tools only
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
     })
 
     it('tool plane snapshot is deterministic for same input', async () => {

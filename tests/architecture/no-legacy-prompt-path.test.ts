@@ -509,13 +509,14 @@ describe('No Legacy Prompt Path', () => {
   })
 
   describe('Architecture Docs Alignment', () => {
-    it('MODEL_INPUT_ARCHITECTURE.md documents four modes (not three)', () => {
+    it('MODEL_INPUT_ARCHITECTURE.md documents two modes (function_calling + structured_json)', () => {
       const filePath = join(rootDir, 'docs', 'architecture', 'MODEL_INPUT_ARCHITECTURE.md')
       const content = readFileSync(filePath, 'utf-8')
-      expect(content).toContain('Four Modes')
-      expect(content).toContain('routing_tool_call')
-      // Should NOT claim only three modes
-      expect(content).not.toMatch(/## Three Modes/)
+      expect(content).toContain('Two Modes')
+      expect(content).toContain('function_calling')
+      expect(content).toContain('structured_json')
+      expect(content).not.toContain('routing_tool_call')
+      expect(content).not.toContain('routing_json')
     })
 
     it('MODEL_INPUT_ARCHITECTURE.md documents B1/B2/B3 sub-sections', () => {

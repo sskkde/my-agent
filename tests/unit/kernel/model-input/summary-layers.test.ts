@@ -247,7 +247,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -265,7 +265,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -283,7 +283,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -301,7 +301,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -319,14 +319,14 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input1: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         currentUserMessage: 'Help me',
       }
 
       const input2: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         currentUserMessage: 'Help me',
@@ -344,7 +344,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -363,7 +363,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         memoryPolicyProjection: {
@@ -387,7 +387,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -411,7 +411,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {
@@ -442,7 +442,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         contextBundle: {
@@ -462,7 +462,7 @@ describe('SummaryLayerProjection', () => {
       const builder = makeBuilder()
 
       const input: ModelInputBuildInput = {
-        mode: 'routing_json',
+        mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
         summaryLayers: {

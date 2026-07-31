@@ -54,7 +54,7 @@ function makeBuiltInput(overrides: Partial<BuiltModelInput> = {}): BuiltModelInp
       segmentD: 'hash-d',
     },
     metadata: {
-      mode: 'routing_json',
+      mode: 'function_calling',
       agentKind: 'foreground',
       agentType: 'main',
       agentProfile: 'foreground',
@@ -146,7 +146,7 @@ describe('Agent taxonomy metadata in observability', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         outputContract: 'output:planner.schema',
       })
@@ -158,7 +158,7 @@ describe('Agent taxonomy metadata in observability', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput(),
         launchSource: 'gateway_intent',
       })
@@ -170,7 +170,7 @@ describe('Agent taxonomy metadata in observability', () => {
         agentKind: 'foreground',
         agentType: 'main',
         agentProfile: 'foreground',
-        mode: 'routing_json',
+        mode: 'function_calling',
         builtInput: makeBuiltInput({
           messages: [{ role: 'user', content: 'API Key: sk-12345-secret' }],
         }),

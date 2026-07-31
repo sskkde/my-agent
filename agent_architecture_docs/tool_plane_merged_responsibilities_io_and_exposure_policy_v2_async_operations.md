@@ -1322,7 +1322,7 @@ Claude Code 的工具主要围绕代码、文件和 shell。
 P9 引入 `ToolPlaneProjection` 模块，负责生成模型可见的工具投影：
 
 **投影模式**：
-- `routing_json` 模式：只提供工具 ID 列表和能力摘要，不提供完整 schema
+- `function_calling` 模式：只提供工具 ID 列表和能力摘要，不提供完整 schema
 - `function_calling` 模式：提供完整工具 schema，放入 `LLMRequest.tools`
 - `structured_json` 模式：只提供工具 ID 列表
 

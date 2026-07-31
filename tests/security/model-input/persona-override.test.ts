@@ -149,7 +149,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'routing_json',
+    mode: 'structured_json',
     agentKind: 'foreground',
     providerFamily: 'openai',
     ...overrides,

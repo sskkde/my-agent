@@ -155,9 +155,9 @@ Each LLM invocation mode consumes T5, T6, and T7 templates differently.
 
 | Mode | T5 (agentProfile) | T6 (toolProjection) | T7 (runtimeContext) |
 |---|---|---|---|
-| `routing_json` | Rendered as text in Segment B | Tool IDs + capability summaries as text in Segment C | Context bundle rendered as text in Segment D |
+| `function_calling` | Rendered as text in Segment B | Tool IDs + capability summaries as text in Segment C | Context bundle rendered as text in Segment D |
 | `function_calling` | Rendered as text in Segment B | Full tool schemas in `LLMRequest.tools`, policy text in Segment C prompt | Context bundle rendered as text in Segment D |
-| `routing_tool_call` | Rendered as text in Segment B | Tool schemas in `LLMRequest.tools`, routing hints in Segment C prompt | Context bundle rendered as text in Segment D |
+| `function_calling` | Rendered as text in Segment B | Tool schemas in `LLMRequest.tools`, routing hints in Segment C prompt | Context bundle rendered as text in Segment D |
 | `structured_json` | Rendered as text in Segment B | Tool IDs only as text in Segment C | Context bundle rendered as text in Segment D |
 
 ### T5 Consumption Rules
@@ -169,7 +169,7 @@ Each LLM invocation mode consumes T5, T6, and T7 templates differently.
 ### T6 Consumption Rules
 
 - T6 templates (`toolProjection:*`) are resolved by `resolveSevenLayer()` matching on `toolProjection` taxonomy layer.
-- In `routing_json` mode, T6 content is rendered as text summaries in Segment C.
+- In `function_calling` mode, T6 content is rendered as text summaries in Segment C.
 - In `function_calling` mode, T6 provides the `ToolSelectionPolicyProjection` rendered as text; tool schemas come from `ToolPlaneProjection` data.
 - T6 policy projection is a top-level `ModelInputBuildInput` field (`toolSelectionPolicy`), not embedded in `ToolPlaneProjection`.
 

@@ -10,8 +10,6 @@
  * - Segment D (contextBundle): Layer 7
  *
  * Modes:
- * - routing_json: ForegroundAgent (no tools in request, tool summaries only)
- * - routing_tool_call: ForegroundAgent with decide (tool summaries + full schemas for function calling)
  * - structured_json: MemoryExtractor (no tools, JSON response format)
  * - function_calling: AgentKernel/SearchSubagent (tools in request)
  *
@@ -243,16 +241,12 @@ export class ModelInputBuilder {
     }
 
     if (projection) {
-      let toolPlaneContent: string
-      if (mode === 'routing_json') {
-        toolPlaneContent = this.renderRoutingToolPlane(projection)
-      } else if (mode === 'routing_tool_call') {
-        toolPlaneContent = this.renderRoutingToolCallPlane(projection)
-      } else if (mode === 'function_calling') {
-        toolPlaneContent = this.renderFunctionCallingToolPlane(projection)
-      } else {
-        toolPlaneContent = this.renderStructuredJsonToolPlane(projection)
-      }
+      // function_calling: schemas live only in LLMRequest.tools (no prompt dual-write).
+      // structured_json: keep a prompt-side ID allowlist (no request.tools).
+      const toolPlaneContent =
+        mode === 'function_calling'
+          ? this.renderFunctionCallingToolPlane(projection)
+          : this.renderStructuredJsonToolPlane(projection)
       if (toolPlaneContent) {
         parts.push('--- Tool Plane (callable tools) ---')
         parts.push(toolPlaneContent)
@@ -362,7 +356,7 @@ export class ModelInputBuilder {
       parts.push(`User Message: ${input.currentUserMessage}`)
     }
 
-    // 10. Input transcript (for function_calling/routing_tool_call modes)
+    // 10. Input transcript (for function_calling mode)
     if (input.transcript && input.transcript.length > 0) {
       parts.push(this.renderTranscript(input.transcript))
     }
@@ -407,11 +401,7 @@ export class ModelInputBuilder {
       messages.push({ role: 'user', content: segmentD.content })
     }
 
-    if (
-      (input.mode === 'function_calling' || input.mode === 'routing_tool_call') &&
-      input.transcript &&
-      input.transcript.length > 0
-    ) {
+    if (input.mode === 'function_calling' && input.transcript && input.transcript.length > 0) {
       for (const msg of input.transcript) {
         messages.push(msg)
       }
@@ -488,50 +478,10 @@ export class ModelInputBuilder {
     }
   }
 
-  private renderRoutingToolPlane(projection: ToolPlaneProjection): string {
-    const parts: string[] = []
-
-    parts.push(`Available Tool IDs: ${projection.toolIds.join(', ')}`)
-
-    if (projection.toolSummaries) {
-      parts.push(projection.toolSummaries)
-    }
-
-    return parts.join('\n\n')
-  }
-
-  private renderRoutingToolCallPlane(projection: ToolPlaneProjection): string {
-    const parts: string[] = []
-
-    parts.push(`Available Tool IDs: ${projection.toolIds.join(', ')}`)
-
-    if (projection.toolSummaries) {
-      parts.push(projection.toolSummaries)
-    }
-
-    if (projection.tools && projection.tools.length > 0) {
-      for (const tool of projection.tools) {
-        parts.push(`Tool: ${tool.function.name}\nDescription: ${tool.function.description}`)
-      }
-    }
-
-    return parts.join('\n\n')
-  }
-
-  private renderFunctionCallingToolPlane(projection: ToolPlaneProjection): string {
-    if (!projection.tools || projection.tools.length === 0) {
-      return `Available Tool IDs: ${projection.toolIds.join(', ')}`
-    }
-
-    const parts: string[] = []
-
-    parts.push(`Available Tool IDs: ${projection.toolIds.join(', ')}`)
-
-    for (const tool of projection.tools) {
-      parts.push(`Tool: ${tool.function.name}\nDescription: ${tool.function.description}`)
-    }
-
-    return parts.join('\n\n')
+  private renderFunctionCallingToolPlane(_projection: ToolPlaneProjection): string {
+    // No prompt-side tool listing. Descriptions + schemas are injected solely via
+    // LLMRequest.tools (extractToolsForRequest) — zero prompt/tools dual-write.
+    return ''
   }
 
   private renderStructuredJsonToolPlane(projection: ToolPlaneProjection): string {
@@ -539,6 +489,7 @@ export class ModelInputBuilder {
       return ''
     }
 
+    // structured_json has no request.tools; keep a prompt allowlist for memory extractors etc.
     return `Available Tool IDs: ${projection.toolIds.join(', ')}`
   }
 
@@ -635,7 +586,7 @@ export class ModelInputBuilder {
 }
 
 export function extractToolsForRequest(input: ModelInputBuildInput): LLMToolDefinition[] | undefined {
-  if (input.mode !== 'function_calling' && input.mode !== 'routing_tool_call') {
+  if (input.mode !== 'function_calling') {
     return undefined
   }
 

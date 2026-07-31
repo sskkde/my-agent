@@ -138,7 +138,7 @@ function makeBuilder(): ModelInputBuilder {
 
 function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelInputBuildInput {
   return {
-    mode: 'routing_json',
+    mode: 'function_calling',
     agentType: 'main',
     agentProfile: 'default_main',
     providerFamily: 'openai',
@@ -153,7 +153,8 @@ describe('ModelInputBuilder', () => {
       const result = await builder.build(
         makeMinimalInput({
           systemPrompt: 'Custom system prompt',
-          toolProjection: { toolIds: ['file_read', 'web_search'] },
+          // function_calling prompt has no tool ID list; use policy text so Segment C is non-empty
+          toolSelectionPolicy: { heuristics: 'Prefer file_read for local ops.' },
           currentUserMessage: 'Hello world',
         }),
       )
@@ -165,7 +166,9 @@ describe('ModelInputBuilder', () => {
       const secondSystemIdx = messages.findIndex(
         (m) => m.role === 'system' && m.content.includes('Custom system prompt'),
       )
-      const toolPlaneIdx = messages.findIndex((m) => m.role === 'system' && m.content.includes('file_read'))
+      const toolPlaneIdx = messages.findIndex(
+        (m) => m.role === 'system' && m.content.includes('Prefer file_read for local ops.'),
+      )
       const userMsgIdx = messages.findIndex((m) => m.role === 'user' && m.content.includes('Hello world'))
 
       expect(firstSystemIdx).toBeLessThan(secondSystemIdx)
@@ -272,24 +275,8 @@ describe('ModelInputBuilder', () => {
     })
   })
 
-  describe('three modes produce different structures', () => {
-    it('routing_json mode produces user message with tool summaries', async () => {
-      const builder = makeBuilder()
-      const result = await builder.build(
-        makeMinimalInput({
-          mode: 'routing_json',
-          toolProjection: { toolIds: ['file_read', 'web_search'] },
-          currentUserMessage: 'Read the file',
-        }),
-      )
-
-      const toolMessages = result.messages.filter(
-        (m) => m.role === 'system' && m.content.includes('file_read') && m.content.includes('web_search'),
-      )
-      expect(toolMessages.length).toBeGreaterThan(0)
-    })
-
-    it('structured_json mode produces minimal tool plane', async () => {
+  describe('two modes produce different structures', () => {
+    it('structured_json mode produces minimal tool plane with Available Tool IDs', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -299,10 +286,10 @@ describe('ModelInputBuilder', () => {
       )
 
       expect(result.metadata.mode).toBe('structured_json')
-      expect(result.segments.toolPlane).toContain('memory_retrieve')
+      expect(result.segments.toolPlane).toContain('Available Tool IDs: memory_retrieve')
     })
 
-    it('function_calling mode includes full tool descriptions', async () => {
+    it('function_calling mode prompt has no tool listing (schemas live only in request.tools)', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
@@ -325,15 +312,17 @@ describe('ModelInputBuilder', () => {
         }),
       )
 
-      expect(result.segments.toolPlane).toContain('file_read')
-      expect(result.segments.toolPlane).toContain('Read a file from disk')
+      // No prompt dual-write of IDs or descriptions for function_calling.
+      expect(result.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(result.segments.toolPlane).not.toContain('Read a file from disk')
+      expect(result.segments.toolPlane).not.toContain('Tool: file_read')
     })
 
     it('empty toolProjection produces empty Segment C', async () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
-          mode: 'routing_json',
+          mode: 'function_calling',
         }),
       )
 
@@ -350,7 +339,7 @@ describe('ModelInputBuilder', () => {
       expect(result.segments).toBeDefined()
       expect(result.segmentHashes).toBeDefined()
       expect(result.metadata).toBeDefined()
-      expect(result.metadata.mode).toBe('routing_json')
+      expect(result.metadata.mode).toBe('function_calling')
       expect(result.metadata.agentKind).toBe('default_main')
       expect(result.metadata.providerFamily).toBe('openai')
     })
@@ -909,7 +898,7 @@ describe('PM-7: Default values are undefined (not empty string)', () => {
     const builder = makeBuilder()
 
     const input: import('../../../../src/kernel/model-input/model-input-types.js').ModelInputBuildInput = {
-      mode: 'routing_json',
+      mode: 'function_calling',
       agentKind: 'foreground',
       providerFamily: 'openai',
       // personaProjection intentionally not set
@@ -976,6 +965,7 @@ describe('Skill Plane Projection', () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['file_read'] },
           skillProjection: makeSkillProjection(),
         }),
@@ -989,16 +979,14 @@ describe('Skill Plane Projection', () => {
       const builder = makeBuilder()
       const result = await builder.build(
         makeMinimalInput({
+          mode: 'structured_json',
           toolProjection: { toolIds: ['file_read'] },
-          skillProjection: makeSkillProjection({
-            skillSummaries: 'Skill summary text.',
-          }),
+          skillProjection: makeSkillProjection(),
         }),
       )
 
       const toolHeadingIdx = result.segments.toolPlane.indexOf('--- Tool Plane (callable tools) ---')
       const skillHeadingIdx = result.segments.toolPlane.indexOf('--- Skill Plane (documentation only) ---')
-
       expect(toolHeadingIdx).toBeGreaterThanOrEqual(0)
       expect(skillHeadingIdx).toBeGreaterThan(toolHeadingIdx)
     })
@@ -1097,13 +1085,14 @@ describe('Skill Plane Projection', () => {
         }),
       )
 
-      // Tool plane content should differ (skill added) but tool schema text is preserved
-      expect(resultWithSkill.segments.toolPlane).toContain('Tool: file_read')
-      expect(resultWithSkill.segments.toolPlane).toContain('Read a file from disk')
-      expect(resultWithSkill.segments.toolPlane).toContain('Available Tool IDs: file_read')
+      // function_calling: no prompt-side tool listing; skill plane must not inject tool schemas.
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(resultWithSkill.segments.toolPlane).not.toContain('Read a file from disk')
 
-      expect(resultWithoutSkill.segments.toolPlane).toContain('Tool: file_read')
-      expect(resultWithoutSkill.segments.toolPlane).toContain('Read a file from disk')
+      expect(resultWithoutSkill.segments.toolPlane).not.toContain('Available Tool IDs:')
+      expect(resultWithoutSkill.segments.toolPlane).not.toContain('Tool: file_read')
+      expect(resultWithoutSkill.segments.toolPlane).not.toContain('Read a file from disk')
     })
 
     it('extractToolsForRequest returns tool schemas, not skill docs', () => {

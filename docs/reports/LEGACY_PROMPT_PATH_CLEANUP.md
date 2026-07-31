@@ -66,7 +66,7 @@ The legacy prompt-builder and prompt-registry modules have been successfully rem
 
 | Method                  | Lines | Reason                                      |
 | ----------------------- | ----- | ------------------------------------------- |
-| `callLLMRouter()`       | ~73   | Legacy routing_json path via prompt-builder |
+| `callLLMRouter()`       | ~73   | Legacy function_calling path via prompt-builder |
 | `processRouterResult()` | ~35   | Handler for callLLMRouter results           |
 | `logShadowDiff()`       | ~27   | Debug logging for shadow mode comparison    |
 | `filterAllowedTools()`  | ~15   | Moved to routing-json-parser module         |
@@ -204,7 +204,7 @@ ForegroundAgent.processMessage()
   ↓
 buildRoutingMessages() ← prompt-builder.ts (LEGACY)
   ↓
-callLLMRouter() ← Legacy routing_json path
+callLLMRouter() ← Legacy function_calling path
   ↓
 processRouterResult()
 ```
@@ -219,7 +219,7 @@ buildModelInput() ← model-input-builder.ts (NEW)
 [decide mode]
   runDecidePathViaKernel() OR callDecideLLM()
   ↓
-[routing_json mode]
+[function_calling mode]
   runNewPath()
   ↓
 parseForegroundRoutingJsonOutput() ← routing-json-parser.ts (EXTRACTED)
