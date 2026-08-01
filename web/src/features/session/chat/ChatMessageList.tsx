@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { ConsoleTimelineEvent } from '../../../api/types'
 import ChatWelcome from './ChatWelcome'
 import ChatMessage from './ChatMessage'
@@ -12,6 +12,9 @@ export interface ChatMessageListProps {
   error?: string
   onPromptSelect: (prompt: string) => void
   onRetryStream: () => void
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
 }
 
 const eventTypeToRole = (eventType?: string): 'user' | 'assistant' | 'error' => {
@@ -32,8 +35,13 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   error,
   onPromptSelect,
   onRetryStream,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }) => {
   const chatAreaRef = useRef<HTMLDivElement>(null)
+  const isLoadingMoreRef = useRef(false)
+  const prevScrollHeightRef = useRef(0)
 
   const streamItems = useMemo(() => mergeToolEvents(events), [events])
 
@@ -45,7 +53,24 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
     [streamItems],
   )
 
+  const handleScroll = useCallback(() => {
+    const el = chatAreaRef.current
+    if (!el || !onLoadMore || !hasMore || loadingMore) return
+    if (el.scrollTop <= 50) {
+      prevScrollHeightRef.current = el.scrollHeight
+      isLoadingMoreRef.current = true
+      onLoadMore()
+    }
+  }, [onLoadMore, hasMore, loadingMore])
+
   useEffect(() => {
+    if (isLoadingMoreRef.current && chatAreaRef.current && prevScrollHeightRef.current > 0) {
+      const el = chatAreaRef.current
+      el.scrollTop = el.scrollHeight - prevScrollHeightRef.current
+      isLoadingMoreRef.current = false
+      prevScrollHeightRef.current = 0
+      return
+    }
     if (chatAreaRef.current && streamItems.length > 0) {
       chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight
     }
@@ -55,8 +80,13 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
     loading && textMessageEvents.length > 0 && !textMessageEvents.some(isStreamingDraft)
 
   return (
-    <div className="chat-area" ref={chatAreaRef} data-testid="chat-message-list">
+    <div className="chat-area" ref={chatAreaRef} data-testid="chat-message-list" onScroll={handleScroll}>
       <div className="chat-column">
+        {loadingMore && (
+          <div className="chat-loading-more" data-testid="chat-loading-more">
+            正在加载更早的消息…
+          </div>
+        )}
         {streamItems.length === 0 ? (
           <ChatWelcome onPromptSelect={onPromptSelect} />
         ) : (

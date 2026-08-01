@@ -62,7 +62,7 @@ describe('Subagent Launch Tool', () => {
       const result = await handleLaunchSubagent(deps, input)
 
       expect(result.success).toBe(true)
-      expect(result.data?.agentType).toBe('subagent')
+      expect(result.data?.agentType).toBe('document_processor')
       expect(result.data?.agentProfile).toBe('document_processor')
       expect(result.data?.runtimeActionId).toBeDefined()
       expect(result.data?.dispatchResult).toEqual(mockDispatchResult)
@@ -172,7 +172,7 @@ describe('Subagent Launch Tool', () => {
       const result = await handleLaunchSubagent(deps, input)
 
       expect(result.success).toBe(true)
-      expect(result.data?.agentType).toBe('subagent')
+      expect(result.data?.agentType).toBe('document_processor')
       expect(result.data?.agentProfile).toBe('document_processor')
     })
 

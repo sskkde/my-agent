@@ -3,6 +3,7 @@ import { inferSubagentType } from '../../../src/subagents/action-mapper.js'
 import { normalizeAgentLabel, isKnownAgentLabel, UnknownAgentLabelError } from '../../../src/taxonomy/agent-label-normalizer.js'
 import { createAgentProfileRegistry, registerSystemProfiles } from '../../../src/taxonomy/agent-profile-registry.js'
 import type { AgentProfileRegistry } from '../../../src/taxonomy/agent-profile-registry.js'
+import { createSubagentRegistry, type SubagentRegistry } from '../../../src/subagents/registry.js'
 
 describe('inferSubagentType returns NormalizedAgentLabel', () => {
   it('should return normalized label with agentType and agentProfile for document keywords', () => {
@@ -196,5 +197,61 @@ describe('Launch profile normalization flow', () => {
     const profile = registry.assertAllowed(inferred.agentProfile)
 
     expect(profile.id).toBe('document_processor')
+  })
+})
+
+describe('SubagentRegistry.assertAllowed agentProfile fallback', () => {
+  let registry: SubagentRegistry
+
+  beforeEach(() => {
+    registry = createSubagentRegistry()
+  })
+
+  it('finds definition by exact agentType key', () => {
+    registry.register({
+      agentType: 'my_processor',
+      displayName: 'My Processor',
+      description: 'test',
+      modality: 'text',
+      promptId: 'test',
+      allowedToolIds: [],
+      defaultMaxIterations: 5,
+      defaultTimeoutMs: 30000,
+      supportedExecutionModes: ['sync'],
+      canRunInBackground: false,
+      providerPolicy: { fallbackMode: 'none' },
+      permissionProfile: 'ask_on_write',
+      summaryPolicy: { returnMode: 'summary_only', maxSummaryTokens: 1000 },
+    })
+
+    const def = registry.assertAllowed('my_processor')
+    expect(def.agentType).toBe('my_processor')
+  })
+
+  it('finds definition by agentProfile when agentType key does not match', () => {
+    registry.register({
+      agentType: 'custom_runtime_type',
+      agentProfile: 'custom_profile_label',
+      displayName: 'Custom',
+      description: 'test',
+      modality: 'text',
+      promptId: 'test',
+      allowedToolIds: [],
+      defaultMaxIterations: 5,
+      defaultTimeoutMs: 30000,
+      supportedExecutionModes: ['sync'],
+      canRunInBackground: false,
+      providerPolicy: { fallbackMode: 'none' },
+      permissionProfile: 'ask_on_write',
+      summaryPolicy: { returnMode: 'summary_only', maxSummaryTokens: 1000 },
+    })
+
+    const def = registry.assertAllowed('custom_profile_label')
+    expect(def.agentType).toBe('custom_runtime_type')
+    expect(def.agentProfile).toBe('custom_profile_label')
+  })
+
+  it('throws for truly unknown type', () => {
+    expect(() => registry.assertAllowed('nonexistent')).toThrow('Unknown subagent type: "nonexistent"')
   })
 })

@@ -392,14 +392,14 @@ export async function getSessionTimeline(
   sessionId: string,
   limit?: number,
   offset?: number,
-): Promise<{ events: ConsoleTimelineEvent[]; total: number }> {
+): Promise<{ events: ConsoleTimelineEvent[]; total: number; hasMore: boolean }> {
   const params = new URLSearchParams()
   if (limit !== undefined) params.append('limit', String(limit))
   if (offset !== undefined) params.append('offset', String(offset))
   const query = params.toString() ? `?${params.toString()}` : ''
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/timeline${query}`, { credentials: 'include' })
-  const result = await parseResponse<{ items: ConsoleTimelineEvent[]; total: number }>(response)
-  return { events: result.items, total: result.total }
+  const result = await parseResponse<{ items: ConsoleTimelineEvent[]; total: number; hasMore: boolean }>(response)
+  return { events: result.items, total: result.total, hasMore: result.hasMore }
 }
 
 export async function getInstances(): Promise<InstancesResponse> {

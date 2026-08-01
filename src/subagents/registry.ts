@@ -119,11 +119,14 @@ export function createSubagentRegistry(): SubagentRegistry {
     },
 
     assertAllowed(agentType: string): SubagentDefinition {
-      const def = definitions.get(agentType)
-      if (!def) {
-        throw new Error(`Unknown subagent type: "${agentType}"`)
+      const direct = definitions.get(agentType)
+      if (direct) return direct
+
+      for (const def of definitions.values()) {
+        if (def.agentProfile === agentType) return def
       }
-      return def
+
+      throw new Error(`Unknown subagent type: "${agentType}"`)
     },
 
     resolveByProfileId(profileId: string): ResolvedSubagent | undefined {

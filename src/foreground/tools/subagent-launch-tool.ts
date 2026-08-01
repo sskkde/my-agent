@@ -56,18 +56,18 @@ export async function handleLaunchSubagent(
     if (rawLabel && isKnownAgentLabel(rawLabel)) {
       const normalized = normalizeAgentLabel(rawLabel)
       agentProfile = normalized.agentProfile
-      agentType = normalized.agentType
+      agentType = normalized.agentProfile
     } else if (rawLabel) {
       deps.profileRegistry.assertAllowed(rawLabel)
       agentProfile = rawLabel
-      agentType = 'subagent'
+      agentType = rawLabel
     } else {
       const inferred = inferSubagentType({
         message: input.objective,
         suggestedTools: input.suggestedTools,
       })
       agentProfile = inferred.agentProfile
-      agentType = inferred.agentType
+      agentType = inferred.agentProfile
     }
 
     const parentContext: ContextBundle = {

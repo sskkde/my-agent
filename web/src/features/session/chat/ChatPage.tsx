@@ -38,6 +38,8 @@ export interface ChatPageProps {
   initialSessionId?: string
 }
 
+const TIMELINE_PAGE_SIZE = 50
+
 const ACTIVE_PROCESSING_STAGES = new Set<ProcessingStatusPayload['stage']>([
   'receiving',
   'routing',
@@ -305,6 +307,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
   const [timelineLoading, setTimelineLoading] = useState(false)
   const [timelineError, setTimelineError] = useState<string | null>(null)
+  const [hasMoreTimeline, setHasMoreTimeline] = useState(false)
+  const [timelineOffset, setTimelineOffset] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [streamingDrafts, setStreamingDrafts] = useState<Map<string, StreamingDraft>>(new Map())
   const [streamingReasoningDrafts, setStreamingReasoningDrafts] = useState<Map<string, StreamingDraft>>(new Map())
   const [pendingAssistantPlaceholders, setPendingAssistantPlaceholders] = useState<Map<string, AssistantPlaceholder>>(new Map())
@@ -407,7 +412,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const fetchTimeline = useCallback(
     async (sessionId: string): Promise<ConsoleTimelineEvent[] | null> => {
       try {
-        const timelineResponse = await api.getSessionTimeline(sessionId)
+        const timelineResponse = await api.getSessionTimeline(sessionId, TIMELINE_PAGE_SIZE)
         if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
           setEvents((prev) => {
             const merged = mergeTimelineEvents(prev, timelineResponse.events)
@@ -424,6 +429,29 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     },
     [selectedSessionIdRef],
   )
+
+  const loadMoreTimeline = useCallback(async () => {
+    const sessionId = selectedSessionIdRef.current
+    if (!sessionId || !hasMoreTimeline || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const response = await api.getSessionTimeline(sessionId, TIMELINE_PAGE_SIZE, timelineOffset)
+      if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+        setEvents((prev) => {
+          const merged = mergeTimelineEvents(response.events, prev)
+          const sorted = [...merged]
+          sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+          return sorted
+        })
+        setHasMoreTimeline(response.hasMore)
+        setTimelineOffset((prev) => prev + response.events.length)
+      }
+    } catch {
+      // non-fatal - user can retry by scrolling up again
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [hasMoreTimeline, loadingMore, timelineOffset])
 
   const createCommandContext = useCallback((): CommandContext => {
     return {
@@ -621,6 +649,8 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     if (!selectedSessionId) {
       setEvents([])
       setTimelineError(null)
+      setHasMoreTimeline(false)
+      setTimelineOffset(0)
       disconnectSse()
       resetStreamStatus()
       return
@@ -640,9 +670,12 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           createdAt: sessionResponse.session.lastActivityAt,
           updatedAt: sessionResponse.session.lastActivityAt,
         })
-        const timelineResponse = await api.getSessionTimeline(selectedSessionId)
+        const timelineResponse = await api.getSessionTimeline(selectedSessionId, TIMELINE_PAGE_SIZE)
         if (cancelled || selectedSessionIdRef.current !== selectedSessionId) return
-        setEvents(timelineResponse.events)
+        const reversed = [...timelineResponse.events].reverse()
+        setEvents(reversed)
+        setHasMoreTimeline(timelineResponse.hasMore)
+        setTimelineOffset(timelineResponse.events.length)
         connectSse(selectedSessionId)
       } catch (err) {
         if (!cancelled && selectedSessionIdRef.current === selectedSessionId) {
@@ -830,6 +863,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           onRetryStream={() => {
             if (selectedSessionId) connectSse(selectedSessionId)
           }}
+          hasMore={hasMoreTimeline}
+          loadingMore={loadingMore}
+          onLoadMore={loadMoreTimeline}
         />
         <ChatComposer
           value={draft}

@@ -1,6 +1,20 @@
 import { describe, it, expect, vi } from 'vitest'
 import { handleStatusQuery, STATUS_QUERY_TOOL_ID } from '../../../../src/foreground/tools/status-query-tool.js'
-import type { RuntimeDispatcher, DispatchResult } from '../../../../src/dispatcher/types.js'
+import type { PlannerRunStore, PlannerRunRecord } from '../../../../src/storage/planner-run-store.js'
+import type { SubagentRunStore, SubagentRunRecord } from '../../../../src/storage/subagent-run-store.js'
+import type { ApprovalStore, ApprovalRequest } from '../../../../src/storage/approval-store.js'
+
+function makePlannerStore(records: Partial<PlannerRunRecord>[]): PlannerRunStore {
+  return { findByUser: vi.fn().mockReturnValue(records) } as unknown as PlannerRunStore
+}
+
+function makeSubagentStore(records: Partial<SubagentRunRecord>[]): SubagentRunStore {
+  return { query: vi.fn().mockReturnValue(records) } as unknown as SubagentRunStore
+}
+
+function makeApprovalStore(records: Partial<ApprovalRequest>[]): ApprovalStore {
+  return { findByUser: vi.fn().mockReturnValue(records) } as unknown as ApprovalStore
+}
 
 describe('status-query-tool', () => {
   describe('STATUS_QUERY_TOOL_ID', () => {
@@ -10,198 +24,63 @@ describe('status-query-tool', () => {
   })
 
   describe('handleStatusQuery', () => {
-    it('Status query returns active work — runtime action is server-created and dispatched', async () => {
-      const mockDispatch = vi.fn().mockResolvedValue({
-        requestId: 'turn-001',
-        actionId: 'action-test-123',
-        status: 'completed',
-        targetRuntime: 'gateway',
-        result: { activeRuns: 2, pendingApprovals: 1 },
-        createdAt: '2024-01-15T10:00:00.000Z',
-      } as DispatchResult)
-
-      const mockRuntimeDispatcher = {
-        dispatch: mockDispatch,
-      } as RuntimeDispatcher
-
+    it('returns active work counts when planner, subagent, and approval are active', async () => {
       const deps = {
-        runtimeDispatcher: mockRuntimeDispatcher,
-        userId: 'user-123',
-        sessionId: 'session-456',
-        turnId: 'turn-001',
+        plannerRunStore: makePlannerStore([
+          { status: 'planning' } as Partial<PlannerRunRecord>,
+          { status: 'replanning' } as Partial<PlannerRunRecord>,
+          { status: 'completed' } as Partial<PlannerRunRecord>,
+        ]),
+        subagentRunStore: makeSubagentStore([
+          { status: 'running' } as Partial<SubagentRunRecord>,
+          { status: 'queued' } as Partial<SubagentRunRecord>,
+        ]),
+        approvalStore: makeApprovalStore([
+          { status: 'pending' } as Partial<ApprovalRequest>,
+        ]),
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
       }
 
       const result = await handleStatusQuery(deps)
 
       expect(result.success).toBe(true)
-      expect(result.data).toBeDefined()
-      expect(result.data?.runtimeActionId).toMatch(/^action-\d+-[a-z0-9]+$/)
-      expect(result.data?.statusText).toContain('Status:')
-      expect(result.userVisibleSummary).toBeDefined()
-      expect(result.runtimeSummary).toBeDefined()
-      expect(result.runtimeSummary?.runtimeActionIds).toHaveLength(1)
-
-      // Verify dispatch was called with correct parameters
-      expect(mockDispatch).toHaveBeenCalledTimes(1)
-      const dispatchCall = mockDispatch.mock.calls[0][0]
-      expect(dispatchCall.requestId).toBe('turn-001')
-      expect(dispatchCall.action.actionType).toBe('query_active_work')
-      expect(dispatchCall.action.targetRuntime).toBe('gateway')
-      expect(dispatchCall.action.targetAction).toBe('query')
-      expect(dispatchCall.action.source.sourceModule).toBe('foreground_status_query_tool')
-      expect(dispatchCall.action.userId).toBe('user-123')
-      expect(dispatchCall.action.sessionId).toBe('session-456')
-      expect(dispatchCall.action.payload.queryType).toBe('active_work_status')
-      expect(dispatchCall.context.callerModule).toBe('foreground_status_query_tool')
-      expect(dispatchCall.context.userId).toBe('user-123')
-      expect(dispatchCall.context.sessionId).toBe('session-456')
+      expect(result.data?.activePlannerRuns).toBe(2)
+      expect(result.data?.activeSubagentRuns).toBe(2)
+      expect(result.data?.pendingApprovals).toBe(1)
+      expect(result.data?.statusText).toContain('2 active planner run(s)')
+      expect(result.data?.statusText).toContain('2 active subagent run(s)')
+      expect(result.data?.statusText).toContain('1 pending approval(s)')
     })
 
-    it('Status query returns failure on dispatch error', async () => {
-      const mockDispatch = vi.fn().mockRejectedValue(new Error('Dispatch failed'))
-
-      const mockRuntimeDispatcher = {
-        dispatch: mockDispatch,
-      } as RuntimeDispatcher
-
+    it('returns "no active work" when nothing is active', async () => {
       const deps = {
-        runtimeDispatcher: mockRuntimeDispatcher,
-        userId: 'user-123',
-        sessionId: 'session-456',
-        turnId: 'turn-001',
-      }
-
-      const result = await handleStatusQuery(deps)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBeDefined()
-      expect(result.error?.code).toBe('STATUS_QUERY_FAILED')
-      expect(result.error?.message).toBe('Dispatch failed')
-      expect(result.error?.recoverable).toBe(true)
-      expect(result.userVisibleSummary).toBe('Status check failed due to an error.')
-      expect(result.data).toBeUndefined()
-
-      // Verify dispatch was attempted
-      expect(mockDispatch).toHaveBeenCalledTimes(1)
-    })
-
-    it('should handle failed dispatch status', async () => {
-      const mockDispatch = vi.fn().mockResolvedValue({
-        requestId: 'turn-001',
-        actionId: 'action-test-456',
-        status: 'failed',
-        targetRuntime: 'gateway',
-        error: {
-          code: 'TARGET_RUNTIME_ERROR',
-          message: 'Gateway unavailable',
-          recoverable: true,
-        },
-        createdAt: '2024-01-15T10:00:00.000Z',
-      } as DispatchResult)
-
-      const mockRuntimeDispatcher = {
-        dispatch: mockDispatch,
-      } as RuntimeDispatcher
-
-      const deps = {
-        runtimeDispatcher: mockRuntimeDispatcher,
-        userId: 'user-123',
-        sessionId: 'session-456',
-        turnId: 'turn-001',
-      }
-
-      const result = await handleStatusQuery(deps)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBeDefined()
-      expect(result.error?.code).toBe('TARGET_RUNTIME_ERROR')
-      expect(result.error?.message).toBe('Gateway unavailable')
-      expect(result.error?.recoverable).toBe(true)
-      expect(result.userVisibleSummary).toContain('Status check unavailable')
-      expect(result.userVisibleSummary).toContain('Gateway unavailable')
-    })
-
-    it('should handle target_runtime_unavailable with recoverable error', async () => {
-      const mockDispatch = vi.fn().mockResolvedValue({
-        requestId: 'turn-001',
-        actionId: 'action-test-456',
-        status: 'failed',
-        targetRuntime: 'gateway',
-        error: {
-          code: 'target_runtime_unavailable',
-          message: 'No adapter registered for runtime: gateway',
-          recoverable: false,
-        },
-        createdAt: '2024-01-15T10:00:00.000Z',
-      } as DispatchResult)
-
-      const mockRuntimeDispatcher = {
-        dispatch: mockDispatch,
-      } as RuntimeDispatcher
-
-      const deps = {
-        runtimeDispatcher: mockRuntimeDispatcher,
-        userId: 'user-123',
-        sessionId: 'session-456',
-        turnId: 'turn-001',
-      }
-
-      const result = await handleStatusQuery(deps)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBeDefined()
-      expect(result.error?.code).toBe('target_runtime_unavailable')
-      expect(result.error?.message).toBe('No adapter registered for runtime: gateway')
-      expect(result.error?.recoverable).toBe(true)
-      expect(result.userVisibleSummary).toContain('Status check unavailable')
-      expect(result.runtimeSummary?.runtimeActionIds).toHaveLength(1)
-    })
-
-    it('should handle pending dispatch status', async () => {
-      const mockDispatch = vi.fn().mockResolvedValue({
-        requestId: 'turn-001',
-        actionId: 'action-test-789',
-        status: 'accepted',
-        targetRuntime: 'gateway',
-        createdAt: '2024-01-15T10:00:00.000Z',
-      } as DispatchResult)
-
-      const mockRuntimeDispatcher = {
-        dispatch: mockDispatch,
-      } as RuntimeDispatcher
-
-      const deps = {
-        runtimeDispatcher: mockRuntimeDispatcher,
-        userId: 'user-123',
-        sessionId: 'session-456',
-        turnId: 'turn-001',
+        plannerRunStore: makePlannerStore([{ status: 'completed' } as Partial<PlannerRunRecord>]),
+        subagentRunStore: makeSubagentStore([{ status: 'completed' } as Partial<SubagentRunRecord>]),
+        approvalStore: makeApprovalStore([{ status: 'approved' } as Partial<ApprovalRequest>]),
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
       }
 
       const result = await handleStatusQuery(deps)
 
       expect(result.success).toBe(true)
-      expect(result.data?.statusText).toBe('Status check is pending.')
+      expect(result.data?.activePlannerRuns).toBe(0)
+      expect(result.data?.activeSubagentRuns).toBe(0)
+      expect(result.data?.pendingApprovals).toBe(0)
+      expect(result.data?.statusText).toBe('No active work. All clear.')
     })
 
-    it('should use custom user message when provided', async () => {
-      const mockDispatch = vi.fn().mockResolvedValue({
-        requestId: 'turn-001',
-        actionId: 'action-test-999',
-        status: 'completed',
-        targetRuntime: 'gateway',
-        result: 'All systems operational',
-        createdAt: '2024-01-15T10:00:00.000Z',
-      } as DispatchResult)
-
-      const mockRuntimeDispatcher = {
-        dispatch: mockDispatch,
-      } as RuntimeDispatcher
-
+    it('uses custom user message when provided', async () => {
       const deps = {
-        runtimeDispatcher: mockRuntimeDispatcher,
-        userId: 'user-123',
-        sessionId: 'session-456',
-        turnId: 'turn-001',
+        plannerRunStore: makePlannerStore([]),
+        subagentRunStore: makeSubagentStore([]),
+        approvalStore: makeApprovalStore([]),
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
       }
 
       const customMessage = 'Checking your current work status...'
@@ -209,6 +88,29 @@ describe('status-query-tool', () => {
 
       expect(result.success).toBe(true)
       expect(result.userVisibleSummary).toBe(customMessage)
+    })
+
+    it('returns recoverable error on store exception', async () => {
+      const deps = {
+        plannerRunStore: {
+          findByUser: vi.fn().mockImplementation(() => {
+            throw new Error('DB connection lost')
+          }),
+        } as unknown as PlannerRunStore,
+        subagentRunStore: makeSubagentStore([]),
+        approvalStore: makeApprovalStore([]),
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
+      }
+
+      const result = await handleStatusQuery(deps)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('STATUS_QUERY_FAILED')
+      expect(result.error?.message).toBe('DB connection lost')
+      expect(result.error?.recoverable).toBe(true)
+      expect(result.userVisibleSummary).toBe('Status check failed due to an error.')
     })
   })
 })

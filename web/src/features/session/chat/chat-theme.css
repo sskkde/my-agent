@@ -458,6 +458,13 @@
   scroll-behavior: smooth;
 }
 
+.chat-loading-more {
+  text-align: center;
+  padding: 8px 0 16px;
+  color: var(--muted-text, #888);
+  font-size: 0.875rem;
+}
+
 .chat-column {
   max-width: var(--chat-column-width);
   margin: 0 auto;

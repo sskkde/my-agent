@@ -101,6 +101,7 @@ import { createDeadLetterStore, type DeadLetterStore } from '../dead-letter/dead
 import type { DatabaseAdapter } from '../storage/database-adapter.js'
 import { createCancellationCoordinator } from '../recovery/cancellation-coordinator.js'
 import type { CancellationCoordinator } from '../recovery/types.js'
+import { createStaleRunRecovery } from '../recovery/stale-run-recovery.js'
 import { createApiKeyStore, type ApiKeyStore } from '../storage/api-key-store.js'
 import { createOrganizationStore, type OrganizationStore } from '../storage/organization-store.js'
 import { createTodoStore, type TodoStore } from '../todo/store.js'
@@ -989,6 +990,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     subagentRuntime,
     subagentRegistry,
   })
+
+  createStaleRunRecovery({
+    runtimeActionStore,
+    kernelRunStore,
+    runtimeActionThresholdMs: 5 * 60 * 1000,
+    kernelRunThresholdMs: 5 * 60 * 1000,
+  }).recover()
 
   const messageProcessor =
     injectedMessageProcessor ??

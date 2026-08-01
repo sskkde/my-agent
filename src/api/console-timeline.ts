@@ -596,10 +596,12 @@ class ConsoleTimelineServiceImpl implements ConsoleTimelineService {
     }
 
     // Merge and sort all events
-    // Primary: createdAt ASC, Secondary: eventId for deterministic ordering
+    // Primary: timestamp DESC (newest first) so pagination returns latest events first.
+    // Secondary: turnSequence ASC, rank ASC, eventId ASC for stable chronological order
+    // within the same timestamp.
     const allEvents = [...transcriptEvents, ...storeEvents]
     allEvents.sort((a, b) => {
-      const timeCompare = a.timestamp.localeCompare(b.timestamp)
+      const timeCompare = b.timestamp.localeCompare(a.timestamp)
       if (timeCompare !== 0) {
         return timeCompare
       }

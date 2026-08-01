@@ -36,6 +36,12 @@ import {
   type CancelModifyData,
 } from './cancel-modify-task-tool.js'
 import {
+  CANCEL_PLANNER_TOOL_ID,
+  handleCancelPlanner,
+  type CancelPlannerInput,
+  type CancelPlannerData,
+} from './cancel-planner-tool.js'
+import {
   APPROVAL_REQUEST_TOOL_ID,
   handleApprovalRequest,
   handleApprovalResponse,
@@ -59,6 +65,7 @@ export {
   RESUME_PLANNER_TOOL_ID,
   LAUNCH_SUBAGENT_TOOL_ID,
   CANCEL_MODIFY_TOOL_ID,
+  CANCEL_PLANNER_TOOL_ID,
   APPROVAL_REQUEST_TOOL_ID,
   SEARCH_SUBAGENT_TOOL_ID,
 }
@@ -74,6 +81,8 @@ export type {
   LaunchSubagentData,
   CancelModifyInput,
   CancelModifyData,
+  CancelPlannerInput,
+  CancelPlannerData,
   ApprovalRequestInput,
   ApprovalRequestData,
   ApprovalResponseInput,
@@ -87,6 +96,7 @@ export { handleSpawnPlanner } from './planner-spawn-tool.js'
 export { handleResumePlanner } from './planner-resume-tool.js'
 export { handleLaunchSubagent } from './subagent-launch-tool.js'
 export { handleCancelOrModifyTask } from './cancel-modify-task-tool.js'
+export { handleCancelPlanner } from './cancel-planner-tool.js'
 export { handleApprovalRequest, handleApprovalResponse } from './approval-request-tool.js'
 export { handleSearchSubagentTool } from '../../search/search-subagent-tool.js'
 export type { SearchSubagentToolDeps } from '../../search/search-subagent-tool.js'
@@ -193,7 +203,9 @@ export function createForegroundStatusQueryToolDefinition(runtimeDeps?: Foregrou
           const userMessage = (params as { userMessage?: string } | undefined)?.userMessage
           const result = await handleStatusQuery(
             {
-              runtimeDispatcher: runtimeDeps.runtimeDispatcher,
+              plannerRunStore: runtimeDeps.plannerRunStore,
+              subagentRunStore: runtimeDeps.subagentRunStore,
+              approvalStore: runtimeDeps.approvalStore,
               userId: identity.userId,
               sessionId: identity.sessionId,
               turnId: identity.turnId,
@@ -442,6 +454,50 @@ export function createForegroundCancelOrModifyTaskToolDefinition(
   }
 }
 
+export function createForegroundCancelPlannerToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
+  return {
+    name: CANCEL_PLANNER_TOOL_ID,
+    description:
+      'Cancel an active planner run to stop its execution. Use this when a planner run is stuck, no longer needed, or producing unwanted results.',
+    category: 'internal',
+    sensitivity: 'medium',
+    requiresPermission: true,
+    schema: {
+      type: 'object',
+      properties: {
+        plannerRunId: {
+          type: 'string',
+          description: 'ID of the planner run to cancel',
+        },
+        reason: {
+          type: 'string',
+          description: 'Reason for canceling the planner run',
+        },
+      },
+      required: ['plannerRunId'],
+    },
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const result = await handleCancelPlanner(
+            {
+              plannerRuntime: runtimeDeps.plannerRuntime,
+              plannerRunStore: runtimeDeps.plannerRunStore,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+            },
+            params as CancelPlannerInput,
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
+    metadata: {
+      requiresApproval: true,
+    },
+  }
+}
+
 /**
  * Create the foreground_handle_approval tool definition.
  * - sensitivity: 'low'
@@ -628,6 +684,7 @@ export function registerAllForegroundTools(
   registry.register(createForegroundResumePlannerToolDefinition(runtimeDeps))
   registry.register(createForegroundLaunchSubagentToolDefinition(runtimeDeps))
   registry.register(createForegroundCancelOrModifyTaskToolDefinition(runtimeDeps))
+  registry.register(createForegroundCancelPlannerToolDefinition(runtimeDeps))
   registry.register(createForegroundHandleApprovalToolDefinition(runtimeDeps))
 }
 
@@ -643,6 +700,7 @@ export function getForegroundToolIds(): string[] {
     RESUME_PLANNER_TOOL_ID,
     LAUNCH_SUBAGENT_TOOL_ID,
     CANCEL_MODIFY_TOOL_ID,
+    CANCEL_PLANNER_TOOL_ID,
     APPROVAL_REQUEST_TOOL_ID,
   ]
 }
@@ -661,6 +719,7 @@ export function getDefaultProjectionForegroundToolIds(): string[] {
     SPAWN_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
     RESUME_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
     LAUNCH_SUBAGENT_TOOL_ID, // internal, medium — orchestration, safe for main
+    CANCEL_PLANNER_TOOL_ID, // internal, medium - orchestration, safe for main
     // CANCEL_MODIFY_TOOL_ID intentionally excluded — high sensitivity, risky
   ]
 }
@@ -670,5 +729,5 @@ export function getDefaultProjectionForegroundToolIds(): string[] {
  * These are high-risk or side-effect tools.
  */
 export function getRequiresApprovalForegroundToolIds(): string[] {
-  return [SPAWN_PLANNER_TOOL_ID, RESUME_PLANNER_TOOL_ID, LAUNCH_SUBAGENT_TOOL_ID, CANCEL_MODIFY_TOOL_ID]
+  return [SPAWN_PLANNER_TOOL_ID, RESUME_PLANNER_TOOL_ID, LAUNCH_SUBAGENT_TOOL_ID, CANCEL_PLANNER_TOOL_ID, CANCEL_MODIFY_TOOL_ID]
 }
